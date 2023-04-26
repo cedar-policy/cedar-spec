@@ -1,0 +1,718 @@
+use super::{while_doing, Error, Result};
+use crate::collections::HashMap;
+use crate::Schema;
+use amzn_cedar_core::ast::{self, Value};
+use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use smol_str::SmolStr;
+use std::cell::RefCell;
+use std::net::{Ipv4Addr, Ipv6Addr};
+use std::ops::{Deref, DerefMut};
+
+const MAX_PATTERN_LEN: usize = 6;
+
+#[derive(Debug, Clone)]
+pub struct ABACSettings {
+    /// If true, generates well-typed hierarchies/policies/requests.
+    /// Specifically:
+    /// - policies will not throw type errors, ie, we generate subexpressions of the proper type for ops like < or .contains()
+    /// - attribute values (in the hierarchy and in the request contexts) will strictly adhere to the types suggested in pool.ty_data
+    ///
+    /// If false, does not attempt to match types.
+    pub match_types: bool,
+    /// If true, may generate extension function calls in policies and/or
+    /// attribute values.
+    pub enable_extensions: bool,
+    /// Maximum depth of an expression or type. E.g., maximum nesting of sets.
+    ///
+    /// This is used in the following places:
+    /// - Maximum depth of the expression in a when/unless clause
+    ///     - Note that this is only the limit for _each_ `when` and `unless`
+    ///     clause.
+    ///     Some generated policies will have multiple `when` and `unless`
+    ///     clauses, in which case the conjunction of all conditions may exceed
+    ///     the `max_depth`. But, the `max_depth` still applies for each clause
+    ///     individually.
+    /// - Maximum depth of expressions in attribute values in the hierarchy,
+    ///     and also of attributes of `context` in each request
+    /// - Maximum depth of a type specified in a generated schema
+    /// - Maximum number of when/unless clauses in a policy
+    pub max_depth: usize,
+    /// Maximum width of an expression or type. E.g., maximum number of elements
+    /// in a set.
+    ///
+    /// This is used in the following places:
+    /// - Maximum number of elements in a set in an attribute value in the
+    ///     hierarchy
+    /// - Maximum number of elements in a set literal in a policy
+    /// - Maximum number of attributes in a record in an attribute value in the
+    ///     hierarchy
+    /// - Maximum number of attributes in a record literal in a policy
+    /// - Maximum number of UIDs in the hierarchy of any given entity type
+    /// - Maximum number of "additional attributes" on any entity in the
+    ///     hierarchy
+    pub max_width: usize,
+    /// Whether to enable the `additional_attributes` flag in generated schemas.
+    /// If this option is `false`, `additional_attributes` will always be false
+    /// in all generated schemas.
+    /// If this option is `true`, `additional_attributes` will be randomly
+    /// chosen to be either true or false every time it appears.
+    /// Generated attribute data also respects the value of
+    /// `additional_attributes` in the schema: it may add additional attributes,
+    /// but only if `additional_attributes` is true.
+    pub enable_additional_attributes: bool,
+    /// Flag to globally enable/disable generation of expressions containing the
+    /// `like` operator.
+    pub enable_like: bool,
+    /// Flag to enable/disable generating actions in groups and declaring
+    /// attributes on entity types.
+    pub enable_action_groups_and_attrs: bool,
+    /// Flag to enable/disable generating arbitrary extension function calls.
+    /// Note that this flag is only considered if `enable_extensions` is true.
+    /// This flag should only be disabled for target `pp` because the parser now
+    /// rejects unknown extension function calls.
+    pub enable_arbitrary_func_call: bool,
+
+    /// Flag to enable/disable generating unknowns, exercising partial evaluation
+    pub enable_unknowns: bool,
+}
+
+// Mutate a hypothetically valid string (randomly).
+// We want to the make the probability of keeping the valid input reasonable:
+// We try to mutate each character with a small probability p because the
+// probability where the whole string is unaffected is expotential to 1-p.
+// The mutation consists of deletion, duplication, and randomization.
+fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
+    let mut res = Vec::new();
+    for c in s.chars() {
+        if u.ratio(9, 10)? {
+            res.push(c);
+        } else {
+            match u.int_in_range(0..=8)? {
+                0 =>
+                    // remove it
+                    {}
+                1 =>
+                // duplicate it
+                {
+                    res.push(c);
+                    res.push(c);
+                }
+                2 =>
+                // replace it with an arbitrary ASCII
+                {
+                    let byte = u.bytes(1)?.first().unwrap().to_owned();
+                    res.push(byte as char);
+                }
+                _ =>
+                // keep it
+                {
+                    res.push(c);
+                }
+            }
+        }
+    }
+    Ok(res.into_iter().collect())
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UnknownPool {
+    unknowns: RefCell<HashMap<String, (Type, Value)>>,
+}
+
+impl UnknownPool {
+    pub fn get_type(&self, unk: impl AsRef<str>) -> Option<Type> {
+        self.unknowns
+            .borrow()
+            .get(unk.as_ref())
+            .map(|(t, _)| t)
+            .cloned()
+    }
+
+    pub fn unknowns(self) -> impl Iterator<Item = (String, Type)> {
+        self.unknowns.take().into_iter().map(|(k, (t, _))| (k, t))
+    }
+
+    pub fn mapping(self) -> impl Iterator<Item = (String, Value)> {
+        self.unknowns.take().into_iter().map(|(k, (_, v))| (k, v))
+    }
+
+    pub fn alloc(
+        &self,
+        t: Type,
+        schema: &Schema,
+        hierarchy: Option<&super::Hierarchy>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<String> {
+        let this = format!("{}", self.unknowns.borrow().len());
+        let v = schema.arbitrary_value_for_type(&t, hierarchy, 3, u)?;
+        self.unknowns.borrow_mut().insert(this.clone(), (t, v));
+        Ok(this)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstantPool {
+    /// integer constants to choose from. we generate a finite list as part of
+    /// the pool in order to increase the chance of integers actually being
+    /// equal (eg, two attributes having equal values, or an attribute value
+    /// being equal to a constant mentioned in the policy)
+    int_constants: Vec<i64>,
+    /// string constants to choose from. we generate a finite list as part of
+    /// the pool in order to increase the chance of strings actually being
+    /// equal (eg, two attributes having equal values, or an attribute value
+    /// being equal to a constant mentioned in the policy)
+    string_constants: Vec<SmolStr>,
+}
+
+impl<'a> Arbitrary<'a> for ConstantPool {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let sc: Vec<String> = u.arbitrary()?;
+        Ok(Self {
+            int_constants: u.arbitrary()?,
+            string_constants: sc.iter().map(|s| s.into()).collect(),
+        })
+    }
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and_all(&[
+            <Vec<i64> as Arbitrary>::size_hint(depth),
+            <Vec<String> as Arbitrary>::size_hint(depth),
+        ])
+    }
+}
+
+impl ConstantPool {
+    /// Get an arbitrary int constant from the pool.
+    /// If there are no int constants in the pool, get a purely arbitrary int constant
+    pub fn arbitrary_int_constant(&self, u: &mut Unstructured<'_>) -> Result<i64> {
+        u.choose(&self.int_constants).copied().or_else(|_| {
+            u.arbitrary()
+                .map_err(|e| while_doing("getting an arbitrary int constant", e))
+        })
+    }
+
+    /// size hint for arbitrary_int_constant()
+    pub fn arbitrary_int_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        super::size_hint_for_choose(None)
+    }
+
+    pub fn arbitrary_string(
+        &self,
+        u: &mut Unstructured<'_>,
+        bound: Option<usize>,
+    ) -> Result<SmolStr> {
+        let s: String = u.arbitrary()?;
+        let result_s = if let Some(bound) = bound {
+            if s.len() < bound {
+                SmolStr::from(s)
+            } else {
+                s.chars().take(bound).collect()
+            }
+        } else {
+            s.into()
+        };
+        Ok(result_s)
+    }
+
+    pub fn arbitrary_string_constant_bounded(
+        &self,
+        u: &mut Unstructured<'_>,
+        bound: usize,
+    ) -> Result<SmolStr> {
+        let short_consts: Vec<&SmolStr> = self
+            .string_constants
+            .iter()
+            .filter(|s| s.len() < bound)
+            .collect();
+        u.choose(&short_consts)
+            .map(|s| (*s).clone())
+            .map_err(|e| while_doing("Getting an arbitrary string constant", e))
+            .or_else(|_| self.arbitrary_string(u, Some(bound)))
+    }
+
+    /// Get an arbitrary string constant from the pool.
+    /// If there are no string constants in the pool, get a purely arbitrary string constant
+    pub fn arbitrary_string_constant(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
+        u.choose(&self.string_constants).cloned().or_else(|_| {
+            u.arbitrary::<String>()
+                .map(|s| s.into())
+                .map_err(|e| while_doing("getting an arbitrary string constant", e))
+        })
+    }
+
+    /// Produce a RHS of a like operation
+    /// It's derived from a random string constant in the pool: We perform transformations over it such as adding a char, deleting a char and adding a wildcard star.
+    pub fn arbitrary_pattern_literal(
+        &self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Vec<ast::PatternElem>> {
+        let matched_string = self.arbitrary_string_constant_bounded(u, MAX_PATTERN_LEN)?;
+
+        let mut pattern = Vec::new();
+        for c in matched_string.chars() {
+            match u.int_in_range(0..=4)? {
+                // add the char back
+                0 => {
+                    pattern.push(ast::PatternElem::Char(c));
+                }
+                // add the wildcard
+                1 => {
+                    pattern.push(ast::PatternElem::Wildcard);
+                }
+                // add the wildcard after the char
+                2 => {
+                    pattern.push(ast::PatternElem::Char(c));
+                    pattern.push(ast::PatternElem::Wildcard);
+                }
+                // add the wildcard before the char
+                3 => {
+                    pattern.push(ast::PatternElem::Wildcard);
+                    pattern.push(ast::PatternElem::Char(c));
+                }
+                // Skip
+                4 => {}
+                _ => panic!("invalid number!"),
+            }
+        }
+        Ok(pattern)
+    }
+
+    // Generate a valid IPv4 net representation
+    fn arbitrary_ipv4_str(&self, u: &mut Unstructured<'_>) -> Result<String> {
+        let bytes: [u8; 4] = u.bytes(4)?.try_into().unwrap();
+        let ip = Ipv4Addr::from(bytes);
+        // Produce a CIDR notation out of 50% probability
+        Ok(if u.ratio(1, 2)? {
+            ip.to_string()
+        } else {
+            // We could construct a `IPv4Net` here but that implies an additional dependency
+            let prefix = u.int_in_range(0..=32)?;
+            format!("{}/{}", ip, prefix)
+        })
+    }
+
+    // Generate a valid IPv6 net representation
+    fn arbitrary_ipv6_str(&self, u: &mut Unstructured<'_>) -> Result<String> {
+        let bytes: [u8; 16] = u.bytes(16)?.try_into().unwrap();
+        let ip = Ipv6Addr::from(bytes);
+        // Produce a CIDR notation out of a 50% probability
+        Ok(if u.ratio(1, 2)? {
+            ip.to_string()
+        } else {
+            // We could construct a `IPv4Net` here but that implies an additional dependency
+            let prefix = u.int_in_range(0..=128)?;
+            format!("{}/{}", ip, prefix)
+        })
+    }
+
+    // Generate a valid IP net representation and mutate it
+    pub fn arbitrary_ip_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
+        let valid_str = if u.ratio(1, 2)? {
+            self.arbitrary_ipv4_str(u)?
+        } else {
+            self.arbitrary_ipv6_str(u)?
+        };
+        mutate_str(u, &valid_str).map(SmolStr::new)
+    }
+
+    // Generate a valid decimal number representation and mutate it
+    pub fn arbitrary_decimal_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
+        let bytes = u.bytes(8)?;
+        let i = i64::from_be_bytes(bytes.try_into().unwrap());
+        mutate_str(
+            u,
+            // Replicate from Core
+            &format!("{}.{}", i / i64::pow(10, 4), (i % i64::pow(10, 4)).abs()),
+        )
+        .map(SmolStr::new)
+    }
+
+    /// size hint for arbitrary_string_constant()
+    pub fn arbitrary_string_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        super::size_hint_for_choose(None)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AvailableExtensionFunction {
+    /// Name of the extension function
+    pub name: Name,
+    /// Is it considered a constructor (ie, is it legal as an attribute value).
+    /// All constructors must have return types that are extension values.
+    pub is_constructor: bool,
+    /// Parameter types expected by the extension function. The length of this
+    /// list indicates the function arity.
+    pub parameter_types: Vec<Type>,
+    /// Return type of the extension function
+    pub return_ty: Type,
+}
+
+#[derive(Debug, Clone)]
+pub struct AvailableExtensionFunctions {
+    /// available extension functions (constructors only).
+    /// Empty if settings.enable_extensions is false
+    constructors: Vec<AvailableExtensionFunction>,
+    /// available extension functions (all functions).
+    /// Empty if settings.enable_extensions is false
+    all: Vec<AvailableExtensionFunction>,
+    /// available constructors, by their return types (map keys are return types).
+    /// Empty if settings.enable_extensions is false and/or settings.match_types is false
+    constructors_by_type: HashMap<Type, Vec<AvailableExtensionFunction>>,
+    /// available extension functions, by their return types (map keys are return types).
+    /// Empty if settings.enable_extensions is false and/or settings.match_types is false
+    all_by_type: HashMap<Type, Vec<AvailableExtensionFunction>>,
+}
+
+impl AvailableExtensionFunctions {
+    pub fn create(settings: &ABACSettings) -> Self {
+        let available_ext_funcs = if settings.enable_extensions {
+            vec![
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("ip").expect("should be a valid identifier"),
+                    is_constructor: true,
+                    parameter_types: vec![Type::string()],
+                    return_ty: Type::ipaddr(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("isIpv4")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::ipaddr()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("isIpv6")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::ipaddr()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("isLoopback")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::ipaddr()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("isMulticast")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::ipaddr()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("isInRange")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("decimal")
+                        .expect("should be a valid identifier"),
+                    is_constructor: true,
+                    parameter_types: vec![Type::string()],
+                    return_ty: Type::decimal(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("lessThan")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::decimal(), Type::decimal()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("lessThanOrEqual")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::decimal(), Type::decimal()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("greaterThan")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::decimal(), Type::decimal()],
+                    return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("greaterThanOrEqual")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::decimal(), Type::decimal()],
+                    return_ty: Type::bool(),
+                },
+            ]
+        } else {
+            vec![]
+        };
+        let constructors = available_ext_funcs
+            .iter()
+            .filter(|func| func.is_constructor)
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut constructors_by_type: HashMap<Type, Vec<AvailableExtensionFunction>> =
+            HashMap::new();
+        if settings.match_types {
+            for func in &constructors {
+                constructors_by_type
+                    .entry(func.return_ty.clone())
+                    .or_default()
+                    .push(func.clone());
+            }
+        }
+        let mut all_by_type: HashMap<Type, Vec<AvailableExtensionFunction>> = HashMap::new();
+        if settings.match_types {
+            for func in &available_ext_funcs {
+                all_by_type
+                    .entry(func.return_ty.clone())
+                    .or_default()
+                    .push(func.clone());
+            }
+        }
+        Self {
+            constructors,
+            all: available_ext_funcs,
+            constructors_by_type,
+            all_by_type,
+        }
+    }
+
+    /// Get any extension constructor
+    pub fn arbitrary_constructor<'s>(
+        &'s self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<&'s AvailableExtensionFunction> {
+        u.choose(&self.constructors)
+            .map_err(|e| while_doing("getting arbitrary extfunc constructor", e))
+    }
+    pub fn arbitrary_constructor_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        crate::size_hint_for_choose(Some(3))
+    }
+
+    /// Get any extension function
+    pub fn arbitrary_all<'s>(
+        &'s self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<&'s AvailableExtensionFunction> {
+        u.choose(&self.all)
+            .map_err(|e| while_doing("getting arbitrary extfunc", e))
+    }
+    pub fn arbitrary_all_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        crate::size_hint_for_choose(Some(8))
+    }
+
+    /// Get an extension constructor that returns the given type
+    pub fn arbitrary_constructor_for_type<'a, 'u>(
+        &'a self,
+        ty: &Type,
+        u: &mut Unstructured<'u>,
+    ) -> Result<&'a AvailableExtensionFunction> {
+        let choices: &'a [AvailableExtensionFunction] =
+            self.constructors_by_type
+                .get(ty)
+                .ok_or(Error::EmptyChoose {
+                    doing_what: "getting extfunc constructors for given type",
+                })?;
+        u.choose(choices)
+            .map_err(|e| while_doing("getting arbitrary extfunc constructor with given type", e))
+    }
+
+    /// size hint for arbitrary_constructor_for_type()
+    pub fn arbitrary_constructor_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        crate::size_hint_for_choose(Some(3))
+    }
+
+    /// Get an extension function that returns the given type
+    pub fn arbitrary_for_type<'a, 'u>(
+        &'a self,
+        ty: &Type,
+        u: &mut Unstructured<'u>,
+    ) -> Result<&'a AvailableExtensionFunction> {
+        let choices: &'a [AvailableExtensionFunction] =
+            self.all_by_type.get(ty).ok_or(Error::EmptyChoose {
+                doing_what: "getting arbitrary extfunc with given return type",
+            })?;
+        u.choose(choices)
+            .map_err(|e| while_doing("getting arbitrary extfunc with given type", e))
+    }
+
+    /// size hint for arbitrary_for_type()
+    pub fn arbitrary_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        crate::size_hint_for_choose(Some(8))
+    }
+}
+
+/// Approximation of the Cedar type system used by the type-directed
+/// generator
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
+pub enum Type {
+    Bool,
+    Long,
+    String,
+    /// Set, with the given element type. Note that we only generate
+    /// homogeneous sets.
+    /// Set(None) means any set type. It will still be a homogeneous set.
+    Set(Option<Box<Type>>),
+    /// Note that for now we have only a single Record type: all records are the
+    /// same type, no effort to generate records with particular attributes
+    Record,
+    /// Note that for now we have only a single Entity type: all entities are
+    /// the same type, no effort to generate entities with particular
+    /// attributes, or distinguish entities of different entity types
+    Entity,
+    /// IP address
+    IPAddr,
+    /// Decimal numbers
+    Decimal,
+}
+
+impl Type {
+    pub fn bool() -> Self {
+        Type::Bool
+    }
+    pub fn long() -> Self {
+        Type::Long
+    }
+    pub fn string() -> Self {
+        Type::String
+    }
+    pub fn set_of(element_ty: Type) -> Self {
+        Type::Set(Some(Box::new(element_ty)))
+    }
+    pub fn any_set() -> Self {
+        Type::Set(None)
+    }
+    pub fn record() -> Self {
+        Type::Record
+    }
+    pub fn entity() -> Self {
+        Type::Entity
+    }
+    pub fn ipaddr() -> Self {
+        Type::IPAddr
+    }
+    pub fn decimal() -> Self {
+        Type::Decimal
+    }
+
+    /// `Type` has `Arbitrary` auto-derived for it, but for the case where you
+    /// want "any nonextension Type", you have this
+    pub fn arbitrary_nonextension(u: &mut Unstructured<'_>) -> Result<Type> {
+        match u.int_in_range::<u8>(1..=7)? {
+            1 => Ok(Type::bool()),
+            2 => Ok(Type::long()),
+            3 => Ok(Type::string()),
+            4 => Ok(Type::set_of(Self::arbitrary_nonextension(u)?)),
+            5 => Ok(Type::any_set()),
+            6 => Ok(Type::record()),
+            7 => Ok(Type::entity()),
+            n => panic!("bad index: {n}"),
+        }
+    }
+}
+
+/// attribute values are restricted expressions: just
+/// - bool literals
+/// - int literals
+/// - string literals
+/// - UID literals
+/// - extension function calls applied to the other things on this list
+/// - sets, record literals containing items found on this list (including nested)
+/// and not:
+/// - vars
+/// - builtin operators or functions
+/// - if/then/else
+/// - attribute access, record field access/indexing
+#[derive(Debug, Clone)]
+pub enum AttrValue {
+    BoolLit(bool),
+    IntLit(i64),
+    StringLit(SmolStr),
+    UIDLit(EntityUID),
+    ExtFuncCall { fn_name: Name, args: Vec<AttrValue> },
+    Set(Vec<AttrValue>),
+    Record(HashMap<SmolStr, AttrValue>),
+}
+
+impl From<AttrValue> for RestrictedExpr {
+    fn from(attrvalue: AttrValue) -> RestrictedExpr {
+        match attrvalue {
+            AttrValue::BoolLit(b) => RestrictedExpr::val(b),
+            AttrValue::IntLit(i) => RestrictedExpr::val(i),
+            AttrValue::StringLit(s) => RestrictedExpr::val(s),
+            AttrValue::UIDLit(u) => RestrictedExpr::val(u),
+            // INVARIANT (MethodCallArgs), only Function Style so no worries here
+            AttrValue::ExtFuncCall { fn_name, args } => RestrictedExpr::call_extension_fn(
+                fn_name,
+                args.into_iter().map(Into::into).collect(),
+            ),
+            AttrValue::Set(l) => RestrictedExpr::set(l.into_iter().map(Into::into)),
+            AttrValue::Record(r) => {
+                RestrictedExpr::record(r.into_iter().map(|(k, v)| (k, v.into())))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ABACPolicy(pub super::GeneratedPolicy);
+
+impl std::fmt::Display for ABACPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Deref for ABACPolicy {
+    type Target = super::GeneratedPolicy;
+    fn deref(&self) -> &super::GeneratedPolicy {
+        &self.0
+    }
+}
+
+impl DerefMut for ABACPolicy {
+    fn deref_mut(&mut self) -> &mut super::GeneratedPolicy {
+        &mut self.0
+    }
+}
+
+impl From<ABACPolicy> for StaticPolicy {
+    fn from(abac: ABACPolicy) -> StaticPolicy {
+        abac.0.into()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ABACRequest(pub super::Request);
+
+impl std::fmt::Display for ABACRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Deref for ABACRequest {
+    type Target = super::Request;
+    fn deref(&self) -> &super::Request {
+        &self.0
+    }
+}
+
+impl DerefMut for ABACRequest {
+    fn deref_mut(&mut self) -> &mut super::Request {
+        &mut self.0
+    }
+}
+
+impl From<ABACRequest> for Request {
+    fn from(abac: ABACRequest) -> Request {
+        Request::new(
+            abac.0.principal,
+            abac.0.action,
+            abac.0.resource,
+            ast::Context::from_pairs(abac.0.context),
+        )
+    }
+}

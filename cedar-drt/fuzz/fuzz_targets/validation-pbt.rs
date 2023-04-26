@@ -1,0 +1,355 @@
+#![no_main]
+use amzn_cedar_core::ast;
+use amzn_cedar_core::authorizer::Authorizer;
+use amzn_cedar_core::entities::Entities;
+use amzn_cedar_drt::initialize_log;
+use amzn_cedar_drt_inner::*;
+use amzn_cedar_validator::{
+    ActionBehavior, ApplySpec, NamespaceDefinition, Validator, ValidatorNamespaceDef,
+    ValidatorSchemaFragment,
+};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use log::debug;
+use std::convert::TryFrom;
+
+/// Input expected by this fuzz target:
+/// An ABAC hierarchy, schema, and 8 associated policies
+#[derive(Debug, Clone)]
+struct FuzzTargetInput {
+    /// generated schema
+    pub schema: Schema,
+    /// generated hierarchy
+    pub hierarchy: Hierarchy,
+    /// the policy which we will see if it validates
+    pub policy: ABACPolicy,
+    /// the requests to try, if the policy validates.
+    /// We try 8 requests per validated policy.
+    pub requests: [ABACRequest; 8],
+}
+
+/// settings for this fuzz target
+const SETTINGS: ABACSettings = ABACSettings {
+    match_types: false,
+    enable_extensions: true,
+    max_depth: 7,
+    max_width: 7,
+    enable_additional_attributes: true,
+    enable_like: true,
+    enable_action_groups_and_attrs: true,
+    enable_arbitrary_func_call: true,
+    enable_unknowns: false,
+};
+
+const LOG_FILENAME_GENERATION_START: &str = "./logs/01_generation_start.txt";
+const LOG_FILENAME_GENERATED_SCHEMA: &str = "./logs/02_generated_schema.txt";
+const LOG_FILENAME_GENERATED_HIERARCHY: &str = "./logs/03_generated_hierarchy.txt";
+const LOG_FILENAME_GENERATED_POLICY: &str = "./logs/04_generated_policy.txt";
+const LOG_FILENAME_GENERATED_REQUESTS: &str = "./logs/05_generated_requests.txt";
+const LOG_FILENAME_SCHEMA_VALID: &str = "./logs/06_schema_valid.txt";
+const LOG_FILENAME_HIERARCHY_VALID: &str = "./logs/07_hierarchy_valid.txt";
+const LOG_FILENAME_VALIDATION_PASS: &str = "./logs/08_validation_pass.txt";
+
+const LOG_FILENAME_ERR_NOT_ENOUGH_DATA: &str = "./logs/err_not_enough_data.txt";
+const LOG_FILENAME_ERR_EMPTY_CHOOSE: &str = "./logs/err_empty_choose.txt";
+const LOG_FILENAME_ERR_TOO_DEEP: &str = "./logs/err_too_deep.txt";
+const LOG_FILENAME_ERR_NO_VALID_TYPES: &str = "./logs/err_no_valid_types.txt";
+const LOG_FILENAME_ERR_EXTENSIONS_DISABLED: &str = "./logs/err_extensions_disabled.txt";
+const LOG_FILENAME_ERR_LIKE_DISABLED: &str = "./logs/err_like_disabled.txt";
+const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
+const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
+
+// In the below, "vyes" means the schema passed validation, while "vno" means we
+// got to the point of running the validator but validation failed
+const LOG_FILENAME_TOTAL_ENTITY_TYPES: &str = "./logs/schemastats/total_entity_types";
+const LOG_FILENAME_TOTAL_ACTIONS: &str = "./logs/schemastats/total_actions";
+const LOG_FILENAME_APPLIES_TO_NONE: &str = "./logs/schemastats/applies_to_none";
+const LOG_FILENAME_APPLIES_TO_PRINCIPAL_NONE: &str = "./logs/schemastats/applies_to_principal_none";
+const LOG_FILENAME_APPLIES_TO_RESOURCE_NONE: &str = "./logs/schemastats/applies_to_resource_none";
+const LOG_FILENAME_APPLIES_TO_PRINCIPAL_LEN: &str = "./logs/schemastats/applies_to_principal_len";
+const LOG_FILENAME_APPLIES_TO_RESOURCE_LEN: &str = "./logs/schemastats/applies_to_resource_len";
+const LOG_FILENAME_TOTAL_ENTITIES: &str = "./logs/hierarchystats/total_entities";
+const LOG_FILENAME_TOTAL_SUBEXPRESSIONS: &str = "./logs/policystats/total_subexpressions";
+
+/// Append to the given filename to indicate we've reached the corresponding
+/// checkpoint, or the corresponding event has happened
+fn checkpoint(filename: impl AsRef<std::path::Path>) {
+    if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(filename.as_ref())
+            .unwrap();
+        writeln!(file, "y").unwrap();
+    }
+}
+
+fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
+    if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        match &res {
+            Err(Error::NotEnoughData) => {
+                checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
+            }
+            Err(Error::EmptyChoose {
+                doing_what: doing_2,
+            }) => checkpoint(
+                LOG_FILENAME_ERR_EMPTY_CHOOSE.to_string()
+                    + "_"
+                    + doing_what
+                    + "_"
+                    + &doing_2.replace(' ', "_"),
+            ),
+            Err(Error::TooDeep) => {
+                checkpoint(LOG_FILENAME_ERR_TOO_DEEP.to_string() + "_" + doing_what)
+            }
+            Err(Error::NoValidPrincipalOrResourceTypes) => {
+                checkpoint(LOG_FILENAME_ERR_NO_VALID_TYPES.to_string() + "_" + doing_what)
+            }
+            Err(Error::ExtensionsDisabled) => {
+                checkpoint(LOG_FILENAME_ERR_EXTENSIONS_DISABLED.to_string() + "_" + doing_what)
+            }
+            Err(Error::LikeDisabled) => {
+                checkpoint(LOG_FILENAME_ERR_LIKE_DISABLED.to_string() + "_" + doing_what)
+            }
+            Err(Error::IncorrectFormat {
+                doing_what: doing_2,
+            }) => checkpoint(
+                LOG_FILENAME_ERR_INCORRECT_FORMAT.to_string()
+                    + "_"
+                    + doing_what
+                    + "_"
+                    + &doing_2.replace(' ', "_"),
+            ),
+            Err(Error::OtherArbitrary(_)) => {
+                checkpoint(LOG_FILENAME_ERR_OTHER.to_string() + "_" + doing_what)
+            }
+            Ok(_) => (),
+        }
+    }
+    res
+}
+
+fn maybe_log_schemastats(schema: &NamespaceDefinition, suffix: &str) {
+    if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        checkpoint(
+            LOG_FILENAME_TOTAL_ENTITY_TYPES.to_string()
+                + "_"
+                + suffix
+                + "_"
+                + &format!("{:03}", schema.entity_types.len()),
+        );
+        checkpoint(
+            LOG_FILENAME_TOTAL_ACTIONS.to_string()
+                + "_"
+                + suffix
+                + "_"
+                + &format!("{:03}", schema.actions.len()),
+        );
+        for action in schema.actions.values() {
+            match action.applies_to.as_ref() {
+                None => checkpoint(LOG_FILENAME_APPLIES_TO_NONE.to_string() + "_" + suffix),
+                Some(ApplySpec {
+                    principal_types,
+                    resource_types,
+                    ..
+                }) => {
+                    match principal_types.as_ref() {
+                        None => checkpoint(
+                            LOG_FILENAME_APPLIES_TO_PRINCIPAL_NONE.to_string() + "_" + suffix,
+                        ),
+                        Some(tys) => checkpoint(
+                            LOG_FILENAME_APPLIES_TO_PRINCIPAL_LEN.to_string()
+                                + "_"
+                                + suffix
+                                + "_"
+                                + &format!("{:03}", tys.len()),
+                        ),
+                    }
+                    match resource_types.as_ref() {
+                        None => checkpoint(
+                            LOG_FILENAME_APPLIES_TO_RESOURCE_NONE.to_string() + "_" + suffix,
+                        ),
+                        Some(tys) => checkpoint(
+                            LOG_FILENAME_APPLIES_TO_RESOURCE_LEN.to_string()
+                                + "_"
+                                + suffix
+                                + "_"
+                                + &format!("{:03}", tys.len()),
+                        ),
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn maybe_log_hierarchystats(hierarchy: &Hierarchy, suffix: &str) {
+    if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        checkpoint(
+            LOG_FILENAME_TOTAL_ENTITIES.to_string()
+                + "_"
+                + suffix
+                + "_"
+                + &format!("{:03}", hierarchy.num_uids()),
+        );
+    }
+}
+
+fn maybe_log_policystats(policy: &ast::StaticPolicy, suffix: &str) {
+    if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        let total_subexpressions = policy.condition().subexpressions().count();
+        checkpoint(
+            LOG_FILENAME_TOTAL_SUBEXPRESSIONS.to_string()
+                + "_"
+                + suffix
+                + "_"
+                + &format!("{:03}", total_subexpressions),
+        );
+    }
+}
+
+impl<'a> Arbitrary<'a> for FuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        checkpoint(LOG_FILENAME_GENERATION_START);
+        let schema: Schema = log_err(Schema::arbitrary(SETTINGS.clone(), u), "generating_schema")?;
+        checkpoint(LOG_FILENAME_GENERATED_SCHEMA);
+        let hierarchy = log_err(schema.arbitrary_hierarchy(u), "generating_hierarchy")?;
+        checkpoint(LOG_FILENAME_GENERATED_HIERARCHY);
+        let policy = log_err(schema.arbitrary_policy(&hierarchy, u), "generating_policy")?;
+        checkpoint(LOG_FILENAME_GENERATED_POLICY);
+        let requests = [
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+            log_err(
+                schema.arbitrary_request(&hierarchy, u),
+                "generating_request",
+            )?,
+        ];
+        checkpoint(LOG_FILENAME_GENERATED_REQUESTS);
+        Ok(Self {
+            schema,
+            hierarchy,
+            policy,
+            requests,
+        })
+    }
+
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth),
+            Schema::arbitrary_hierarchy_size_hint(depth),
+            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+        ])
+    }
+}
+
+/// helper function that just tells us whether a policyset passes validation
+fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
+    validator.validate(policyset).validation_passed()
+}
+
+// The main fuzz target. This is for PBT on the validator
+fuzz_target!(|input: FuzzTargetInput| {
+    initialize_log();
+    if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
+        input.schema.namespace().clone(),
+        input.schema.schemafile().clone(),
+        ActionBehavior::PermitGroupsAndAttributes,
+    )
+    .and_then(|f| {
+        ValidatorSchema::from_schema_fragments([ValidatorSchemaFragment::from_namespaces([f])])
+    }) {
+        debug!("Schema: {:?}", schema);
+        checkpoint(LOG_FILENAME_SCHEMA_VALID);
+        if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
+            checkpoint(LOG_FILENAME_HIERARCHY_VALID);
+            let validator = Validator::new(schema);
+            let mut policyset = ast::PolicySet::new();
+            let policy: ast::StaticPolicy = input.policy.into();
+            policyset.add_static(policy.clone()).unwrap();
+            if passes_validation(&validator, &policyset) {
+                checkpoint(LOG_FILENAME_VALIDATION_PASS);
+                maybe_log_schemastats(input.schema.schemafile(), "vyes");
+                maybe_log_hierarchystats(&input.hierarchy, "vyes");
+                maybe_log_policystats(&policy, "vyes");
+                // policy successfully validated, let's make sure we don't get any
+                // dynamic type errors
+                let authorizer = Authorizer::new();
+                debug!("Policies: {policyset}");
+                debug!("Entities: {entities}");
+                for r in input.requests.into_iter() {
+                    let q = ast::Request::from(r);
+                    debug!("Request: {q}");
+                    let ans = authorizer.is_authorized(&q, &policyset, &entities);
+
+                    // validated policies should never produce type errors
+                    assert_eq!(
+                        ans.diagnostics
+                            .errors
+                            .iter()
+                            .filter(|err| err.contains("type error"))
+                            .collect::<Vec<&String>>(),
+                        Vec::<&String>::new(),
+                        "validated policy produced a type error!\npolicies:\n{}\nentities:\n{}\nschema:\n{}\nrequest:\n{}\n", &policyset, &entities, &input.schema.schemafile_string(), &q,
+                    );
+                    // or wrong-number-of-arguments errors
+                    assert_eq!(
+                        ans.diagnostics
+                            .errors
+                            .iter()
+                            .filter(|err| err.contains("wrong number of arguments"))
+                            .collect::<Vec<&String>>(),
+                        Vec::<&String>::new()
+                    );
+                    // or missing-attribute errors (for either entities or records)
+                    assert_eq!(
+                        ans.diagnostics
+                            .errors
+                            .iter()
+                            .filter(|err| err.contains("does not have the required attribute"))
+                            .collect::<Vec<&String>>(),
+                        Vec::<&String>::new()
+                    );
+                }
+            } else {
+                maybe_log_schemastats(input.schema.schemafile(), "vno");
+                maybe_log_hierarchystats(&input.hierarchy, "vno");
+                maybe_log_policystats(&policy, "vno");
+            }
+        }
+    }
+});
