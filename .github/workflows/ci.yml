@@ -33,7 +33,7 @@ jobs:
         run: ls && echo $(pwd)
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny && make verify
+        run: export PATH=$PATH:$(pwd)/../dafny && echo $PATH && ls $(pwd)/../dafny && make verify
       - name: test dafny
         working-directory: ./cedar-dafny
         run: export PATH=$PATH:$(pwd)/../dafny && make test
