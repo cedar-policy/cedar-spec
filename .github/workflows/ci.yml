@@ -1,4 +1,4 @@
-name: Build Dafny
+name: Build cedar-spec
 
 on:
   push:
@@ -15,11 +15,15 @@ jobs:
       fail-fast: false
 
     steps:
-      # The first call to `dotnet tool` on a fresh runner sometimes takes multiple minutes,
-      # perhaps because it is lazily downloading and installing assets.
-      # It helps to hit that here so we don't hit it in a mocha test with a tight timeout.
-      - name: Warm up dotnet tool
-        run: dotnet tool search --help
+      - name: Download Dafny
+        shell: bash
+        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
+      - name: Unzip Dafny
+        shell: bash
+        run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
+      - name: Add Dafny to PATH
+        shell: bash
+        run: echo "export PATH=$PATH:{$pwd}/dafny" >> ~/.bashrc
       - name: Checkout
         uses: actions/checkout@v3
       - name: verify dafny
@@ -52,8 +56,13 @@ jobs:
           - stable
     
     steps:
-      - name: Checkout
+      - name: Checkout cedar-spec
         uses: actions/checkout@v3
+      - name: Checkout cedar
+        uses: actions/checkout@master
+        with:
+          name: cedar-policy/cedar
+          ref: refs/heads/main
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt
