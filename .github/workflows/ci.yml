@@ -36,10 +36,10 @@ jobs:
         run: ls
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: make verify
+        run: export PATH=$PATH:$(pwd)/../dafny && make verify
       - name: test dafny
         working-directory: ./cedar-dafny
-        run: make test
+        run: export PATH=$PATH:$(pwd)/../dafny && make test
 
 
   build_and_test_dafny_wrapper:
