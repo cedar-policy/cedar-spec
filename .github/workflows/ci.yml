@@ -24,11 +24,14 @@ jobs:
       - name: Add Dafny to PATH
         shell: bash
         run: echo "export PATH=$PATH:{$pwd}/dafny" >> ~/.bashrc
+        run: echo {$pwd}
       - name: Checkout
         uses: actions/checkout@v3
       - name: print path
         working-directory: ./cedar-dafny
         run: echo $PATH
+      - name: print curr folder
+        run: ls
       - name: print dafny folder
         working-directory: ./dafny
         run: ls
