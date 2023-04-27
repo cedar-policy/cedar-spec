@@ -10,3 +10,15 @@
 
 # Don't check IntelliJ module files
 *.iml
+
+
+# cedar-dafny build artifacts
+cedar-dafny/.dotnet
+cedar-dafny/.local
+cedar-dafny/.nuget
+
+# cedar-dafny-java-wrapper build artifacts
+cedar-dafny-java-wrapper/build
+
+# cedar-drt build artifacts
+cedar-drt/target

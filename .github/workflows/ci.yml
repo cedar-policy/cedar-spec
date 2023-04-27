@@ -1,0 +1,68 @@
+name: Build Dafny
+
+on:
+  push:
+  pull_request:
+
+env: 
+  dotnet-version: 6.0.x # SDK Version for building Dafny
+
+jobs:
+  build_and_test_dafny:
+    name: Dafny Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      # The first call to `dotnet tool` on a fresh runner sometimes takes multiple minutes,
+      # perhaps because it is lazily downloading and installing assets.
+      # It helps to hit that here so we don't hit it in a mocha test with a tight timeout.
+      - name: Warm up dotnet tool
+        run: dotnet tool search --help
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: verify dafny
+        working-directory: ./cedar-dafny
+        run: make verify
+      - name: test dafny
+        working-directory: ./cedar-dafny
+        run: make test
+
+
+  build_and_test_dafny_wrapper:
+    name: cedar-dafny-java-wrapper build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build cedar-dafny-java-wrapper
+        working-directory: ./cedar-dafny-java-wrapper
+        shell: bash
+        run: ./gradlew
+
+  
+  build_and_test_drt:
+    name: Cedar-DRT Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: rustup
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: cargo fmt
+        working-directory: ./cedar-drt
+        run: cargo fmt --all --check
+      - name: cargo rustc
+        working-directory: ./cedar-drt
+        run: cargo --verbose rustc -- -D warnings -F unsafe-code
+      - name: cargo test
+        working-directory: ./cedar-drt
+        run: cargo test --verbose
+
