@@ -59,7 +59,7 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
       - name: Checkout cedar
-        uses: actions/checkout@master
+        uses: actions/checkout@main
         with:
           repository: cedar-policy/cedar
           path: ./cedar
