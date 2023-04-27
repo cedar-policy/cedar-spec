@@ -23,8 +23,7 @@ jobs:
         run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
       - name: Add Dafny to PATH
         shell: bash
-        run: echo "export PATH=$PATH:{$pwd}/dafny" >> ~/.bashrc
-        run: echo {$pwd}
+        run: echo "export PATH=$PATH:$(pwd)/dafny" >> ~/.bashrc && echo $(pwd)
       - name: Checkout
         uses: actions/checkout@v3
       - name: print path
