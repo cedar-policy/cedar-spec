@@ -26,6 +26,12 @@ jobs:
         run: echo "export PATH=$PATH:{$pwd}/dafny" >> ~/.bashrc
       - name: Checkout
         uses: actions/checkout@v3
+      - name: print path
+        working-directory: ./cedar-dafny
+        run: echo $PATH
+      - name: print dafny folder
+        working-directory: ./dafny
+        run: ls
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: make verify
