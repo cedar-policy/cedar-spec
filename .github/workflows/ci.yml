@@ -65,11 +65,11 @@ jobs:
           ref: main
           path: ./cedar
           ssh-key: ${{ secrets.CEDAR }}
-      - name: rustup
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: print
         shell: bash
         run: ls
+      - name: rustup
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt
