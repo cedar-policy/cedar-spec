@@ -23,12 +23,15 @@ jobs:
       - name: Unzip Dafny
         shell: bash
         run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
+      - name: Symlink z3
+        shell: bash
+        run: ln -s $(pwd)/dafny/z3/bin/z3-4.12.1 $(pwd)/dafny/z3/bin/z3
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && ln -s $(pwd)/../dafny/z3/bin/z3-4.12.1 z3 && make verify
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make verify
       - name: test dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && ln -s $(pwd)/../dafny/z3/bin/z3-4.12.1 z3 && make test
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make test
 
 
   build_and_test_dafny_wrapper:
