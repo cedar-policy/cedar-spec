@@ -30,10 +30,7 @@ jobs:
         working-directory: ./cedar-dafny
         run: echo $PATH
       - name: print curr folder
-        run: ls
-      - name: print dafny folder
-        working-directory: ./dafny
-        run: ls
+        run: ls && echo $(pwd)
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: export PATH=$PATH:$(pwd)/../dafny && make verify
