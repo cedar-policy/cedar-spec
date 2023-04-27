@@ -16,9 +16,15 @@
 cedar-dafny/.dotnet
 cedar-dafny/.local
 cedar-dafny/.nuget
+cedar-dafny/build
 
 # cedar-dafny-java-wrapper build artifacts
 cedar-dafny-java-wrapper/build
+cedar-dafny-java-wrapper/.gradle
 
 # cedar-drt build artifacts
 cedar-drt/target
+cedar-drt/Cargo.lock
+
+# cedar if checkout out in root dir
+cedar/

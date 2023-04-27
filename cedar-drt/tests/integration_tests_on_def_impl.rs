@@ -2,12 +2,12 @@
 //! `CedarIntegrationTests` on the definitional implementation. See the
 //! "Integration test" section of README.md for more information.
 
-use amzn_cedar::integration_testing::{
+use cedar_policy::integration_testing::{
     perform_integration_test_from_json_custom, resolve_integration_test_path, CustomCedarImpl,
     IntegrationTestValidationResult,
 };
 
-use amzn_cedar_drt::*;
+use cedar_drt::*;
 use std::path::Path;
 
 // Loosely based on `DifferentialTester`
@@ -40,9 +40,9 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
 
     fn validate(
         &self,
-        schema: amzn_cedar_validator::ValidatorSchema,
+        schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
-    ) -> amzn_cedar::integration_testing::IntegrationTestValidationResult {
+    ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
         let definitional_ans = self.def_validator.validate(schema.clone(), policies);
         assert!(
             definitional_ans.parsing_succeeded(),

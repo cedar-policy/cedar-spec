@@ -1,7 +1,7 @@
 use super::{while_doing, Error, Result};
 use crate::collections::HashMap;
 use crate::Schema;
-use amzn_cedar_core::ast::{self, Value};
+use cedar_policy_core::ast::{self, Value};
 use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;

@@ -10,10 +10,10 @@ highway = "0.8.1"
 env_logger = "0.9.0"
 log = "0.4"
 libfuzzer-sys = "0.4"
-cedar = { path = "../../cedar/cedar", version = "2.0.0", features = ["integration_testing"] }
-cedar-core = { path = "../../cedar/cedar-core", version = "2.0.0" }
-cedar-validator = { path = "../../cedar/cedar-validator", version = "2.0.0" }
-cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "2.0.0" }
+cedar-policy = { path = "../cedar/cedar-policy", version = "2.0.0", features = ["integration_testing"] }
+cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "2.0.0" }
+cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "2.0.0" }
+cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "2.0.0" }
 jni = { version = "0.19.0", features = ["invocation"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

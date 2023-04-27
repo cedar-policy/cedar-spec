@@ -1,7 +1,7 @@
 #![no_main]
 
-use amzn_cedar_core::ast::{Pattern, PatternElem};
-use amzn_cedar_drt_inner::fuzz_target;
+use cedar_policy_core::ast::{Pattern, PatternElem};
+use cedar_drt_inner::fuzz_target;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Result, Unstructured};
 use regex::{escape, Regex};
 

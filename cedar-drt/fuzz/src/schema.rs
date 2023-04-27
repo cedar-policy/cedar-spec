@@ -4,10 +4,10 @@ use super::abac::{
 };
 use super::{while_doing, ActionConstraint, Error, PrincipalOrResourceConstraint, Result};
 use crate::collections::{HashMap, HashSet};
-use amzn_cedar_core::ast::Value;
-use amzn_cedar_core::parser::parse_name;
-use amzn_cedar_core::{ast, parser};
-use amzn_cedar_validator::{
+use cedar_policy_core::ast::Value;
+use cedar_policy_core::parser::parse_name;
+use cedar_policy_core::{ast, parser};
+use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
 };
@@ -21,7 +21,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    schema: amzn_cedar_validator::NamespaceDefinition,
+    schema: cedar_policy_validator::NamespaceDefinition,
     /// Namespace for the schema
     namespace: Option<SmolStr>,
     /// settings
@@ -46,7 +46,7 @@ pub struct Schema {
     /// action in the `schema`
     resource_types: Vec<ast::Name>,
     /// list of (attribute, type) pairs that occur in the `schema`
-    attributes: Vec<(SmolStr, amzn_cedar_validator::SchemaType)>,
+    attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)>,
     /// map from type to (entity type, attribute name) pairs indicating
     /// attributes in the `schema` that have that type.
     /// note that we can't make a similar map for SchemaType because it isn't
@@ -63,8 +63,8 @@ fn arbitrary_attrspec(
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
         .map_err(|e| while_doing("generating attribute names for an attrspec", e))?;
-    Ok(AttributesOrContext(amzn_cedar_validator::SchemaType::Type(
-        amzn_cedar_validator::SchemaTypeVariant::Record {
+    Ok(AttributesOrContext(cedar_policy_validator::SchemaType::Type(
+        cedar_policy_validator::SchemaTypeVariant::Record {
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
@@ -155,9 +155,9 @@ fn arbitrary_schematype_with_bounded_depth(
     entity_types: &[ast::Name],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<amzn_cedar_validator::SchemaType> {
-    use amzn_cedar_validator::SchemaType;
-    use amzn_cedar_validator::SchemaTypeVariant;
+) -> Result<cedar_policy_validator::SchemaType> {
+    use cedar_policy_validator::SchemaType;
+    use cedar_policy_validator::SchemaTypeVariant;
     Ok(SchemaType::Type(match u.int_in_range::<u8>(1..=8)? {
         1 => SchemaTypeVariant::String,
         2 => SchemaTypeVariant::Long,
@@ -232,8 +232,8 @@ fn arbitrary_schematype_with_bounded_depth(
 
 /// Convert a `Name` representing an entity type into the corresponding
 /// SchemaType for an entity reference with that entity type.
-fn entity_type_name_to_schema_type(name: &ast::Name) -> amzn_cedar_validator::SchemaTypeVariant {
-    amzn_cedar_validator::SchemaTypeVariant::Entity {
+fn entity_type_name_to_schema_type(name: &ast::Name) -> cedar_policy_validator::SchemaTypeVariant {
+    cedar_policy_validator::SchemaTypeVariant::Entity {
         name: name.to_string().into(),
     }
 }
@@ -241,7 +241,7 @@ fn entity_type_name_to_schema_type(name: &ast::Name) -> amzn_cedar_validator::Sc
 /// size hint for arbitrary_schematype_with_bounded_depth
 fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     // assume it's similar to the unbounded-depth version
-    <amzn_cedar_validator::SchemaType as Arbitrary>::size_hint(depth)
+    <cedar_policy_validator::SchemaType as Arbitrary>::size_hint(depth)
 }
 
 /// internal helper function, get the EntityUID corresponding to the given ActionType
@@ -249,13 +249,13 @@ fn uid_for_action_name(namespace: Option<SmolStr>, action_name: &SmolStr) -> ast
     let namespace_prefix = namespace.map(|ns| format!("{ns}::")).unwrap_or_default();
     format!("{}Action::\"{}\"", namespace_prefix, action_name)
                 .parse()
-                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {:?} led to an invalid one: {}", action_name, amzn_cedar_core::parser::err::ParseErrors(e)))
+                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {:?} led to an invalid one: {}", action_name, cedar_policy_core::parser::err::ParseErrors(e)))
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
 /// information)
-fn schematype_to_type(schematy: &amzn_cedar_validator::SchemaType) -> Type {
-    use amzn_cedar_validator::SchemaTypeVariant;
+fn schematype_to_type(schematy: &cedar_policy_validator::SchemaType) -> Type {
+    use cedar_policy_validator::SchemaTypeVariant;
     let schematy = unwrap_schema_type(schematy);
     match schematy {
         SchemaTypeVariant::Boolean => Type::bool(),
@@ -276,9 +276,9 @@ fn schematype_to_type(schematy: &amzn_cedar_validator::SchemaType) -> Type {
 /// least) one attribute of the specified name and SchemaType.
 fn record_schematype_with_attr(
     attr_name: SmolStr,
-    attr_type: impl Into<amzn_cedar_validator::SchemaType>,
-) -> amzn_cedar_validator::SchemaTypeVariant {
-    amzn_cedar_validator::SchemaTypeVariant::Record {
+    attr_type: impl Into<cedar_policy_validator::SchemaType>,
+) -> cedar_policy_validator::SchemaTypeVariant {
+    cedar_policy_validator::SchemaTypeVariant::Record {
         attributes: [(
             attr_name,
             TypeOfAttribute {
@@ -336,9 +336,9 @@ fn build_qualified_entity_type_name(namespace: Option<SmolStr>, name: &str) -> a
 /// This is not possible if the `SchemaType` is `TypeDef` instead of `Type`, but
 /// we do not yet generate this sort of type.
 fn unwrap_schema_type(
-    ty: &amzn_cedar_validator::SchemaType,
-) -> &amzn_cedar_validator::SchemaTypeVariant {
-    if let amzn_cedar_validator::SchemaType::Type(ty) = ty {
+    ty: &cedar_policy_validator::SchemaType,
+) -> &cedar_policy_validator::SchemaTypeVariant {
+    if let cedar_policy_validator::SchemaType::Type(ty) = ty {
         ty
     } else {
         panic!("DRT does not currently generate schema type using type defs, so `unwrap_schema_type` should not fail.")
@@ -348,7 +348,7 @@ fn unwrap_schema_type(
 fn unwrap_attrs_or_context(
     attrs: &AttributesOrContext,
 ) -> (&BTreeMap<SmolStr, TypeOfAttribute>, bool) {
-    if let amzn_cedar_validator::SchemaTypeVariant::Record {
+    if let cedar_policy_validator::SchemaTypeVariant::Record {
         attributes,
         additional_attributes,
     } = unwrap_schema_type(&attrs.0)
@@ -559,7 +559,7 @@ impl Schema {
                             .expect(
                                 "`member_of` is always `Some` when action groups are permitted.",
                             )
-                            .push(amzn_cedar_validator::ActionEntityUID::default_type(
+                            .push(cedar_policy_validator::ActionEntityUID::default_type(
                                 name.clone(),
                             ));
                     }
@@ -571,7 +571,7 @@ impl Schema {
             .iter()
             .map(|(_, et)| unwrap_attrs_or_context(&et.shape))
             .chain(actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| unwrap_attrs_or_context(&a.context)));
-        let attributes: Vec<(SmolStr, amzn_cedar_validator::SchemaType)> = attrsorcontexts
+        let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)> = attrsorcontexts
             .flat_map(|(attributes, _)| {
                 attributes.iter().map(|(s, ty)| {
                     (
@@ -607,7 +607,7 @@ impl Schema {
 
         let actions_eids = actions.iter().map(|(name, _)| name.clone()).collect();
         Ok(Schema {
-            schema: amzn_cedar_validator::NamespaceDefinition {
+            schema: cedar_policy_validator::NamespaceDefinition {
                 common_types: HashMap::new().into(),
                 entity_types: entity_types.into_iter().collect(),
                 actions: actions.into_iter().collect(),
@@ -920,9 +920,9 @@ impl Schema {
         &self,
         ty: &Type,
         u: &mut Unstructured<'_>,
-    ) -> Result<Option<amzn_cedar_validator::SchemaType>> {
-        use amzn_cedar_validator::SchemaType;
-        use amzn_cedar_validator::SchemaTypeVariant;
+    ) -> Result<Option<cedar_policy_validator::SchemaType>> {
+        use cedar_policy_validator::SchemaType;
+        use cedar_policy_validator::SchemaTypeVariant;
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
             Type::Long => Some(SchemaTypeVariant::Long),
@@ -962,7 +962,7 @@ impl Schema {
     fn arbitrary_attr(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<&(SmolStr, amzn_cedar_validator::SchemaType)> {
+    ) -> Result<&(SmolStr, cedar_policy_validator::SchemaType)> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema", e))
     }
@@ -990,10 +990,10 @@ impl Schema {
     /// with the given schematype
     fn arbitrary_attr_for_schematype(
         &self,
-        target_type: impl Into<amzn_cedar_validator::SchemaType>,
+        target_type: impl Into<cedar_policy_validator::SchemaType>,
         u: &mut Unstructured<'_>,
     ) -> Result<(ast::Name, SmolStr)> {
-        let target_type: amzn_cedar_validator::SchemaType = target_type.into();
+        let target_type: cedar_policy_validator::SchemaType = target_type.into();
         let pairs: Vec<(ast::Name, SmolStr)> = self
             .schema
             .entity_types
@@ -1139,12 +1139,12 @@ impl Schema {
 
     fn arbitrary_value_for_schematype(
         &self,
-        target_type: &amzn_cedar_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType,
         hierarchy: Option<&super::Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<Value> {
-        use amzn_cedar_validator::SchemaTypeVariant;
+        use cedar_policy_validator::SchemaTypeVariant;
         let target_type = unwrap_schema_type(target_type);
         match target_type {
             SchemaTypeVariant::Boolean => {
@@ -1403,12 +1403,12 @@ impl Schema {
     /// `depth` parameter to size_hint.
     fn arbitrary_attr_value_for_schematype(
         &self,
-        target_type: &amzn_cedar_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType,
         hierarchy: Option<&super::Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
-        use amzn_cedar_validator::SchemaTypeVariant;
+        use cedar_policy_validator::SchemaTypeVariant;
         let target_type = unwrap_schema_type(target_type);
         match target_type {
             SchemaTypeVariant::Boolean => {
@@ -2075,7 +2075,7 @@ impl Schema {
                             // getting an attr (on an entity) with type bool
                             54 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                    amzn_cedar_validator::SchemaTypeVariant::Boolean,
+                                    cedar_policy_validator::SchemaTypeVariant::Boolean,
                                     u,
                                 )?;
                                 Ok(ast::Expr::get_attr(
@@ -2095,7 +2095,7 @@ impl Schema {
                                     self.arbitrary_expr_for_schematype(
                                         &record_schematype_with_attr(
                                             attr_name.clone(),
-                                            amzn_cedar_validator::SchemaTypeVariant::Boolean,
+                                            cedar_policy_validator::SchemaTypeVariant::Boolean,
                                         ),
                                         hierarchy,
                                         max_depth - 1,
@@ -2123,7 +2123,7 @@ impl Schema {
                                 let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                                 Ok(ast::Expr::has_attr(
                                     self.arbitrary_expr_for_schematype(
-                                        &amzn_cedar_validator::SchemaTypeVariant::Entity {
+                                        &cedar_policy_validator::SchemaTypeVariant::Entity {
                                             // This does not use an explicit namespace because entity types
                                             // implicitly use the schema namespace if an explicit one is not
                                             // provided.
@@ -2255,7 +2255,7 @@ impl Schema {
                             // getting an attr (on an entity) with type long
                             26..=29 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                    amzn_cedar_validator::SchemaTypeVariant::Long,
+                                    cedar_policy_validator::SchemaTypeVariant::Long,
                                     u,
                                 )?;
                                 Ok(ast::Expr::get_attr(
@@ -2275,7 +2275,7 @@ impl Schema {
                                     self.arbitrary_expr_for_schematype(
                                         &record_schematype_with_attr(
                                             attr_name.clone(),
-                                            amzn_cedar_validator::SchemaTypeVariant::Long,
+                                            cedar_policy_validator::SchemaTypeVariant::Long,
                                         ),
                                         hierarchy,
                                         max_depth - 1,
@@ -2333,7 +2333,7 @@ impl Schema {
                             // getting an attr (on an entity) with type string
                             22..=25 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                    amzn_cedar_validator::SchemaTypeVariant::String,
+                                    cedar_policy_validator::SchemaTypeVariant::String,
                                     u,
                                 )?;
                                 Ok(ast::Expr::get_attr(
@@ -2353,7 +2353,7 @@ impl Schema {
                                     self.arbitrary_expr_for_schematype(
                                         &record_schematype_with_attr(
                                             attr_name.clone(),
-                                            amzn_cedar_validator::SchemaTypeVariant::String,
+                                            cedar_policy_validator::SchemaTypeVariant::String,
                                         ),
                                         hierarchy,
                                         max_depth - 1,
@@ -2439,7 +2439,7 @@ impl Schema {
                             13..=15 => {
                                 let attr_name: SmolStr =
                                     self.constant_pool.arbitrary_string_constant(u)?;
-                                let attr_ty: amzn_cedar_validator::SchemaType =
+                                let attr_ty: cedar_policy_validator::SchemaType =
                                 match self.try_into_schematype(target_type, u)? {
                                     Some(schematy) => schematy,
                                     None => return Err(Error::IncorrectFormat {
@@ -2519,7 +2519,7 @@ impl Schema {
                             // getting an attr (on an entity) with type record
                             5..=8 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                    amzn_cedar_validator::SchemaTypeVariant::Record {
+                                    cedar_policy_validator::SchemaTypeVariant::Record {
                                         // TODO: can we do better here, put in some
                                         // other attributes that appear in schema?
                                         attributes: BTreeMap::new(),
@@ -2544,7 +2544,7 @@ impl Schema {
                                     self.arbitrary_expr_for_schematype(
                                         &record_schematype_with_attr(
                                             attr_name.clone(),
-                                            amzn_cedar_validator::SchemaTypeVariant::Record {
+                                            cedar_policy_validator::SchemaTypeVariant::Record {
                                                 attributes: BTreeMap::new(),
                                                 additional_attributes: true,
                                             },
@@ -2703,7 +2703,7 @@ impl Schema {
                             // getting an attr (on an entity) with extension type
                             11 | 12 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                    amzn_cedar_validator::SchemaTypeVariant::Extension {
+                                    cedar_policy_validator::SchemaTypeVariant::Extension {
                                         name: type_name,
                                     },
                                     u,
@@ -2725,7 +2725,7 @@ impl Schema {
                                     self.arbitrary_expr_for_schematype(
                                         &record_schematype_with_attr(
                                             attr_name.clone(),
-                                            amzn_cedar_validator::SchemaTypeVariant::Extension {
+                                            cedar_policy_validator::SchemaTypeVariant::Extension {
                                                 name: type_name,
                                             },
                                         ),
@@ -2754,12 +2754,12 @@ impl Schema {
     /// `depth` parameter to size_hint.
     fn arbitrary_expr_for_schematype(
         &self,
-        target_type: &amzn_cedar_validator::SchemaTypeVariant,
+        target_type: &cedar_policy_validator::SchemaTypeVariant,
         hierarchy: Option<&super::Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        use amzn_cedar_validator::SchemaTypeVariant;
+        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_expr_for_type(&Type::bool(), hierarchy, max_depth, u)
@@ -3165,12 +3165,12 @@ impl Schema {
     /// `depth` parameter to size_hint.
     fn arbitrary_ext_func_call_for_schematype(
         &self,
-        target_type: &amzn_cedar_validator::SchemaTypeVariant,
+        target_type: &cedar_policy_validator::SchemaTypeVariant,
         hierarchy: Option<&super::Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        use amzn_cedar_validator::SchemaTypeVariant;
+        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_ext_func_call_for_type(&Type::bool(), hierarchy, max_depth, u)
