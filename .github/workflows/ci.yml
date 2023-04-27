@@ -59,9 +59,10 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
       - name: Checkout cedar
-        uses: actions/checkout@main
+        uses: actions/checkout@v3
         with:
           repository: cedar-policy/cedar
+          ref: main
           path: ./cedar
           ref: main
           ssh-key: ${{ secrets.CEDAR }}
