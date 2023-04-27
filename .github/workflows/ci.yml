@@ -15,6 +15,8 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Download Dafny
         shell: bash
         run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
@@ -24,8 +26,6 @@ jobs:
       - name: Add Dafny to PATH
         shell: bash
         run: echo "export PATH=$PATH:$(pwd)/dafny" >> ~/.bashrc && echo $(pwd)
-      - name: Checkout
-        uses: actions/checkout@v3
       - name: print path
         working-directory: ./cedar-dafny
         run: echo $PATH
