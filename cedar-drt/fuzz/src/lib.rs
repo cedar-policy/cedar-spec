@@ -19,14 +19,14 @@ pub use prt::*;
 use std::fmt::Display;
 
 use crate::collections::HashMap;
-use amzn_cedar_core::ast;
-use amzn_cedar_core::ast::{PrincipalConstraint, ResourceConstraint};
-use amzn_cedar_core::authorizer::{Answer, Authorizer, Diagnostics};
-use amzn_cedar_core::entities::{Entities, TCComputation};
-use amzn_cedar_drt::{
+use cedar_policy_core::ast;
+use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint};
+use cedar_policy_core::authorizer::{Answer, Authorizer, Diagnostics};
+use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
-pub use amzn_cedar_validator::{ValidationErrorKind, Validator, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationErrorKind, Validator, ValidatorSchema};
 use ast::{
     Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
 };

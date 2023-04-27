@@ -22,3 +22,4 @@ cedar-dafny-java-wrapper/build
 
 # cedar-drt build artifacts
 cedar-drt/target
+cedar-drt/Cargo.lock

@@ -1,5 +1,5 @@
 [package]
-name = "amzn-cedar-drt-inner"
+name = "cedar-drt-inner"
 edition = "2021"
 version = "0.0.0"
 publish = false
@@ -14,10 +14,10 @@ log = "0.4"
 libfuzzer-sys = "0.4"
 serde = { version = "1.0", feature = ["derive"] }
 serde_json = "1.0"
-amzn-cedar-drt = { version = "2.0.0", path = ".." }
-amzn-cedar-core = "2.0.0"
-amzn-cedar-validator = "2.0.0"
-amzn-cedar-policy-formatter = "2.0.0"
+cedar-drt = { version = "2.0.0", path = ".." }
+cedar-policy-core = "2.0.0"
+cedar-policy-validator = "2.0.0"
+cedar-policy-formatter = "2.0.0"
 smol_str = "0.1.23"
 regex = "1"
 rayon = { version = "1.5", optional = true }

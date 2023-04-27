@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
-pub use amzn_cedar_core::*;
-pub use amzn_cedar_validator::{ValidationResult, ValidatorSchema};
+pub use cedar_policy_core::*;
+pub use cedar_policy_validator::{ValidationResult, ValidatorSchema};
 pub use authorizer::Answer;
 pub use entities::Entities;
 use jni::objects::{JObject, JString, JValue};

@@ -1,9 +1,9 @@
 #![no_main]
-use amzn_cedar_core::ast;
-use amzn_cedar_core::entities::Entities;
-use amzn_cedar_drt::*;
-use amzn_cedar_drt_inner::*;
-use amzn_cedar_validator::{
+use cedar_policy_core::ast;
+use cedar_policy_core::entities::Entities;
+use cedar_drt::*;
+use cedar_drt_inner::*;
+use cedar_policy_validator::{
     ActionBehavior, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};

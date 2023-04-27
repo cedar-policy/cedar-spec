@@ -1,10 +1,10 @@
 #![no_main]
 
-use amzn_cedar_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
-use amzn_cedar_core::parser::{err, parse_policy};
-use amzn_cedar_drt::initialize_log;
-use amzn_cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
-use amzn_cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
+use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::parser::{err, parse_policy};
+use cedar_drt::initialize_log;
+use cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
+use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use uuid::Uuid;

@@ -1,10 +1,10 @@
 #![no_main]
-use amzn_cedar_core::ast;
-use amzn_cedar_core::authorizer::Authorizer;
-use amzn_cedar_core::entities::Entities;
-use amzn_cedar_drt::initialize_log;
-use amzn_cedar_drt_inner::*;
-use amzn_cedar_validator::{
+use cedar_policy_core::ast;
+use cedar_policy_core::authorizer::Authorizer;
+use cedar_policy_core::entities::Entities;
+use cedar_drt::initialize_log;
+use cedar_drt_inner::*;
+use cedar_policy_validator::{
     ActionBehavior, ApplySpec, NamespaceDefinition, Validator, ValidatorNamespaceDef,
     ValidatorSchemaFragment,
 };

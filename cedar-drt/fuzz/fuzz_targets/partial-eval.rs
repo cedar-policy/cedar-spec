@@ -1,13 +1,13 @@
 #![no_main]
 use crate::authorizer::AnswerKind;
-use amzn_cedar_core::ast;
-use amzn_cedar_core::ast::Policy;
-use amzn_cedar_core::ast::PolicySet;
-use amzn_cedar_core::authorizer::Authorizer;
-use amzn_cedar_core::entities::{Entities, TCComputation};
-pub use amzn_cedar_core::*;
-use amzn_cedar_drt::*;
-use amzn_cedar_drt_inner::*;
+use cedar_policy_core::ast;
+use cedar_policy_core::ast::Policy;
+use cedar_policy_core::ast::PolicySet;
+use cedar_policy_core::authorizer::Authorizer;
+use cedar_policy_core::entities::{Entities, TCComputation};
+pub use cedar_policy_core::*;
+use cedar_drt::*;
+use cedar_drt_inner::*;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use smol_str::SmolStr;

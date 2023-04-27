@@ -1,8 +1,8 @@
 use crate::collections::HashMap;
-use amzn_cedar_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request};
-use amzn_cedar_core::authorizer::{Answer, Decision};
-use amzn_cedar_core::entities::Entities;
-use amzn_cedar_validator::SchemaFragment;
+use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request};
+use cedar_policy_core::authorizer::{Answer, Decision};
+use cedar_policy_core::entities::Entities;
+use cedar_policy_validator::SchemaFragment;
 use serde::Serialize;
 use std::io::Write;
 use std::path::Path;
@@ -108,8 +108,8 @@ fn dump_request_var(var: &EntityUIDEntry) -> Option<String> {
     match var {
         EntityUIDEntry::Unknown => None,
         EntityUIDEntry::Concrete(euid) => match euid.entity_type() {
-            amzn_cedar_core::ast::EntityType::Unspecified => None,
-            amzn_cedar_core::ast::EntityType::Concrete(_) => Some(euid.to_string()),
+            cedar_policy_core::ast::EntityType::Unspecified => None,
+            cedar_policy_core::ast::EntityType::Concrete(_) => Some(euid.to_string()),
         },
     }
 }

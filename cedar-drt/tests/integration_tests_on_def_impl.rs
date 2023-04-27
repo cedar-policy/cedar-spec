@@ -7,7 +7,7 @@ use amzn_cedar::integration_testing::{
     IntegrationTestValidationResult,
 };
 
-use amzn_cedar_drt::*;
+use cedar_drt::*;
 use std::path::Path;
 
 // Loosely based on `DifferentialTester`
@@ -40,7 +40,7 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
 
     fn validate(
         &self,
-        schema: amzn_cedar_validator::ValidatorSchema,
+        schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> amzn_cedar::integration_testing::IntegrationTestValidationResult {
         let definitional_ans = self.def_validator.validate(schema.clone(), policies);

@@ -1,8 +1,8 @@
 #![no_main]
-use amzn_cedar_core::ast::{self, EntityUIDEntry};
-use amzn_cedar_core::authorizer::Authorizer;
-use amzn_cedar_core::entities::Entities;
-use amzn_cedar_drt_inner::*;
+use cedar_policy_core::ast::{self, EntityUIDEntry};
+use cedar_policy_core::authorizer::Authorizer;
+use cedar_policy_core::entities::Entities;
+use cedar_drt_inner::*;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::convert::TryFrom;
 
