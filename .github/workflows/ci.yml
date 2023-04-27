@@ -33,10 +33,10 @@ jobs:
         run: ls && echo $(pwd)
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny && z3 --version && make verify
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make verify
       - name: test dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny && make test
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make test
 
 
   build_and_test_dafny_wrapper:
