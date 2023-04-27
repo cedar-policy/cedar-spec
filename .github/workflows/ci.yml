@@ -23,20 +23,12 @@ jobs:
       - name: Unzip Dafny
         shell: bash
         run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
-      - name: Add Dafny to PATH
-        shell: bash
-        run: echo "export PATH=$PATH:$(pwd)/dafny" >> ~/.bashrc && echo $(pwd)
-      - name: print path
-        working-directory: ./cedar-dafny
-        run: echo $PATH
-      - name: print curr folder
-        run: ls && echo $(pwd)
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make verify
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && ln -s $(pwd)/../dafny/z3/bin/z3-4.12.1 z3 && make verify
       - name: test dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make test
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && ln -s $(pwd)/../dafny/z3/bin/z3-4.12.1 z3 && make test
 
 
   build_and_test_dafny_wrapper:
