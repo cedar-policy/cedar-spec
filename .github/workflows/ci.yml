@@ -64,12 +64,9 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
-      - name: run javac
-        shell: bash
-        run: javac --version && which javac
       - name: find libjvm
         shell: bash
-        run: find /opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1 libjvm.so
+        run: find /opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1 "*libjvm.so"
       - name: Checkout cedar
         uses: actions/checkout@v3
         with:
