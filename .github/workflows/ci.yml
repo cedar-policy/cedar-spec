@@ -66,7 +66,7 @@ jobs:
           cache: 'gradle'
       - name: run javac
         shell: bash
-        run: javac --version
+        run: javac --version && which javac
       - name: Checkout cedar
         uses: actions/checkout@v3
         with:
@@ -74,9 +74,6 @@ jobs:
           ref: main
           path: ./cedar
           ssh-key: ${{ secrets.CEDAR }}
-      - name: print
-        shell: bash
-        run: ls -l
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt
