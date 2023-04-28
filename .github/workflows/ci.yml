@@ -60,10 +60,10 @@ jobs:
         uses: actions/checkout@v3
       - name: Get Java 17
         uses: actions/setup-java@v3
-          with:
-            distribution: 'corretto'
-            java-version: '17'
-            cache: 'gradle'
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+          cache: 'gradle'
       - name: Checkout cedar
         uses: actions/checkout@v3
         with:
