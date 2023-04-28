@@ -64,6 +64,9 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
+      - name: run javac
+        shell: bash
+        run: javac --version
       - name: Checkout cedar
         uses: actions/checkout@v3
         with:
