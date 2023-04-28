@@ -43,7 +43,11 @@ jobs:
           cache: 'gradle'
       - name: build dafny def engine
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server && make compile-difftest
+        run: |
+             export PATH=$PATH:$(pwd)/../dafny/z3/bin && 
+             export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" && 
+             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server && 
+             make compile-difftest
       - name: Build cedar-dafny-java-wrapper
         working-directory: ./cedar-dafny-java-wrapper
         shell: bash
@@ -57,13 +61,6 @@ jobs:
           ssh-key: ${{ secrets.CEDAR }}
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-        with:
-          ## limits ssh access and adds the ssh public key for the user which triggered the workflow
-          limit-access-to-actor: true
-          ## limits ssh access and adds the ssh public keys of the listed GitHub users
-          limit-access-to-users: andrewmwells-amazon
       - name: cargo test
         working-directory: ./cedar-drt
         shell: bash
