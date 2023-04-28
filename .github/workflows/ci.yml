@@ -87,5 +87,5 @@ jobs:
         run: cargo --verbose rustc -- -D warnings -F unsafe-code
       - name: cargo test
         working-directory: ./cedar-drt
-        run: ls /opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1 && export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1" && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/amd64/server && cargo test --verbose
+        run: export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server && cargo test --verbose
 
