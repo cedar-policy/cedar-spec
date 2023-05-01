@@ -4,6 +4,7 @@ use super::abac::{
 };
 use super::{while_doing, ActionConstraint, Error, PrincipalOrResourceConstraint, Result};
 use crate::collections::{HashMap, HashSet};
+use ast::{Effect, PolicyID};
 use cedar_policy_core::ast::Value;
 use cedar_policy_core::parser::parse_name;
 use cedar_policy_core::{ast, parser};
@@ -11,7 +12,6 @@ use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
 };
-use ast::{Effect, PolicyID};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;

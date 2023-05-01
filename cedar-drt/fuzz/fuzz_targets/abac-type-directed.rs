@@ -1,8 +1,8 @@
 #![no_main]
-use cedar_policy_core::ast;
-use cedar_policy_core::entities::{Entities, TCComputation};
 use cedar_drt::*;
 use cedar_drt_inner::*;
+use cedar_policy_core::ast;
+use cedar_policy_core::entities::{Entities, TCComputation};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;

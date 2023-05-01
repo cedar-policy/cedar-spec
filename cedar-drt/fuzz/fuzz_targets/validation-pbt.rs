@@ -1,12 +1,12 @@
 #![no_main]
+use cedar_drt::initialize_log;
+use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
-use cedar_drt::initialize_log;
-use cedar_drt_inner::*;
 use cedar_policy_validator::{
-    ActionBehavior, ApplySpec, NamespaceDefinition, Validator, ValidatorNamespaceDef,
-    ValidatorSchemaFragment,
+    ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
+    ValidatorNamespaceDef, ValidatorSchemaFragment,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -279,7 +279,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
 /// helper function that just tells us whether a policyset passes validation
 fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
-    validator.validate(policyset).validation_passed()
+    validator
+        .validate(policyset, ValidationMode::default())
+        .validation_passed()
 }
 
 // The main fuzz target. This is for PBT on the validator

@@ -19,17 +19,17 @@ pub use prt::*;
 use std::fmt::Display;
 
 use crate::collections::HashMap;
+pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
+use ast::{
+    Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
+};
+use cedar_drt::{
+    time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
+};
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint};
 use cedar_policy_core::authorizer::{Answer, Authorizer, Diagnostics};
 use cedar_policy_core::entities::{Entities, TCComputation};
-use cedar_drt::{
-    time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
-};
-pub use cedar_policy_validator::{ValidationErrorKind, Validator, ValidatorSchema};
-use ast::{
-    Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
-};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use smol_str::SmolStr;
@@ -468,7 +468,8 @@ impl<'e> DifferentialTester<'e> {
     /// Panics if the two engines do not agree.
     pub fn run_validation(&self, schema: ValidatorSchema, policies: &PolicySet) {
         let validator = Validator::new(schema.clone());
-        let (rust_ans, rust_validation_dur) = time_function(|| validator.validate(policies));
+        let (rust_ans, rust_validation_dur) =
+            time_function(|| validator.validate(policies, ValidationMode::Permissive));
         info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
 
         let definitional_ans = self.def_validator.validate(schema.clone(), policies);

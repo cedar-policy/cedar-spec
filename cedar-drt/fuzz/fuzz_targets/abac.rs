@@ -1,10 +1,10 @@
 #![no_main]
-use cedar_policy_core::ast;
-use cedar_policy_core::entities::Entities;
 use cedar_drt::*;
 use cedar_drt_inner::*;
+use cedar_policy_core::ast;
+use cedar_policy_core::entities::Entities;
 use cedar_policy_validator::{
-    ActionBehavior, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
+    ActionBehavior, ValidationMode, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
@@ -83,7 +83,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
 /// helper function that just tells us whether a policyset passes validation
 fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
-    validator.validate(policyset).validation_passed()
+    validator
+        .validate(policyset, ValidationMode::default())
+        .validation_passed()
 }
 
 // The main fuzz target. This is for simple fuzzing of ABAC

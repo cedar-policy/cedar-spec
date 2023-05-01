@@ -1,6 +1,6 @@
+use ast::{Effect, Entity, EntityUID, Expr, Name, PolicyID, Request, StaticPolicy};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
-use ast::{Effect, Entity, EntityUID, Expr, Name, PolicyID, Request, StaticPolicy};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::ops::{Deref, DerefMut};
 

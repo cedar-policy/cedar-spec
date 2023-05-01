@@ -1,8 +1,8 @@
 #![no_main]
+use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Decision};
 use cedar_policy_core::entities::Entities;
-use cedar_drt_inner::*;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 
 /// Input expected by this fuzz target:
