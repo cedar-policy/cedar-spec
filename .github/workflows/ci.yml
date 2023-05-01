@@ -1,7 +1,6 @@
 name: Build cedar-spec
 
 on:
-  push:
   pull_request:
 
 env: 
