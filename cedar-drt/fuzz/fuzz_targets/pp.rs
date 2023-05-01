@@ -1,9 +1,9 @@
 #![no_main]
 
-use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
-use cedar_policy_core::parser::{err, parse_policy};
 use cedar_drt::initialize_log;
 use cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
+use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::parser::{err, parse_policy};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 

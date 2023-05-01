@@ -1,13 +1,13 @@
 #![no_main]
 use crate::authorizer::AnswerKind;
+use cedar_drt::*;
+use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::Policy;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::{Entities, TCComputation};
 pub use cedar_policy_core::*;
-use cedar_drt::*;
-use cedar_drt_inner::*;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use smol_str::SmolStr;

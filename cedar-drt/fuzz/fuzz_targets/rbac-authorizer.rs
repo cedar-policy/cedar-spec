@@ -1,10 +1,10 @@
 #![no_main]
+use cedar_drt::*;
+use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::parser;
-use cedar_drt::*;
-use cedar_drt_inner::fuzz_target;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 
 #[derive(Arbitrary, Debug)]

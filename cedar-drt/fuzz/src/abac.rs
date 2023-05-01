@@ -1,8 +1,8 @@
 use super::{while_doing, Error, Result};
 use crate::collections::HashMap;
 use crate::Schema;
-use cedar_policy_core::ast::{self, Value};
 use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
+use cedar_policy_core::ast::{self, Value};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::cell::RefCell;

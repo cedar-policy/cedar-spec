@@ -96,4 +96,7 @@ jobs:
         run: cargo fmt --all --check
       - name: cargo rustc
         working-directory: ./cedar-drt
-        run: cargo --verbose rustc -- -D warnings -F unsafe-code
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo rustc
+        working-directory: ./cedar-drt/fuzz
+        run: RUSTFLAGS="--cfg=fuzzing -D warnings -F unsafe-code" cargo build --verbose
