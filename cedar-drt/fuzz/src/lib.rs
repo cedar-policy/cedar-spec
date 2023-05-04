@@ -19,7 +19,6 @@ pub use prt::*;
 use std::fmt::Display;
 
 use crate::collections::HashMap;
-pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use ast::{
     Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
 };
@@ -30,6 +29,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint};
 use cedar_policy_core::authorizer::{Answer, Authorizer, Diagnostics};
 use cedar_policy_core::entities::{Entities, TCComputation};
+pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use smol_str::SmolStr;

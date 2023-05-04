@@ -290,7 +290,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
         input.schema.namespace().clone(),
         input.schema.schemafile().clone(),
-        ActionBehavior::PermitGroupsAndAttributes,
+        ActionBehavior::ProhibitAttributes,
     )
     .and_then(|f| {
         ValidatorSchema::from_schema_fragments([ValidatorSchemaFragment::from_namespaces([f])])

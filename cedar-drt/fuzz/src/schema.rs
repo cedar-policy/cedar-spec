@@ -537,7 +537,7 @@ impl Schema {
                         // haven't bothered filling this in. They'll definitely be
                         // used soon-ish. TODO: Arbitrary attribute names and
                         // values.
-                        attributes: HashMap::new().into(),
+                        attributes: None,
                     },
                 ))
             })
