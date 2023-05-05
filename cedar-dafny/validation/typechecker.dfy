@@ -3,19 +3,14 @@ include "types.dfy"
 include "ext.dfy"
 include "subtyping.dfy"
 
+// This module contains the specification of Cedar's permissive typechecker,
+// which is the core of the Cedar validator (see validator.dfy).
 module validation.typechecker {
   import def
   import opened def.core
   import opened types
   import opened ext
   import opened subtyping
-
-  const ExtFunTypes: map<def.base.Name, ExtFunType> := ext.register();
-
-  predicate isAction(et: EntityType)
-  {
-    et.id.id == def.base.Id("Action")
-  }
 
   // --------- Entity Type Store --------- //
 
@@ -85,12 +80,12 @@ module validation.typechecker {
     }
   }
 
-  // --------- Query Type Environment --------- //
+  // --------- Request Type --------- //
 
-  // Types for the four variables bound in the environment,
+  // Types for the four variables bound in the request,
   // generated from the schema using a cross-product.
   // If a field is None, then it is an "Unspecified" entity.
-  datatype QueryType = QueryType (
+  datatype RequestType = RequestType (
     principal: Option<EntityType>,
     action: EntityUID,
     resource: Option<EntityType>,
@@ -127,14 +122,10 @@ module validation.typechecker {
   // --------- Typechecker --------- //
 
   // A Typechecker is a standard bidirectional typechecker for Cedar.
-  // It expects an EntityTypeStore, ActionStore, and QueryType as input.
-  // The two main functions (check and infer) are at the bottom of the datatype,
-  // with helpers at the top.
-  //
-  // Be careful when adding functions to this datatype to mimic the current
-  // mutually recursive structure. Otherwise, you may run into trouble with
-  // Dafny's termination checker.
-  datatype Typechecker = Typechecker(ets: EntityTypeStore, acts: ActionStore, qt: QueryType){
+  // It expects an EntityTypeStore, ActionStore, and RequestType as input.
+  // The two main functions (typecheck and infer) are at the bottom of the
+  // datatype, with helpers at the top.
+  datatype Typechecker = Typechecker(ets: EntityTypeStore, acts: ActionStore, reqty: RequestType){
 
     function ensureSubty(t1: Type, t2: Type): (res: Result<()>)
     {
@@ -200,15 +191,15 @@ module validation.typechecker {
     function inferVar(x: Var): Result<Type> {
       match x {
         case Principal =>
-          if qt.principal.None?
+          if reqty.principal.None?
           then Ok(Type.Entity(AnyEntity))
-          else Ok(Type.Entity(EntityLUB({qt.principal.value})))
-        case Context => Ok(Type.Record(qt.context))
-        case Action => Ok(Type.Entity(EntityLUB({qt.action.ty})))
+          else Ok(Type.Entity(EntityLUB({reqty.principal.value})))
+        case Context => Ok(Type.Record(reqty.context))
+        case Action => Ok(Type.Entity(EntityLUB({reqty.action.ty})))
         case Resource =>
-          if qt.resource.None?
+          if reqty.resource.None?
           then Ok(Type.Entity(AnyEntity))
-          else Ok(Type.Entity(EntityLUB({qt.resource.value})))
+          else Ok(Type.Entity(EntityLUB({reqty.resource.value})))
       }
     }
 
@@ -315,23 +306,28 @@ module validation.typechecker {
       Ok(Type.Bool(bt.not()))
     }
 
+    function isUnspecifiedVar(e: Expr): bool {
+      match e {
+        case Var(Principal) => reqty.principal.None?
+        case Var(Resource) => reqty.resource.None?
+        case _ => false
+      }
+    }
+
     function inferEq(e1: Expr, e2: Expr, effs: Effects): (res: Result<Type>)
       decreases BinaryApp(BinaryOp.Eq,e1,e2) , 0
     {
       var (t1,_) :- infer(e1,effs);
       var (t2,_) :- infer(e2,effs);
-      match (e1,e2,t1,t2) {
-        case (PrimitiveLit(EntityUID(u1)),PrimitiveLit(EntityUID(u2)),_,_) =>
-          if u1 == u2 then Ok(Type.Bool(True)) else Ok(Type.Bool(False))
-        case (_,_,Entity(lub1),Entity(lub2)) =>
-          var is_unspecifed_var := match e1 {
-            case Var(Action) => false
-            case Var(v) => getPrincipalOrResource(v).None?
-            case _ => false
-          };
-          if is_unspecifed_var || lub1.disjoint(lub2) then Ok(Type.Bool(False)) else Ok(Type.Bool(AnyBool))
-        case _ => Ok(Type.Bool(AnyBool))
-      }
+      if t1.Entity? && t2.Entity? && t1.lub.disjoint(t2.lub)
+      then Ok(Type.Bool(False))
+      else if isUnspecifiedVar(e1) && t2.Entity? && t2.lub.specified()
+        then Ok(Type.Bool(False))
+        else match (e1,e2) {
+            case (PrimitiveLit(EntityUID(u1)),PrimitiveLit(EntityUID(u2))) =>
+              if u1 == u2 then Ok(Type.Bool(True)) else Ok(Type.Bool(False))
+            case _ => Ok(Type.Bool(AnyBool))
+          }
     }
 
     function inferIneq(ghost op: BinaryOp, e1: Expr, e2: Expr, effs: Effects): Result<Type>
@@ -364,8 +360,8 @@ module validation.typechecker {
       requires v == Var.Principal || v == Var.Resource
     {
       match v {
-        case Principal => qt.principal
-        case Resource => qt.resource
+        case Principal => reqty.principal
+        case Resource => reqty.resource
       }
     }
 
@@ -378,52 +374,66 @@ module validation.typechecker {
       var _ :- ensureEntityType(e1,effs);
       // check that RHS is an entity or a set of entities
       var _ :- ensureEntitySetType(e2,effs);
-      match (e1,e2) {
-        // We substitute `Var::Action` for its literal EntityUID prior to
-        // validation, so the real logic for handling Actions is in the entity
-        // literal case below. We return an imprecise default answer here.
-        case (Var(Action),_) => Ok(Type.Bool(AnyBool))
-        // LHS is Principal or Resource
-        case (Var(v),PrimitiveLit(EntityUID(u))) =>
-          var et := getPrincipalOrResource(v);
-          var b := et.Some? && ets.possibleDescendantOf(et.value,u.ty);
-          if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-        case (Var(v),Set(_)) =>
-          var et := getPrincipalOrResource(v);
-          match tryGetEUIDs(e2) {
-            case Some(euids) =>
-              var es := set euid <- euids :: euid.ty;
-              var b := et.Some? && ets.possibleDescendantOfSet(et.value,es);
-              if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-            case None => Ok(Type.Bool(AnyBool))
-          }
-        // LHS is entity literal (or action, per above)
-        case (PrimitiveLit(EntityUID(u1)),PrimitiveLit(EntityUID(u2))) =>
-          // If the entity literal is an action, then use acts.descendantOf.
-          // Otherwise, use ets.possibleDescendantOf.
-          if isAction(u1.ty)
-          then
-            if acts.descendantOf(u1,u2) then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-          else
-            var b := ets.possibleDescendantOf(u1.ty,u2.ty);
+      var (t2, _) := infer(e2,effs).value;
+      if isUnspecifiedVar(e1) && match t2 {
+           case Entity(lub) => lub.specified()
+           case Set(Entity(lub)) => lub.specified()
+           // `Set(Never)` is the type of the empty set. It would also be safe to
+           // return true in this case, but false matches the Rust implementation.
+           case Set(Never) => false
+         }
+      then Ok(Type.Bool(False))
+      else match (e1,e2) {
+          // We substitute `Var::Action` for its literal EntityUID prior to
+          // validation, so the real logic for handling Actions is in the entity
+          // literal case below. We return an imprecise default answer here.
+          case (Var(Action),_) => Ok(Type.Bool(AnyBool))
+          // LHS is Principal or Resource
+          case (Var(v),PrimitiveLit(EntityUID(u))) =>
+            var et := getPrincipalOrResource(v);
+            // Note: When `et.None?`, typing `e1 in e2` as false would be
+            // unsound without some additional hypothesis that the literal(s) in
+            // e2 are not unspecified entities. We expect that case to be
+            // handled by the `isUnspecifiedVar` code above, so we don't handle
+            // it again here.
+            var b := et.None? || ets.possibleDescendantOf(et.value,u.ty);
             if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-        case (PrimitiveLit(EntityUID(u)),Set(_)) =>
-          match tryGetEUIDs(e2) {
-            case Some(euids) =>
-              // If the entity literal is an action, then use acts.descendantOfSet.
-              // Otherwise, use ets.possibleDescendantOfSet.
-              if isAction(u.ty)
-              then
-                if acts.descendantOfSet(u,euids) then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-              else
+          case (Var(v),Set(_)) =>
+            var et := getPrincipalOrResource(v);
+            match tryGetEUIDs(e2) {
+              case Some(euids) =>
                 var es := set euid <- euids :: euid.ty;
-                var b := ets.possibleDescendantOfSet(u.ty,es);
+                var b := et.None? || ets.possibleDescendantOfSet(et.value,es);
                 if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
-            case None => Ok(Type.Bool(AnyBool))
-          }
-        // otherwise, the result is unknown so return Bool
-        case _ => Ok(Type.Bool(AnyBool))
-      }
+              case None => Ok(Type.Bool(AnyBool))
+            }
+          // LHS is entity literal (or action, per above)
+          case (PrimitiveLit(EntityUID(u1)),PrimitiveLit(EntityUID(u2))) =>
+            // If the entity literal is an action, then use acts.descendantOf.
+            // Otherwise, use ets.possibleDescendantOf.
+            if isAction(u1.ty)
+            then
+              if acts.descendantOf(u1,u2) then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
+            else
+              var b := ets.possibleDescendantOf(u1.ty,u2.ty);
+              if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
+          case (PrimitiveLit(EntityUID(u)),Set(_)) =>
+            match tryGetEUIDs(e2) {
+              case Some(euids) =>
+                // If the entity literal is an action, then use acts.descendantOfSet.
+                // Otherwise, use ets.possibleDescendantOfSet.
+                if isAction(u.ty)
+                then
+                  if acts.descendantOfSet(u,euids) then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
+                else
+                  var es := set euid <- euids :: euid.ty;
+                  var b := ets.possibleDescendantOfSet(u.ty,es);
+                  if b then Ok(Type.Bool(AnyBool)) else Ok(Type.Bool(False))
+              case None => Ok(Type.Bool(AnyBool))
+            }
+          // otherwise, the result is unknown so return Bool
+          case _ => Ok(Type.Bool(AnyBool))
+        }
     }
 
     function inferContainsAnyAll(b: BinaryOp, e1: Expr, e2: Expr, effs: Effects): Result<Type>
@@ -457,11 +467,11 @@ module validation.typechecker {
         if k in m.Keys then Ok(m) else Ok(m[k := AttrType(t,true)])
     }
 
-    function inferHasAttrHelper(e: Expr, k: Attr, rt: RecordType, effs: Effects): Result<(Type,Effects)>
+    function inferHasAttrHelper(e: Expr, k: Attr, rt: RecordType, effs: Effects, knownToExist: bool): Result<(Type,Effects)>
     {
       if k in rt
       then
-        if rt[k].isRequired then wrap(Ok(Type.Bool(True)))
+        if rt[k].isRequired && knownToExist then wrap(Ok(Type.Bool(True)))
         else if effs.contains(e,k)
         then wrap(Ok(Type.Bool(True)))
         else Ok((Type.Bool(AnyBool),Effects.singleton(e,k)))
@@ -473,12 +483,12 @@ module validation.typechecker {
     {
       var ret :- inferRecordEntityType(e,effs);
       match ret {
-        case Record(rt) => inferHasAttrHelper(e,k,rt,effs)
+        case Record(rt) => inferHasAttrHelper(e,k,rt,effs,true)
         case Entity(lub) =>
           if !ets.isAttrPossible(lub,k) then wrap(Ok(Type.Bool(False)))
           else
             (var rt :- ets.getLubRecordType(lub);
-             inferHasAttrHelper(e,k,rt,effs))
+             inferHasAttrHelper(e,k,rt,effs,false))
 
       }
     }
@@ -559,9 +569,9 @@ module validation.typechecker {
       requires forall i :: 0 <= i < |args| ==> args[i] < e
       decreases e , 0
     {
-      if name in ExtFunTypes.Keys
+      if name in extFunTypes.Keys
       then
-        var ty := ExtFunTypes[name];
+        var ty := extFunTypes[name];
         // check that the function uses the expected number of arguments
         var _ :- if |args| == |ty.args| then Ok(()) else Err(ExtensionErr(Call(name,args)));
         // check that all args are a subtype of the expected type
@@ -617,9 +627,7 @@ module validation.typechecker {
 
     // The standard "turn-around" rule of a bidirectional type system forms the
     // top-level interface for the expression-level part of the validator.
-    function check(e: Expr, t: Type): Result<Type>
-      decreases e , 2
-    {
+    function typecheck(e: Expr, t: Type): Result<Type> {
       // call infer with an empty effect set
       var (t1,_) :- infer(e,Effects.empty());
       // check that the result of inference is a subtype of t

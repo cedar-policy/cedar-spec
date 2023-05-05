@@ -17,6 +17,12 @@ module validation.types {
   }
 
   type EntityType = core.EntityType
+
+  predicate isAction(ety: EntityType)
+  {
+    ety.id.id == Id("Action")
+  }
+
   datatype EntityLUB = AnyEntity | EntityLUB(tys: set<EntityType>) {
     predicate subset(other: EntityLUB) {
       match (this, other) {
@@ -33,9 +39,16 @@ module validation.types {
     }
     function union(other: EntityLUB): EntityLUB {
       match (this, other) {
-        case (EntityLUB(tys1),EntityLUB(tys2)) => EntityLUB(tys1 + tys2)
+        case (EntityLUB(tys1),EntityLUB(tys2)) =>
+          // if either LUB contains an Action, then return AnyEntity
+          if exists ty1 <- tys1 :: isAction(ty1) || exists ty2 <- tys2 :: isAction(ty2)
+          then AnyEntity
+          else EntityLUB(tys1 + tys2)
         case _ => AnyEntity
       }
+    }
+    predicate specified() {
+      EntityLUB? && EntityType.UNSPECIFIED !in tys
     }
   }
 
@@ -53,7 +66,7 @@ module validation.types {
     Bool(BoolType) |
     Set(Type) |
     Record(RecordType) |
-    Entity(EntityLUB) |
+    Entity(lub: EntityLUB) |
     Extension(Name)
 
   datatype SetStringType = SetType(Type) | StringType

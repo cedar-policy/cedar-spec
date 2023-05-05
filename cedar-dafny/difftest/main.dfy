@@ -15,15 +15,15 @@ module difftest.main {
   import opened restrictedExpr
   import opened validation.types
   import opened validation.validator
-  import opened /*difftest.*/helpers
+  import opened helpers
 
-  method AnswerToProdJson(a: Answer, errs: set<string>) returns (ja: Json) {
+  method responseToProdJson(r: Response, errs: set<string>) returns (ja: Json) {
     var errsSeq := setToSequenceUnordered(errs);
-    var reasonSeq := setToSequenceUnordered(a.policies);
+    var reasonSeq := setToSequenceUnordered(r.policies);
     return JsonObject(
         map[
           "decision" := JsonString(
-            match a.decision {
+            match r.decision {
               case Allow => "Allow"
               case Deny => "Deny"
             }),
@@ -39,28 +39,28 @@ module difftest.main {
         ]);
   }
 
-  const IdFromProdJson := stringDeserializer(s => Ok(Id(s)));
+  const idFromProdJson := stringDeserializer(s => Ok(Id(s)));
 
-  const NameFromProdJson :=
+  const nameFromProdJson :=
     objDeserializer2Fields(
-      "path", seqDeserializer(IdFromProdJson),
-      "id", IdFromProdJson,
+      "path", seqDeserializer(idFromProdJson),
+      "id", idFromProdJson,
       (tyPathIds, tyId) => Ok(Name(tyId, tyPathIds)));
 
-  const EntityTypeFromProdJson :=
+  const entitytypeFromProdJson :=
     sumDeserializer(
       map[
-        "Concrete" := j => var n :- NameFromProdJson(j); Ok(EntityType(n)),
-        "Unspecified" := _ => Ok(EntityType(Name.fromStr("<Unspecified>")))
+        "Concrete" := j => var n :- nameFromProdJson(j); Ok(EntityType(n)),
+        "Unspecified" := _ => Ok(EntityType.UNSPECIFIED)
       ]);
 
-  const EntityUIDFromProdJson :=
+  const entityUIDFromProdJson :=
     objDeserializer2Fields(
-      "ty", EntityTypeFromProdJson,
+      "ty", entitytypeFromProdJson,
       "eid", getJsonString,
       (et, eid) => Ok(EntityUID.EntityUID(et, eid)));
 
-  const BinaryOpFromProdJson :=
+  const binaryOpFromProdJson :=
     enumDeserializer(
       map[
         "Eq" := BinaryOp.Eq,
@@ -74,21 +74,21 @@ module difftest.main {
         "Sub" := Sub
       ]);
 
-  const UnaryOpFromProdJson :=
+  const unaryOpFromProdJson :=
     enumDeserializer(
       map[
         "Not" := Not,
         "Neg" := Neg
       ]);
 
-  const ExtFuncOpFromProdJson :=
+  const extFuncOpFromProdJson :=
     objDeserializer1Field(
-      "function_name", NameFromProdJson,
+      "function_name", nameFromProdJson,
       name => Ok(name));
 
-  function ExprFromProdJson(j: Json): FromProdResult<Expr> {
+  function exprFromProdJson(j: Json): FromProdResult<Expr> {
     var jkind :- getJsonField(j, "expr_kind");
-    var ExprFromProdJsonRec := jr requires jr < jkind => ExprFromProdJson(jr);
+    var exprFromProdJsonRec := jr requires jr < jkind => exprFromProdJson(jr);
     var (tag, body) :- unpackJsonSum(jkind);
     match tag {
       case "Lit" =>
@@ -98,7 +98,7 @@ module difftest.main {
                         "Bool" := boolDeserializer(b => Ok(Primitive.Bool(b))),
                         "Long" := intDeserializer(i => Ok(Primitive.Int(i))),
                         "String" := stringDeserializer(s => Ok(Primitive.String(s))),
-                        "EntityUID" := bodyDeserializer(EntityUIDFromProdJson,
+                        "EntityUID" := bodyDeserializer(entityUIDFromProdJson,
                                                         uid => Ok(Primitive.EntityUID(uid)))
                       ]);
         Ok(PrimitiveLit(prim))
@@ -113,50 +113,50 @@ module difftest.main {
                         ]);
         Ok(Var(theVar))
       case "If" =>
-        var cond :- deserializeField(body, "test_expr", ExprFromProdJsonRec);
-        var ethen :- deserializeField(body, "then_expr", ExprFromProdJsonRec);
-        var eelse :- deserializeField(body, "else_expr", ExprFromProdJsonRec);
+        var cond :- deserializeField(body, "test_expr", exprFromProdJsonRec);
+        var ethen :- deserializeField(body, "then_expr", exprFromProdJsonRec);
+        var eelse :- deserializeField(body, "else_expr", exprFromProdJsonRec);
         Ok(If(cond, ethen, eelse))
       case "And" =>
-        var left :- deserializeField(body, "left", ExprFromProdJsonRec);
-        var right :- deserializeField(body, "right", ExprFromProdJsonRec);
+        var left :- deserializeField(body, "left", exprFromProdJsonRec);
+        var right :- deserializeField(body, "right", exprFromProdJsonRec);
         Ok(And(left, right))
       case "Or" =>
-        var left :- deserializeField(body, "left", ExprFromProdJsonRec);
-        var right :- deserializeField(body, "right", ExprFromProdJsonRec);
+        var left :- deserializeField(body, "left", exprFromProdJsonRec);
+        var right :- deserializeField(body, "right", exprFromProdJsonRec);
         Ok(Or(left, right))
       case "UnaryApp" =>
-        var op :- deserializeField(body, "op", UnaryOpFromProdJson);
-        var arg :- deserializeField(body, "arg", ExprFromProdJsonRec);
+        var op :- deserializeField(body, "op", unaryOpFromProdJson);
+        var arg :- deserializeField(body, "arg", exprFromProdJsonRec);
         Ok(UnaryApp(op, arg))
       case "BinaryApp" =>
-        var op :- deserializeField(body, "op", BinaryOpFromProdJson);
-        var arg1 :- deserializeField(body, "arg1", ExprFromProdJsonRec);
-        var arg2 :- deserializeField(body, "arg2", ExprFromProdJsonRec);
+        var op :- deserializeField(body, "op", binaryOpFromProdJson);
+        var arg1 :- deserializeField(body, "arg1", exprFromProdJsonRec);
+        var arg2 :- deserializeField(body, "arg2", exprFromProdJsonRec);
         Ok(BinaryApp(op, arg1, arg2))
       case "MulByConst" =>
-        var arg :- deserializeField(body, "arg", ExprFromProdJsonRec);
+        var arg :- deserializeField(body, "arg", exprFromProdJsonRec);
         var cons :- deserializeField(body, "constant", getJsonInt);
         Ok(UnaryApp(MulBy(cons), arg))
       case "ExtensionFunctionApp" =>
-        var name :- deserializeField(body, "op", ExtFuncOpFromProdJson);
+        var name :- deserializeField(body, "op", extFuncOpFromProdJson);
         var jargs :- getJsonField(body, "args");
-        var args :- deserializeSeq(jargs, ExprFromProdJsonRec);
+        var args :- deserializeSeq(jargs, exprFromProdJsonRec);
         Ok(Expr.Call(name, args))
       case "GetAttr" =>
-        var expr :- deserializeField(body, "expr", ExprFromProdJsonRec);
+        var expr :- deserializeField(body, "expr", exprFromProdJsonRec);
         var attr :- deserializeField(body, "attr", getJsonString);
         Ok(GetAttr(expr, attr))
       case "HasAttr" =>
-        var expr :- deserializeField(body, "expr", ExprFromProdJsonRec);
+        var expr :- deserializeField(body, "expr", exprFromProdJsonRec);
         var attr :- deserializeField(body, "attr", getJsonString);
         Ok(HasAttr(expr, attr))
       case "Like" =>
-        var expr :- deserializeField(body, "expr", ExprFromProdJsonRec);
-        var pat :- deserializeField(body, "pattern", PatternFromProdJson);
+        var expr :- deserializeField(body, "expr", exprFromProdJsonRec);
+        var pat :- deserializeField(body, "pattern", patternFromProdJson);
         Ok(UnaryApp(Like(pat), expr))
       case "Set" =>
-        var exprs :- deserializeSeq(body, ExprFromProdJsonRec);
+        var exprs :- deserializeSeq(body, exprFromProdJsonRec);
         Ok(Expr.Set(exprs))
       case "Record" =>
         var list :- getJsonField(body, "pairs");
@@ -166,20 +166,19 @@ module difftest.main {
                          deserializeTuple2Elts(
                            ja,
                            getJsonString,
-                           ExprFromProdJsonRec,
+                           exprFromProdJsonRec,
                            (attr, expr) => Ok((attr, expr))));
         Ok(Expr.Record(pairs))
       case _ => Err({UnexpectedFromProdErr("expr case " + tag)})
     }
   }
 
-  // This is a hassle. https://github.com/dafny-lang/dafny/issues/3814 would let
-  // us write `u is char` instead.
+  // https://github.com/dafny-lang/dafny/issues/3814 would let us write `u is char` instead.
   predicate isChar(u: int) {
     0 <= u < 0xD800 || 0xE000 <= u <= 0x10_FFFF
   }
 
-  const PatElemFromProdJson :=
+  const patElemFromProdJson :=
     sumDeserializer(
       map[
         "Char" := intDeserializer(
@@ -192,82 +191,82 @@ module difftest.main {
         "Wildcard" := _ => Ok(Star)
       ]);
 
-  const PatternFromProdJson := seqDeserializer(PatElemFromProdJson);
+  const patternFromProdJson := seqDeserializer(patElemFromProdJson);
 
   // Deserializers for datatypes where the definitional version contains the
   // SlotId and the production one doesn't, so we need outside knowledge of the
   // SlotId to use. Group them in a datatype to save the boilerplate of passing
   // along the `slotId` parameter explicitly.
   datatype ScopeDeserializers = ScopeDeserializers(slotId: SlotId) {
-    const EntityUIDOrSlotFromProdJson :=
+    const entityUIDOrSlotFromProdJson :=
       sumDeserializer(
         map[
-          "EUID" := bodyDeserializer(EntityUIDFromProdJson, e => Ok(EntityUIDOrSlot.EntityUID(e))),
+          "EUID" := bodyDeserializer(entityUIDFromProdJson, e => Ok(EntityUIDOrSlot.EntityUID(e))),
           // The temporary variable is needed to work around a verification issue,
           // probably https://github.com/dafny-lang/dafny/issues/2083.
           "Slot" := (var d := _ => Ok(EntityUIDOrSlot.Slot(slotId)); d)
         ]);
 
     // Corresponds to production `PrincipalOrResourceConstraint`.
-    const ScopeTemplateFromProdJson :=
+    const scopeTemplateFromProdJson :=
       sumDeserializer(
         map[
           "Any" := _ => Ok(ScopeTemplate.Any),
-          "In" := bodyDeserializer(EntityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.In(e))),
-          "Eq" := bodyDeserializer(EntityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e)))
+          "In" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.In(e))),
+          "Eq" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e)))
         ]);
   }
 
   // Corresponds to production `ActionConstraint`.
-  const ActionScopeFromProdJson :=
+  const actionScopeFromProdJson :=
     sumDeserializer(
       map[
         "Any" := _ => Ok(ActionScope(Scope.Any)),
-        "In" := bodyDeserializer(seqDeserializer(EntityUIDFromProdJson), es => Ok(ActionInAny(es))),
-        "Eq" := bodyDeserializer(EntityUIDFromProdJson, e => Ok(ActionScope(Scope.Eq(e))))
+        "In" := bodyDeserializer(seqDeserializer(entityUIDFromProdJson), es => Ok(ActionInAny(es))),
+        "Eq" := bodyDeserializer(entityUIDFromProdJson, e => Ok(ActionScope(Scope.Eq(e))))
       ]);
 
-  const PolicyTemplateFromProdJson :=
+  const policyTemplateFromProdJson :=
     objDeserializer5Fields(
       "effect", enumDeserializer(map[
                                    "permit" := Permit,
                                    "forbid" := Forbid
                                  ]),
       "principal_constraint", objDeserializer1Field(
-        "constraint", ScopeDeserializers("?principal").ScopeTemplateFromProdJson,
+        "constraint", ScopeDeserializers("?principal").scopeTemplateFromProdJson,
         s => Ok(PrincipalScopeTemplate(s))),
-      "action_constraint", ActionScopeFromProdJson,
+      "action_constraint", actionScopeFromProdJson,
       "resource_constraint", objDeserializer1Field(
-        "constraint", ScopeDeserializers("?resource").ScopeTemplateFromProdJson,
+        "constraint", ScopeDeserializers("?resource").scopeTemplateFromProdJson,
         s => Ok(ResourceScopeTemplate(s))),
-      "non_head_constraints", ExprFromProdJson,
+      "non_head_constraints", exprFromProdJson,
       (effect, pScope, aScope, rScope, cond) => Ok(PolicyTemplate(effect, pScope, aScope, rScope, cond))
     );
 
-  function AttrsFromProdJsonObject(j: Json): FromProdResult<map<Attr, Value>> {
+  function attrsFromProdJsonObject(j: Json): FromProdResult<map<Attr, Value>> {
     var attr_keys :- getJsonObject(j);
-    var expr_vals :- mapMapValuesFromProd(ExprFromProdJson, attr_keys);
+    var expr_vals :- mapMapValuesFromProd(exprFromProdJson, attr_keys);
     var value_vals :- mapMapValuesFromProd(exprToValue, expr_vals);
     Ok(value_vals)
   }
 
-  // In the production engine, `EntityUIDEntry` is the data type for a query
+  // In the production engine, `EntityUIDEntry` is the data type for a request
   // field that is either a "concrete" EntityUID or "unknown" (for partial
   // evaluation). We currently don't support partial evaluation, so we just
   // translate the "concrete" variant to an EntityUID.
-  const EntityUIDEntryFromProdJson :=
-    sumDeserializer(map["Concrete" := EntityUIDFromProdJson]);
+  const entityUIDEntryFromProdJson :=
+    sumDeserializer(map["Concrete" := entityUIDFromProdJson]);
 
   function getEntityUIDEntryField(request: Json, f: string): FromProdResult<EntityUID> {
-    deserializeField(request, f, EntityUIDEntryFromProdJson)
+    deserializeField(request, f, entityUIDEntryFromProdJson)
   }
 
-  const EntityEntryFromProdJson :=
+  const entityEntryFromProdJson :=
     tupleDeserializer2Elts(
-      EntityUIDFromProdJson,
+      entityUIDFromProdJson,
       objDeserializer2Fields(
-        "attrs", AttrsFromProdJsonObject,
-        "ancestors", setDeserializer(EntityUIDFromProdJson),
+        "attrs", attrsFromProdJsonObject,
+        "ancestors", setDeserializer(entityUIDFromProdJson),
         (attrs, ancestors) => Ok(EntityData(attrs, ancestors))
       ),
       (uid, edata) => Ok((uid, edata))
@@ -276,12 +275,12 @@ module difftest.main {
   function exprToValue(expr: Expr): FromProdResult<Value> {
     match evaluate(expr) {
       case Some(v) => Ok(v)
-      case None => Err({InvalidAttrVal})
+      case None => Err({UnexpectedFromProdErr("Attribute values must be restricted expressions")})
     }
   }
 
   function buildContext(context_field: Json): FromProdResult<Record> {
-    var as_expr :- ExprFromProdJson(context_field);
+    var as_expr :- exprFromProdJson(context_field);
     var value :- exprToValue(as_expr);
     match value {
       case Record(rcd) => Ok(rcd)
@@ -289,60 +288,60 @@ module difftest.main {
     }
   }
 
-  const PolicyInstanceFromProdJson :=
+  const templateLinkedPolicyFromProdJson :=
     objDeserializer2Fields(
       "template_id", stringDeserializer(s => Ok(PolicyTemplateID(s))),
-      "values", mapDeserializer(EntityUIDFromProdJson),
-      (tid, slotEnv) => Ok(PolicyInstance(tid, slotEnv))
+      "values", mapDeserializer(entityUIDFromProdJson),
+      (tid, slotEnv) => Ok(TemplateLinkedPolicy(tid, slotEnv))
     );
 
-  const PolicyStoreFromProdJson :=
+  const policyStoreFromProdJson :=
     objDeserializer2Fields(
       "templates", jtemplates => (
           var templates :- getJsonObject(jtemplates);
-          var templates1 :- mapMapValuesFromProd(PolicyTemplateFromProdJson, templates);
+          var templates1 :- mapMapValuesFromProd(policyTemplateFromProdJson, templates);
           Ok(mapMapKeys(s => PolicyTemplateID(s), templates1))
         ),
-      "links", jinstances => (
-          var instances :- getJsonObject(jinstances);
-          var instances1 :- mapMapValuesFromProd(PolicyInstanceFromProdJson, instances);
-          Ok(mapMapKeys(s => PolicyID(s), instances1))
+      "links", jlinkedPolicies => (
+          var linkedPolicies :- getJsonObject(jlinkedPolicies);
+          var linkedPolicies1 :- mapMapValuesFromProd(templateLinkedPolicyFromProdJson, linkedPolicies);
+          Ok(mapMapKeys(s => PolicyID(s), linkedPolicies1))
         ),
-      (templates, instances) => (
-          var policyStore := TemplatedPolicyStore(templates, instances);
+      (templates, linkedPolicies) => (
+          var policyStore := TemplatedPolicyStore(templates, linkedPolicies);
           if policyStore.isValid()
-          then Ok(instantiatePolicyStore(policyStore))
-          else Err({UnexpectedFromProdErr("Invalid policy template instance(s)")})
+          then Ok(linkPolicyStore(policyStore))
+          else Err({UnexpectedFromProdErr("Invalid policy template link(s)")})
         )
     );
 
-  const AuthorizerFromProdJson :=
+  const authorizerFromProdJson :=
     objDeserializer3Fields(
-      "request", jquery => (
-          var principal :- getEntityUIDEntryField(jquery, "principal");
-          var action :- getEntityUIDEntryField(jquery, "action");
-          var resource :- getEntityUIDEntryField(jquery, "resource");
+      "request", jrequest => (
+          var principal :- getEntityUIDEntryField(jrequest, "principal");
+          var action :- getEntityUIDEntryField(jrequest, "action");
+          var resource :- getEntityUIDEntryField(jrequest, "resource");
           // Note: In the production engine, the `context` field is wrapped in an
           // `Option` that can be `None` for partial evaluation. But currently, for
           // differential testing, the `context` is always `Some`, and the default
           // Serde JSON serialization of `Some(x)` is just that of `x` without an
           // explicit representation of the `Option` layer, so we don't have to do
           // anything additional here.
-          var context :- deserializeField(jquery, "context", buildContext);
-          Ok(Query(principal, action, resource, context))
+          var context :- deserializeField(jrequest, "context", buildContext);
+          Ok(Request(principal, action, resource, context))
         ),
       "entities", jentities => (
-          var entities :- deserializeField(jentities, "entities", seqDeserializer(EntityEntryFromProdJson));
+          var entities :- deserializeField(jentities, "entities", seqDeserializer(entityEntryFromProdJson));
           var entitiesMap :- mapFromEntriesProd(entities);
           Ok(EntityStore(entitiesMap))
         ),
-      "policies", jpolicySet => PolicyStoreFromProdJson(jpolicySet),
-      (query, entityStore, policyStore) =>
-        Ok(Authorizer(query, Store(entityStore, policyStore)))
+      "policies", jpolicySet => policyStoreFromProdJson(jpolicySet),
+      (request, entityStore, policyStore) =>
+        Ok(Authorizer(request, Store(entityStore, policyStore)))
     );
 
-  function isAuthorizedJson1(request: Json): FromProdResult<Answer> {
-    var authorizer :- AuthorizerFromProdJson(request);
+  function isAuthorizedJson1(request: Json): FromProdResult<Response> {
+    var authorizer :- authorizerFromProdJson(request);
     Ok(authorizer.isAuthorized())
   }
 
@@ -352,18 +351,16 @@ module difftest.main {
     var ansAndErrors := match answer {
       case Ok(ans) => (ans, {})
       case Err(errs) =>
-        (Answer(Deny, {}),
-         // TODO: InvalidAttrVal should be differentially tested, not just dropped
-         set e | e in errs && e.UnexpectedFromProdErr? :: e.desc)
+        (Response(Deny, {}), set e | e in errs :: e.desc)
     };
-    response := AnswerToProdJson(ansAndErrors.0, ansAndErrors.1);
+    response := responseToProdJson(ansAndErrors.0, ansAndErrors.1);
   }
 
   // Note: the types we have to support here are limited to those allowed in
-  // the Rust SchemaFileFormat, which is more restrictive than a general schema
-  function TypeFromProdJson(j: Json): FromProdResult<Type> {
-    var TypeFromProdJsonRec := jr requires jr < j => TypeFromProdJson(jr);
-    var AttrTypesFromProdJsonObjectRec := jr requires jr < j => AttrTypesFromProdJsonObject(jr);
+  // the Rust SchemaFileFormat, which is more restrictive than our Schema type
+  function typeFromProdJson(j: Json): FromProdResult<Type> {
+    var typeFromProdJsonRec := jr requires jr < j => typeFromProdJson(jr);
+    var attrTypesFromProdJsonObjectRec := jr requires jr < j => attrTypesFromProdJsonObject(jr);
     var (tag, body) :- unpackJsonSum(j);
     match tag {
       case "Primitive" =>
@@ -377,89 +374,89 @@ module difftest.main {
                     ]);
         Ok(ty)
       case "Set" =>
-        var inner :- deserializeField(body, "elementType", TypeFromProdJsonRec);
+        var inner :- deserializeField(body, "elementType", typeFromProdJsonRec);
         Ok(Type.Set(inner))
       case "EntityOrRecord" =>
         var (tag1, body1) :- unpackJsonSum(body);
         match tag1 {
           case "Record" =>
             var attrs :- getJsonField(body1, "attrs");
-            var attrs1 :- deserializeField(attrs, "attrs", AttrTypesFromProdJsonObjectRec);
+            var attrs1 :- deserializeField(attrs, "attrs", attrTypesFromProdJsonObjectRec);
             Ok(Type.Record(attrs1))
           case "Entity" =>
-            var lub :- deserializeField(body1, "lub_elements", setDeserializer(NameFromProdJson));
+            var lub :- deserializeField(body1, "lub_elements", setDeserializer(nameFromProdJson));
             Ok(Type.Entity(EntityLUB(set e <- lub :: EntityType(e))))
           case _ => Err({UnexpectedFromProdErr("EntityOrRecord case " + tag)})
         }
       case "ExtensionType" =>
-        var name :- deserializeField(body, "name", NameFromProdJson);
+        var name :- deserializeField(body, "name", nameFromProdJson);
         Ok(Type.Extension(name))
       case _ => Err({UnexpectedFromProdErr("Type case " + tag)})
     }
   }
 
-  function AttrTypeFromProdJson(j: Json): FromProdResult<AttrType> {
-    var TypeFromProdJsonRec := jr requires jr < j => TypeFromProdJson(jr);
-    var attrType :- deserializeField(j, "attrType", TypeFromProdJsonRec);
+  function attrtypeFromProdJson(j: Json): FromProdResult<AttrType> {
+    var typeFromProdJsonRec := jr requires jr < j => typeFromProdJson(jr);
+    var attrType :- deserializeField(j, "attrType", typeFromProdJsonRec);
     var isRequired :- deserializeField(j, "isRequired", getJsonBool);
     Ok(AttrType(attrType,isRequired))
   }
 
-  function AttrTypesFromProdJsonObject(j: Json): FromProdResult<map<Attr, AttrType>> {
-    var AttrTypeFromProdJsonRec := jr requires jr < j => AttrTypeFromProdJson(jr);
-    deserializeMap(j, AttrTypeFromProdJsonRec)
+  function attrTypesFromProdJsonObject(j: Json): FromProdResult<map<Attr, AttrType>> {
+    var attrtypeFromProdJsonRec := jr requires jr < j => attrtypeFromProdJson(jr);
+    deserializeMap(j, attrtypeFromProdJsonRec)
   }
 
-  function EntityTypePairFromProdJson(j: Json): FromProdResult<(EntityType, TypecheckerEntityType)> {
+  function entityTypePairFromProdJson(j: Json): FromProdResult<(EntityType, TypecheckerEntityType)> {
     deserializeTuple2Elts(
       j,
-      NameFromProdJson,
+      nameFromProdJson,
       data => (
-          var descendants :- deserializeField(data, "descendants", setDeserializer(NameFromProdJson));
+          var descendants :- deserializeField(data, "descendants", setDeserializer(nameFromProdJson));
           var descendants1 := set e <- descendants :: EntityType(e);
           var attrs :- getJsonField(data, "attributes");
-          var attrs1 :- deserializeField(attrs, "attrs", AttrTypesFromProdJsonObject);
+          var attrs1 :- deserializeField(attrs, "attrs", attrTypesFromProdJsonObject);
           Ok(TypecheckerEntityType(descendants1, attrs1))
         ),
       (ty, et) => Ok((EntityType(ty), et))
     )
   }
 
-  const EntityTypeFromProdJsonOption :=
+  const entitytypeFromProdJsonOption :=
     sumDeserializer(
       map[
-        "Concrete" := j => var n :- NameFromProdJson(j); Ok(Some(EntityType(n))),
+        "Concrete" := j => var n :- nameFromProdJson(j); Ok(Some(EntityType(n))),
         "Unspecified" := _ => Ok(None)
       ]);
 
-  function ApplySpecFromProdJson(j: Json): FromProdResult<TypecheckerApplySpec> {
-    var pas :- deserializeField(j, "principalApplySpec", setDeserializer(EntityTypeFromProdJsonOption));
-    var ras :- deserializeField(j, "resourceApplySpec", setDeserializer(EntityTypeFromProdJsonOption));
+  function applySpecFromProdJson(j: Json): FromProdResult<TypecheckerApplySpec> {
+    var pas :- deserializeField(j, "principalApplySpec", setDeserializer(entitytypeFromProdJsonOption));
+    var ras :- deserializeField(j, "resourceApplySpec", setDeserializer(entitytypeFromProdJsonOption));
     Ok(TypecheckerApplySpec(pas,ras))
   }
 
-  function ActionIdPairFromProdJson(j: Json): FromProdResult<(EntityUID, TypecheckerActionId)> {
+  function actionIdPairFromProdJson(j: Json): FromProdResult<(EntityUID, TypecheckerActionId)> {
     deserializeTuple2Elts(
       j,
-      EntityUIDFromProdJson,
+      entityUIDFromProdJson,
       data => (
-          var appliesTo :- deserializeField(data, "appliesTo", ApplySpecFromProdJson);
-          var descendants :- deserializeField(data, "descendants", setDeserializer(EntityUIDFromProdJson));
+          var appliesTo :- deserializeField(data, "appliesTo", applySpecFromProdJson);
+          var descendants :- deserializeField(data, "descendants", setDeserializer(entityUIDFromProdJson));
           var context :- getJsonField(data, "context");
-          var context1 :- deserializeField(context, "attrs", AttrTypesFromProdJsonObject);
+          var context1 :- deserializeField(context, "attrs", attrTypesFromProdJsonObject);
           Ok(TypecheckerActionId(appliesTo, descendants, context1))
         ),
       (uid, act) => Ok((uid, act))
     )
   }
 
-  const ValidatorFromProdJson :=
+  const validatorFromProdJson :=
     objDeserializer2Fields(
-      "policies", jpolicies => PolicyStoreFromProdJson(jpolicies),
+      "policies", jpolicies => policyStoreFromProdJson(jpolicies),
       "schema", jschema => (
-          var entityTypes :- deserializeField(jschema, "entityTypes", seqDeserializer(EntityTypePairFromProdJson));
+          var entityTypes :- deserializeField(jschema, "entityTypes", seqDeserializer(entityTypePairFromProdJson));
           var entityTypesMap :- mapFromEntriesProd(entityTypes);
-          var actionIds :- deserializeField(jschema, "actionIds", seqDeserializer(ActionIdPairFromProdJson));
+          var actionIds :- deserializeField(jschema, "actionIds", seqDeserializer(actionIdPairFromProdJson));
           var actionIdsMap :- mapFromEntriesProd(actionIds);
           Ok(Schema(entityTypesMap, actionIdsMap))
         ),
@@ -467,13 +464,12 @@ module difftest.main {
     );
 
   method validateJson1(request: Json) returns (res: FromProdResult<seq<TypeError>>) {
-    var policyStoreAndValidator :- ValidatorFromProdJson(request);
+    var policyStoreAndValidator :- validatorFromProdJson(request);
     var errs := policyStoreAndValidator.1.Validate(policyStoreAndValidator.0);
     return Ok(errs);
   }
 
-  // TODO: Return error as an object rather than a string
-  function TypeErrorToString(e: TypeError): string {
+  function typeErrorToString(e: TypeError): string {
     match e {
       case LubErr(_,_) => "LubErr"
       case SubtyErr(_,_) => "SubtyErr"
@@ -486,11 +482,11 @@ module difftest.main {
     }
   }
 
-  method ValidationResToProdJson(errs: seq<TypeError>, parseErrs: set<string>) returns (ja: Json) {
+  method validationResToProdJson(errs: seq<TypeError>, parseErrs: set<string>) returns (ja: Json) {
     var parseErrsSeq := setToSequenceUnordered(parseErrs);
     return JsonObject(
         map[
-          "validationErrors" := JsonArray(mapSeq((e: TypeError) => JsonString(TypeErrorToString(e)), errs)),
+          "validationErrors" := JsonArray(mapSeq((e: TypeError) => JsonString(typeErrorToString(e)), errs)),
           "parseErrors" := JsonArray(mapSeq((e: string) => JsonString(e), parseErrsSeq))
         ]);
   }
@@ -500,11 +496,9 @@ module difftest.main {
     var res := validateJson1(request);
     var resAndErrors := match res {
       case Ok(res1) => (res1, {})
-      case Err(errs) => ([],
-                         // TODO: InvalidAttrVal should be differentially tested, not just dropped
-                         set e | e in errs && e.UnexpectedFromProdErr? :: e.desc
+      case Err(errs) => ([], set e | e in errs :: e.desc
       )};
-    response := ValidationResToProdJson(resAndErrors.0, resAndErrors.1);
+    response := validationResToProdJson(resAndErrors.0, resAndErrors.1);
   }
 }
 

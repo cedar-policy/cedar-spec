@@ -12,13 +12,16 @@ module validation.subtyping {
     }
   }
 
+  predicate subtyAttrType(a1: AttrType, a2: AttrType) {
+    subty(a1.ty, a2.ty) && (a2.isRequired ==> a1.isRequired)
+  }
+
   predicate subtyRecordType(rt1: RecordType, rt2: RecordType)
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
     rt2.Keys <= rt1.Keys &&
     (forall k | k in rt2.Keys ::
-       subty(rt1[k].ty, rt2[k].ty) &&
-       (rt2[k].isRequired ==> rt1[k].isRequired))
+       subtyAttrType(rt1[k], rt2[k]))
   }
 
   predicate subtyEntity(lub1: EntityLUB, lub2: EntityLUB) {
@@ -51,6 +54,12 @@ module validation.subtyping {
     lub1.union(lub2)
   }
 
+  function lubAttrType(a1: AttrType, a2: AttrType) : AttrType
+    requires lubOpt(a1.ty, a2.ty).Ok?
+  {
+    AttrType(lubOpt(a1.ty, a2.ty).value, a1.isRequired && a2.isRequired)
+  }
+
   // This function produces a valid lub for any two maps, including ones that
   // are inconsistent. For example: the upper bound of { foo: Int } and
   // { foo: String } is the empty map type {}. This decision was made for the
@@ -59,7 +68,7 @@ module validation.subtyping {
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
     Ok(map k | k in rt1.Keys && k in rt2.Keys && lubOpt(rt1[k].ty, rt2[k].ty).Ok? ::
-         AttrType(lubOpt(rt1[k].ty, rt2[k].ty).value, rt1[k].isRequired && rt2[k].isRequired))
+         lubAttrType(rt1[k], rt2[k]))
   }
 
   function lubRecordTypeSeq(rts: seq<RecordType>): Result<RecordType>
@@ -106,6 +115,84 @@ module validation.subtyping {
   {
     match lubOpt(t1,t2) {
       case Ok(t) => t
+    }
+  }
+
+  lemma SubtyRefl(t: Type)
+    ensures subty(t,t)
+  {}
+
+  lemma SubtyRecordTypeRefl(rt : RecordType)
+    ensures subtyRecordType(rt, rt)
+  {
+    forall k | k in rt.Keys ensures subtyAttrType(rt[k], rt[k]) {
+      SubtyRefl(rt[k].ty);
+    }
+  }
+
+  lemma SubtyRecordTypeTrans(rt1: RecordType, rt2: RecordType, rt3: RecordType)
+    requires subtyRecordType(rt1,rt2)
+    requires subtyRecordType(rt2,rt3)
+    ensures subtyRecordType(rt1,rt3)
+    decreases Type.Record(rt1) , Type.Record(rt2) , Type.Record(rt3) , 0
+  {
+    assert rt3.Keys <= rt1.Keys;
+    forall k | k in rt3.Keys
+      ensures subty(rt1[k].ty, rt3[k].ty)
+      ensures rt3[k].isRequired ==> rt1[k].isRequired
+    {
+      assert subty(rt1[k].ty, rt2[k].ty);
+      assert subty(rt2[k].ty, rt3[k].ty);
+      SubtyTrans(rt1[k].ty, rt2[k].ty, rt3[k].ty);
+    }
+  }
+
+  lemma SubtyTrans(t1: Type, t2: Type, t3: Type)
+    requires subty(t1,t2)
+    requires subty(t2,t3)
+    ensures subty(t1,t3)
+  {
+    match (t1,t2,t3) {
+      case (Record(rt1),Record(rt2),Record(rt3)) => SubtyRecordTypeTrans(rt1,rt2,rt3);
+      case _ =>
+    }
+  }
+
+  lemma LubIsUB(t1: Type, t2: Type, t: Type)
+    requires lubOpt(t1,t2) == Ok(t)
+    ensures subty(t1,t)
+    ensures subty(t2,t)
+  {
+    match (t1,t2,t) {
+      case (Never,_,_) => assert t2 == t; SubtyRefl(t);
+      case (_,Never,_) => assert t1 == t; SubtyRefl(t);
+      case (Int,Int,Int) =>
+      case (String,String,String) =>
+      case(Bool(b1),Bool(b2),Bool(bt)) =>
+      case (Entity(e1),Entity(e2),Entity(e)) =>
+      case (Set(t1'),Set(t2'),Set(t')) => LubIsUB(t1',t2',t');
+      case(Record(rt1'),Record(rt2'),Record(rt')) =>
+        assert rt'.Keys <= rt1'.Keys;
+        assert rt'.Keys <= rt2'.Keys;
+        assert subty(Type.Record(rt1'),Type.Record(rt')) by {
+          forall k | k in rt'.Keys
+            ensures subtyAttrType(rt1'[k],rt'[k])
+          {
+            assert rt'[k] == lubAttrType(rt1'[k],rt2'[k]);
+            assert lubOpt(rt1'[k].ty,rt2'[k].ty) == Ok(rt'[k].ty);
+            LubIsUB(rt1'[k].ty,rt2'[k].ty,rt'[k].ty);
+          }
+        }
+        assert subty(Type.Record(rt2'),Type.Record(rt')) by {
+          forall k | k in rt'.Keys
+            ensures subtyAttrType(rt2'[k],rt'[k])
+          {
+            assert rt'[k] == lubAttrType(rt1'[k],rt2'[k]);
+            assert lubOpt(rt1'[k].ty,rt2'[k].ty) == Ok(rt'[k].ty);
+            LubIsUB(rt1'[k].ty,rt2'[k].ty,rt'[k].ty);
+          }
+        }
+      case (Extension(n1),Extension(n2),Extension(n)) =>
     }
   }
 }

@@ -13,32 +13,32 @@ module slicing {
          slice.policies[pid] == store.policies[pid])
   }
 
-  ghost predicate isSoundSliceForQuery(query: Query, slice: Store, store: Store) {
+  ghost predicate isSoundSliceForRequest(request: Request, slice: Store, store: Store) {
     isSliceOfPolicyStore(slice.policies, store.policies) &&
     (forall pid ::
        (pid in store.policies.policies.Keys && pid !in slice.policies.policies.Keys) ==>
-         !Authorizer(query, store).isInForce(pid)) &&
+         !Authorizer(request, store).satisfied(pid)) &&
     (forall pid ::
        pid in slice.policies.policies.Keys ==>
-         Authorizer(query, slice).isInForce(pid) == Authorizer(query, store).isInForce(pid))
+         Authorizer(request, slice).satisfied(pid) == Authorizer(request, store).satisfied(pid))
   }
 
-  lemma AuthorizationIsCorrectForSoundSlicing(query: Query, slice: Store, store: Store)
-    requires isSoundSliceForQuery(query, slice, store)
-    ensures Authorizer(query, slice).isAuthorized() == Authorizer(query, store).isAuthorized()
+  lemma AuthorizationIsCorrectForSoundSlicing(request: Request, slice: Store, store: Store)
+    requires isSoundSliceForRequest(request, slice, store)
+    ensures Authorizer(request, slice).isAuthorized() == Authorizer(request, store).isAuthorized()
   {
-    ForbidsEqv(query, slice, store);
-    PermitsEqv(query, slice, store);
+    ForbidsEqv(request, slice, store);
+    PermitsEqv(request, slice, store);
   }
 
-  lemma ForbidsEqv(query: Query, slice: Store, store: Store)
-    requires isSoundSliceForQuery(query, slice, store)
-    ensures Authorizer(query, slice).forbids() == Authorizer(query, store).forbids()
+  lemma ForbidsEqv(request: Request, slice: Store, store: Store)
+    requires isSoundSliceForRequest(request, slice, store)
+    ensures Authorizer(request, slice).forbids() == Authorizer(request, store).forbids()
   { }
 
-  lemma PermitsEqv(query: Query, slice: Store, store: Store)
-    requires isSoundSliceForQuery(query, slice, store)
-    ensures Authorizer(query, slice).permits() == Authorizer(query, store).permits()
+  lemma PermitsEqv(request: Request, slice: Store, store: Store)
+    requires isSoundSliceForRequest(request, slice, store)
+    ensures Authorizer(request, slice).permits() == Authorizer(request, store).permits()
   { }
 
 }

@@ -33,9 +33,9 @@ module difftest.helpers {
 
   function singleElementOfSet<T>(s: set<T>): (x: T)
     requires |s| == 1
-    ensures s == {x} {
+    ensures s == {x}
+  {
     var x :| x in s;
-    // This seems to be the hint the verifier needs...
     assert |s - {x}| == 0;
     x
   }
@@ -57,8 +57,6 @@ module difftest.helpers {
     set x, y | x in y && y in s :: x
   }
 
-  // This makes one wonder why `print` isn't just allowed in functions in the
-  // first place.
   function printFromFunction<T>(x: T): () {
     ()
   } by method {
@@ -69,13 +67,12 @@ module difftest.helpers {
   // ----- Idealized JSON data structure -----
   //
   // This is used as a narrow interface to marshal data
-  // between Dafny-generated target code and handwritten target code, since the
-  // Dafny-generated target code is such a pain to work with.
+  // between Dafny-generated target code and handwritten target code.
 
   datatype Json =
     JsonNull |
     JsonBool(b: bool) |
-    JsonInt(i: int) |  // NOTE: No support for reals yet.
+    JsonInt(i: int) |
     JsonString(s: string) |
     JsonArray(a: seq<Json>) |
     JsonObject(o: map<string, Json>)
@@ -119,22 +116,11 @@ module difftest.helpers {
   /* An UnexpectedFromProdErr indicates a problem that should never occur if DRT
    * is working correctly (and in particular, input generation is limited to
    * features supported by both the definitional and production
-   * implementations). FromProdErr currently has some other constructors for
-   * exceptional cases that don't necessarily indicate a DRT failure but for
-   * which we want to use the same infrastructure to break out of several levels
-   * of processing before recovering in some way.
+   * implementations).
    */
 
-  datatype FromProdErr =
-    UnexpectedFromProdErr(desc: string) |
-    InvalidAttrVal
+  datatype FromProdErr = UnexpectedFromProdErr(desc: string)
   type FromProdResult<T> = std.Result<T, set<FromProdErr>>
-  // I wanted to do the following, but it made verification slow and I wasn't
-  // able to figure out why in a reasonable length of time. TODO: Ask the Dafny
-  // community for help and file a bug if appropriate? This sanity check
-  // probably isn't that important to us anyway. ~ Matt, 2023-01-03
-  //type FromProdResult<T> = r: std.Result<T, set<FromProdErr>>
-  //  | r.Err? ==> r.error != {} witness *
 
   // ----- Helpers to extract pieces of data from JSON -----
 
@@ -190,8 +176,8 @@ module difftest.helpers {
    *
    * When `j` is a JsonString, no matter what value we return as the body, it
    * complicates the termination proof for callers that recurse on the body
-   * because we won't have `body < j`. For ExprFromProdJson, we're OK because
-   * ExprFromProdJson never recurses directly on `body` but only on a proper
+   * because we won't have `body < j`. For exprFromProdJson, we're OK because
+   * exprFromProdJson never recurses directly on `body` but only on a proper
    * subterm of it, and jsonEmptyObject has no proper subterms that are Json
    * values. But Dafny can't seem to prove the latter fact directly, so we give
    * it a little help by including a `jsonEmptyObject` special case in
@@ -267,7 +253,6 @@ module difftest.helpers {
   }
 
   function mapFromEntriesProd<K, V>(entries: seq<(K, V)>): FromProdResult<map<K, V>> {
-    // TODO: Write this with better asymptotic running time?
     if (forall i, j | 0 <= i < |entries| && 0 <= j < |entries| ::
           entries[i].0 == entries[j].0 ==> i == j) then
       var keys := set i | 0 <= i < |entries| :: entries[i].0;
@@ -509,7 +494,6 @@ module difftest.helpers {
     if tag in consMap then
       consMap[tag](body)
     else
-      // TODO: Is it worth letting the caller customize the error message?
       Err({UnexpectedFromProdErr("deserializeSum case: " + tag)})
   }
   function sumDeserializer<T>(consMap: map<string, Deserializer<T>>): Deserializer<T> {
@@ -522,10 +506,6 @@ module difftest.helpers {
   // a small amount of code but helps maintain the declarative style. We don't
   // provide a `deserializeBody` counterpart because its benefit would be even
   // smaller and it wouldn't be worth using.
-  //
-  // The same "monadic bind" logic could conceivably be useful in other
-  // contexts. If so, we can pick a more general name for this function and
-  // update the documentation accordingly.
   function bodyDeserializer<T, B>(bd: Deserializer<B>, cons: B -> FromProdResult<T>): Deserializer<T> {
     j => (var b :- bd(j); cons(b))
   }
