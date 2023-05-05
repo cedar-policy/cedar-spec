@@ -111,14 +111,14 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Entities: {}\n", input.entities);
     for q in input.requests.into_iter().map(Into::into) {
         debug!("Request : {q}");
-        let (rust_ans, total_dur) =
+        let (rust_res, total_dur) =
             time_function(|| diff_tester.run_single_test(&q, &policyset, &input.entities));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 
         // additional invariant:
         // type-directed fuzzing should never produce wrong-number-of-arguments errors
         assert_eq!(
-            rust_ans
+            rust_res
                 .diagnostics
                 .errors
                 .iter()

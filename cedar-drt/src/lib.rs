@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-pub use authorizer::Answer;
+pub use authorizer::Response;
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationResult, ValidatorSchema};
 pub use entities::Entities;
@@ -45,11 +45,11 @@ struct RequestForDefEngine<'a> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct DefinitionalAuthAnswer {
+pub struct DefinitionalAuthResponse {
     serialization_nanos: i64,
     deserialization_nanos: i64,
     auth_nanos: i64,
-    answer: Answer,
+    response: Response,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance
@@ -95,43 +95,43 @@ impl<'j> DefinitionalEngine<'j> {
             .expect("failed to create Java object for authorization request string")
     }
 
-    fn deserialize_answer(&self, answer: JValue) -> Answer {
-        let janswer: JString = answer
+    fn deserialize_response(&self, response: JValue) -> Response {
+        let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
                 panic!(
                     "expected isAuthorized_str to return an Object (String), but it returned {:?}",
-                    answer
+                    response
                 )
             })
             .into();
-        let answer: String = self
+        let response: String = self
             .thread
-            .get_string(janswer)
+            .get_string(jresponse)
             .expect("failed to get JavaStr")
             .into();
         self.thread
-            .delete_local_ref(*janswer)
+            .delete_local_ref(*jresponse)
             .expect("Deletion failed");
-        let d_answer: DefinitionalAuthAnswer = serde_json::from_str(&answer).unwrap_or_else(|_| {
+        let d_response: DefinitionalAuthResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
             panic!(
-                "JSON answer received from the definitional engine was the wrong format:\n{answer}",
+                "JSON response received from the definitional engine was the wrong format:\n{response}",
             )
         });
 
         info!(
             "{}{}",
             logger::JAVA_SERIALIZATION_MSG,
-            d_answer.serialization_nanos
+            d_response.serialization_nanos
         );
         info!(
             "{}{}",
             logger::JAVA_DESERIALIZATION_MSG,
-            d_answer.deserialization_nanos
+            d_response.deserialization_nanos
         );
-        info!("{}{}", logger::JAVA_AUTH_MSG, d_answer.auth_nanos);
+        info!("{}{}", logger::JAVA_AUTH_MSG, d_response.auth_nanos);
 
-        d_answer.answer
+        d_response.response
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -141,29 +141,29 @@ impl<'j> DefinitionalEngine<'j> {
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> Answer {
+    ) -> Response {
         let (jstring, dur) = time_function(|| self.serialize_request(request, policies, entities));
         info!("{}{}", logger::RUST_SERIALIZATION_MSG, dur.as_nanos());
-        let answer = self.thread.call_method(
+        let response = self.thread.call_method(
             self.java_def_engine,
             "isAuthorized_str",
             // https://stackoverflow.com/questions/8066253/compute-a-java-functions-signature
             "(Ljava/lang/String;)Ljava/lang/String;",
             &[jstring.into()],
         );
-        if answer.is_err() {
+        if response.is_err() {
             self.thread
                 .exception_describe()
                 .expect("Failed to print exception information");
             panic!("JVM Exception Occurred!");
         }
-        let answer: JValue = answer.expect("failed to call Java isAuthorized_str");
-        let (answer, dur) = time_function(|| self.deserialize_answer(answer));
+        let response: JValue = response.expect("failed to call Java isAuthorized_str");
+        let (response, dur) = time_function(|| self.deserialize_response(response));
         info!("{}{}", logger::RUST_DESERIALIZATION_MSG, dur.as_nanos());
         self.thread
             .delete_local_ref(*jstring)
             .expect("Deletion failed");
-        answer
+        response
     }
 }
 
@@ -174,14 +174,14 @@ struct QueryForDefValidator<'a> {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ValidationAnswer {
+pub struct ValidationResponse {
     #[serde(rename = "validationErrors")]
     pub validation_errors: Vec<String>,
     #[serde(rename = "parseErrors")]
     pub parse_errors: Vec<String>,
 }
 
-impl ValidationAnswer {
+impl ValidationResponse {
     pub fn validation_passed(&self) -> bool {
         self.validation_errors.is_empty()
     }
@@ -196,11 +196,11 @@ impl ValidationAnswer {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct DefinitionalValAnswer {
+pub struct DefinitionalValResponse {
     serialization_nanos: i64,
     deserialization_nanos: i64,
     validation_nanos: i64,
-    answer: ValidationAnswer,
+    response: ValidationResponse,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance
@@ -237,73 +237,77 @@ impl<'j> DefinitionalValidator<'j> {
             .expect("failed to create Java object for validation query string")
     }
 
-    fn deserialize_answer(&self, answer: JValue) -> ValidationAnswer {
-        let janswer: JString = answer
+    fn deserialize_response(&self, response: JValue) -> ValidationResponse {
+        let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
                 panic!(
                     "expected validate_str to return an Object (String), but it returned {:?}",
-                    answer
+                    response
                 )
             })
             .into();
-        let answer: String = self
+        let response: String = self
             .thread
-            .get_string(janswer)
+            .get_string(jresponse)
             .expect("failed to get JavaStr")
             .into();
         self.thread
-            .delete_local_ref(*janswer)
+            .delete_local_ref(*jresponse)
             .expect("Deletion failed");
-        let d_answer: DefinitionalValAnswer =
-            serde_json::from_str(&answer).unwrap_or_else(|_| {
+        let d_response: DefinitionalValResponse =
+            serde_json::from_str(&response).unwrap_or_else(|_| {
                 panic!(
-                "JSON answer received from the definitional validator was the wrong format:\n{answer}",
+                "JSON response received from the definitional validator was the wrong format:\n{response}",
             )
             });
 
         info!(
             "{}{}",
             logger::JAVA_SERIALIZATION_MSG,
-            d_answer.serialization_nanos
+            d_response.serialization_nanos
         );
         info!(
             "{}{}",
             logger::JAVA_DESERIALIZATION_MSG,
-            d_answer.deserialization_nanos
+            d_response.deserialization_nanos
         );
         info!(
             "{}{}",
             logger::JAVA_VALIDATION_MSG,
-            d_answer.validation_nanos
+            d_response.validation_nanos
         );
 
-        d_answer.answer
+        d_response.response
     }
 
     /// Use the definitional validator to validate the given `policies` given a `schema`
-    pub fn validate(&self, schema: ValidatorSchema, policies: &ast::PolicySet) -> ValidationAnswer {
+    pub fn validate(
+        &self,
+        schema: ValidatorSchema,
+        policies: &ast::PolicySet,
+    ) -> ValidationResponse {
         let (jstring, dur) = time_function(|| self.serialize_query(schema, policies));
         info!("{}{}", logger::RUST_SERIALIZATION_MSG, dur.as_nanos());
-        let answer = self.thread.call_method(
+        let response = self.thread.call_method(
             self.java_def_validator,
             "validate_str",
             // https://stackoverflow.com/questions/8066253/compute-a-java-functions-signature
             "(Ljava/lang/String;)Ljava/lang/String;",
             &[jstring.into()],
         );
-        if answer.is_err() {
+        if response.is_err() {
             self.thread
                 .exception_describe()
                 .expect("Failed to print exception information");
             panic!("JVM Exception Occurred!");
         }
-        let answer: JValue = answer.expect("failed to call Java validate_str");
-        let (answer, dur) = time_function(|| self.deserialize_answer(answer));
+        let response: JValue = response.expect("failed to call Java validate_str");
+        let (response, dur) = time_function(|| self.deserialize_response(response));
         info!("{}{}", logger::RUST_DESERIALIZATION_MSG, dur.as_nanos());
         self.thread
             .delete_local_ref(*jstring)
             .expect("Deletion failed");
-        answer
+        response
     }
 }

@@ -1,6 +1,6 @@
 use crate::collections::HashMap;
 use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request};
-use cedar_policy_core::authorizer::{Answer, Decision};
+use cedar_policy_core::authorizer::{Decision, Response};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_validator::SchemaFragment;
 use serde::Serialize;
@@ -24,7 +24,7 @@ pub fn dump<'a>(
     passes_validation: bool,
     policies: &PolicySet,
     entities: &Entities,
-    requests: impl IntoIterator<Item = (&'a Request, &'a Answer)>,
+    requests: impl IntoIterator<Item = (&'a Request, &'a Response)>,
 ) -> std::io::Result<()> {
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;

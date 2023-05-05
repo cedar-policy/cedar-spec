@@ -1,5 +1,5 @@
 #![no_main]
-use crate::authorizer::AnswerKind;
+use crate::authorizer::ResponseKind;
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
@@ -105,13 +105,13 @@ fn drop_some_entities(entities: Entities, u: &mut Unstructured<'_>) -> arbitrary
     }
 }
 
-/// Check if two `Answer`s are equivalent.
+/// Check if two `Response`s are equivalent.
 /// They are equivalent iff:
 ///   1) They decision is the same
 ///   2) If one decision has any errors, the other decision
 ///      must have at least one error.
 ///      (The error contents and number of errors do not need to be equal)
-fn answers_equiv(a1: Answer, a2: Answer) -> bool {
+fn responses_equiv(a1: Response, a2: Response) -> bool {
     (a1.decision == a2.decision)
         && (a1.diagnostics.errors.is_empty() == a2.diagnostics.errors.is_empty())
 }
@@ -140,12 +140,12 @@ fuzz_target!(|input: FuzzTargetInput| {
         let ans = auth.is_authorized_core(&q, &policyset, &input.entities);
 
         match ans {
-            AnswerKind::FullyEvaluated(ans) => {
+            ResponseKind::FullyEvaluated(ans) => {
                 // Concrete evaluation should also succeed w/out any substitutions
-                let concrete_ans = auth.is_authorized(&q, &policyset, &input.entities);
-                assert!(answers_equiv(ans, concrete_ans));
+                let concrete_res = auth.is_authorized(&q, &policyset, &input.entities);
+                assert!(responses_equiv(ans, concrete_res));
             }
-            AnswerKind::Partial(residual_set) => {
+            ResponseKind::Partial(residual_set) => {
                 let mut subst_set = PolicySet::new();
                 for policy in residual_set.residuals.policies().map(|p: &Policy| {
                     let subst = p.condition().substitute(&mapping).unwrap();
@@ -153,7 +153,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }) {
                     subst_set.add(policy).unwrap();
                 }
-                let final_ans = auth.is_authorized(&q, &subst_set, &input.entities);
+                let final_res = auth.is_authorized(&q, &subst_set, &input.entities);
 
                 let mut concrete_set = PolicySet::new();
                 for policy in policyset.policies().map(|p: &Policy| {
@@ -162,8 +162,8 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }) {
                     concrete_set.add(policy).unwrap();
                 }
-                let concrete_ans = auth.is_authorized(&q, &concrete_set, &input.entities);
-                assert!(answers_equiv(concrete_ans, final_ans));
+                let concrete_res = auth.is_authorized(&q, &concrete_set, &input.entities);
+                assert!(responses_equiv(concrete_res, final_res));
             }
         };
     }

@@ -27,7 +27,7 @@ use cedar_drt::{
 };
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint};
-use cedar_policy_core::authorizer::{Answer, Authorizer, Diagnostics};
+use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::{Entities, TCComputation};
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -416,14 +416,14 @@ impl<'e> DifferentialTester<'e> {
 
     /// Differentially test the given authorization request.
     /// Panics if the two engines do not agree.
-    /// Returns the answer which the engines agree on.
+    /// Returns the response which the engines agree on.
     pub fn run_single_test(
         &self,
         q: &ast::Request,
         policies: &PolicySet,
         entities: &Entities,
-    ) -> Answer {
-        let (rust_ans, rust_auth_dur) =
+    ) -> Response {
+        let (rust_res, rust_auth_dur) =
             time_function(|| self.authorizer.is_authorized(q, policies, entities));
         info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
@@ -431,33 +431,33 @@ impl<'e> DifferentialTester<'e> {
         // For now, we ignore all tests where the Rust side returns an integer
         // overflow error, as the behavior between Rust and Dafny is
         // intentionally different
-        if rust_ans
+        if rust_res
             .diagnostics
             .errors
             .iter()
             .any(|e| e.contains("integer overflow"))
         {
-            return rust_ans;
+            return rust_res;
         }
 
-        // very important that we return the Rust answer, with its rich errors,
+        // very important that we return the Rust response, with its rich errors,
         // in case the caller wants to expect those. (and not the definitional
-        // answer, which as of this writing contains less-rich errors)
-        let ret = rust_ans.clone();
+        // response, which as of this writing contains less-rich errors)
+        let ret = rust_res.clone();
 
-        let definitional_ans = self.def_engine.is_authorized(q, policies, entities);
+        let definitional_res = self.def_engine.is_authorized(q, policies, entities);
         // for now, we expect never to receive errors from the definitional engine,
         // and we otherwise ignore errors in the comparison
-        assert_eq!(definitional_ans.diagnostics.errors, Vec::<String>::new());
-        let rust_ans_for_comparison = Answer {
+        assert_eq!(definitional_res.diagnostics.errors, Vec::<String>::new());
+        let rust_res_for_comparison = Response {
             diagnostics: Diagnostics {
                 errors: Vec::new(),
-                ..rust_ans.diagnostics
+                ..rust_res.diagnostics
             },
-            ..rust_ans
+            ..rust_res
         };
         assert_eq!(
-            rust_ans_for_comparison, definitional_ans,
+            rust_res_for_comparison, definitional_res,
             "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
             &policies, &entities
         );
@@ -468,14 +468,14 @@ impl<'e> DifferentialTester<'e> {
     /// Panics if the two engines do not agree.
     pub fn run_validation(&self, schema: ValidatorSchema, policies: &PolicySet) {
         let validator = Validator::new(schema.clone());
-        let (rust_ans, rust_validation_dur) =
+        let (rust_res, rust_validation_dur) =
             time_function(|| validator.validate(policies, ValidationMode::Permissive));
         info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
 
-        let definitional_ans = self.def_validator.validate(schema.clone(), policies);
+        let definitional_res = self.def_validator.validate(schema.clone(), policies);
 
         assert!(
-            definitional_ans.parsing_succeeded(),
+            definitional_res.parsing_succeeded(),
             "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}",
             &policies,
             schema
@@ -486,7 +486,7 @@ impl<'e> DifferentialTester<'e> {
         // unrecognized entity or action, even if that part of the expression
         // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
         // should be well typed due to short-circuiting).
-        if rust_ans.validation_errors().any(|e| {
+        if rust_res.validation_errors().any(|e| {
             matches!(
                 e.error_kind(),
                 ValidationErrorKind::UnrecognizedEntityType(_)
@@ -497,13 +497,13 @@ impl<'e> DifferentialTester<'e> {
         }
 
         assert_eq!(
-            rust_ans.validation_passed(),
-            definitional_ans.validation_passed(),
+            rust_res.validation_passed(),
+            definitional_res.validation_passed(),
             "Mismatch for Policies:\n{}\nSchema:\n{:?}\nRust response: {:?}\nDafny response: {:?}\n",
             &policies,
             schema,
-            rust_ans,
-            definitional_ans,
+            rust_res,
+            definitional_res,
         );
 
         // TODO: check for a relationship between validation errors.

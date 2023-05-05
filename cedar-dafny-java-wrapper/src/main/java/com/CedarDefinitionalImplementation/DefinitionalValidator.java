@@ -61,7 +61,7 @@ public class DefinitionalValidator {
 		    for (LogTag tag : LogTag.iter()) { 
 			    topLevel.put(tag.toString(), Logger.get().get(tag));
 		    }
-		    topLevel.set("answer", serialResult.get());
+		    topLevel.set("response", serialResult.get());
 		    return mapper.writeValueAsString(topLevel);
 	    } catch (JsonProcessingException e) { 
 		    return "null";

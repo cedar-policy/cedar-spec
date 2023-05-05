@@ -103,13 +103,13 @@ fuzz_target!(|input: FuzzTargetInput| {
             .into_iter()
             .map(Into::into)
             .collect::<Vec<_>>();
-        let mut answers = Vec::with_capacity(queries.len());
+        let mut responses = Vec::with_capacity(queries.len());
         for q in &queries {
             debug!("Q: {q}");
             let (ans, total_dur) =
                 time_function(|| diff_tester.run_single_test(q, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-            answers.push(ans);
+            responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
             // only dump testcases where the policy passes validation
@@ -138,7 +138,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 passes_validation,
                 &policyset,
                 &entities,
-                std::iter::zip(queries.iter(), answers.iter()),
+                std::iter::zip(queries.iter(), responses.iter()),
             )
             .expect("failed to dump test case");
         }

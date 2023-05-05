@@ -85,7 +85,7 @@ fn arbitrary_attrspec(
                             )?;
                         }
                     }
-                    Ok((attr.into(), ty))
+                    Ok((AsRef::<str>::as_ref(&attr).into(), ty))
                 })
                 .collect::<Result<_>>()?,
             additional_attributes: if settings.enable_additional_attributes {
@@ -416,7 +416,7 @@ impl Schema {
             .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
             .map(|id| {
                 Ok((
-                    id.into(),
+                    AsRef::<str>::as_ref(&id).into(),
                     EntityType {
                         member_of_types: vec![],
                         shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
@@ -430,7 +430,10 @@ impl Schema {
         for i in 0..entity_types.len() {
             for name in &entity_type_ids[(i + 1)..] {
                 if u.ratio::<u8>(1, 2)? {
-                    entity_types[i].1.member_of_types.push(name.into());
+                    entity_types[i]
+                        .1
+                        .member_of_types
+                        .push(AsRef::<str>::as_ref(&name).into());
                 }
             }
         }
