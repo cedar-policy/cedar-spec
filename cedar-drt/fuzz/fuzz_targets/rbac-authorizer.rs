@@ -90,7 +90,7 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         serde_json::Value::Object(serde_json::Map::new()),
     )
     .expect("should be a valid request");
-    let rust_ans = authorizer.is_authorized(&q, &policyset, &entities);
+    let rust_res = authorizer.is_authorized(&q, &policyset, &entities);
 
     // check property: there should be an error reported iff we had either PermitError or ForbidError
     let should_error = input
@@ -98,12 +98,12 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         .iter()
         .any(|p| p == &AbstractPolicy::PermitError || p == &AbstractPolicy::ForbidError);
     if should_error {
-        assert!(!rust_ans.diagnostics.errors.is_empty());
+        assert!(!rust_res.diagnostics.errors.is_empty());
     } else {
         // doing the assertion this way, rather than assert!(.is_empty()), gives
         // us a better assertion-failure message (showing what items were
         // present on the LHS)
-        assert_eq!(rust_ans.diagnostics.errors, Vec::<String>::new());
+        assert_eq!(rust_res.diagnostics.errors, Vec::<String>::new());
     }
 
     // check agreement with definitional engine
@@ -111,17 +111,17 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     // and we otherwise ignore errors in the comparison
     let definitional_engine =
         DefinitionalEngine::new().expect("failed to create definitional engine");
-    let definitional_ans = definitional_engine.is_authorized(&q, &policyset, &entities);
-    assert_eq!(definitional_ans.diagnostics.errors, Vec::<String>::new());
-    let rust_ans_for_comparison = Answer {
+    let definitional_res = definitional_engine.is_authorized(&q, &policyset, &entities);
+    assert_eq!(definitional_res.diagnostics.errors, Vec::<String>::new());
+    let rust_res_for_comparison = Response {
         diagnostics: Diagnostics {
             errors: Vec::new(),
-            ..rust_ans.diagnostics
+            ..rust_res.diagnostics
         },
-        ..rust_ans
+        ..rust_res
     };
     assert_eq!(
-        rust_ans_for_comparison, definitional_ans,
+        rust_res_for_comparison, definitional_res,
         "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
         &policyset, &entities
     );

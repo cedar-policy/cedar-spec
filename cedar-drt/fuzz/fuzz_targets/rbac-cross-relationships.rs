@@ -86,10 +86,10 @@ fn test_property(input: FuzzTargetInput) -> std::result::Result<(), String> {
         policyset.add_static(input.policy.into()).unwrap();
 
         let q = ast::Request::from(input.request.clone());
-        let orig_ans = authorizer.is_authorized(&q, &policyset, &entities);
+        let orig_res = authorizer.is_authorized(&q, &policyset, &entities);
 
         // making the `resource` of the request the parent of the
-        // `principal` of the request shouldn't change the answer
+        // `principal` of the request shouldn't change the response
         // (assuming both entities exist)
         let mut mod_hierarchy = input.hierarchy.clone();
         let q = ast::Request::from(input.request.clone());
@@ -106,13 +106,13 @@ fn test_property(input: FuzzTargetInput) -> std::result::Result<(), String> {
 
         let entities = Entities::try_from(mod_hierarchy)
             .map_err(|e| format!("failed to parse hierarchy after modification: {e}"))?;
-        let new_ans = authorizer.is_authorized(&q, &policyset, &entities);
-        if orig_ans != new_ans {
-            return Err(format!("Answer changed when making the request resource the parent of the request principal.\norig answer: {:?}\nnew answer: {:?}", orig_ans, new_ans));
+        let new_res = authorizer.is_authorized(&q, &policyset, &entities);
+        if orig_res != new_res {
+            return Err(format!("Response changed when making the request resource the parent of the request principal.\norig response: {:?}\nnew response: {:?}", orig_res, new_res));
         }
 
         // making the `principal` of the request the parent of the
-        // `resource` of the request shouldn't change the answer
+        // `resource` of the request shouldn't change the response
         // (assuming both entities exist)
         let mut mod_hierarchy = input.hierarchy.clone();
         let q = ast::Request::from(input.request);
@@ -129,9 +129,9 @@ fn test_property(input: FuzzTargetInput) -> std::result::Result<(), String> {
 
         let entities = Entities::try_from(mod_hierarchy)
             .map_err(|e| format!("failed to parse hierarchy after modification: {e}"))?;
-        let new_ans = authorizer.is_authorized(&q, &policyset, &entities);
-        if orig_ans != new_ans {
-            return Err(format!("Answer changed when making the request principal the parent of the request resource.\norig answer: {:?}\nnew answer: {:?}", orig_ans, new_ans));
+        let new_res = authorizer.is_authorized(&q, &policyset, &entities);
+        if orig_res != new_res {
+            return Err(format!("Response changed when making the request principal the parent of the request resource.\norig response: {:?}\nnew response: {:?}", orig_res, new_res));
         }
     }
     Ok(())

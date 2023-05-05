@@ -34,7 +34,7 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
         r: &ast::Request,
         p: &ast::PolicySet,
         e: &entities::Entities,
-    ) -> authorizer::Answer {
+    ) -> authorizer::Response {
         self.def_engine.is_authorized(r, p, e)
     }
 
@@ -43,17 +43,17 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
-        let definitional_ans = self.def_validator.validate(schema.clone(), policies);
+        let definitional_res = self.def_validator.validate(schema.clone(), policies);
         assert!(
-            definitional_ans.parsing_succeeded(),
+            definitional_res.parsing_succeeded(),
             "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}Errors:\n{:?}",
             &policies,
             schema,
-            definitional_ans.parse_errors
+            definitional_res.parse_errors
         );
         IntegrationTestValidationResult {
-            validation_passed: definitional_ans.validation_passed(),
-            validation_errors_debug: format!("{:?}", definitional_ans.validation_errors),
+            validation_passed: definitional_res.validation_passed(),
+            validation_errors_debug: format!("{:?}", definitional_res.validation_errors),
         }
     }
 }

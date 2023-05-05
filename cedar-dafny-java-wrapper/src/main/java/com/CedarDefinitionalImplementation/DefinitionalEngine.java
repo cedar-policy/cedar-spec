@@ -26,7 +26,7 @@ public class DefinitionalEngine {
      *
      * @param json JSON string containing Query and Slice, using the serde
      * serialization of the corresponding Rust objects.
-     * @return JSON string containing Answer
+     * @return JSON string containing Response
      */
     public String isAuthorized_str(String json) {
 	    Timer<Optional<difftest_mhelpers_Compile.Json>> query = new Timer<>(() -> deserializeQuery(json));
@@ -50,7 +50,7 @@ public class DefinitionalEngine {
      *
      * @param json JsonNode containing Query and Slice, using the Rust AST
      * form of the JSON, not the official interchange format.
-     * @return JsonNode containing Answer
+     * @return JsonNode containing Response
      */
     public String isAuthorized_json(difftest_mhelpers_Compile.Json json) {
 	    try { 
@@ -62,7 +62,7 @@ public class DefinitionalEngine {
 		    for (LogTag tag : LogTag.iter()) { 
 			    topLevel.put(tag.toString(), Logger.get().get(tag));
 		    }
-		    topLevel.set("answer", serialResult.get());
+		    topLevel.set("response", serialResult.get());
 		    return mapper.writeValueAsString(topLevel);
 	    } catch (JsonProcessingException e) { 
 		    return "null";
