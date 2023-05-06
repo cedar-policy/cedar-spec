@@ -4,6 +4,7 @@ include "typechecker.dfy"
 include "types.dfy"
 include "util.dfy"
 
+// This module contains the specification of Cedar's validator.
 module validation.validator {
   import opened def.base
   import opened def.core
@@ -18,12 +19,12 @@ module validation.validator {
     actionIds: map<EntityUID, TypecheckerActionId>
   ) {
 
-    // Return every schema-defined query environment
-    function allQueryTypes(): set<QueryType> {
+    // Return every schema-defined request type
+    function allRequestTypes(): set<RequestType> {
       set a,p,r | a in actionIds.Keys &&
                   p in actionIds[a].appliesTo.principalApplySpec &&
                   r in actionIds[a].appliesTo.resourceApplySpec ::
-        QueryType(p, a, r, actionIds[a].context)
+        RequestType(p, a, r, actionIds[a].context)
     }
 
     // Generate an EntityTypeStore
@@ -67,18 +68,18 @@ module validation.validator {
       // for every policy p
       while pset != {} {
         var p :| p in pset;
-        var qts := schema.allQueryTypes();
+        var reqtys := schema.allRequestTypes();
         var ets := schema.makeEntityTypeStore();
         var acts := schema.makeActionStore();
-        // for every possible query environment env
+        // for every possible request type
         var allFalse := true;
-        while qts != {} {
-          var qt :| qt in qts;
-          var typechecker := Typechecker(ets, acts, qt);
+        while reqtys != {} {
+          var reqty :| reqty in reqtys;
+          var typechecker := Typechecker(ets, acts, reqty);
           // substitute Action variable for a literal EUID
-          var body := substitute(p.condition(), Action, qt.action);
+          var condition := substitute(p.toExpr(), Action, reqty.action);
           // check that p is a bool-typed expression under env
-          var answer := typechecker.check(body, Type.Bool(AnyBool));
+          var answer := typechecker.typecheck(condition, Type.Bool(AnyBool));
           match answer {
             case Ok(Bool(False)) => {}
             case Ok(_) => allFalse := false;
@@ -86,7 +87,7 @@ module validation.validator {
               allFalse := false;
               errs := errs + [e];
           }
-          qts := qts - { qt };
+          reqtys := reqtys - { reqty };
         }
         // is the policy False under all envs?
         if allFalse {

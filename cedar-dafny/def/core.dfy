@@ -18,7 +18,16 @@ module def.core {
 
   // ----- Values ----- //
 
-  datatype EntityType = EntityType(id: Name)
+  datatype EntityType = EntityType(id: Name) {
+    // CedarCore has an EntityType with "concrete" and "unspecified"
+    // alternatives, but making that change right now would break too much of
+    // CedarDafny. Instead, in places where we need to handle "unspecified
+    // entities" specially, we represent them using this sentinel type name. In
+    // places where we can get away with treating unspecified entities the same
+    // as others, we do.
+    static const UNSPECIFIED := EntityType(Name.fromStr("<Unspecified>"))
+  }
+
   datatype EntityUID = EntityUID(ty: EntityType, eid: string)
 
   // We specify field names in Primitive and Value for convenience of extracting
@@ -39,8 +48,8 @@ module def.core {
     static function Bool(b: bool): Value {
       Primitive(Primitive.Bool(b))
     }
-    static const True := Bool(true)
-    static const False := Bool(false)
+    static const TRUE := Bool(true)
+    static const FALSE := Bool(false)
 
     static function Int(i: int): Value {
       Primitive(Primitive.Int(i))
@@ -121,7 +130,7 @@ module def.core {
       Coerce(Value.String, Value.asString),
       Coerce(Value.Ext,    Value.asExt))
 
-  const ExtFuns: map<Name, ext.fun.ExtFun<Value>> := ext.register(coerce);
+  const extFuns: map<Name, ext.fun.ExtFun<Value>> := ext.register(coerce);
 
   // ----- Expressions ----- //
 
@@ -151,7 +160,7 @@ module def.core {
     Record(fvs: seq<(Attr, Expr)>) |
     Call(name: Name, args: seq<Expr>)
 
-  // ----- Policies, queries, stores, and answers ----- //
+  // ----- Policies, requests, stores, and responses ----- //
 
   datatype Effect = Permit | Forbid
 
@@ -162,16 +171,16 @@ module def.core {
     principalScope: PrincipalScope,
     actionScope: ActionScope,
     resourceScope: ResourceScope,
-    body: Expr)
+    condition: Expr)
   {
-    function condition(): Expr {
+    function toExpr(): Expr {
       Expr.And(
         principalScope.toExpr(),
         Expr.And(
           actionScope.toExpr(),
           Expr.And(
             resourceScope.toExpr(),
-            body)))
+            condition)))
     }
   }
 
@@ -214,11 +223,11 @@ module def.core {
     }
   }
 
-  datatype Query =
-    Query(principal: EntityUID,
-          action: EntityUID,
-          resource: EntityUID,
-          context: Record)
+  datatype Request =
+    Request(principal: EntityUID,
+            action: EntityUID,
+            resource: EntityUID,
+            context: Record)
 
   datatype EntityData = EntityData(attrs: Record, ancestors: set<EntityUID>)
 
@@ -248,9 +257,9 @@ module def.core {
 
   datatype Store = Store(entities: EntityStore, policies: PolicyStore)
 
-  // ----- Authorization answer ----- //
+  // ----- Authorization response ----- //
 
-  datatype Answer = Answer(decision: Decision, policies: set<PolicyID>)
+  datatype Response = Response(decision: Decision, policies: set<PolicyID>)
 
   datatype Decision = Allow | Deny
 }

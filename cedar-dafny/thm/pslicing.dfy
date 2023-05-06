@@ -24,13 +24,13 @@ module pslicing {
       principal: Option<EntityUID>,
       resource: Option<EntityUID>)
   {
-    predicate satisfiedBy(query: Query, store: EntityStore)
+    predicate satisfiedBy(request: Request, store: EntityStore)
     {
-      var eval := Evaluator(query, store);
+      var eval := Evaluator(request, store);
       (principal.None? ||
-       eval.entityInEntity(query.principal, principal.value)) &&
+       eval.entityInEntity(request.principal, principal.value)) &&
       (resource.None? ||
-       eval.entityInEntity(query.resource, resource.value))
+       eval.entityInEntity(request.resource, resource.value))
     }
   }
 
@@ -46,9 +46,9 @@ module pslicing {
   // case that the policy implies the membership of the principal or resource
   // variable in the corresponding target entities.
   ghost predicate isSoundTarget(tgt: Target, p: Policy) {
-    forall query: Query, store: EntityStore |
-      Evaluator(query, store).interpret(p.condition()) == Ok(Value.True) ::
-      tgt.satisfiedBy(query, store)
+    forall request: Request, store: EntityStore |
+      Evaluator(request, store).interpret(p.toExpr()) == Ok(Value.TRUE) ::
+      tgt.satisfiedBy(request, store)
   }
 
   // A target analysis is sound if it produces sound targets for all policies.
@@ -56,15 +56,15 @@ module pslicing {
     forall p: Policy :: isSoundTarget(ta(p), p)
   }
 
-  // Takes a target analysis, query, and principal / resource ancestors, and
+  // Takes a target analysis, request, and principal / resource ancestors, and
   // returns a slicer that can be passed as input to slicePolicies.
   function targetSlicer(
     ta: TargetAnalysis,
-    query: Query,
+    request: Request,
     store: EntityStore):
     Slicer
   {
-    (p: Policy) => ta(p).satisfiedBy(query, store)
+    (p: Policy) => ta(p).satisfiedBy(request, store)
   }
 
   function slicePolicies(
@@ -84,32 +84,32 @@ module pslicing {
 
   // When based on a sound target analysis, policy slicing returns a
   // sound policy slice.
-  lemma TargetBasedSlicingIsSound(ta: TargetAnalysis, query: Query, slice: Store, store: Store)
+  lemma TargetBasedSlicingIsSound(ta: TargetAnalysis, request: Request, slice: Store, store: Store)
     requires isSoundTargetAnalysis(ta)
     requires slice.entities == store.entities
-    requires slice.policies == slicePolicies(store.policies, targetSlicer(ta, query, store.entities))
-    ensures isSoundSliceForQuery(query, slice, store)
+    requires slice.policies == slicePolicies(store.policies, targetSlicer(ta, request, store.entities))
+    ensures isSoundSliceForRequest(request, slice, store)
   {
     forall pid | pid in store.policies.policies.Keys && pid !in slice.policies.policies.Keys
     {
-      TargetBasedSlicingIsSoundAux(pid, ta(store.policies.policies[pid]), query, store);
+      TargetBasedSlicingIsSoundAux(pid, ta(store.policies.policies[pid]), request, store);
     }
   }
 
-  lemma TargetBasedSlicingIsSoundAux(pid: PolicyID, tgt: Target, query: Query, store: Store)
+  lemma TargetBasedSlicingIsSoundAux(pid: PolicyID, tgt: Target, request: Request, store: Store)
     requires pid in store.policies.policies.Keys
     requires isSoundTarget(tgt, store.policies.policies[pid])
-    requires !tgt.satisfiedBy(query, store.entities)
-    ensures !Authorizer(query, store).isInForce(pid)
+    requires !tgt.satisfiedBy(request, store.entities)
+    ensures !Authorizer(request, store).satisfied(pid)
   {
-    var eval := Evaluator(query, store.entities);
+    var eval := Evaluator(request, store.entities);
     var p := store.policies.policies[pid];
     assert
       (tgt.principal.Some? &&
-       !eval.entityInEntity(query.principal, tgt.principal.value)) ||
+       !eval.entityInEntity(request.principal, tgt.principal.value)) ||
       (tgt.resource.Some? &&
-       !eval.entityInEntity(query.resource, tgt.resource.value));
-    assert eval.interpret(p.condition()) != Ok(Value.True);
+       !eval.entityInEntity(request.resource, tgt.resource.value));
+    assert eval.interpret(p.toExpr()) != Ok(Value.TRUE);
   }
 
   // ----- Soundness of policy slicing based on policy head targets ----- //
@@ -120,45 +120,45 @@ module pslicing {
       if p.resourceScope.scope.Any? then None else Some(p.resourceScope.scope.entity))
   }
 
-  function headBasedPolicySlice(query: Query, store: Store): PolicyStore {
-    slicePolicies(store.policies, targetSlicer(headBasedTarget, query, store.entities))
+  function headBasedPolicySlice(request: Request, store: Store): PolicyStore {
+    slicePolicies(store.policies, targetSlicer(headBasedTarget, request, store.entities))
   }
 
-  lemma AuthorizationIsCorrectForHeadBasedPolicySlicing(query: Query, slice: Store, store: Store)
+  lemma AuthorizationIsCorrectForHeadBasedPolicySlicing(request: Request, slice: Store, store: Store)
     requires slice.entities == store.entities
-    requires slice.policies == headBasedPolicySlice(query, store)
-    ensures Authorizer(query, slice).isAuthorized() == Authorizer(query, store).isAuthorized()
+    requires slice.policies == headBasedPolicySlice(request, store)
+    ensures Authorizer(request, slice).isAuthorized() == Authorizer(request, store).isAuthorized()
   {
-    HeadBasedSlicingIsSound(query, slice, store);
-    AuthorizationIsCorrectForSoundSlicing(query, slice, store);
+    HeadBasedSlicingIsSound(request, slice, store);
+    AuthorizationIsCorrectForSoundSlicing(request, slice, store);
   }
 
-  lemma HeadBasedSlicingIsSound(query: Query, slice: Store, store: Store)
+  lemma HeadBasedSlicingIsSound(request: Request, slice: Store, store: Store)
     requires slice.entities == store.entities
-    requires slice.policies == headBasedPolicySlice(query, store)
-    ensures isSoundSliceForQuery(query, slice, store)
+    requires slice.policies == headBasedPolicySlice(request, store)
+    ensures isSoundSliceForRequest(request, slice, store)
   {
-    forall p: Policy, q: Query, s: EntityStore |
-      Evaluator(q, s).interpret(p.condition()) == Ok(Value.True)
+    forall p: Policy, q: Request, s: EntityStore |
+      Evaluator(q, s).interpret(p.toExpr()) == Ok(Value.TRUE)
     {
       HeadBasedTargetIsSound(p, q, s);
     }
-    TargetBasedSlicingIsSound(headBasedTarget, query, slice, store);
+    TargetBasedSlicingIsSound(headBasedTarget, request, slice, store);
   }
 
-  lemma HeadBasedTargetIsSound(p: Policy, query: Query, store: EntityStore)
-    requires Evaluator(query, store).interpret(p.condition()) == Ok(Value.True)
+  lemma HeadBasedTargetIsSound(p: Policy, request: Request, store: EntityStore)
+    requires Evaluator(request, store).interpret(p.toExpr()) == Ok(Value.TRUE)
     ensures
       var tgt := headBasedTarget(p);
-      tgt.satisfiedBy(query, store)
+      tgt.satisfiedBy(request, store)
   {
     var tgt := headBasedTarget(p);
-    var eval := Evaluator(query, store);
+    var eval := Evaluator(request, store);
     PolicyConditionImpliesHead(p, eval);
     if tgt.principal.Some? {
       EntityInOrEqEntitySemantics(
         Var(Var.Principal),
-        eval.query.principal,
+        eval.request.principal,
         PrimitiveLit(Primitive.EntityUID(p.principalScope.scope.entity)),
         p.principalScope.scope.entity,
         eval);
@@ -166,7 +166,7 @@ module pslicing {
     if tgt.resource.Some? {
       EntityInOrEqEntitySemantics(
         Var(Var.Resource),
-        eval.query.resource,
+        eval.request.resource,
         PrimitiveLit(Primitive.EntityUID(p.resourceScope.scope.entity)),
         p.resourceScope.scope.entity,
         eval);
@@ -174,29 +174,29 @@ module pslicing {
   }
 
   lemma PolicyConditionImpliesHead(p: Policy, eval: Evaluator)
-    requires eval.interpret(p.condition()) == Ok(Value.True)
-    ensures eval.interpret(p.principalScope.toExpr()) == Ok(Value.True)
-    ensures eval.interpret(p.resourceScope.toExpr()) == Ok(Value.True)
+    requires eval.interpret(p.toExpr()) == Ok(Value.TRUE)
+    ensures eval.interpret(p.principalScope.toExpr()) == Ok(Value.TRUE)
+    ensures eval.interpret(p.resourceScope.toExpr()) == Ok(Value.TRUE)
   {
-    var e1 := And(p.resourceScope.toExpr(), p.body);
+    var e1 := And(p.resourceScope.toExpr(), p.condition);
     var e2 := And(p.actionScope.toExpr(), e1);
     AndSemantics(p.principalScope.toExpr(), e2, eval);
     AndSemantics(p.actionScope.toExpr(), e1, eval);
-    AndSemantics(p.resourceScope.toExpr(), p.body, eval);
+    AndSemantics(p.resourceScope.toExpr(), p.condition, eval);
   }
 
   lemma EntityInOrEqEntitySemantics(x1: Expr, e1: EntityUID, x2: Expr, e2: EntityUID, eval: Evaluator)
     requires eval.interpret(x1) == Ok(Value.EntityUID(e1))
     requires eval.interpret(x2) == Ok(Value.EntityUID(e2))
     requires
-      eval.interpret(BinaryApp(BinaryOp.In, x1, x2)) == Ok(Value.True) ||
-      eval.interpret(BinaryApp(BinaryOp.Eq, x1, x2)) == Ok(Value.True)
+      eval.interpret(BinaryApp(BinaryOp.In, x1, x2)) == Ok(Value.TRUE) ||
+      eval.interpret(BinaryApp(BinaryOp.Eq, x1, x2)) == Ok(Value.TRUE)
     ensures eval.entityInEntity(e1, e2)
   { }
 
   lemma AndSemantics(e1: Expr, e2: Expr, eval: Evaluator)
-    requires eval.interpret(And(e1, e2)) == Ok(Value.True)
-    ensures eval.interpret(e1) == Ok(Value.True)
-    ensures eval.interpret(e2) == Ok(Value.True)
+    requires eval.interpret(And(e1, e2)) == Ok(Value.TRUE)
+    ensures eval.interpret(e1) == Ok(Value.TRUE)
+    ensures eval.interpret(e2) == Ok(Value.TRUE)
   { }
 }

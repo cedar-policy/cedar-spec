@@ -281,7 +281,6 @@ module def.ext.ipaddr.parseIPAddr {
   }
 
   // Parse a group of number in strict dotted decimal format
-  // Reference: https://amzn-aws.slack.com/archives/C03F43MBX3N/p1669675589698299?thread_ts=1669438628.873759&cid=C03F43MBX3N
   function parseNumV4(s: string): (res: Option<(numV4, string)>)
   {
     match ParseDecStr(s) {

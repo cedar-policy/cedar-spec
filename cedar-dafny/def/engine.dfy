@@ -7,7 +7,7 @@ module def.engine {
   import opened core
   import opened wildcard
 
-  datatype Authorizer = Authorizer(query: Query, store: Store) {
+  datatype Authorizer = Authorizer(request: Request, store: Store) {
 
     // Only isAuthorized is considered a public API, but we have to expose the
     // intermediate steps in order to write intermediate tests so that we can
@@ -15,28 +15,28 @@ module def.engine {
     // Dafny will evaluate in one step.
 
     function evaluator(): Evaluator {
-      Evaluator(query, store.entities)
+      Evaluator(request, store.entities)
     }
 
     function evaluate(pid: PolicyID): Result<Value>
       requires pid in store.policies.policies
     {
-      evaluator().interpret(store.policies.policies[pid].condition())
+      evaluator().interpret(store.policies.policies[pid].toExpr())
     }
 
-    predicate isInForce(pid: PolicyID)
+    predicate satisfied(pid: PolicyID)
       requires pid in store.policies.policies
     {
-      evaluate(pid) == Ok(Value.True)
+      evaluate(pid) == Ok(Value.TRUE)
     }
 
-    function policiesInForce(): set<PolicyID> {
+    function satisfiedPolicies(): set<PolicyID> {
       set pid | pid in store.policies.policies.Keys &&
-                isInForce(pid)
+                satisfied(pid)
     }
 
     function forbids(): set<PolicyID> {
-      set pid | pid in policiesInForce() &&
+      set pid | pid in satisfiedPolicies() &&
                 store.policies.policies[pid].effect == Forbid
     }
 
@@ -46,31 +46,31 @@ module def.engine {
     // consistent with the definitions in the version of the language
     // specification without overrides.
     function permits(): set<PolicyID> {
-      set pid | pid in policiesInForce() &&
+      set pid | pid in satisfiedPolicies() &&
                 store.policies.policies[pid].effect == Permit
     }
 
-    function isAuthorized(): Answer {
+    function isAuthorized(): Response {
       var f := forbids();
       var p := permits();
       if f == {} && p != {} then
-        Answer(Allow, p)
+        Response(Allow, p)
       else
-        Answer(Deny, f)
+        Response(Deny, f)
     }
   }
 
-  datatype Evaluator = Evaluator(query: Query, store: EntityStore) {
+  datatype Evaluator = Evaluator(request: Request, store: EntityStore) {
 
     function interpret(expr: Expr): Result<Value> {
       match expr {
         case PrimitiveLit(p) => Ok(Primitive(p))
         case Var(v) =>
           match v {
-            case Principal => Ok(Value.EntityUID(query.principal))
-            case Action => Ok(Value.EntityUID(query.action))
-            case Resource => Ok(Value.EntityUID(query.resource))
-            case Context => Ok(Value.Record(query.context))
+            case Principal => Ok(Value.EntityUID(request.principal))
+            case Action => Ok(Value.EntityUID(request.action))
+            case Resource => Ok(Value.EntityUID(request.resource))
+            case Context => Ok(Value.Record(request.context))
           }
         case If(e_cond, e_true, e_false) =>
           var v_cond :- interpret(e_cond);
@@ -108,9 +108,9 @@ module def.engine {
     }
 
     static function applyExtFun(name: Name, args: seq<Value>): Result<Value> {
-      if name in ExtFuns.Keys
+      if name in extFuns.Keys
       then
-        var fn := ExtFuns[name];
+        var fn := extFuns[name];
         fn.fun(args)
       else Err(NoSuchFunctionError)
     }

@@ -22,7 +22,7 @@ module def.templates {
   // Currently, this is just the set of slot IDs, but in the future, if we
   // support slots in `when` clauses, we might need to distinguish between slots
   // in the policy head (which can only be filled with entity UIDs if we want
-  // the instantiated policy to be syntactically valid) and slots in `when`
+  // the template-linked policy to be syntactically valid) and slots in `when`
   // clauses (which can be filled with any Cedar value as far as the runtime
   // semantics is concerned).
   type SlotReqs = set<SlotId>
@@ -73,7 +73,7 @@ module def.templates {
     principalScope: PrincipalScopeTemplate,
     actionScope: ActionScope,
     resourceScope: ResourceScopeTemplate,
-    body: Expr)
+    condition: Expr)
   {
     function slotReqs(): SlotReqs {
       combineSlotReqs(principalScope.slotReqs(), resourceScope.slotReqs())
@@ -123,25 +123,25 @@ module def.templates {
   // Corresponds to production `Policy`. In the definitional engine, the
   // datatype for a non-template policy body has a much stronger claim to the
   // `Policy` name.
-  datatype PolicyInstance =
-    PolicyInstance(tid: PolicyTemplateID, slotEnv: SlotEnv)
+  datatype TemplateLinkedPolicy =
+    TemplateLinkedPolicy(tid: PolicyTemplateID, slotEnv: SlotEnv)
 
   datatype TemplatedPolicyStoreUnvalidated = TemplatedPolicyStore(
     templates: map<PolicyTemplateID, PolicyTemplate>,
-    instances: map<PolicyID, PolicyInstance>) {
+    linkedPolicies: map<PolicyID, TemplateLinkedPolicy>) {
     predicate isValid() {
       // Note: The production engine requires that each zero-slot template has
       // exactly one instance because a violation of that property is almost
       // certainly a mistake, but we don't enforce this in the definitional
       // engine because it would add complexity for no benefit.
-      forall iid <- instances.Keys ::
-        instances[iid].tid in templates.Keys &&
+      forall iid <- linkedPolicies.Keys ::
+        linkedPolicies[iid].tid in templates.Keys &&
         // Note: As in the production engine, this is a stronger condition than
-        // `slotEnvSatisfiesReqs(instances[iid].slotEnv, templates[instances[iid].tid].slotReqs())`:
-        // for uniformity, we require all instances of a given template to
+        // `slotEnvSatisfiesReqs(linkedPolicies[iid].slotEnv, templates[linkedPolicies[iid].tid].slotReqs())`:
+        // for uniformity, we require all linked policies of a given template to
         // define exactly the slots actually referenced in the template and no
         // more.
-        instances[iid].slotEnv.Keys == templates[instances[iid].tid].slotReqs()
+        linkedPolicies[iid].slotEnv.Keys == templates[linkedPolicies[iid].tid].slotReqs()
     }
   }
   type TemplatedPolicyStore = tps: TemplatedPolicyStoreUnvalidated | tps.isValid()
@@ -149,17 +149,17 @@ module def.templates {
 
   datatype TemplatedStore = TemplatedStore(entities: EntityStore, policies: TemplatedPolicyStore)
 
-  // ----- Code to instantiate templated data structures ----- //
+  // ----- Code to link templated data structures ----- //
 
   // Group all the functions that take a `slotEnv` parameter into a single
   // datatype to save us the boilerplate of passing the parameter along
   // explicitly.
-  datatype Instantiator = Instantiator(slotEnv: SlotEnv) {
+  datatype Linker = Linker(slotEnv: SlotEnv) {
     predicate reqsSatisfied(sr: SlotReqs) {
       slotEnvSatisfiesReqs(slotEnv, sr)
     }
 
-    function instantiateEntityUIDOrSlot(es: EntityUIDOrSlot): EntityUID
+    function linkEntityUIDOrSlot(es: EntityUIDOrSlot): EntityUID
       requires reqsSatisfied(es.slotReqs())
     {
       match es {
@@ -168,48 +168,48 @@ module def.templates {
       }
     }
 
-    function instantiateScope(st: ScopeTemplate): Scope
+    function linkScope(st: ScopeTemplate): Scope
       requires reqsSatisfied(st.slotReqs())
     {
       match st {
         case Any => Scope.Any
-        case In(e) => Scope.In(instantiateEntityUIDOrSlot(e))
-        case Eq(e) => Scope.Eq(instantiateEntityUIDOrSlot(e))
+        case In(e) => Scope.In(linkEntityUIDOrSlot(e))
+        case Eq(e) => Scope.Eq(linkEntityUIDOrSlot(e))
       }
     }
 
-    function instantiatePrincipalScope(pst: PrincipalScopeTemplate): PrincipalScope
+    function linkPrincipalScope(pst: PrincipalScopeTemplate): PrincipalScope
       requires reqsSatisfied(pst.slotReqs())
     {
-      PrincipalScope(instantiateScope(pst.scope))
+      PrincipalScope(linkScope(pst.scope))
     }
 
-    function instantiateResourceScope(rst: ResourceScopeTemplate): ResourceScope
+    function linkResourceScope(rst: ResourceScopeTemplate): ResourceScope
       requires reqsSatisfied(rst.slotReqs())
     {
-      ResourceScope(instantiateScope(rst.scope))
+      ResourceScope(linkScope(rst.scope))
     }
 
-    function instantiatePolicy(pt: PolicyTemplate): Policy
+    function linkPolicy(pt: PolicyTemplate): Policy
       requires reqsSatisfied(pt.slotReqs())
     {
       Policy(
         pt.effect,
-        instantiatePrincipalScope(pt.principalScope),
+        linkPrincipalScope(pt.principalScope),
         pt.actionScope,
-        instantiateResourceScope(pt.resourceScope),
-        pt.body)
+        linkResourceScope(pt.resourceScope),
+        pt.condition)
     }
   }
 
-  function instantiatePolicyStore(tps: TemplatedPolicyStore): PolicyStore {
+  function linkPolicyStore(tps: TemplatedPolicyStore): PolicyStore {
     PolicyStore(
-      map iid <- tps.instances.Keys ::
-        (var inst := tps.instances[iid];
-         Instantiator(inst.slotEnv).instantiatePolicy(tps.templates[inst.tid])))
+      map iid <- tps.linkedPolicies.Keys ::
+        (var inst := tps.linkedPolicies[iid];
+         Linker(inst.slotEnv).linkPolicy(tps.templates[inst.tid])))
   }
 
-  function instantiateStore(ts: TemplatedStore): Store {
-    Store(ts.entities, instantiatePolicyStore(ts.policies))
+  function linkStore(ts: TemplatedStore): Store {
+    Store(ts.entities, linkPolicyStore(ts.policies))
   }
 }
