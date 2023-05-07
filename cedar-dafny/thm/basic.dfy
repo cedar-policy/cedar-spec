@@ -27,7 +27,7 @@ module basic {
   }
 
   lemma AllowedIfExplicitlyPermitted(request: Request, store: Store)
-    ensures // A request is allowed only if it is explictly permitted.
+    ensures // A request is allowed only if it is explicitly permitted.
       Authorizer(request, store).isAuthorized().decision == Allow ==>
         IsExplicitlyPermitted(request, store)
   { }
