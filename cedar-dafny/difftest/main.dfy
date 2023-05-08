@@ -275,7 +275,7 @@ module difftest.main {
   function exprToValue(expr: Expr): FromProdResult<Value> {
     match evaluate(expr) {
       case Some(v) => Ok(v)
-      case None => Err({UnexpectedFromProdErr("Attribute values must be restricted expressions")})
+      case None => Err({InvalidAttrVal})
     }
   }
 
@@ -351,7 +351,7 @@ module difftest.main {
     var ansAndErrors := match answer {
       case Ok(ans) => (ans, {})
       case Err(errs) =>
-        (Response(Deny, {}), set e | e in errs :: e.desc)
+        (Response(Deny, {}), set e | e in errs && e.UnexpectedFromProdErr? :: e.desc)
     };
     response := responseToProdJson(ansAndErrors.0, ansAndErrors.1);
   }
@@ -496,8 +496,7 @@ module difftest.main {
     var res := validateJson1(request);
     var resAndErrors := match res {
       case Ok(res1) => (res1, {})
-      case Err(errs) => ([], set e | e in errs :: e.desc
-      )};
+      case Err(errs) => ([], set e | e in errs && e.UnexpectedFromProdErr? :: e.desc)};
     response := validationResToProdJson(resAndErrors.0, resAndErrors.1);
   }
 }
