@@ -227,18 +227,30 @@ impl From<RBACPolicy> for StaticPolicy {
 
 impl RBACPolicy {
     pub fn arbitrary_for_hierarchy(
+        fixed_id_opt: Option<PolicyID>,
         hierarchy: &super::Hierarchy,
+        allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
-        let id = u.arbitrary()?;
+        let id = if let Some(fixed_id) = fixed_id_opt {
+            fixed_id
+        } else {
+            u.arbitrary()?
+        };
         let annotations = u.arbitrary()?;
         let effect = u.arbitrary()?;
-        let principal_constraint =
-            super::PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, u)?;
+        let principal_constraint = super::PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
+            hierarchy,
+            allow_slots,
+            u,
+        )?;
         let action_constraint =
             super::ActionConstraint::arbitrary_for_hierarchy(hierarchy, u, Some(3))?;
-        let resource_constraint =
-            super::PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, u)?;
+        let resource_constraint = super::PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
+            hierarchy,
+            allow_slots,
+            u,
+        )?;
         Ok(Self(super::GeneratedPolicy {
             id,
             annotations,
@@ -251,13 +263,21 @@ impl RBACPolicy {
     }
 
     /// size hint for arbitrary_for_hierarchy()
-    pub fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
+    pub fn arbitrary_size_hint(
+        have_fixed_id: bool,
+        allow_slots: bool,
+        depth: usize,
+    ) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
-            <PolicyID as Arbitrary>::size_hint(depth),
+            if have_fixed_id {
+                (0, Some(0))
+            } else {
+                <PolicyID as Arbitrary>::size_hint(depth)
+            },
             <Effect as Arbitrary>::size_hint(depth),
-            super::PrincipalOrResourceConstraint::arbitrary_size_hint(depth),
+            super::PrincipalOrResourceConstraint::arbitrary_size_hint(allow_slots, depth),
             super::ActionConstraint::arbitrary_size_hint(depth),
-            super::PrincipalOrResourceConstraint::arbitrary_size_hint(depth),
+            super::PrincipalOrResourceConstraint::arbitrary_size_hint(allow_slots, depth),
         ])
     }
 }
