@@ -43,7 +43,11 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
-        let definitional_res = self.def_validator.validate(schema.clone(), policies);
+        let definitional_res = self.def_validator.validate(
+            schema.clone(),
+            policies,
+            cedar_policy_validator::ValidationMode::default(),
+        );
         assert!(
             definitional_res.parsing_succeeded(),
             "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}Errors:\n{:?}",

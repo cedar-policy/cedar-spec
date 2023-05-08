@@ -48,18 +48,6 @@ test = false
 doc = false
 
 [[bin]]
-name = "rbac-cross-relationships"
-path = "fuzz_targets/rbac-cross-relationships.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "rbac-basic-results"
-path = "fuzz_targets/rbac-basic-results.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "abac"
 path = "fuzz_targets/abac.rs"
 test = false
@@ -102,8 +90,20 @@ test = false
 doc = false
 
 [[bin]]
+name = "validation-drt-type-directed"
+path = "fuzz_targets/validation-drt-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "simple-parser"
 path = "fuzz_targets/simple-parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "strict-validation-drt-type-directed"
+path = "fuzz_targets/strict-validation-drt-type-directed.rs"
 test = false
 doc = false
 
