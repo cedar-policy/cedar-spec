@@ -119,7 +119,7 @@ module difftest.helpers {
    * implementations).
    */
 
-  datatype FromProdErr = UnexpectedFromProdErr(desc: string)
+  datatype FromProdErr = UnexpectedFromProdErr(desc: string) | InvalidAttrVal
   type FromProdResult<T> = std.Result<T, set<FromProdErr>>
 
   // ----- Helpers to extract pieces of data from JSON -----

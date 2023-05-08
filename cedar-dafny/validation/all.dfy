@@ -1,3 +1,4 @@
+include "strict.dfy"
 include "subtyping.dfy"
 include "typechecker.dfy"
 include "types.dfy"
