@@ -70,6 +70,5 @@ fuzz_target!(|input: FuzzTargetInput| {
         let (_, total_dur) = time_function(|| diff_tester.run_validation(schema, &policyset));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 
-        // TODO: record statistics about whether a policy validated vs. didn't validate
     }
 });

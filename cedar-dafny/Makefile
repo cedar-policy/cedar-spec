@@ -15,7 +15,6 @@ clean:
 
 export DOTNET_CLI_TELEMETRY_OPTOUT := 1
 
-# TODO: Document why we do this?
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT := 1
 
 # Make `dotnet` install Dafny into the current directory instead of the user's
@@ -81,7 +80,6 @@ test: $(TEST_SOURCES)
 #   `-java`. Dafny also generates a jar at the `/out` path plus `.jar`. We set
 #   the `DIFFTEST_*` variables below accordingly.
 #
-# - TODO: Figure out what to do about this:
 # - We copy the Java source files to
 #   $(PACKAGE_BUILD_ROOT)/private/gradle/generated/java/main as a hack to make
 #   Bemol detect them so it doesn't report errors on references to them from
