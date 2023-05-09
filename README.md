@@ -12,7 +12,7 @@ This repository contains the Dafny formalization of Cedar and infrastructure for
 
 To build the Dafny formalization and proofs:
 
-* Install Dafny version 4.0 and Z3 version 4.12.1, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL#building-and-developing-from-source-code). Ensure that Z3 is on your path.
+* Install Dafny 4, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL). Our proofs expect Z3 version 4.12.1, so if you have another copy of Z3 installed locally, you may need to adjust your PATH.
 * `cd cedar-dafny && make`
 
 To build the DRT framework:
