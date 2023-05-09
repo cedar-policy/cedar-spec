@@ -17,7 +17,7 @@ struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
+    match_types: true,
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,
@@ -68,7 +68,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         // run the policy through both validators and compare the result
         let diff_tester = DifferentialTester::new();
         let (_, total_dur) = time_function(|| {
-            diff_tester.run_validation(schema, &policyset, ValidationMode::Permissive)
+            diff_tester.run_validation(schema, &policyset, ValidationMode::Strict)
         });
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }

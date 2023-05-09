@@ -54,7 +54,7 @@ module validation.subtyping {
     lub1.union(lub2)
   }
 
-  function lubAttrType(a1: AttrType, a2: AttrType) : AttrType
+  function lubAttrType(a1: AttrType, a2: AttrType): AttrType
     requires lubOpt(a1.ty, a2.ty).Ok?
   {
     AttrType(lubOpt(a1.ty, a2.ty).value, a1.isRequired && a2.isRequired)
@@ -122,7 +122,7 @@ module validation.subtyping {
     ensures subty(t,t)
   {}
 
-  lemma SubtyRecordTypeRefl(rt : RecordType)
+  lemma SubtyRecordTypeRefl(rt: RecordType)
     ensures subtyRecordType(rt, rt)
   {
     forall k | k in rt.Keys ensures subtyAttrType(rt[k], rt[k]) {
