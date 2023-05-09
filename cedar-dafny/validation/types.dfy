@@ -60,11 +60,11 @@ module validation.types {
   datatype ExtFunType = ExtFunType(args: seq<Type>, ret: Type, check: Option<seq<Expr> -> Result<()>>)
 
   datatype Type =
-    Never |
+    Never | // used to type the empty set
     String |
     Int |
     Bool(BoolType) |
-    Set(Type) |
+    Set(ty: Type) |
     Record(RecordType) |
     Entity(lub: EntityLUB) |
     Extension(Name)
@@ -81,8 +81,7 @@ module validation.types {
     AttrNotFound(Type,Attr) |
     UnknownEntities(set<EntityType>) |
     ExtensionErr(Expr) |
-    EmptyLUB |
-    AllFalse
+    EmptyLUB
 
   // --------- Local Names for Useful Types --------- //
 

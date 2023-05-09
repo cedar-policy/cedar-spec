@@ -17,7 +17,7 @@ struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
+    match_types: true,
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,

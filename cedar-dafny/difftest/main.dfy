@@ -14,6 +14,7 @@ module difftest.main {
   import opened def.ext.fun
   import opened restrictedExpr
   import opened validation.types
+  import opened validation.strict
   import opened validation.validator
   import opened helpers
 
@@ -275,7 +276,7 @@ module difftest.main {
   function exprToValue(expr: Expr): FromProdResult<Value> {
     match evaluate(expr) {
       case Some(v) => Ok(v)
-      case None => Err({UnexpectedFromProdErr("Attribute values must be restricted expressions")})
+      case None => Err({InvalidAttrVal})
     }
   }
 
@@ -351,7 +352,7 @@ module difftest.main {
     var ansAndErrors := match answer {
       case Ok(ans) => (ans, {})
       case Err(errs) =>
-        (Response(Deny, {}), set e | e in errs :: e.desc)
+        (Response(Deny, {}), set e | e in errs && e.UnexpectedFromProdErr? :: e.desc)
     };
     response := responseToProdJson(ansAndErrors.0, ansAndErrors.1);
   }
@@ -451,7 +452,7 @@ module difftest.main {
   }
 
   const validatorFromProdJson :=
-    objDeserializer2Fields(
+    objDeserializer3Fields(
       "policies", jpolicies => policyStoreFromProdJson(jpolicies),
       "schema", jschema => (
           var entityTypes :- deserializeField(jschema, "entityTypes", seqDeserializer(entityTypePairFromProdJson));
@@ -460,10 +461,12 @@ module difftest.main {
           var actionIdsMap :- mapFromEntriesProd(actionIds);
           Ok(Schema(entityTypesMap, actionIdsMap))
         ),
-      (policyStore, schema) => Ok((policyStore,Validator(schema)))
+      "mode", jmode =>
+        deserializeEnum(jmode, map[ "Strict" := Strict, "Permissive" := Permissive ]),
+      (policyStore, schema, mode) => Ok((policyStore,Validator(schema,mode)))
     );
 
-  method validateJson1(request: Json) returns (res: FromProdResult<seq<TypeError>>) {
+  method validateJson1(request: Json) returns (res: FromProdResult<seq<ValidationError>>) {
     var policyStoreAndValidator :- validatorFromProdJson(request);
     var errs := policyStoreAndValidator.1.Validate(policyStoreAndValidator.0);
     return Ok(errs);
@@ -478,15 +481,32 @@ module difftest.main {
       case UnknownEntities(_) => "UnknownEntities"
       case ExtensionErr(_) => "ExtensionErr"
       case EmptyLUB => "EmptyLUB"
-      case AllFalse => "AllFalse"
     }
   }
 
-  method validationResToProdJson(errs: seq<TypeError>, parseErrs: set<string>) returns (ja: Json) {
+  function strictTypeErrorToString(e: StrictTypeError): string {
+    match e {
+      case TypeError(e1) => typeErrorToString(e1)
+      case TypesMustMatch => "TypesMustMatch"
+      case EmptySetForbidden => "EmptySetForbidden"
+      case NonLitExtConstructor => "NonLitExtConstructor"
+      case NonSingletonLub => "NonSingletonLub"
+    }
+  }
+
+  function validationErrorToString(e: ValidationError): string {
+    match e {
+      case AllFalse => "AllFalse"
+      case StrictTypeError(e1) => strictTypeErrorToString(e1)
+    }
+  }
+
+
+  method validationResToProdJson(errs: seq<ValidationError>, parseErrs: set<string>) returns (ja: Json) {
     var parseErrsSeq := setToSequenceUnordered(parseErrs);
     return JsonObject(
         map[
-          "validationErrors" := JsonArray(mapSeq((e: TypeError) => JsonString(typeErrorToString(e)), errs)),
+          "validationErrors" := JsonArray(mapSeq((e: ValidationError) => JsonString(validationErrorToString(e)), errs)),
           "parseErrors" := JsonArray(mapSeq((e: string) => JsonString(e), parseErrsSeq))
         ]);
   }
@@ -496,8 +516,7 @@ module difftest.main {
     var res := validateJson1(request);
     var resAndErrors := match res {
       case Ok(res1) => (res1, {})
-      case Err(errs) => ([], set e | e in errs :: e.desc
-      )};
+      case Err(errs) => ([], set e | e in errs && e.UnexpectedFromProdErr? :: e.desc)};
     response := validationResToProdJson(resAndErrors.0, resAndErrors.1);
   }
 }
