@@ -1,0 +1,114 @@
+[package]
+name = "cedar-drt-inner"
+edition = "2021"
+version = "0.0.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+highway = "0.8.1"
+env_logger = "0.9.0"
+log = "0.4"
+libfuzzer-sys = "0.4"
+serde = { version = "1.0", feature = ["derive"] }
+serde_json = "1.0"
+cedar-drt = { version = "2.0.0", path = ".." }
+cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "2.0.0" }
+cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "2.0.0" }
+cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "2.0.0" }
+smol_str = { version = "0.2", features = ["serde"] }
+regex = "1"
+rayon = { version = "1.5", optional = true }
+rand = { version = "0.8", optional = true }
+clap = { version = "4.0", features = ["derive"], optional = true }
+rand_chacha = { version = "0.3", optional = true }
+
+[dependencies.uuid]
+version = "1.3.1"
+features = ["v4", "fast-rng"]
+
+[features]
+prt = ["dep:rayon", "dep:rand", "dep:clap", "dep:rand_chacha"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "rbac"
+path = "fuzz_targets/rbac.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "rbac-authorizer"
+path = "fuzz_targets/rbac-authorizer.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "abac"
+path = "fuzz_targets/abac.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "abac-type-directed"
+path = "fuzz_targets/abac-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-eval"
+path = "fuzz_targets/partial-eval.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "pp"
+path = "fuzz_targets/pp.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "formatter"
+path = "fuzz_targets/formatter.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validation-pbt"
+path = "fuzz_targets/validation-pbt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validation-drt"
+path = "fuzz_targets/validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validation-drt-type-directed"
+path = "fuzz_targets/validation-drt-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "simple-parser"
+path = "fuzz_targets/simple-parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "strict-validation-drt-type-directed"
+path = "fuzz_targets/strict-validation-drt-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "wildcard-matching"
+path = "fuzz_targets/wildcard-matching.rs"
+test = false
+doc = false

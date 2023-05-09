@@ -1,0 +1,102 @@
+name: Build cedar-spec
+
+on:
+  pull_request:
+
+env: 
+  dotnet-version: 6.0.x # SDK Version for building Dafny
+
+jobs:
+  build_and_test_dafny:
+    name: Dafny Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download Dafny
+        shell: bash
+        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
+      - name: Unzip Dafny
+        shell: bash
+        run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
+      - name: Symlink z3
+        shell: bash
+        run: ln -s $(pwd)/dafny/z3/bin/z3-4.12.1 $(pwd)/dafny/z3/bin/z3
+      - name: verify dafny
+        working-directory: ./cedar-dafny
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make verify
+      - name: test dafny
+        working-directory: ./cedar-dafny
+        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make test
+      - name: Get Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+          cache: 'gradle'
+      - name: build dafny def engine
+        working-directory: ./cedar-dafny
+        run: |
+             export PATH=$PATH:$(pwd)/../dafny/z3/bin && 
+             export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" && 
+             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server && 
+             make compile-difftest
+      - name: Build cedar-dafny-java-wrapper
+        working-directory: ./cedar-dafny-java-wrapper
+        shell: bash
+        run: ./gradlew build dumpClasspath
+      - name: Checkout cedar
+        uses: actions/checkout@v3
+        with:
+          repository: cedar-policy/cedar
+          ref: main
+          path: ./cedar
+          ssh-key: ${{ secrets.CEDAR }}
+      - name: rustup
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: cargo test
+        working-directory: ./cedar-drt
+        shell: bash
+        run: |
+             export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" &&
+             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server &&
+             export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar" &&
+             cargo test --verbose
+      
+
+
+  build_drt_no_test:
+    name: Cedar-DRT Build No-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v3
+      - name: Checkout cedar
+        uses: actions/checkout@v3
+        with:
+          repository: cedar-policy/cedar
+          ref: main
+          path: ./cedar
+          ssh-key: ${{ secrets.CEDAR }}
+      - name: rustup
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: cargo fmt
+        working-directory: ./cedar-drt
+        run: cargo fmt --all --check
+      - name: cargo rustc
+        working-directory: ./cedar-drt
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo rustc
+        working-directory: ./cedar-drt/fuzz
+        run: RUSTFLAGS="--cfg=fuzzing -D warnings -F unsafe-code" cargo build --verbose

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "dafny": {
+      "version": "4.0.0.50302",
+      "commands": [
+        "dafny"
+      ]
+    }
+  }
+}
