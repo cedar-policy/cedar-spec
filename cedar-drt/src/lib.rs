@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 pub use authorizer::Response;
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationResult, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
 pub use entities::Entities;
 use jni::objects::{JObject, JString, JValue};
 use jni::{JNIVersion, JavaVM};
@@ -168,9 +168,10 @@ impl<'j> DefinitionalEngine<'j> {
 }
 
 #[derive(Debug, Serialize)]
-struct QueryForDefValidator<'a> {
+struct RequestForDefValidator<'a> {
     schema: ValidatorSchema,
     policies: &'a ast::PolicySet,
+    mode: ValidationMode,
 }
 
 #[derive(Deserialize, Debug)]
@@ -229,12 +230,21 @@ impl<'j> DefinitionalValidator<'j> {
         })
     }
 
-    fn serialize_query(&self, schema: ValidatorSchema, policies: &ast::PolicySet) -> JString {
-        let query: String = serde_json::to_string(&QueryForDefValidator { schema, policies })
-            .expect("Failed to serialize schema or policies");
+    fn serialize_request(
+        &self,
+        schema: ValidatorSchema,
+        policies: &ast::PolicySet,
+        mode: ValidationMode,
+    ) -> JString {
+        let request: String = serde_json::to_string(&RequestForDefValidator {
+            schema,
+            policies,
+            mode,
+        })
+        .expect("Failed to serialize schema or policies");
         self.thread
-            .new_string(query)
-            .expect("failed to create Java object for validation query string")
+            .new_string(request)
+            .expect("failed to create Java object for validation request string")
     }
 
     fn deserialize_response(&self, response: JValue) -> ValidationResponse {
@@ -286,8 +296,9 @@ impl<'j> DefinitionalValidator<'j> {
         &self,
         schema: ValidatorSchema,
         policies: &ast::PolicySet,
+        mode: ValidationMode,
     ) -> ValidationResponse {
-        let (jstring, dur) = time_function(|| self.serialize_query(schema, policies));
+        let (jstring, dur) = time_function(|| self.serialize_request(schema, policies, mode));
         info!("{}{}", logger::RUST_SERIALIZATION_MSG, dur.as_nanos());
         let response = self.thread.call_method(
             self.java_def_validator,

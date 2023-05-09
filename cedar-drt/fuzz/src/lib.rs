@@ -26,7 +26,7 @@ use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
 use cedar_policy_core::ast;
-use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint};
+use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint, Template};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::{Entities, TCComputation};
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
@@ -132,6 +132,11 @@ impl TryFrom<Hierarchy> for Entities {
 }
 
 #[derive(Debug, Clone)]
+// `GeneratedPolicy` is now a bit of a misnomer: it may have slots depending on
+// how it is generated, e.g., the `allow_slots` parameter to
+// `RBACPolicy::arbitrary_for_hierarchy`. As of this writing, only the `rbac`
+// fuzz target uses slots, so renaming `GeneratedPolicy` to something like
+// `GeneratedTemplate` seems unduly disruptive.
 pub struct GeneratedPolicy {
     pub id: PolicyID,
     // use String for the impl of Arbitrary
@@ -143,28 +148,63 @@ pub struct GeneratedPolicy {
     abac_constraints: Expr,
 }
 
+impl GeneratedPolicy {
+    fn convert_annotations(
+        annotations: HashMap<Id, String>,
+    ) -> std::collections::BTreeMap<Id, SmolStr> {
+        annotations
+            .into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect()
+    }
+}
+
 impl From<GeneratedPolicy> for StaticPolicy {
     fn from(gen: GeneratedPolicy) -> StaticPolicy {
         StaticPolicy::new(
             gen.id,
-            gen.annotations
-                .into_iter()
-                .map(|(k, v)| (k, v.into()))
-                .collect(),
+            GeneratedPolicy::convert_annotations(gen.annotations),
             gen.effect,
             gen.principal_constraint.into(),
             gen.action_constraint.into(),
             gen.resource_constraint.into(),
             gen.abac_constraints,
         )
-        .unwrap()
+        .unwrap() // Will panic if the GeneratedPolicy contains a slot.
+    }
+}
+
+impl From<GeneratedPolicy> for Template {
+    fn from(gen: GeneratedPolicy) -> Template {
+        Template::new(
+            gen.id,
+            GeneratedPolicy::convert_annotations(gen.annotations),
+            gen.effect,
+            gen.principal_constraint.into(),
+            gen.action_constraint.into(),
+            gen.resource_constraint.into(),
+            gen.abac_constraints,
+        )
+    }
+}
+
+impl GeneratedPolicy {
+    pub fn has_slots(&self) -> bool {
+        self.principal_constraint.has_slot() || self.resource_constraint.has_slot()
+    }
+    pub fn add_to_policyset(self, policyset: &mut PolicySet) {
+        if self.has_slots() {
+            policyset.add_template(self.into()).unwrap();
+        } else {
+            policyset.add_static(self.into()).unwrap();
+        }
     }
 }
 
 impl Display for GeneratedPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let i: StaticPolicy = self.clone().into();
-        write!(f, "{i}")
+        let t: Template = self.clone().into();
+        write!(f, "{t}")
     }
 }
 
@@ -172,7 +212,21 @@ impl Display for GeneratedPolicy {
 enum PrincipalOrResourceConstraint {
     NoConstraint,
     Eq(EntityUID),
+    EqSlot,
     In(EntityUID),
+    InSlot,
+}
+
+impl PrincipalOrResourceConstraint {
+    fn has_slot(&self) -> bool {
+        match self {
+            PrincipalOrResourceConstraint::NoConstraint => false,
+            PrincipalOrResourceConstraint::Eq(_) => false,
+            PrincipalOrResourceConstraint::EqSlot => true,
+            PrincipalOrResourceConstraint::In(_) => false,
+            PrincipalOrResourceConstraint::InSlot => true,
+        }
+    }
 }
 
 impl From<PrincipalOrResourceConstraint> for PrincipalConstraint {
@@ -180,7 +234,9 @@ impl From<PrincipalOrResourceConstraint> for PrincipalConstraint {
         match val {
             PrincipalOrResourceConstraint::NoConstraint => PrincipalConstraint::any(),
             PrincipalOrResourceConstraint::Eq(euid) => PrincipalConstraint::is_eq(euid),
+            PrincipalOrResourceConstraint::EqSlot => PrincipalConstraint::is_eq_slot(),
             PrincipalOrResourceConstraint::In(euid) => PrincipalConstraint::is_in(euid),
+            PrincipalOrResourceConstraint::InSlot => PrincipalConstraint::is_in_slot(),
         }
     }
 }
@@ -190,7 +246,9 @@ impl From<PrincipalOrResourceConstraint> for ResourceConstraint {
         match val {
             PrincipalOrResourceConstraint::NoConstraint => ResourceConstraint::any(),
             PrincipalOrResourceConstraint::Eq(euid) => ResourceConstraint::is_eq(euid),
+            PrincipalOrResourceConstraint::EqSlot => ResourceConstraint::is_eq_slot(),
             PrincipalOrResourceConstraint::In(euid) => ResourceConstraint::is_in(euid),
+            PrincipalOrResourceConstraint::InSlot => ResourceConstraint::is_in_slot(),
         }
     }
 }
@@ -200,29 +258,48 @@ impl std::fmt::Display for PrincipalOrResourceConstraint {
         match self {
             Self::NoConstraint => Ok(()),
             Self::Eq(uid) => write!(f, " == {uid}"),
+            // Note: This is not valid Cedar syntax without the slot name, but
+            // there's nothing we can do about it since we don't know the slot
+            // name here.
+            Self::EqSlot => write!(f, " == ?"),
             Self::In(uid) => write!(f, " in {uid}"),
+            Self::InSlot => write!(f, " in ?"),
         }
     }
 }
 
 impl PrincipalOrResourceConstraint {
-    fn arbitrary_for_hierarchy(hierarchy: &Hierarchy, u: &mut Unstructured<'_>) -> Result<Self> {
+    fn arbitrary_for_hierarchy(
+        hierarchy: &Hierarchy,
+        allow_slots: bool,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Self> {
         // 20% of the time, NoConstraint; 40%, Eq; 40%, In
         if u.ratio(1, 5)? {
             Ok(Self::NoConstraint)
         } else {
-            let uid = hierarchy.arbitrary_uid(u)?;
             // choose Eq or In
-            if u.ratio(1, 2)? {
-                Ok(Self::Eq(uid))
+            let use_eq = u.ratio(1, 2)?;
+            // If slots are allowed, then generate a slot 50% of the time.
+            if allow_slots && u.ratio(1, 2)? {
+                if use_eq {
+                    Ok(Self::EqSlot)
+                } else {
+                    Ok(Self::InSlot)
+                }
             } else {
-                Ok(Self::In(uid))
+                let uid = hierarchy.arbitrary_uid(u)?;
+                if use_eq {
+                    Ok(Self::Eq(uid))
+                } else {
+                    Ok(Self::In(uid))
+                }
             }
         }
     }
 
     /// size hint for arbitrary_for_hierarchy()
-    fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
+    fn arbitrary_size_hint(allow_slots: bool, depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_ratio(1, 5),
             arbitrary::size_hint::or(
@@ -230,8 +307,22 @@ impl PrincipalOrResourceConstraint {
                 (0, Some(0)),
                 // Eq or In case
                 arbitrary::size_hint::and(
-                    Hierarchy::arbitrary_uid_size_hint(depth),
-                    size_hint_for_ratio(1, 2),
+                    size_hint_for_ratio(1, 2), // choose Eq or In
+                    if allow_slots {
+                        arbitrary::size_hint::and(
+                            // Decide whether to generate a slot.
+                            size_hint_for_ratio(1, 2),
+                            arbitrary::size_hint::or(
+                                // Slot: don't need a UID.
+                                (0, Some(0)),
+                                // No slot: need a UID.
+                                Hierarchy::arbitrary_uid_size_hint(depth),
+                            ),
+                        )
+                    } else {
+                        // Slot not allowed: need a UID.
+                        Hierarchy::arbitrary_uid_size_hint(depth)
+                    },
                 ),
             ),
         )
@@ -328,6 +419,53 @@ impl ActionConstraint {
                 ),
             ),
         )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GeneratedLinkedPolicy {
+    pub id: PolicyID,
+    template_id: PolicyID,
+    principal: Option<EntityUID>,
+    resource: Option<EntityUID>,
+}
+
+impl GeneratedLinkedPolicy {
+    fn arbitrary_slot_value<'a>(
+        prc: &PrincipalOrResourceConstraint,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'a>,
+    ) -> Result<Option<EntityUID>> {
+        if prc.has_slot() {
+            Ok(Some(hierarchy.arbitrary_uid(u)?))
+        } else {
+            Ok(None)
+        }
+    }
+    pub fn arbitrary<'a>(
+        id: PolicyID,
+        template: &GeneratedPolicy,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'a>,
+    ) -> Result<Self> {
+        Ok(Self {
+            id,
+            template_id: template.id.clone(),
+            principal: Self::arbitrary_slot_value(&template.principal_constraint, hierarchy, u)?,
+            resource: Self::arbitrary_slot_value(&template.resource_constraint, hierarchy, u)?,
+        })
+    }
+    pub fn add_to_policyset(self, policyset: &mut PolicySet) {
+        let mut vals = HashMap::new();
+        if let Some(principal_uid) = self.principal {
+            vals.insert(ast::SlotId::principal(), principal_uid);
+        }
+        if let Some(resource_uid) = self.resource {
+            vals.insert(ast::SlotId::resource(), resource_uid);
+        }
+        policyset
+            .link(self.template_id, self.id, vals.into())
+            .unwrap();
     }
 }
 
@@ -465,13 +603,17 @@ impl<'e> DifferentialTester<'e> {
 
     /// Differentially test validation on the given policy and schema.
     /// Panics if the two engines do not agree.
-    pub fn run_validation(&self, schema: ValidatorSchema, policies: &PolicySet) {
+    pub fn run_validation(
+        &self,
+        schema: ValidatorSchema,
+        policies: &PolicySet,
+        mode: ValidationMode,
+    ) {
         let validator = Validator::new(schema.clone());
-        let (rust_res, rust_validation_dur) =
-            time_function(|| validator.validate(policies, ValidationMode::Permissive));
+        let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
         info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
 
-        let definitional_res = self.def_validator.validate(schema.clone(), policies);
+        let definitional_res = self.def_validator.validate(schema.clone(), policies, mode);
 
         assert!(
             definitional_res.parsing_succeeded(),
@@ -480,7 +622,7 @@ impl<'e> DifferentialTester<'e> {
             schema
         );
 
-        // Temporary hack to avoid a known mismatch between the Dafny and Rust.
+        // Temporary fix to ignore a known mismatch between the Dafny and Rust.
         // The issue is that the Rust code will always return an error for an
         // unrecognized entity or action, even if that part of the expression
         // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
@@ -504,7 +646,6 @@ impl<'e> DifferentialTester<'e> {
             rust_res,
             definitional_res,
         );
-
         // NOTE: We currently don't check for a relationship between validation errors.
         // E.g., the error reported by the definitional validator should be in the list
         // of errors reported by the production validator, but we don't check this.
