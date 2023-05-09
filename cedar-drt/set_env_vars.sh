@@ -3,4 +3,4 @@ if [ -z "${JAVA_HOME-}" ]; then
     export JAVA_HOME="$(java -XshowSettings:properties -version 2>&1 | sed -ne 's,^ *java\.home = ,,p')"
 fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/amd64/server
-export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt)"
+export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar"

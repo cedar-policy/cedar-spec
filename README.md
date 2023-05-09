@@ -1,50 +1,38 @@
-# Cedar Spec
+# Cedar Specification
 
-This repository contains the Dafny formalization of Cedar and infrastructure for performing differential testing between the formalization and Rust production engine (available in [cedar](https://github.com/cedar-policy/cedar)).
+This repository contains the Dafny formalization of Cedar and infrastructure for performing differential randomized testing (DRT) between the formalization and Rust production implementation available in [cedar](https://github.com/cedar-policy/cedar).
+
+## Repository Structure
+
+* `cedar-spec` contains the Dafny formalization of, and proofs about, Cedar.
+* `cedar-dafny-java-wrapper` contains the Java interface for DRT.
+* `cedar-drt` contains code for input generation, fuzzing, property-based testing, and differential testing of Cedar.
 
 ## Build
 
-For exact build instructions, we recommend looking at `.github/workflows/ci.yml`
+To build the Dafny formalization and proofs:
 
-### `cedar-dafny`
+* Install Dafny and Z3 version 4.12.1, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL). Ensure that Z3 is on your path.
+* `cd cedar-dafny && make`
 
-Basic build for the formalization and proofs:
+To build the DRT framework:
 
-- Install Dafny and Z3 (ensure Z3 is on your path)
-- `cd cedar-dafny && make`
-
-If you want to run differential testing:
-
-- To build the definitional engine:
-- Set JAVA_HOME
-- Set LD_LIBRARY_PATH to include `$JAVA_HOME/lib/server`
-- `cd cedar-dafny && make compile-difftest`
-- `cd cedar-dafny-java-wrapper && ./gradlew build dumpClasspath`
-
-### `cedar-drt`
-
-- Clone [cedar](https://github.com/cedar-policy/cedar) to `cedar-spec/cedar`
-- Ensure `JAVA_HOME` and `LD_LIBRARY_PATH` are set as above
-- `export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar"`
-- `cd cedar-drt && cargo build`
-- `cargo test`
-- `cd fuzz && RUSTFLAGS="--cfg=fuzzing" cargo build`
+* Set JAVA_HOME
+* Set LD_LIBRARY_PATH to include `$JAVA_HOME/lib/server`
+* Clone [cedar](https://github.com/cedar-policy/cedar) to `cedar-spec/cedar`
+* `./build.sh`
 
 ## Run
 
-Change to the `cedar-drt` directory and source `./set_env_vars.sh`:
+To run DRT:
 
-```[bash]
-cd cedar-drt && source ./set_env_vars.sh
-```
+* `cd cedar-drt && source ./set_env_vars.sh`
+* `cargo fuzz run -s none <target> -j8` (choose an appropriate -j for your machine).
 
 List the available fuzz targets with `cargo fuzz list`.
-Some of these do pure fuzzing, others property-based testing, others differential testing, or some combination of these.
 Available targets are described in the README in the `cedar-drt` directory.
 
-Run a target with `cargo fuzz run -s none <target> -j8` (choose an appropriate -j for your machine).
-
-More commands available with `cargo fuzz help`.
+Additional commands available with `cargo fuzz help`.
 
 ## Security
 
