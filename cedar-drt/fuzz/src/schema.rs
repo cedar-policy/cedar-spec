@@ -445,7 +445,6 @@ impl Schema {
         let action_names: HashSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
         let action_names: Vec<SmolStr> = action_names
             .into_iter()
-            // TODO: we just don't want to deal with escaping right now
             .filter(|n| {
                 !n.contains('\"')
                     && !n.contains('\\')
@@ -536,10 +535,7 @@ impl Schema {
                         } else {
                             None
                         },
-                        // Attributes are currently ignored by the validator, so I
-                        // haven't bothered filling this in. They'll definitely be
-                        // used soon-ish. TODO: Arbitrary attribute names and
-                        // values.
+                        //TODO: Fuzz arbitrary attribute names and values.
                         attributes: None,
                     },
                 ))
@@ -719,7 +715,7 @@ impl Schema {
             }
         }
         // for each entity, add appropriate attributes
-        let hierarchy_no_attrs = hierarchy.clone(); // TODO: that's a hack to get around borrow checker
+        let hierarchy_no_attrs = hierarchy.clone();
         for (uid, entity) in &mut hierarchy.entities {
             match uid.entity_type() {
                 // entity data is generated with `arbitrary_uid_with_type`, which can never
@@ -785,7 +781,7 @@ impl Schema {
         Ok(hierarchy)
     }
     pub fn arbitrary_hierarchy_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        (0, None) // TODO: more precise
+        (0, None)
     }
 
     /// Get an arbitrary UID from the schema, that could be used as a `principal`.
@@ -1538,8 +1534,7 @@ impl Schema {
     }
 
     /// get a (fully general) arbitrary expression conforming to the schema, but
-    /// no attempt to match types. (TODO: better specification for what
-    /// "conforming to the schema but not matching types" means.)
+    /// no attempt to match types.
     ///
     /// If `hierarchy` is present, any literal UIDs included in the Expr will
     /// (usually) exist in the hierarchy.
@@ -2523,8 +2518,7 @@ impl Schema {
                             5..=8 => {
                                 let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
                                     cedar_policy_validator::SchemaTypeVariant::Record {
-                                        // TODO: can we do better here, put in some
-                                        // other attributes that appear in schema?
+                                        // TODO: should we put in some other attributes that appear in schema?
                                         attributes: BTreeMap::new(),
                                         additional_attributes: true,
                                     },
@@ -3435,7 +3429,7 @@ impl Schema {
     pub fn arbitrary_request_size_hint(_depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             super::size_hint_for_choose(None),
-            (1, None), // TODO: more precise
+            (1, None),
         )
     }
 

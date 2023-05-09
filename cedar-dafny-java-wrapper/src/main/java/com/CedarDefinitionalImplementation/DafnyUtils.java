@@ -14,8 +14,6 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 
-// TODO: Look into whether using an approach similar to ValueDeserializer might
-// be cleaner?
 public class DafnyUtils {
     public static difftest_mhelpers_Compile.Json convertJsonJacksonToDafny(JsonNode node) {
         switch (node.getNodeType()) {

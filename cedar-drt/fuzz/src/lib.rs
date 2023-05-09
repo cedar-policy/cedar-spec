@@ -565,7 +565,6 @@ impl<'e> DifferentialTester<'e> {
             time_function(|| self.authorizer.is_authorized(q, policies, entities));
         info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
-        // TODO: remove this
         // For now, we ignore all tests where the Rust side returns an integer
         // overflow error, as the behavior between Rust and Dafny is
         // intentionally different
@@ -647,5 +646,8 @@ impl<'e> DifferentialTester<'e> {
             rust_res,
             definitional_res,
         );
+        // NOTE: We currently don't check for a relationship between validation errors.
+        // E.g., the error reported by the definitional validator should be in the list
+        // of errors reported by the production validator, but we don't check this.
     }
 }
