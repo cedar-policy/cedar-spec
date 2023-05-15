@@ -82,6 +82,6 @@ compile-difftest: restore-dafny
 	cp $(DIFFTEST_JAR_FROM_DAFNY) $(DIFFTEST_JAR_EXPORTED)
 	cp $(DIFFTEST_JAVA_DIR)/DafnyRuntime.jar $(PACKAGE_BUILD_ROOT)/lib
 
-all: test compile-difftest
+all: verify test compile-difftest
 
 .PHONY: $(SOURCES) $(TEST_SOURCES) verify compile-difftest all test
