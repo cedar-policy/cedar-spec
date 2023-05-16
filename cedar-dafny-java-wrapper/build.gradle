@@ -94,9 +94,9 @@ repositories {
 */
 dependencies {
   implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7.1'
+  implementation group: 'org.dafny', name: 'DafnyRuntime', version: '4.1.0'
   implementation files(
     '../cedar-dafny/build/lib/CedarDafny-difftest.jar',
-    '../cedar-dafny/build/lib/DafnyRuntime.jar'
   )
   // https://junit.org/junit5/docs/current/user-guide/#dependency-metadata-junit-jupiter: OK?
   testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'

@@ -80,7 +80,6 @@ compile-difftest: restore-dafny
 		/out:$(DIFFTEST_COMPILE_OUT) difftest/main.dfy
 	mkdir -p $(PACKAGE_BUILD_ROOT)/lib
 	cp $(DIFFTEST_JAR_FROM_DAFNY) $(DIFFTEST_JAR_EXPORTED)
-	cp $(DIFFTEST_JAVA_DIR)/DafnyRuntime.jar $(PACKAGE_BUILD_ROOT)/lib
 
 all: verify test compile-difftest
 

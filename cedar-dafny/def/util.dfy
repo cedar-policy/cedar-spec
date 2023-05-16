@@ -37,21 +37,24 @@ module def.util {
 
   lemma ThereIsAMinimum<A(!new)>(s: set<A>, R: (A, A) -> bool)
     requires s != {} && IsTotalOrder(R)
-    ensures exists x :: x in s && forall y :: y in s ==> R(x, y)
+    ensures exists x :: x in s && forall y | y in s :: R(x, y)
   {
     var x :| x in s;
     if s == {x} {
-      assert forall y :: y in s ==> x == y;
+      assert forall y | y in s :: x == y;
     } else {
       var s' := s - {x};
       assert s == s' + {x};
       ThereIsAMinimum(s', R);
-      var z :| z in s' && forall y :: y in s' ==> R(z, y);
+      var z :| z in s' && forall y | y in s' :: R(z, y);
       if
       case R(z, x) =>
-        forall y | y in s ensures R(z, y) { assert x == y || y in s'; }
+        assert s == s' + {x};
+        assert z in s;
+        forall y | y in s ensures R(z, y) { if y == x { assert R(z, x); } else { assert y in s'; } }
       case R(x, z) =>
-        forall y | y in s ensures R(x, y) { assert y in s' ==> R(z, y); }
+        assert x in s;
+        forall y | y in s ensures R(x, y) { if y == x { assert R(x, x); } else { assert y in s'; } }
     }
   }
 
