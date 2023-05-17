@@ -45,10 +45,18 @@ module def.base {
   // validation. The fourth is the abstract, catch-all error that represents all
   // runtime errors thrown by extension functions, which cannot be prevented
   // statically (e.g., string input parsing errors).
+  //
+  // ArithmeticOverflowError is never raised by the main engine but may be
+  // raised by engine_with_overflow. We generally avoid modifying code used by
+  // the main engine for the sake of the engine_with_overflow, but adding
+  // ArithmeticOverflowError here will save us the trouble of managing two
+  // different Error types (and Result, etc.) and didn't break any existing code
+  // in Matt's test.
   datatype Error =
     EntityDoesNotExist |
     AttrDoesNotExist |
     TypeError |
+    ArithmeticOverflowError |
     ArityMismatchError |
     NoSuchFunctionError |
     ExtensionError

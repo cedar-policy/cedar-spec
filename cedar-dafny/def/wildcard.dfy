@@ -21,7 +21,7 @@ include "core.dfy"
 // Defines the wildcard matching functions in a separate module because they
 // don't depend on the Evaluator state, and we want to reuse them to reason
 // about other components of Cedar (e.g., policy analysis).
-module def.engine.wildcard {
+module def.wildcard {
 
   import opened core
   import opened std
