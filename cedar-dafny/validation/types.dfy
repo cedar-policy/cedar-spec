@@ -75,10 +75,17 @@ module validation.types {
   // and an optional method that checks input well-formedness.
   datatype ExtFunType = ExtFunType(args: seq<Type>, ret: Type, check: Option<seq<Expr> -> Result<()>>)
 
+  const i64_MIN := -0x8000_0000_0000_0000
+  const i64_MAX := 0x7fff_ffff_ffff_ffff
+  predicate is_i64(i: int) {
+    i64_MIN <= i <= i64_MAX
+  }
+  type i64 = i: int | is_i64(i)
+
   datatype Type =
     Never | // used to type the empty set
     String |
-    Int |
+    Int(min: i64, max: i64) |
     Bool(BoolType) |
     Set(ty: Type) |
     Record(RecordType) |
@@ -96,6 +103,7 @@ module validation.types {
     UnexpectedType(Type) |
     AttrNotFound(Type,Attr) |
     UnknownEntities(set<EntityType>) |
+    ArithmeticOverflow |
     ExtensionErr(Expr) |
     EmptyLUB
 

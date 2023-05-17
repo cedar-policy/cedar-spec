@@ -159,12 +159,12 @@ module validation.typechecker {
       }
     }
 
-    function ensureIntType(e: Expr, effs: Effects): Result<()>
+    function ensureIntType(e: Expr, effs: Effects): Result<(i64,i64)>
       decreases e , 2
     {
       var (t,_) :- infer(e,effs);
       match t {
-        case Int => Ok(())
+        case Int(_,_) => Ok((t.min,t.max))
         case _ => Err(UnexpectedType(t))
       }
     }
@@ -195,7 +195,11 @@ module validation.typechecker {
       match p {
         case Bool(true) => Ok(Type.Bool(True))
         case Bool(false) => Ok(Type.Bool(False))
-        case Int(_) => Ok(Type.Int)
+        case Int(i) =>
+          if is_i64(i)
+          then Ok(Type.Int(i,i))
+          // TODO: Think more about whether this makes sense.
+          else Err(ArithmeticOverflow)
         case String(_) => Ok(Type.String)
         case EntityUID(u) =>
           if u.ty in ets.types || isAction(u.ty)
@@ -516,21 +520,37 @@ module validation.typechecker {
       Ok(Type.Bool(AnyBool))
     }
 
-    function inferArith1(ghost op: UnaryOp, e: Expr, effs: Effects): Result<Type>
+    function makeIntTypeCheckOverflow(min: int, max: int): Result<Type> {
+      if is_i64(min) && is_i64(max)
+      then Ok(Type.Int(min,max))
+      else Err(ArithmeticOverflow)
+    }
+
+    function inferArith1(op: UnaryOp, e: Expr, effs: Effects): Result<Type>
       requires op.Neg? || op.MulBy?
       decreases UnaryApp(op,e) , 0
     {
-      var _ :- ensureIntType(e,effs);
-      Ok(Type.Int)
+      var (min1,max1) :- ensureIntType(e,effs);
+      var (minr,maxr) := match op {
+        case Neg => (-(max1 as int),-(min1 as int))
+        case MulBy(coeff) =>
+          var (minc,maxc) := (coeff * min1, coeff * max1);
+          if coeff < 0 then (maxc,minc) else (minc,maxc)
+      };
+      makeIntTypeCheckOverflow(minr,maxr)
     }
 
-    function inferArith2(ghost op: BinaryOp, e1: Expr, e2: Expr, effs: Effects): Result<Type>
+    function inferArith2(op: BinaryOp, e1: Expr, e2: Expr, effs: Effects): Result<Type>
       requires op == Add || op == Sub
       decreases BinaryApp(op,e1,e2) , 0
     {
-      var _ :- ensureIntType(e1,effs);
-      var _ :- ensureIntType(e2,effs);
-      Ok(Type.Int)
+      var (min1,max1) :- ensureIntType(e1,effs);
+      var (min2,max2) :- ensureIntType(e2,effs);
+      var (minr,maxr) := match op {
+        case Add => (min1 + min2, max1 + max2)
+        case Sub => (min1 - max2, max1 - min2)
+      };
+      makeIntTypeCheckOverflow(minr,maxr)
     }
 
     function inferGetAttr(e: Expr, k: Attr, effs: Effects): Result<Type>

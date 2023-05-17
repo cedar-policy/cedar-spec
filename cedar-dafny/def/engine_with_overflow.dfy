@@ -28,6 +28,10 @@ include "engine.dfy"
 // engine.dfy, you can see what parts are copied verbatim, what parts are
 // omitted (because we were able to reuse them), and what small changes were
 // made.
+//
+// TODO: Doing proofs about this engine with unbounded Value may be weird.
+// Out-of-range integers could come from the store. However, that shouldn't
+// happen during DRT.
 module def.engine_with_overflow {
   import opened base
   import opened core
