@@ -41,28 +41,28 @@ module validation.thm.model {
 
   opaque ghost function LastOfKey<K,V>(k: K, es: seq<(K,V)>): (res: V)
     requires KeyExists(k,es)
-    ensures exists i :: 0 <= i < |es| && es[i].0 == k && es[i].1 == res && (forall j :: i < j < |es| ==> es[j].0 != k)
+    ensures exists i :: 0 <= i < |es| && es[i].0 == k && es[i].1 == res && (forall j | i < j < |es| :: es[j].0 != k)
   {
-    if (es[0].0 == k && (forall j :: 0 < j < |es| ==> es[j].0 != k)) then es[0].1 else LastOfKey(k,es[1..])
+    if (es[0].0 == k && (forall j | 0 < j < |es| :: es[j].0 != k)) then es[0].1 else LastOfKey(k,es[1..])
   }
 
   lemma InterpretRecordLemmaOk(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Ok?
-    ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
-    ensures forall k :: k in Evaluator(r,s).interpretRecord(es).value.Keys ==> KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
+    ensures forall i | 0 <= i < |es| :: es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
+    ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
   {}
 
   lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Err?
-    ensures exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j :: 0 <= j < i ==> Evaluator(r,s).interpret(es[j].1).Ok?)
+    ensures exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?)
   {}
 
   lemma InterpretSetLemma(es: seq<Expr>, r: Request, s: EntityStore)
-    ensures Evaluator(r,s).interpretSet(es).Ok? ==> forall v :: v in Evaluator(r,s).interpretSet(es).value ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]) == base.Ok(v)
-    ensures (forall e :: e in es ==> Evaluator(r,s).interpret(e).Ok?) ==> Evaluator(r,s).interpretSet(es).Ok?
+    ensures Evaluator(r,s).interpretSet(es).Ok? ==> forall v | v in Evaluator(r,s).interpretSet(es).value :: exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]) == base.Ok(v)
+    ensures (forall e | e in es :: Evaluator(r,s).interpret(e).Ok?) ==> Evaluator(r,s).interpretSet(es).Ok?
     ensures (exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err?) ==> Evaluator(r,s).interpretSet(es).Err?
-    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j :: 0 <= j < i ==> Evaluator(r,s).interpret(es[j]).Ok?);
-    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j :: 0 <= j < i ==> Evaluator(r,s).interpret(es[j]).Ok?);
+    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
+    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
   {}
 
   // ----- Semantic model of Cedar ----- //
@@ -93,7 +93,7 @@ module validation.thm.model {
   }
 
   ghost predicate SemanticSubty(t1: Type, t2: Type) {
-    forall v :: InstanceOfType(v,t1) ==> InstanceOfType(v,t2)
+    forall v | InstanceOfType(v,t1) :: InstanceOfType(v,t2)
   }
 
   ghost predicate SemanticUB(t1: Type, t2: Type, ub: Type) {
@@ -702,13 +702,13 @@ module validation.thm.model {
   }
 
   lemma SetConstrSafe(r: Request, s: EntityStore, es: seq<Expr>, t: Type)
-    requires forall i :: 0 <= i < |es| ==> IsSafe(r,s,es[i],t)
+    requires forall i | 0 <= i < |es| :: IsSafe(r,s,es[i],t)
     ensures IsSafe(r,s,Expr.Set(es),Type.Set(t))
   {
     reveal IsSafe();
     InterpretSetLemma(es,r,s);
-    if(forall i :: 0 <= i < |es| ==> exists v :: Evaluate(es[i],r,s) == base.Ok(v) && InstanceOfType(v,t)){
-      assert forall e :: e in es ==> Evaluate(e,r,s).Ok?;
+    if(forall i | 0 <= i < |es| :: exists v :: Evaluate(es[i],r,s) == base.Ok(v) && InstanceOfType(v,t)){
+      assert forall e | e in es :: Evaluate(e,r,s).Ok?;
       assert Evaluate(Expr.Set(es),r,s).Ok?;
       var vs :| Evaluator(r,s).interpretSet(es) == base.Ok(vs);
       assert InstanceOfType(Value.Set(vs),Type.Set(t)) by {
@@ -831,10 +831,10 @@ module validation.thm.model {
   lemma InterpretListEnsures(eval: Evaluator, es: seq<Expr>)
     ensures eval.interpretList(es).Ok? ==> (|eval.interpretList(es).value| == |es| &&
                                             forall i | 0 <= i < |es| :: eval.interpret(es[i]) == base.Ok(eval.interpretList(es).value[i]))
-    ensures (forall e :: e in es ==> eval.interpret(e).Ok?) ==> eval.interpretList(es).Ok?
+    ensures (forall e | e in es :: eval.interpret(e).Ok?) ==> eval.interpretList(es).Ok?
     ensures (exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err?) ==> eval.interpretList(es).Err?
-    ensures eval.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j :: 0 <= j < i ==> eval.interpret(es[j]).Ok?)
-    ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j :: 0 <= j < i ==> eval.interpret(es[j]).Ok?)
+    ensures eval.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
+    ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
   {}
 
   lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)

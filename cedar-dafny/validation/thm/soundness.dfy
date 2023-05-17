@@ -857,11 +857,11 @@ module validation.thm.soundness {
     }
 
     lemma InferRecordLemma(e: Expr, es: seq<(Attr,Expr)>, effs: Effects)
-      requires forall i :: 0 <= i < |es| ==> es[i] < e
+      requires forall i | 0 <= i < |es| :: es[i] < e
       requires Typechecker(ets,acts,reqty).inferRecord(e,es,effs).Ok?
-      ensures forall i :: 0 <= i < |es| ==> es[i].0 in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys && Typechecker(ets,acts,reqty).infer(es[i].1,effs).Ok?
-      ensures forall k :: k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys ==> KeyExists(k,es) && Typechecker(ets,acts,reqty).infer(LastOfKey(k,es),effs).value.0 == Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value[k].ty
-      ensures forall k :: !(k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys) ==> !KeyExists(k,es)
+      ensures forall i | 0 <= i < |es| :: es[i].0 in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys && Typechecker(ets,acts,reqty).infer(es[i].1,effs).Ok?
+      ensures forall k | k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys :: KeyExists(k,es) && Typechecker(ets,acts,reqty).infer(LastOfKey(k,es),effs).value.0 == Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value[k].ty
+      ensures forall k | !(k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys) :: !KeyExists(k,es)
     {
       reveal Typechecker(ets,acts,reqty).inferRecord();
     }
@@ -911,16 +911,16 @@ module validation.thm.soundness {
     }
 
     lemma InferSetLemma(e: Expr, es: seq<Expr>, effs: Effects)
-      requires forall i :: 0 <= i < |es| ==> es[i] < e
+      requires forall i | 0 <= i < |es| :: es[i] < e
       requires Typechecker(ets,acts,reqty).inferSet(e,es,effs).Ok?
-      ensures forall i :: 0 <= i < |es| ==> Typechecker(ets,acts,reqty).infer(es[i],effs).Ok? && subty(Typechecker(ets,acts,reqty).infer(es[i],effs).value.0,Typechecker(ets,acts,reqty).inferSet(e,es,effs).value)
+      ensures forall i | 0 <= i < |es| :: Typechecker(ets,acts,reqty).infer(es[i],effs).Ok? && subty(Typechecker(ets,acts,reqty).infer(es[i],effs).value.0,Typechecker(ets,acts,reqty).inferSet(e,es,effs).value)
     {
       if es == [] {
       } else {
         var (t,_) := Typechecker(ets,acts,reqty).infer(es[0],effs).value;
         var t1 := Typechecker(ets,acts,reqty).inferSet(e,es[1..],effs).value;
         var t2 := lubOpt(t,t1).value;
-        assert forall i :: 0 <= i < |es| ==> Typechecker(ets,acts,reqty).infer(es[i],effs).Ok? && subty(Typechecker(ets,acts,reqty).infer(es[i],effs).value.0,t2) by {
+        assert forall i | 0 <= i < |es| :: Typechecker(ets,acts,reqty).infer(es[i],effs).Ok? && subty(Typechecker(ets,acts,reqty).infer(es[i],effs).value.0,t2) by {
           forall i | 0 <= i < |es|
             ensures Typechecker(ets,acts,reqty).infer(es[i],effs).Ok? && subty(Typechecker(ets,acts,reqty).infer(es[i],effs).value.0,t2)
           {
@@ -1178,7 +1178,7 @@ module validation.thm.soundness {
       }
     }
 
-    lemma SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
+    lemma {:vcs_split_on_every_assert} SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.In,e1,e2) , 0 , e2
       requires InstanceOfRequestType(r,reqty)
       requires InstanceOfEntityTypeStore(s,ets)
@@ -1251,7 +1251,7 @@ module validation.thm.soundness {
                   }
                   InSingleFalseLiterals(r,s,u1,u2);
               }
-              case Set(ei2s) =>
+              case Set(ei2s) => 
                 var euids2 :- assert typechecker.tryGetEUIDs(e2);
                 var ets2 := set u <- euids2 :: u.ty;
                 // Argument that is the same any time e2 is a set.
@@ -1266,6 +1266,7 @@ module validation.thm.soundness {
                   assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
                 }
                 forall i | 0 <= i < |ei2s|
+                  // note: most expensive assertion here
                   ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
                 {
                   var u2 :- assert typechecker.tryGetEUID(ei2s[i]);
@@ -1302,7 +1303,7 @@ module validation.thm.soundness {
 
     lemma InferCallArgsSound(e: Expr, name: base.Name, args: seq<Expr>, tys: seq<Type>, effs: Effects)
       requires |args| == |tys|
-      requires forall i :: 0 <= i < |args| ==> args[i] < e
+      requires forall i | 0 <= i < |args| :: args[i] < e
       requires Typechecker(ets,acts,reqty).inferCallArgs(e,args,tys,effs).Ok?
       ensures forall i | 0 <= i < |args| :: Typesafe(args[i],effs,tys[i])
     {}
