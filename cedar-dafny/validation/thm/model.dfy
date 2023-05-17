@@ -940,7 +940,7 @@ module validation.thm.model {
   lemma EntityHasImpossibleFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, lub: EntityLUB)
     requires IsSafe(r,s,e,Type.Entity(lub))
     requires forall ev: EntityUID | ExistingEntityInLub(s, ev, lub) ::
-                l !in s.entities[ev].attrs
+               l !in s.entities[ev].attrs
     ensures IsFalse(r,s,HasAttr(e,l))
   {
     reveal IsSafe();
@@ -1000,8 +1000,8 @@ module validation.thm.model {
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,t2)
     requires forall u1, u2: EntityUID |
-      InstanceOfType(Value.EntityUID(u1), t1) && InstanceOfType(Value.EntityUID(u2), t2) ::
-      !EntityInEntity(s,u1,u2)
+               InstanceOfType(Value.EntityUID(u1), t1) && InstanceOfType(Value.EntityUID(u2), t2) ::
+               !EntityInEntity(s,u1,u2)
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2))
   {
     var evaluator := Evaluator(r,s);
@@ -1035,8 +1035,8 @@ module validation.thm.model {
   lemma InSetFalseIfAllFalse(r: Request, s: EntityStore, e1: Expr, e2s: seq<Expr>)
     requires IsSafe(r,s,e1,Type.Entity(AnyEntity))
     requires forall i | 0 <= i < |e2s| ::
-                IsSafe(r,s,e2s[i],Type.Entity(AnyEntity)) &&
-                IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2s[i]))
+               IsSafe(r,s,e2s[i],Type.Entity(AnyEntity)) &&
+               IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2s[i]))
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)))
   {
     reveal IsSafe();
@@ -1053,8 +1053,8 @@ module validation.thm.model {
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,Type.Set(t2))
     requires forall u1, u2: EntityUID |
-      InstanceOfType(Value.EntityUID(u1), t1) && InstanceOfType(Value.EntityUID(u2), t2) ::
-      !EntityInEntity(s,u1,u2)
+               InstanceOfType(Value.EntityUID(u1), t1) && InstanceOfType(Value.EntityUID(u2), t2) ::
+               !EntityInEntity(s,u1,u2)
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2))
   {
     reveal IsSafe();

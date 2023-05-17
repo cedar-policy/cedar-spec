@@ -894,7 +894,7 @@ module validation.thm.soundness {
       assert IsSafe(r,s,Expr.Record(es),t') by {
         assert forall ae | ae in es :: ExistsSafeType(r,s,ae.1) by {
           forall ae | ae in es
-          ensures ExistsSafeType(r,s,ae.1)
+            ensures ExistsSafeType(r,s,ae.1)
           {
             assert WellTyped(ae.1,effs);
             var t_ae := getType(ae.1,effs);
@@ -1251,7 +1251,7 @@ module validation.thm.soundness {
                   }
                   InSingleFalseLiterals(r,s,u1,u2);
               }
-              case Set(ei2s) => 
+              case Set(ei2s) =>
                 var euids2 :- assert typechecker.tryGetEUIDs(e2);
                 var ets2 := set u <- euids2 :: u.ty;
                 // Argument that is the same any time e2 is a set.

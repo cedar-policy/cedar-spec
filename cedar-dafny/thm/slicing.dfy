@@ -26,17 +26,17 @@ module slicing {
     slice.policies.Keys <= store.policies.Keys &&
     (forall pid |
        pid in slice.policies.Keys ::
-         slice.policies[pid] == store.policies[pid])
+       slice.policies[pid] == store.policies[pid])
   }
 
   ghost predicate isSoundSliceForRequest(request: Request, slice: Store, store: Store) {
     isSliceOfPolicyStore(slice.policies, store.policies) &&
     (forall pid |
        (pid in store.policies.policies.Keys && pid !in slice.policies.policies.Keys) ::
-         !Authorizer(request, store).satisfied(pid)) &&
+       !Authorizer(request, store).satisfied(pid)) &&
     (forall pid |
        pid in slice.policies.policies.Keys ::
-         Authorizer(request, slice).satisfied(pid) == Authorizer(request, store).satisfied(pid))
+       Authorizer(request, slice).satisfied(pid) == Authorizer(request, store).satisfied(pid))
   }
 
   lemma AuthorizationIsCorrectForSoundSlicing(request: Request, slice: Store, store: Store)

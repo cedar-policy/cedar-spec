@@ -82,7 +82,7 @@ module validation.thm.toplevel {
   {
     var typechecker := StrictTypechecker(schema.ets, schema.acts, schema.reqty);
     typechecker.typecheck(policies.policies[pid].toExpr(), Type.Bool(AnyBool))
-}
+  }
 
   // If an expression is well-typed according to the strict typechecker,
   // then either evaluation returns a value of that type or it returns an error
