@@ -25,7 +25,7 @@ module def.ext.fun {
   datatype Coercions<!E(!new,==), !T(!new,==)> =
     Coercions(
       Bool:   Coerce<bool, T>,
-      Int:    Coerce<int, T>,
+      Int:    Coerce<i64, T>,
       String: Coerce<string, T>,
       Ext:    Coerce<E, T>)
   {
@@ -44,12 +44,12 @@ module def.ext.fun {
 
     // Convenience functions for calling coercion wrapper.
     function fromBool(arg: bool):     T { Bool.wrap(arg) }
-    function fromInt(arg: int):       T { Int.wrap(arg) }
+    function fromInt(arg: i64):       T { Int.wrap(arg) }
     function fromString(arg: string): T { String.wrap(arg) }
     function fromExt(arg: E):         T { Ext.wrap(arg)}
 
     function toBool(arg: T):   Result<bool>   { Bool.unwrap(arg) }
-    function toInt(arg: T):    Result<int>    { Int.unwrap(arg) }
+    function toInt(arg: T):    Result<i64>    { Int.unwrap(arg) }
     function toString(arg: T): Result<string> { String.unwrap(arg) }
     function toExt(arg: T):    Result<E>      { Ext.unwrap(arg) }
   }

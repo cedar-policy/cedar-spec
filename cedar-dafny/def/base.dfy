@@ -45,13 +45,6 @@ module def.base {
   // validation. The fourth is the abstract, catch-all error that represents all
   // runtime errors thrown by extension functions, which cannot be prevented
   // statically (e.g., string input parsing errors).
-  //
-  // ArithmeticOverflowError is never raised by the main engine but may be
-  // raised by engine_with_overflow. We generally avoid modifying code used by
-  // the main engine for the sake of the engine_with_overflow, but adding
-  // ArithmeticOverflowError here will save us the trouble of managing two
-  // different Error types (and Result, etc.) and didn't break any existing code
-  // in Matt's test.
   datatype Error =
     EntityDoesNotExist |
     AttrDoesNotExist |
@@ -105,4 +98,14 @@ module def.base {
       Coerce(wrap, unwrap)
     }
   }
+
+  // ----- Extra type definitions needed by ext.fun.Coercions ----- //
+
+  const i64_MIN := -0x8000_0000_0000_0000
+  const i64_MAX := 0x7fff_ffff_ffff_ffff
+  predicate is_i64(i: int) {
+    i64_MIN <= i <= i64_MAX
+  }
+  type i64 = i: int | is_i64(i)
+
 }

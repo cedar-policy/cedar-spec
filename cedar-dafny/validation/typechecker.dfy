@@ -195,11 +195,7 @@ module validation.typechecker {
       match p {
         case Bool(true) => Ok(Type.Bool(True))
         case Bool(false) => Ok(Type.Bool(False))
-        case Int(i) =>
-          if is_i64(i)
-          then Ok(Type.Int(i,i))
-          // TODO: Think more about whether this makes sense.
-          else Err(ArithmeticOverflow)
+        case Int(i) => Ok(Type.Int(i,i))
         case String(_) => Ok(Type.String)
         case EntityUID(u) =>
           if u.ty in ets.types || isAction(u.ty)

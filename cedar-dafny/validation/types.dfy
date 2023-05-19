@@ -75,12 +75,10 @@ module validation.types {
   // and an optional method that checks input well-formedness.
   datatype ExtFunType = ExtFunType(args: seq<Type>, ret: Type, check: Option<seq<Expr> -> Result<()>>)
 
-  const i64_MIN := -0x8000_0000_0000_0000
-  const i64_MAX := 0x7fff_ffff_ffff_ffff
-  predicate is_i64(i: int) {
-    i64_MIN <= i <= i64_MAX
-  }
-  type i64 = i: int | is_i64(i)
+  // Re-export these definitions so `validation` modules don't have to jump
+  // through hoops to get them.
+  type i64 = base.i64
+  const is_i64 := base.is_i64
 
   datatype Type =
     Never | // used to type the empty set

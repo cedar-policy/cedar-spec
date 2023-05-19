@@ -50,7 +50,10 @@ module def.core {
   // a value after calling typeCheck with a single expected type.
   datatype Primitive =
     Bool(b: bool) |
-    Int(i: int) |
+    // TODO: We probably want to rename the constructor to `Long` and the field
+    // to `l`. This will cause a lot of churn, so to reduce distraction when
+    // reviewing my branch, I'm not doing it yet.
+    Int(i: i64) |
     String(s: string) |
     EntityUID(uid: EntityUID)
 
@@ -67,7 +70,7 @@ module def.core {
     static const TRUE := Bool(true)
     static const FALSE := Bool(false)
 
-    static function Int(i: int): Value {
+    static function Int(i: i64): Value {
       Primitive(Primitive.Int(i))
     }
 
@@ -93,7 +96,7 @@ module def.core {
       }
     }
 
-    static function asInt(v: Value): Result<int> {
+    static function asInt(v: Value): Result<i64> {
       match v {
         case Primitive(Int(i)) => Ok(i)
         case _ => Err(TypeError)
@@ -154,7 +157,7 @@ module def.core {
 
   datatype UnaryOp =
     Not |
-    Neg | MulBy(i: int) |
+    Neg | MulBy(i: i64) |
     Like(p: Pattern)
 
   datatype BinaryOp =
