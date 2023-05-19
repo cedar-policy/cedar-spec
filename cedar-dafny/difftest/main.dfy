@@ -34,6 +34,12 @@ module difftest.main {
   import opened validation.validator
   import opened helpers
 
+  // TODO: Should we just change `Json` so that _all_ ints are i64s?
+  function getJsonI64(j: Json): FromProdResult<i64> {
+    var i :- getJsonInt(j);
+    if base.is_i64(i) then Ok(i) else Err({UnexpectedFromProdErr("i64 out of range")})
+  }
+
   method responseToProdJson(r: Response, errs: set<string>) returns (ja: Json) {
     var errsSeq := setToSequenceUnordered(errs);
     var reasonSeq := setToSequenceUnordered(r.policies);
@@ -113,7 +119,7 @@ module difftest.main {
                       body,
                       map[
                         "Bool" := boolDeserializer(b => Ok(Primitive.Bool(b))),
-                        "Long" := intDeserializer(i => Ok(Primitive.Int(i))),
+                        "Long" := bodyDeserializer(getJsonI64, i => Ok(Primitive.Int(i))),
                         "String" := stringDeserializer(s => Ok(Primitive.String(s))),
                         "EntityUID" := bodyDeserializer(entityUIDFromProdJson,
                                                         uid => Ok(Primitive.EntityUID(uid)))
@@ -153,7 +159,7 @@ module difftest.main {
         Ok(BinaryApp(op, arg1, arg2))
       case "MulByConst" =>
         var arg :- deserializeField(body, "arg", exprFromProdJsonRec);
-        var cons :- deserializeField(body, "constant", getJsonInt);
+        var cons :- deserializeField(body, "constant", getJsonI64);
         Ok(UnaryApp(MulBy(cons), arg))
       case "ExtensionFunctionApp" =>
         var name :- deserializeField(body, "op", extFuncOpFromProdJson);
@@ -373,6 +379,19 @@ module difftest.main {
     response := responseToProdJson(ansAndErrors.0, ansAndErrors.1);
   }
 
+  const intTypeFromProdJson := objDeserializer2Fields(
+    "can_be_any", getJsonBool,
+    // Note: `bounds_opt` is optional in production, but it is omitted only for
+    // gradual bounds checking, which we don't support, so we can treat it as
+    // required. That doesn't give a great error message if the field is
+    // missing, but it doesn't seem worth the trouble to fix that.
+    "bounds_opt", tupleDeserializer2Elts(getJsonI64, getJsonI64, (min, max) => Ok((min, max))),
+    (canBeAny, bounds: (i64, i64)) =>
+      if canBeAny
+      then Err({UnexpectedFromProdErr("The definitional validator does not support gradual bounds checking.")})
+      else Ok(Type.Int(bounds.0, bounds.1))
+  )
+
   // Note: the types we have to support here are limited to those allowed in
   // the Rust SchemaFileFormat, which is more restrictive than our Schema type
   function typeFromProdJson(j: Json): FromProdResult<Type> {
@@ -382,12 +401,12 @@ module difftest.main {
     match tag {
       case "Primitive" =>
         var ty1 :- getJsonField(body, "primitiveType");
-        var ty :- deserializeEnum(
+        var ty :- deserializeSum(
                     ty1,
                     map[
-                      "Bool" := Type.Bool(AnyBool),
-                      "Long" := Type.Int,
-                      "String" := Type.String
+                      "Bool" := j1 => Ok(Type.Bool(AnyBool)),
+                      "Long" := intTypeFromProdJson,
+                      "String" := j1 => Ok(Type.String)
                     ]);
         Ok(ty)
       case "Set" =>
@@ -495,6 +514,7 @@ module difftest.main {
       case UnexpectedType(_) => "UnexpectedType"
       case AttrNotFound(_,_) => "AttrNotFound"
       case UnknownEntities(_) => "UnknownEntities"
+      case ArithmeticOverflow => "ArithmeticOverflow"
       case ExtensionErr(_) => "ExtensionErr"
       case EmptyLUB => "EmptyLUB"
     }
