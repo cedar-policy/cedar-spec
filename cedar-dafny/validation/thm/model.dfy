@@ -267,13 +267,22 @@ module validation.thm.model {
       requires IsSafe(r,s,e,Type.Bool(AnyBool))
       ensures IsSafe(r,s,UnaryApp(Not,e),Type.Bool(AnyBool))
 
-    lemma NegSafe(r: Request, s: EntityStore, e: Expr)
-      requires IsSafe(r,s,e,Type.Int)
-      ensures IsSafe(r,s,UnaryApp(Neg,e),Type.Int)
+    // We need `neg` because Dafny seems to be able to use a user-defined
+    // function but not the `-` operator as a trigger to instantiate the
+    // `forall` in the precondition of `NegSafe`.
+    function neg(x: int): int { -x }
 
-    lemma MulBySafe(r: Request, s: EntityStore, e: Expr, i: int)
-      requires IsSafe(r,s,e,Type.Int)
-      ensures IsSafe(r,s,UnaryApp(MulBy(i),e),Type.Int)
+    lemma NegSafe(r: Request, s: EntityStore, e: Expr, te: Type, tr: Type)
+      requires te.Int? && tr.Int?
+      requires IsSafe(r,s,e,te)
+      requires forall x | InstanceOfIntType(x, te) :: InstanceOfIntType(neg(x), tr)
+      ensures IsSafe(r,s,UnaryApp(Neg,e),tr)
+
+    lemma MulBySafe(r: Request, s: EntityStore, e: Expr, i: i64, te: Type, tr: Type)
+      requires te.Int? && tr.Int?
+      requires IsSafe(r,s,e,te)
+      requires forall x | InstanceOfIntType(x, te) :: InstanceOfIntType(i * x, tr)
+      ensures IsSafe(r,s,UnaryApp(MulBy(i),e),tr)
 
     lemma IteTrueSafe(r: Request, s: EntityStore, e: Expr, e1: Expr, e2: Expr, t: Type)
       requires IsTrue(r,s,e)
@@ -322,15 +331,27 @@ module validation.thm.model {
 
     lemma IneqSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr)
       requires op == Less || op == BinaryOp.LessEq
-      requires IsSafe(r,s,e1,Type.Int)
-      requires IsSafe(r,s,e2,Type.Int)
+      requires IsSafe(r,s,e1,intTopType)
+      requires IsSafe(r,s,e2,intTopType)
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),Type.Bool(AnyBool))
 
-    lemma ArithSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr)
+    function performAddOrSub(op: BinaryOp, x1: int, x2: int): int
       requires op == Add || op == Sub
-      requires IsSafe(r,s,e1,Type.Int)
-      requires IsSafe(r,s,e2,Type.Int)
-      ensures IsSafe(r,s,BinaryApp(op,e1,e2),Type.Int)
+    {
+      match op {
+        case Add => x1 + x2
+        case Sub => x1 - x2
+      }
+    }
+
+    lemma ArithSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr, t1: Type, t2: Type, tr: Type)
+      requires op == Add || op == Sub
+      requires t1.Int? && t2.Int? && tr.Int?
+      requires IsSafe(r,s,e1,t1)
+      requires IsSafe(r,s,e2,t2)
+      requires forall x1, x2 | InstanceOfIntType(x1, t1) && InstanceOfIntType(x2, t2) ::
+        InstanceOfIntType(performAddOrSub(op, x1, x2), tr)
+      ensures IsSafe(r,s,BinaryApp(op,e1,e2),tr)
 
     lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)
       requires name in extFunTypes
@@ -519,7 +540,7 @@ module validation.thm.model {
       match (t,t',v) {
         case (Never,_,_) =>
         case (String,String,_) =>
-        case (Int,Int,_) =>
+        case (Int(min1,max1),Int(min2,max2),_) =>
         case (Bool(b1),Bool(b2),_) =>
         case (Set(t1),Set(t2),Set(s)) =>
           assert forall v' | v' in s :: InstanceOfType(v',t2) by {
@@ -908,15 +929,35 @@ module validation.thm.model {
       ensures IsSafe(r,s,UnaryApp(Not,e),Type.Bool(AnyBool))
     {}
 
-    lemma NegSafe(r: Request, s: EntityStore, e: Expr)
-      requires IsSafe(r,s,e,Type.Int)
-      ensures IsSafe(r,s,UnaryApp(Neg,e),Type.Int)
-    {}
+    lemma NegSafe(r: Request, s: EntityStore, e: Expr, te: Type, tr: Type)
+      requires te.Int? && tr.Int?
+      requires IsSafe(r,s,e,te)
+      requires forall x | InstanceOfIntType(x, te) :: InstanceOfIntType(neg(x), tr)
+      ensures IsSafe(r,s,UnaryApp(Neg,e),tr)
+    {
+      match Evaluate(e,r,s) {
+        case Ok(v) =>
+          var x :- assert Value.asInt(v);
+          // We have to mention `neg(x)` (not `-x`) to make Dafny instantiate
+          // the precondition.
+          assert InstanceOfIntType(neg(x), tr);
+        case Err(_) =>
+      }
+    }
 
-    lemma MulBySafe(r: Request, s: EntityStore, e: Expr, i: int)
-      requires IsSafe(r,s,e,Type.Int)
-      ensures IsSafe(r,s,UnaryApp(MulBy(i),e),Type.Int)
-    {}
+    lemma MulBySafe(r: Request, s: EntityStore, e: Expr, i: i64, te: Type, tr: Type)
+      requires te.Int? && tr.Int?
+      requires IsSafe(r,s,e,te)
+      requires forall x | InstanceOfIntType(x, te) :: InstanceOfIntType(i * x, tr)
+      ensures IsSafe(r,s,UnaryApp(MulBy(i),e),tr)
+    {
+      match Evaluate(e,r,s) {
+        case Ok(v) =>
+          var x :- assert Value.asInt(v);
+          assert InstanceOfIntType(i * x, tr);
+        case Err(_) =>
+      }
+    }
 
     lemma IteTrueSafe(r: Request, s: EntityStore, e: Expr, e1: Expr, e2: Expr, t: Type)
       requires IsTrue(r,s,e)
@@ -984,17 +1025,28 @@ module validation.thm.model {
 
     lemma IneqSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr)
       requires op == Less || op == BinaryOp.LessEq
-      requires IsSafe(r,s,e1,Type.Int)
-      requires IsSafe(r,s,e2,Type.Int)
+      requires IsSafe(r,s,e1,intTopType)
+      requires IsSafe(r,s,e2,intTopType)
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),Type.Bool(AnyBool))
     {}
 
-    lemma ArithSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr)
+    lemma ArithSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr, t1: Type, t2: Type, tr: Type)
       requires op == Add || op == Sub
-      requires IsSafe(r,s,e1,Type.Int)
-      requires IsSafe(r,s,e2,Type.Int)
-      ensures IsSafe(r,s,BinaryApp(op,e1,e2),Type.Int)
-    {}
+      requires t1.Int? && t2.Int? && tr.Int?
+      requires IsSafe(r,s,e1,t1)
+      requires IsSafe(r,s,e2,t2)
+      requires forall x1, x2 | InstanceOfIntType(x1, t1) && InstanceOfIntType(x2, t2) ::
+        InstanceOfIntType(performAddOrSub(op, x1, x2), tr)
+      ensures IsSafe(r,s,BinaryApp(op,e1,e2),tr)
+    {
+      match (Evaluate(e1,r,s),Evaluate(e2,r,s)) {
+        case (Ok(v1),Ok(v2)) =>
+          var x1 :- assert Value.asInt(v1);
+          var x2 :- assert Value.asInt(v2);
+          assert InstanceOfIntType(performAddOrSub(op, x1, x2), tr);
+        case _ =>
+      }
+    }
 
     // We prove that every extension function is safe with respect to the
     // ExtFunType assigned to it by the validator. In particular, we show that

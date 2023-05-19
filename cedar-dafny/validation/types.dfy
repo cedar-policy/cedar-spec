@@ -78,6 +78,8 @@ module validation.types {
   // Re-export these definitions so `validation` modules don't have to jump
   // through hoops to get them.
   type i64 = base.i64
+  const i64_MIN := base.i64_MIN
+  const i64_MAX := base.i64_MAX
   const is_i64 := base.is_i64
 
   datatype Type =

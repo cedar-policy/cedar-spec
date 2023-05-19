@@ -88,7 +88,7 @@ module validation.thm.base {
     match p {
       case Bool(true) => Type.Bool(True)
       case Bool(false) => Type.Bool(False)
-      case Int(_) => Type.Int
+      case Int(i) => Type.Int(i,i)
       case String(_) => Type.String
       case EntityUID(u) => Type.Entity(EntityLUB({u.ty}))
     }
@@ -103,6 +103,17 @@ module validation.thm.base {
     }
   }
 
+  // Letting this accept `int` rather than `i64` lets us use it in `model.dfy`
+  // on results of unbounded Dafny arithmetic operations that we haven't yet
+  // proved to be in range of an `i64`.
+  ghost predicate InstanceOfIntType(i: int, ty: Type)
+    requires ty.Int?
+  {
+    ty.min <= i <= ty.max
+  }
+
+  const intTopType := Type.Int(types.i64_MIN, types.i64_MAX)
+
   ghost predicate InstanceOfEntityLUB(e: EntityUID, ty: EntityLUB) {
     match ty {
       case AnyEntity => true
@@ -115,7 +126,7 @@ module validation.thm.base {
   {
     match (v,ty) {
       case (Primitive(Bool(b)),Bool(bt)) => InstanceOfBoolType(b,bt)
-      case (Primitive(Int(_)),Int) => true
+      case (Primitive(Int(i)),Int(min,max)) => min <= i <= max
       case (Primitive(String(_)),String) => true
       case (Primitive(EntityUID(e)),Entity(lub)) => InstanceOfEntityLUB(e,lub)
       case (Set(s),Set(ty1)) =>
