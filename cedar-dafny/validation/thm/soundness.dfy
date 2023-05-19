@@ -1178,7 +1178,7 @@ module validation.thm.soundness {
       }
     }
 
-    lemma {:vcs_split_on_every_assert} SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
+    lemma SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.In,e1,e2) , 0 , e2
       requires InstanceOfRequestType(r,reqty)
       requires InstanceOfEntityTypeStore(s,ets)
@@ -1266,7 +1266,7 @@ module validation.thm.soundness {
                   assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
                 }
                 forall i | 0 <= i < |ei2s|
-                  // note: most expensive assertion here
+                  // Note: this is the most expensive part of the proof
                   ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
                 {
                   var u2 :- assert typechecker.tryGetEUID(ei2s[i]);

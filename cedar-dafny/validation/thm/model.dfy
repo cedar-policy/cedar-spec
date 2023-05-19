@@ -48,7 +48,7 @@ module validation.thm.model {
 
   lemma InterpretRecordLemmaOk(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Ok?
-    ensures forall i | 0 <= i < |es| :: es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
+    ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
     ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
   {}
 
@@ -882,9 +882,9 @@ module validation.thm.model {
 
   lemma RecordSafe(r: Request, s: EntityStore, es: seq<(Attr,Expr)>, rt: RecordType)
     // every entry has some type
-    requires forall ae | ae in es :: ExistsSafeType(r,s,ae.1)
+    requires forall ae :: ae in es ==> ExistsSafeType(r,s,ae.1)
     // and the last instance of every required key is safe at the correct type.
-    requires forall k | k in rt :: KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty)
+    requires forall k :: k in rt ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty)
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     reveal IsSafe();
