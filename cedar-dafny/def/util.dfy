@@ -30,28 +30,31 @@ module def.util {
     // connexity
     && (forall a, b :: R(a, b) || R(b, a))
     // antisymmetry
-    && (forall a, b :: R(a, b) && R(b, a) ==> a == b)
+    && (forall a, b | R(a, b) && R(b, a) :: a == b)
     // transitivity
-    && (forall a, b, c :: R(a, b) && R(b, c) ==> R(a, c))
+    && (forall a, b, c | R(a, b) && R(b, c) :: R(a, c))
   }
 
   lemma ThereIsAMinimum<A(!new)>(s: set<A>, R: (A, A) -> bool)
     requires s != {} && IsTotalOrder(R)
-    ensures exists x :: x in s && forall y :: y in s ==> R(x, y)
+    ensures exists x :: x in s && forall y | y in s :: R(x, y)
   {
     var x :| x in s;
     if s == {x} {
-      assert forall y :: y in s ==> x == y;
+      assert forall y | y in s :: x == y;
     } else {
       var s' := s - {x};
       assert s == s' + {x};
       ThereIsAMinimum(s', R);
-      var z :| z in s' && forall y :: y in s' ==> R(z, y);
+      var z :| z in s' && forall y | y in s' :: R(z, y);
       if
       case R(z, x) =>
-        forall y | y in s ensures R(z, y) { assert x == y || y in s'; }
+        assert s == s' + {x};
+        assert z in s;
+        forall y | y in s ensures R(z, y) { if y == x { assert R(z, x); } else { assert y in s'; } }
       case R(x, z) =>
-        forall y | y in s ensures R(x, y) { assert y in s' ==> R(z, y); }
+        assert x in s;
+        forall y | y in s ensures R(x, y) { if y == x { assert R(x, x); } else { assert y in s'; } }
     }
   }
 
@@ -67,7 +70,7 @@ module def.util {
   {
     if s == {} then [] else
     ThereIsAMinimum(s, R);
-    var x :| x in s && forall y :: y in s ==> R(x, y);
+    var x :| x in s && forall y | y in s :: R(x, y);
     [x] + SetToSortedSeq(s - {x}, R)
   }
 
@@ -85,14 +88,14 @@ module def.util {
     requires forall s1, s2 :: seqLeq(s1, s2) == SeqLeq(s1, s2, lte)
     ensures IsTotalOrder(seqLeq)
   {
-    forall a, b|
-      true ensures seqLeq(a, b) || seqLeq(b, a)
+    forall a, b
+      ensures seqLeq(a, b) || seqLeq(b, a)
     { SeqLeqConnexity(a, b, lte); }
-    forall a, b |
-      true ensures seqLeq(a, b) && seqLeq(b, a) ==> a == b
+    forall a, b
+      ensures seqLeq(a, b) && seqLeq(b, a) ==> a == b
     { SeqLeqAntisymmetry(a, b, lte); }
-    forall a, b, c |
-      true ensures seqLeq(a, b) && seqLeq(b, c) ==> seqLeq(a, c)
+    forall a, b, c
+      ensures seqLeq(a, b) && seqLeq(b, c) ==> seqLeq(a, c)
     { SeqLeqTransitivity(a, b, c, lte); }
   }
 

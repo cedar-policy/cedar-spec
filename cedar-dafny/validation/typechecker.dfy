@@ -470,7 +470,7 @@ module validation.typechecker {
     }
 
     function {:opaque true} inferRecord(ghost e: Expr, r: seq<(Attr,Expr)>, effs: Effects): (res: Result<RecordType>)
-      requires forall i :: 0 <= i < |r| ==> r[i] < e
+      requires forall i | 0 <= i < |r| :: r[i] < e
       decreases e , 0 , r
     {
       if r == [] then
@@ -551,7 +551,7 @@ module validation.typechecker {
     }
 
     function inferSet(ghost e: Expr, r: seq<Expr>, effs: Effects): (res: Result<Type>)
-      requires forall i :: 0 <= i < |r| ==> r[i] < e
+      requires forall i | 0 <= i < |r| :: r[i] < e
       decreases e , 0 , r
     {
       if r == [] then
@@ -570,7 +570,7 @@ module validation.typechecker {
 
     function inferCallArgs(ghost e: Expr, args: seq<Expr>, tys: seq<Type>, effs: Effects): Result<()>
       requires |args| == |tys|
-      requires forall i :: 0 <= i < |args| ==> args[i] < e
+      requires forall i | 0 <= i < |args| :: args[i] < e
       decreases e , 0 , args
     {
       if args == [] then
@@ -582,7 +582,7 @@ module validation.typechecker {
     }
 
     function inferCall(ghost e: Expr, name: base.Name, args: seq<Expr>, effs: Effects): Result<Type>
-      requires forall i :: 0 <= i < |args| ==> args[i] < e
+      requires forall i | 0 <= i < |args| :: args[i] < e
       decreases e , 0
     {
       if name in extFunTypes.Keys

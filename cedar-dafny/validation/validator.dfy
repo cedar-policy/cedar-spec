@@ -92,9 +92,9 @@ module validation.validator {
     function Typecheck (e: Expr, ets: EntityTypeStore, acts: ActionStore, reqty: RequestType): std.Result<Type, StrictTypeError> {
       if mode.Permissive?
       then match Typechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool)) {
-        case Ok(ty) => std.Ok(ty)
-        case Err(er) => std.Err(strict.TypeError(er))
-      }
+             case Ok(ty) => std.Ok(ty)
+             case Err(er) => std.Err(strict.TypeError(er))
+           }
       else StrictTypechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool))
     }
 
