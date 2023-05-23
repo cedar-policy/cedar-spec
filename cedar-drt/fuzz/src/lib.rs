@@ -32,6 +32,8 @@ pub use collections::*;
 
 pub use prt::*;
 
+pub mod gen;
+
 use std::fmt::Display;
 
 use crate::collections::HashMap;
@@ -666,4 +668,71 @@ impl<'e> DifferentialTester<'e> {
         // E.g., the error reported by the definitional validator should be in the list
         // of errors reported by the production validator, but we don't check this.
     }
+}
+
+#[test]
+fn call_def_engine() {
+    let diff_tester = DifferentialTester::new();
+    let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+        EntityUID::with_eid_and_type("User", "alice").unwrap(),
+    ));
+    let action = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+        EntityUID::with_eid_and_type("Action", "view").unwrap(),
+    ));
+    let resource = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+        EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
+    ));
+    let query = ast::Request::new_with_unknowns(
+        principal,
+        action,
+        resource,
+        Some(cedar_policy_core::ast::Context::empty()),
+    );
+    let mut policies = PolicySet::new();
+
+    let policy_string = r#"
+    permit(principal,action,resource) when
+    {
+        if principal has foo then
+            principal.foo
+        else
+            false
+    };"#;
+
+    let static_policy =
+        cedar_policy_core::parser::parse_policy(Some("policy0".into()), policy_string)
+            .expect("Failed to parse");
+    let static_policy: cedar_policy_core::ast::Policy = static_policy.into();
+    policies
+        .add(static_policy)
+        .expect("Adding static policy in Policy form should succeed");
+
+    let mut alice_attributes: std::collections::HashMap<SmolStr, RestrictedExpr> =
+        std::collections::HashMap::new();
+    alice_attributes.insert(
+        "foo".into(),
+        RestrictedExpr::val(cedar_policy_core::ast::Literal::Bool(true)),
+    );
+    let entity_alice = Entity::new(
+        EntityUID::with_eid_and_type("User", "alice").unwrap(),
+        alice_attributes,
+        std::collections::HashSet::new(),
+    );
+
+    let entity_view = Entity::new(
+        EntityUID::with_eid_and_type("Action", "view").unwrap(),
+        std::collections::HashMap::new(),
+        std::collections::HashSet::new(),
+    );
+    let entity_vacation = Entity::new(
+        EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
+        std::collections::HashMap::new(),
+        std::collections::HashSet::new(),
+    );
+    let entities = Entities::from_entities(
+        vec![entity_alice, entity_view, entity_vacation],
+        TCComputation::AssumeAlreadyComputed,
+    )
+    .unwrap();
+    diff_tester.run_single_test(&query, &policies, &entities);
 }

@@ -60,8 +60,7 @@ module validation.thm.toplevel {
     request: Request,
     store: Store,
     schema: Schema,
-    res: base.Result<Value>,
-    model: EvaluatorModel)
+    res: base.Result<Value>)
     requires pid in store.policies.policies.Keys
     requires SatisfiesSchema(request, store.entities, schema)
     requires permissiveTypecheck(pid, store.policies, schema).Ok?
@@ -69,11 +68,12 @@ module validation.thm.toplevel {
     ensures res.Ok? ==> InstanceOfType(res.value, Type.Bool(AnyBool))
     ensures res.Err? ==> res.error.EntityDoesNotExist? || res.error.ExtensionError?
   {
+    reveal IsSafe();
     var policies := store.policies;
     var entities := store.entities;
     var expr := policies.policies[pid].toExpr();
-    assert model.IsSafe(request, entities, expr, Type.Bool(AnyBool)) by {
-      SSP(model, schema.reqty, schema.ets, schema.acts, request, entities).SoundToplevel(expr, Type.Bool(AnyBool));
+    assert IsSafe(request, entities, expr, Type.Bool(AnyBool)) by {
+      SSP(schema.reqty, schema.ets, schema.acts, request, entities).SoundToplevel(expr, Type.Bool(AnyBool));
     }
   }
 
@@ -94,8 +94,7 @@ module validation.thm.toplevel {
     request: Request,
     store: Store,
     schema: Schema,
-    res: base.Result<Value>,
-    model: EvaluatorModel)
+    res: base.Result<Value>)
     requires pid in store.policies.policies.Keys
     requires SatisfiesSchema(request, store.entities, schema)
     requires strictTypecheck(pid, store.policies, schema).Ok?
@@ -104,6 +103,6 @@ module validation.thm.toplevel {
     ensures res.Err? ==> res.error.EntityDoesNotExist? || res.error.ExtensionError?
   {
     assert permissiveTypecheck(pid, store.policies, schema).Ok?;
-    PermissiveTypecheckingIsSound(pid, request, store, schema, res, model);
+    PermissiveTypecheckingIsSound(pid, request, store, schema, res);
   }
 }

@@ -133,9 +133,9 @@ module validation.thm.base {
         forall v1 | v1 in s :: InstanceOfType(v1,ty1)
       case (Record(r),Record(rt)) =>
         // if an attribute is present, then it has the expected type
-        (forall k :: k in rt && k in r ==> InstanceOfType(r[k],rt[k].ty)) &&
+        (forall k | k in rt && k in r :: InstanceOfType(r[k],rt[k].ty)) &&
         // required attributes are present
-        (forall k :: k in rt && rt[k].isRequired ==> k in r)
+        (forall k | k in rt && rt[k].isRequired :: k in r)
       case (Extension(Decimal(_)),_) => ty == Type.Extension(Name.fromStr("decimal"))
       case (Extension(IPAddr(_)),_) => ty == Type.Extension(Name.fromStr("ipaddr"))
       case _ => false

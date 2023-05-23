@@ -57,7 +57,6 @@ jobs:
           repository: cedar-policy/cedar
           ref: main
           path: ./cedar
-          ssh-key: ${{ secrets.CEDAR }}
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo test
@@ -88,7 +87,6 @@ jobs:
           repository: cedar-policy/cedar
           ref: main
           path: ./cedar
-          ssh-key: ${{ secrets.CEDAR }}
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt

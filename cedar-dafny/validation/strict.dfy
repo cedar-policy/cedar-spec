@@ -119,7 +119,7 @@ module validation.strict {
               var _ :- inferStrictSeq(args,effs);
               // require literal arguments for string parsing functions, which have a "check" field
               if (name in extFunTypes && extFunTypes[name].check.Some?) ==>
-                forall i | 0 <= i < |args| :: args[i].PrimitiveLit?
+                   forall i | 0 <= i < |args| :: args[i].PrimitiveLit?
               then Result.Ok((ty,effs0))
               else Result.Err(NonLitExtConstructor)
           }
@@ -143,7 +143,7 @@ module validation.strict {
         case (Set(ty1), Set(ty2)) => unify(ty1, ty2)
         case (Record(rty1), Record(rty2)) =>
           if rty1.Keys == rty2.Keys &&
-            forall k | k in rty1.Keys :: unify(rty1[k].ty,rty2[k].ty).Ok? && rty1[k].isRequired == rty2[k].isRequired
+             forall k | k in rty1.Keys :: unify(rty1[k].ty,rty2[k].ty).Ok? && rty1[k].isRequired == rty2[k].isRequired
           then Result.Ok(())
           else Result.Err(TypesMustMatch)
         case _ =>

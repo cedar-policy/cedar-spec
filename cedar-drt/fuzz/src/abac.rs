@@ -17,6 +17,7 @@
 use super::{while_doing, Error, Result};
 use crate::collections::HashMap;
 use crate::Schema;
+use crate::{gen, uniform};
 use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -104,28 +105,28 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
         if u.ratio(9, 10)? {
             res.push(c);
         } else {
-            match u.int_in_range(0..=8)? {
-                0 =>
+            gen!(u,
+                1 =>
                     // remove it
-                    {}
+                    {},
                 1 =>
                 // duplicate it
                 {
                     res.push(c);
                     res.push(c);
-                }
+                },
                 2 =>
                 // replace it with an arbitrary ASCII
                 {
                     let byte = u.bytes(1)?.first().unwrap().to_owned();
                     res.push(byte as char);
-                }
-                _ =>
+                },
+                4 =>
                 // keep it
                 {
                     res.push(c);
                 }
-            }
+            )
         }
     }
     Ok(res.into_iter().collect())
@@ -266,29 +267,29 @@ impl ConstantPool {
 
         let mut pattern = Vec::new();
         for c in matched_string.chars() {
-            match u.int_in_range(0..=4)? {
+            uniform!(
+                u,
                 // add the char back
-                0 => {
+                {
                     pattern.push(ast::PatternElem::Char(c));
-                }
+                },
                 // add the wildcard
-                1 => {
+                {
                     pattern.push(ast::PatternElem::Wildcard);
-                }
+                },
                 // add the wildcard after the char
-                2 => {
+                {
                     pattern.push(ast::PatternElem::Char(c));
                     pattern.push(ast::PatternElem::Wildcard);
-                }
+                },
                 // add the wildcard before the char
-                3 => {
+                {
                     pattern.push(ast::PatternElem::Wildcard);
                     pattern.push(ast::PatternElem::Char(c));
-                }
+                },
                 // Skip
-                4 => {}
-                _ => panic!("invalid number!"),
-            }
+                {}
+            )
         }
         Ok(pattern)
     }
@@ -616,16 +617,16 @@ impl Type {
     /// `Type` has `Arbitrary` auto-derived for it, but for the case where you
     /// want "any nonextension Type", you have this
     pub fn arbitrary_nonextension(u: &mut Unstructured<'_>) -> Result<Type> {
-        match u.int_in_range::<u8>(1..=7)? {
-            1 => Ok(Type::bool()),
-            2 => Ok(Type::long()),
-            3 => Ok(Type::string()),
-            4 => Ok(Type::set_of(Self::arbitrary_nonextension(u)?)),
-            5 => Ok(Type::any_set()),
-            6 => Ok(Type::record()),
-            7 => Ok(Type::entity()),
-            n => panic!("bad index: {n}"),
-        }
+        Ok(uniform!(
+            u,
+            Type::bool(),
+            Type::long(),
+            Type::string(),
+            Type::set_of(Self::arbitrary_nonextension(u)?),
+            Type::any_set(),
+            Type::record(),
+            Type::entity()
+        ))
     }
 }
 

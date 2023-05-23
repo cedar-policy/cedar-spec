@@ -78,10 +78,10 @@ module def.ext.utils.parser {
       case _ => 16*HexPowerOf(n-1)
     }
   }
+
   lemma HexPowerMonotonic(n1: nat, n2: nat)
     ensures n1 < n2 ==> HexPowerOf(n1) < HexPowerOf(n2)
-  {
-  }
+  {}
 
   function HexStrToNat(s: string): (res: nat)
     requires |s| > 0 && forall i | 0 <= i < |s| :: IsHexDigit(s[i])
