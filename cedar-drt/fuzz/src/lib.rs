@@ -32,6 +32,8 @@ pub use collections::*;
 
 pub use prt::*;
 
+pub mod gen;
+
 use std::fmt::Display;
 
 use crate::collections::HashMap;
