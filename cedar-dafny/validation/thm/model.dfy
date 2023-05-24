@@ -930,8 +930,20 @@ module validation.thm.model {
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     reveal IsSafe();
-    if Evaluator(r,s).interpretRecord(es).Ok? {
+    var evaluator := Evaluator(r,s);
+    var res := evaluator.interpretRecord(es);
+    if res.Ok? {
+      var rv := res.value;
+      assert evaluator.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
       InterpretRecordLemmaOk(es,r,s);
+      forall k | k in rt
+        ensures InstanceOfType(rv[k],rt[k].ty)
+      {
+        var vres := evaluator.interpret(LastOfKey(k,es));
+        assert vres == base.Ok(rv[k]);
+        assert InstanceOfType(vres.value,rt[k].ty);
+      }
+      assert InstanceOfType(Value.Record(rv),Type.Record(rt));
     } else {
       InterpretRecordLemmaErr(es,r,s);
     }
@@ -1057,6 +1069,8 @@ module validation.thm.model {
     } else if r2.Err? {
       assert res == r2;
     } else {
+      assert InstanceOfType(r1.value,t1);
+      assert InstanceOfType(r2.value,t2);
       assert r1.value.Primitive? && r1.value.primitive.EntityUID?;
       assert r2.value.Primitive? && r2.value.primitive.EntityUID?;
       var u1 := r1.value.primitive.uid;

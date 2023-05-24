@@ -1179,6 +1179,51 @@ module validation.thm.soundness {
       }
     }
 
+    lemma SoundInSetMemberFalse(e1: Expr, ei2s: seq<Expr>, i: nat, effs: Effects)
+      decreases BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)) , 0 , Expr.Set(ei2s) , 0
+      requires InstanceOfRequestType(r,reqty)
+      requires InstanceOfEntityTypeStore(s,ets)
+      requires InstanceOfActionStore(s,acts)
+      requires EffectsInvariant(effs)
+      requires WellTyped(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs)
+      requires getType(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs) == Type.Bool(False)
+      requires !Typechecker(ets,acts,reqty).isUnspecifiedVar(e1)
+      requires 0 <= i < |ei2s|
+      ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
+    {
+      // Reestablishing things we had at the call site in `SoundIn`.
+      var e2 := Expr.Set(ei2s);
+      var typechecker := Typechecker(ets,acts,reqty);
+      assert typechecker.inferIn(BinaryApp(BinaryOp.In,e1,e2),e1,e2,effs) == types.Ok(Type.Bool(False));
+
+      assert typechecker.ensureEntityType(e1,effs).Ok?;
+      var t1 := getType(e1,effs);
+
+      var euids2 :- assert typechecker.tryGetEUIDs(e2);
+      var ets2 := set u <- euids2 :: u.ty;
+
+      // New proof.
+      var u2 :- assert typechecker.tryGetEUID(ei2s[i]);
+      assert u2 in euids2;
+      match e1 {
+        case Var(v1) =>
+          var et1 :- assert typechecker.getPrincipalOrResource(v1);
+          assert t1 == Type.Entity(EntityLUB({et1}));
+          assert IsSafe(r,s,Var(v1),t1) by { Sound(e1,t1,effs); }
+          assert !ets.possibleDescendantOf(et1,u2.ty);
+          InSingleFalseEntityTypeAndLiteral(r,s,e1,et1,u2);
+        case PrimitiveLit(EntityUID(u1)) =>
+          if isAction(u1.ty) {
+            assert !acts.descendantOfSet(u1,euids2);
+            assert !acts.descendantOf(u1,u2);
+          } else {
+            assert !ets.possibleDescendantOfSet(u1.ty,ets2);
+            assert !ets.possibleDescendantOf(u1.ty,u2.ty);
+          }
+          InSingleFalseLiterals(r,s,u1,u2);
+      }
+    }
+
     lemma SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.In,e1,e2) , 0 , e2
       requires InstanceOfRequestType(r,reqty)
@@ -1266,30 +1311,14 @@ module validation.thm.soundness {
                   SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
                   assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
                 }
+                // Argument depending on e1
                 forall i | 0 <= i < |ei2s|
-                  // Note: this is the most expensive part of the proof
                   ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
                 {
-                  var u2 :- assert typechecker.tryGetEUID(ei2s[i]);
-                  assert u2 in euids2;
-                  // Argument depending on e1
-                  match e1 {
-                    case Var(v1) =>
-                      var et1 :- assert typechecker.getPrincipalOrResource(v1);
-                      assert t1 == Type.Entity(EntityLUB({et1}));
-                      assert IsSafe(r,s,Var(v1),t1) by { Sound(e1,t1,effs); }
-                      assert !ets.possibleDescendantOf(et1,u2.ty);
-                      InSingleFalseEntityTypeAndLiteral(r,s,e1,et1,u2);
-                    case PrimitiveLit(EntityUID(u1)) =>
-                      if isAction(u1.ty) {
-                        assert !acts.descendantOfSet(u1,euids2);
-                        assert !acts.descendantOf(u1,u2);
-                      } else {
-                        assert !ets.possibleDescendantOfSet(u1.ty,ets2);
-                        assert !ets.possibleDescendantOf(u1.ty,u2.ty);
-                      }
-                      InSingleFalseLiterals(r,s,u1,u2);
-                  }
+                  // Since this is the most expensive part of the proof, we move
+                  // it to a separate lemma to help keep each lemma under the
+                  // verification limits.
+                  SoundInSetMemberFalse(e1, ei2s, i, effs);
                 }
                 InSetFalseIfAllFalse(r,s,e1,ei2s);
             }
