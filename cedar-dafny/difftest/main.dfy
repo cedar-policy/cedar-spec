@@ -104,11 +104,6 @@ module difftest.main {
         "Neg" := Neg
       ]);
 
-  const extFuncOpFromProdJson :=
-    objDeserializer1Field(
-      "function_name", nameFromProdJson,
-      name => Ok(name));
-
   function exprFromProdJson(j: Json): FromProdResult<Expr> {
     var jkind :- getJsonField(j, "expr_kind");
     var exprFromProdJsonRec := jr requires jr < jkind => exprFromProdJson(jr);
@@ -162,7 +157,7 @@ module difftest.main {
         var cons :- deserializeField(body, "constant", getJsonI64);
         Ok(UnaryApp(MulBy(cons), arg))
       case "ExtensionFunctionApp" =>
-        var name :- deserializeField(body, "op", extFuncOpFromProdJson);
+        var name :- deserializeField(body, "fn_name", nameFromProdJson);
         var jargs :- getJsonField(body, "args");
         var args :- deserializeSeq(jargs, exprFromProdJsonRec);
         Ok(Expr.Call(name, args))
