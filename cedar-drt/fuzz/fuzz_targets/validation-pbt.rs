@@ -46,6 +46,12 @@ struct FuzzTargetInput {
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
     match_types: false,
+    // If long_any is used, then a policy that passes validation could raise an
+    // overflow error at runtime. For now, we just turn it off. A better
+    // solution might be to disable the check for runtime overflow errors if the
+    // schema _actually_ used long_any. TODO: Implement that? Would it give a
+    // meaningful improvement in our ability to catch bugs?
+    enable_long_any: false,
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,
@@ -359,6 +365,15 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .errors
                             .iter()
                             .filter(|err| err.contains("does not have the required attribute"))
+                            .collect::<Vec<&String>>(),
+                        Vec::<&String>::new()
+                    );
+                    // or integer overflow errors
+                    assert_eq!(
+                        ans.diagnostics
+                            .errors
+                            .iter()
+                            .filter(|err| err.contains("integer overflow"))
                             .collect::<Vec<&String>>(),
                         Vec::<&String>::new()
                     );

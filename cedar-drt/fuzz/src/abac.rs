@@ -30,13 +30,21 @@ const MAX_PATTERN_LEN: usize = 6;
 
 #[derive(Debug, Clone)]
 pub struct ABACSettings {
-    /// If true, generates well-typed hierarchies/policies/requests.
-    /// Specifically:
-    /// - policies will not throw type errors, ie, we generate subexpressions of the proper type for ops like < or .contains()
-    /// - attribute values (in the hierarchy and in the request contexts) will strictly adhere to the types suggested in pool.ty_data
+    /// If true, generates well-typed policies. Specifically, policies will not
+    /// throw type errors, ie, we generate subexpressions of the proper type for
+    /// ops like < or .contains(). However, policies may throw arithmetic
+    /// overflow validation errors.
     ///
-    /// If false, does not attempt to match types.
+    /// If false, does not attempt to match types in policies.
+    ///
+    /// Attribute values in the hierarchy and request contexts will conform to
+    /// the schema regardless of this option.
     pub match_types: bool,
+    /// Allow generation of `Long` types with unspecified bounds. This is
+    /// usually harmless but can be a problem if you're using the definitional
+    /// validator (which currently doesn't support such types) or expecting that
+    /// a policy that passes validation won't raise runtime overflow errors.
+    pub enable_long_any: bool,
     /// If true, may generate extension function calls in policies and/or
     /// attribute values.
     pub enable_extensions: bool,

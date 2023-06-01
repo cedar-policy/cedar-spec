@@ -385,7 +385,7 @@ module difftest.main {
     // gradual bounds checking, which we don't support, so we can treat it as
     // required. That doesn't give a great error message if the field is
     // missing, but it doesn't seem worth the trouble to fix that.
-    "bounds_opt", tupleDeserializer2Elts(getJsonI64, getJsonI64, (min, max) => Ok((min, max))),
+    "bounds_opt", objDeserializer2Fields("min", getJsonI64, "max", getJsonI64, (min, max) => Ok((min, max))),
     (canBeAny, bounds: (i64, i64)) =>
       if canBeAny
       then Err({UnexpectedFromProdErr("The definitional validator does not support gradual bounds checking.")})
