@@ -29,9 +29,9 @@ module def.util {
   ghost predicate IsTotalOrder<A(!new)>(R: (A, A) -> bool) {
     // connexity
     && (forall a, b :: R(a, b) || R(b, a))
-    // antisymmetry
+       // antisymmetry
     && (forall a, b | R(a, b) && R(b, a) :: a == b)
-    // transitivity
+       // transitivity
     && (forall a, b, c | R(a, b) && R(b, c) :: R(a, c))
   }
 
@@ -205,5 +205,17 @@ module def.util {
     assert IsTotalOrder(PathLeq) by {
       SeqLeqIsTotalOrder(PathLeq, IdLeq);
     }
+  }
+
+  // Thank you Rustan
+  function MapToSequence<A(!new),B>(m: map<A,B>, R: (A, A) -> bool): seq<(A,B)>
+    requires IsTotalOrder(R)
+  {
+    var keys := SetToSortedSeq(m.Keys, (a,a') => R(a, a'));
+    seq(|keys|, i requires 0 <= i < |keys| => (keys[i], m[keys[i]]))
+  }
+  function RecordToSequence<T>(m: map<string,T>): seq<(string,T)> {
+    StringLeqIsTotalOrder();
+    MapToSequence(m, StringLeq)
   }
 }

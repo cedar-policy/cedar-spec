@@ -194,7 +194,7 @@ module def.engine {
         if res.Err? && treatMissingAsEmpty then Ok(map[]) else res
     }
 
-    function applyUnaryOp(uop: UnaryOp, x: Value): Result<Value> {
+    static function applyUnaryOp(uop: UnaryOp, x: Value): Result<Value> {
       match uop {
         case Not =>
           var b :- Value.asBool(x);
@@ -209,7 +209,7 @@ module def.engine {
       }
     }
 
-    function applyIntUnaryOp(f: int -> int, x: Value): Result<Value> {
+    static function applyIntUnaryOp(f: int -> int, x: Value): Result<Value> {
       var i :- Value.asInt(x);
       Ok(Value.Int(f(i)))
     }

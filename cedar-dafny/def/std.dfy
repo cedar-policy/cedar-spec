@@ -70,4 +70,6 @@ module def.std {
       if Ok? then Ok(value) else Err(f(error))
     }
   }
+
+  datatype Either<+L, +R> = Left(left: L) | Right(right: R)
 }
