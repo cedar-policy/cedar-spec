@@ -13,7 +13,7 @@ module pe.engine {
 
   datatype Evaluator = Evaluator(request: definition.Request, store: definition.EntityStore) {
 
-    function interpret(expr: core.Expr): definition.Result<Residual> {
+    function interpret(expr: definition.Expr): definition.Result<Residual> {
       match expr {
         case PrimitiveLit(p) => Ok(Concrete(Primitive(p)))
         case Var(v) =>
@@ -52,12 +52,12 @@ module pe.engine {
         case Record(bs) =>
           var rs :- interpretRecord(bs);
           Ok(splitRecord(rs))
-
+        case Unknown(u) => Ok(Residual.Unknown(u))
         case _ => Err(TypeError)
       }
     }
 
-    function interpretSet(es: seq<Expr>): definition.Result<seq<Residual>> {
+    function interpretSet(es: seq<definition.Expr>): definition.Result<seq<Residual>> {
       if |es| == 0 then
         Ok([])
       else
@@ -73,7 +73,7 @@ module pe.engine {
         Residual.Set(rs)
     }
 
-    function interpretRecord(bs: seq<(Attr, Expr)>): definition.Result<seq<(Attr, Residual)>> {
+    function interpretRecord(bs: seq<(Attr, definition.Expr)>): definition.Result<seq<(Attr, Residual)>> {
       if |bs| == 0 then
         Ok([])
       else

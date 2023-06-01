@@ -12,7 +12,7 @@ module pe.definition {
 
   type Error = base.Error
   type Result<T> = std.Result<T, Error>
-  /*
+
   datatype Expr =
     PrimitiveLit(Primitive) |
     Var(Var) |
@@ -27,8 +27,14 @@ module pe.definition {
     Record(fvs: seq<(Attr, Expr)>) |
     Call(name: Name, args: seq<Expr>) |
     Unknown(u: Unknown)
-  */
 
+  // Rust implementation defines it as something like
+  //   datatype PartialValue =
+  //     Concrete(v: core.Value) |
+  //     Partial(e: Expr)
+  // The problem with this implementation is that it requires conversion from `Value` to `Expr`.
+  // For instance, when evaluating `1 + unknown("x")`, we get `Concrete(Int(1)` for LHS and `Uknown("x")` for RHS.
+  // To build a `Partial` value, we need to convert the first value into an `Expr`.
   datatype Residual =
     Concrete(v: core.Value) |
     If(Residual, Residual, Residual) |
@@ -56,27 +62,6 @@ module pe.definition {
 
     }
   }
-
-  /*
-  datatype State =
-    Concrete(v: core.Value) |
-    Partial(e: Expr) {
-      static function fromOptionalEntity(e: OptionalEntity): State {
-        match e {
-          case Left(e) => Concrete(Primitive(Primitive.EntityUID(e)))
-          case Right(u) => Partial(Expr.Unknown(u))
-        }
-      }
-      static function fromRecord(r: Record): State {
-        if (forall v | v in r.Values :: v.Concrete?) then
-          Concrete(core.Value.Record(map a : Attr | a in r.Keys :: r[a].v))
-        else
-          // TODO: find set to sequence
-          Partial(Expr.Record([]))
-      }
-      }
-    }
-    */
 
   type Record = map<Attr, Residual>
   type OptionalEntity = Either<EntityUID, Unknown>
