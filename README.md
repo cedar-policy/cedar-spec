@@ -19,7 +19,6 @@ To build the Dafny formalization and proofs:
 To build the DRT framework:
 
 * Install Dafny, following the instructions above
-* Ensure that JAVA_HOME is set
 * `./build.sh`
 
 ## Run
