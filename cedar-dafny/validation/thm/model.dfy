@@ -1069,6 +1069,7 @@ module validation.thm.model {
     } else if r2.Err? {
       assert res == r2;
     } else {
+      assert res == evaluator.applyBinaryOp(BinaryOp.In,r1.value,r2.value);
       assert InstanceOfType(r1.value,t1);
       assert InstanceOfType(r2.value,t2);
       assert r1.value.Primitive? && r1.value.primitive.EntityUID?;
