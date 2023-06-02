@@ -11,7 +11,7 @@ module pe.engine {
   import opened def.core
   import opened def.engine
 
-  datatype Evaluator = Evaluator(request: definition.Request, store: definition.EntityStore) {
+  datatype PartialEvaluator = PartialEvaluator(request: definition.Request, store: definition.EntityStore) {
 
     function interpret(expr: definition.Expr): definition.Result<Residual> {
       match expr {
@@ -46,6 +46,12 @@ module pe.engine {
               Ok(Concrete(cv))
             case _ => Ok(Residual.UnaryApp(op, r))
           }
+        case GetAttr(e, a) =>
+          var r :- interpret(e);
+          Err(TypeError)
+        case HasAttr(e, a) =>
+          var r :- interpret(e);
+          Err(TypeError)
         case Set(es) =>
           var rs :- interpretSet(es);
           Ok(splitSeq(rs))

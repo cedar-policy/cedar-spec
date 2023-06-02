@@ -59,7 +59,16 @@ module pe.definition {
         Concrete(core.Value.Record(map a : Attr | a in r.Keys :: r[a].v))
       else
         Residual.Record(RecordToSequence(r))
-
+    }
+    function restricted?(): bool {
+      match this {
+        case Concrete(_) => true
+        case Set(rs) => forall r | r in rs :: r.restricted?()
+        case Record(bs) => forall b | b in bs :: b.1.restricted?()
+        case Unknown(_) => true
+        case Call(_, args) => forall a | a in args :: a.restricted?()
+        case _ => false
+      }
     }
   }
 
@@ -69,7 +78,8 @@ module pe.definition {
     Request(principal: OptionalEntity,
             action: OptionalEntity,
             resource: OptionalEntity,
-            context: Record)
+            context: Record) {
+  }
 
   datatype EntityData = EntityData(attrs: Record, ancestors: set<EntityUID>)
 
