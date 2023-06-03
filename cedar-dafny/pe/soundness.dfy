@@ -16,6 +16,8 @@ module pe.soundness {
     requires var pr := I.replaceUnknownInRequest(Q); pr.Some? && pr.value == q
     requires var ps := I.replaceUnknownInEntityStore(S); ps.Some? && ps.value == s
     ensures var peRes := PartialEvaluator(Q, S).interpret(e);
+            // If PE succeeds, then evaluating the residual and evaluating the original expression with the same unknown to value mappings should agree.
             (peRes.Ok? ==> ce.Evaluator(q, s).interpret(I.replaceUnknownInExpr(e)) == I.interpret(peRes.value)) &&
+            // If PE fails, then evaluating the original expression with any uknown to value mappings should fail.
             (peRes.Err? ==> ce.Evaluator(q, s).interpret(I.replaceUnknownInExpr(e)).Err?)
 }

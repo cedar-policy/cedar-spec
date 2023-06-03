@@ -11,6 +11,7 @@ module pe.interpretation {
   import opened def.std
   import opened definition
 
+  // The interpretation class
   datatype Interpretation = Interpretation(mappings: string -> core.Expr) {
     ghost predicate wellFormed() {
       forall v :: restrictedExpr.evaluate(mappings(v)).Some?
