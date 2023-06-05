@@ -17,6 +17,7 @@ cedar-dafny/.dotnet
 cedar-dafny/.local
 cedar-dafny/.nuget
 cedar-dafny/build
+cedar-dafny/TestResults
 
 # cedar-dafny-java-wrapper build artifacts
 cedar-dafny-java-wrapper/build
@@ -29,8 +30,5 @@ cedar-drt/fuzz/target
 cedar-drt/fuzz/Cargo.lock
 cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
-
-# cedar if checkout out in root dir
-cedar/
 
 .vscode

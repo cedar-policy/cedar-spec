@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Check out the cedar submodule
+git submodule update --init
+
+# Set environment variables
+cd cedar-drt && source ./set_env_vars.sh
+cd ..
+
 # Build the formalization and extract Java code
 cd cedar-dafny && make compile-difftest
 cd ..
@@ -10,7 +17,6 @@ cd ..
 
 # Build DRT
 cd cedar-drt
-export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar"
 cargo build
 cargo test
 cd fuzz && RUSTFLAGS="--cfg=fuzzing" cargo build
