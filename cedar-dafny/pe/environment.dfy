@@ -4,15 +4,17 @@ include "../difftest/main.dfy"
 include "../def/std.dfy"
 include "def.dfy"
 
-module pe.interpretation {
+module pe.environment {
   import opened def.core
   import opened def.base
   import difftest.restrictedExpr
   import opened def.std
   import opened definition
 
-  // The interpretation class
-  datatype Interpretation = Interpretation(mappings: string -> core.Expr) {
+  // Like the interpretation in the symbolic evaluator, this datatype contains a mapping from unknowns to values.
+  // But we can't use `Value` as the codomain because replacing uknowns in an policy body requires them to be `Expr`s.
+  // We add a wellFormed predicate to constrain that the codomain `Expr`s ought to be evaluated into `Value`s.
+  datatype Environment = Environment(mappings: string -> core.Expr) {
     ghost predicate wellFormed() {
       forall v :: restrictedExpr.evaluate(mappings(v)).Some?
     }
@@ -63,10 +65,13 @@ module pe.interpretation {
 
     function replaceUnknownInEntityStore(store: definition.EntityStore): Option<core.EntityStore>
       requires wellFormed() {
-      var entities := map euid: EntityUID | euid in store.entities.Keys :: match replaceRecord(store.entities[euid].attrs) {
-                                                                             case Some(r) => Some(core.EntityData(r, store.entities[euid].ancestors))
-                                                                             case None => None
-                                                                           };
+      var entities :=
+        map euid: EntityUID
+          | euid in store.entities.Keys ::
+          match replaceRecord(store.entities[euid].attrs) {
+            case Some(r) => Some(core.EntityData(r, store.entities[euid].ancestors))
+            case None => None
+          };
       if forall euid | euid in entities.Keys :: entities[euid].Some? then
         Some(core.EntityStore(map euid | euid in entities.Keys :: entities[euid].value))
       else
