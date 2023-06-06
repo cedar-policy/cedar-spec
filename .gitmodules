@@ -1,0 +1,3 @@
+[submodule "cedar"]
+	path = cedar
+	url = https://github.com/cedar-policy/cedar.git
