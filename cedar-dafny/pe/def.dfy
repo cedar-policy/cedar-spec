@@ -48,10 +48,10 @@ module pe.definition {
     Record(fvs: seq<(Attr, Residual)>) |
     Call(name: Name, args: seq<Residual>) |
     Unknown(u: Unknown) {
-    static function fromOptionalEntity(eu: OptionalEntity): Residual {
+    static function fromOptionalEntity(eu: RequestEntity): Residual {
       match eu {
-        case Left(e) => Concrete(Primitive(Primitive.EntityUID(e)))
-        case Right(u) => Residual.Unknown(u)
+        case Entity(e) => Concrete(Primitive(Primitive.EntityUID(e)))
+        case Uknown(u) => Residual.Unknown(u)
       }
     }
     static function fromRecord(r: Record): Residual {
@@ -73,11 +73,12 @@ module pe.definition {
   }
 
   type Record = map<Attr, Residual>
-  type OptionalEntity = Either<EntityUID, Unknown>
+  datatype RequestEntity = Entity(e: EntityUID) | Uknown(u: Unknown)
+
   datatype Request =
-    Request(principal: OptionalEntity,
-            action: OptionalEntity,
-            resource: OptionalEntity,
+    Request(principal: RequestEntity,
+            action: RequestEntity,
+            resource: RequestEntity,
             context: Record) {
   }
 

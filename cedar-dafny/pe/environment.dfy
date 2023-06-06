@@ -30,12 +30,12 @@ module pe.environment {
       }
     }
 
-    function replaceUnknownInOptionalEntity(oe: OptionalEntity): (r: Option<core.EntityUID>)
+    function replaceUnknownInRequestEntity(oe: RequestEntity): (r: Option<core.EntityUID>)
       requires wellFormed()
     {
       match oe {
-        case Left(l) => Some(l)
-        case Right(u) =>
+        case Entity(e) => Some(e)
+        case Uknown(u) =>
           var v := restrictedExpr.evaluate(mappings(u.name)).value;
           if v.Primitive? && v.primitive.EntityUID? then
             Some(v.primitive.uid)
@@ -56,9 +56,9 @@ module pe.environment {
     function replaceUnknownInRequest(req: definition.Request): Option<core.Request>
       requires wellFormed()
     {
-      var p :- replaceUnknownInOptionalEntity(req.principal);
-      var a :- replaceUnknownInOptionalEntity(req.action);
-      var r :- replaceUnknownInOptionalEntity(req.resource);
+      var p :- replaceUnknownInRequestEntity(req.principal);
+      var a :- replaceUnknownInRequestEntity(req.action);
+      var r :- replaceUnknownInRequestEntity(req.resource);
       var c :- replaceRecord(req.context);
       Some(core.Request(p, a, r, c))
     }
