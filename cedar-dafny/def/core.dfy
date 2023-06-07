@@ -245,13 +245,15 @@ module def.core {
             resource: EntityUID,
             context: Record)
 
-  datatype EntityData = EntityData(attrs: Record, ancestors: set<EntityUID>)
+  datatype GenericEntityData<V> = EntityData(attrs: map<Attr, V>, ancestors: set<EntityUID>)
 
-  datatype EntityStore = EntityStore(
-    entities: map<EntityUID, EntityData>)
+  type EntityData = GenericEntityData<Value>
+
+  datatype GenericEntityStore<V> = EntityStore(
+    entities: map<EntityUID, GenericEntityData<V>>)
   {
     // Can also be used just to test whether an entity exists in the store.
-    function getEntityAttrs(uid: EntityUID): base.Result<Record> {
+    function getEntityAttrs(uid: EntityUID): base.Result<map<Attr,V>> {
       if uid in entities.Keys then
         Ok(entities[uid].attrs)
       else
@@ -264,6 +266,8 @@ module def.core {
       ancestor in entities[child].ancestors
     }
   }
+
+  type EntityStore = GenericEntityStore<Value>
 
   // Note: PolicyStore previously had an `overrides` field and might have it
   // again in the future. To reduce code churn, we aren't collapsing the

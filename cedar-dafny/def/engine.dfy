@@ -214,38 +214,42 @@ module def.engine {
       Ok(Value.Int(f(i)))
     }
 
-    function applyIntBinaryOp(f: (int, int) -> int, x: Value, y: Value): Result<Value> {
+    static function applyIntBinaryOp(f: (int, int) -> int, x: Value, y: Value): Result<Value> {
       var xi :- Value.asInt(x);
       var yi :- Value.asInt(y);
       Ok(Value.Int(f(xi, yi)))
     }
 
-    function applyIntBinaryPred(f: (int, int) -> bool, x: Value, y: Value): Result<Value> {
+    static function applyIntBinaryPred(f: (int, int) -> bool, x: Value, y: Value): Result<Value> {
       var xi :- Value.asInt(x);
       var yi :- Value.asInt(y);
       Ok(Value.Bool(f(xi, yi)))
     }
 
-    function applySetBinaryPred(f: (set<Value>, set<Value>) -> bool, x: Value, y: Value): Result<Value> {
+    static function applySetBinaryPred(f: (set<Value>, set<Value>) -> bool, x: Value, y: Value): Result<Value> {
       var xs :- Value.asSet(x);
       var ys :- Value.asSet(y);
       Ok(Value.Bool(f(xs, ys)))
     }
 
-    predicate entityInEntity(x: EntityUID, y: EntityUID) {
+    static predicate entityInEntityGeneric<V>(x: EntityUID, y: EntityUID, store: GenericEntityStore<V>) {
       x == y ||
       (store.getEntityAttrs(x).Ok? &&
        store.entityIn(x, y))
     }
 
-    // Returns true iff ys contains at least one element y such that
-    // entityInEntity(x, y) holds.
-    predicate entityInSetOfEntities(x: EntityUID, ys: set<EntityUID>)
-    {
-      exists y | y in ys :: entityInEntity(x, y)
+    predicate entityInEntity(x: EntityUID, y: EntityUID) {
+      entityInEntityGeneric(x, y, store)
     }
 
-    function checkEntitySet(ys: set<Value>): Result<set<EntityUID>>
+    // Returns true iff ys contains at least one element y such that
+    // entityInEntity(x, y) holds.
+    static predicate entityInSetOfEntitiesGeneric<V>(x: EntityUID, ys: set<EntityUID>, store: GenericEntityStore<V>)
+    {
+      exists y | y in ys :: entityInEntityGeneric(x, y, store)
+    }
+
+    static function checkEntitySet(ys: set<Value>): Result<set<EntityUID>>
     {
       if forall y | y in ys :: Value.asEntity(y).Ok? then
         Ok(set y | y in ys :: y.primitive.uid)
@@ -254,6 +258,10 @@ module def.engine {
     }
 
     function applyBinaryOp(bop: BinaryOp, x: Value, y: Value): Result<Value> {
+      applyBinaryOpGeneric(bop, x, y, store)
+    }
+
+    static function applyBinaryOpGeneric<V>(bop: BinaryOp, x: Value, y: Value, store: GenericEntityStore<V>): Result<Value> {
       match bop {
         case Eq =>     Ok(Value.Bool(x == y))
         case Less =>   applyIntBinaryPred((a, b) => a < b, x, y)
@@ -264,10 +272,10 @@ module def.engine {
           var e :- Value.asEntity(x);
           if y.Set? then
             var uids :- checkEntitySet(y.s);
-            Ok(Value.Bool(entityInSetOfEntities(e, uids)))
+            Ok(Value.Bool(entityInSetOfEntitiesGeneric(e, uids, store)))
           else
             var g :- Value.asEntity(y);
-            Ok(Value.Bool(entityInEntity(e, g)))
+            Ok(Value.Bool(entityInEntityGeneric(e, g, store)))
         case Contains =>
           var s :- Value.asSet(x);
           Ok(Value.Bool(y in s))

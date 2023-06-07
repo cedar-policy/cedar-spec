@@ -17,8 +17,8 @@ module pe.definition {
     PrimitiveLit(Primitive) |
     Var(Var) |
     If(Expr, Expr, Expr) |
-    And(Expr, Expr) | // shortcircuiting &&
-    Or(Expr, Expr)  | // shortcircuiting ||
+    And(Expr, Expr) |
+    Or(Expr, Expr)  |
     UnaryApp(UnaryOp, Expr) |
     BinaryApp(BinaryOp, Expr, Expr) |
     GetAttr(Expr, Attr) |
@@ -48,7 +48,7 @@ module pe.definition {
     Record(fvs: seq<(Attr, Residual)>) |
     Call(name: Name, args: seq<Residual>) |
     Unknown(u: Unknown) {
-    static function fromOptionalEntity(eu: RequestEntity): Residual {
+    static function fromRequestEntity(eu: RequestEntity): Residual {
       match eu {
         case Entity(e) => Concrete(Primitive(Primitive.EntityUID(e)))
         case Uknown(u) => Residual.Unknown(u)
@@ -82,23 +82,6 @@ module pe.definition {
             context: Record) {
   }
 
-  datatype EntityData = EntityData(attrs: Record, ancestors: set<EntityUID>)
-
-  datatype EntityStore = EntityStore(
-    entities: map<EntityUID, EntityData>)
-  {
-    // Can also be used just to test whether an entity exists in the store.
-    function getEntityAttrs(uid: EntityUID): base.Result<Record> {
-      if uid in entities.Keys then
-        Ok(entities[uid].attrs)
-      else
-        Err(EntityDoesNotExist)
-    }
-
-    predicate entityIn(child: EntityUID, ancestor: EntityUID)
-      requires child in entities.Keys
-    {
-      ancestor in entities[child].ancestors
-    }
-  }
+  type EntityData = GenericEntityData<Residual>
+  type EntityStore = GenericEntityStore<Residual>
 }
