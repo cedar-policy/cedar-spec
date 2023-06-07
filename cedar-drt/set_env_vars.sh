@@ -7,10 +7,9 @@ if [ -z "${JAVA_HOME-}" ]; then
 fi
 
 # Set LD_LIBRARY_PATH
-libjvm_dirs=($(find "$JAVA_HOME" -name 'libjvm.*'))
-if [ ${#libjvm_dirs[@]} = 1 ]; then
-    # Accessing an array element in both bash and zsh: https://stackoverflow.com/a/56311706
-    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}${libjvm_dirs[@]:0:1}
+libjvm_files=($(find "$JAVA_HOME" -name 'libjvm.*'))
+if [ ${#libjvm_files[@]} = 1 ]; then
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$(dirname "$libjvm_files")
 else
     echo >&2 'Error: Failed to find libjvm'
 fi

@@ -613,18 +613,18 @@ module validation.thm.soundness {
       ensures getEffects(UnaryApp(Neg,e),effs) == Effects.empty()
     {
       var t' :| getType(UnaryApp(Neg,e),effs) == t' && subty(t',t);
-      assert Typechecker(ets,acts,reqty).inferArith1(Neg,e,effs) == types.Ok(Type.Int);
+      assert Typechecker(ets,acts,reqty).inferArith1(Neg,e,effs) == types.Ok(t');
       assert Typechecker(ets,acts,reqty).ensureIntType(e,effs).Ok?;
-      assert Typesafe(e,effs,Type.Int);
-      assert IsSafe(r,s,e,Type.Int) by { Sound(e,Type.Int,effs); }
-      assert IsSafe(r,s,UnaryApp(Neg,e),t') by { NegSafe(r,s,e); }
+      var te := getType(e,effs);
+      assert IsSafe(r,s,e,te) by { Sound(e,te,effs); }
+      assert IsSafe(r,s,UnaryApp(Neg,e),t') by { NegSafe(r,s,e,te,t'); }
       assert IsSafe(r,s,UnaryApp(Neg,e),t) by {
         SubtyCompat(t',t);
         SemSubtyTransport(r,s,UnaryApp(Neg,e),t',t);
       }
     }
 
-    lemma SoundMulBy(i: int, e: Expr, t: Type, effs: Effects)
+    lemma SoundMulBy(i: i64, e: Expr, t: Type, effs: Effects)
       decreases UnaryApp(MulBy(i),e) , 0
       requires InstanceOfRequestType(r,reqty)
       requires InstanceOfEntityTypeStore(s,ets)
@@ -635,11 +635,11 @@ module validation.thm.soundness {
       ensures getEffects(UnaryApp(MulBy(i),e),effs) == Effects.empty()
     {
       var t' :| getType(UnaryApp(MulBy(i),e),effs) == t' && subty(t',t);
-      assert Typechecker(ets,acts,reqty).inferArith1(MulBy(i),e,effs) == types.Ok(Type.Int);
+      assert Typechecker(ets,acts,reqty).inferArith1(MulBy(i),e,effs) == types.Ok(t');
       assert Typechecker(ets,acts,reqty).ensureIntType(e,effs).Ok?;
-      assert Typesafe(e,effs,Type.Int);
-      assert IsSafe(r,s,e,Type.Int) by { Sound(e,Type.Int,effs); }
-      assert IsSafe(r,s,UnaryApp(MulBy(i),e),t') by { MulBySafe(r,s,e,i); }
+      var te := getType(e,effs);
+      assert IsSafe(r,s,e,te) by { Sound(e,te,effs); }
+      assert IsSafe(r,s,UnaryApp(MulBy(i),e),t') by { MulBySafe(r,s,e,i,te,t'); }
       assert IsSafe(r,s,UnaryApp(MulBy(i),e),t) by {
         SubtyCompat(t',t);
         SemSubtyTransport(r,s,UnaryApp(MulBy(i),e),t',t);
@@ -770,11 +770,11 @@ module validation.thm.soundness {
       var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t);
       assert Typechecker(ets,acts,reqty).inferIneq(op,e1,e2,effs) == types.Ok(Type.Bool(AnyBool));
       assert Typechecker(ets,acts,reqty).ensureIntType(e1,effs).Ok?;
-      assert Typesafe(e1,effs,Type.Int);
+      assert Typesafe(e1,effs,intTopType);
       assert Typechecker(ets,acts,reqty).ensureIntType(e2,effs).Ok?;
-      assert Typesafe(e2,effs,Type.Int);
-      assert IsSafe(r,s,e1,Type.Int) by { Sound(e1,Type.Int,effs); }
-      assert IsSafe(r,s,e2,Type.Int) by { Sound(e2,Type.Int,effs); }
+      assert Typesafe(e2,effs,intTopType);
+      assert IsSafe(r,s,e1,intTopType) by { Sound(e1,intTopType,effs); }
+      assert IsSafe(r,s,e2,intTopType) by { Sound(e2,intTopType,effs); }
       assert IsSafe(r,s,BinaryApp(op,e1,e2),t') by { IneqSafe(r,s,op,e1,e2); }
       assert IsSafe(r,s,BinaryApp(op,e1,e2),t) by {
         SubtyCompat(t',t);
@@ -794,14 +794,14 @@ module validation.thm.soundness {
       ensures getEffects(BinaryApp(op,e1,e2),effs) == Effects.empty()
     {
       var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t);
-      assert Typechecker(ets,acts,reqty).inferArith2(op,e1,e2,effs) == types.Ok(Type.Int);
+      assert Typechecker(ets,acts,reqty).inferArith2(op,e1,e2,effs) == types.Ok(t');
       assert Typechecker(ets,acts,reqty).ensureIntType(e1,effs).Ok?;
-      assert Typesafe(e1,effs,Type.Int);
+      var t1 := getType(e1,effs);
       assert Typechecker(ets,acts,reqty).ensureIntType(e2,effs).Ok?;
-      assert Typesafe(e2,effs,Type.Int);
-      assert IsSafe(r,s,e1,Type.Int) by { Sound(e1,Type.Int,effs); }
-      assert IsSafe(r,s,e2,Type.Int) by { Sound(e2,Type.Int,effs); }
-      assert IsSafe(r,s,BinaryApp(op,e1,e2),t') by { ArithSafe(r,s,op,e1,e2); }
+      var t2 := getType(e2,effs);
+      assert IsSafe(r,s,e1,t1) by { Sound(e1,t1,effs); }
+      assert IsSafe(r,s,e2,t2) by { Sound(e2,t2,effs); }
+      assert IsSafe(r,s,BinaryApp(op,e1,e2),t') by { ArithSafe(r,s,op,e1,e2,t1,t2,t'); }
       assert IsSafe(r,s,BinaryApp(op,e1,e2),t) by {
         SubtyCompat(t',t);
         SemSubtyTransport(r,s,BinaryApp(op,e1,e2),t',t);
@@ -1042,6 +1042,7 @@ module validation.thm.soundness {
         var a1 := rt1[k];
         var a2 := rt2[k];
         assert lubOpt(a1.ty,a2.ty) == Ok(al.ty);
+        assert al == lubAttrType(a1, a2);
         LubIsUB(a1.ty, a2.ty, al.ty);
       }
     }

@@ -48,7 +48,7 @@ module validation.subtyping {
     match (t1,t2) {
       case (Never,_) => true
       case (String,String) => true
-      case (Int,Int) => true
+      case (Int(min1,max1),Int(min2,max2)) => min1 >= min2 && max1 <= max2
       case (Bool(b1),Bool(b2)) => subtyBool(b1,b2)
       case (Set(t11),Set(t21)) => subty(t11,t21)
       case (Record(rt1),Record(rt2)) => subtyRecordType(rt1,rt2)
@@ -96,6 +96,13 @@ module validation.subtyping {
       lubRecordType(rts[0],res)
   }
 
+  function i64Min(x: i64, y: i64): i64 {
+    if x < y then x else y
+  }
+  function i64Max(x: i64, y: i64): i64 {
+    if x > y then x else y
+  }
+
   function lubOpt(t1: Type, t2: Type): Result<Type>
     decreases t1, t2 , 1
   {
@@ -103,7 +110,7 @@ module validation.subtyping {
       case (Never,_) => Ok(t2)
       case (_,Never) => Ok(t1)
       case (String,String) => Ok(Type.String)
-      case (Int,Int) => Ok(Type.Int)
+      case (Int(min1,max1),Int(min2,max2)) => Ok(Type.Int(i64Min(min1,min2),i64Max(max1,max2)))
       case (Bool(b1),Bool(b2)) => Ok(Type.Bool(lubBool(b1,b2)))
       case (Entity(lub1),Entity(lub2)) => Ok(Type.Entity(lubEntity(lub1,lub2)))
       case (Set(t11),Set(t12)) =>
@@ -182,7 +189,7 @@ module validation.subtyping {
     match (t1,t2,t) {
       case (Never,_,_) => assert t2 == t; SubtyRefl(t);
       case (_,Never,_) => assert t1 == t; SubtyRefl(t);
-      case (Int,Int,Int) =>
+      case (Int(min1,max1),Int(min2,max2),Int(mint,maxt)) =>
       case (String,String,String) =>
       case(Bool(b1),Bool(b2),Bool(bt)) =>
       case (Entity(e1),Entity(e2),Entity(e)) =>

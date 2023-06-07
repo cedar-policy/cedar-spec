@@ -209,18 +209,24 @@ module def.engine {
       }
     }
 
-    function applyIntUnaryOp(f: int -> int, x: Value): Result<Value> {
-      var i :- Value.asInt(x);
-      Ok(Value.Int(f(i)))
+    function makeIntValueCheckOverflow(x: int): Result<Value> {
+      if i64_MIN <= x <= i64_MAX
+      then Ok(Value.Int(x))
+      else Err(ArithmeticOverflowError)
     }
 
-    function applyIntBinaryOp(f: (int, int) -> int, x: Value, y: Value): Result<Value> {
+    function applyIntUnaryOp(f: i64 -> int, x: Value): Result<Value> {
+      var i :- Value.asInt(x);
+      makeIntValueCheckOverflow(f(i))
+    }
+
+    function applyIntBinaryOp(f: (i64, i64) -> int, x: Value, y: Value): Result<Value> {
       var xi :- Value.asInt(x);
       var yi :- Value.asInt(y);
-      Ok(Value.Int(f(xi, yi)))
+      makeIntValueCheckOverflow(f(xi, yi))
     }
 
-    function applyIntBinaryPred(f: (int, int) -> bool, x: Value, y: Value): Result<Value> {
+    function applyIntBinaryPred(f: (i64, i64) -> bool, x: Value, y: Value): Result<Value> {
       var xi :- Value.asInt(x);
       var yi :- Value.asInt(y);
       Ok(Value.Bool(f(xi, yi)))

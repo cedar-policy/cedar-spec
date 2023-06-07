@@ -49,6 +49,7 @@ module def.base {
     EntityDoesNotExist |
     AttrDoesNotExist |
     TypeError |
+    ArithmeticOverflowError |
     ArityMismatchError |
     NoSuchFunctionError |
     ExtensionError
@@ -97,4 +98,14 @@ module def.base {
       Coerce(wrap, unwrap)
     }
   }
+
+  // ----- Extra type definitions needed by ext.fun.Coercions ----- //
+
+  const i64_MIN := -0x8000_0000_0000_0000
+  const i64_MAX := 0x7fff_ffff_ffff_ffff
+  predicate is_i64(i: int) {
+    i64_MIN <= i <= i64_MAX
+  }
+  type i64 = i: int | is_i64(i)
+
 }

@@ -27,7 +27,7 @@ use cedar_policy_core::parser::parse_name;
 use cedar_policy_core::{ast, parser};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
-    TypeOfAttribute,
+    TypeOfAttribute, SchemaLongDetails, SchemaLongBounds,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
@@ -178,13 +178,14 @@ fn arbitrary_schematype_with_bounded_depth(
     Ok(SchemaType::Type(uniform!(
         u,
         SchemaTypeVariant::String,
-        SchemaTypeVariant::Long,
+        cedar_policy_validator::arbitrary_schematypevariant_long(settings.enable_long_any, u)?,
         SchemaTypeVariant::Boolean,
         {
             if max_depth == 0 {
                 // can't recurse; we arbitrarily choose Set<Long> in this case
                 SchemaTypeVariant::Set {
-                    element: Box::new(SchemaType::Type(SchemaTypeVariant::Long)),
+                    // TODO: Add a convenience function for this?
+                    element: Box::new(SchemaType::Type(SchemaTypeVariant::long_static_top())),
                 }
             } else {
                 SchemaTypeVariant::Set {
@@ -276,7 +277,7 @@ fn schematype_to_type(schematy: &cedar_policy_validator::SchemaType) -> Type {
     let schematy = unwrap_schema_type(schematy);
     match schematy {
         SchemaTypeVariant::Boolean => Type::bool(),
-        SchemaTypeVariant::Long => Type::long(),
+        SchemaTypeVariant::Long { .. } => Type::long(),
         SchemaTypeVariant::String => Type::string(),
         SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(element)),
         SchemaTypeVariant::Record { .. } => Type::record(),
@@ -941,7 +942,10 @@ impl Schema {
         use cedar_policy_validator::SchemaTypeVariant;
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
-            Type::Long => Some(SchemaTypeVariant::Long),
+            Type::Long => Some(cedar_policy_validator::arbitrary_schematypevariant_long(
+                self.settings.enable_long_any,
+                u,
+            )?),
             Type::String => Some(SchemaTypeVariant::String),
             Type::Set(None) => None, // SchemaType doesn't support any-set
             Type::Set(Some(el_ty)) => {
@@ -1001,9 +1005,29 @@ impl Schema {
         }
     }
 
+    fn attr_schematype_matches(
+        actual: &cedar_policy_validator::SchemaType,
+        wanted: &cedar_policy_validator::SchemaType,
+    ) -> bool {
+        match (actual, wanted) {
+            (
+                cedar_policy_validator::SchemaType::Type(
+                    cedar_policy_validator::SchemaTypeVariant::Long { .. },
+                ),
+                cedar_policy_validator::SchemaType::Type(
+                    cedar_policy_validator::SchemaTypeVariant::Long { .. },
+                ),
+            ) => true,
+            _ => actual == wanted,
+        }
+    }
+
     /// Given a schematype, get an entity type name and attribute name, such
     /// that entities with that typename have a (possibly optional) attribute
     /// with the given schematype
+    ///
+    /// Like `arbitrary_expr_for_schematype`, this ignores `Long` bounds,
+    /// otherwise finding a match could be unlikely. REVIEW: Is that true?
     fn arbitrary_attr_for_schematype(
         &self,
         target_type: impl Into<cedar_policy_validator::SchemaType>,
@@ -1023,7 +1047,7 @@ impl Schema {
             .flat_map(|(tyname, attrs)| {
                 attrs
                     .iter()
-                    .filter(|(_, ty)| ty.ty == target_type)
+                    .filter(|(_, ty)| Self::attr_schematype_matches(&ty.ty, &target_type))
                     .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
             })
             .collect();
@@ -1164,8 +1188,17 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_value_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long => {
-                self.arbitrary_value_for_type(&Type::long(), hierarchy, max_depth, u)
+            SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt}) => {
+                match bounds_opt {
+                    None => {
+                        self.arbitrary_value_for_type(&Type::long(), hierarchy, max_depth, u)
+                    }
+                    Some(SchemaLongBounds {min, max}) =>
+                    // TODO: We should probably prefer a Long from the pool if it is in range.
+                    {
+                        Ok(Value::Lit(u.int_in_range(*min..=*max)?.into()))
+                    }
+                }
             }
             SchemaTypeVariant::String => {
                 self.arbitrary_value_for_type(&Type::string(), hierarchy, max_depth, u)
@@ -1428,8 +1461,17 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_attr_value_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long => {
-                self.arbitrary_attr_value_for_type(&Type::long(), hierarchy, max_depth, u)
+            SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt}) => {
+                match bounds_opt {
+                    None => {
+                        self.arbitrary_attr_value_for_type(&Type::long(), hierarchy, max_depth, u)
+                    }
+                    Some(SchemaLongBounds {min, max}) =>
+                    // TODO: We should probably prefer a Long from the pool if it is in range.
+                    {
+                        Ok(AttrValue::IntLit(u.int_in_range(*min..=*max)?.into()))
+                    }
+                }
             }
             SchemaTypeVariant::String => {
                 self.arbitrary_attr_value_for_type(&Type::string(), hierarchy, max_depth, u)
@@ -2258,7 +2300,7 @@ impl Schema {
                         // getting an attr (on an entity) with type long
                         4 => {
                             let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Long,
+                                cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -2278,7 +2320,7 @@ impl Schema {
                                 self.arbitrary_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Long,
+                                        cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                     ),
                                     hierarchy,
                                     max_depth - 1,
@@ -2742,6 +2784,11 @@ impl Schema {
     /// `max_depth`: maximum size (i.e., depth) of the expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
+    ///
+    /// This does not honor the bounds of `Long` types (indeed, generating an
+    /// arbitrary expression with given bounds is a nontrivial problem), so the
+    /// generated expression may raise overflow errors during validation or at
+    /// runtime. That should be OK for our current fuzz targets.
     fn arbitrary_expr_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaTypeVariant,
@@ -2754,7 +2801,7 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_expr_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long => {
+            SchemaTypeVariant::Long { .. } => {
                 self.arbitrary_expr_for_type(&Type::long(), hierarchy, max_depth, u)
             }
             SchemaTypeVariant::String => {
@@ -3157,7 +3204,7 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_ext_func_call_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long => {
+            SchemaTypeVariant::Long { .. } => {
                 self.arbitrary_ext_func_call_for_type(&Type::long(), hierarchy, max_depth, u)
             }
             SchemaTypeVariant::String => {
