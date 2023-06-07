@@ -27,7 +27,7 @@ use cedar_policy_core::parser::parse_name;
 use cedar_policy_core::{ast, parser};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
-    TypeOfAttribute,
+    TypeOfAttribute, SchemaLongDetails, SchemaLongBounds,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
@@ -185,10 +185,7 @@ fn arbitrary_schematype_with_bounded_depth(
                 // can't recurse; we arbitrarily choose Set<Long> in this case
                 SchemaTypeVariant::Set {
                     // TODO: Add a convenience function for this?
-                    element: Box::new(SchemaType::Type(SchemaTypeVariant::Long {
-                        min_opt: Some(i64::MIN),
-                        max_opt: Some(i64::MAX),
-                    })),
+                    element: Box::new(SchemaType::Type(SchemaTypeVariant::long_static_top())),
                 }
             } else {
                 SchemaTypeVariant::Set {
@@ -1191,20 +1188,16 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_value_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long { min_opt, max_opt } => {
-                match (min_opt, max_opt) {
-                    (None, None) => {
+            SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt}) => {
+                match bounds_opt {
+                    None => {
                         self.arbitrary_value_for_type(&Type::long(), hierarchy, max_depth, u)
                     }
-                    (Some(min), Some(max)) =>
+                    Some(SchemaLongBounds {min, max}) =>
                     // TODO: We should probably prefer a Long from the pool if it is in range.
                     {
                         Ok(Value::Lit(u.int_in_range(*min..=*max)?.into()))
                     }
-                    // TODO: This is messy. Find a way to restructure
-                    // SchemaTypeVariant so it has the deserialization behavior
-                    // we want without pushing this mess onto all consumers.
-                    _ => panic!("Corrupt SchemaTypeVariant::Long"),
                 }
             }
             SchemaTypeVariant::String => {
@@ -1468,20 +1461,16 @@ impl Schema {
             SchemaTypeVariant::Boolean => {
                 self.arbitrary_attr_value_for_type(&Type::bool(), hierarchy, max_depth, u)
             }
-            SchemaTypeVariant::Long { min_opt, max_opt } => {
-                match (min_opt, max_opt) {
-                    (None, None) => {
+            SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt}) => {
+                match bounds_opt {
+                    None => {
                         self.arbitrary_attr_value_for_type(&Type::long(), hierarchy, max_depth, u)
                     }
-                    (Some(min), Some(max)) =>
+                    Some(SchemaLongBounds {min, max}) =>
                     // TODO: We should probably prefer a Long from the pool if it is in range.
                     {
-                        Ok(AttrValue::IntLit(u.int_in_range(*min..=*max)?))
+                        Ok(AttrValue::IntLit(u.int_in_range(*min..=*max)?.into()))
                     }
-                    // TODO: This is messy. Find a way to restructure
-                    // SchemaTypeVariant so it has the deserialization behavior
-                    // we want without pushing this mess onto all consumers.
-                    _ => panic!("Corrupt SchemaTypeVariant::Long"),
                 }
             }
             SchemaTypeVariant::String => {
@@ -2311,8 +2300,7 @@ impl Schema {
                         // getting an attr (on an entity) with type long
                         4 => {
                             let (entity_type, attr_name) = self.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Long { min_opt: Some(i64::MIN),
-                                    max_opt: Some(i64::MAX) },
+                                cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -2332,8 +2320,7 @@ impl Schema {
                                 self.arbitrary_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Long { min_opt: Some(i64::MIN),
-                                            max_opt: Some(i64::MAX) },
+                                        cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                     ),
                                     hierarchy,
                                     max_depth - 1,
