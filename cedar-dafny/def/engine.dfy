@@ -184,14 +184,17 @@ module def.engine {
         var _ :- Value.asBool(r);
         Ok(r)
     }
-
-    function expectRecordDerefEntity(v: Value, treatMissingAsEmpty: bool): Result<Record> {
+    static function expectRecordDerefEntityWithStore(v: Value, treatMissingAsEmpty: bool, store: EntityStore): Result<Record> {
       if v.Record?
       then Ok(v.record)
       else
         var uid :- Value.asEntity(v);
         var res := store.getEntityAttrs(uid);
         if res.Err? && treatMissingAsEmpty then Ok(map[]) else res
+    }
+
+    function expectRecordDerefEntity(v: Value, treatMissingAsEmpty: bool): Result<Record> {
+      expectRecordDerefEntityWithStore(v, treatMissingAsEmpty, store)
     }
 
     static function applyUnaryOp(uop: UnaryOp, x: Value): Result<Value> {
@@ -285,5 +288,12 @@ module def.engine {
           applySetBinaryPred((xs, ys) => xs * ys != {}, x, y)
       }
     }
+    /*
+    static function newWithoutRequest(store: EntityStore): Evaluator {
+      var dummy_entity := EntityUID.EntityUID(EntityType.UNSPECIFIED, "dummy");
+      var dummy_req := Request(dummy_entity, dummy_entity, dummy_entity, map[]);
+      Evaluator(dummy_req, store)
+    }
+    */
   }
 }

@@ -2,6 +2,7 @@ include "../def/core.dfy"
 include "../def/base.dfy"
 include "../difftest/main.dfy"
 include "../def/std.dfy"
+include "../def/engine.dfy"
 include "def.dfy"
 
 module pe.environment {
@@ -10,6 +11,7 @@ module pe.environment {
   import difftest.restrictedExpr
   import opened def.std
   import opened definition
+  import opened def.engine
 
   // Like the interpretation in the symbolic evaluator, this datatype contains a mapping from unknowns to values.
   // But we can't use `Value` as the codomain because replacing uknowns in an policy body requires them to be `Expr`s.
@@ -19,15 +21,86 @@ module pe.environment {
       forall v :: restrictedExpr.evaluate(mappings(v)).Some?
     }
 
-    function interpret(r: Residual): definition.Result<core.Value>
+    function interpret(residual: Residual, entities: core.EntityStore): definition.Result<core.Value>
       requires wellFormed()
     {
-      match r {
+      match residual {
         case Concrete(v) => Ok(v)
-        case If(c, t, e) => Err(TypeError)
+        case If(c, t, e) =>
+          var cv :- interpret(c, entities);
+          var cb :- Value.asBool(cv);
+          if cb then interpret(t, entities) else interpret(e, entities)
+        case And(r1, r2) =>
+          var v1 :- interpret(r1, entities);
+          var b1 :- Value.asBool(v1);
+          if b1 then interpret(r2, entities) else Ok(Value.Bool(false))
+        case Or(r1, r2) =>
+          var v1 :- interpret(r1, entities);
+          var b1 :- Value.asBool(v1);
+          if b1 then Ok(Value.Bool(true)) else interpret(r2, entities)
+        case UnaryApp(op, r) =>
+          var v :- interpret(r, entities);
+          Evaluator.applyUnaryOp(op, v)
+        case BinaryApp(op, r1, r2) =>
+          var v1 :- interpret(r1, entities);
+          var v2 :- interpret(r2, entities);
+          Evaluator.applyBinaryOpGeneric(op, v1, v2, entities)
+        case GetAttr(r, a) =>
+          var v :- interpret(r, entities);
+          var rec :- Evaluator.expectRecordDerefEntityWithStore(v, false, entities);
+          if a in rec.Keys then Ok(rec[a]) else Err(AttrDoesNotExist)
+        case HasAttr(r, a) =>
+          var v :- interpret(r, entities);
+          var rec :- Evaluator.expectRecordDerefEntityWithStore(v, false, entities);
+          Ok(Value.Bool(a in rec.Keys))
+        case Set(rs) =>
+          var vs :- interpretSet(rs, entities);
+          Ok(Value.Set(vs))
+        case Record(bs) =>
+          var fvs :- interpretRecord(bs, entities);
+          Ok(Value.Record(fvs))
+        case Call(name, rs) =>
+          var args :- interpretList(rs, entities);
+          Evaluator.applyExtFun(name, args)
         case Unknown(u: Unknown) => Ok(restrictedExpr.evaluate(mappings(u.name)).value)
-        case _ => Err(TypeError)
       }
+    }
+
+    function interpretSet(rs: seq<Residual>, entities: core.EntityStore): definition.Result<set<Value>>
+      requires wellFormed()
+    {
+      if rs == [] then
+        Ok({})
+      else
+        var head_v :- interpret(rs[0], entities);
+        var tail_vs :- interpretSet(rs[1..], entities);
+        Ok({head_v} + tail_vs)
+    }
+
+    function interpretRecord(bs: seq<(Attr,Residual)>, entities: core.EntityStore): definition.Result<map<Attr, Value>>
+      requires wellFormed()
+    {
+      if bs == [] then
+        Ok(map[])
+      else
+        var k := bs[0].0;
+        var v :- interpret(bs[0].1, entities);
+        var m :- interpretRecord(bs[1..], entities);
+        if k in m.Keys then // If the same field is repeated later in the record,
+          Ok(m)             // we give that occurrence priority and ignore this one.
+        else
+          Ok(m[k := v])
+    }
+
+    function interpretList(rs: seq<Residual>, entities: core.EntityStore): definition.Result<seq<Value>>
+      requires wellFormed()
+    {
+      if rs == [] then
+        Ok([])
+      else
+        var head_v :- interpret(rs[0], entities);
+        var tail_vs :- interpretList(rs[1..], entities);
+        Ok([head_v] + tail_vs)
     }
 
     function replaceUnknownInRequestEntity(oe: RequestEntity): (r: Option<core.EntityUID>)
@@ -46,7 +119,7 @@ module pe.environment {
 
     function replaceRecord(context: definition.Record): Option<core.Record>
       requires wellFormed() {
-      var nr := map a: Attr | a in context.Keys :: interpret(context[a]);
+      var nr := map a: Attr | a in context.Keys :: interpret(context[a], core.EntityStore(map[]));
       if forall a | a in nr.Keys :: nr[a].Ok? then
         Some(map a | a in nr.Keys :: nr[a].value)
       else

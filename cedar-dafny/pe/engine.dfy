@@ -80,8 +80,8 @@ module pe.engine {
                 Ok(Concrete(Value.Bool(a in v.record.Keys)))
               else
                 var uid :- Value.asEntity(v);
-                var res :- store.getEntityAttrs(uid);
-                Ok(Concrete(Value.Bool(a in res.Keys)))
+                var res := store.getEntityAttrs(uid);
+                if res.Ok? then Ok(Concrete(Value.Bool(a in res.value.Keys))) else Ok(Concrete(Value.Bool(false)))
             case _ => Ok(Residual.GetAttr(r, a))
           }
         case Set(es) =>
@@ -144,8 +144,7 @@ module pe.engine {
       }
     }
 
-    function makeErrorValue(): (r : Residual)
-      ensures forall env : Environment :: env.wellFormed() ==> env.interpret(r).Err?
+    static function makeErrorValue(): (r : Residual)
     {
       Residual.GetAttr(Residual.Record([]), "")
     }
