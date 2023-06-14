@@ -1198,9 +1198,7 @@ module validation.thm.soundness {
       ensures lubR.is_open
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et) {
-        // This should be trivialy true from the defintion of `getLubRecordType`
-        // assert lubR == RecordType(map[], true);
-        assume lubR.is_open;
+        assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], true));
       } else {
         assume lubR.is_open;
       }
