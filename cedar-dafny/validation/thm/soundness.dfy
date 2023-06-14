@@ -1185,7 +1185,7 @@ module validation.thm.soundness {
         SemSubtyTransport(r,s,HasAttr(e,k),t',t);
       }
     }
-    
+
     lemma PossibleAttrNotInLubAttrImpliesOpen(lub: EntityLUB, k: Attr, lubR: RecordType)
       requires ets.getLubRecordType(lub) == Ok(lubR)
       requires ets.isAttrPossible(lub, k)

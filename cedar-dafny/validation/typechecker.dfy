@@ -492,8 +492,8 @@ module validation.typechecker {
         then wrap(Ok(Type.Bool(True)))
         else Ok((Type.Bool(AnyBool),Effects.singleton(e,k)))
       else if rt.isOpen
-      then wrap(Ok(Type.Bool(AnyBool)))
-      else wrap(Ok(Type.Bool(False)))
+        then wrap(Ok(Type.Bool(AnyBool)))
+        else wrap(Ok(Type.Bool(False)))
     }
 
     function inferHasAttr(e: Expr, k: Attr, effs: Effects): Result<(Type,Effects)>

@@ -40,7 +40,7 @@ module validation.subtyping {
     rt2.attrs.Keys <= rt1.attrs.Keys &&
     // depth subtyping
     (forall k | k in rt2.attrs.Keys ::
-      subtyAttrType(rt1.attrs[k], rt2.attrs[k])) &&
+       subtyAttrType(rt1.attrs[k], rt2.attrs[k])) &&
     // disable width subtyping if the records are closed
     (!rt2.isOpen ==> rt1.attrs.Keys == rt2.attrs.Keys)
   }
@@ -90,7 +90,7 @@ module validation.subtyping {
   {
     var attrs :=
       map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty).Ok? ::
-         lubAttrType(rt1.attrs[k], rt2.attrs[k]);
+        lubAttrType(rt1.attrs[k], rt2.attrs[k]);
     Ok(RecordType(attrs, rt1.isOpen || rt2.isOpen || attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys)))
   }
 
