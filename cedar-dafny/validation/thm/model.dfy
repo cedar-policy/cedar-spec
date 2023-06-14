@@ -885,7 +885,7 @@ module validation.thm.model {
     requires forall ae :: ae in es ==> ExistsSafeType(r,s,ae.1)
     // and the last instance of every required key is safe at the correct type.
     requires forall k :: k in rt.attrs ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty)
-    requires !rt.is_open ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
+    requires !rt.isOpen ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     reveal IsSafe();
@@ -953,7 +953,7 @@ module validation.thm.model {
   lemma RecordHasClosedRecFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, rt: RecordType)
     requires IsSafe(r,s,e,Type.Record(rt))
     requires l !in rt.attrs.Keys
-    requires !rt.is_open
+    requires !rt.isOpen
     ensures IsFalse(r,s,HasAttr(e,l))
   {
     reveal IsSafe();

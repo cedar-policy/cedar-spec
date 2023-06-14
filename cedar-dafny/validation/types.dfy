@@ -69,7 +69,7 @@ module validation.types {
   }
 
   datatype AttrType = AttrType(ty: Type, isRequired: bool)
-  datatype RecordType = RecordType(attrs: map<Attr,AttrType>, is_open: bool)
+  datatype RecordType = RecordType(attrs: map<Attr,AttrType>, isOpen: bool)
 
   // Each extension function is associated with argument types, a return type,
   // and an optional method that checks input well-formedness.

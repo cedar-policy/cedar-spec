@@ -1036,23 +1036,18 @@ module validation.thm.soundness {
     {
       var rtl := lubRecordType(rt1, rt2).value;
 
-      assert rt1.is_open ==> rtl.is_open;
-      assert rt2.is_open ==> rtl.is_open;
-      assert !rtl.is_open ==> rt1.attrs.Keys == rt2.attrs.Keys;
+      assert rt1.isOpen ==> rtl.isOpen;
+      assert rt2.isOpen ==> rtl.isOpen;
+      assert !rtl.isOpen ==> rt1.attrs.Keys == rt2.attrs.Keys;
 
       forall k | k in rtl.attrs.Keys
         ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
-        assume subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]);
+        var al := rtl.attrs[k];
+        var a1 := rt1.attrs[k];
+        var a2 := rt2.attrs[k];
+        assert lubOpt(a1.ty,a2.ty) == Ok(al.ty);
+        LubIsUB(a1.ty, a2.ty, al.ty);
       }
-      //forall k | k in rtl.attrs.Keys
-      //  ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k])
-      //{
-      //  var al := rtl.attrs[k];
-      //  var a1 := rt1.attrs[k];
-      //  var a2 := rt2.attrs[k];
-      //  assert lubOpt(a1.ty,a2.ty) == Ok(al.ty);
-      //  LubIsUB(a1.ty, a2.ty, al.ty);
-      //}
     }
 
     lemma LubRecordTypeSeqSubty(rts: seq<RecordType>, i: nat)
@@ -1138,7 +1133,7 @@ module validation.thm.soundness {
                 }
               }
             }
-          } else if rt.is_open {
+          } else if rt.isOpen {
             assert IsSafe(r,s,e,Type.Record(RecordType(map[], true))) by {
               assert subty(Type.Record(rt),Type.Record(RecordType(map[], true)));
               SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], true)));
@@ -1190,17 +1185,21 @@ module validation.thm.soundness {
         SemSubtyTransport(r,s,HasAttr(e,k),t',t);
       }
     }
-
+    
     lemma PossibleAttrNotInLubAttrImpliesOpen(lub: EntityLUB, k: Attr, lubR: RecordType)
       requires ets.getLubRecordType(lub) == Ok(lubR)
       requires ets.isAttrPossible(lub, k)
       requires k !in lubR.attrs.Keys
-      ensures lubR.is_open
+      ensures lubR.isOpen
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et) {
         assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], true));
       } else {
-        assume lubR.is_open;
+        assert forall et <- lub.tys :: et in ets.types;
+        assert exists et <- lub.tys :: et in ets.types && (ets.types[et].isOpen || k in ets.types[et].attrs);
+        var et :| et in lub.tys && et in ets.types && (ets.types[et].isOpen || k in ets.types[et].attrs);
+        GetLubRecordTypeSubty(lub, et);
+        assert lubR.isOpen;
       }
     }
 

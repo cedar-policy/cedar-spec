@@ -68,7 +68,7 @@ module validation.typechecker {
     // Check if an Attr is allowed by any entity type in the LUB
     predicate isAttrPossible(lub: EntityLUB, k: Attr)
     {
-      lub.AnyEntity? || exists e <- lub.tys :: e in types && (types[e].is_open || k in types[e].attrs)
+      lub.AnyEntity? || exists e <- lub.tys :: e in types && (types[e].isOpen || k in types[e].attrs)
     }
   }
 
@@ -491,7 +491,7 @@ module validation.typechecker {
         else if effs.contains(e,k)
         then wrap(Ok(Type.Bool(True)))
         else Ok((Type.Bool(AnyBool),Effects.singleton(e,k)))
-      else if rt.is_open
+      else if rt.isOpen
       then wrap(Ok(Type.Bool(AnyBool)))
       else wrap(Ok(Type.Bool(False)))
     }

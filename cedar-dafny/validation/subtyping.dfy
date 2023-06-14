@@ -35,16 +35,14 @@ module validation.subtyping {
   predicate subtyRecordType(rt1: RecordType, rt2: RecordType)
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
-    (rt1.is_open ==> rt2.is_open) &&
-    // With width subtyping
-    ((rt2.is_open &&
-      rt2.attrs.Keys <= rt1.attrs.Keys &&
-      (forall k | k in rt2.attrs.Keys ::
-         subtyAttrType(rt1.attrs[k], rt2.attrs[k]))) ||
-    // Without width subtyping
-    (rt1.attrs.Keys == rt2.attrs.Keys &&
-      forall k | k in rt2.attrs.Keys ::
-        subtyAttrType(rt1.attrs[k], rt2.attrs[k])))
+    (rt1.isOpen ==> rt2.isOpen) &&
+    // width subtyping
+    rt2.attrs.Keys <= rt1.attrs.Keys &&
+    // depth subtyping
+    (forall k | k in rt2.attrs.Keys ::
+      subtyAttrType(rt1.attrs[k], rt2.attrs[k])) &&
+    // disable width subtyping if the records are closed
+    (!rt2.isOpen ==> rt1.attrs.Keys == rt2.attrs.Keys)
   }
 
   predicate subtyEntity(lub1: EntityLUB, lub2: EntityLUB) {
@@ -93,7 +91,7 @@ module validation.subtyping {
     var attrs :=
       map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty).Ok? ::
          lubAttrType(rt1.attrs[k], rt2.attrs[k]);
-    Ok(RecordType(attrs, rt1.is_open || rt2.is_open || attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys)))
+    Ok(RecordType(attrs, rt1.isOpen || rt2.isOpen || attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys)))
   }
 
   function lubRecordTypeSeq(rts: seq<RecordType>): Result<RecordType>
