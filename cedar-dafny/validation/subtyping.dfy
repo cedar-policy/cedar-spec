@@ -41,7 +41,7 @@ module validation.subtyping {
     // depth subtyping
     (forall k | k in rt2.attrs.Keys ::
        subtyAttrType(rt1.attrs[k], rt2.attrs[k])) &&
-    // disable width subtyping if the records are closed
+    // disable width subtyping if `rt2` is closed.
     (!rt2.isOpen ==> rt1.attrs.Keys == rt2.attrs.Keys)
   }
 
