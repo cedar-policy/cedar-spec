@@ -25,18 +25,13 @@ mod dump;
 pub use dump::*;
 mod err;
 pub use err::*;
-
-mod collections;
 mod prt;
-pub use collections::*;
-
 pub use prt::*;
 
 pub mod gen;
 
 use std::fmt::Display;
 
-use crate::collections::HashMap;
 use ast::{
     Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
 };
@@ -47,6 +42,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint, Template};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_generators::collections::HashMap;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;

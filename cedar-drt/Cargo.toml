@@ -3,10 +3,8 @@ name = "cedar-drt"
 edition = "2021"
 version = "2.0.0"
 publish = false
-exclude = ['/build', '/Config', '/build-tools/']
 
 [dependencies]
-highway = "0.8.1"
 env_logger = "0.10"
 log = "0.4"
 libfuzzer-sys = "0.4"

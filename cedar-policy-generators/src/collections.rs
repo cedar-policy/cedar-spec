@@ -15,12 +15,13 @@
  */
 
 use highway::{HighwayHasher, Key};
-use libfuzzer_sys::arbitrary::{self, Arbitrary};
+use arbitrary::{self, Arbitrary};
 use serde::{Deserialize, Serialize};
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
 
-#[derive(Default)]
+/// Helper struct representing a fixed (ie, deterministic) hash function
+#[derive(Debug, Default)]
 pub struct FixedHash();
 
 impl BuildHasher for FixedHash {
@@ -50,6 +51,7 @@ where
     }
 }
 
+/// Deterministic version of `HashMap`
 #[repr(transparent)]
 #[derive(Debug, Serialize, Arbitrary, Deserialize)]
 #[serde(transparent)]
@@ -68,10 +70,12 @@ impl<K, V> HashMap<K, V>
 where
     K: Eq + Hash,
 {
+    /// Create a new `HashMap`
     pub fn new() -> Self {
         HashMap(std::collections::HashMap::with_hasher(FixedHash()))
     }
 
+    /// Consume the `HashMap`, iterating over its values
     pub fn into_values(self) -> impl Iterator<Item = V> {
         self.0.into_values()
     }
@@ -164,12 +168,14 @@ where
     }
 }
 
+/// Deterministic version of `HashSet`
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Arbitrary, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct HashSet<V: Eq + Hash>(std::collections::HashSet<V, FixedHash>);
 
 impl<V: Eq + Hash> HashSet<V> {
+    /// Create a new `HashSet`
     pub fn new() -> Self {
         Self(std::collections::HashSet::with_hasher(FixedHash()))
     }

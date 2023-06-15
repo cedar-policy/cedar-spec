@@ -20,7 +20,7 @@ use cedar_policy_core::entities::Entities;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::ops::{Deref, DerefMut};
 
-use crate::collections::{HashMap, HashSet};
+use cedar_policy_generators::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 pub struct RBACHierarchy(pub super::Hierarchy);

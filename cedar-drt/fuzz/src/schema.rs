@@ -19,7 +19,7 @@ use super::abac::{
     Type, UnknownPool,
 };
 use super::{while_doing, ActionConstraint, Error, PrincipalOrResourceConstraint, Result};
-use crate::collections::{HashMap, HashSet};
+use cedar_policy_generators::collections::{HashMap, HashSet};
 use crate::{gen, uniform};
 use ast::{Effect, PolicyID};
 use cedar_policy_core::ast::Value;

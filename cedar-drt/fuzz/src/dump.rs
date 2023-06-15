@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::collections::HashMap;
+use cedar_policy_generators::collections::HashMap;
 use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request};
 use cedar_policy_core::authorizer::{Decision, Response};
 use cedar_policy_core::entities::Entities;

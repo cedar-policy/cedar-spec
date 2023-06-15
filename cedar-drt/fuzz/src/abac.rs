@@ -15,11 +15,11 @@
  */
 
 use super::{while_doing, Error, Result};
-use crate::collections::HashMap;
 use crate::Schema;
 use crate::{gen, uniform};
 use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
+use cedar_policy_generators::collections::HashMap;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::cell::RefCell;
