@@ -75,6 +75,10 @@ module pe.definition {
   type Record = map<Attr, Residual>
   datatype RequestEntity = Entity(e: EntityUID) | Uknown(u: Unknown)
 
+  predicate restrictedRecord(rec: Record) {
+    forall r | r in rec.Values :: r.restricted?()
+  }
+
   datatype Request =
     Request(principal: RequestEntity,
             action: RequestEntity,
@@ -84,4 +88,12 @@ module pe.definition {
 
   type EntityData = GenericEntityData<Residual>
   type EntityStore = GenericEntityStore<Residual>
+
+  predicate restrictedEntityData(entity: EntityData) {
+    restrictedRecord(entity.attrs)
+  }
+
+  predicate restrictedEntityStore(store: EntityStore) {
+    forall entity | entity in store.entities.Values :: restrictedEntityData(entity)
+  }
 }

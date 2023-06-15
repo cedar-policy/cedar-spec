@@ -82,7 +82,7 @@ module pe.engine {
                 var uid :- Value.asEntity(v);
                 var res := store.getEntityAttrs(uid);
                 if res.Ok? then Ok(Concrete(Value.Bool(a in res.value.Keys))) else Ok(Concrete(Value.Bool(false)))
-            case _ => Ok(Residual.GetAttr(r, a))
+            case _ => Ok(Residual.HasAttr(r, a))
           }
         case Set(es) =>
           var rs :- interpretSeq(es);

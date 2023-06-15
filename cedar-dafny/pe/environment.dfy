@@ -51,7 +51,7 @@ module pe.environment {
           if a in rec.Keys then Ok(rec[a]) else Err(AttrDoesNotExist)
         case HasAttr(r, a) =>
           var v :- interpret(r, entities);
-          var rec :- Evaluator.expectRecordDerefEntityWithStore(v, false, entities);
+          var rec :- Evaluator.expectRecordDerefEntityWithStore(v, true, entities);
           Ok(Value.Bool(a in rec.Keys))
         case Set(rs) =>
           var vs :- interpretSet(rs, entities);
