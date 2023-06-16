@@ -80,6 +80,36 @@ module pe.soundness {
     }
   }
 
+  lemma PEInterpretSeqOk(es: seq<definition.Expr>, pe: PartialEvaluator)
+    requires pe.interpretSeq(es).Ok?
+    ensures forall e | e in es :: pe.interpret(e).Ok?
+  {
+
+  }
+
+  lemma PEInterpretSeqErr(es: seq<definition.Expr>, pe: PartialEvaluator)
+    requires pe.interpretSeq(es).Err?
+    ensures exists e | e in es :: pe.interpret(e).Err?
+  {
+
+  }
+
+  lemma CEInterpretSetErr(es: seq<core.Expr>, ce: ce.Evaluator)
+    requires exists e | e in es :: ce.interpret(e).Err?
+    ensures ce.interpretSet(es).Err? {
+
+  }
+
+  // assert exists e | e in es :: I(R(e));
+  // assert exists e' | e' in Map(R, es) :: I(e');
+  lemma MappingPreservesPredicate<A, B>(es: seq<A>, R: A -> B, pred: B -> bool)
+    requires exists e | e in es :: pred(R(e))
+    ensures exists e' | e' in seq(|es|, i requires 0 <= i < |es| => R(es[i])) :: pred(e') {
+    assert exists i | 0 <= i < |es| :: pred(R(es[i]));
+    //assert forall e | e in es :: R(e) in seq(|es|, i requires 0 <= i < |es| => R(es[i]));
+    assume false;
+  }
+
   lemma PEIsSoundSet(e: definition.Expr, q: core.Request, s: core.EntityStore, Q: definition.Request, S: definition.EntityStore, env: Environment)
     requires env.wellFormed()
     requires restrictedEntityStore(S)
@@ -94,21 +124,49 @@ module pe.soundness {
             // If PE fails, then evaluating the original expression with any uknown to value mappings should fail.
             (peRes.Err? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)).Err?)
   {
-    var peRes := PartialEvaluator(Q, S).interpret(e);
+    var PE := PartialEvaluator(Q, S);
+    var CE := ce.Evaluator(q, s);
+    var peRes := PE.interpret(e);
     match e {
       case Set(es) =>
         forall e' | e' in es {
           PEIsSound(e', q, s, Q, S, env);
         }
-        var rs := PartialEvaluator(Q, S).interpretSeq(es);
+        var rs := PE.interpretSeq(es);
         if rs.Ok? {
+          PEInterpretSeqOk(es, PE);
+          assert forall e' | e' in es :: PE.interpret(e').Ok?;
+          /*
+          assume forall i | 0 <= i < |es| :: ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(es[i])) == env.interpret(rs.value[i], s);
+          assume rs.value == seq(|es|, i requires 0 <= i < |es| => PartialEvaluator(Q, S).interpret(es[i]).value);
           if (forall r | r in rs.value :: r.Concrete?) {
-            assume false;
+            calc == {
+              ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e));
+              ce.Evaluator(q, s).interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
+              ce.Evaluator(q, s).interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
+              env.interpret(PartialEvaluator(Q, S).splitSeqToSet(rs.value), s);
+            }
           } else {
-            assume false;
+            calc == {
+              env.interpret(PartialEvaluator(Q, S).splitSeqToSet(rs.value), s);
+              env.interpret(Residual.Set(rs.value), s);
+              env.interpretSet(rs.value, s).Map(v => core.Value.Set(v));
+              env.interpretSet(seq(|es|, i requires 0 <= i < |es| => PartialEvaluator(Q, S).interpret(es[i]).value), s).Map(v => core.Value.Set(v));
+            }
           }
-        } else {
+          */
           assume false;
+        } else {
+          PEInterpretSeqErr(es, PE);
+          assert exists e' | e' in es :: PE.interpret(e').Err?;
+          assert exists e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')).Err?;
+          assume exists e' | e' in seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i])) :: CE.interpret(e').Err?;
+          CEInterpretSetErr(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i])), CE);
+          calc == {
+            CE.interpret(env.replaceUnknownInExpr(e));
+            CE.interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
+            CE.interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
+          }
         }
     }
   }
