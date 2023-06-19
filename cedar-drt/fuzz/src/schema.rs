@@ -694,60 +694,49 @@ impl Schema {
                 )
             })
             .collect();
+        let hierarchy_no_attrs = super::Hierarchy {
+            uids: uids.clone(),
+            entities: uids
+                .iter()
+                .map(|uid| (uid.clone(), ast::Entity::with_uid(uid.clone())))
+                .collect(),
+            uids_by_type,
+        };
         // create an entity hierarchy composed of those entity UIDs, with some
         // hierarchy-membership edges possibly added in positions where the
         // schema allows a parent of that type
-        let entities = uids.iter().map(|uid| match uid.entity_type() {
-            // entity data is generated with `arbitrary_uid_with_type`, which can never
-            // produce an unspecified entity
-            ast::EntityType::Unspecified => {
-                panic!("should not be possible to generate an unspecified entity")
-            }
-            ast::EntityType::Concrete(name) => {
-                // choose parents for this entity
-                let mut parents = HashSet::new();
-                for allowed_parent_typename in &entitytypes_by_type
-                    .get(&name)
-                    .expect("typename should have an EntityType")
-                    .member_of_types
-                {
-                    let allowed_parent_typename = build_qualified_entity_type_name(
-                        self.namespace.clone(),
-                        allowed_parent_typename,
-                    );
-                    for possible_parent_uid in uids_by_type
-                        .get(&allowed_parent_typename)
-                        .expect("all typenames should be in the map")
-                    {
-                        if u.ratio::<u8>(1, 2)? {
-                            parents.insert(possible_parent_uid.clone());
-                        }
-                    }
-                }
-                // create the actual ast::Entity object
-                let entity = ast::Entity::new(
-                    uid.clone(),
-                    std::collections::HashMap::new(),
-                    parents.into_iter().collect(),
-                );
-                Ok((uid.clone(), entity))
-            }
-        }).collect::<Result<_>>()?;
-        let mut hierarchy = super::Hierarchy {
-            entities,
-            uids,
-            uids_by_type,
-        };
-        // for each entity, add appropriate attributes
-        let hierarchy_no_attrs = hierarchy.clone();
-        for (uid, entity) in &mut hierarchy.entities {
-            match uid.entity_type() {
+        let entities = uids
+            .iter()
+            .map(|uid| match uid.entity_type() {
                 // entity data is generated with `arbitrary_uid_with_type`, which can never
                 // produce an unspecified entity
                 ast::EntityType::Unspecified => {
                     panic!("should not be possible to generate an unspecified entity")
                 }
                 ast::EntityType::Concrete(name) => {
+                    // choose parents for this entity
+                    let mut parents = HashSet::new();
+                    for allowed_parent_typename in &entitytypes_by_type
+                        .get(&name)
+                        .expect("typename should have an EntityType")
+                        .member_of_types
+                    {
+                        let allowed_parent_typename = build_qualified_entity_type_name(
+                            self.namespace.clone(),
+                            allowed_parent_typename,
+                        );
+                        for possible_parent_uid in hierarchy_no_attrs
+                            .uids_by_type
+                            .get(&allowed_parent_typename)
+                            .expect("all typenames should be in the map")
+                        {
+                            if u.ratio::<u8>(1, 2)? {
+                                parents.insert(possible_parent_uid.clone());
+                            }
+                        }
+                    }
+                    // generate appropriate attributes for this entity
+                    let mut attrs = HashMap::new();
                     let attr_or_context = unwrap_attrs_or_context(
                         &entitytypes_by_type
                             .get(name)
@@ -763,7 +752,7 @@ impl Schema {
                                 Type::arbitrary_nonextension(u)?
                             };
                             let attr_name: String = u.arbitrary()?;
-                            entity.set_attr(
+                            attrs.insert(
                                 attr_name.into(),
                                 self.arbitrary_attr_value_for_type(
                                     &attr_type,
@@ -790,7 +779,7 @@ impl Schema {
                                 self.settings.max_depth,
                                 u,
                             )?;
-                            entity.set_attr(
+                            attrs.insert(
                                 attr.parse().expect(
                                     "all attribute names in the schema should be valid identifiers",
                                 ),
@@ -798,11 +787,21 @@ impl Schema {
                             );
                         }
                     }
+                    // create the actual ast::Entity object
+                    let entity = ast::Entity::new(
+                        uid.clone(),
+                        attrs.into_iter().collect(),
+                        parents.into_iter().collect(),
+                    );
+                    Ok((uid.clone(), entity))
                 }
-            }
-        }
-
-        Ok(hierarchy)
+            })
+            .collect::<Result<_>>()?;
+        Ok(super::Hierarchy {
+            entities,
+            uids,
+            uids_by_type: hierarchy_no_attrs.uids_by_type,
+        })
     }
     pub fn arbitrary_hierarchy_size_hint(_depth: usize) -> (usize, Option<usize>) {
         (0, None)
