@@ -4,6 +4,7 @@ include "../difftest/main.dfy"
 include "../def/std.dfy"
 include "../def/engine.dfy"
 include "def.dfy"
+include "util.dfy"
 
 module pe.environment {
   import opened def.core
@@ -12,6 +13,7 @@ module pe.environment {
   import opened def.std
   import opened definition
   import opened def.engine
+  import util
 
   // Like the interpretation in the symbolic evaluator, this datatype contains a mapping from unknowns to values.
   // But we can't use `Value` as the codomain because replacing uknowns in an policy body requires them to be `Expr`s.
@@ -162,7 +164,8 @@ module pe.environment {
         case BinaryApp(o, e1, e2) => core.BinaryApp(o, replaceUnknownInExpr(e1), replaceUnknownInExpr(e2))
         case GetAttr(entity_e, a) => core.GetAttr(replaceUnknownInExpr(entity_e), a)
         case HasAttr(entity_e, a) => core.HasAttr(replaceUnknownInExpr(entity_e), a)
-        case Set(es) => core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => replaceUnknownInExpr(es[i])))
+        //case Set(es) => core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => replaceUnknownInExpr(es[i])))
+        case Set(es) => core.Expr.Set(util.Map(es, e' requires e' < e => replaceUnknownInExpr(e')))
         case Record(bs) => core.Expr.Record(seq(|bs|, i requires 0 <= i < |bs| => (bs[i].0, replaceUnknownInExpr(bs[i].1))))
         case Call(name, args) => core.Call(name, seq(|args|, i requires 0 <= i < |args| => replaceUnknownInExpr(args[i])))
         case Unknown(u) => mappings(u.name)

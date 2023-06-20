@@ -23,7 +23,7 @@ module pe.definition {
     BinaryApp(BinaryOp, Expr, Expr) |
     GetAttr(Expr, Attr) |
     HasAttr(Expr, Attr) |
-    Set(seq<Expr>) |
+    Set(es: seq<Expr>) |
     Record(fvs: seq<(Attr, Expr)>) |
     Call(name: Name, args: seq<Expr>) |
     Unknown(u: Unknown)

@@ -1,6 +1,8 @@
 include "def.dfy"
 include "environment.dfy"
 include "engine.dfy"
+include "util.dfy"
+include "eval.dfy"
 include "../def/core.dfy"
 include "../def/base.dfy"
 include "../def/engine.dfy"
@@ -14,6 +16,8 @@ module pe.soundness {
   import def.core
   import def.base
   import opened def.std
+  import util
+  import eval
 
   lemma MakeErrorValueIsErr(env: Environment)
     requires env.wellFormed()
@@ -100,15 +104,20 @@ module pe.soundness {
 
   }
 
-  // assert exists e | e in es :: I(R(e));
-  // assert exists e' | e' in Map(R, es) :: I(e');
-  lemma MappingPreservesPredicate<A, B>(es: seq<A>, R: A -> B, pred: B -> bool)
-    requires exists e | e in es :: pred(R(e))
-    ensures exists e' | e' in seq(|es|, i requires 0 <= i < |es| => R(es[i])) :: pred(e') {
-    assert exists i | 0 <= i < |es| :: pred(R(es[i]));
-    //assert forall e | e in es :: R(e) in seq(|es|, i requires 0 <= i < |es| => R(es[i]));
-    assume false;
+  lemma CEInterpretSetOk(es: seq<core.Expr>, ce: ce.Evaluator)
+    requires ce.interpretSet(es).Ok?
+    ensures forall e | e in es :: ce.interpret(e).Ok? {
+
   }
+
+  /*
+    lemma CEInterpretSetValue(es: seq<core.Expr>, ce: ce.Evaluator)
+      requires ce.interpretSet(es).Ok?
+      ensures ce.interpretSet(es).value == set e | e in es :: ce.interpret(e).value {
+        CEInterpretSetOk(es, ce);
+        var s := set e | e in es :: ce.interpret(e).value;
+    }
+  */
 
   lemma PEIsSoundSet(e: definition.Expr, q: core.Request, s: core.EntityStore, Q: definition.Request, S: definition.EntityStore, env: Environment)
     requires env.wellFormed()
@@ -135,28 +144,43 @@ module pe.soundness {
         var rs := PE.interpretSeq(es);
         if rs.Ok? {
           PEInterpretSeqOk(es, PE);
-          assert forall e' | e' in es :: PE.interpret(e').Ok?;
-          /*
-          assume forall i | 0 <= i < |es| :: ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(es[i])) == env.interpret(rs.value[i], s);
-          assume rs.value == seq(|es|, i requires 0 <= i < |es| => PartialEvaluator(Q, S).interpret(es[i]).value);
+          //assert forall e' | e' in es :: PE.interpret(e').Ok?;
+          //assert forall e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')) == env.interpret(PE.interpret(e').value, s);
+          //assume |rs.value| == |es|;
+          //assume forall i | 0 <= i < |es| :: CE.interpret(env.replaceUnknownInExpr(es[i])) == env.interpret(rs.value[i], s);
           if (forall r | r in rs.value :: r.Concrete?) {
+            /*
             calc == {
-              ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e));
-              ce.Evaluator(q, s).interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
-              ce.Evaluator(q, s).interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
-              env.interpret(PartialEvaluator(Q, S).splitSeqToSet(rs.value), s);
+              CE.interpret(env.replaceUnknownInExpr(e));
+              CE.interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
+              CE.interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
             }
+            calc == {
+              env.interpret(peRes.value, s);
+              env.interpret(PE.splitSeqToSet(rs.value), s);
+              env.interpret(Concrete(core.Value.Set(set x | x in rs.value :: x.v)), s);
+              Ok(core.Value.Set(set x | x in rs.value :: x.v));
+            }
+            */
+            assume false;
           } else {
+            eval.CEInterpretSet(e, CE, env);
+            assert CE.interpret(env.replaceUnknownInExpr(e)) == util.CollectToSet(util.Map(e.es, e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e')))).Map(v => core.Value.Set(v));
+            /*
             calc == {
-              env.interpret(PartialEvaluator(Q, S).splitSeqToSet(rs.value), s);
-              env.interpret(Residual.Set(rs.value), s);
-              env.interpretSet(rs.value, s).Map(v => core.Value.Set(v));
-              env.interpretSet(seq(|es|, i requires 0 <= i < |es| => PartialEvaluator(Q, S).interpret(es[i]).value), s).Map(v => core.Value.Set(v));
+              env.interpret(PE.interpret(e).value, s);
+              env.interpret(Residual.Set(PE.interpretSeq(es).value), s);
+              env.interpretSet(PE.interpretSeq(es).value, s).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(PE.interpretSeq(es).value, e => env.interpret(e, s))).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(util.Map(es, e => PE.interpret(e).value), e => env.interpret(e, s))).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(es, e => env.interpret(PE.interpret(e).value, s))).Map(v => core.Value.Set(v));
             }
+            */
+            assume env.interpret(PE.interpret(e).value, s) == util.CollectToSet(util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s))).Map(v => core.Value.Set(v));
+            assert util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s)) == util.Map(e.es, e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e')));
           }
-          */
-          assume false;
         } else {
+          assume false;
           PEInterpretSeqErr(es, PE);
           assert exists e' | e' in es :: PE.interpret(e').Err?;
           assert exists e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')).Err?;
