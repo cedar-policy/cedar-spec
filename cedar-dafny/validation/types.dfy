@@ -69,6 +69,7 @@ module validation.types {
   }
 
   datatype AttrType = AttrType(ty: Type, isRequired: bool)
+  datatype OpenTag = OpenAttributes | ClosedAttributes
   datatype RecordType = RecordType(
     attrs: map<Attr,AttrType>,
     // Indicates whether a value having this record type may have attributes
@@ -80,8 +81,12 @@ module validation.types {
     // be closed if the constituent record types are closed and have exactly the
     // same attributes with a least upper bound existing between corresponding
     // attributes.
-    isOpen: bool
-  )
+    openAttributes: OpenTag
+  ) {
+    predicate isOpen() {
+      openAttributes.OpenAttributes?
+    }
+  }
 
   // Each extension function is associated with argument types, a return type,
   // and an optional method that checks input well-formedness.

@@ -885,7 +885,7 @@ module validation.thm.model {
     requires forall ae :: ae in es ==> ExistsSafeType(r,s,ae.1)
     // and the last instance of every required key is safe at the correct type.
     requires forall k :: k in rt.attrs ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty)
-    requires !rt.isOpen ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
+    requires !rt.isOpen() ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     reveal IsSafe();
@@ -911,7 +911,7 @@ module validation.thm.model {
   lemma ObjectProjSafeRequired(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
     requires t'.isRequired
-    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], true)))
+    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
     reveal IsSafe();
@@ -919,7 +919,7 @@ module validation.thm.model {
 
   lemma ObjectProjSafeGetAttrSafe(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
-    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], true)))
+    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
     requires GetAttrSafe(r,s,e,l)
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
@@ -936,7 +936,7 @@ module validation.thm.model {
   }
 
   lemma RecordHasRequiredTrueSafe(r: Request, s: EntityStore, e: Expr, l: Attr, t: AttrType)
-    requires IsSafe(r,s,e,Type.Record(RecordType(map[l := t], true)))
+    requires IsSafe(r,s,e,Type.Record(RecordType(map[l := t], OpenAttributes)))
     requires t.isRequired
     ensures IsTrue(r,s,HasAttr(e,l))
   {
@@ -944,7 +944,7 @@ module validation.thm.model {
   }
 
   lemma RecordHasOpenRecSafe(r: Request, s: EntityStore, e: Expr, l: Attr)
-    requires IsSafe(r,s,e,Type.Record(RecordType(map[], true)))
+    requires IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes)))
     ensures IsSafe(r,s,HasAttr(e,l),Type.Bool(AnyBool))
   {
     reveal IsSafe();
@@ -953,7 +953,7 @@ module validation.thm.model {
   lemma RecordHasClosedRecFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, rt: RecordType)
     requires IsSafe(r,s,e,Type.Record(rt))
     requires l !in rt.attrs.Keys
-    requires !rt.isOpen
+    requires !rt.isOpen()
     ensures IsFalse(r,s,HasAttr(e,l))
   {
     reveal IsSafe();

@@ -55,7 +55,7 @@ module validation.typechecker {
     function getLubRecordType(lub: EntityLUB): Result<RecordType>
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et)
-      then Ok(RecordType(map[], true))
+      then Ok(RecordType(map[], OpenAttributes))
       else
         if forall et <- lub.tys :: et in types
         then
@@ -68,7 +68,7 @@ module validation.typechecker {
     // Check if an Attr is allowed by any entity type in the LUB
     predicate isAttrPossible(lub: EntityLUB, k: Attr)
     {
-      lub.AnyEntity? || exists e <- lub.tys :: e in types && (types[e].isOpen || k in types[e].attrs)
+      lub.AnyEntity? || exists e <- lub.tys :: e in types && (types[e].isOpen() || k in types[e].attrs)
     }
   }
 
@@ -474,13 +474,13 @@ module validation.typechecker {
       decreases e , 0 , r
     {
       if r == [] then
-        Ok(RecordType(map[], false))
+        Ok(RecordType(map[], ClosedAttributes))
       else
         var k := r[0].0;
         var (t,_) :- infer(r[0].1,effs);
         assert r[0] < e;
         var m :- inferRecord(e,r[1..],effs);
-        Ok(RecordType(if k in m.attrs.Keys then m.attrs else m.attrs[k := AttrType(t,true)], false))
+        Ok(RecordType(if k in m.attrs.Keys then m.attrs else m.attrs[k := AttrType(t,true)], ClosedAttributes))
     }
 
     function inferHasAttrHelper(e: Expr, k: Attr, rt: RecordType, effs: Effects, knownToExist: bool): Result<(Type,Effects)>
@@ -491,7 +491,7 @@ module validation.typechecker {
         else if effs.contains(e,k)
         then wrap(Ok(Type.Bool(True)))
         else Ok((Type.Bool(AnyBool),Effects.singleton(e,k)))
-      else if rt.isOpen
+      else if rt.isOpen()
         then wrap(Ok(Type.Bool(AnyBool)))
         else wrap(Ok(Type.Bool(False)))
     }

@@ -1036,16 +1036,20 @@ module validation.thm.soundness {
     {
       var rtl := lubRecordType(rt1, rt2).value;
 
-      assert rt1.isOpen ==> rtl.isOpen;
-      assert rt2.isOpen ==> rtl.isOpen;
-      assert !rtl.isOpen ==> rt1.attrs.Keys == rt2.attrs.Keys;
+      assert rt1.isOpen() ==> rtl.isOpen();
+      assert rt2.isOpen() ==> rtl.isOpen();
+      assert !rtl.isOpen() ==> rt1.attrs.Keys == rt2.attrs.Keys;
 
       forall k | k in rtl.attrs.Keys
         ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
         var al := rtl.attrs[k];
         var a1 := rt1.attrs[k];
         var a2 := rt2.attrs[k];
-        assert lubOpt(a1.ty,a2.ty) == Ok(al.ty);
+
+        var al' := lubOpt(a1.ty,a2.ty);
+        assert al'.Ok?;
+        assert al'.value == al.ty;
+
         LubIsUB(a1.ty, a2.ty, al.ty);
       }
     }
@@ -1076,7 +1080,7 @@ module validation.thm.soundness {
       ensures subtyRecordType(ets.types[ety], ets.getLubRecordType(lub).value)
     {
       var lub_ty := ets.getLubRecordType(lub) ;
-      if lub_ty != Ok(RecordType(map[], true)) {
+      if lub_ty != Ok(RecordType(map[], OpenAttributes)) {
         def.util.EntityTypeLeqIsTotalOrder();
         var lubSeq := def.util.SetToSortedSeq(lub.tys,def.util.EntityTypeLeq);
         var etyI :| 0 <= etyI < |lubSeq| && lubSeq[etyI] == ety;
@@ -1107,12 +1111,12 @@ module validation.thm.soundness {
           assert IsSafe(r,s,e,Type.Record(rt)) by { Sound(e,Type.Record(rt),effs); }
           if k in rt.attrs {
             if rt.attrs[k].isRequired {
-              assert IsSafe(r,s,e,Type.Record(RecordType(map[k := rt.attrs[k]], true))) by {
+              assert IsSafe(r,s,e,Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes))) by {
                 SubtyRefl(rt.attrs[k].ty);
-                assert subtyRecordType(rt,RecordType(map[k := rt.attrs[k]], true));
-                assert subty(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], true)));
-                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], true)));
-                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], true)));
+                assert subtyRecordType(rt,RecordType(map[k := rt.attrs[k]], OpenAttributes));
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
+                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
+                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
               }
               assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasRequiredTrueSafe(r,s,e,k,rt.attrs[k]); }
             } else if effs.contains(e,k) {
@@ -1120,10 +1124,10 @@ module validation.thm.soundness {
                 reveal EffectsInvariant();
               }
             } else {
-              assert IsSafe(r,s,e,Type.Record(RecordType(map[], true))) by {
-                assert subty(Type.Record(rt),Type.Record(RecordType(map[], true)));
-                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], true)));
-                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], true)));
+              assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
               }
               assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasOpenRecSafe(r,s,e,k); }
               assert GuardedEffectsInvariant(HasAttr(e,k),Effects.singleton(e,k)) by {
@@ -1133,11 +1137,11 @@ module validation.thm.soundness {
                 }
               }
             }
-          } else if rt.isOpen {
-            assert IsSafe(r,s,e,Type.Record(RecordType(map[], true))) by {
-              assert subty(Type.Record(rt),Type.Record(RecordType(map[], true)));
-              SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], true)));
-              SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], true)));
+          } else if rt.isOpen() {
+            assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
+              assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+              SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+              SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
             }
             assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasOpenRecSafe(r,s,e,k); }
           } else {
@@ -1190,16 +1194,16 @@ module validation.thm.soundness {
       requires ets.getLubRecordType(lub) == Ok(lubR)
       requires ets.isAttrPossible(lub, k)
       requires k !in lubR.attrs.Keys
-      ensures lubR.isOpen
+      ensures lubR.isOpen()
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et) {
-        assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], true));
+        assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], OpenAttributes));
       } else {
         assert forall et <- lub.tys :: et in ets.types;
-        assert exists et <- lub.tys :: et in ets.types && (ets.types[et].isOpen || k in ets.types[et].attrs);
-        var et :| et in lub.tys && et in ets.types && (ets.types[et].isOpen || k in ets.types[et].attrs);
+        assert exists et <- lub.tys :: et in ets.types && (ets.types[et].isOpen() || k in ets.types[et].attrs);
+        var et :| et in lub.tys && et in ets.types && (ets.types[et].isOpen() || k in ets.types[et].attrs);
         GetLubRecordTypeSubty(lub, et);
-        assert lubR.isOpen;
+        assert lubR.isOpen();
       }
     }
 

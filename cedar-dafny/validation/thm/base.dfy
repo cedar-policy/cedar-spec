@@ -121,7 +121,7 @@ module validation.thm.base {
       case (Set(s),Set(ty1)) =>
         forall v1 | v1 in s :: InstanceOfType(v1,ty1)
       case (Record(r),Record(rt)) =>
-        (!rt.isOpen ==> (forall k | k in r :: k in rt.attrs)) &&
+        (!rt.isOpen() ==> (forall k | k in r :: k in rt.attrs)) &&
         // if an attribute is present, then it has the expected type
         (forall k | k in rt.attrs && k in r :: InstanceOfType(r[k],rt.attrs[k].ty)) &&
         // required attributes are present
