@@ -17,20 +17,20 @@
 use ast::{Effect, Entity, EntityUID, Expr, Name, PolicyID, Request, StaticPolicy};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::collections::{HashMap, HashSet};
+use cedar_policy_generators::hierarchy::Hierarchy;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::ops::{Deref, DerefMut};
 
-use cedar_policy_generators::collections::{HashMap, HashSet};
-
 #[derive(Debug, Clone)]
-pub struct RBACHierarchy(pub super::Hierarchy);
+pub struct RBACHierarchy(pub Hierarchy);
 
 impl RBACHierarchy {
     pub fn into_json(self) -> String {
         let mut s = String::new();
         s.push('[');
-        let num_entities = self.0.entities.len();
-        for (i, entity) in self.0.entities.into_values().enumerate() {
+        let num_entities = self.0.num_entities();
+        for (i, entity) in self.0.into_entities().enumerate() {
             s.push_str(&RBACEntity(entity).into_json());
             if i < num_entities - 1 {
                 s.push_str(", ");
@@ -42,14 +42,14 @@ impl RBACHierarchy {
 }
 
 impl Deref for RBACHierarchy {
-    type Target = super::Hierarchy;
-    fn deref(&self) -> &super::Hierarchy {
+    type Target = Hierarchy;
+    fn deref(&self) -> &Hierarchy {
         &self.0
     }
 }
 
 impl DerefMut for RBACHierarchy {
-    fn deref_mut(&mut self) -> &mut super::Hierarchy {
+    fn deref_mut(&mut self) -> &mut Hierarchy {
         &mut self.0
     }
 }
@@ -57,9 +57,9 @@ impl DerefMut for RBACHierarchy {
 impl std::fmt::Display for RBACHierarchy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
-        for (i, entity) in self.0.entities.values().enumerate() {
+        for (i, entity) in self.0.entities().enumerate() {
             write!(f, "{}", RBACEntity(entity.clone()))?;
-            if i < self.0.entities.len() - 1 {
+            if i < self.0.num_entities() - 1 {
                 write!(f, ", ")?;
             }
         }
@@ -68,8 +68,8 @@ impl std::fmt::Display for RBACHierarchy {
     }
 }
 
-impl From<RBACHierarchy> for super::Hierarchy {
-    fn from(rbac: RBACHierarchy) -> super::Hierarchy {
+impl From<RBACHierarchy> for Hierarchy {
+    fn from(rbac: RBACHierarchy) -> Hierarchy {
         rbac.0
     }
 }
@@ -94,27 +94,23 @@ impl<'a> Arbitrary<'a> for RBACHierarchy {
             .collect();
         let mut uids_by_type: HashMap<Name, Vec<EntityUID>> = HashMap::new();
         for (uid, ty) in uids
-            .iter()
-            .map(|uid| (uid.clone(), uid.clone().components().0))
+            .into_iter()
+            .map(|uid| (uid.clone(), uid.components().0))
         {
             // all entities in `uids` will be `Concrete`
             if let ast::EntityType::Concrete(name) = ty {
                 uids_by_type.entry(name).or_default().push(uid)
             }
         }
-        // now generate the RBACEntity objects, given this pool of names
-        let entities = uids
-            .iter()
-            .map(|uid| RBACEntity::arbitrary_for_pool(uid.clone(), &uids, u))
+        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
+        // now generate the RBACEntity objects, given these uids
+        let entities = hierarchy_no_attrs.entities().map(|e| e.uid())
+            .map(|uid| RBACEntity::arbitrary_for_pool(uid, hierarchy_no_attrs.uids(), u))
             .collect::<arbitrary::Result<Vec<RBACEntity>>>()?
             .into_iter()
             .map(|entity| (entity.uid(), entity.into()))
             .collect();
-        Ok(Self(super::Hierarchy {
-            entities,
-            uids,
-            uids_by_type,
-        }))
+        Ok(Self(hierarchy_no_attrs.replace_entities(entities)))
     }
 
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
@@ -244,7 +240,7 @@ impl From<RBACPolicy> for StaticPolicy {
 impl RBACPolicy {
     pub fn arbitrary_for_hierarchy(
         fixed_id_opt: Option<PolicyID>,
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
@@ -356,7 +352,7 @@ impl std::fmt::Display for RBACRequest {
 
 impl RBACRequest {
     pub fn arbitrary_for_hierarchy(
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
         Ok(Self(super::Request {
@@ -370,9 +366,9 @@ impl RBACRequest {
     /// size hint for arbitrary_for_hierarchy()
     pub fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
-            super::Hierarchy::arbitrary_uid_size_hint(depth),
-            super::Hierarchy::arbitrary_uid_size_hint(depth),
-            super::Hierarchy::arbitrary_uid_size_hint(depth),
+            Hierarchy::arbitrary_uid_size_hint(depth),
+            Hierarchy::arbitrary_uid_size_hint(depth),
+            Hierarchy::arbitrary_uid_size_hint(depth),
         ])
     }
 }

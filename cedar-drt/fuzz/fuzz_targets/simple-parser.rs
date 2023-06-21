@@ -18,6 +18,7 @@
 
 use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::parser::parse_policyset;
+use libfuzzer_sys::arbitrary::{Arbitrary, Unstructured};
 
 fuzz_target!(|input: String| {
     // Ensure the parser does not crash

@@ -19,6 +19,7 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_generators::err::Error;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;

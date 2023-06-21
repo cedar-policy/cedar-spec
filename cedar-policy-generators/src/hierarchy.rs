@@ -22,6 +22,21 @@ pub struct Hierarchy {
 }
 
 impl Hierarchy {
+    /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
+    /// `HashMap` of entity typename to UID). The entities will have no
+    /// attributes or parents.
+    pub fn from_uids_by_type(uids_by_type: HashMap<Name, Vec<EntityUID>>) -> Self {
+        let uids: Vec<EntityUID> = uids_by_type.values().flatten().cloned().collect();
+        Self {
+            entities: uids
+                .iter()
+                .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
+                .collect(),
+            uids,
+            uids_by_type,
+        }
+    }
+
     /// generate an arbitrary uid based on the hierarchy
     pub fn arbitrary_uid(&self, u: &mut Unstructured<'_>) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
@@ -103,6 +118,11 @@ impl Hierarchy {
     /// Consume the Hierarchy and create an iterator over its Entity objects
     pub fn into_entities(self) -> impl Iterator<Item = Entity> {
         self.entities.into_values()
+    }
+
+    /// Get the list of UIDs in the Hierarchy, as a slice
+    pub fn uids(&self) -> &[EntityUID] {
+        &self.uids
     }
 
     /// Consume the Hierarchy and return a new one, which replaces the entities

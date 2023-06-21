@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-use super::{while_doing, Error, Result};
 use crate::Schema;
 use crate::{gen, uniform};
 use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
 use cedar_policy_generators::collections::HashMap;
+use cedar_policy_generators::err::{while_doing, Error, Result};
+use cedar_policy_generators::size_hint_utils::size_hint_for_choose;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::cell::RefCell;
@@ -210,7 +211,7 @@ impl ConstantPool {
 
     /// size hint for arbitrary_int_constant()
     pub fn arbitrary_int_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        super::size_hint_for_choose(None)
+        size_hint_for_choose(None)
     }
 
     pub fn arbitrary_string(
@@ -346,7 +347,7 @@ impl ConstantPool {
 
     /// size hint for arbitrary_string_constant()
     pub fn arbitrary_string_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        super::size_hint_for_choose(None)
+        size_hint_for_choose(None)
     }
 }
 
@@ -505,7 +506,7 @@ impl AvailableExtensionFunctions {
             .map_err(|e| while_doing("getting arbitrary extfunc constructor", e))
     }
     pub fn arbitrary_constructor_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(3))
+        size_hint_for_choose(Some(3))
     }
 
     /// Get any extension function
@@ -517,7 +518,7 @@ impl AvailableExtensionFunctions {
             .map_err(|e| while_doing("getting arbitrary extfunc", e))
     }
     pub fn arbitrary_all_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(8))
+        size_hint_for_choose(Some(8))
     }
 
     /// Get an extension constructor that returns the given type
@@ -538,7 +539,7 @@ impl AvailableExtensionFunctions {
 
     /// size hint for arbitrary_constructor_for_type()
     pub fn arbitrary_constructor_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(3))
+        size_hint_for_choose(Some(3))
     }
 
     /// Get an extension function that returns the given type
@@ -557,7 +558,7 @@ impl AvailableExtensionFunctions {
 
     /// size hint for arbitrary_for_type()
     pub fn arbitrary_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(8))
+        size_hint_for_choose(Some(8))
     }
 }
 
