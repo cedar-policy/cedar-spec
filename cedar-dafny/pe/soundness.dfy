@@ -19,105 +19,7 @@ module pe.soundness {
   import util
   import eval
 
-  lemma MakeErrorValueIsErr(env: Environment)
-    requires env.wellFormed()
-    ensures var r := PartialEvaluator.makeErrorValue(); env.interpret(r, core.EntityStore(map[])).Err? {
-    calc {
-      env.interpret(PartialEvaluator.makeErrorValue(), core.EntityStore(map[]));
-    ==
-      calc {
-        env.interpret(Residual.Record([]), core.EntityStore(map[]));
-      ==
-        Ok(core.Value.Record(map[]));
-      }
-      Err(base.AttrDoesNotExist);
-    }
-  }
 
-  lemma InterpretRestrictedResidualSet(rs: seq<Residual>, env: Environment, s: core.EntityStore)
-    requires forall r | r in rs :: r.restricted?()
-    requires env.wellFormed()
-    ensures env.interpretSet(rs, s) == env.interpretSet(rs, core.EntityStore(map[]))
-  {
-    if |rs| == 0 {
-
-    } else {
-      InterpretRestrictedResidual(rs[0], env, s);
-    }
-  }
-
-  lemma InterpretRestrictedResidualRecord(bs: seq<(core.Attr, Residual)>, env: Environment, s: core.EntityStore)
-    requires forall b | b in bs :: b.1.restricted?()
-    requires env.wellFormed()
-    ensures env.interpretRecord(bs, s) == env.interpretRecord(bs, core.EntityStore(map[]))
-  {
-    if |bs| == 0 {
-
-    } else {
-      InterpretRestrictedResidual(bs[0].1, env, s);
-    }
-  }
-
-  lemma InterpretRestrictedResidualList(rs: seq<Residual>, env: Environment, s: core.EntityStore)
-    requires forall r | r in rs :: r.restricted?()
-    requires env.wellFormed()
-    ensures env.interpretList(rs, s) == env.interpretList(rs, core.EntityStore(map[])) {
-    if |rs| == 0 {
-
-    } else {
-      InterpretRestrictedResidual(rs[0], env, s);
-    }
-  }
-
-  lemma InterpretRestrictedResidual(r: Residual, env: Environment, s: core.EntityStore)
-    requires r.restricted?()
-    requires env.wellFormed()
-    ensures env.interpret(r, s) == env.interpret(r, core.EntityStore(map[]))
-  {
-    match r {
-      case Concrete(_) =>
-      case Unknown(_) =>
-      case Set(rs) => InterpretRestrictedResidualSet(rs, env, s);
-      case Record(bs) => InterpretRestrictedResidualRecord(bs, env, s);
-      case Call(_, args) => InterpretRestrictedResidualList(args, env, s);
-      case _ => assume false;
-    }
-  }
-
-  lemma PEInterpretSeqOk(es: seq<definition.Expr>, pe: PartialEvaluator)
-    requires pe.interpretSeq(es).Ok?
-    ensures forall e | e in es :: pe.interpret(e).Ok?
-  {
-
-  }
-
-  lemma PEInterpretSeqErr(es: seq<definition.Expr>, pe: PartialEvaluator)
-    requires pe.interpretSeq(es).Err?
-    ensures exists e | e in es :: pe.interpret(e).Err?
-  {
-
-  }
-
-  lemma CEInterpretSetErr(es: seq<core.Expr>, ce: ce.Evaluator)
-    requires exists e | e in es :: ce.interpret(e).Err?
-    ensures ce.interpretSet(es).Err? {
-
-  }
-
-  lemma CEInterpretSetOk(es: seq<core.Expr>, ce: ce.Evaluator)
-    requires ce.interpretSet(es).Ok?
-    ensures forall e | e in es :: ce.interpret(e).Ok? {
-
-  }
-
-  /*
-    lemma CEInterpretSetValue(es: seq<core.Expr>, ce: ce.Evaluator)
-      requires ce.interpretSet(es).Ok?
-      ensures ce.interpretSet(es).value == set e | e in es :: ce.interpret(e).value {
-        CEInterpretSetOk(es, ce);
-        var s := set e | e in es :: ce.interpret(e).value;
-    }
-  */
 
   lemma PEIsSoundSet(e: definition.Expr, q: core.Request, s: core.EntityStore, Q: definition.Request, S: definition.EntityStore, env: Environment)
     requires env.wellFormed()
@@ -142,18 +44,44 @@ module pe.soundness {
           PEIsSound(e', q, s, Q, S, env);
         }
         var rs := PE.interpretSeq(es);
+        eval.PEInterpretSetMapReduce(es, PE);
+        eval.CEInterpretSet(e, CE, env);
+
+        var ceI := e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e'));
+        assert CE.interpret(env.replaceUnknownInExpr(e)) == util.CollectToSet(util.Map(e.es, ceI)).Map(v => core.Value.Set(v));
         if rs.Ok? {
-          PEInterpretSeqOk(es, PE);
-          //assert forall e' | e' in es :: PE.interpret(e').Ok?;
-          //assert forall e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')) == env.interpret(PE.interpret(e').value, s);
-          //assume |rs.value| == |es|;
-          //assume forall i | 0 <= i < |es| :: CE.interpret(env.replaceUnknownInExpr(es[i])) == env.interpret(rs.value[i], s);
+          eval.PEInterpretSeqOk(es, PE);
+          util.CollectToSeqOk(util.Map(es, PE.interpret));
+
+          assert rs.value == util.Map(util.Map(es, PE.interpret), (r: definition.Result<Residual>) requires r.Ok? => r.value) ==
+                 util.Map(es, e' requires PE.interpret(e').Ok? => PE.interpret(e').value);
+
           if (forall r | r in rs.value :: r.Concrete?) {
-            /*
+            assert forall e' | e' in es :: e' < e && PE.interpret(e).Ok?;
+            //assert  util.Map(e.es, ceI) == util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e')));
+            assert util.Map(e.es, ceI) == util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e')));
+            calc == {
+              util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e')));util.Map(e.es, e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s));
+              //util.Map(rs.value, r => env.interpret(r, s));
+            }
+            calc == {
+              util.Map(rs.value, r => env.interpret(r, s));
+              util.Map(util.Map(es, e' requires PE.interpret(e').Ok? => PE.interpret(e').value), r => env.interpret(r, s));
+              util.Map(es, e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s));
+            }
+            assert util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e'))) == util.Map(rs.value, r => env.interpret(r, s));
+            calc == {
+              util.Map(rs.value, r => env.interpret(r, s));
+              util.Map(rs.value, (r: Residual) requires r.Concrete? => Ok(r.v));
+            }
+            util.CollectToSetWithMap(rs.value, (r: Residual) requires r.Concrete? => definition.Result<core.Value>.Ok(r.v));
+            assert util.CollectToSet(util.Map(rs.value, (r: Residual) requires r.Concrete? => definition.Result<core.Value>.Ok(r.v))).value == set x | x in rs.value :: x.v;
             calc == {
               CE.interpret(env.replaceUnknownInExpr(e));
-              CE.interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
-              CE.interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(e.es, e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s))).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(rs.value, r => env.interpret(r, s))).Map(v => core.Value.Set(v));
+              util.CollectToSet(util.Map(rs.value, (r: Residual) requires r.Concrete? => Ok(r.v))).Map(v => core.Value.Set(v));
+              Ok(core.Value.Set(set x | x in rs.value :: x.v));
             }
             calc == {
               env.interpret(peRes.value, s);
@@ -161,36 +89,31 @@ module pe.soundness {
               env.interpret(Concrete(core.Value.Set(set x | x in rs.value :: x.v)), s);
               Ok(core.Value.Set(set x | x in rs.value :: x.v));
             }
-            */
-            assume false;
           } else {
-            eval.CEInterpretSet(e, CE, env);
-            assert CE.interpret(env.replaceUnknownInExpr(e)) == util.CollectToSet(util.Map(e.es, e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e')))).Map(v => core.Value.Set(v));
-            /*
-            calc == {
-              env.interpret(PE.interpret(e).value, s);
-              env.interpret(Residual.Set(PE.interpretSeq(es).value), s);
-              env.interpretSet(PE.interpretSeq(es).value, s).Map(v => core.Value.Set(v));
-              util.CollectToSet(util.Map(PE.interpretSeq(es).value, e => env.interpret(e, s))).Map(v => core.Value.Set(v));
-              util.CollectToSet(util.Map(util.Map(es, e => PE.interpret(e).value), e => env.interpret(e, s))).Map(v => core.Value.Set(v));
-              util.CollectToSet(util.Map(es, e => env.interpret(PE.interpret(e).value, s))).Map(v => core.Value.Set(v));
-            }
-            */
-            assume env.interpret(PE.interpret(e).value, s) == util.CollectToSet(util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s))).Map(v => core.Value.Set(v));
-            assert util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s)) == util.Map(e.es, e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e')));
+            eval.PEInterpretSet(e, PE, env, s);
+            assert util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s)) == util.Map(e.es, ceI);
           }
         } else {
-          assume false;
-          PEInterpretSeqErr(es, PE);
+          eval.PEInterpretSeqErr(es, PE);
           assert exists e' | e' in es :: PE.interpret(e').Err?;
           assert exists e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')).Err?;
-          assume exists e' | e' in seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i])) :: CE.interpret(e').Err?;
-          CEInterpretSetErr(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i])), CE);
-          calc == {
-            CE.interpret(env.replaceUnknownInExpr(e));
-            CE.interpret(core.Expr.Set(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))));
-            CE.interpretSet(seq(|es|, i requires 0 <= i < |es| => env.replaceUnknownInExpr(es[i]))).Map(v => core.Value.Set(v));
-          }
+          assert exists i: nat | i < |es| :: CE.interpret(env.replaceUnknownInExpr(es[i])).Err?;
+          util.MapExists(es, ceI, (v: definition.Result<core.Value>) => v.Err?);
+          assert exists r: definition.Result<core.Value> | r in util.Map(
+                e.es,
+                ceI) :: r.Err?;
+          util.CollectToSetErr(util.Map(
+                                 e.es,
+                                 ceI));
+          assert util.CollectToSet(util.Map(
+                                     e.es,
+                                     ceI)).Err?;
+          assert CE.interpret(env.replaceUnknownInExpr(e)) ==
+                 util.CollectToSet(
+                   util.Map(
+                     es,
+                     ceI)).Map(v => core.Value.Set(v));
+          assert CE.interpret(env.replaceUnknownInExpr(e)).Err?;
         }
     }
   }
@@ -228,11 +151,14 @@ module pe.soundness {
           assume false;
         }
       case UnaryApp(op, arg) =>
+        assert {:split_here} true;
         PEIsSound(arg, q, s, Q, S, env);
       case BinaryApp(op, arg1, arg2) =>
+        assert {:split_here} true;
         PEIsSound(arg1, q, s, Q, S, env);
         PEIsSound(arg2, q, s, Q, S, env);
       case GetAttr(se, a) =>
+        assert {:split_here} true;
         var peRes' := PartialEvaluator(Q, S).interpret(se);
         PEIsSound(se, q, s, Q, S, env);
         if peRes'.Ok? {
@@ -244,7 +170,7 @@ module pe.soundness {
                 if euid in s.entities.Keys {
                   if a in s.entities[euid].attrs.Keys {
                     assert restrictedEntityData(S.entities[euid]);
-                    InterpretRestrictedResidual(S.entities[euid].attrs[a], env, s);
+                    eval.InterpretRestrictedResidual(S.entities[euid].attrs[a], env, s);
                   }
                 }
               case _ =>
@@ -252,8 +178,11 @@ module pe.soundness {
           }
         }
       case HasAttr(se, a) =>
+        assert {:split_here} true;
         PEIsSound(se, q, s, Q, S, env);
-      case Set(es) => assume false;
+      case Set(es) =>
+        assert {:split_here} true;
+        PEIsSoundSet(e, q, s, Q, S, env);
       case _ => assume false;
     }
   }
