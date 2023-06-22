@@ -1,9 +1,9 @@
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
-use crate::size_hint_utils::{size_hint_for_ratio, size_hint_for_choose};
+use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
+use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{Eid, Entity, EntityUID, Name};
 use cedar_policy_core::entities::{Entities, TCComputation};
-use arbitrary::{Arbitrary, Unstructured};
 
 /// Contains data about an entity hierarchy
 #[derive(Debug, Clone)]

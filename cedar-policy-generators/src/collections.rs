@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-use highway::{HighwayHasher, Key};
 use arbitrary::{self, Arbitrary};
+use highway::{HighwayHasher, Key};
 use serde::{Deserialize, Serialize};
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};

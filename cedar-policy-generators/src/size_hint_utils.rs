@@ -1,5 +1,8 @@
 /// get a size hint for a call to ratio::<T>() with these parameters
-pub fn size_hint_for_ratio<T: arbitrary::unstructured::Int>(_a: T, _b: T) -> (usize, Option<usize>) {
+pub fn size_hint_for_ratio<T: arbitrary::unstructured::Int>(
+    _a: T,
+    _b: T,
+) -> (usize, Option<usize>) {
     // the following hint is based on looking at the source for ratio()
     size_hint_for_nonzero_range::<T>()
 }
