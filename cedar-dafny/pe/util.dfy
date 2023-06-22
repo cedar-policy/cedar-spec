@@ -13,7 +13,7 @@ module pe.util {
     // more efficient when compiled, allocating the storage for |xs| elements
     // once instead of creating a chain of |xs| single element concatenations.
     seq(|xs|, i requires 0 <= i < |xs| && f.requires(xs[i])
-                reads set i,o | 0 <= i < |xs| && o in f.reads(xs[i]) :: o
+                reads set i',o | 0 <= i' < |xs| && o in f.reads(xs[i']) :: o
     => f(xs[i]))
   }
 
@@ -101,6 +101,30 @@ module pe.util {
       assert CollectToSeq(rs).value == [rs[0].value] + CollectToSeq(rs[1..]).value;
       assert Map(rs, (r: std.Result<T, E>) requires r.Ok? => r.value) ==
              [rs[0].value] + Map(rs[1..], (r: std.Result<T, E>) requires r.Ok? => r.value);
+    }
+  }
+
+  predicate relaxedEq<T(==),E>(r1: Result<T, E>, r2: Result<T,E>) {
+    match (r1, r2) {
+      case (Ok(v1), Ok(v2)) => v1 == v2
+      case (Err(_), Err(_)) => true
+      case _ => false
+    }
+  }
+
+  predicate relaxedEqSeq<T(==),E>(rs1: seq<Result<T, E>>, rs2: seq<Result<T,E>>)
+    requires |rs1| == |rs2|
+  {
+    forall i: nat | i < |rs1| :: relaxedEq(rs1[i], rs2[i])
+  }
+
+  lemma CollectToSetRelaxedEq<T,E>(rs1: seq<std.Result<T, E>>, rs2: seq<std.Result<T, E>>)
+    requires relaxedEqSeq.requires(rs1, rs2) && relaxedEqSeq(rs1, rs2)
+    ensures relaxedEq(CollectToSet(rs1), CollectToSet(rs2)) {
+    if |rs1| == 0 {
+
+    } else {
+      CollectToSetRelaxedEq(rs1[1..], rs2[1..]);
     }
   }
 }

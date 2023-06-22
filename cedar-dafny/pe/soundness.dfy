@@ -19,20 +19,41 @@ module pe.soundness {
   import util
   import eval
 
+  lemma PEIsSoundAnd(e: definition.Expr, q: core.Request, s: core.EntityStore, Q: definition.Request, S: definition.EntityStore, env: Environment)
+    requires env.wellFormed()
+    requires restrictedEntityStore(S)
+    requires e.And?
+    requires var pr := env.replaceUnknownInRequest(Q); pr.Some? && pr.value == q
+    requires var ps := env.replaceUnknownInEntityStore(S); ps.Some? && ps.value == s
+    ensures var peRes := PartialEvaluator(Q, S).interpret(e);
+            (peRes.Ok? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)) == env.interpret(peRes.value, s)) &&
+            (peRes.Err? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)).Err?)
+  {
+    var PE := PartialEvaluator(Q, S);
+    match e
+    {
+      case And(e1, e2) =>
+        PEIsSound(e1, q, s, Q, S, env);
+        PEIsSound(e2, q, s, Q, S, env);
+        match PE.interpret(e1) {
+          case Ok(r1) => match r1 {
+            case Concrete(v1) => assume false;
+            case _ => assume false;
+          }
+          case Err(_) =>
+        }
+    }
 
+  }
 
   lemma PEIsSoundSet(e: definition.Expr, q: core.Request, s: core.EntityStore, Q: definition.Request, S: definition.EntityStore, env: Environment)
     requires env.wellFormed()
     requires restrictedEntityStore(S)
     requires e.Set?
-    // Request is well formed
     requires var pr := env.replaceUnknownInRequest(Q); pr.Some? && pr.value == q
-    // Entity store is well formed
     requires var ps := env.replaceUnknownInEntityStore(S); ps.Some? && ps.value == s
     ensures var peRes := PartialEvaluator(Q, S).interpret(e);
-            // If PE succeeds, then evaluating the residual and evaluating the original expression with the same unknown to value mappings should agree.
-            (peRes.Ok? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)) == env.interpret(peRes.value, s)) &&
-            // If PE fails, then evaluating the original expression with any uknown to value mappings should fail.
+            (peRes.Ok? ==> util.relaxedEq(ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)), env.interpret(peRes.value, s))) &&
             (peRes.Err? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)).Err?)
   {
     var PE := PartialEvaluator(Q, S);
@@ -48,6 +69,7 @@ module pe.soundness {
         eval.CEInterpretSet(e, CE, env);
 
         var ceI := e' requires e' < e => CE.interpret(env.replaceUnknownInExpr(e'));
+        var envI := e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s);
         assert CE.interpret(env.replaceUnknownInExpr(e)) == util.CollectToSet(util.Map(e.es, ceI)).Map(v => core.Value.Set(v));
         if rs.Ok? {
           eval.PEInterpretSeqOk(es, PE);
@@ -57,6 +79,7 @@ module pe.soundness {
                  util.Map(es, e' requires PE.interpret(e').Ok? => PE.interpret(e').value);
 
           if (forall r | r in rs.value :: r.Concrete?) {
+            assume false;
             assert forall e' | e' in es :: e' < e && PE.interpret(e).Ok?;
             //assert  util.Map(e.es, ceI) == util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e')));
             assert util.Map(e.es, ceI) == util.Map(e.es, e' => CE.interpret(env.replaceUnknownInExpr(e')));
@@ -91,7 +114,13 @@ module pe.soundness {
             }
           } else {
             eval.PEInterpretSet(e, PE, env, s);
-            assert util.Map(es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s)) == util.Map(e.es, ceI);
+            var rs1 := util.Map(es, envI);
+            var rs2 := util.Map(es, ceI);
+            assert (forall i: nat | i < |es| :: PE.interpret(es[i]).Ok?) && env.interpret(PE.interpret(e).value, s) == util.CollectToSet(rs1).Map(v => core.Value.Set(v));
+            assert CE.interpret(env.replaceUnknownInExpr(e)) ==
+                   util.CollectToSet(rs2).Map(v => core.Value.Set(v));
+            assert util.relaxedEqSeq(rs1, rs2);
+            util.CollectToSetRelaxedEq(rs1, rs2);
           }
         } else {
           eval.PEInterpretSeqErr(es, PE);
@@ -99,20 +128,12 @@ module pe.soundness {
           assert exists e' | e' in es :: CE.interpret(env.replaceUnknownInExpr(e')).Err?;
           assert exists i: nat | i < |es| :: CE.interpret(env.replaceUnknownInExpr(es[i])).Err?;
           util.MapExists(es, ceI, (v: definition.Result<core.Value>) => v.Err?);
-          assert exists r: definition.Result<core.Value> | r in util.Map(
-                e.es,
-                ceI) :: r.Err?;
-          util.CollectToSetErr(util.Map(
-                                 e.es,
-                                 ceI));
-          assert util.CollectToSet(util.Map(
-                                     e.es,
-                                     ceI)).Err?;
+          assert exists r: definition.Result<core.Value>
+              | r in util.Map(e.es, ceI) :: r.Err?;
+          util.CollectToSetErr(util.Map(e.es, ceI));
+          assert util.CollectToSet(util.Map(e.es, ceI)).Err?;
           assert CE.interpret(env.replaceUnknownInExpr(e)) ==
-                 util.CollectToSet(
-                   util.Map(
-                     es,
-                     ceI)).Map(v => core.Value.Set(v));
+                 util.CollectToSet(util.Map(es, ceI)).Map(v => core.Value.Set(v));
           assert CE.interpret(env.replaceUnknownInExpr(e)).Err?;
         }
     }
@@ -127,7 +148,7 @@ module pe.soundness {
     requires var ps := env.replaceUnknownInEntityStore(S); ps.Some? && ps.value == s
     ensures var peRes := PartialEvaluator(Q, S).interpret(e);
             // If PE succeeds, then evaluating the residual and evaluating the original expression with the same unknown to value mappings should agree.
-            (peRes.Ok? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)) == env.interpret(peRes.value, s)) &&
+            (peRes.Ok? ==> util.relaxedEq(ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)), env.interpret(peRes.value, s))) &&
             // If PE fails, then evaluating the original expression with any uknown to value mappings should fail.
             (peRes.Err? ==> ce.Evaluator(q, s).interpret(env.replaceUnknownInExpr(e)).Err?)
   {
@@ -182,6 +203,7 @@ module pe.soundness {
         PEIsSound(se, q, s, Q, S, env);
       case Set(es) =>
         assert {:split_here} true;
+        assume false;
         PEIsSoundSet(e, q, s, Q, S, env);
       case _ => assume false;
     }

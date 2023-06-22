@@ -146,7 +146,7 @@ module pe.eval {
     assert forall i: nat | i < |e.es| :: PE.interpret(e.es[i]).Ok?;
     PEInterpretSetMapReduce(e.es, PE);
     util.CollectToSeqOk(util.Map(e.es, PE.interpret));
-    var peI := e requires PE.interpret(e).Ok? => PE.interpret(e).value;
+    var peI := e' requires PE.interpret(e').Ok? => PE.interpret(e').value;
     calc == {
       PE.interpretSeq(e.es).value;
       util.CollectToSeq(util.Map(e.es, PE.interpret)).value;
@@ -159,9 +159,9 @@ module pe.eval {
       env.interpretSet(util.Map(e.es, peI), s);
       util.CollectToSet(util.Map(util.Map(e.es, peI), r => env.interpret(r, s)));
     }
-    assert util.CollectToSet(util.Map(e.es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s))) == util.CollectToSet(util.Map(util.Map(e.es, peI), r => env.interpret(r, s))) by {
+    assert util.CollectToSet(util.Map(e.es, e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s))) == util.CollectToSet(util.Map(util.Map(e.es, peI), r => env.interpret(r, s))) by {
       util.MapCompose(e.es, peI, r => env.interpret(r, s));
-      assert util.Map(util.Map(e.es, peI), r => env.interpret(r, s)) == util.Map(e.es, e requires PE.interpret(e).Ok? => env.interpret(PE.interpret(e).value, s));
+      assert util.Map(util.Map(e.es, peI), r => env.interpret(r, s)) == util.Map(e.es, e' requires PE.interpret(e').Ok? => env.interpret(PE.interpret(e').value, s));
     }
     calc == {
       env.interpret(PE.interpret(e).value, s);
