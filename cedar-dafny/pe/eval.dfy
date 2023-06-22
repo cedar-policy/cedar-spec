@@ -17,14 +17,14 @@ module pe.eval {
   import opened environment
   import opened engine
 
-  lemma MakeErrorValueIsErr(env: Environment)
+  lemma MakeErrorValueIsErr(env: Environment, s: core.EntityStore)
     requires env.wellFormed()
-    ensures var r := PartialEvaluator.makeErrorValue(); env.interpret(r, core.EntityStore(map[])).Err? {
+    ensures var r := PartialEvaluator.makeErrorValue(); env.interpret(r, s).Err? {
     calc {
-      env.interpret(PartialEvaluator.makeErrorValue(), core.EntityStore(map[]));
+      env.interpret(PartialEvaluator.makeErrorValue(), s);
     ==
       calc {
-        env.interpret(Residual.Record([]), core.EntityStore(map[]));
+        env.interpret(Residual.Record([]), s);
       ==
         Ok(core.Value.Record(map[]));
       }

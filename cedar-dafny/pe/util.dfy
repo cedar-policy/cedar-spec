@@ -46,6 +46,13 @@ module pe.util {
     }
   }
 
+  lemma MapRel<A,B>(xs: seq<A>, f: (A-->B), g: (A-->B), pred: ((B,B)->bool))
+    requires forall i | 0 <= i < |xs| :: f.requires(xs[i]) && g.requires(xs[i]) && f(xs[i]) == g(xs[i]) && pred(f(xs[i]), g(xs[i]))
+    ensures forall i | 0 <= i < |Map(xs, f)| :: pred(Map(xs, f)[i], Map(xs, g)[i]) {
+
+  }
+
+
   function CollectToSet<T,E>(rs: seq<Result<T, E>>): (result: Result<set<T>,E>) {
     if |rs| == 0 then
       Ok({})
