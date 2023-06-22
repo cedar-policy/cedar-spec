@@ -104,7 +104,9 @@ impl<'a> Arbitrary<'a> for RBACHierarchy {
         }
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         // now generate the RBACEntity objects, given these uids
-        let entities = hierarchy_no_attrs.entities().map(|e| e.uid())
+        let entities = hierarchy_no_attrs
+            .entities()
+            .map(|e| e.uid())
             .map(|uid| RBACEntity::arbitrary_for_pool(uid, hierarchy_no_attrs.uids(), u))
             .collect::<arbitrary::Result<Vec<RBACEntity>>>()?
             .into_iter()

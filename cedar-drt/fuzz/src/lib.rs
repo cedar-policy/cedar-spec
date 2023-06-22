@@ -30,9 +30,7 @@ pub mod gen;
 
 use std::fmt::Display;
 
-use ast::{
-    Effect, EntityUID, Expr, Id, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
-};
+use ast::{Effect, EntityUID, Expr, Id, PolicyID, PolicySet, RestrictedExpr, StaticPolicy};
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };

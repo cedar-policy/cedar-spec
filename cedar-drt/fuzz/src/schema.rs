@@ -19,15 +19,17 @@ use super::abac::{
     Type, UnknownPool,
 };
 use super::{ActionConstraint, PrincipalOrResourceConstraint};
-use cedar_policy_generators::collections::{HashMap, HashSet};
-use cedar_policy_generators::err::{while_doing, Error, Result};
-use cedar_policy_generators::hierarchy::Hierarchy;
-use cedar_policy_generators::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{gen, uniform};
 use ast::{Effect, PolicyID};
 use cedar_policy_core::ast::Value;
 use cedar_policy_core::parser::parse_name;
 use cedar_policy_core::{ast, parser};
+use cedar_policy_generators::collections::{HashMap, HashSet};
+use cedar_policy_generators::err::{while_doing, Error, Result};
+use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::size_hint_utils::{
+    size_hint_for_choose, size_hint_for_range, size_hint_for_ratio,
+};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
@@ -650,7 +652,7 @@ impl Schema {
         arbitrary::size_hint::and_all(&[
             <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
             arbitrary_attrspec_size_hint(depth), // actually we do one of these per Name that was generated
-            size_hint_for_ratio(1, 2),    // actually many of these calls
+            size_hint_for_ratio(1, 2),           // actually many of these calls
             <HashSet<String> as Arbitrary>::size_hint(depth),
             size_hint_for_ratio(1, 8), // actually many of these calls
             size_hint_for_ratio(1, 4), // zero to many of these calls
@@ -693,7 +695,9 @@ impl Schema {
         // create an entity hierarchy composed of those entity UIDs, with some
         // hierarchy-membership edges possibly added in positions where the
         // schema allows a parent of that type
-        let entities = hierarchy_no_attrs.entities().map(|e| e.uid())
+        let entities = hierarchy_no_attrs
+            .entities()
+            .map(|e| e.uid())
             .map(|uid| match uid.entity_type() {
                 // entity data is generated with `arbitrary_uid_with_type`, which can never
                 // produce an unspecified entity
@@ -712,7 +716,8 @@ impl Schema {
                             self.namespace.clone(),
                             allowed_parent_typename,
                         );
-                        for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&allowed_parent_typename)
+                        for possible_parent_uid in
+                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename)
                         {
                             if u.ratio::<u8>(1, 2)? {
                                 parents.insert(possible_parent_uid.clone());
