@@ -41,7 +41,7 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_like: true,
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
-    enable_unknowns: false,
+    enable_unknowns: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
