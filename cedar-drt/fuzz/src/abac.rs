@@ -16,10 +16,13 @@
 
 use crate::Schema;
 use crate::{gen, uniform};
-use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
+use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_generators::err::{while_doing, Error, Result};
+use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::policy::GeneratedPolicy;
+use cedar_policy_generators::request::Request;
 use cedar_policy_generators::size_hint_utils::size_hint_for_choose;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
@@ -159,7 +162,7 @@ impl UnknownPool {
         &self,
         t: Type,
         schema: &Schema,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<String> {
         let this = format!("{}", self.unknowns.borrow().len());
@@ -675,7 +678,7 @@ impl From<AttrValue> for RestrictedExpr {
 }
 
 #[derive(Debug, Clone)]
-pub struct ABACPolicy(pub super::GeneratedPolicy);
+pub struct ABACPolicy(pub GeneratedPolicy);
 
 impl std::fmt::Display for ABACPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -684,14 +687,14 @@ impl std::fmt::Display for ABACPolicy {
 }
 
 impl Deref for ABACPolicy {
-    type Target = super::GeneratedPolicy;
-    fn deref(&self) -> &super::GeneratedPolicy {
+    type Target = GeneratedPolicy;
+    fn deref(&self) -> &GeneratedPolicy {
         &self.0
     }
 }
 
 impl DerefMut for ABACPolicy {
-    fn deref_mut(&mut self) -> &mut super::GeneratedPolicy {
+    fn deref_mut(&mut self) -> &mut GeneratedPolicy {
         &mut self.0
     }
 }
@@ -703,7 +706,7 @@ impl From<ABACPolicy> for StaticPolicy {
 }
 
 #[derive(Debug, Clone)]
-pub struct ABACRequest(pub super::Request);
+pub struct ABACRequest(pub Request);
 
 impl std::fmt::Display for ABACRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -712,25 +715,20 @@ impl std::fmt::Display for ABACRequest {
 }
 
 impl Deref for ABACRequest {
-    type Target = super::Request;
-    fn deref(&self) -> &super::Request {
+    type Target = Request;
+    fn deref(&self) -> &Request {
         &self.0
     }
 }
 
 impl DerefMut for ABACRequest {
-    fn deref_mut(&mut self) -> &mut super::Request {
+    fn deref_mut(&mut self) -> &mut Request {
         &mut self.0
     }
 }
 
-impl From<ABACRequest> for Request {
-    fn from(abac: ABACRequest) -> Request {
-        Request::new(
-            abac.0.principal,
-            abac.0.action,
-            abac.0.resource,
-            ast::Context::from_pairs(abac.0.context),
-        )
+impl From<ABACRequest> for ast::Request {
+    fn from(abac: ABACRequest) -> ast::Request {
+        abac.0.into()
     }
 }

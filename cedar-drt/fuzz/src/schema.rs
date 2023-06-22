@@ -18,15 +18,14 @@ use super::abac::{
     ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
     Type, UnknownPool,
 };
-use super::{ActionConstraint, PrincipalOrResourceConstraint};
 use crate::{gen, uniform};
-use ast::{Effect, PolicyID};
-use cedar_policy_core::ast::Value;
-use cedar_policy_core::parser::parse_name;
-use cedar_policy_core::{ast, parser};
+use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
+use cedar_policy_core::parser::{self, parse_name};
 use cedar_policy_generators::collections::{HashMap, HashSet};
 use cedar_policy_generators::err::{while_doing, Error, Result};
 use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
+use cedar_policy_generators::request::Request;
 use cedar_policy_generators::size_hint_utils::{
     size_hint_for_choose, size_hint_for_range, size_hint_for_ratio,
 };
@@ -3185,7 +3184,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
         let id = u.arbitrary()?;
-        let annotations = u.arbitrary()?;
+        let annotations: HashMap<ast::Id, String> = u.arbitrary()?;
         let effect = u.arbitrary()?;
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
@@ -3212,15 +3211,15 @@ impl Schema {
         for constraint in abac_constraints {
             conjunction = ast::Expr::and(conjunction, constraint);
         }
-        Ok(ABACPolicy(super::GeneratedPolicy {
+        Ok(ABACPolicy(GeneratedPolicy::new(
             id,
             annotations,
             effect,
             principal_constraint,
             action_constraint,
             resource_constraint,
-            abac_constraints: conjunction,
-        }))
+            conjunction,
+        )))
     }
 
     /// size hint for arbitrary_policy()
@@ -3337,7 +3336,7 @@ impl Schema {
             )
             .expect("Failed to select action from map.");
         // now generate a valid request for that Action
-        Ok(ABACRequest(super::Request {
+        Ok(ABACRequest(Request {
             principal: match action
                 .applies_to
                 .as_ref()

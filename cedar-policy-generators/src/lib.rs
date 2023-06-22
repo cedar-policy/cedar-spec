@@ -9,8 +9,19 @@ pub mod collections;
 /// This module contains error types used by the crate
 pub mod err;
 
-/// This module contains code for generating a Hierarchy
+/// This module contains the `Hierarchy` data structure
 pub mod hierarchy;
+
+/// This module contains the `GeneratedPolicy` and `GeneratedLinkedPolicy` data
+/// structures
+pub mod policy;
+
+/// This module contains code for generating RBAC policies, hierarchies, and
+/// requests -- that is, without attributes
+pub mod rbac;
+
+/// This module contains the `Request` data structure
+pub mod request;
 
 /// This module contains helper functions for calculating size_hint()
 pub mod size_hint_utils;
