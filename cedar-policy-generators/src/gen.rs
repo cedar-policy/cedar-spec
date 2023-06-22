@@ -1,3 +1,4 @@
+/// Helper macro used by other macros here
 #[macro_export]
 // the inner language [weight => value]+
 // desugar it into a series of if else statements
@@ -9,33 +10,35 @@ macro_rules! gen_inner {
         if $i < $w1 {
             $v1
         } else {
-            crate::gen_inner!($i, [$w1+$w2 => $v2] $([$ws => $vs])*)
+            gen_inner!($i, [$w1+$w2 => $v2] $([$ws => $vs])*)
         }
     };
 }
 
-// accumulate the weight of the inner language
+/// Helper macro used by other macros here
 #[macro_export]
+// accumulate the weight of the inner language
 macro_rules! accum {
     () => {
         0
     };
     ([$w1:expr => $v1:expr] $([$ws:expr => $vs:expr])*) => {
-        $w1 + crate::accum!($([$ws => $vs])*)
+        $w1 + accum!($([$ws => $vs])*)
     }
 }
 
-// the top level language `u, w => v,+` where `u` is a `Unstructured`, `w` is the weight, and `v` is the value to generate
-// it desugars into something like
-// {
-//      let x = u.int_in_range::<u8>(0..(w1+w2+...+wn-1))?;
-//      if x < w1 { v1 } else {
-//          if x < w1 + w2 { v2 } else {
-//              if x < w1 + w2 + w3 { v3 } else {
-//                  ... else { vn }
-//              }
-//          }
-//      }
+/// the top level language `u, w => v,+` where `u` is a `Unstructured`, `w` is the weight, and `v` is the value to generate
+/// it desugars into something like
+/// ```
+///      let x = u.int_in_range::<u8>(0..(w1+w2+...+wn-1))?;
+///      if x < w1 { v1 } else {
+///          if x < w1 + w2 { v2 } else {
+///              if x < w1 + w2 + w3 { v3 } else {
+///                  ... else { vn }
+///              }
+///          }
+///      }
+/// ```
 #[macro_export]
 macro_rules! gen {
     ($u:ident, $($ws:expr => $vs:expr),+) => {
@@ -46,8 +49,8 @@ macro_rules! gen {
     };
 }
 
-// a short circuit to uniformly generate values
-// it desguars to the language above where all weights are 1
+/// a short circuit to uniformly generate values
+/// it desugars to the language above where all weights are 1
 #[macro_export]
 macro_rules! uniform {
     ($u:ident, $($es:expr),+) => {

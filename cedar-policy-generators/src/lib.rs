@@ -3,11 +3,19 @@
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+/// This module contains code for generating ABAC policies, hierarchies, and
+/// requests -- that is, fully general, containing attributes
+pub mod abac;
+
 /// This module contains deterministic versions of `HashMap` and `HashSet`
 pub mod collections;
 
 /// This module contains error types used by the crate
 pub mod err;
+
+/// This module contains helper macros for generators
+#[macro_use]
+pub mod gen;
 
 /// This module contains the `Hierarchy` data structure
 pub mod hierarchy;

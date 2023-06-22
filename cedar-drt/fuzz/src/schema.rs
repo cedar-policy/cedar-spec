@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-use super::abac::{
+use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
+use cedar_policy_core::parser::{self, parse_name};
+use cedar_policy_generators::abac::{
     ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
     Type, UnknownPool,
 };
-use crate::{gen, uniform};
-use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
-use cedar_policy_core::parser::{self, parse_name};
 use cedar_policy_generators::collections::{HashMap, HashSet};
 use cedar_policy_generators::err::{while_doing, Error, Result};
+use cedar_policy_generators::{gen, gen_inner, uniform};
 use cedar_policy_generators::hierarchy::Hierarchy;
 use cedar_policy_generators::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use cedar_policy_generators::request::Request;
@@ -1806,9 +1806,8 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         if self.should_generate_unknown(max_depth, u)? {
-            let name = self
-                .unknown_pool
-                .alloc(target_type.clone(), self, hierarchy, u)?;
+            let v = self.arbitrary_value_for_type(&target_type, hierarchy, 3, u)?;
+            let name = self.unknown_pool.alloc(target_type.clone(), v);
             Ok(ast::Expr::unknown(name))
         } else {
             match target_type {

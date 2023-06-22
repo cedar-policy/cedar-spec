@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-mod abac;
-pub use abac::*;
+#[macro_use]
+extern crate cedar_policy_generators;
+use cedar_policy_generators::{accum, gen_inner};
+
 mod schema;
 pub use schema::*;
 
@@ -23,8 +25,6 @@ mod dump;
 pub use dump::*;
 mod prt;
 pub use prt::*;
-
-pub mod gen;
 
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
