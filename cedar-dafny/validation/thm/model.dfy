@@ -904,7 +904,21 @@ module validation.thm.model {
       }
       assert InstanceOfType(Value.Record(rv),Type.Record(rt));
     } else {
-      InterpretRecordLemmaErr(es,r,s);
+      assert Evaluate(Expr.Record(es),r,s) == base.Err(base.EntityDoesNotExist) ||
+             Evaluate(Expr.Record(es),r,s) == base.Err(base.ExtensionError) by
+      {
+        // Unclear why it helps re-assert the result of this lemma.  Also, the
+        // proof blows up if I hide the long condition in a predicate.
+        InterpretRecordLemmaErr(es,r,s);
+        assert exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?);
+        var attr_idx :| 0 <= attr_idx < |es| && Evaluator(r,s).interpret(es[attr_idx].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < attr_idx :: Evaluator(r,s).interpret(es[j].1).Ok?);
+        var attr_expr := es[attr_idx].1;
+
+        assert Evaluate(attr_expr,r,s) == base.Err(base.EntityDoesNotExist) ||
+               Evaluate(attr_expr,r,s) == base.Err(base.ExtensionError);
+
+        assert Evaluate(attr_expr,r,s) == Evaluate(Expr.Record(es), r, s);
+      }
     }
   }
 

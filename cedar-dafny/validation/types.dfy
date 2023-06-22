@@ -69,7 +69,7 @@ module validation.types {
   }
 
   datatype AttrType = AttrType(ty: Type, isRequired: bool)
-  datatype OpenTag = OpenAttributes | ClosedAttributes
+  datatype AttrsTag = OpenAttributes | ClosedAttributes
   datatype RecordType = RecordType(
     attrs: map<Attr,AttrType>,
     // Indicates whether a value having this record type may have attributes
@@ -81,10 +81,10 @@ module validation.types {
     // be closed if the constituent record types are closed and have exactly the
     // same attributes with a least upper bound existing between corresponding
     // attributes.
-    openAttributes: OpenTag
+    attrsTag: AttrsTag
   ) {
     predicate isOpen() {
-      openAttributes.OpenAttributes?
+      attrsTag.OpenAttributes?
     }
   }
 
