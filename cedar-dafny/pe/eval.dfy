@@ -38,13 +38,6 @@ module pe.eval {
     }
   }
 
-  lemma InterpretResidualAndErr(env: Environment, r1: Residual, r2: Residual, s: core.EntityStore)
-    requires env.wellFormed()
-    requires env.interpret(r1, s).Err? || core.Value.asBool(env.interpret(r1, s).value).Err?
-    ensures env.interpret(Residual.And(r1, r2), s).Err? {
-
-  }
-
   lemma EnvInterpretResidualTrue(env: Environment, r1: Residual, r2: Residual, s: core.EntityStore)
     requires env.wellFormed()
     requires var v1 := env.interpret(r1, s); v1.Ok? && v1.value == core.Value.Bool(true)

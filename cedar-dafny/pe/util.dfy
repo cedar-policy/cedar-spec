@@ -134,4 +134,10 @@ module pe.util {
       CollectToSetRelaxedEq(rs1[1..], rs2[1..]);
     }
   }
+
+  lemma OkEqImpliesRelaxedEq<T,E>(r1: Result<T, E>, r2: Result<T,E>)
+    requires (r1.Ok? <==> r2.Ok?) && (r1.Ok? ==> r1.value == r2.value)
+    ensures relaxedEq(r1, r2) {
+
+  }
 }

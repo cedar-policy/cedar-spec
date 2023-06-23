@@ -129,11 +129,30 @@ module pe.soundness {
       case Ok(r1) => match r1 {
         case Concrete(v1) =>
         case _ =>
+          // another proof strategy is to show OkEqImpliesRelaxedEq(csRes, env.interpret(peRes), s)), so that we avoid case splitting.
+          // But Dafny seems to have a hard time proving if some property holds over a function's output, then another property holds for its inputs.
+          /*
+            if ceRes.Ok? {
+              assert ceRes == CE.interpret(core.Expr.And(reE1, reE2));
+              assert ceRes1.Ok? by {
+  
+                if ceRes1.Err? {
+                  assert ceRes.Err?;
+                }
+              assert core.Value.asBool(ceRes1.value).Ok? by {
+                if core.Value.asBool(ceRes1.value).Err? {
+                  assert ceRes.Err?;
+                }
+              }
+              }
+            }
+            assume false;
+            */
           match PE.interpret(e2) {
             case Ok(r2) =>
-            if ceRes1.Ok? {
-              assert env.interpret(r1, s).Ok?;
-              if core.Value.asBool(env.interpret(r1, s).value).Err? {
+              if ceRes1.Ok? {
+                assert env.interpret(r1, s).Ok?;
+                if core.Value.asBool(env.interpret(r1, s).value).Err? {
                   assert env.interpret(Residual.And(r1, r2), s).Err?;
                   assert core.Value.asBool(ceRes1.value).Err?;
                   assert  CE.interpret(core.And(reE1, reE2)).Err?;
@@ -145,13 +164,11 @@ module pe.soundness {
                     eval.EnvInterpretResidualTrue(env, r1, r2, s);
                   }
                 }
-            } else {
-              eval.InterpretResidualAndErr(env, r1, r2, s);
-                assert env.interpret(Residual.And(r1, r2), s).Err?;
+              } else {
                 assert CE.interpret(reE1).Err? by {
                   assert util.relaxedEq(env.interpret(r1, s), ceRes1);
                 }
-            }
+              }
             case Err(_) =>
               calc == {
                 peRes;
@@ -162,8 +179,6 @@ module pe.soundness {
                 env.interpret(Residual.And(r1, errV), s);
               }
               if env.interpret(r1, s).Err? {
-                eval.InterpretResidualAndErr(env, r1, errV, s);
-                assert env.interpret(Residual.And(r1, errV), s).Err?;
                 assert CE.interpret(reE1).Err? by {
                   assert util.relaxedEq(env.interpret(r1, s), ceRes1);
                 }
