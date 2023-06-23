@@ -124,30 +124,16 @@ module pe.soundness {
     var ceRes1 := CE.interpret(reE1);
     var ceRes2 := CE.interpret(reE2);
     var errV := PE.makeErrorValue();
-    calc == {
-      ceRes;
-      CE.interpret(core.And(reE1, reE2));
-    }
+
     match PE.interpret(e1) {
       case Ok(r1) => match r1 {
         case Concrete(v1) =>
-          assert {:focus} true;
-          match core.Value.asBool(v1) {
-            case Ok(b1) =>
-            case Err(_) =>
-          }
         case _ =>
           match PE.interpret(e2) {
             case Ok(r2) =>
-              calc == {
-                ceRes;
-                CE.interpret(core.Expr.And(reE1, reE2));
-              }
-              assert util.relaxedEq(ceRes1, env.interpret(r1, s));
-              assert util.relaxedEq(ceRes2, env.interpret(r2, s));
-              if ceRes1.Ok? {
-                assert env.interpret(r1, s).Ok?;
-                if core.Value.asBool(env.interpret(r1, s).value).Err? {
+            if ceRes1.Ok? {
+              assert env.interpret(r1, s).Ok?;
+              if core.Value.asBool(env.interpret(r1, s).value).Err? {
                   assert env.interpret(Residual.And(r1, r2), s).Err?;
                   assert core.Value.asBool(ceRes1.value).Err?;
                   assert  CE.interpret(core.And(reE1, reE2)).Err?;
@@ -159,13 +145,13 @@ module pe.soundness {
                     eval.EnvInterpretResidualTrue(env, r1, r2, s);
                   }
                 }
-              } else {
-                eval.InterpretResidualAndErr(env, r1, r2, s);
+            } else {
+              eval.InterpretResidualAndErr(env, r1, r2, s);
                 assert env.interpret(Residual.And(r1, r2), s).Err?;
                 assert CE.interpret(reE1).Err? by {
                   assert util.relaxedEq(env.interpret(r1, s), ceRes1);
                 }
-              }
+            }
             case Err(_) =>
               calc == {
                 peRes;
