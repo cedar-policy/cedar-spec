@@ -40,7 +40,7 @@ For example, the commands below check that all proofs have a [resource count](ht
 
 ```bash
 cd cedar-dafny && make verify GEN_STATS=1
-dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 .
+dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 .
 ```
 
 ## Security
