@@ -17,6 +17,12 @@ module pe.eval {
   import opened environment
   import opened engine
 
+  ghost function getTypedValue<T>(r: base.Result<core.Value>, conv: core.Value -> base.Result<T>): base.Result<core.Value> {
+    var v :- r;
+    var _ :- conv(v);
+    Ok(v)
+  }
+
   lemma MakeErrorValueIsErr(env: Environment, s: core.EntityStore)
     requires env.wellFormed()
     ensures var r := PartialEvaluator.makeErrorValue(); env.interpret(r, s).Err? {
@@ -37,6 +43,31 @@ module pe.eval {
     requires env.interpret(r1, s).Err? || core.Value.asBool(env.interpret(r1, s).value).Err?
     ensures env.interpret(Residual.And(r1, r2), s).Err? {
 
+  }
+
+  lemma EnvInterpretResidualTrue(env: Environment, r1: Residual, r2: Residual, s: core.EntityStore)
+    requires env.wellFormed()
+    requires var v1 := env.interpret(r1, s); v1.Ok? && v1.value == core.Value.Bool(true)
+    ensures env.interpret(Residual.And(r1, r2), s) == getTypedValue(env.interpret(r2, s), core.Value.asBool) {
+    calc == {
+      core.Value.asBool(env.interpret(r1, s).value);
+      Ok(true);
+    }
+    calc == {
+      env.interpret(Residual.And(r1, r2), s);
+      match env.interpret(r1, s) {
+        case Err(err1) => Err(err1)
+        case Ok(v1) => match(core.Value.asBool(v1)) {
+          case Ok(b1) => if b1 then
+            match env.interpret(r2, s) {
+              case Ok(v2) => core.Value.asBool(v2).Map(_ => v2)
+              case Err(err2) => Err(err2)
+            }
+          else Ok(core.Value.Bool(false))
+          case Err(tyerr1) => Err(tyerr1)
+        }
+      };
+    }
   }
 
   lemma InterpretRestrictedResidualSet(rs: seq<Residual>, env: Environment, s: core.EntityStore)
@@ -85,7 +116,6 @@ module pe.eval {
       case Set(rs) => InterpretRestrictedResidualSet(rs, env, s);
       case Record(bs) => InterpretRestrictedResidualRecord(bs, env, s);
       case Call(_, args) => InterpretRestrictedResidualList(args, env, s);
-      case _ => assume false;
     }
   }
 

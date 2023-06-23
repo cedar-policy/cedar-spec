@@ -19,7 +19,7 @@ module pe.environment {
   // But we can't use `Value` as the codomain because replacing uknowns in an policy body requires them to be `Expr`s.
   // We add a wellFormed predicate to constrain that the codomain `Expr`s ought to be evaluated into `Value`s.
   datatype Environment = Environment(mappings: string -> core.Expr) {
-    ghost predicate wellFormed() {
+    ghost predicate {:opaque} wellFormed() {
       forall v :: restrictedExpr.evaluate(mappings(v)).Some?
     }
 
@@ -35,11 +35,20 @@ module pe.environment {
         case And(r1, r2) =>
           var v1 :- interpret(r1, entities);
           var b1 :- Value.asBool(v1);
-          if b1 then interpret(r2, entities) else Ok(Value.Bool(false))
+          if b1 then
+            var b2 :- interpret(r2, entities);
+            var _ :- Value.asBool(b2);
+            Ok(b2)
+          else Ok(Value.Bool(false))
         case Or(r1, r2) =>
           var v1 :- interpret(r1, entities);
           var b1 :- Value.asBool(v1);
-          if b1 then Ok(Value.Bool(true)) else interpret(r2, entities)
+          if b1 then
+            Ok(Value.Bool(true))
+          else
+            var b2 :- interpret(r2, entities);
+            var _ :- Value.asBool(b2);
+            Ok(b2)
         case UnaryApp(op, r) =>
           var v :- interpret(r, entities);
           Evaluator.applyUnaryOp(op, v)
@@ -64,7 +73,9 @@ module pe.environment {
         case Call(name, rs) =>
           var args :- interpretList(rs, entities);
           Evaluator.applyExtFun(name, args)
-        case Unknown(u: Unknown) => Ok(restrictedExpr.evaluate(mappings(u.name)).value)
+        case Unknown(u: Unknown) =>
+          reveal wellFormed();
+          Ok(restrictedExpr.evaluate(mappings(u.name)).value)
       }
     }
 
@@ -111,6 +122,7 @@ module pe.environment {
       match oe {
         case Entity(e) => Some(e)
         case Uknown(u) =>
+          reveal wellFormed();
           var v := restrictedExpr.evaluate(mappings(u.name)).value;
           if v.Primitive? && v.primitive.EntityUID? then
             Some(v.primitive.uid)

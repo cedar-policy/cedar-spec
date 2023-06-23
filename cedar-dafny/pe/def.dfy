@@ -93,7 +93,7 @@ module pe.definition {
     restrictedRecord(entity.attrs)
   }
 
-  predicate restrictedEntityStore(store: EntityStore) {
+  predicate {:opaque} restrictedEntityStore(store: EntityStore) {
     forall entity | entity in store.entities.Values :: restrictedEntityData(entity)
   }
 }
