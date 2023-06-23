@@ -7,6 +7,12 @@
       "commands": [
         "dafny"
       ]
+    },
+    "dafny-reportgenerator": {
+      "version": "1.2.0",
+      "commands": [
+        "dafny-reportgenerator"
+      ]
     }
   }
 }
