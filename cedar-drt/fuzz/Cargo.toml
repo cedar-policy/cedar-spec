@@ -8,7 +8,6 @@ publish = false
 cargo-fuzz = true
 
 [dependencies]
-highway = "0.8.1"
 env_logger = "0.9.0"
 log = "0.4"
 libfuzzer-sys = "0.4"
@@ -18,6 +17,7 @@ cedar-drt = { version = "2.0.0", path = ".." }
 cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "2.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "2.*", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "2.*" }
+cedar-policy-generators = { path = "../../cedar-policy-generators", version = "2.*" }
 smol_str = { version = "0.2", features = ["serde"] }
 regex = "1"
 rayon = { version = "1.5", optional = true }

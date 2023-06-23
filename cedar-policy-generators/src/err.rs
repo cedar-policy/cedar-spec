@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-use libfuzzer_sys::arbitrary;
-
 /// Our Error type, which carries somewhat more information than
 /// `arbitrary::Error`, for the purposes of debugging and metrics
 #[derive(Debug)]

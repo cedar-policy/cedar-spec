@@ -18,13 +18,18 @@ use super::abac::{
     ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
     Type, UnknownPool,
 };
-use super::{while_doing, ActionConstraint, Error, PrincipalOrResourceConstraint, Result};
-use crate::collections::{HashMap, HashSet};
+use super::{ActionConstraint, PrincipalOrResourceConstraint};
 use crate::{gen, uniform};
 use ast::{Effect, PolicyID};
 use cedar_policy_core::ast::Value;
 use cedar_policy_core::parser::parse_name;
 use cedar_policy_core::{ast, parser};
+use cedar_policy_generators::collections::{HashMap, HashSet};
+use cedar_policy_generators::err::{while_doing, Error, Result};
+use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::size_hint_utils::{
+    size_hint_for_choose, size_hint_for_range, size_hint_for_ratio,
+};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
@@ -647,19 +652,19 @@ impl Schema {
         arbitrary::size_hint::and_all(&[
             <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
             arbitrary_attrspec_size_hint(depth), // actually we do one of these per Name that was generated
-            super::size_hint_for_ratio(1, 2),    // actually many of these calls
+            size_hint_for_ratio(1, 2),           // actually many of these calls
             <HashSet<String> as Arbitrary>::size_hint(depth),
-            super::size_hint_for_ratio(1, 8), // actually many of these calls
-            super::size_hint_for_ratio(1, 4), // zero to many of these calls
-            super::size_hint_for_ratio(1, 2), // zero to many of these calls
+            size_hint_for_ratio(1, 8), // actually many of these calls
+            size_hint_for_ratio(1, 4), // zero to many of these calls
+            size_hint_for_ratio(1, 2), // zero to many of these calls
             arbitrary_attrspec_size_hint(depth),
-            super::size_hint_for_ratio(1, 2), // actually many of these calls
+            size_hint_for_ratio(1, 2), // actually many of these calls
             <ConstantPool as Arbitrary>::size_hint(depth),
         ])
     }
 
     /// Get an arbitrary Hierarchy conforming to the schema.
-    pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<super::Hierarchy> {
+    pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
         // For each entity type in the schema, generate one or more entity UIDs of that type
         let uids_by_type = self
             .schema
@@ -675,14 +680,7 @@ impl Schema {
                 Ok((name, uids))
             })
             .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
-        let entities = uids_by_type
-            .iter()
-            .flat_map(|(_, uids)| {
-                uids.iter()
-                    .map(|uid| (uid.clone(), ast::Entity::with_uid(uid.clone())))
-            })
-            .collect::<HashMap<ast::EntityUID, ast::Entity>>();
-        let uids: Vec<ast::EntityUID> = entities.iter().map(|(uid, _)| uid.clone()).collect();
+        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: HashMap<ast::Name, &EntityType> = self
             .schema
             .entity_types
@@ -694,19 +692,12 @@ impl Schema {
                 )
             })
             .collect();
-        let hierarchy_no_attrs = super::Hierarchy {
-            uids: uids.clone(),
-            entities: uids
-                .iter()
-                .map(|uid| (uid.clone(), ast::Entity::with_uid(uid.clone())))
-                .collect(),
-            uids_by_type,
-        };
         // create an entity hierarchy composed of those entity UIDs, with some
         // hierarchy-membership edges possibly added in positions where the
         // schema allows a parent of that type
-        let entities = uids
-            .iter()
+        let entities = hierarchy_no_attrs
+            .entities()
+            .map(|e| e.uid())
             .map(|uid| match uid.entity_type() {
                 // entity data is generated with `arbitrary_uid_with_type`, which can never
                 // produce an unspecified entity
@@ -725,10 +716,8 @@ impl Schema {
                             self.namespace.clone(),
                             allowed_parent_typename,
                         );
-                        for possible_parent_uid in hierarchy_no_attrs
-                            .uids_by_type
-                            .get(&allowed_parent_typename)
-                            .expect("all typenames should be in the map")
+                        for possible_parent_uid in
+                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename)
                         {
                             if u.ratio::<u8>(1, 2)? {
                                 parents.insert(possible_parent_uid.clone());
@@ -739,7 +728,7 @@ impl Schema {
                     let mut attrs = HashMap::new();
                     let attr_or_context = unwrap_attrs_or_context(
                         &entitytypes_by_type
-                            .get(name)
+                            .get(&name)
                             .expect("typename should have an EntityType")
                             .shape,
                     );
@@ -797,11 +786,7 @@ impl Schema {
                 }
             })
             .collect::<Result<_>>()?;
-        Ok(super::Hierarchy {
-            entities,
-            uids,
-            uids_by_type: hierarchy_no_attrs.uids_by_type,
-        })
+        Ok(hierarchy_no_attrs.replace_entities(entities))
     }
     pub fn arbitrary_hierarchy_size_hint(_depth: usize) -> (usize, Option<usize>) {
         (0, None)
@@ -812,7 +797,7 @@ impl Schema {
     /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
     pub fn arbitrary_principal_uid(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         Self::arbitrary_uid_with_type(
@@ -824,7 +809,7 @@ impl Schema {
     }
     pub fn arbitrary_principal_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            super::size_hint_for_choose(None),
+            size_hint_for_choose(None),
             Self::arbitrary_uid_with_type_size_hint(depth),
         )
     }
@@ -840,14 +825,14 @@ impl Schema {
         Ok(uid_for_action_name(self.namespace.clone(), action))
     }
     pub fn arbitrary_action_uid_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        super::size_hint_for_choose(None)
+        size_hint_for_choose(None)
     }
     /// Get an arbitrary UID from the schema, that could be used as a `resource`.
     ///
     /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
     pub fn arbitrary_resource_uid(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         Self::arbitrary_uid_with_type(
@@ -859,7 +844,7 @@ impl Schema {
     }
     pub fn arbitrary_resource_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            super::size_hint_for_choose(None),
+            size_hint_for_choose(None),
             Self::arbitrary_uid_with_type_size_hint(depth),
         )
     }
@@ -867,7 +852,7 @@ impl Schema {
     fn arbitrary_uid_with_optional_type(
         &self,
         ty_name: Option<&SmolStr>,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(
@@ -887,7 +872,7 @@ impl Schema {
     /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
     fn arbitrary_uid_with_type(
         ty: &ast::Name,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match hierarchy {
@@ -898,7 +883,7 @@ impl Schema {
     fn arbitrary_uid_with_type_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::or(
             <ast::Eid as Arbitrary>::size_hint(depth),
-            super::Hierarchy::arbitrary_uid_with_type_size_hint(depth),
+            Hierarchy::arbitrary_uid_with_type_size_hint(depth),
         )
     }
 
@@ -907,7 +892,7 @@ impl Schema {
     /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
     fn arbitrary_uid(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         uniform!(
@@ -928,7 +913,7 @@ impl Schema {
     #[allow(dead_code)]
     fn arbitrary_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            crate::size_hint_for_range(0, 2),
+            size_hint_for_range(0, 2),
             arbitrary::size_hint::or_all(&[
                 Self::arbitrary_principal_uid_size_hint(depth),
                 Self::arbitrary_action_uid_size_hint(depth),
@@ -1042,7 +1027,7 @@ impl Schema {
     /// This function is guaranteed to not recurse, directly or indirectly.
     fn arbitrary_literal(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         gen!(u,
@@ -1063,7 +1048,7 @@ impl Schema {
     /// This function is guaranteed to not recurse, directly or indirectly.
     fn arbitrary_literal_or_var(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         if u.ratio(1, 4)? {
@@ -1076,7 +1061,7 @@ impl Schema {
     pub fn arbitrary_value_for_type(
         &self,
         target_type: &Type,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<Value> {
@@ -1160,7 +1145,7 @@ impl Schema {
     fn arbitrary_value_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaType,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<Value> {
@@ -1279,7 +1264,7 @@ impl Schema {
     fn arbitrary_attr_value_for_type(
         &self,
         target_type: &Type,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
@@ -1391,7 +1376,7 @@ impl Schema {
     fn arbitrary_attr_value_for_type_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::recursion_guard(depth, |depth| {
             arbitrary::size_hint::and(
-                super::size_hint_for_range(0, 7),
+                size_hint_for_range(0, 7),
                 arbitrary::size_hint::or_all(&[
                     <bool as Arbitrary>::size_hint(depth),
                     ConstantPool::arbitrary_int_constant_size_hint(depth),
@@ -1401,8 +1386,8 @@ impl Schema {
                         AvailableExtensionFunctions::arbitrary_constructor_for_type_size_hint(
                             depth,
                         ),
-                        super::size_hint_for_ratio(9, 10),
-                        super::size_hint_for_range(0, 4),
+                        size_hint_for_ratio(9, 10),
+                        size_hint_for_range(0, 4),
                         Schema::arbitrary_attr_value_for_type_size_hint(depth),
                     ]),
                     (1, None), // not sure how to hint for arbitrary_loop()
@@ -1424,7 +1409,7 @@ impl Schema {
     fn arbitrary_attr_value_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaType,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
@@ -1565,7 +1550,7 @@ impl Schema {
     /// `depth` parameter to size_hint.
     pub fn arbitrary_expr(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -1769,7 +1754,7 @@ impl Schema {
     #[allow(dead_code)]
     fn arbitrary_const_expr(
         &self,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         gen!(u,
@@ -1817,7 +1802,7 @@ impl Schema {
     fn arbitrary_expr_for_type(
         &self,
         target_type: &Type,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -2751,7 +2736,7 @@ impl Schema {
     fn arbitrary_expr_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaTypeVariant,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -3075,7 +3060,7 @@ impl Schema {
     fn arbitrary_const_expr_for_type(
         &self,
         target_type: &Type,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         match target_type {
@@ -3131,7 +3116,7 @@ impl Schema {
     fn arbitrary_ext_func_call_for_type(
         &self,
         target_type: &Type,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -3154,7 +3139,7 @@ impl Schema {
     fn arbitrary_ext_func_call_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaTypeVariant,
-        hierarchy: Option<&super::Hierarchy>,
+        hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -3196,7 +3181,7 @@ impl Schema {
     /// get an arbitrary policy conforming to this schema
     pub fn arbitrary_policy(
         &self,
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
         let id = u.arbitrary()?;
@@ -3255,7 +3240,7 @@ impl Schema {
 
     fn arbitrary_principal_constraint(
         &self,
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
         // 20% of the time, NoConstraint; 40%, Eq; 40%, In
@@ -3270,7 +3255,7 @@ impl Schema {
     }
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            super::size_hint_for_range(1, 10),
+            size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
                 Self::arbitrary_principal_uid_size_hint(depth),
@@ -3281,7 +3266,7 @@ impl Schema {
 
     fn arbitrary_resource_constraint(
         &self,
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
         // 20% of the time, NoConstraint; 40%, Eq; 40%, In
@@ -3296,7 +3281,7 @@ impl Schema {
     }
     fn arbitrary_resource_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            super::size_hint_for_range(1, 10),
+            size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
                 Self::arbitrary_resource_uid_size_hint(depth),
@@ -3326,7 +3311,7 @@ impl Schema {
     }
     fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
-            super::size_hint_for_range(1, 10),
+            size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
                 Self::arbitrary_action_uid_size_hint(depth),
@@ -3338,7 +3323,7 @@ impl Schema {
 
     pub fn arbitrary_request(
         &self,
-        hierarchy: &super::Hierarchy,
+        hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<ABACRequest> {
         // first pick one of the valid Actions
@@ -3412,7 +3397,7 @@ impl Schema {
         }))
     }
     pub fn arbitrary_request_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(super::size_hint_for_choose(None), (1, None))
+        arbitrary::size_hint::and(size_hint_for_choose(None), (1, None))
     }
 
     pub fn namespace(&self) -> &Option<SmolStr> {

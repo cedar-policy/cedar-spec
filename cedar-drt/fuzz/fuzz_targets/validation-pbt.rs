@@ -20,6 +20,8 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::err::{Error, Result};
+use cedar_policy_generators::hierarchy::Hierarchy;
 use cedar_policy_validator::{
     ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
     ValidatorNamespaceDef, ValidatorSchemaFragment,
@@ -206,7 +208,7 @@ fn maybe_log_hierarchystats(hierarchy: &Hierarchy, suffix: &str) {
                 + "_"
                 + suffix
                 + "_"
-                + &format!("{:03}", hierarchy.num_uids()),
+                + &format!("{:03}", hierarchy.num_entities()),
         );
     }
 }
