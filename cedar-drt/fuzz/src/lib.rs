@@ -23,131 +23,29 @@ pub use schema::*;
 
 mod dump;
 pub use dump::*;
-mod err;
-pub use err::*;
-
-mod collections;
 mod prt;
-pub use collections::*;
-
 pub use prt::*;
 
 pub mod gen;
 
 use std::fmt::Display;
 
-use crate::collections::HashMap;
-use ast::{
-    Effect, Entity, EntityUID, Expr, Id, Name, PolicyID, PolicySet, RestrictedExpr, StaticPolicy,
-};
+use ast::{Effect, EntityUID, Expr, Id, PolicyID, PolicySet, RestrictedExpr, StaticPolicy};
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::{PrincipalConstraint, ResourceConstraint, Template};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
-use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::collections::HashMap;
+use cedar_policy_generators::err::Result;
+use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::size_hint_utils::size_hint_for_ratio;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 use smol_str::SmolStr;
-
-#[derive(Debug, Clone)]
-pub struct Hierarchy {
-    /// maps EntityUID to the corresponding Entity
-    entities: HashMap<EntityUID, Entity>,
-    /// Vec of UIDs in the hierarchy, which we keep in sync with the `entities`
-    /// HashMap.
-    /// The reason we have this separately is that is allows us to do
-    /// arbitrary_uid() fast.
-    uids: Vec<EntityUID>,
-    /// Map of entity typename to UID, for all UIDs in the hierarchy.
-    /// We keep this in sync with the `entities` HashMap too.
-    /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: HashMap<Name, Vec<EntityUID>>,
-}
-
-impl Hierarchy {
-    /// generate an arbitrary uid based on the hierarchy
-    pub fn arbitrary_uid(&self, u: &mut Unstructured<'_>) -> Result<EntityUID> {
-        // UID that exists or doesn't. 90% of the time pick one that exists
-        if u.ratio::<u8>(9, 10)? {
-            let uid = u
-                .choose(&self.uids)
-                .map_err(|e| while_doing("getting an arbitrary uid", e))?;
-            Ok(uid.clone())
-        } else {
-            // Note: may generate an unspecified entity
-            u.arbitrary().map_err(Into::into)
-        }
-    }
-    /// size hint for arbitrary_uid()
-    pub fn arbitrary_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            size_hint_for_ratio(9, 10),
-            arbitrary::size_hint::or(
-                // exists case
-                size_hint_for_choose(None),
-                // not-exists case
-                <EntityUID as Arbitrary>::size_hint(depth),
-            ),
-        )
-    }
-
-    /// generate an arbitrary uid based on the hierarchy, with the given typename
-    pub fn arbitrary_uid_with_type(
-        &self,
-        typename: &Name,
-        u: &mut Unstructured<'_>,
-    ) -> Result<EntityUID> {
-        // UID that exists or doesn't. 90% of the time pick one that exists
-        if u.ratio::<u8>(9, 10)? {
-            let uid = u.choose(self.uids_by_type.get(typename).ok_or(Error::EmptyChoose {
-                doing_what: "getting an existing uid with given type",
-            })?)?;
-            Ok(uid.clone())
-        } else {
-            Ok(EntityUID::from_components(typename.clone(), u.arbitrary()?))
-        }
-    }
-    pub fn arbitrary_uid_with_type_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            size_hint_for_ratio(9, 10),
-            arbitrary::size_hint::or(
-                size_hint_for_choose(None),
-                <ast::Eid as Arbitrary>::size_hint(depth),
-            ),
-        )
-    }
-
-    /// Get an Entity object by UID
-    pub fn entity(&self, uid: &EntityUID) -> Option<&Entity> {
-        self.entities.get(uid)
-    }
-
-    /// Get an Entity object by UID, mutable
-    pub fn entity_mut(&mut self, uid: &EntityUID) -> Option<&mut Entity> {
-        self.entities.get_mut(uid)
-    }
-
-    /// How many entities (UIDs) are in the hierarchy
-    pub fn num_uids(&self) -> usize {
-        self.uids.len()
-    }
-
-    /// Consume the Hierarchy and create an iterator over its Entity objects
-    fn into_entities(self) -> impl Iterator<Item = Entity> {
-        self.entities.into_values()
-    }
-}
-
-impl TryFrom<Hierarchy> for Entities {
-    type Error = String;
-    fn try_from(h: Hierarchy) -> std::result::Result<Entities, String> {
-        Entities::from_entities(h.into_entities().map(Into::into), TCComputation::ComputeNow)
-            .map_err(|e| e.to_string())
-    }
-}
 
 #[derive(Debug, Clone)]
 // `GeneratedPolicy` is now a bit of a misnomer: it may have slots depending on
@@ -510,38 +408,6 @@ impl std::fmt::Display for Request {
     }
 }
 
-/// get a size hint for a call to ratio::<T>() with these parameters
-fn size_hint_for_ratio<T: arbitrary::unstructured::Int>(_a: T, _b: T) -> (usize, Option<usize>) {
-    // the following hint is based on looking at the source for ratio()
-    size_hint_for_nonzero_range::<T>()
-}
-
-/// get a size hint for a call to int_in_range::<T>() with the parameter a..=b
-fn size_hint_for_range<T: arbitrary::unstructured::Int>(a: T, b: T) -> (usize, Option<usize>) {
-    // the following hint is based on looking at the source for int_in_range()
-    if a >= b {
-        (0, Some(0))
-    } else {
-        size_hint_for_nonzero_range::<T>()
-    }
-}
-
-/// get a size hint for a call to int_in_range::<T>(a..=b) where we assume a < b
-/// given this assumption, a and b don't matter for the calculation
-fn size_hint_for_nonzero_range<T: arbitrary::unstructured::Int>() -> (usize, Option<usize>) {
-    (1, Some(std::mem::size_of::<T>()))
-}
-
-/// get a size hint for a call to choose(). More precise estimate available if
-/// you have an upper bound on how many things you're choosing from
-fn size_hint_for_choose(max_num_choices: Option<usize>) -> (usize, Option<usize>) {
-    // the following hint is based on looking at the source for choose()
-    match max_num_choices {
-        Some(max_num_choices) => size_hint_for_range::<usize>(0, max_num_choices - 1),
-        None => (1, None), // hard to know upper bound here
-    }
-}
-
 pub struct DifferentialTester<'e> {
     /// Rust engine instance
     authorizer: Authorizer,
@@ -681,6 +547,9 @@ impl<'e> DifferentialTester<'e> {
 
 #[test]
 fn call_def_engine() {
+    use cedar_policy_core::ast::Entity;
+    use cedar_policy_core::entities::TCComputation;
+
     let diff_tester = DifferentialTester::new();
     let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
