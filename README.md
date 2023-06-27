@@ -25,6 +25,7 @@ To build the DRT framework:
 
 To run DRT:
 
+* First initialize the submodule containing the Cedar repository: `git submodule init && git submodule update`
 * `cd cedar-drt && source ./set_env_vars.sh`
 * `cargo fuzz run -s none <target> -j8` (choose an appropriate -j for your machine).
 
