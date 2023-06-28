@@ -21,9 +21,7 @@ use super::abac::{
 use super::{ActionConstraint, PrincipalOrResourceConstraint};
 use crate::{gen, uniform};
 use ast::{Effect, PolicyID};
-use cedar_policy_core::ast::Value;
-use cedar_policy_core::parser::parse_name;
-use cedar_policy_core::{ast, parser};
+use cedar_policy_core::ast;
 use cedar_policy_generators::collections::{HashMap, HashSet};
 use cedar_policy_generators::err::{while_doing, Error, Result};
 use cedar_policy_generators::hierarchy::Hierarchy;
@@ -37,6 +35,7 @@ use cedar_policy_validator::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Contains the schema, but also pools of constants etc
@@ -326,7 +325,7 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
 fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr) -> ast::Name {
-    let schema_entity_type_name = parse_name(name).expect("Valid Name required for entity type.");
+    let schema_entity_type_name = ast::Name::from_str(name).expect("Valid Name required for entity type.");
     if schema_entity_type_name
         .namespace_components()
         .next()
@@ -391,14 +390,18 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
             let type_id: ast::Id = name.parse().unwrap_or_else(|_| {
                 panic!("Valid name required to build entity type. Got {}", name)
             });
-            let type_namespace: Vec<ast::Id> = namespace
-                .map(|ns| {
-                    parser::parse_namespace(&ns).unwrap_or_else(|_| {
+            let type_namespace: Option<ast::Name> = match namespace.as_deref() {
+                None => None,
+                Some("") => None, // we consider "" to be the same as the empty namespace
+                Some(ns) =>
+                    Some(ast::Name::from_str(&ns).unwrap_or_else(|_| {
                         panic!("Valid namespace required to build entity type. Got {}", ns)
-                    })
-                })
-                .unwrap_or_default();
-            ast::EntityType::Concrete(ast::Name::new(type_id, type_namespace))
+                    }))
+                };
+            match type_namespace {
+                None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
+                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
+            }
         }
         None => ast::EntityType::Unspecified,
     }
@@ -1064,7 +1067,8 @@ impl Schema {
         hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
-    ) -> Result<Value> {
+    ) -> Result<ast::Value> {
+        use ast::Value;
         match target_type {
             Type::Bool => {
                 // the only valid bool-typed attribute value is a bool literal
@@ -1148,7 +1152,8 @@ impl Schema {
         hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
-    ) -> Result<Value> {
+    ) -> Result<ast::Value> {
+        use ast::Value;
         use cedar_policy_validator::SchemaTypeVariant;
         let target_type = unwrap_schema_type(target_type);
         match target_type {
