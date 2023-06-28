@@ -46,11 +46,24 @@ module validation.thm.model {
     if (es[0].0 == k && (forall j | 0 < j < |es| :: es[j].0 != k)) then es[0].1 else LastOfKey(k,es[1..])
   }
 
+  lemma InterpretRecordPreservesAttrs(es: seq<(Attr, Expr)>, r: Request, s: EntityStore)
+    requires Evaluator(r,s).interpretRecord(es).Ok?
+    ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys
+    ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es)
+  {
+    if es != [] {
+      var m := Evaluator(r,s).interpretRecord(es[1..]).value;
+      if es[0].0 !in m.Keys { } else { }
+    }
+  }
+
   lemma InterpretRecordLemmaOk(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Ok?
     ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
     ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
-  {}
+  {
+    InterpretRecordPreservesAttrs(es, r, s);
+  }
 
   lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Err?
@@ -791,7 +804,11 @@ module validation.thm.model {
     requires IsDecimalComparisonName(name)
     requires ExtensionFunSafeRequires(name, args)
     ensures ExtensionFunSafeEnsures(name, args)
-  {}
+  {
+    assert extFunTypes[name].ret == Type.Bool(AnyBool);
+    var res := extFuns[name].fun(args);
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool));
+  }
 
   ghost predicate IsIpConstructorName(name: base.Name) {
     name == base.Name.fromStr("ip")
@@ -837,6 +854,23 @@ module validation.thm.model {
     ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
   {}
 
+  lemma InterpretListEnsuresOk(eval: Evaluator, es: seq<Expr>)
+    requires forall e <- es :: eval.interpret(e).Ok?
+    ensures eval.interpretList(es).Ok?
+    ensures |eval.interpretList(es).value| == |es|
+    ensures forall i | 0 <= i < |es| :: eval.interpret(es[i]) == base.Ok(eval.interpretList(es).value[i])
+  {
+    InterpretListEnsures(eval, es);
+  }
+
+  lemma InterpretListEnsuresErr(eval: Evaluator, es: seq<Expr>)
+    requires exists i | 0 <= i < |es| :: eval.interpret(es[i]).Err?
+    ensures eval.interpretList(es).Err?
+    ensures exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?) && eval.interpret(es[i]).error == eval.interpretList(es).error
+  {
+    InterpretListEnsures(eval, es);
+  }
+
   lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)
     requires name in extFunTypes
     requires |args| == |extFunTypes[name].args|
@@ -848,31 +882,29 @@ module validation.thm.model {
     if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
       assert forall e <- args :: Evaluate(e,r,s).Ok?;
 
-      InterpretListEnsures(Evaluator(r, s), args);
+      InterpretListEnsuresOk(Evaluator(r, s), args);
+
       var argVals := Evaluator(r, s).interpretList(args).value;
 
       var res := Evaluator(r, s).applyExtFun(name, argVals);
       assert Evaluate(Call(name,args),r,s) == res;
       assert forall i | 0 <= i < |args| :: InstanceOfType(argVals[i], eft.args[i]);
       var isSafe := (res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret)));
-      if IsDecimalConstructorName(name) {
-        DecimalConstructorSafe(name, argVals);
-        assert isSafe;
-      } else if IsDecimalComparisonName(name) {
-        DecimalComparisonSafe(name, argVals);
-        assert isSafe;
-      } else if IsIpConstructorName(name) {
-        IpConstructorSafe(name, argVals);
-        assert isSafe;
-      } else if IsIpUnaryName(name) {
-        IpUnarySafe(name, argVals);
-        assert isSafe;
-      } else if IsIpBinaryName(name) {
-        IpBinarySafe(name, argVals);
-        assert isSafe;
+      assert isSafe by {
+        if IsDecimalConstructorName(name) {
+          DecimalConstructorSafe(name, argVals);
+        } else if IsDecimalComparisonName(name) {
+          DecimalComparisonSafe(name, argVals);
+        } else if IsIpConstructorName(name) {
+          IpConstructorSafe(name, argVals);
+        } else if IsIpUnaryName(name) {
+          IpUnarySafe(name, argVals);
+        } else if IsIpBinaryName(name) {
+          IpBinarySafe(name, argVals);
+        }
       }
     } else {
-      InterpretListEnsures(Evaluator(r, s), args);
+      InterpretListEnsuresErr(Evaluator(r, s), args);
     }
   }
 
@@ -1111,7 +1143,14 @@ module validation.thm.model {
       var s2 := Value.asSet(r2.value).value;
       assert forall us2 <- s2 :: InstanceOfType(us2,t2);
       var us2 :- assert evaluator.checkEntitySet(s2);
-      assert forall u2 <- us2 :: !EntityInEntity(s,u1,u2);
+      forall u2 <- us2 ensures !EntityInEntity(s,u1,u2) {
+        assert InstanceOfType(Value.EntityUID(u1), t1);
+        assert InstanceOfType(Value.EntityUID(u2), t2);
+      }
+
+      var res := Evaluate(BinaryApp(BinaryOp.In, e1, e2), r, s);
+      assert res.Ok?;
+      assert InstanceOfType(res.value,Type.Bool(BoolType.False));
     }
   }
 }
