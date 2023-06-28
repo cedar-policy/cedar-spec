@@ -325,7 +325,8 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
 fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr) -> ast::Name {
-    let schema_entity_type_name = ast::Name::from_str(name).expect("Valid Name required for entity type.");
+    let schema_entity_type_name =
+        ast::Name::from_str(name).expect("Valid Name required for entity type.");
     if schema_entity_type_name
         .namespace_components()
         .next()
@@ -393,11 +394,10 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
             let type_namespace: Option<ast::Name> = match namespace.as_deref() {
                 None => None,
                 Some("") => None, // we consider "" to be the same as the empty namespace
-                Some(ns) =>
-                    Some(ast::Name::from_str(&ns).unwrap_or_else(|_| {
-                        panic!("Valid namespace required to build entity type. Got {}", ns)
-                    }))
-                };
+                Some(ns) => Some(ast::Name::from_str(&ns).unwrap_or_else(|_| {
+                    panic!("Valid namespace required to build entity type. Got {}", ns)
+                })),
+            };
             match type_namespace {
                 None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
                 Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
