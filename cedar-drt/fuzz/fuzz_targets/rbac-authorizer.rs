@@ -17,7 +17,7 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast;
+use cedar_policy_core::ast::{self, Context, Request};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::parser;
@@ -99,13 +99,12 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     assert_eq!(policyset.policies().count(), input.policies.len());
     let entities = Entities::new();
     let authorizer = Authorizer::new();
-    let q = parser::parse_request(
-        "User::\"alice\"",
-        "Action::\"read\"",
-        "Resource::\"foo\"",
-        serde_json::Value::Object(serde_json::Map::new()),
-    )
-    .expect("should be a valid request");
+    let q = Request::new(
+        "User::\"alice\"".parse().expect("should be valid"),
+        "Action::\"read\"".parse().expect("should be valid"),
+        "Resource::\"foo\"".parse().expect("should be valid"),
+        Context::empty(),
+    );
     let rust_res = authorizer.is_authorized(&q, &policyset, &entities);
 
     // check property: there should be an error reported iff we had either PermitError or ForbidError
