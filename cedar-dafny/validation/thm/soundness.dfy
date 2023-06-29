@@ -859,9 +859,9 @@ module validation.thm.soundness {
     lemma InferRecordLemma(e: Expr, es: seq<(Attr,Expr)>, effs: Effects)
       requires forall i | 0 <= i < |es| :: es[i] < e
       requires Typechecker(ets,acts,reqty).inferRecord(e,es,effs).Ok?
-      ensures forall i | 0 <= i < |es| :: es[i].0 in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys && Typechecker(ets,acts,reqty).infer(es[i].1,effs).Ok?
-      ensures forall k | k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys :: KeyExists(k,es) && Typechecker(ets,acts,reqty).infer(LastOfKey(k,es),effs).value.0 == Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value[k].ty
-      ensures forall k | !(k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.Keys) :: !KeyExists(k,es)
+      ensures forall i | 0 <= i < |es| :: es[i].0 in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.attrs.Keys && Typechecker(ets,acts,reqty).infer(es[i].1,effs).Ok?
+      ensures forall k | k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.attrs.Keys :: KeyExists(k,es) && Typechecker(ets,acts,reqty).infer(LastOfKey(k,es),effs).value.0 == Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.attrs[k].ty
+      ensures forall k | !(k in Typechecker(ets,acts,reqty).inferRecord(e,es,effs).value.attrs.Keys) :: !KeyExists(k,es)
     {
       reveal Typechecker(ets,acts,reqty).inferRecord();
     }
@@ -881,15 +881,15 @@ module validation.thm.soundness {
       InferRecordLemma(Expr.Record(es),es,effs);
       assert t' == Type.Record(rt);
       assert forall i | 0 <= i < |es| :: WellTyped(es[i].1,effs);
-      assert forall k | k in rt :: KeyExists(k,es) && getType(LastOfKey(k,es),effs) == rt[k].ty by {
+      assert forall k | k in rt.attrs :: KeyExists(k,es) && getType(LastOfKey(k,es),effs) == rt.attrs[k].ty by {
         assert Typechecker(ets,acts,reqty).inferRecord(Expr.Record(es),es,effs).Ok?;
       }
-      forall k | k in rt
-        ensures KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty)
+      forall k | k in rt.attrs
+        ensures KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty)
       {
-        assert getType(LastOfKey(k,es),effs) == rt[k].ty;
-        assert Typesafe(LastOfKey(k,es),effs,rt[k].ty) by { SubtyRefl(rt[k].ty); }
-        assert IsSafe(r,s,LastOfKey(k,es),rt[k].ty) by { Sound(LastOfKey(k,es),rt[k].ty,effs); }
+        assert getType(LastOfKey(k,es),effs) == rt.attrs[k].ty;
+        assert Typesafe(LastOfKey(k,es),effs,rt.attrs[k].ty) by { SubtyRefl(rt.attrs[k].ty); }
+        assert IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty) by { Sound(LastOfKey(k,es),rt.attrs[k].ty,effs); }
       }
       assert IsSafe(r,s,Expr.Record(es),t') by {
         assert forall ae | ae in es :: ExistsSafeType(r,s,ae.1) by {
@@ -983,18 +983,18 @@ module validation.thm.soundness {
       var ret := Typechecker(ets,acts,reqty).inferRecordEntityType(e,effs).value;
       match ret {
         case Record(rt) => {
-          assert t' == rt[k].ty;
+          assert t' == rt.attrs[k].ty;
           assert Typesafe(e,effs,Type.Record(rt)) by { SubtyRefl(Type.Record(rt)); }
           assert IsSafe(r,s,e,Type.Record(rt)) by { Sound(e,Type.Record(rt),effs); }
           assert IsSafe(r,s,GetAttr(e,k),t') by {
-            assert k in rt;
-            assert rt[k].isRequired || effs.contains(e,k);
-            if rt[k].isRequired {
-              ObjectProjSafeRequired(r,s,e,Type.Record(rt),k,rt[k]);
+            assert k in rt.attrs;
+            assert rt.attrs[k].isRequired || effs.contains(e,k);
+            if rt.attrs[k].isRequired {
+              ObjectProjSafeRequired(r,s,e,Type.Record(rt),k,rt.attrs[k]);
             } else {
               reveal EffectsInvariant();
               assert GetAttrSafe(r,s,e,k);
-              ObjectProjSafeGetAttrSafe(r,s,e,Type.Record(rt),k,rt[k]);
+              ObjectProjSafeGetAttrSafe(r,s,e,Type.Record(rt),k,rt.attrs[k]);
             }
           }
           assert IsSafe(r,s,GetAttr(e,k),t) by {
@@ -1004,23 +1004,23 @@ module validation.thm.soundness {
         }
         case Entity(lub) => {
           var rt := ets.getLubRecordType(lub).value;
-          assert t' == rt[k].ty;
+          assert t' == rt.attrs[k].ty;
           assert IsSafe(r,s,e,Type.Entity(lub)) by { Sound(e,Type.Entity(lub),effs); }
           assert IsSafe(r,s,GetAttr(e,k),t') by {
-            assert k in rt;
-            assert rt[k].isRequired || effs.contains(e,k);
-            if !rt[k].isRequired {
+            assert k in rt.attrs;
+            assert rt.attrs[k].isRequired || effs.contains(e,k);
+            if !rt.attrs[k].isRequired {
               reveal EffectsInvariant();
               assert GetAttrSafe(r,s,e,k);
             }
             forall euid: EntityUID | InstanceOfType(Primitive(Primitive.EntityUID(euid)),Type.Entity(lub)) && euid in s.entities
-              ensures rt[k].isRequired ==> k in s.entities[euid].attrs
+              ensures rt.attrs[k].isRequired ==> k in s.entities[euid].attrs
               ensures k in s.entities[euid].attrs ==> InstanceOfType(s.entities[euid].attrs[k],t')
             {
               GetLubRecordTypeSubty(lub, euid.ty);
-              SubtyCompat(ets.types[euid.ty][k].ty, t');
+              SubtyCompat(ets.types[euid.ty].attrs[k].ty, t');
             }
-            EntityProjSafe(r,s,e,k,lub,t',rt[k].isRequired);
+            EntityProjSafe(r,s,e,k,lub,t',rt.attrs[k].isRequired);
           }
           assert IsSafe(r,s,GetAttr(e,k),t) by {
             SubtyCompat(t',t);
@@ -1035,13 +1035,21 @@ module validation.thm.soundness {
       ensures subtyRecordType(rt2, lubRecordType(rt1, rt2).value)
     {
       var rtl := lubRecordType(rt1, rt2).value;
-      forall k | k in rtl.Keys
-        ensures subtyAttrType(rt1[k], rtl[k]) && subtyAttrType(rt2[k], rtl[k])
-      {
-        var al := rtl[k];
-        var a1 := rt1[k];
-        var a2 := rt2[k];
-        assert lubOpt(a1.ty,a2.ty) == Ok(al.ty);
+
+      assert rt1.isOpen() ==> rtl.isOpen();
+      assert rt2.isOpen() ==> rtl.isOpen();
+      assert !rtl.isOpen() ==> rt1.attrs.Keys == rt2.attrs.Keys;
+
+      forall k | k in rtl.attrs.Keys
+        ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
+        var al := rtl.attrs[k];
+        var a1 := rt1.attrs[k];
+        var a2 := rt2.attrs[k];
+
+        var al' := lubOpt(a1.ty,a2.ty);
+        assert al'.Ok?;
+        assert al'.value == al.ty;
+
         LubIsUB(a1.ty, a2.ty, al.ty);
       }
     }
@@ -1071,7 +1079,8 @@ module validation.thm.soundness {
       requires ety in ets.types
       ensures subtyRecordType(ets.types[ety], ets.getLubRecordType(lub).value)
     {
-      if ets.getLubRecordType(lub) != Ok(map[]) {
+      var lub_ty := ets.getLubRecordType(lub) ;
+      if lub_ty != Ok(RecordType(map[], OpenAttributes)) {
         def.util.EntityTypeLeqIsTotalOrder();
         var lubSeq := def.util.SetToSortedSeq(lub.tys,def.util.EntityTypeLeq);
         var etyI :| 0 <= etyI < |lubSeq| && lubSeq[etyI] == ety;
@@ -1100,25 +1109,25 @@ module validation.thm.soundness {
         case Record(rt) => {
           assert Typesafe(e,effs,Type.Record(rt)) by { SubtyRefl(Type.Record(rt)); }
           assert IsSafe(r,s,e,Type.Record(rt)) by { Sound(e,Type.Record(rt),effs); }
-          if k in rt {
-            if rt[k].isRequired {
-              assert IsSafe(r,s,e,Type.Record(map[k := rt[k]])) by {
-                SubtyRefl(rt[k].ty);
-                assert subtyRecordType(rt,map[k := rt[k]]);
-                assert subty(Type.Record(rt),Type.Record(map[k := rt[k]]));
-                SubtyCompat(Type.Record(rt),Type.Record(map[k := rt[k]]));
-                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(map[k := rt[k]]));
+          if k in rt.attrs {
+            if rt.attrs[k].isRequired {
+              assert IsSafe(r,s,e,Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes))) by {
+                SubtyRefl(rt.attrs[k].ty);
+                assert subtyRecordType(rt,RecordType(map[k := rt.attrs[k]], OpenAttributes));
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
+                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
+                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
               }
-              assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasRequiredTrueSafe(r,s,e,k,rt[k]); }
+              assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasRequiredTrueSafe(r,s,e,k,rt.attrs[k]); }
             } else if effs.contains(e,k) {
               assert IsSafe(r,s,HasAttr(e,k),t') by {
                 reveal EffectsInvariant();
               }
             } else {
-              assert IsSafe(r,s,e,Type.Record(map[])) by {
-                assert subty(Type.Record(rt),Type.Record(map[]));
-                SubtyCompat(Type.Record(rt),Type.Record(map[]));
-                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(map[]));
+              assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+                SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+                SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
               }
               assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasOpenRecSafe(r,s,e,k); }
               assert GuardedEffectsInvariant(HasAttr(e,k),Effects.singleton(e,k)) by {
@@ -1128,13 +1137,15 @@ module validation.thm.soundness {
                 }
               }
             }
-          } else {
-            assert IsSafe(r,s,e,Type.Record(map[])) by {
-              assert subty(Type.Record(rt),Type.Record(map[]));
-              SubtyCompat(Type.Record(rt),Type.Record(map[]));
-              SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(map[]));
+          } else if rt.isOpen() {
+            assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
+              assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+              SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+              SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
             }
             assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasOpenRecSafe(r,s,e,k); }
+          } else {
+            assert IsSafe(r,s,HasAttr(e,k),t') by { RecordHasClosedRecFalseSafe(r,s,e,k, rt); }
           }
         }
         case Entity(et) => {
@@ -1144,7 +1155,7 @@ module validation.thm.soundness {
             EntityHasImpossibleFalseSafe(r,s,e,k,et);
           } else {
             var m := ets.getLubRecordType(et).value;
-            if k in m {
+            if k in m.attrs {
               if effs.contains(e,k) {
                 assert IsSafe(r,s,HasAttr(e,k),t') by {
                   reveal EffectsInvariant();
@@ -1163,6 +1174,7 @@ module validation.thm.soundness {
                 }
               }
             } else {
+              PossibleAttrNotInLubAttrImpliesOpen(et, k, m);
               assert IsSafe(r,s,e,Type.Entity(AnyEntity)) by {
                 SubtyCompat(Type.Entity(et),Type.Entity(AnyEntity));
                 SemSubtyTransport(r,s,e,Type.Entity(et),Type.Entity(AnyEntity));
@@ -1175,6 +1187,23 @@ module validation.thm.soundness {
       assert IsSafe(r,s,HasAttr(e,k),t) by {
         SubtyCompat(t',t);
         SemSubtyTransport(r,s,HasAttr(e,k),t',t);
+      }
+    }
+
+    lemma PossibleAttrNotInLubAttrImpliesOpen(lub: EntityLUB, k: Attr, lubR: RecordType)
+      requires ets.getLubRecordType(lub) == Ok(lubR)
+      requires ets.isAttrPossible(lub, k)
+      requires k !in lubR.attrs.Keys
+      ensures lubR.isOpen()
+    {
+      if lub.AnyEntity? || exists et <- lub.tys :: isAction(et) {
+        assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], OpenAttributes));
+      } else {
+        assert forall et <- lub.tys :: et in ets.types;
+        assert exists et <- lub.tys :: et in ets.types && (ets.types[et].isOpen() || k in ets.types[et].attrs);
+        var et :| et in lub.tys && et in ets.types && (ets.types[et].isOpen() || k in ets.types[et].attrs);
+        GetLubRecordTypeSubty(lub, et);
+        assert lubR.isOpen();
       }
     }
 

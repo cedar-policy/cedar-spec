@@ -394,7 +394,7 @@ module difftest.main {
           case "Record" =>
             var attrs :- getJsonField(body1, "attrs");
             var attrs1 :- deserializeField(attrs, "attrs", attrTypesFromProdJsonObjectRec);
-            Ok(Type.Record(attrs1))
+            Ok(Type.Record(RecordType(attrs1, ClosedAttributes)))
           case "Entity" =>
             var lub :- deserializeField(body1, "lub_elements", setDeserializer(nameFromProdJson));
             Ok(Type.Entity(EntityLUB(set e <- lub :: EntityType(e))))

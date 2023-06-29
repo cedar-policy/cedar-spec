@@ -69,7 +69,24 @@ module validation.types {
   }
 
   datatype AttrType = AttrType(ty: Type, isRequired: bool)
-  type RecordType = map<Attr,AttrType>
+  datatype AttrsTag = OpenAttributes | ClosedAttributes
+  datatype RecordType = RecordType(
+    attrs: map<Attr,AttrType>,
+    // Indicates whether a value having this record type may have attributes
+    // beyond those lists in `attrs` (open), or if it must match `attrs`
+    // exactly (closed). In principal, any record type, including an entity
+    // attributes record type, may be closed or open, but the type of all record
+    // literals and any record type written in the schema is always closed. A
+    // least upper bound between record types will tend to be open, but it may
+    // be closed if the constituent record types are closed and have exactly the
+    // same attributes with a least upper bound existing between corresponding
+    // attributes.
+    attrsTag: AttrsTag
+  ) {
+    predicate isOpen() {
+      attrsTag.OpenAttributes?
+    }
+  }
 
   // Each extension function is associated with argument types, a return type,
   // and an optional method that checks input well-formedness.
