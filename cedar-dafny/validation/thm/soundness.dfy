@@ -72,6 +72,10 @@ module validation.thm.soundness {
       WellTyped(e,effs) && subty(getType(e, effs), t)
     }
 
+    ghost predicate {:opaque} WellFormedRequestAndStore() {
+      InstanceOfRequestType(r,reqty) && InstanceOfEntityTypeStore(s,ets) && InstanceOfActionStore(s,acts)
+    }
+
     // On input to the typechecking function, for any (e,k) in the Effects,
     // e is a record- or entity-typed expression that has key k.
     ghost predicate {:opaque} EffectsInvariant (effs: Effects) {
@@ -116,13 +120,12 @@ module validation.thm.soundness {
 
     lemma SoundVar(x: Var, t: Type, effs: Effects)
       decreases Var(x) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires Typesafe(Var(x),effs,t)
       ensures IsSafe(r,s,Var(x),t)
       ensures getEffects(Var(x),effs) == Effects.empty()
     {
+      assert InstanceOfRequestType(r, reqty) by { reveal WellFormedRequestAndStore(); }
       var t' :| getType(Var(x),effs) == t' && subty(t',t);
       assert Typechecker(ets,acts,reqty).inferVar(x) == types.Ok(t');
       match x {
@@ -182,9 +185,7 @@ module validation.thm.soundness {
 
     lemma SoundIf(e: Expr, e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases If(e,e1,e2) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(If(e,e1,e2),effs,t)
       ensures IsSafe(r,s,If(e,e1,e2),t)
@@ -322,9 +323,7 @@ module validation.thm.soundness {
 
     lemma SoundAnd(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases And(e1,e2) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(And(e1,e2),effs,t)
       ensures IsSafe(r,s,And(e1,e2),t)
@@ -459,9 +458,7 @@ module validation.thm.soundness {
 
     lemma SoundOr(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases Or(e1,e2) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(Or(e1,e2),effs,t)
       ensures IsSafe(r,s,Or(e1,e2),t)
@@ -575,9 +572,7 @@ module validation.thm.soundness {
 
     lemma SoundNot(e: Expr, t: Type, effs: Effects)
       decreases UnaryApp(Not,e) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(UnaryApp(Not,e),effs,t)
       ensures IsSafe(r,s,UnaryApp(Not,e),t)
@@ -604,9 +599,7 @@ module validation.thm.soundness {
 
     lemma SoundNeg(e: Expr, t: Type, effs: Effects)
       decreases UnaryApp(Neg,e) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(UnaryApp(Neg,e),effs,t)
       ensures IsSafe(r,s,UnaryApp(Neg,e),t)
@@ -626,9 +619,7 @@ module validation.thm.soundness {
 
     lemma SoundMulBy(i: int, e: Expr, t: Type, effs: Effects)
       decreases UnaryApp(MulBy(i),e) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(UnaryApp(MulBy(i),e),effs,t)
       ensures IsSafe(r,s,UnaryApp(MulBy(i),e),t)
@@ -648,9 +639,7 @@ module validation.thm.soundness {
 
     lemma SoundLike(e: Expr, p: Pattern, t: Type, effs: Effects)
       decreases UnaryApp(Like(p),e) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(UnaryApp(Like(p),e),effs,t)
       ensures IsSafe(r,s,UnaryApp(Like(p),e),t)
@@ -718,9 +707,7 @@ module validation.thm.soundness {
 
     lemma SoundEq(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.Eq,e1,e2) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(BinaryOp.Eq,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t)
@@ -743,6 +730,7 @@ module validation.thm.soundness {
             EqFalseIsSafe(r,s,e1,e2,t1.lub,t2.lub);
           } else if Typechecker(ets,acts,reqty).isUnspecifiedVar(e1) && t2.Entity? && t2.lub.specified() {
             assert t' == Type.Bool(False);
+            reveal WellFormedRequestAndStore();
             UnspecifiedVarHasUnspecifiedEntityType(e1);
             EqFalseIsSafe(r,s,e1,e2,unspecifiedEntityType.lub,t2.lub);
           } else {
@@ -759,9 +747,7 @@ module validation.thm.soundness {
     lemma SoundIneq(op: BinaryOp, e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(op,e1,e2) , 0
       requires op == Less || op == BinaryOp.LessEq
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(op,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
@@ -785,9 +771,7 @@ module validation.thm.soundness {
     lemma SoundArith(op: BinaryOp, e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(op,e1,e2) , 0
       requires op == Add || op == Sub
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(op,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
@@ -811,9 +795,7 @@ module validation.thm.soundness {
     lemma SoundContainsAnyAll(op: BinaryOp, e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(op,e1,e2) , 0
       requires op == ContainsAny || op == ContainsAll
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(op,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
@@ -836,9 +818,7 @@ module validation.thm.soundness {
 
     lemma SoundContains(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(Contains,e1,e2) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(Contains,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(Contains,e1,e2),t)
@@ -868,9 +848,7 @@ module validation.thm.soundness {
 
     lemma SoundRecord(es: seq<(Attr,Expr)>, t: Type, effs: Effects)
       decreases Expr.Record(es) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(Expr.Record(es),effs,t)
       ensures IsSafe(r,s,Expr.Record(es),t)
@@ -940,9 +918,7 @@ module validation.thm.soundness {
 
     lemma SoundSet(es: seq<Expr>, t: Type, effs: Effects)
       decreases Expr.Set(es) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires Typesafe(Expr.Set(es),effs,t)
       requires EffectsInvariant(effs)
       ensures IsSafe(r,s,Expr.Set(es),t)
@@ -970,9 +946,7 @@ module validation.thm.soundness {
 
     lemma SoundGetAttr(e: Expr, k: Attr, t: Type, effs: Effects)
       decreases GetAttr(e,k) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(GetAttr(e,k),effs,t)
       ensures IsSafe(r,s,GetAttr(e,k),t)
@@ -1017,6 +991,7 @@ module validation.thm.soundness {
               ensures rt.attrs[k].isRequired ==> k in s.entities[euid].attrs
               ensures k in s.entities[euid].attrs ==> InstanceOfType(s.entities[euid].attrs[k],t')
             {
+              reveal WellFormedRequestAndStore();
               GetLubRecordTypeSubty(lub, euid.ty);
               SubtyCompat(ets.types[euid.ty].attrs[k].ty, t');
             }
@@ -1040,6 +1015,7 @@ module validation.thm.soundness {
       assert rt2.isOpen() ==> rtl.isOpen();
       assert !rtl.isOpen() ==> rt1.attrs.Keys == rt2.attrs.Keys;
 
+      reveal WellFormedRequestAndStore();
       forall k | k in rtl.attrs.Keys
         ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
         var al := rtl.attrs[k];
@@ -1091,9 +1067,7 @@ module validation.thm.soundness {
 
     lemma SoundHasAttr(e: Expr, k: Attr, t: Type, effs: Effects)
       decreases HasAttr(e,k) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(HasAttr(e,k),effs,t)
       ensures IsSafe(r,s,HasAttr(e,k),t)
@@ -1152,6 +1126,7 @@ module validation.thm.soundness {
           assert Typesafe(e,effs,Type.Entity(et)) by { SubtyRefl(Type.Entity(et)); }
           assert IsSafe(r,s,e,Type.Entity(et)) by { Sound(e,Type.Entity(et),effs); }
           if !ets.isAttrPossible(et,k) {
+            reveal WellFormedRequestAndStore();
             EntityHasImpossibleFalseSafe(r,s,e,k,et);
           } else {
             var m := ets.getLubRecordType(et).value;
@@ -1209,9 +1184,7 @@ module validation.thm.soundness {
 
     lemma SoundInSetMemberFalse(e1: Expr, ei2s: seq<Expr>, i: nat, effs: Effects)
       decreases BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)) , 0 , Expr.Set(ei2s) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires WellTyped(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs)
       requires getType(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs) == Type.Bool(False)
@@ -1239,6 +1212,7 @@ module validation.thm.soundness {
           assert t1 == Type.Entity(EntityLUB({et1}));
           assert IsSafe(r,s,Var(v1),t1) by { Sound(e1,t1,effs); }
           assert !ets.possibleDescendantOf(et1,u2.ty);
+          reveal WellFormedRequestAndStore();
           InSingleFalseEntityTypeAndLiteral(r,s,e1,et1,u2);
         case PrimitiveLit(EntityUID(u1)) =>
           if isAction(u1.ty) {
@@ -1248,15 +1222,14 @@ module validation.thm.soundness {
             assert !ets.possibleDescendantOfSet(u1.ty,ets2);
             assert !ets.possibleDescendantOf(u1.ty,u2.ty);
           }
+          reveal WellFormedRequestAndStore();
           InSingleFalseLiterals(r,s,u1,u2);
       }
     }
 
     lemma SoundIn(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.In,e1,e2) , 0 , e2
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(BinaryOp.In,e1,e2),effs,t)
       ensures IsSafe(r,s,BinaryApp(BinaryOp.In,e1,e2),t)
@@ -1288,6 +1261,7 @@ module validation.thm.soundness {
       match t' {
         // Easy case
         case Bool(AnyBool) =>
+          reveal WellFormedRequestAndStore();
           assert IsSafe(r,s,BinaryApp(BinaryOp.In,e1,e2),Type.Bool(AnyBool)) by {
             if e2IsSet {
               assert IsSafe(r,s,e2,Type.Set(Type.Entity(AnyEntity))) by { Sound(e2,Type.Set(Type.Entity(AnyEntity)),effs); }
@@ -1300,6 +1274,7 @@ module validation.thm.soundness {
         // Harder case: we have to prove that the result is false.
         case Bool(False) =>
           if typechecker.isUnspecifiedVar(e1) && e2IsSpecified {
+            reveal WellFormedRequestAndStore();
             UnspecifiedVarHasUnspecifiedEntityType(e1);
             assert IsSafe(r,s,e2,t2) by { Sound(e2,t2,effs); }
             if e2IsSet {
@@ -1316,6 +1291,7 @@ module validation.thm.soundness {
                   assert t1 == Type.Entity(EntityLUB({et1}));
                   assert IsSafe(r,s,Var(v1),t1) by { Sound(e1,t1,effs); }
                   assert !ets.possibleDescendantOf(et1,u2.ty);
+                  reveal WellFormedRequestAndStore();
                   InSingleFalseEntityTypeAndLiteral(r,s,e1,et1,u2);
                 case PrimitiveLit(EntityUID(u1)) =>
                   if isAction(u1.ty) {
@@ -1323,6 +1299,7 @@ module validation.thm.soundness {
                   } else {
                     assert !ets.possibleDescendantOf(u1.ty,u2.ty);
                   }
+                  reveal WellFormedRequestAndStore();
                   InSingleFalseLiterals(r,s,u1,u2);
               }
               case Set(ei2s) =>
@@ -1368,9 +1345,7 @@ module validation.thm.soundness {
 
     lemma SoundCall(name: base.Name, es: seq<Expr>, t: Type, effs: Effects)
       decreases Call(name,es) , 0
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(Call(name,es),effs,t)
       ensures IsSafe(r,s,Call(name,es),t)
@@ -1387,9 +1362,7 @@ module validation.thm.soundness {
 
     lemma Sound(e: Expr, t: Type, effs: Effects)
       decreases e , 1
-      requires InstanceOfRequestType(r,reqty)
-      requires InstanceOfEntityTypeStore(s,ets)
-      requires InstanceOfActionStore(s,acts)
+      requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(e,effs,t)
       ensures IsSafe(r,s,e,t)
@@ -1433,6 +1406,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,e,t)
     {
       EmptyEffectsInvariant();
+      reveal WellFormedRequestAndStore();
       Sound(e,t,Effects.empty());
     }
   }
