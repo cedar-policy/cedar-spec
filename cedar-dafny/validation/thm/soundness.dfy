@@ -16,6 +16,7 @@
 
 include "../../def/all.dfy"
 include "../all.dfy"
+include "../../thm/eval/basic.dfy"
 include "model.dfy"
 include "base.dfy"
 
@@ -25,6 +26,9 @@ include "base.dfy"
 module validation.thm.soundness {
   import opened def
   import opened def.core
+  import opened def.engine
+  import opened def.util
+  import opened eval.basic
   import opened types
   import opened subtyping
   import opened typechecker
@@ -955,7 +959,7 @@ module validation.thm.soundness {
       forall i | 0 <= i < |es|
         ensures IsSafe(r,s,es[i],st)
       {
-        InterpretSetLemma(es,r,s);
+        InterpretSetLemma(es, Evaluator(r,s));
         assert Typesafe(es[i],effs,st);
         Sound(es[i],st,effs);
       }
@@ -1031,10 +1035,10 @@ module validation.thm.soundness {
     }
 
     lemma LubRecordTypeSubty(rt1: RecordType, rt2: RecordType)
-      ensures subtyRecordType(rt1, lubRecordType(rt1, rt2).value)
-      ensures subtyRecordType(rt2, lubRecordType(rt1, rt2).value)
+      ensures subtyRecordType(rt1, lubRecordType(rt1, rt2))
+      ensures subtyRecordType(rt2, lubRecordType(rt1, rt2))
     {
-      var rtl := lubRecordType(rt1, rt2).value;
+      var rtl := lubRecordType(rt1, rt2);
 
       assert rt1.isOpen() ==> rtl.isOpen();
       assert rt2.isOpen() ==> rtl.isOpen();
@@ -1045,10 +1049,9 @@ module validation.thm.soundness {
         var al := rtl.attrs[k];
         var a1 := rt1.attrs[k];
         var a2 := rt2.attrs[k];
-
         var al' := lubOpt(a1.ty,a2.ty);
+
         assert al'.Ok?;
-        assert al'.value == al.ty;
 
         LubIsUB(a1.ty, a2.ty, al.ty);
       }
@@ -1331,24 +1334,24 @@ module validation.thm.soundness {
                 // Argument that is the same any time e2 is a set.
                 assert e2IsSet;
                 var eltType :| t2 == Type.Set(eltType);
-                InferSetLemma(e2, ei2s, effs);
-                forall i | 0 <= i < |ei2s|
-                  ensures IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity))
-                {
-                  assert subty(getType(ei2s[i],effs), eltType);
-                  SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
-                  assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
-                }
-                // Argument depending on e1
-                forall i | 0 <= i < |ei2s|
-                  ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
-                {
-                  // Since this is the most expensive part of the proof, we move
-                  // it to a separate lemma to help keep each lemma under the
-                  // verification limits.
-                  SoundInSetMemberFalse(e1, ei2s, i, effs);
-                }
-                InSetFalseIfAllFalse(r,s,e1,ei2s);
+  InferSetLemma(e2, ei2s, effs);
+  forall i | 0 <= i < |ei2s|
+    ensures IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity))
+  {
+    assert subty(getType(ei2s[i],effs), eltType);
+    SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
+    assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
+  }
+  // Argument depending on e1
+  forall i | 0 <= i < |ei2s|
+    ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
+  {
+    // Since this is the most expensive part of the proof, we move
+    // it to a separate lemma to help keep each lemma under the
+    // verification limits.
+    SoundInSetMemberFalse(e1, ei2s, i, effs);
+  }
+  InSetFalseIfAllFalse(r,s,e1,ei2s);
             }
           }
       }

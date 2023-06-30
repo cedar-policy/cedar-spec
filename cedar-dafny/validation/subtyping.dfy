@@ -85,14 +85,14 @@ module validation.subtyping {
   // are inconsistent. For example: the upper bound of { foo: Int } and
   // { foo: String } is the empty map type {}. This decision was made for the
   // sake of consistency with the Rust production implementation.
-  function lubRecordType(rt1: RecordType, rt2: RecordType): Result<RecordType>
+  function lubRecordType(rt1: RecordType, rt2: RecordType): RecordType
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
     var attrs :=
       map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty).Ok? ::
         lubAttrType(rt1.attrs[k], rt2.attrs[k]);
     var openTag := if rt1.isOpen() || rt2.isOpen() || attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys) then OpenAttributes else ClosedAttributes;
-    Ok(RecordType(attrs, openTag))
+    RecordType(attrs, openTag)
   }
 
   function lubRecordTypeSeq(rts: seq<RecordType>): Result<RecordType>
@@ -101,7 +101,7 @@ module validation.subtyping {
     else if |rts| == 1 then Ok(rts[0])
     else
       var res :- lubRecordTypeSeq(rts[1..]);
-      lubRecordType(rts[0],res)
+      Ok(lubRecordType(rts[0],res))
   }
 
   function lubOpt(t1: Type, t2: Type): Result<Type>
@@ -118,8 +118,7 @@ module validation.subtyping {
         var t :- lubOpt(t11,t12);
         Ok(Type.Set(t))
       case(Record(rt1),Record(rt2)) =>
-        var rt :- lubRecordType(rt1,rt2);
-        Ok(Type.Record(rt))
+        Ok(Type.Record(lubRecordType(rt1,rt2)))
       case (Extension(e1),Extension(e2)) =>
         if e1 == e2 then Ok(Extension(e1))
         else Err(LubErr(t1,t2))

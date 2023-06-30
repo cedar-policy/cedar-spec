@@ -16,6 +16,7 @@
 
 include "../../def/all.dfy"
 include "../all.dfy"
+include "../../thm/eval/basic.dfy"
 include "base.dfy"
 
 // This module contains an abstract model for the Cedar evaluator semantics.
@@ -23,47 +24,12 @@ module validation.thm.model {
   import opened def
   import opened def.core
   import opened def.engine
+  import opened def.util
+  import opened eval.basic
   import opened types
   import opened subtyping
   import opened base
   import opened ext
-
-  // ----- Utilities ----- //
-
-  // KeyExists and LastOfKey are helpers about association lists that are used in
-  // validation.dfy, so we lift them here.
-  // We use these as an abbreviation for the quantifier alternation:
-  // exists i :: 0 <= i < |es| && (forall j :: i < j < |es| => ...)
-  // This helps dafny prove some of our lemmas about record evaluation and validation.
-  ghost predicate KeyExists<K,V>(k: K, es: seq<(K,V)>) {
-    exists i :: 0 <= i < |es| && es[i].0 == k
-  }
-
-  opaque ghost function LastOfKey<K,V>(k: K, es: seq<(K,V)>): (res: V)
-    requires KeyExists(k,es)
-    ensures exists i :: 0 <= i < |es| && es[i].0 == k && es[i].1 == res && (forall j | i < j < |es| :: es[j].0 != k)
-  {
-    if (es[0].0 == k && (forall j | 0 < j < |es| :: es[j].0 != k)) then es[0].1 else LastOfKey(k,es[1..])
-  }
-
-  lemma InterpretRecordLemmaOk(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
-    requires Evaluator(r,s).interpretRecord(es).Ok?
-    ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
-    ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
-  {}
-
-  lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
-    requires Evaluator(r,s).interpretRecord(es).Err?
-    ensures exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?)
-  {}
-
-  lemma InterpretSetLemma(es: seq<Expr>, r: Request, s: EntityStore)
-    ensures Evaluator(r,s).interpretSet(es).Ok? ==> forall v | v in Evaluator(r,s).interpretSet(es).value :: exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]) == base.Ok(v)
-    ensures (forall e | e in es :: Evaluator(r,s).interpret(e).Ok?) ==> Evaluator(r,s).interpretSet(es).Ok?
-    ensures (exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err?) ==> Evaluator(r,s).interpretSet(es).Err?
-    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
-    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
-  {}
 
   // ----- Semantic model of Cedar ----- //
 
@@ -706,11 +672,12 @@ module validation.thm.model {
     ensures IsSafe(r,s,Expr.Set(es),Type.Set(t))
   {
     reveal IsSafe();
-    InterpretSetLemma(es,r,s);
+    var E := Evaluator(r,s);
+    InterpretSetLemma(es,E);
     if(forall i | 0 <= i < |es| :: exists v :: Evaluate(es[i],r,s) == base.Ok(v) && InstanceOfType(v,t)){
       assert forall e | e in es :: Evaluate(e,r,s).Ok?;
       assert Evaluate(Expr.Set(es),r,s).Ok?;
-      var vs :| Evaluator(r,s).interpretSet(es) == base.Ok(vs);
+      var vs :| E.interpretSet(es) == base.Ok(vs);
       assert InstanceOfType(Value.Set(vs),Type.Set(t)) by {
         forall v | v in vs ensures InstanceOfType(v,t) {}
       }
@@ -894,7 +861,7 @@ module validation.thm.model {
     if res.Ok? {
       var rv := res.value;
       assert evaluator.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
-      InterpretRecordLemmaOk(es,r,s);
+      InterpretRecordLemmaOk(es, evaluator);
       forall k | k in rt.attrs
         ensures InstanceOfType(rv[k],rt.attrs[k].ty)
       {
@@ -909,7 +876,7 @@ module validation.thm.model {
       {
         // Unclear why it helps re-assert the result of this lemma.  Also, the
         // proof blows up if I hide the long condition in a predicate.
-        InterpretRecordLemmaErr(es,r,s);
+        InterpretRecordLemmaErr(es, evaluator);
         assert exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?);
         var attr_idx :| 0 <= attr_idx < |es| && Evaluator(r,s).interpret(es[attr_idx].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < attr_idx :: Evaluator(r,s).interpret(es[j].1).Ok?);
         var attr_expr := es[attr_idx].1;
@@ -1085,8 +1052,8 @@ module validation.thm.model {
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)))
   {
     reveal IsSafe();
-    InterpretSetLemma(e2s,r,s);
     var evaluator := Evaluator(r,s);
+    InterpretSetLemma(e2s, evaluator);
     var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
     var r1 := evaluator.interpret(e1);
     var r2 := evaluator.interpret(Expr.Set(e2s));

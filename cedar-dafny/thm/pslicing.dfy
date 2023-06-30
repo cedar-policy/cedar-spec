@@ -16,6 +16,7 @@
 
 include "../def/all.dfy"
 include "slicing.dfy"
+include "eval/basic.dfy"
 
 // This module proves it is sound to slice policies based on head constraints
 // (see AuthorizationIsCorrectForHeadBasedPolicySlicing and
@@ -33,6 +34,7 @@ module pslicing {
   import opened def.engine
   import opened def.std
   import opened slicing
+  import opened eval.basic
 
   // Optional target principal and resource entities for a policy.
   datatype Target =
@@ -201,18 +203,5 @@ module pslicing {
     AndSemantics(p.resourceScope.toExpr(), p.condition, eval);
   }
 
-  lemma EntityInOrEqEntitySemantics(x1: Expr, e1: EntityUID, x2: Expr, e2: EntityUID, eval: Evaluator)
-    requires eval.interpret(x1) == Ok(Value.EntityUID(e1))
-    requires eval.interpret(x2) == Ok(Value.EntityUID(e2))
-    requires
-      eval.interpret(BinaryApp(BinaryOp.In, x1, x2)) == Ok(Value.TRUE) ||
-      eval.interpret(BinaryApp(BinaryOp.Eq, x1, x2)) == Ok(Value.TRUE)
-    ensures eval.entityInEntity(e1, e2)
-  { }
 
-  lemma AndSemantics(e1: Expr, e2: Expr, eval: Evaluator)
-    requires eval.interpret(And(e1, e2)) == Ok(Value.TRUE)
-    ensures eval.interpret(e1) == Ok(Value.TRUE)
-    ensures eval.interpret(e2) == Ok(Value.TRUE)
-  { }
 }
