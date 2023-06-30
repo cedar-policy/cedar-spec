@@ -41,7 +41,17 @@ module eval.basic {
     requires E.interpretRecord(es).Ok?
     ensures forall i :: 0 <= i < |es| ==> es[i].0 in E.interpretRecord(es).value.Keys && E.interpret(es[i].1).Ok?
     ensures forall k | k in E.interpretRecord(es).value.Keys :: KeyExists(k,es) && E.interpret(LastOfKey(k,es)) == base.Ok(E.interpretRecord(es).value[k])
-  {}
+  {
+    if |es| == 0 {
+      assert E.interpretRecord(es) == Ok(map[]);
+    } else {
+      if E.interpret(es[0].1).Ok? {
+
+      } else {
+        assert E.interpretRecord(es).Err?;
+      }
+    }
+  }
 
   lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, E: Evaluator)
     requires E.interpretRecord(es).Err?
@@ -54,6 +64,33 @@ module eval.basic {
     ensures (exists i :: 0 <= i < |es| && E.interpret(es[i]).Err?) ==> E.interpretSet(es).Err?
     ensures E.interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?);
     ensures E.interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretSet(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?);
+  {}
+
+  lemma InterpretListEnsuresOk(E: Evaluator, es: seq<Expr>)
+    requires forall e <- es :: E.interpret(e).Ok?
+    ensures E.interpretList(es).Ok?
+    ensures |E.interpretList(es).value| == |es|
+    ensures forall i | 0 <= i < |es| :: E.interpret(es[i]) == base.Ok(E.interpretList(es).value[i])
+  {
+    InterpretListEnsures(E, es);
+  }
+
+  lemma InterpretListEnsuresErr(E: Evaluator, es: seq<Expr>)
+    requires exists i | 0 <= i < |es| :: E.interpret(es[i]).Err?
+    ensures E.interpretList(es).Err?
+    ensures exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?) && E.interpret(es[i]).error == E.interpretList(es).error
+  {
+    InterpretListEnsures(E, es);
+  }
+
+  lemma InterpretListEnsures(E: Evaluator, es: seq<Expr>)
+    ensures E.interpretList(es).Ok? ==>
+              (|E.interpretList(es).value| == |es| &&
+               forall i | 0 <= i < |es| :: E.interpret(es[i]) == base.Ok(E.interpretList(es).value[i]))
+    ensures (forall e | e in es :: E.interpret(e).Ok?) ==> E.interpretList(es).Ok?
+    ensures (exists i :: 0 <= i < |es| && E.interpret(es[i]).Err?) ==> E.interpretList(es).Err?
+    ensures E.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
+    ensures E.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretList(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
   {}
 
 }

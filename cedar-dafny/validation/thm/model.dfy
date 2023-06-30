@@ -795,15 +795,6 @@ module validation.thm.model {
     ensures ExtensionFunSafeEnsures(name, args)
   {}
 
-  lemma InterpretListEnsures(eval: Evaluator, es: seq<Expr>)
-    ensures eval.interpretList(es).Ok? ==> (|eval.interpretList(es).value| == |es| &&
-                                            forall i | 0 <= i < |es| :: eval.interpret(es[i]) == base.Ok(eval.interpretList(es).value[i]))
-    ensures (forall e | e in es :: eval.interpret(e).Ok?) ==> eval.interpretList(es).Ok?
-    ensures (exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err?) ==> eval.interpretList(es).Err?
-    ensures eval.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
-    ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
-  {}
-
   lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)
     requires name in extFunTypes
     requires |args| == |extFunTypes[name].args|
@@ -812,13 +803,14 @@ module validation.thm.model {
   {
     reveal IsSafe();
     var eft := extFunTypes[name];
+    var E := Evaluator(r, s);
     if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
       assert forall e <- args :: Evaluate(e,r,s).Ok?;
 
-      InterpretListEnsures(Evaluator(r, s), args);
-      var argVals := Evaluator(r, s).interpretList(args).value;
+      InterpretListEnsures(E, args);
+      var argVals := E.interpretList(args).value;
 
-      var res := Evaluator(r, s).applyExtFun(name, argVals);
+      var res := E.applyExtFun(name, argVals);
       assert Evaluate(Call(name,args),r,s) == res;
       assert forall i | 0 <= i < |args| :: InstanceOfType(argVals[i], eft.args[i]);
       var isSafe := (res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret)));
@@ -839,7 +831,7 @@ module validation.thm.model {
         assert isSafe;
       }
     } else {
-      InterpretListEnsures(Evaluator(r, s), args);
+      InterpretListEnsures(E, args);
     }
   }
 
