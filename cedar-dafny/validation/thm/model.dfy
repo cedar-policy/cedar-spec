@@ -33,7 +33,14 @@ module validation.thm.model {
     requires Evaluator(r,s).interpretRecord(es).Ok?
     ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
     ensures forall k :: k in Evaluator(r,s).interpretRecord(es).value.Keys ==> KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
-  {}
+  {
+    forall i ensures 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok? {
+
+    }
+    forall k ensures k in Evaluator(r,s).interpretRecord(es).value.Keys ==> KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k]) {
+
+    }
+  }
 
   lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
     requires Evaluator(r,s).interpretRecord(es).Err?
@@ -52,7 +59,7 @@ module validation.thm.model {
   // It consists of two main predicates: InstanceOfType and IsSafe, as well as
   // compatability lemmata about the predicates.
   //
-  // IsSafe(r, s, e, t) says that when evaluated with Request `q` and EntityStore `s`,
+  // IsSafe(r, s, e, t) says that when evaluated with Request `r` and EntityStore `s`,
   // evaluating Expr `e` will result in a Value of type `t`.
   //
   // The compatability lemmata are obtained by taking the Cedar typing rules, and
