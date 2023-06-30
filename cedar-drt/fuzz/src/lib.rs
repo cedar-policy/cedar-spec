@@ -17,6 +17,7 @@ pub use collections::*;
 pub use prt::*;
 
 use std::fmt::Display;
+use std::str::FromStr;
 
 use crate::collections::HashMap;
 use ast::{
@@ -509,4 +510,17 @@ impl<'e> DifferentialTester<'e> {
         // E.g., the error reported by the definitional validator should be in the list
         // of errors reported by the production validator, but we don't check this.
     }
+}
+
+
+#[test]
+fn benchmark_java_def_engine() {
+    let diff_tester = DifferentialTester::new();
+    let principal = ast::EntityUIDEntry::Concrete(EntityUID::from_str("User::\"alice\""));
+    let action = ast::EntityUIDEntry::Concrete(EntityUID::from_str("Action::\"view\""));
+    let resource = ast::EntityUIDEntry::Concrete(EntityUID::from_str("Photo::\"vacation.jpg\""));
+    let query = ast::Request{principal, action, resource, context: None};
+    let policies = PolicySet::new();
+    let entities = Entities::new();
+    diff_tester.run_single_test(&query, &policies, &entities);
 }
