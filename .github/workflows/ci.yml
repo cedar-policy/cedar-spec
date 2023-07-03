@@ -20,9 +20,12 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
       - name: Install Z3
-        uses: pavpanchekha/setup-z3@v1.3
-        with:
-          version: 4.12.1
+        shell: bash
+        run: |
+          wget https://github.com/Z3Prover/z3/releases/download/z3-4.12.1/z3-4.12.1-x64-glibc-2.35.zip &&
+          mkdir -p z3
+          bsdtar --strip-components=1 -xvf z3-4.12.1-x64-glibc-2.35.zip -C z3 
+          echo "${pwd}/z3/bin" >> $GITHUB_PATH
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: make verify
