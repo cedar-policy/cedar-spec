@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
+      - name: Install Z3
+        uses: pavpanchekha/setup-z3
+        version: 4.12.1
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: make verify
