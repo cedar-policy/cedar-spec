@@ -1429,7 +1429,7 @@ module validation.thm.soundness {
       requires InstanceOfRequestType(r,reqty)
       requires InstanceOfEntityTypeStore(s,ets)
       requires InstanceOfActionStore(s,acts)
-      requires Typechecker(ets,acts,reqty).typecheck(e,t).Ok?;
+      requires Typechecker(ets,acts,reqty).typecheck(e,t).Ok?
       ensures IsSafe(r,s,e,t)
     {
       EmptyEffectsInvariant();

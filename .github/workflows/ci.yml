@@ -21,10 +21,10 @@ jobs:
         uses: actions/checkout@v3
       - name: Download Dafny
         shell: bash
-        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
+        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.1.0/dafny-4.1.0-x64-ubuntu-20.04.zip
       - name: Unzip Dafny
         shell: bash
-        run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
+        run: unzip dafny-4.1.0-x64-ubuntu-20.04.zip
       - name: Symlink z3
         shell: bash
         run: ln -s $(pwd)/dafny/z3/bin/z3-4.12.1 $(pwd)/dafny/z3/bin/z3

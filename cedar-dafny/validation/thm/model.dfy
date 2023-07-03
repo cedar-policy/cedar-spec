@@ -61,8 +61,8 @@ module validation.thm.model {
     ensures Evaluator(r,s).interpretSet(es).Ok? ==> forall v | v in Evaluator(r,s).interpretSet(es).value :: exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]) == base.Ok(v)
     ensures (forall e | e in es :: Evaluator(r,s).interpret(e).Ok?) ==> Evaluator(r,s).interpretSet(es).Ok?
     ensures (exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err?) ==> Evaluator(r,s).interpretSet(es).Err?
-    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
-    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
+    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?)
+    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?)
   {}
 
   // ----- Semantic model of Cedar ----- //
