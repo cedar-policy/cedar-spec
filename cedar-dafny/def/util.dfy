@@ -29,9 +29,9 @@ module def.util {
   ghost predicate IsTotalOrder<A(!new)>(R: (A, A) -> bool) {
     // connexity
     && (forall a, b :: R(a, b) || R(b, a))
-       // antisymmetry
+    // antisymmetry
     && (forall a, b | R(a, b) && R(b, a) :: a == b)
-       // transitivity
+    // transitivity
     && (forall a, b, c | R(a, b) && R(b, c) :: R(a, c))
   }
 

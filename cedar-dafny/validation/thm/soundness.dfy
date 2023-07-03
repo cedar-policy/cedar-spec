@@ -1035,9 +1035,9 @@ module validation.thm.soundness {
     }
 
     lemma LubRecordType(rt1: RecordType, rt2: RecordType)
-    ensures var rtl := lubRecordType(rt1, rt2);
-      forall k | k in rtl.attrs.Keys ::
-        lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty) == Ok(rtl.attrs[k].ty)
+      ensures var rtl := lubRecordType(rt1, rt2);
+              forall k | k in rtl.attrs.Keys ::
+                lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty) == Ok(rtl.attrs[k].ty)
     {}
 
     lemma LubRecordTypeSubty(rt1: RecordType, rt2: RecordType)
@@ -1338,24 +1338,24 @@ module validation.thm.soundness {
                 // Argument that is the same any time e2 is a set.
                 assert e2IsSet;
                 var eltType :| t2 == Type.Set(eltType);
-  InferSetLemma(e2, ei2s, effs);
-  forall i | 0 <= i < |ei2s|
-    ensures IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity))
-  {
-    assert subty(getType(ei2s[i],effs), eltType);
-    SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
-    assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
-  }
-  // Argument depending on e1
-  forall i | 0 <= i < |ei2s|
-    ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
-  {
-    // Since this is the most expensive part of the proof, we move
-    // it to a separate lemma to help keep each lemma under the
-    // verification limits.
-    SoundInSetMemberFalse(e1, ei2s, i, effs);
-  }
-  InSetFalseIfAllFalse(r,s,e1,ei2s);
+                InferSetLemma(e2, ei2s, effs);
+                forall i | 0 <= i < |ei2s|
+                  ensures IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity))
+                {
+                  assert subty(getType(ei2s[i],effs), eltType);
+                  SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
+                  assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
+                }
+                // Argument depending on e1
+                forall i | 0 <= i < |ei2s|
+                  ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
+                {
+                  // Since this is the most expensive part of the proof, we move
+                  // it to a separate lemma to help keep each lemma under the
+                  // verification limits.
+                  SoundInSetMemberFalse(e1, ei2s, i, effs);
+                }
+                InSetFalseIfAllFalse(r,s,e1,ei2s);
             }
           }
       }

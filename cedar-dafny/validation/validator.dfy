@@ -114,7 +114,7 @@ module validation.validator {
         var allFalse := true;
         while reqtys != {} {
           var reqty :| reqty in reqtys;
-  // substitute Action variable for a literal EUID
+          // substitute Action variable for a literal EUID
           var condition := substitute(p.toExpr(), Action, reqty.action);
           // typecheck p
           var answer := Typecheck(condition, ets, acts, reqty);
