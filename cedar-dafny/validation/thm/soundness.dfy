@@ -1034,6 +1034,12 @@ module validation.thm.soundness {
       }
     }
 
+    lemma LubRecordType(rt1: RecordType, rt2: RecordType)
+    ensures var rtl := lubRecordType(rt1, rt2);
+      forall k | k in rtl.attrs.Keys ::
+        lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty) == Ok(rtl.attrs[k].ty)
+    {}
+
     lemma LubRecordTypeSubty(rt1: RecordType, rt2: RecordType)
       ensures subtyRecordType(rt1, lubRecordType(rt1, rt2))
       ensures subtyRecordType(rt2, lubRecordType(rt1, rt2))
@@ -1044,15 +1050,13 @@ module validation.thm.soundness {
       assert rt2.isOpen() ==> rtl.isOpen();
       assert !rtl.isOpen() ==> rt1.attrs.Keys == rt2.attrs.Keys;
 
+      LubRecordType(rt1, rt2);
+
       forall k | k in rtl.attrs.Keys
         ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
         var al := rtl.attrs[k];
         var a1 := rt1.attrs[k];
         var a2 := rt2.attrs[k];
-        var al' := lubOpt(a1.ty,a2.ty);
-
-        assert al'.Ok?;
-
         LubIsUB(a1.ty, a2.ty, al.ty);
       }
     }
