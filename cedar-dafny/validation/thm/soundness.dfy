@@ -959,7 +959,7 @@ module validation.thm.soundness {
       forall i | 0 <= i < |es|
         ensures IsSafe(r,s,es[i],st)
       {
-        InterpretSetLemma(es, Evaluator(r,s));
+        SetSemantics(es, Evaluator(r,s));
         assert Typesafe(es[i],effs,st);
         Sound(es[i],st,effs);
       }

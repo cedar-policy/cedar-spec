@@ -673,7 +673,7 @@ module validation.thm.model {
   {
     reveal IsSafe();
     var E := Evaluator(r,s);
-    InterpretSetLemma(es,E);
+    SetSemantics(es,E);
     if(forall i | 0 <= i < |es| :: exists v :: Evaluate(es[i],r,s) == base.Ok(v) && InstanceOfType(v,t)){
       assert forall e | e in es :: Evaluate(e,r,s).Ok?;
       assert Evaluate(Expr.Set(es),r,s).Ok?;
@@ -807,7 +807,7 @@ module validation.thm.model {
     if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
       assert forall e <- args :: Evaluate(e,r,s).Ok?;
 
-      InterpretListEnsures(E, args);
+      ListSemantics(args, E);
       var argVals := E.interpretList(args).value;
 
       var res := E.applyExtFun(name, argVals);
@@ -831,7 +831,7 @@ module validation.thm.model {
         assert isSafe;
       }
     } else {
-      InterpretListEnsures(E, args);
+      ListSemantics(args, E);
     }
   }
 
@@ -848,16 +848,16 @@ module validation.thm.model {
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     reveal IsSafe();
-    var evaluator := Evaluator(r,s);
-    var res := evaluator.interpretRecord(es);
+    var E := Evaluator(r,s);
+    var res := E.interpretRecord(es);
     if res.Ok? {
       var rv := res.value;
-      assert evaluator.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
-      InterpretRecordLemmaOk(es, evaluator);
+      assert E.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
+      RecordSemanticsOk(es, E);
       forall k | k in rt.attrs
         ensures InstanceOfType(rv[k],rt.attrs[k].ty)
       {
-        var vres := evaluator.interpret(LastOfKey(k,es));
+        var vres := E.interpret(LastOfKey(k,es));
         assert vres == base.Ok(rv[k]);
         assert InstanceOfType(vres.value,rt.attrs[k].ty);
       }
@@ -868,7 +868,7 @@ module validation.thm.model {
       {
         // Unclear why it helps re-assert the result of this lemma.  Also, the
         // proof blows up if I hide the long condition in a predicate.
-        InterpretRecordLemmaErr(es, evaluator);
+        RecordSemanticsErr(es, E);
         assert exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?);
         var attr_idx :| 0 <= attr_idx < |es| && Evaluator(r,s).interpret(es[attr_idx].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < attr_idx :: Evaluator(r,s).interpret(es[j].1).Ok?);
         var attr_expr := es[attr_idx].1;
@@ -1045,7 +1045,7 @@ module validation.thm.model {
   {
     reveal IsSafe();
     var evaluator := Evaluator(r,s);
-    InterpretSetLemma(e2s, evaluator);
+    SetSemantics(e2s, evaluator);
     var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
     var r1 := evaluator.interpret(e1);
     var r2 := evaluator.interpret(Expr.Set(e2s));
