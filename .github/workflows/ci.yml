@@ -52,12 +52,11 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
-      - name: build dafny def engine
+      - name: Build Dafny def engine
         working-directory: ./cedar-dafny
+        shell: bash
         run: |
-              export PATH=$PATH:$(pwd)/../dafny/z3/bin &&
-              export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" &&
-              export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server &&
+              (cd cedar-drt && source ./set_env_vars.sh)
               make compile-difftest
       - name: Build cedar-dafny-java-wrapper
         working-directory: ./cedar-dafny-java-wrapper
@@ -90,7 +89,5 @@ jobs:
         working-directory: ./cedar-drt
         shell: bash
         run: |
-             export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" &&
-             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server &&
-             export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar" &&
+             source ./set_env_vars.sh
              cargo test --verbose
