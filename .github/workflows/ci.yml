@@ -56,7 +56,7 @@ jobs:
         working-directory: ./cedar-dafny
         shell: bash
         run: |
-              (cd cedar-drt && source ./set_env_vars.sh)
+              (cd ../cedar-drt && source ./set_env_vars.sh)
               make compile-difftest
       - name: Build cedar-dafny-java-wrapper
         working-directory: ./cedar-dafny-java-wrapper
