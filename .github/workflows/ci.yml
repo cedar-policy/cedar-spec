@@ -52,22 +52,10 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
-      - name: cargo test (cedar-drt)
-        working-directory: ./cedar-drt
-        shell: bash
-        run: |
-             echo $JAVA_HOME
-             source ./set_env_vars.sh
-             echo $JAVA_HOME
-             echo $(java -XshowSettings:properties -version 2>&1)
-             echo $LD_LIBRARY_PATH
-             source ./set_env_vars.sh && cargo test --verbose
       - name: Build Dafny def engine
         working-directory: ./cedar-dafny
         shell: bash
-        run: |
-              (cd ../cedar-drt && source ./set_env_vars.sh)
-              make compile-difftest
+        run: make compile-difftest
       - name: Build cedar-dafny-java-wrapper
         working-directory: ./cedar-dafny-java-wrapper
         shell: bash
@@ -95,3 +83,10 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
+      - name: cargo test (cedar-drt)
+        working-directory: ./cedar-drt
+        shell: bash
+        run: |
+             source ./set_env_vars.sh
+             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server
+             cargo test --verbose
