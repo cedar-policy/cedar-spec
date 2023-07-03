@@ -60,7 +60,8 @@ jobs:
              source ./set_env_vars.sh
              echo $JAVA_HOME
              echo $(java -XshowSettings:properties -version 2>&1)
-             cargo test --verbose
+             echo $LD_LIBRARY_PATH
+             source ./set_env_vars.sh && cargo test --verbose
       - name: Build Dafny def engine
         working-directory: ./cedar-dafny
         shell: bash
