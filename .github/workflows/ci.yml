@@ -52,6 +52,15 @@ jobs:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
+      - name: cargo test (cedar-drt)
+        working-directory: ./cedar-drt
+        shell: bash
+        run: |
+             echo $JAVA_HOME
+             source ./set_env_vars.sh
+             echo $JAVA_HOME
+             echo $(java -XshowSettings:properties -version 2>&1)
+             cargo test --verbose
       - name: Build Dafny def engine
         working-directory: ./cedar-dafny
         shell: bash
@@ -85,9 +94,3 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
-      - name: cargo test (cedar-drt)
-        working-directory: ./cedar-drt
-        shell: bash
-        run: |
-             source ./set_env_vars.sh
-             cargo test --verbose
