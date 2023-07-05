@@ -1141,7 +1141,7 @@ module validation.thm.model {
       ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
     {
       if Evaluator(r,s).interpretRecord(es).Ok? {
-        InterpretRecordLemmaOk(es,r,s);
+        assert InstanceOfType(Evaluate(Expr.Record(es),r,s).value,Type.Record(rt)) by {InterpretRecordLemmaOk(es,r,s);}
       } else {
         InterpretRecordLemmaErr(es,r,s);
       }
