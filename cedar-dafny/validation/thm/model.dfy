@@ -758,7 +758,16 @@ module validation.thm.model {
     requires IsDecimalComparisonName(name)
     requires ExtensionFunSafeRequires(name, args)
     ensures ExtensionFunSafeEnsures(name, args)
-  {}
+  {
+    var res := extFuns[name].fun(args);
+    match res
+    case Err(e) => {
+      assert e == base.ExtensionError;
+    }
+    case Ok(value) => {
+      assert InstanceOfType(value, extFunTypes[name].ret);
+    }
+  }
 
   ghost predicate IsIpConstructorName(name: base.Name) {
     name == base.Name.fromStr("ip")
