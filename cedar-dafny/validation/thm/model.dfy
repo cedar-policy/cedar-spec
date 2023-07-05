@@ -1089,6 +1089,12 @@ module validation.thm.model {
       ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j :: 0 <= j < i ==> eval.interpret(es[j]).Ok?)
     {}
 
+    lemma InterpretListEnsuresErr(eval: Evaluator, es: seq<Expr>)
+      ensures (exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err?) ==> eval.interpretList(es).Err?
+      ensures eval.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j :: 0 <= j < i ==> eval.interpret(es[j]).Ok?)
+      ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j :: 0 <= j < i ==> eval.interpret(es[j]).Ok?)
+    {}
+
     lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)
       requires name in extFunTypes
       requires |args| == |extFunTypes[name].args|
@@ -1123,7 +1129,7 @@ module validation.thm.model {
           assert isSafe;
         }
       } else {
-        InterpretListEnsures(Evaluator(r, s), args);
+        InterpretListEnsuresErr(Evaluator(r, s), args);
       }
     }
 
