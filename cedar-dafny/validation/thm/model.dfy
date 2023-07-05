@@ -758,7 +758,11 @@ module validation.thm.model {
     requires IsDecimalComparisonName(name)
     requires ExtensionFunSafeRequires(name, args)
     ensures ExtensionFunSafeEnsures(name, args)
-  {}
+  {
+    assert extFunTypes[name].ret == Type.Bool(AnyBool);
+    var res := extFuns[name].fun(args);
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool));
+  }
 
   ghost predicate IsIpConstructorName(name: base.Name) {
     name == base.Name.fromStr("ip")
@@ -807,31 +811,28 @@ module validation.thm.model {
     if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
       assert forall e <- args :: Evaluate(e,r,s).Ok?;
 
-      ListSemantics(args, E);
-      var argVals := E.interpretList(args).value;
+      ListSemanticsOk(args, E);
 
+      var argVals := E.interpretList(args).value;
       var res := E.applyExtFun(name, argVals);
       assert Evaluate(Call(name,args),r,s) == res;
       assert forall i | 0 <= i < |args| :: InstanceOfType(argVals[i], eft.args[i]);
       var isSafe := (res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret)));
-      if IsDecimalConstructorName(name) {
-        DecimalConstructorSafe(name, argVals);
-        assert isSafe;
-      } else if IsDecimalComparisonName(name) {
-        DecimalComparisonSafe(name, argVals);
-        assert isSafe;
-      } else if IsIpConstructorName(name) {
-        IpConstructorSafe(name, argVals);
-        assert isSafe;
-      } else if IsIpUnaryName(name) {
-        IpUnarySafe(name, argVals);
-        assert isSafe;
-      } else if IsIpBinaryName(name) {
-        IpBinarySafe(name, argVals);
-        assert isSafe;
+      assert isSafe by {
+        if IsDecimalConstructorName(name) {
+          DecimalConstructorSafe(name, argVals);
+        } else if IsDecimalComparisonName(name) {
+          DecimalComparisonSafe(name, argVals);
+        } else if IsIpConstructorName(name) {
+          IpConstructorSafe(name, argVals);
+        } else if IsIpUnaryName(name) {
+          IpUnarySafe(name, argVals);
+        } else if IsIpBinaryName(name) {
+          IpBinarySafe(name, argVals);
+        }
       }
     } else {
-      ListSemantics(args, E);
+      ListSemanticsErr(args, E);
     }
   }
 
@@ -1049,6 +1050,9 @@ module validation.thm.model {
     var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
     var r1 := evaluator.interpret(e1);
     var r2 := evaluator.interpret(Expr.Set(e2s));
+    if r1.Ok? {
+    } else {
+    }
   }
 
   lemma InSetFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)
@@ -1070,7 +1074,14 @@ module validation.thm.model {
       var s2 := Value.asSet(r2.value).value;
       assert forall us2 <- s2 :: InstanceOfType(us2,t2);
       var us2 :- assert evaluator.checkEntitySet(s2);
-      assert forall u2 <- us2 :: !EntityInEntity(s,u1,u2);
+      forall u2 <- us2 ensures !EntityInEntity(s,u1,u2) {
+        assert InstanceOfType(Value.EntityUID(u1), t1);
+        assert InstanceOfType(Value.EntityUID(u2), t2);
+      }
+
+      var res := Evaluate(BinaryApp(BinaryOp.In, e1, e2), r, s);
+      assert res.Ok?;
+      assert InstanceOfType(res.value,Type.Bool(BoolType.False));
     }
   }
 }
