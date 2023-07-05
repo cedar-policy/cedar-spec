@@ -840,7 +840,7 @@ module validation.thm.model {
         assert isSafe;
       }
     } else {
-      ListSemantics(args, E);
+      ListSemanticsErr(args, E);
     }
   }
 
