@@ -1350,6 +1350,18 @@ module validation.thm.soundness {
       ensures forall i | 0 <= i < |args| :: Typesafe(args[i],effs,tys[i])
     {}
 
+    lemma TypesafeCallSemantics(name: base.Name, es: seq<Expr>, effs: Effects, t: Type)
+    requires Typesafe(Call(name,es),effs,t)
+    ensures name in extFunTypes
+    ensures |extFunTypes[name].args| == |es|
+    ensures forall i | 0 <= i < |es| :: Typesafe(es[i],effs,extFunTypes[name].args[i])
+    ensures extFunTypes[name].ret == t
+    {
+      assert Typechecker(ets,acts,reqty).inferCall(Call(name,es),name,es,effs).Ok?;
+      InferCallArgsSound(Call(name,es),name,es,extFunTypes[name].args,effs);
+    }
+
+
     lemma SoundCall(name: base.Name, es: seq<Expr>, t: Type, effs: Effects)
       decreases Call(name,es) , 0
       requires WellFormedRequestAndStore()
@@ -1359,8 +1371,8 @@ module validation.thm.soundness {
       ensures getEffects(Call(name,es),effs) == Effects.empty()
     {
       assert Typechecker(ets,acts,reqty).inferCall(Call(name,es),name,es,effs).Ok?;
+      TypesafeCallSemantics(name, es, effs, t);
       var eft := extFunTypes[name];
-      InferCallArgsSound(Call(name,es),name,es,eft.args,effs);
       forall i | 0 <= i < |es| ensures IsSafe(r,s,es[i],eft.args[i]) {
         Sound(es[i],eft.args[i],effs);
       }
