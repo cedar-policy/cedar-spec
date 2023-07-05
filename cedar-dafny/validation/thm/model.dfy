@@ -1050,6 +1050,9 @@ module validation.thm.model {
     var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
     var r1 := evaluator.interpret(e1);
     var r2 := evaluator.interpret(Expr.Set(e2s));
+    if r1.Ok? {
+    } else {
+    }
   }
 
   lemma InSetFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)

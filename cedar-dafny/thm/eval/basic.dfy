@@ -112,7 +112,7 @@ module eval.basic {
   {}
 
   lemma ListSemanticsOk(es: seq<Expr>, E: Evaluator)
-    requires forall e <- es :: E.interpret(e).Ok?
+    requires forall i | 0 <= i < |es| :: E.interpret(es[i]).Ok?
     ensures E.interpretList(es).Ok?
     ensures |E.interpretList(es).value| == |es|
     ensures forall i | 0 <= i < |es| :: E.interpret(es[i]) == base.Ok(E.interpretList(es).value[i])
