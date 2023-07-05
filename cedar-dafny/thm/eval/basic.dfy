@@ -38,20 +38,64 @@ module eval.basic {
     ensures E.interpret(e2) == Ok(Value.TRUE)
   { }
 
+  lemma RecordSemanticsOkImpliesAllOk(es: seq<(Attr, Expr)>, E: Evaluator)
+    requires E.interpretRecord(es).Ok?
+    ensures forall i :: 0 <= i < |es| ==> es[i].0 in E.interpretRecord(es).value.Keys && E.interpret(es[i].1).Ok?
+  {
+    if es == [] {
+
+    } else if E.interpret(es[0].1).Ok? && E.interpretRecord(es[1..]).Ok? {
+
+    } else {
+      assert E.interpretRecord(es).Err?;
+    }
+  }
+
+  lemma RecordSemanticsOkAttrs(es: seq<(Attr, Expr)>, E: Evaluator)
+    requires E.interpretRecord(es).Ok?
+    ensures E.interpretRecord(es).value.Keys == set e | e in es :: e.0
+  {
+    if es != [] {
+      RecordSemanticsOkAttrs(es[1..], E);
+      var rec' := E.interpretRecord(es[1..]).value;
+      if es[0].0 in rec'.Keys {
+        assert E.interpretRecord(es).value == rec';
+        assert (set e | e in es :: e.0) == (set e | e in es[1..] :: e.0);
+      } else {
+        assert E.interpretRecord(es).value == rec'[es[0].0 := E.interpret(es[0].1).value];
+        assert (set e | e in es :: e.0) == (set e | e in es[1..] :: e.0) + {es[0].0};
+      }
+    }
+  }
+
+  lemma RecordSemanticsOkLastofKey(es: seq<(Attr, Expr)>, E: Evaluator)
+    requires E.interpretRecord(es).Ok?
+    ensures forall k | k in E.interpretRecord(es).value.Keys :: KeyExists(k,es) && E.interpret(LastOfKey(k,es)) == base.Ok(E.interpretRecord(es).value[k])
+  {
+    if |es| == 0 {
+    } else {
+      if E.interpret(es[0].1).Ok? && E.interpretRecord(es[1..]).Ok? {
+        var rec' := E.interpretRecord(es[1..]).value;
+        RecordSemanticsOkLastofKey(es[1..], E);
+        if es[0].0 in rec'.Keys {
+          assert E.interpretRecord(es).value == rec';
+        } else {
+          RecordSemanticsOkAttrs(es[1..], E);
+          assert LastOfKey(es[0].0, es) == es[0].1;
+        }
+      } else {
+        assert E.interpretRecord(es).Err?;
+      }
+    }
+  }
+
   lemma RecordSemanticsOk(es: seq<(Attr,Expr)>, E: Evaluator)
     requires E.interpretRecord(es).Ok?
     ensures forall i :: 0 <= i < |es| ==> es[i].0 in E.interpretRecord(es).value.Keys && E.interpret(es[i].1).Ok?
     ensures forall k | k in E.interpretRecord(es).value.Keys :: KeyExists(k,es) && E.interpret(LastOfKey(k,es)) == base.Ok(E.interpretRecord(es).value[k])
   {
-    if |es| == 0 {
-      assert E.interpretRecord(es) == Ok(map[]);
-    } else {
-      if E.interpret(es[0].1).Ok? {
-
-      } else {
-        assert E.interpretRecord(es).Err?;
-      }
-    }
+    RecordSemanticsOkImpliesAllOk(es, E);
+    RecordSemanticsOkLastofKey(es, E);
   }
 
   lemma RecordSemanticsErr(es: seq<(Attr,Expr)>, E: Evaluator)
