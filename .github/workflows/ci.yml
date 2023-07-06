@@ -27,12 +27,16 @@ jobs:
           echo "$(pwd)/z3-4.12.1-x64-glibc-2.35/bin" >> $GITHUB_PATH
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: make verify
+        run: make GEN_STATS=1 verify
       - name: test dafny
         working-directory: ./cedar-dafny
         run: make test
+      - name: log resource usage
+        working-directory: ./cedar-dafny
+        run: |
+          dotnet tool restore
+          dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 . || true
 
-  
   build_and_test_drt:
     name: Build and Test DRT
     runs-on: ubuntu-latest
