@@ -709,6 +709,21 @@ module validation.thm.soundness {
       }
     }
 
+    lemma TypesafeEqSemantics(e1: Expr, e2: Expr, t: Type, effs: Effects) returns (t': Type)
+      requires EffectsInvariant(effs)
+      requires Typesafe(BinaryApp(BinaryOp.Eq, e1, e2), effs, t)
+      ensures getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t)
+      ensures Typechecker(ets,acts,reqty).inferEq(e1,e2,effs) == types.Ok(t');
+      ensures Typesafe(e1,effs,getType(e1,effs))
+      ensures Typesafe(e2,effs,getType(e2,effs))
+    {
+      var tt' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == tt' && subty(tt',t);
+      assert Typechecker(ets,acts,reqty).inferEq(e1,e2,effs) == types.Ok(tt');
+      t' := tt';
+      SubtyRefl(getType(e1,effs));
+      SubtyRefl(getType(e2,effs));
+    }
+
     lemma SoundEq(e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(BinaryOp.Eq,e1,e2) , 0
       requires WellFormedRequestAndStore()
@@ -717,12 +732,10 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t)
       ensures getEffects(BinaryApp(BinaryOp.Eq,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t);
+      var t' := TypesafeEqSemantics(e1,e2,t,effs);
       assert Typechecker(ets,acts,reqty).inferEq(e1,e2,effs) == types.Ok(t');
       var t1 := getType(e1,effs);
       var t2 := getType(e2,effs);
-      assert Typesafe(e1,effs,t1) by { SubtyRefl(t1); }
-      assert Typesafe(e2,effs,t2) by { SubtyRefl(t2); }
       assert IsSafe(r,s,e1,t1) by { Sound(e1,t1,effs); }
       assert IsSafe(r,s,e2,t2) by { Sound(e2,t2,effs); }
       match (e1,e2,t1,t2) {
@@ -1351,11 +1364,11 @@ module validation.thm.soundness {
     {}
 
     lemma TypesafeCallSemantics(name: base.Name, es: seq<Expr>, effs: Effects, t: Type)
-    requires Typesafe(Call(name,es),effs,t)
-    ensures name in extFunTypes
-    ensures |extFunTypes[name].args| == |es|
-    ensures forall i | 0 <= i < |es| :: Typesafe(es[i],effs,extFunTypes[name].args[i])
-    ensures extFunTypes[name].ret == t
+      requires Typesafe(Call(name,es),effs,t)
+      ensures name in extFunTypes
+      ensures |extFunTypes[name].args| == |es|
+      ensures forall i | 0 <= i < |es| :: Typesafe(es[i],effs,extFunTypes[name].args[i])
+      ensures extFunTypes[name].ret == t
     {
       assert Typechecker(ets,acts,reqty).inferCall(Call(name,es),name,es,effs).Ok?;
       InferCallArgsSound(Call(name,es),name,es,extFunTypes[name].args,effs);
