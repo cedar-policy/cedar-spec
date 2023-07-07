@@ -89,13 +89,21 @@ module eval.basic {
     }
   }
 
+  // Surprisingly, this lemma costs 4M RUs.
+  lemma RecordSemanticsValue(es: seq<(Attr,Expr)>, E: Evaluator)
+    requires E.interpretRecord(es).Ok?
+    ensures E.interpret(Expr.Record(es)) == base.Ok(Value.Record(E.interpretRecord(es).value))
+  {}
+
   lemma RecordSemanticsOk(es: seq<(Attr,Expr)>, E: Evaluator)
     requires E.interpretRecord(es).Ok?
     ensures forall i :: 0 <= i < |es| ==> es[i].0 in E.interpretRecord(es).value.Keys && E.interpret(es[i].1).Ok?
     ensures forall k | k in E.interpretRecord(es).value.Keys :: KeyExists(k,es) && E.interpret(LastOfKey(k,es)) == base.Ok(E.interpretRecord(es).value[k])
+    ensures E.interpret(Expr.Record(es)) == base.Ok(Value.Record(E.interpretRecord(es).value))
   {
     RecordSemanticsOkImpliesAllOk(es, E);
     RecordSemanticsOkLastofKey(es, E);
+    RecordSemanticsValue(es, E);
   }
 
   lemma RecordSemanticsErr(es: seq<(Attr,Expr)>, E: Evaluator)
