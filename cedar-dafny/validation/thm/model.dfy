@@ -101,6 +101,56 @@ module validation.thm.model {
     (Evaluate(e,r,s).Ok? && InstanceOfType(Evaluate(e,r,s).value,t))
   }
 
+  lemma IsSafeSemanticsOk(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires Evaluate(e,r,s).Ok? && InstanceOfType(Evaluate(e,r,s).value,t)
+    ensures IsSafe(r, s, e, t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma IsSafeSemanticsErr(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires Evaluate(e, r, s) == base.Err(base.EntityDoesNotExist) || Evaluate(e,r,s) == base.Err(base.ExtensionError)
+    ensures IsSafe(r, s, e, t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma IsSafeSemanticsOkRev(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires IsSafe(r, s, e, t)
+    requires Evaluate(e, r, s).Ok?
+    ensures InstanceOfType(Evaluate(e,r,s).value,t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma ExtensionFunSafeEnsuresSafe(r: Request, s: EntityStore, name: base.Name, es: seq<Expr>, args: seq<Value>)
+    requires name in extFunTypes
+    requires |es| == |args|
+    requires Evaluator(r, s).interpretList(es).Ok? && Evaluator(r, s).interpretList(es).value == args
+    requires ExtensionFunSafeEnsures(name, args)
+    ensures IsSafe(r, s, Call(name, es), extFunTypes[name].ret)
+  {
+    var eft := extFunTypes[name];
+    var res := extFuns[name].fun(args);
+    assert res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret));
+    var E := Evaluator(r, s);
+    assert E.interpretList(es).Ok?;
+    CallWithOkArgs(name, es, E);
+    if res == base.Err(base.ExtensionError) {
+      IsSafeSemanticsErr(r, s, Call(name, es), extFunTypes[name].ret);
+    } else {
+      IsSafeSemanticsOk(r, s, Call(name, es), extFunTypes[name].ret);
+    }
+  }
+
+  lemma IsSafeSemanticsErrRev(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires IsSafe(r, s, e, t)
+    requires Evaluate(e, r, s).Err?
+    ensures Evaluate(e, r, s) == base.Err(base.EntityDoesNotExist) || Evaluate(e,r,s) == base.Err(base.ExtensionError)
+  {
+    reveal IsSafe();
+  }
+
   opaque ghost predicate IsSafeStrong (r: Request, s: EntityStore, e: Expr, t: Type) {
     IsSafe(r,s,e,t) && Evaluate(e,r,s).Ok?
   }
@@ -805,34 +855,41 @@ module validation.thm.model {
     requires forall i | 0 <= i < |args| :: IsSafe(r,s,args[i],extFunTypes[name].args[i])
     ensures IsSafe(r,s,Call(name,args),extFunTypes[name].ret)
   {
-    reveal IsSafe();
     var eft := extFunTypes[name];
     var E := Evaluator(r, s);
-    if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
-      assert forall e <- args :: Evaluate(e,r,s).Ok?;
-
+    if (forall i | 0 <= i < |args| :: E.interpret(args[i]).Ok?) {
       ListSemanticsOk(args, E);
 
       var argVals := E.interpretList(args).value;
       var res := E.applyExtFun(name, argVals);
-      assert Evaluate(Call(name,args),r,s) == res;
-      assert forall i | 0 <= i < |args| :: InstanceOfType(argVals[i], eft.args[i]);
-      var isSafe := (res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret)));
-      assert isSafe by {
-        if IsDecimalConstructorName(name) {
-          DecimalConstructorSafe(name, argVals);
-        } else if IsDecimalComparisonName(name) {
-          DecimalComparisonSafe(name, argVals);
-        } else if IsIpConstructorName(name) {
-          IpConstructorSafe(name, argVals);
-        } else if IsIpUnaryName(name) {
-          IpUnarySafe(name, argVals);
-        } else if IsIpBinaryName(name) {
-          IpBinarySafe(name, argVals);
+      assert forall i:nat | i < |args| :: InstanceOfType(argVals[i], eft.args[i]) by {
+        forall i: nat | i < |args| ensures InstanceOfType(argVals[i], eft.args[i]) {
+          assert E.interpret(args[i]) == base.Ok(argVals[i]);
+          IsSafeSemanticsOkRev(r, s, args[i], eft.args[i]);
         }
       }
+      if IsDecimalConstructorName(name) {
+        DecimalConstructorSafe(name, argVals);
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
+      } else if IsDecimalComparisonName(name) {
+        DecimalComparisonSafe(name, argVals);
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
+      } else if IsIpConstructorName(name) {
+        IpConstructorSafe(name, argVals);
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
+      } else if IsIpUnaryName(name) {
+        IpUnarySafe(name, argVals);
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
+      } else if IsIpBinaryName(name) {
+        IpBinarySafe(name, argVals);
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
+      }
+
     } else {
-      ListSemanticsErr(args, E);
+      var i := ListSemanticsErrRet(args, E);
+      IsSafeSemanticsErrRev(r, s, args[i], extFunTypes[name].args[i]);
+      CallWithErrArgs(name, args, E);
+      IsSafeSemanticsErr(r,s,Call(name,args),extFunTypes[name].ret);
     }
   }
 
@@ -848,37 +905,27 @@ module validation.thm.model {
     requires !rt.isOpen() ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
-    reveal IsSafe();
     var E := Evaluator(r,s);
     var res := E.interpretRecord(es);
-    if res.Ok? {
-      var rv := res.value;
-      assert E.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
-      RecordSemanticsOk(es, E);
-      forall k | k in rt.attrs
-        ensures InstanceOfType(rv[k],rt.attrs[k].ty)
-      {
-        var vres := E.interpret(LastOfKey(k,es));
-        assert vres == base.Ok(rv[k]);
-        assert InstanceOfType(vres.value,rt.attrs[k].ty);
-      }
-      assert InstanceOfType(Value.Record(rv),Type.Record(rt));
-    } else {
-      assert Evaluate(Expr.Record(es),r,s) == base.Err(base.EntityDoesNotExist) ||
-             Evaluate(Expr.Record(es),r,s) == base.Err(base.ExtensionError) by
-      {
-        // Unclear why it helps re-assert the result of this lemma.  Also, the
-        // proof blows up if I hide the long condition in a predicate.
+    match res {
+      case Ok(rv) =>
+        assert E.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
+        RecordSemanticsOk(es, E);
+        forall k | k in rt.attrs
+          ensures InstanceOfType(rv[k],rt.attrs[k].ty)
+        {
+          assert KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty);
+          IsSafeSemanticsOkRev(r, s, LastOfKey(k,es),rt.attrs[k].ty);
+        }
+        assert InstanceOfType(Value.Record(rv),Type.Record(rt));
+        IsSafeSemanticsOk(r, s, Expr.Record(es), Type.Record(rt));
+      case Err(err) =>
+        var i := RecordSemanticsErrRet(es, E);
+        var e := es[i].1;
+        var t :| IsSafe(r,s,e,t);
+        IsSafeSemanticsErrRev(r, s, e, t);
         RecordSemanticsErr(es, E);
-        assert exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?);
-        var attr_idx :| 0 <= attr_idx < |es| && Evaluator(r,s).interpret(es[attr_idx].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < attr_idx :: Evaluator(r,s).interpret(es[j].1).Ok?);
-        var attr_expr := es[attr_idx].1;
-
-        assert Evaluate(attr_expr,r,s) == base.Err(base.EntityDoesNotExist) ||
-               Evaluate(attr_expr,r,s) == base.Err(base.ExtensionError);
-
-        assert Evaluate(attr_expr,r,s) == Evaluate(Expr.Record(es), r, s);
-      }
+        IsSafeSemanticsErr(r, s, Expr.Record(es), Type.Record(rt));
     }
   }
 
@@ -1006,18 +1053,24 @@ module validation.thm.model {
                !EntityInEntity(s,u1,u2)
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2))
   {
-    var evaluator := Evaluator(r,s);
-    var r1 := evaluator.interpret(e1);
-    var r2 := evaluator.interpret(e2);
-    var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,e2));
+    var E := Evaluator(r,s);
+    var r1 := E.interpret(e1);
+    var r2 := E.interpret(e2);
+    var res := E.interpret(BinaryApp(BinaryOp.In,e1,e2));
 
-    reveal IsSafe();
     if r1.Err? {
+      BinaryAppSemanticsErrLeft(e1, e2, BinaryOp.In, E);
       assert res == r1;
+      IsSafeSemanticsErrRev(r, s, e1, t1);
+      IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In, e1, e2), Type.Bool(False));
     } else if r2.Err? {
+      BinaryAppSemanticsErrRight(e1, e2, BinaryOp.In, E);
       assert res == r2;
+      IsSafeSemanticsErrRev(r, s, e2, t2);
+      IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In, e1, e2), Type.Bool(False));
     } else {
-      assert res == evaluator.applyBinaryOp(BinaryOp.In,r1.value,r2.value);
+      IsSafeSemanticsOkRev(r, s, e1, t1);
+      IsSafeSemanticsOkRev(r, s, e2, t2);
       assert InstanceOfType(r1.value,t1);
       assert InstanceOfType(r2.value,t2);
       assert r1.value.Primitive? && r1.value.primitive.EntityUID?;
@@ -1025,7 +1078,11 @@ module validation.thm.model {
       var u1 := r1.value.primitive.uid;
       var u2 := r2.value.primitive.uid;
       assert !EntityInEntity(s,u1,u2);
+      BinaryAppSemanticsOk(e1, e2, BinaryOp.In, E);
+      assert res == E.applyBinaryOp(BinaryOp.In,r1.value,r2.value);
       assert res.value == Value.FALSE;
+      assert InstanceOfType(res.value, Type.Bool(False));
+      IsSafeSemanticsOk(r, s, BinaryApp(BinaryOp.In,e1,e2), Type.Bool(False));
     }
   }
 
@@ -1044,14 +1101,37 @@ module validation.thm.model {
                IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2s[i]))
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)))
   {
-    reveal IsSafe();
-    var evaluator := Evaluator(r,s);
-    SetSemantics(e2s, evaluator);
-    var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
-    var r1 := evaluator.interpret(e1);
-    var r2 := evaluator.interpret(Expr.Set(e2s));
-    if r1.Ok? {
-    } else {
+    var E := Evaluator(r,s);
+    var res := E.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
+    var r1 := E.interpret(e1);
+    var r2 := E.interpret(Expr.Set(e2s));
+    assert r2.Ok? ==> E.interpretSet(e2s).Ok? by {
+      assert r2 == E.interpretSet(e2s).Map(v => core.Value.Set(v));
+    }
+    match (r1, r2) {
+      case (Ok(v1), Ok(v2)) =>
+        IsSafeSemanticsOkRev(r, s, e1, Type.Entity(AnyEntity));
+        assert core.Value.asEntity(v1).Ok?;
+        SetSemanticsOk(e2s, E);
+        forall i: nat | i < |e2s|
+          ensures E.interpret(e2s[i]).Ok?
+          ensures core.Value.asEntity(E.interpret(e2s[i]).value).Ok?
+          ensures E.interpret(BinaryApp(BinaryOp.In, e1, e2s[i])) == base.Ok(Value.Bool(false)) {
+          assert E.interpret(e2s[i]).Ok?;
+          IsSafeSemanticsOkRev(r, s, e2s[i], Type.Entity(AnyEntity));
+          assert core.Value.asEntity(E.interpret(e2s[i]).value).Ok?;
+          IsSafeSemanticsOkRev(r, s, BinaryApp(BinaryOp.In, e1, e2s[i]), Type.Bool(False));
+          assert E.interpret(BinaryApp(BinaryOp.In, e1, e2s[i])) == base.Ok(Value.Bool(false));
+        }
+        InSetSemantics(e1, e2s, E);
+        IsSafeSemanticsOk(r, s, BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)), Type.Bool(False));
+      case (Err(err1), _) =>
+        IsSafeSemanticsErrRev(r, s, e1, Type.Entity(AnyEntity));
+        IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)), Type.Bool(False));
+      case (_, Err(err2)) =>
+        // Probably we're gonna pay for my laziness here in the future.
+        reveal IsSafe();
+        SetSemantics(e2s, E);
     }
   }
 

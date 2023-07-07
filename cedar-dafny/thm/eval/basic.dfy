@@ -100,7 +100,38 @@ module eval.basic {
 
   lemma RecordSemanticsErr(es: seq<(Attr,Expr)>, E: Evaluator)
     requires E.interpretRecord(es).Err?
-    ensures exists i :: 0 <= i < |es| && E.interpret(es[i].1) == base.Err(E.interpretRecord(es).error) && (forall j | 0 <= j < i :: E.interpret(es[j].1).Ok?)
+    ensures exists i: nat :: i < |es| && E.interpret(es[i].1) == base.Err(E.interpretRecord(es).error) && (forall j | 0 <= j < i :: E.interpret(es[j].1).Ok?)
+    ensures E.interpret(Expr.Record(es)).Err? && E.interpret(Expr.Record(es)).error == E.interpretRecord(es).error
+  {}
+
+  lemma RecordSemanticsErrRet(es: seq<(Attr,Expr)>, E: Evaluator) returns (i: nat)
+    requires E.interpretRecord(es).Err?
+    ensures i < |es|
+    ensures E.interpret(es[i].1).Err? && E.interpret(es[i].1).error == E.interpretRecord(es).error
+    ensures forall j | 0 <= j < i :: E.interpret(es[j].1).Ok?
+  {
+    RecordSemanticsErr(es, E);
+    var i': nat :| i' < |es| && E.interpret(es[i'].1) == base.Err(E.interpretRecord(es).error) && (forall j | 0 <= j < i' :: E.interpret(es[j].1).Ok?);
+    i := i';
+  }
+
+  lemma InSetSemantics(e: Expr, es: seq<Expr>, E: Evaluator)
+    requires E.interpret(e).Ok? && Value.asEntity(E.interpret(e).value).Ok?
+    requires forall i: nat | i < |es| :: E.interpret(es[i]).Ok? && Value.asEntity(E.interpret(es[i]).value).Ok?
+    requires forall i: nat | i < |es| :: E.interpret(BinaryApp(BinaryOp.In, e, es[i])) == base.Ok(Value.Bool(false))
+    ensures E.interpret(BinaryApp(BinaryOp.In, e, Expr.Set(es))) == base.Ok(Value.Bool(false))
+  {
+    SetSemantics(es, E);
+    calc == {
+      E.interpret(BinaryApp(BinaryOp.In, e, Expr.Set(es)));
+      E.applyBinaryOp(BinaryOp.In, E.interpret(e).value, E.interpret(Expr.Set(es)).value);
+      E.applyBinaryOp(BinaryOp.In, E.interpret(e).value, E.interpretSet(es).Map(v => Value.Set(v)).value);
+    }
+  }
+
+  lemma SetSemanticsOk(es: seq<Expr>, E: Evaluator)
+    requires E.interpretSet(es).Ok?
+    ensures forall i: nat | i < |es| :: E.interpret(es[i]).Ok?
   {}
 
   lemma SetSemantics(es: seq<Expr>, E: Evaluator)
@@ -108,7 +139,7 @@ module eval.basic {
     ensures (forall e | e in es :: E.interpret(e).Ok?) ==> E.interpretSet(es).Ok?
     ensures (exists i :: 0 <= i < |es| && E.interpret(es[i]).Err?) ==> E.interpretSet(es).Err?
     ensures E.interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?);
-    ensures E.interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretSet(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?);
+    ensures E.interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretSet(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
   {}
 
   lemma ListSemanticsOk(es: seq<Expr>, E: Evaluator)
@@ -118,6 +149,18 @@ module eval.basic {
     ensures forall i | 0 <= i < |es| :: E.interpret(es[i]) == base.Ok(E.interpretList(es).value[i])
   {
     ListSemantics(es, E);
+  }
+
+  lemma ListSemanticsErrRet(es: seq<Expr>, E: Evaluator) returns(i: nat)
+    requires exists i: nat | i < |es| :: E.interpret(es[i]).Err?
+    ensures i < |es|
+    ensures E.interpret(es[i]).Err?
+    ensures E.interpretList(es).Err?
+    ensures E.interpretList(es).error == E.interpret(es[i]).error
+  {
+    ListSemanticsErr(es, E);
+    var i':nat :| i' < |es| && E.interpret(es[i']).Err? && E.interpret(es[i']).error == E.interpretList(es).error;
+    i := i';
   }
 
   lemma ListSemanticsErr(es: seq<Expr>, E: Evaluator)
@@ -136,6 +179,36 @@ module eval.basic {
     ensures (exists i :: 0 <= i < |es| && E.interpret(es[i]).Err?) ==> E.interpretList(es).Err?
     ensures E.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
     ensures E.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretList(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
+  {}
+
+  lemma BinaryAppSemanticsOk(e1: Expr, e2: Expr, op: BinaryOp, E: Evaluator)
+    requires E.interpret(e1).Ok?
+    requires E.interpret(e2).Ok?
+    ensures E.interpret(BinaryApp(op, e1, e2)) == E.applyBinaryOp(op, E.interpret(e1).value, E.interpret(e2).value)
+  {}
+
+  lemma BinaryAppSemanticsErrLeft(e1: Expr, e2: Expr, op: BinaryOp, E: Evaluator)
+    requires E.interpret(e1).Err?
+    ensures E.interpret(BinaryApp(op, e1, e2)).Err?
+    ensures E.interpret(e1).error == E.interpret(BinaryApp(op, e1, e2)).error
+  {}
+
+  lemma BinaryAppSemanticsErrRight(e1: Expr, e2: Expr, op: BinaryOp, E: Evaluator)
+    requires E.interpret(e1).Ok?
+    requires E.interpret(e2).Err?
+    ensures E.interpret(BinaryApp(op, e1, e2)).Err?
+    ensures E.interpret(e2).error == E.interpret(BinaryApp(op, e1, e2)).error
+  {}
+
+  lemma CallWithOkArgs(name: Name, args: seq<Expr>, E: Evaluator)
+    requires E.interpretList(args).Ok?
+    ensures E.interpret(Call(name, args)) == E.applyExtFun(name, E.interpretList(args).value)
+  {}
+
+  lemma CallWithErrArgs(name: Name, args: seq<Expr>, E: Evaluator)
+    requires E.interpretList(args).Err?
+    ensures E.interpret(Call(name, args)).Err?
+    ensures E.interpret(Call(name, args)).error == E.interpretList(args).error
   {}
 
 }
