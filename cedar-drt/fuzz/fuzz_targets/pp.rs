@@ -69,7 +69,7 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
 
 // round-tripping of a policy
 // i.e., print a policy to string and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, Vec<err::ParseError>> {
+fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, err::ParseErrors> {
     parse_policy(None, &p.to_string())
 }
 

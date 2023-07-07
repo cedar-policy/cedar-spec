@@ -92,7 +92,7 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, Vec<err::ParseError>> {
+fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, err::ParseErrors> {
     let config = Config {
         indent_width: 2,
         line_width: 80,

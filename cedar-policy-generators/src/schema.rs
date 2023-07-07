@@ -268,7 +268,7 @@ fn uid_for_action_name(namespace: Option<SmolStr>, action_name: &SmolStr) -> ast
     let namespace_prefix = namespace.map(|ns| format!("{ns}::")).unwrap_or_default();
     format!("{}Action::\"{}\"", namespace_prefix, action_name)
                 .parse()
-                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {action_name:?} led to an invalid one: {e:?}"))
+                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {:?} led to an invalid one: {}", action_name, e))
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
