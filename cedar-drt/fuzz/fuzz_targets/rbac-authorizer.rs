@@ -99,13 +99,12 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     assert_eq!(policyset.policies().count(), input.policies.len());
     let entities = Entities::new();
     let authorizer = Authorizer::new();
-    let q = parser::parse_request(
-        "User::\"alice\"",
-        "Action::\"read\"",
-        "Resource::\"foo\"",
-        serde_json::Value::Object(serde_json::Map::new()),
-    )
-    .expect("should be a valid request");
+    let q = ast::Request::new(
+        "User::\"alice\"".parse().expect("should be valid"),
+        "Action::\"read\"".parse().expect("should be valid"),
+        "Resource::\"foo\"".parse().expect("should be valid"),
+        ast::Context::empty(),
+    );
     let rust_res = authorizer.is_authorized(&q, &policyset, &entities);
 
     // check property: there should be an error reported iff we had either PermitError or ForbidError

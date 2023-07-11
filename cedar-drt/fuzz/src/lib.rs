@@ -14,13 +14,6 @@
  * limitations under the License.
  */
 
-#[macro_use]
-extern crate cedar_policy_generators;
-use cedar_policy_generators::{accum, gen_inner};
-
-mod schema;
-pub use schema::*;
-
 mod dump;
 pub use dump::*;
 mod prt;

@@ -21,6 +21,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
 use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::schema::Schema;
 use cedar_policy_validator::{
     ActionBehavior, ValidationMode, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
 };

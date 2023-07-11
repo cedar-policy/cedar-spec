@@ -15,27 +15,27 @@
  */
 
 use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
-use cedar_policy_core::parser::{self, parse_name};
-use cedar_policy_generators::abac::{
+use crate::abac::{
     ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
     Type, UnknownPool,
 };
-use cedar_policy_generators::collections::{HashMap, HashSet};
-use cedar_policy_generators::err::{while_doing, Error, Result};
-use cedar_policy_generators::{gen, gen_inner, uniform};
-use cedar_policy_generators::hierarchy::Hierarchy;
-use cedar_policy_generators::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
-use cedar_policy_generators::request::Request;
-use cedar_policy_generators::size_hint_utils::{
+use crate::{accum, gen, gen_inner, uniform};
+use crate::collections::{HashMap, HashSet};
+use crate::err::{while_doing, Error, Result};
+use crate::hierarchy::Hierarchy;
+use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
+use crate::request::Request;
+use crate::size_hint_utils::{
     size_hint_for_choose, size_hint_for_range, size_hint_for_ratio,
 };
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
 };
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Contains the schema, but also pools of constants etc
@@ -270,7 +270,7 @@ fn uid_for_action_name(namespace: Option<SmolStr>, action_name: &SmolStr) -> ast
     let namespace_prefix = namespace.map(|ns| format!("{ns}::")).unwrap_or_default();
     format!("{}Action::\"{}\"", namespace_prefix, action_name)
                 .parse()
-                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {:?} led to an invalid one: {}", action_name, cedar_policy_core::parser::err::ParseErrors(e)))
+                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {action_name:?} led to an invalid one: {e}"))
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
@@ -325,7 +325,7 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
 fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr) -> ast::Name {
-    let schema_entity_type_name = parse_name(name).expect("Valid Name required for entity type.");
+    let schema_entity_type_name = ast::Name::from_str(name).expect("Valid Name required for entity type.");
     if schema_entity_type_name
         .namespace_components()
         .next()
@@ -390,14 +390,16 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
             let type_id: ast::Id = name.parse().unwrap_or_else(|_| {
                 panic!("Valid name required to build entity type. Got {}", name)
             });
-            let type_namespace: Vec<ast::Id> = namespace
+            let type_namespace: Option<ast::Name> = namespace
                 .map(|ns| {
-                    parser::parse_namespace(&ns).unwrap_or_else(|_| {
+                    ast::Name::from_str(&ns).unwrap_or_else(|_| {
                         panic!("Valid namespace required to build entity type. Got {}", ns)
                     })
-                })
-                .unwrap_or_default();
-            ast::EntityType::Concrete(ast::Name::new(type_id, type_namespace))
+                });
+            match type_namespace {
+                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
+                None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
+            }
         }
         None => ast::EntityType::Unspecified,
     }
@@ -647,6 +649,7 @@ impl Schema {
             attributes_by_type,
         })
     }
+    /// size hint for arbitrary()
     pub fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
@@ -787,6 +790,7 @@ impl Schema {
             .collect::<Result<_>>()?;
         Ok(hierarchy_no_attrs.replace_entities(entities))
     }
+    /// size hint for arbitrary_hierarchy()
     pub fn arbitrary_hierarchy_size_hint(_depth: usize) -> (usize, Option<usize>) {
         (0, None)
     }
@@ -806,6 +810,7 @@ impl Schema {
             u,
         )
     }
+    /// size hint for arbitrary_principal_uid()
     pub fn arbitrary_principal_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_choose(None),
@@ -823,6 +828,7 @@ impl Schema {
             .map_err(|e| while_doing("choosing an action", e))?;
         Ok(uid_for_action_name(self.namespace.clone(), action))
     }
+    /// size hint for arbitrary_action_uid()
     pub fn arbitrary_action_uid_size_hint(_depth: usize) -> (usize, Option<usize>) {
         size_hint_for_choose(None)
     }
@@ -841,6 +847,7 @@ impl Schema {
             u,
         )
     }
+    /// size hint for arbitrary_resource_uid()
     pub fn arbitrary_resource_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_choose(None),
@@ -879,6 +886,7 @@ impl Schema {
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }
+    /// size hint for arbitrary_uid_with_type()
     fn arbitrary_uid_with_type_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::or(
             <ast::Eid as Arbitrary>::size_hint(depth),
@@ -1057,6 +1065,7 @@ impl Schema {
         }
     }
 
+    /// generate an arbitrary `Value` of the given `target_type`
     pub fn arbitrary_value_for_type(
         &self,
         target_type: &Type,
@@ -3319,6 +3328,7 @@ impl Schema {
         )
     }
 
+    /// generate an arbitrary `ABACRequest` conforming to the schema
     pub fn arbitrary_request(
         &self,
         hierarchy: &Hierarchy,
@@ -3394,10 +3404,12 @@ impl Schema {
             },
         }))
     }
+    /// size hint for arbitrary_request()
     pub fn arbitrary_request_size_hint(_depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(size_hint_for_choose(None), (1, None))
     }
 
+    /// Get the namespace of this `Schema`, if any
     pub fn namespace(&self) -> &Option<SmolStr> {
         &self.namespace
     }

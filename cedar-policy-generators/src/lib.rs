@@ -31,5 +31,9 @@ pub mod rbac;
 /// This module contains the `Request` data structure
 pub mod request;
 
+/// This module contains the `Schema` data structure and methods for generating
+/// both schemas and hierarchies/policies that conform to a schema
+pub mod schema;
+
 /// This module contains helper functions for calculating size_hint()
 pub mod size_hint_utils;

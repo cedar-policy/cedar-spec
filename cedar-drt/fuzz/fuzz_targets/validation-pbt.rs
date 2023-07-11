@@ -23,6 +23,7 @@ use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
 use cedar_policy_generators::err::{Error, Result};
 use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::schema::Schema;
 use cedar_policy_validator::{
     ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
     ValidatorNamespaceDef, ValidatorSchemaFragment,
