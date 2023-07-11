@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
-use cedar_policy_core::ast::{self, Value};
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
-use crate::{accum, gen, gen_inner, uniform};
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
 use crate::size_hint_utils::size_hint_for_choose;
+use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
+use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
+use cedar_policy_core::ast::{self, Value};
 use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -166,11 +166,7 @@ impl UnknownPool {
 
     /// Create a new unknown with the given `Type` and `Value`. Returns the new
     /// name as a `String`
-    pub fn alloc(
-        &self,
-        t: Type,
-        v: Value,
-    ) -> String {
+    pub fn alloc(&self, t: Type, v: Value) -> String {
         let this = format!("{}", self.unknowns.borrow().len());
         self.unknowns.borrow_mut().insert(this.clone(), (t, v));
         this
@@ -346,10 +342,7 @@ impl ConstantPool {
 }
 
 /// Generate an arbitrary string of up to `bound` size
-fn arbitrary_string(
-    u: &mut Unstructured<'_>,
-    bound: Option<usize>,
-) -> Result<SmolStr> {
+fn arbitrary_string(u: &mut Unstructured<'_>, bound: Option<usize>) -> Result<SmolStr> {
     let s: String = u.arbitrary()?;
     let result_s = if let Some(bound) = bound {
         if s.len() < bound {
@@ -688,7 +681,7 @@ pub enum AttrValue {
         /// Name of the function being called
         fn_name: Name,
         /// Args to the function
-        args: Vec<AttrValue>
+        args: Vec<AttrValue>,
     },
     /// Set literal
     Set(Vec<AttrValue>),

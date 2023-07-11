@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 
-use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
 use crate::abac::{
     ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
     Type, UnknownPool,
 };
-use crate::{accum, gen, gen_inner, uniform};
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::Hierarchy;
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
-use crate::size_hint_utils::{
-    size_hint_for_choose, size_hint_for_range, size_hint_for_ratio,
-};
+use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
+use crate::{accum, gen, gen_inner, uniform};
+use arbitrary::{self, Arbitrary, Unstructured};
+use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
 };
-use arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -325,7 +323,8 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
 fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr) -> ast::Name {
-    let schema_entity_type_name = ast::Name::from_str(name).expect("Valid Name required for entity type.");
+    let schema_entity_type_name =
+        ast::Name::from_str(name).expect("Valid Name required for entity type.");
     if schema_entity_type_name
         .namespace_components()
         .next()
@@ -390,12 +389,11 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
             let type_id: ast::Id = name.parse().unwrap_or_else(|_| {
                 panic!("Valid name required to build entity type. Got {}", name)
             });
-            let type_namespace: Option<ast::Name> = namespace
-                .map(|ns| {
-                    ast::Name::from_str(&ns).unwrap_or_else(|_| {
-                        panic!("Valid namespace required to build entity type. Got {}", ns)
-                    })
-                });
+            let type_namespace: Option<ast::Name> = namespace.map(|ns| {
+                ast::Name::from_str(&ns).unwrap_or_else(|_| {
+                    panic!("Valid namespace required to build entity type. Got {}", ns)
+                })
+            });
             match type_namespace {
                 Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
                 None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),

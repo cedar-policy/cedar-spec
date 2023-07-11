@@ -1,8 +1,8 @@
+use crate::collections::HashMap;
+use crate::hierarchy::Hierarchy;
 use arbitrary::Unstructured;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::{EntityUID, RestrictedExpr};
-use crate::collections::HashMap;
-use crate::hierarchy::Hierarchy;
 use smol_str::SmolStr;
 
 /// Data structure representing an authorization request

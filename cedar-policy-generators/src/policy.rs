@@ -4,7 +4,9 @@ use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast;
-use cedar_policy_core::ast::{Effect, EntityUID, Expr, Id, PolicyID, PolicySet, StaticPolicy, Template};
+use cedar_policy_core::ast::{
+    Effect, EntityUID, Expr, Id, PolicyID, PolicySet, StaticPolicy, Template,
+};
 use smol_str::SmolStr;
 use std::fmt::Display;
 
@@ -63,18 +65,11 @@ impl GeneratedPolicy {
         };
         let annotations = u.arbitrary()?;
         let effect = u.arbitrary()?;
-        let principal_constraint = PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
-            hierarchy,
-            allow_slots,
-            u,
-        )?;
-        let action_constraint =
-            ActionConstraint::arbitrary_for_hierarchy(hierarchy, u, Some(3))?;
-        let resource_constraint = PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
-            hierarchy,
-            allow_slots,
-            u,
-        )?;
+        let principal_constraint =
+            PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, allow_slots, u)?;
+        let action_constraint = ActionConstraint::arbitrary_for_hierarchy(hierarchy, u, Some(3))?;
+        let resource_constraint =
+            PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, allow_slots, u)?;
         Ok(Self {
             id,
             annotations,

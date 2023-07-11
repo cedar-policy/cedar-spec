@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-use ast::{Entity, EntityUID, Expr, Name, PolicyID, StaticPolicy};
-use cedar_policy_core::ast;
-use cedar_policy_core::entities::Entities;
 use crate::collections::{HashMap, HashSet};
 use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{self, Arbitrary, Unstructured};
+use ast::{Entity, EntityUID, Expr, Name, PolicyID, StaticPolicy};
+use cedar_policy_core::ast;
+use cedar_policy_core::entities::Entities;
 use std::ops::{Deref, DerefMut};
 
 /// Represents an RBAC hierarchy, ie, with no attributes
@@ -254,7 +254,13 @@ impl RBACPolicy {
         allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
-        Ok(Self(GeneratedPolicy::arbitrary_for_hierarchy(fixed_id_opt, hierarchy, allow_slots, Expr::val(true), u)?))
+        Ok(Self(GeneratedPolicy::arbitrary_for_hierarchy(
+            fixed_id_opt,
+            hierarchy,
+            allow_slots,
+            Expr::val(true),
+            u,
+        )?))
     }
 
     /// size hint for arbitrary_for_hierarchy()
@@ -308,7 +314,11 @@ impl RBACRequest {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
-        Ok(Self(Request::arbitrary_for_hierarchy(hierarchy, HashMap::new(), u)?))
+        Ok(Self(Request::arbitrary_for_hierarchy(
+            hierarchy,
+            HashMap::new(),
+            u,
+        )?))
     }
 
     /// size hint for arbitrary_for_hierarchy()
