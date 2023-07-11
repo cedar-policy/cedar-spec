@@ -21,9 +21,9 @@ use crate::abac::{
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::Hierarchy;
-use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
+use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID};
@@ -386,9 +386,9 @@ fn unwrap_attrs_or_context(
 fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -> ast::EntityType {
     match name {
         Some(name) => {
-            let type_id: ast::Id = name.parse().unwrap_or_else(|_| {
-                panic!("Valid name required to build entity type. Got {name}")
-            });
+            let type_id: ast::Id = name
+                .parse()
+                .unwrap_or_else(|_| panic!("Valid name required to build entity type. Got {name}"));
             let type_namespace: Option<ast::Name> = match namespace.as_deref() {
                 None => None,
                 Some("") => None, // we consider "" to be the same as the empty namespace
