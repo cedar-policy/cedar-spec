@@ -21,12 +21,12 @@ use crate::abac::{
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::Hierarchy;
+use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
-use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Effect, PolicyID, Value};
+use cedar_policy_core::ast::{self, Effect, PolicyID};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
@@ -387,16 +387,18 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
     match name {
         Some(name) => {
             let type_id: ast::Id = name.parse().unwrap_or_else(|_| {
-                panic!("Valid name required to build entity type. Got {}", name)
+                panic!("Valid name required to build entity type. Got {name}")
             });
-            let type_namespace: Option<ast::Name> = namespace.map(|ns| {
-                ast::Name::from_str(&ns).unwrap_or_else(|_| {
-                    panic!("Valid namespace required to build entity type. Got {}", ns)
-                })
-            });
+            let type_namespace: Option<ast::Name> = match namespace.as_deref() {
+                None => None,
+                Some("") => None, // we consider "" to be the same as the empty namespace
+                Some(ns) => Some(ast::Name::from_str(&ns).unwrap_or_else(|_| {
+                    panic!("Valid namespace required to build entity type. Got {ns}")
+                })),
+            };
             match type_namespace {
-                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
                 None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
+                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
             }
         }
         None => ast::EntityType::Unspecified,
@@ -1070,7 +1072,8 @@ impl Schema {
         hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
-    ) -> Result<Value> {
+    ) -> Result<ast::Value> {
+        use ast::Value;
         match target_type {
             Type::Bool => {
                 // the only valid bool-typed attribute value is a bool literal
@@ -1154,7 +1157,8 @@ impl Schema {
         hierarchy: Option<&Hierarchy>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
-    ) -> Result<Value> {
+    ) -> Result<ast::Value> {
+        use ast::Value;
         use cedar_policy_validator::SchemaTypeVariant;
         let target_type = unwrap_schema_type(target_type);
         match target_type {

@@ -3,9 +3,15 @@
   "isRoot": true,
   "tools": {
     "dafny": {
-      "version": "4.0.0.50302",
+      "version": "4.1.0",
       "commands": [
         "dafny"
+      ]
+    },
+    "dafny-reportgenerator": {
+      "version": "1.2.0",
+      "commands": [
+        "dafny-reportgenerator"
       ]
     }
   }

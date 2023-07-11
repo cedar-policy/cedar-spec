@@ -35,9 +35,14 @@ module validation.subtyping {
   predicate subtyRecordType(rt1: RecordType, rt2: RecordType)
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
-    rt2.Keys <= rt1.Keys &&
-    (forall k | k in rt2.Keys ::
-       subtyAttrType(rt1[k], rt2[k]))
+    (rt1.isOpen() ==> rt2.isOpen()) &&
+    // width subtyping
+    rt2.attrs.Keys <= rt1.attrs.Keys &&
+    // depth subtyping
+    (forall k | k in rt2.attrs.Keys ::
+       subtyAttrType(rt1.attrs[k], rt2.attrs[k])) &&
+    // disable width subtyping if `rt2` is closed.
+    (!rt2.isOpen() ==> rt1.attrs.Keys == rt2.attrs.Keys)
   }
 
   predicate subtyEntity(lub1: EntityLUB, lub2: EntityLUB) {
@@ -80,11 +85,14 @@ module validation.subtyping {
   // are inconsistent. For example: the upper bound of { foo: Int } and
   // { foo: String } is the empty map type {}. This decision was made for the
   // sake of consistency with the Rust production implementation.
-  function lubRecordType(rt1: RecordType, rt2: RecordType): Result<RecordType>
+  function lubRecordType(rt1: RecordType, rt2: RecordType): RecordType
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {
-    Ok(map k | k in rt1.Keys && k in rt2.Keys && lubOpt(rt1[k].ty, rt2[k].ty).Ok? ::
-         lubAttrType(rt1[k], rt2[k]))
+    var attrs :=
+      map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty).Ok? ::
+        lubAttrType(rt1.attrs[k], rt2.attrs[k]);
+    var openTag := if rt1.isOpen() || rt2.isOpen() || attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys) then OpenAttributes else ClosedAttributes;
+    RecordType(attrs, openTag)
   }
 
   function lubRecordTypeSeq(rts: seq<RecordType>): Result<RecordType>
@@ -93,7 +101,7 @@ module validation.subtyping {
     else if |rts| == 1 then Ok(rts[0])
     else
       var res :- lubRecordTypeSeq(rts[1..]);
-      lubRecordType(rts[0],res)
+      Ok(lubRecordType(rts[0],res))
   }
 
   function lubOpt(t1: Type, t2: Type): Result<Type>
@@ -110,8 +118,7 @@ module validation.subtyping {
         var t :- lubOpt(t11,t12);
         Ok(Type.Set(t))
       case(Record(rt1),Record(rt2)) =>
-        var rt :- lubRecordType(rt1,rt2);
-        Ok(Type.Record(rt))
+        Ok(Type.Record(lubRecordType(rt1,rt2)))
       case (Extension(e1),Extension(e2)) =>
         if e1 == e2 then Ok(Extension(e1))
         else Err(LubErr(t1,t2))
@@ -141,8 +148,8 @@ module validation.subtyping {
   lemma SubtyRecordTypeRefl(rt: RecordType)
     ensures subtyRecordType(rt, rt)
   {
-    forall k | k in rt.Keys ensures subtyAttrType(rt[k], rt[k]) {
-      SubtyRefl(rt[k].ty);
+    forall k | k in rt.attrs.Keys ensures subtyAttrType(rt.attrs[k], rt.attrs[k]) {
+      SubtyRefl(rt.attrs[k].ty);
     }
   }
 
@@ -152,14 +159,14 @@ module validation.subtyping {
     ensures subtyRecordType(rt1,rt3)
     decreases Type.Record(rt1) , Type.Record(rt2) , Type.Record(rt3) , 0
   {
-    assert rt3.Keys <= rt1.Keys;
-    forall k | k in rt3.Keys
-      ensures subty(rt1[k].ty, rt3[k].ty)
-      ensures rt3[k].isRequired ==> rt1[k].isRequired
+    assert rt3.attrs.Keys <= rt1.attrs.Keys;
+    forall k | k in rt3.attrs.Keys
+      ensures subty(rt1.attrs[k].ty, rt3.attrs[k].ty)
+      ensures rt3.attrs[k].isRequired ==> rt1.attrs[k].isRequired
     {
-      assert subty(rt1[k].ty, rt2[k].ty);
-      assert subty(rt2[k].ty, rt3[k].ty);
-      SubtyTrans(rt1[k].ty, rt2[k].ty, rt3[k].ty);
+      assert subty(rt1.attrs[k].ty, rt2.attrs[k].ty);
+      assert subty(rt2.attrs[k].ty, rt3.attrs[k].ty);
+      SubtyTrans(rt1.attrs[k].ty, rt2.attrs[k].ty, rt3.attrs[k].ty);
     }
   }
 
@@ -188,24 +195,24 @@ module validation.subtyping {
       case (Entity(e1),Entity(e2),Entity(e)) =>
       case (Set(t1'),Set(t2'),Set(t')) => LubIsUB(t1',t2',t');
       case(Record(rt1'),Record(rt2'),Record(rt')) =>
-        assert rt'.Keys <= rt1'.Keys;
-        assert rt'.Keys <= rt2'.Keys;
+        assert rt'.attrs.Keys <= rt1'.attrs.Keys;
+        assert rt'.attrs.Keys <= rt2'.attrs.Keys;
         assert subty(Type.Record(rt1'),Type.Record(rt')) by {
-          forall k | k in rt'.Keys
-            ensures subtyAttrType(rt1'[k],rt'[k])
+          forall k | k in rt'.attrs.Keys
+            ensures subtyAttrType(rt1'.attrs[k],rt'.attrs[k])
           {
-            assert rt'[k] == lubAttrType(rt1'[k],rt2'[k]);
-            assert lubOpt(rt1'[k].ty,rt2'[k].ty) == Ok(rt'[k].ty);
-            LubIsUB(rt1'[k].ty,rt2'[k].ty,rt'[k].ty);
+            assert rt'.attrs[k] == lubAttrType(rt1'.attrs[k],rt2'.attrs[k]);
+            assert lubOpt(rt1'.attrs[k].ty,rt2'.attrs[k].ty) == Ok(rt'.attrs[k].ty);
+            LubIsUB(rt1'.attrs[k].ty,rt2'.attrs[k].ty,rt'.attrs[k].ty);
           }
         }
         assert subty(Type.Record(rt2'),Type.Record(rt')) by {
-          forall k | k in rt'.Keys
-            ensures subtyAttrType(rt2'[k],rt'[k])
+          forall k | k in rt'.attrs.Keys
+            ensures subtyAttrType(rt2'.attrs[k],rt'.attrs[k])
           {
-            assert rt'[k] == lubAttrType(rt1'[k],rt2'[k]);
-            assert lubOpt(rt1'[k].ty,rt2'[k].ty) == Ok(rt'[k].ty);
-            LubIsUB(rt1'[k].ty,rt2'[k].ty,rt'[k].ty);
+            assert rt'.attrs[k] == lubAttrType(rt1'.attrs[k],rt2'.attrs[k]);
+            assert lubOpt(rt1'.attrs[k].ty,rt2'.attrs[k].ty) == Ok(rt'.attrs[k].ty);
+            LubIsUB(rt1'.attrs[k].ty,rt2'.attrs[k].ty,rt'.attrs[k].ty);
           }
         }
       case (Extension(n1),Extension(n2),Extension(n)) =>
