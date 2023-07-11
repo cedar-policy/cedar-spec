@@ -218,4 +218,163 @@ module validation.subtyping {
       case (Extension(n1),Extension(n2),Extension(n)) =>
     }
   }
+
+  lemma SubtyAttrTypeEq(t1 : AttrType, t2 : AttrType)
+    requires subtyAttrType(t1, t2)
+    requires subtyAttrType(t2, t1)
+    ensures t1 == t2
+  {
+    assert t1.isRequired == t2.isRequired;
+    assert t1.ty == t2.ty by {
+      assert subty(t2.ty, t1.ty);
+      assert subty(t1.ty, t2.ty);
+      SubtyEq(t1.ty, t2.ty);
+    }
+  }
+
+  lemma SubtyRecordTyEq(rt1: RecordType, rt2: RecordType)
+    requires subtyRecordType(rt1, rt2)
+    requires subtyRecordType(rt2, rt1)
+    ensures rt1 == rt2
+  {
+    assert rt1.isOpen() == rt2.isOpen();
+    assert rt1.attrs.Keys == rt2.attrs.Keys;
+    forall k | k in rt2.attrs.Keys ensures rt1.attrs[k] == rt2.attrs[k] {
+      SubtyAttrTypeEq(rt1.attrs[k], rt2.attrs[k]);
+    }
+  }
+
+  lemma SubtyEq(t1 : Type, t2 : Type)
+    requires subty(t1, t2)
+    requires subty(t2, t1)
+    ensures t1 == t2
+  {
+    match (t1, t2) {
+      case (Never,_) =>
+      case (_,Never) =>
+      case (Int,Int) =>
+      case (String,String) =>
+      case (Bool(b1),Bool(b2)) =>
+      case (Entity(e1),Entity(e2)) =>
+      case (Set(t1'),Set(t2')) =>
+      case (Record(rt1),Record(rt2)) => {
+        assert subtyRecordType(rt1, rt2);
+        assert subtyRecordType(rt2, rt1);
+        SubtyRecordTyEq(rt1, rt2);
+      }
+      case (Extension(n1),Extension(n2)) =>
+    }
+  }
+
+  lemma LubUndefUbUndef(t1 : Type, t2 : Type)
+    requires !LubDefined(t1, t2)
+    ensures forall t :: !subty(t1, t) || !subty(t2, t)
+  {
+    forall t ensures !subty(t1, t) || !subty(t2, t)
+    {
+      match t {
+        case Never =>
+        case Int =>
+        case String =>
+        case Bool(b) =>
+        case Entity(e) =>
+        case Set(e) => {
+          if t1.Set? && t2.Set? {
+            LubUndefUbUndef(t1.ty, t2.ty);
+          }
+        }
+        case Record(rt) =>
+        case Extension(e) =>
+      }
+    }
+  }
+
+  lemma EntityLubSetIsLeast(e1: set<EntityType>, e2: set<EntityType>, eu: set<EntityType>, eu': set<EntityType>)
+    requires e1 + e2 == eu
+    requires e1 <= eu'
+    requires e2 <= eu'
+    requires eu' <= eu
+    ensures eu == eu'
+  { }
+
+  lemma RecordLubIsLeast(rt1: RecordType, rt2: RecordType, ru: RecordType, ru': RecordType)
+    requires lubRecordType(rt1,rt2) == ru
+    requires subtyRecordType(rt1,ru')
+    requires subtyRecordType(rt2,ru')
+    requires subtyRecordType(ru',ru)
+    ensures ru == ru'
+  {
+    assert ru.attrs.Keys == ru'.attrs.Keys by {
+      assert ru.attrs.Keys <= ru'.attrs.Keys;
+      assert forall k | k in (rt1.attrs.Keys * rt2.attrs.Keys) :: LubDefined(rt1.attrs[k].ty, rt2.attrs[k].ty) <==> k in ru.attrs.Keys;
+      if ru'.attrs.Keys > ru.attrs.Keys {
+        var k :| k in ru'.attrs.Keys && k !in ru.attrs.Keys;
+        assert ru'.attrs.Keys <= (rt1.attrs.Keys * rt2.attrs.Keys);
+        assert k in (rt1.attrs.Keys * rt2.attrs.Keys);
+
+        assert !LubDefined(rt1.attrs[k].ty, rt2.attrs[k].ty);
+        var kUbTyp := ru'.attrs[k].ty;
+        assert subty(rt1.attrs[k].ty, kUbTyp);
+        assert subty(rt2.attrs[k].ty, kUbTyp);
+        LubUndefUbUndef(rt1.attrs[k].ty, rt2.attrs[k].ty);
+      }
+    }
+
+    assert ru.isOpen() == ru'.isOpen();
+
+    forall k | k in ru.attrs.Keys
+      ensures ru.attrs[k] == ru'.attrs[k]
+    {
+      LUBIsLeast(rt1.attrs[k].ty, rt2.attrs[k].ty, ru.attrs[k].ty, ru'.attrs[k].ty);
+    }
+  }
+
+  lemma LUBIsLeast(t1: Type, t2: Type, u: Type, u': Type)
+    requires lubOpt(t1,t2) == Ok(u)
+    requires subty(t1,u')
+    requires subty(t2,u')
+    requires subty(u',u)
+    ensures u == u'
+  {
+    match (t1,t2,u, u') {
+      case (Never,_,_, _) => {
+        assert subty(u, u') by { assert u == t2; }
+        SubtyEq(u, u');
+      }
+      case (_,Never,_, _) => {
+        assert subty(u, u') by { assert u == t1; }
+        SubtyEq(u, u');
+      }
+      case (Int,Int,Int,Int) =>
+      case (String,String,String,String) =>
+      case (Bool(b1),Bool(b2),Bool(bu), Bool(bu')) =>
+      case (Entity(e1),Entity(e2),Entity(eu), Entity(eu')) => {
+        if e1 == AnyEntity || e2 == AnyEntity {
+          assert eu == eu' by {
+            assert eu == AnyEntity;
+            assert eu' == AnyEntity;
+          }
+        } else if exists ty1 <- e1.tys :: isAction(ty1) || exists ty2 <- e2.tys :: isAction(ty2) {
+          assume false;
+          // t1 = {Action} ; t2 =  {User}
+          // u = {Action} U {User} = AnyEntity
+          // u' = {Action, User}
+          // {Action} <: {Action, User}
+          // {User} <: {Action, User}
+          // {Action, User} <: AnyEntity
+          // {Action, User} != AnyEntity
+          // !!!NOT LEAST!!!
+        } else {
+          EntityLubSetIsLeast(e1.tys, e2.tys, eu.tys, eu'.tys);
+        }
+      }
+      case (Set(e1),Set(e2),Set(eu), Set(eu')) => {
+        LUBIsLeast(e1, e2, eu, eu');
+      }
+      case (Record(rt1),Record(rt2),Record(ru), Record(ru')) => {
+        RecordLubIsLeast(rt1, rt2, ru, ru');
+      }
+      case (Extension(n1),Extension(n2),Extension(nu), Extension(nu')) =>
+    }
+  }
 }
