@@ -17,10 +17,12 @@
 #![no_main]
 
 use cedar_drt::initialize_log;
-use cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
+use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
-use cedar_policy_core::parser::{err, parse_policy};
+use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
+use cedar_policy_generators::abac::{ABACPolicy, ABACSettings};
+use cedar_policy_generators::schema::Schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use uuid::Uuid;
@@ -90,7 +92,7 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, err::ParseErrors> {
+fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors> {
     let config = Config {
         indent_width: 2,
         line_width: 80,
