@@ -29,7 +29,7 @@ macro_rules! accum {
 
 /// the top level language `u, w => v,+` where `u` is a `Unstructured`, `w` is the weight, and `v` is the value to generate
 /// it desugars into something like
-/// ```
+/// ```ignore
 ///      let x = u.int_in_range::<u8>(0..(w1+w2+...+wn-1))?;
 ///      if x < w1 { v1 } else {
 ///          if x < w1 + w2 { v2 } else {
