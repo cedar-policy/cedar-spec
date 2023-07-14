@@ -27,6 +27,7 @@ jobs:
           echo "$(pwd)/z3-4.12.1-x64-glibc-2.35/bin" >> $GITHUB_PATH
       - name: Audit Dafny files
         shell: bash
+        working-directory: ./cedar-dafny
         run : |
           dotnet tool restore
           sudo apt-get install ack
