@@ -31,7 +31,7 @@ jobs:
         run : |
           dotnet tool restore
           sudo apt-get install ack
-          find . -path test -prune -o -name '*.dfy' | xargs -n1 -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
+          find . -path test -prune -o -name '*.dfy' | xargs -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: make GEN_STATS=1 verify
