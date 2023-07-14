@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run : |
           dotnet tool restore
-          apt install ack
+          sudo apt-get install ack
           find . -path test -prune -o -name '*.dfy' | xargs -n1 -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
       - name: verify dafny
         working-directory: ./cedar-dafny
