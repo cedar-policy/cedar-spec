@@ -15,7 +15,7 @@ body:
       multiple: true
       options:
         - Dafny definitional engine
-        - DRT targets
+        - DRT target(s)
         - DRT generators
         - DRT infrastructure
         - Other
