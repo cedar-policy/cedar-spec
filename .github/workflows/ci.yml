@@ -25,6 +25,11 @@ jobs:
           wget -q --show-progress https://github.com/Z3Prover/z3/releases/download/z3-4.12.1/z3-4.12.1-x64-glibc-2.35.zip
           unzip z3-4.12.1-x64-glibc-2.35.zip
           echo "$(pwd)/z3-4.12.1-x64-glibc-2.35/bin" >> $GITHUB_PATH
+      - name: Audit Dafny files
+        shell: bash
+        run : |
+          dotnet tool restore
+          find . -path test -prune -o -name '*.dfy' | xargs -n1 -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
       - name: verify dafny
         working-directory: ./cedar-dafny
         run: make GEN_STATS=1 verify
