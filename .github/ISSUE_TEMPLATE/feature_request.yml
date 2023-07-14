@@ -11,7 +11,7 @@ body:
   - type: dropdown
     attributes:
       label: Category
-      description: What component of Cedar specifications does this feature relate to?
+      description: What component of the Cedar specification does this feature relate to?
       multiple: true
       options:
         - Dafny definitional engine
