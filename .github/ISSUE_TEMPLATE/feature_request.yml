@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for Cedar
+description: Suggest an idea for the Cedar specification
 labels: [pending-triage, feature-request]
 
 body:
@@ -11,14 +11,13 @@ body:
   - type: dropdown
     attributes:
       label: Category
-      description: What component of Cedar does this feature relate to?
+      description: What component of the Cedar specification does this feature relate to?
       multiple: true
       options:
-        - Cedar language features
-        - Cedar validation features
-        - Cedar grammar changes/additions
-        - User level API changes
-        - New DRT target
+        - Dafny formalization
+        - DRT target(s)
+        - DRT generator(s)
+        - DRT infrastructure
         - Other
     validations:
       required: true
