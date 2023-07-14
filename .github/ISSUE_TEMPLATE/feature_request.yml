@@ -14,7 +14,7 @@ body:
       description: What component of the Cedar specification does this feature relate to?
       multiple: true
       options:
-        - Dafny definitional engine
+        - Dafny formalization
         - DRT target(s)
         - DRT generator(s)
         - DRT infrastructure
