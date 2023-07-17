@@ -15,14 +15,15 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
-    Type, UnknownPool,
+    ABACPolicy, ABACRequest, AttrValue, AvailableExtensionFunctions, ConstantPool, Type,
+    UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::Hierarchy;
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
+use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
@@ -3556,5 +3557,282 @@ impl TryFrom<Schema> for ValidatorSchema {
     type Error = SchemaError;
     fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
         ValidatorSchema::try_from(SchemaFragment::from(schema))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Schema;
+    use crate::settings::ABACSettings;
+    use arbitrary::Unstructured;
+    use cedar_policy_core::entities::Entities;
+    use cedar_policy_validator::SchemaFragment;
+    use rand::{rngs::ThreadRng, thread_rng, RngCore};
+
+    const RANDOM_BYTE_SIZE: u16 = 1024;
+    const ITERATION: u8 = 100;
+
+    const TEST_SETTINGS: ABACSettings = ABACSettings {
+        match_types: false,
+        enable_extensions: false,
+        max_depth: 4,
+        max_width: 4,
+        enable_additional_attributes: false,
+        enable_like: false,
+        enable_action_groups_and_attrs: true,
+        enable_arbitrary_func_call: false,
+        enable_unknowns: false,
+    };
+
+    const DOCUMENT_CLOUD_SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": {
+                "User": {
+                    "memberOfTypes": [
+                        "Group"
+                    ],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "personalGroup": {
+                                "type": "Entity",
+                                "name": "Group"
+                            },
+                            "blocked": {
+                                "type": "Set",
+                                "element": {
+                                    "type": "Entity",
+                                    "name": "User"
+                                }
+                            }
+                        }
+                    }
+                },
+                "Group": {
+                    "memberOfTypes": [
+                        "DocumentShare"
+                    ],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "owner": {
+                                "type": "Entity",
+                                "name": "User"
+                            }
+                        }
+                    }
+                },
+                "Document": {
+                    "memberOfTypes": [],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "owner": {
+                                "type": "Entity",
+                                "name": "User"
+                            },
+                            "isPrivate": {
+                                "type": "Boolean"
+                            },
+                            "publicAccess": {
+                                "type": "String"
+                            },
+                            "viewACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            },
+                            "modifyACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            },
+                            "manageACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            }
+                        }
+                    }
+                },
+                "DocumentShare": {},
+                "Public": {
+                    "memberOfTypes": [
+                        "DocumentShare"
+                    ]
+                },
+                "Drive": {}
+            },
+            "actions": {
+                "CreateDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Drive"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ViewDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User",
+                            "Public"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "DeleteDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ModifyDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "EditIsPrivate": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "AddToShareACL": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "EditPublicAccess": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "CreateGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Drive"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ModifyGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Group"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "DeleteGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Group"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                }
+            },
+            "commonTypes": {
+                "ReusedContext": {
+                    "type": "Record",
+                    "attributes": {
+                        "is_authenticated": {
+                            "type": "Boolean",
+                            "required": true
+                        }
+                    }
+                }
+            }
+        }
+    }"#;
+
+    #[test]
+    fn entities_generation_document_cloud() {
+        let fragment = SchemaFragment::from_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid!");
+        let mut rng = thread_rng();
+        for _ in 0..ITERATION {
+            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+        }
+    }
+
+    fn generate_hierarchy_from_schema(
+        rng: &mut ThreadRng,
+        fragment: &SchemaFragment,
+    ) -> cedar_policy_core::entities::Result<Entities> {
+        let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
+        rng.fill_bytes(&mut bytes);
+        let mut u = Unstructured::new(&bytes);
+        let schema = Schema::from_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
+            .expect("failed to generate schema!");
+        let h = schema
+            .arbitrary_hierarchy(&mut u)
+            .expect("failed to generate hierarchy!");
+        Entities::from_entities(
+            h.entities().into_iter().map(|e| e.clone()),
+            cedar_policy_core::entities::TCComputation::ComputeNow,
+        )
     }
 }
