@@ -130,9 +130,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
             let passes_validation = {
-                if let Ok(schema) = ValidatorSchema::try_from(
-                    input.schema.clone()
-                ) {
+                if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
                     let validator = Validator::new(schema);
                     passes_validation(&validator, &policyset)
                 } else {

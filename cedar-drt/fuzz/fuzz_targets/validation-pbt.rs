@@ -24,7 +24,9 @@ use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
 use cedar_policy_generators::err::{Error, Result};
 use cedar_policy_generators::hierarchy::Hierarchy;
 use cedar_policy_generators::schema::Schema;
-use cedar_policy_validator::{ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_validator::{
+    ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;
