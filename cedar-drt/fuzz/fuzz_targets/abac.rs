@@ -22,9 +22,7 @@ use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
 use cedar_policy_generators::hierarchy::Hierarchy;
 use cedar_policy_generators::schema::Schema;
-use cedar_policy_validator::{
-    ActionBehavior, ValidationMode, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
-};
+use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
@@ -131,18 +129,10 @@ fuzz_target!(|input: FuzzTargetInput| {
             responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-            // only dump testcases where the policy passes validation
             let passes_validation = {
-                if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
-                    input.schema.namespace().clone(),
-                    input.schema.schemafile().clone(),
-                    ActionBehavior::ProhibitAttributes,
-                )
-                .and_then(|f| {
-                    ValidatorSchema::from_schema_fragments([
-                        ValidatorSchemaFragment::from_namespaces([f]),
-                    ])
-                }) {
+                if let Ok(schema) = ValidatorSchema::try_from(
+                    input.schema.clone()
+                ) {
                     let validator = Validator::new(schema);
                     passes_validation(&validator, &policyset)
                 } else {
