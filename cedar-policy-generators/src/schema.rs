@@ -311,7 +311,7 @@ fn record_schematype_with_attr(
     }
 }
 
-/// Get an arbitrary namespaces for a schema. The namespace may be absent or it
+/// Get an arbitrary namespace for a schema. The namespace may be absent or it
 /// may be a string generated from a `Name`.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
     let namespace: Option<ast::Name> = u
@@ -383,12 +383,14 @@ fn unwrap_attrs_or_context(
 /// qualified `EntityType` parsing `namespace` as a namespace and `name` as an
 /// `Id`. If `name` is `None`, then this builds an unspecified entity type. Use
 /// `build_qualified_entity_type_name` if `name` is not `None`.
-fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -> ast::EntityType {
-    match name {
-        Some(name) => {
-            let type_id: ast::Id = name
-                .parse()
-                .unwrap_or_else(|_| panic!("Valid name required to build entity type. Got {name}"));
+fn build_qualified_entity_type(
+    namespace: Option<SmolStr>,
+    basename: Option<&str>,
+) -> ast::EntityType {
+    match basename {
+        Some(basename) => {
+            let basename_id = ast::Id::from_str(basename)
+                .unwrap_or_else(|e| panic!("invalid type basename {name:?}: {e}"));
             let type_namespace: Option<ast::Name> = match namespace.as_deref() {
                 None => None,
                 Some("") => None, // we consider "" to be the same as the empty namespace
@@ -397,8 +399,10 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
                 })),
             };
             match type_namespace {
-                None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
-                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
+                None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename_id)),
+                Some(ns) => {
+                    ast::EntityType::Concrete(ast::Name::type_in_namespace(basename_id, ns))
+                }
             }
         }
         None => ast::EntityType::Unspecified,
