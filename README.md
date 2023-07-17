@@ -4,10 +4,11 @@ This repository contains the Dafny formalization of Cedar and infrastructure for
 
 ## Repository Structure
 
-* `cedar-spec` contains the Dafny formalization of, and proofs about, Cedar.
+* `cedar-dafny` contains the Dafny formalization of, and proofs about, Cedar.
 * `cedar-dafny-java-wrapper` contains the Java interface for DRT.
-* `cedar-drt` contains code for input generation, fuzzing, property-based testing, and differential testing of Cedar.
-* `cedar` is a git submodule, pinned to the `main` branch of [cedar](https://github.com/cedar-policy/cedar).
+* `cedar-drt` contains code for fuzzing, property-based testing, and differential testing of Cedar.
+* `cedar-policy-generators` contains code for generating schemas, entities, policies, and requests using the [arbitrary](https://docs.rs/arbitrary/latest/arbitrary/index.html#) crate.
+* `cedar` is a git submodule, pinned to the associated commit of [cedar](https://github.com/cedar-policy/cedar).
 
 ## Build
 
