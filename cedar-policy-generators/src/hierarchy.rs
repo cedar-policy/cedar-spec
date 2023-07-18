@@ -25,14 +25,14 @@ impl From<Vec<EntityUID>> for EntityUIDs {
     }
 }
 
-impl<'a> From<&'a EntityUIDs> for &'a [EntityUID] {
-    fn from(value: &'a EntityUIDs) -> Self {
-        &value.uids
+impl AsRef<[EntityUID]> for EntityUIDs {
+    fn as_ref(&self) -> &[EntityUID] {
+        &self.uids
     }
 }
 
 impl EntityUIDs {
-    // Get an `EntityUID` whose index is greater than `uid`'s
+    // Get a slice of `EntityUID`s whose indices are greater than `uid`'s
     // INVARIANT: `uid` is in `indices`
     fn get_slice_after_uid(&self, uid: &EntityUID) -> &[EntityUID] {
         let idx = self.indices[uid];
@@ -115,7 +115,7 @@ impl Hierarchy {
                     .ok_or(Error::EmptyChoose {
                         doing_what: "getting an existing uid with given type",
                     })?
-                    .into(),
+                    .as_ref(),
             )?;
             Ok(uid.clone())
         } else {
@@ -199,8 +199,7 @@ impl Hierarchy {
                 if entity.entity_type().to_string() == dst_ty.to_string() {
                     Box::new(v.get_slice_after_uid(entity).iter())
                 } else {
-                    let slice: &[EntityUID] = v.into();
-                    Box::new(slice.iter())
+                    Box::new(v.as_ref().iter())
                 }
             }
             None => Box::new(std::iter::empty()),
