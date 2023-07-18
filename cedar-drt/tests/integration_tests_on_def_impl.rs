@@ -50,7 +50,7 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
         r: &ast::Request,
         p: &ast::PolicySet,
         e: &entities::Entities,
-    ) -> authorizer::Response {
+    ) -> cedar_policy::Response {
         self.def_engine.is_authorized(r, p, e)
     }
 
