@@ -20,13 +20,15 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
-use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
-use cedar_policy_generators::err::{Error, Result};
-use cedar_policy_generators::hierarchy::Hierarchy;
-use cedar_policy_generators::schema::Schema;
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    err::{Error, Result},
+    hierarchy::Hierarchy,
+    schema::Schema,
+    settings::ABACSettings,
+};
 use cedar_policy_validator::{
-    ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
-    ValidatorNamespaceDef, ValidatorSchemaFragment,
+    ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -149,8 +151,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats(schema: &NamespaceDefinition, suffix: &str) {
+fn maybe_log_schemastats(schema: Option<&NamespaceDefinition>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
             LOG_FILENAME_TOTAL_ENTITY_TYPES.to_string()
                 + "_"
@@ -307,14 +310,15 @@ fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool 
 // The main fuzz target. This is for PBT on the validator
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
-        input.schema.namespace().clone(),
-        input.schema.schemafile().clone(),
-        ActionBehavior::ProhibitAttributes,
-    )
-    .and_then(|f| {
-        ValidatorSchema::from_schema_fragments([ValidatorSchemaFragment::from_namespaces([f])])
-    }) {
+    // preserve the schemafile for later logging, if we'll need it
+    let schemafile = if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        Some(input.schema.schemafile().clone())
+    } else {
+        None
+    };
+    // preserve the schema in string format, which may be needed for error messages later
+    let schemafile_string = input.schema.schemafile_string();
+    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         checkpoint(LOG_FILENAME_SCHEMA_VALID);
         if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
@@ -325,7 +329,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             policyset.add_static(policy.clone()).unwrap();
             if passes_validation(&validator, &policyset) {
                 checkpoint(LOG_FILENAME_VALIDATION_PASS);
-                maybe_log_schemastats(input.schema.schemafile(), "vyes");
+                maybe_log_schemastats(schemafile.as_ref(), "vyes");
                 maybe_log_hierarchystats(&input.hierarchy, "vyes");
                 maybe_log_policystats(&policy, "vyes");
                 // policy successfully validated, let's make sure we don't get any
@@ -347,7 +351,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .filter(|err| err.contains("type error"))
                             .collect::<Vec<String>>(),
                         Vec::<String>::new(),
-                        "validated policy produced a type error!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\nrequest:\n{q}\n",
+                        "validated policy produced a type error!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
                     );
                     // or wrong-number-of-arguments errors
                     assert_eq!(
@@ -371,7 +375,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                     );
                 }
             } else {
-                maybe_log_schemastats(input.schema.schemafile(), "vno");
+                maybe_log_schemastats(schemafile.as_ref(), "vno");
                 maybe_log_hierarchystats(&input.hierarchy, "vno");
                 maybe_log_policystats(&policy, "vno");
             }

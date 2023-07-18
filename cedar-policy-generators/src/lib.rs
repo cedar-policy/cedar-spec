@@ -37,3 +37,6 @@ pub mod schema;
 
 /// This module contains helper functions for calculating size_hint()
 pub mod size_hint_utils;
+
+/// This module contains various generator settings
+pub mod settings;
