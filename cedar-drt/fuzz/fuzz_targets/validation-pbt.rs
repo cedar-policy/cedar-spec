@@ -351,7 +351,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             .filter(|err| err.contains("type error"))
                             .collect::<Vec<String>>(),
                         Vec::<String>::new(),
-                        "validated policy produced a type error!\npolicies:\n{}\nentities:\n{}\nschema:\n{}\nrequest:\n{}\n", &policyset, &entities, &input.schema.schemafile_string(), &q,
+                        "validated policy produced a type error!\npolicies:\n{}\nentities:\n{}\nschema:\n{}\nrequest:\n{}\n", &policyset, &entities, &schemafile_string, &q,
                     );
                     // or wrong-number-of-arguments errors
                     assert_eq!(
