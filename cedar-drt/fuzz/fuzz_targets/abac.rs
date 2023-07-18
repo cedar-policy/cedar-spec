@@ -19,9 +19,12 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
-use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
-use cedar_policy_generators::hierarchy::Hierarchy;
-use cedar_policy_generators::schema::Schema;
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    hierarchy::Hierarchy,
+    schema::Schema,
+    settings::ABACSettings,
+};
 use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
