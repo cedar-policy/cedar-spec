@@ -23,9 +23,12 @@ use cedar_policy_core::ast::Policy;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::{Entities, TCComputation};
-use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
-use cedar_policy_generators::err::Error;
-use cedar_policy_generators::schema::Schema;
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    err::Error,
+    schema::Schema,
+    settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use smol_str::SmolStr;

@@ -15,21 +15,22 @@
  */
 
 use crate::abac::{
-    ABACPolicy, ABACRequest, ABACSettings, AttrValue, AvailableExtensionFunctions, ConstantPool,
-    Type, UnknownPool,
+    ABACPolicy, ABACRequest, AttrValue, AvailableExtensionFunctions, ConstantPool, Type,
+    UnknownPool,
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::Hierarchy;
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
+use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID};
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
-    TypeOfAttribute,
+    ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, TypeOfAttribute,
+    ValidatorSchema,
 };
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
@@ -311,7 +312,7 @@ fn record_schematype_with_attr(
     }
 }
 
-/// Get an arbitrary namespaces for a schema. The namespace may be absent or it
+/// Get an arbitrary namespace for a schema. The namespace may be absent or it
 /// may be a string generated from a `Name`.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
     let namespace: Option<ast::Name> = u
@@ -383,12 +384,14 @@ fn unwrap_attrs_or_context(
 /// qualified `EntityType` parsing `namespace` as a namespace and `name` as an
 /// `Id`. If `name` is `None`, then this builds an unspecified entity type. Use
 /// `build_qualified_entity_type_name` if `name` is not `None`.
-fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -> ast::EntityType {
-    match name {
-        Some(name) => {
-            let type_id: ast::Id = name
-                .parse()
-                .unwrap_or_else(|_| panic!("Valid name required to build entity type. Got {name}"));
+fn build_qualified_entity_type(
+    namespace: Option<SmolStr>,
+    basename: Option<&str>,
+) -> ast::EntityType {
+    match basename {
+        Some(basename) => {
+            let basename_id = ast::Id::from_str(basename)
+                .unwrap_or_else(|e| panic!("invalid type basename {basename:?}: {e}"));
             let type_namespace: Option<ast::Name> = match namespace.as_deref() {
                 None => None,
                 Some("") => None, // we consider "" to be the same as the empty namespace
@@ -397,16 +400,152 @@ fn build_qualified_entity_type(namespace: Option<SmolStr>, name: Option<&str>) -
                 })),
             };
             match type_namespace {
-                None => ast::EntityType::Concrete(ast::Name::unqualified_name(type_id)),
-                Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(type_id, ns)),
+                None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename_id)),
+                Some(ns) => {
+                    ast::EntityType::Concrete(ast::Name::type_in_namespace(basename_id, ns))
+                }
             }
         }
         None => ast::EntityType::Unspecified,
     }
 }
 
+/// Given a `SchemaType`, return all (attribute, type) pairs that occur inside it
+fn attrs_in_schematype(
+    schematype: &cedar_policy_validator::SchemaType,
+) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType)>> {
+    match schematype {
+        cedar_policy_validator::SchemaType::Type(variant) => {
+            use cedar_policy_validator::SchemaTypeVariant;
+            match variant {
+                SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
+                SchemaTypeVariant::Long => Box::new(std::iter::empty()),
+                SchemaTypeVariant::String => Box::new(std::iter::empty()),
+                SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
+                SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
+                SchemaTypeVariant::Set { element } => attrs_in_schematype(&element),
+                SchemaTypeVariant::Record { attributes, .. } => {
+                    let toplevel = attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.ty.clone()))
+                        .collect::<Vec<_>>();
+                    let recursed = toplevel
+                        .iter()
+                        .map(|(_, v)| attrs_in_schematype(&v))
+                        .flatten()
+                        .collect::<Vec<_>>();
+                    Box::new(toplevel.into_iter().chain(recursed.into_iter()))
+                }
+            }
+        }
+        cedar_policy_validator::SchemaType::TypeDef { .. } => Box::new(std::iter::empty()),
+    }
+}
+
+/// Build `attributes_by_type` from other components of `Schema`
+fn build_attributes_by_type<'a>(
+    entity_types: impl IntoIterator<Item = (&'a SmolStr, &'a cedar_policy_validator::EntityType)>,
+    namespace: &Option<SmolStr>,
+) -> HashMap<Type, Vec<(ast::Name, SmolStr)>> {
+    let triples = entity_types
+        .into_iter()
+        .map(|(name, et)| {
+            (
+                build_qualified_entity_type_name(namespace.clone(), name),
+                unwrap_attrs_or_context(&et.shape).0,
+            )
+        })
+        .flat_map(|(tyname, attrs)| {
+            attrs.iter().map(move |(attr_name, ty)| {
+                (
+                    schematype_to_type(&ty.ty),
+                    (tyname.clone(), attr_name.clone()),
+                )
+            })
+        });
+    let mut hm: HashMap<Type, Vec<(ast::Name, SmolStr)>> = HashMap::new();
+    for (ty, pair) in triples {
+        hm.entry(ty).or_default().push(pair);
+    }
+    hm
+}
+
 impl Schema {
-    /// Get an arbitrary Schema.
+    /// Create an arbitrary `Schema` based on (compatible with) the given Validator `NamespaceDefinition`.
+    pub fn from_nsdef(
+        nsdef: cedar_policy_validator::NamespaceDefinition,
+        namespace: Option<SmolStr>,
+        settings: ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Schema> {
+        let mut principal_types = HashSet::new();
+        let mut resource_types = HashSet::new();
+        for atype in nsdef.actions.values() {
+            if let Some(applyspec) = atype.applies_to.as_ref() {
+                if let Some(ptypes) = applyspec.principal_types.as_ref() {
+                    principal_types.extend(ptypes.iter());
+                }
+                if let Some(rtypes) = applyspec.resource_types.as_ref() {
+                    resource_types.extend(rtypes.iter());
+                }
+            }
+        }
+        let mut attributes = Vec::new();
+        for schematype in nsdef
+            .common_types
+            .values()
+            .chain(nsdef.entity_types.values().map(|etype| &etype.shape.0))
+        {
+            attributes.extend(attrs_in_schematype(schematype));
+        }
+        let attributes_by_type = build_attributes_by_type(&nsdef.entity_types, &namespace);
+        Ok(Schema {
+            namespace,
+            constant_pool: u
+                .arbitrary()
+                .map_err(|e| while_doing("generating constant pool", e))?,
+            unknown_pool: UnknownPool::default(),
+            ext_funcs: AvailableExtensionFunctions::create(&settings),
+            settings,
+            entity_types: nsdef
+                .entity_types
+                .keys()
+                .map(|k| ast::Name::from_str(&k).expect("entity type should be valid Name"))
+                .collect(),
+            principal_types: principal_types
+                .into_iter()
+                .map(|p| ast::Name::from_str(&p).expect("entity type should be valid Name"))
+                .collect(),
+            actions_eids: nsdef.actions.keys().cloned().collect(),
+            resource_types: resource_types
+                .into_iter()
+                .map(|r| ast::Name::from_str(&r).expect("entity type should be valid Name"))
+                .collect(),
+            attributes,
+            attributes_by_type,
+            schema: nsdef,
+        })
+    }
+
+    /// Create an arbitrary `Schema` based on (compatible with) the given Validator `SchemaFragment`.
+    pub fn from_schemafrag(
+        schemafrag: cedar_policy_validator::SchemaFragment,
+        settings: ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Schema> {
+        let mut nsdefs = schemafrag.0.into_iter();
+        match nsdefs.next() {
+            None => panic!("Empty SchemaFragment not supported in this method"),
+            Some((ns, nsdef)) => match nsdefs.next() {
+                Some(_) => unimplemented!(
+                    "SchemaFragment with multiple namespaces not yet supported in this method"
+                ),
+                None => Self::from_nsdef(nsdef, Some(ns), settings, u),
+            },
+        }
+    }
+
+    /// Get an arbitrary `Schema`.
     pub fn arbitrary(settings: ABACSettings, u: &mut Unstructured<'_>) -> Result<Schema> {
         let namespace = arbitrary_namespace(u)?;
 
@@ -434,13 +573,13 @@ impl Schema {
 
         // now turn each of those names into an EntityType, no
         // member-relationships yet
-        let mut entity_types: Vec<(SmolStr, EntityType)> = entity_type_ids
+        let mut entity_types: Vec<(SmolStr, cedar_policy_validator::EntityType)> = entity_type_ids
             .iter()
             .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
             .map(|id| {
                 Ok((
                     AsRef::<str>::as_ref(&id).into(),
-                    EntityType {
+                    cedar_policy_validator::EntityType {
                         member_of_types: vec![],
                         shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
                     },
@@ -603,30 +742,8 @@ impl Schema {
                 })
             })
             .collect();
-        let attributes_by_type = {
-            let triples = entity_types
-                .iter()
-                .map(|(name, et)| {
-                    (
-                        build_qualified_entity_type_name(namespace.clone(), name),
-                        unwrap_attrs_or_context(&et.shape).0,
-                    )
-                })
-                .flat_map(|(tyname, attrs)| {
-                    attrs.iter().map(move |(attr_name, ty)| {
-                        (
-                            schematype_to_type(&ty.ty),
-                            (tyname.clone(), attr_name.clone()),
-                        )
-                    })
-                });
-            let mut hm: HashMap<Type, Vec<(ast::Name, SmolStr)>> = HashMap::new();
-            for (ty, pair) in triples {
-                hm.entry(ty).or_default().push(pair);
-            }
-            hm
-        };
-
+        let attributes_by_type =
+            build_attributes_by_type(entity_types.iter().map(|(a, b)| (a, b)), &namespace);
         let actions_eids = actions.iter().map(|(name, _)| name.clone()).collect();
         Ok(Schema {
             schema: cedar_policy_validator::NamespaceDefinition {
@@ -683,7 +800,7 @@ impl Schema {
             })
             .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
-        let entitytypes_by_type: HashMap<ast::Name, &EntityType> = self
+        let entitytypes_by_type: HashMap<ast::Name, &cedar_policy_validator::EntityType> = self
             .schema
             .entity_types
             .iter()
@@ -719,7 +836,9 @@ impl Schema {
                             allowed_parent_typename,
                         );
                         for possible_parent_uid in
-                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename)
+                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
+                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
+                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename, &uid)
                         {
                             if u.ratio::<u8>(1, 2)? {
                                 parents.insert(possible_parent_uid.clone());
@@ -3412,12 +3531,12 @@ impl Schema {
     }
 
     /// Get the namespace of this `Schema`, if any
-    pub fn namespace(&self) -> &Option<SmolStr> {
-        &self.namespace
+    pub fn namespace(&self) -> Option<&SmolStr> {
+        self.namespace.as_ref()
     }
 
-    /// Get the underlying schema file, as a NamespaceDefinition
-    pub fn schemafile(&self) -> &NamespaceDefinition {
+    /// Get the underlying schema file, as a `NamespaceDefinition`
+    pub fn schemafile(&self) -> &cedar_policy_validator::NamespaceDefinition {
         &self.schema
     }
 
@@ -3433,6 +3552,494 @@ impl From<Schema> for SchemaFragment {
         SchemaFragment(
             HashMap::from_iter([(schema.namespace.unwrap_or_default(), schema.schema)].into_iter())
                 .into(),
+        )
+    }
+}
+
+impl TryFrom<Schema> for ValidatorSchema {
+    type Error = SchemaError;
+    fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
+        ValidatorSchema::try_from(SchemaFragment::from(schema))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Schema;
+    use crate::settings::ABACSettings;
+    use arbitrary::Unstructured;
+    use cedar_policy_core::entities::Entities;
+    use cedar_policy_validator::SchemaFragment;
+    use rand::{rngs::ThreadRng, thread_rng, RngCore};
+
+    const RANDOM_BYTE_SIZE: u16 = 1024;
+    const ITERATION: u8 = 100;
+
+    const TEST_SETTINGS: ABACSettings = ABACSettings {
+        match_types: false,
+        enable_extensions: false,
+        max_depth: 4,
+        max_width: 4,
+        enable_additional_attributes: false,
+        enable_like: false,
+        enable_action_groups_and_attrs: true,
+        enable_arbitrary_func_call: false,
+        enable_unknowns: false,
+    };
+
+    const GITHUB_SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": {
+                "User": {
+                    "memberOfTypes": [
+                        "UserGroup",
+                        "Team"
+                    ]
+                },
+                "UserGroup": {
+                    "memberOfTypes": [
+                        "UserGroup"
+                    ]
+                },
+                "Repository": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "readers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "traigers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "writers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "maintainers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "admins": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            }
+                        }
+                    }
+                },
+                "Issue": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "repo": {
+                                "type": "Entity",
+                                "name": "Repository"
+                            },
+                            "reporter": {
+                                "type": "Entity",
+                                "name": "User"
+                            }
+                        }
+                    }
+                },
+                "Org": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "members": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "owners": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            }
+                        }
+                    }
+                },
+                "Team": {
+                    "memberOfTypes": [
+                        "UserGroup"
+                    ]
+                }
+            },
+            "actions": {
+                "pull": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "fork": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "delete_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "edit_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "assign_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "push": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_reader": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_triager": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_writer": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_maintainer": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_admin": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    "#;
+
+    const DOCUMENT_CLOUD_SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": {
+                "User": {
+                    "memberOfTypes": [
+                        "Group"
+                    ],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "personalGroup": {
+                                "type": "Entity",
+                                "name": "Group"
+                            },
+                            "blocked": {
+                                "type": "Set",
+                                "element": {
+                                    "type": "Entity",
+                                    "name": "User"
+                                }
+                            }
+                        }
+                    }
+                },
+                "Group": {
+                    "memberOfTypes": [
+                        "DocumentShare"
+                    ],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "owner": {
+                                "type": "Entity",
+                                "name": "User"
+                            }
+                        }
+                    }
+                },
+                "Document": {
+                    "memberOfTypes": [],
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "owner": {
+                                "type": "Entity",
+                                "name": "User"
+                            },
+                            "isPrivate": {
+                                "type": "Boolean"
+                            },
+                            "publicAccess": {
+                                "type": "String"
+                            },
+                            "viewACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            },
+                            "modifyACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            },
+                            "manageACL": {
+                                "type": "Entity",
+                                "name": "DocumentShare"
+                            }
+                        }
+                    }
+                },
+                "DocumentShare": {},
+                "Public": {
+                    "memberOfTypes": [
+                        "DocumentShare"
+                    ]
+                },
+                "Drive": {}
+            },
+            "actions": {
+                "CreateDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Drive"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ViewDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User",
+                            "Public"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "DeleteDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ModifyDocument": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "EditIsPrivate": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "AddToShareACL": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "EditPublicAccess": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Document"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "CreateGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Drive"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "ModifyGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Group"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                },
+                "DeleteGroup": {
+                    "appliesTo": {
+                        "resourceTypes": [
+                            "Group"
+                        ],
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "context": {
+                            "type": "ReusedContext"
+                        }
+                    }
+                }
+            },
+            "commonTypes": {
+                "ReusedContext": {
+                    "type": "Record",
+                    "attributes": {
+                        "is_authenticated": {
+                            "type": "Boolean",
+                            "required": true
+                        }
+                    }
+                }
+            }
+        }
+    }"#;
+
+    #[test]
+    fn entities_generation_github() {
+        let fragment = SchemaFragment::from_file(GITHUB_SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid!");
+        let mut rng = thread_rng();
+        for _ in 0..ITERATION {
+            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+        }
+    }
+
+    #[test]
+    fn entities_generation_document_cloud() {
+        let fragment = SchemaFragment::from_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid!");
+        let mut rng = thread_rng();
+        for _ in 0..ITERATION {
+            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+        }
+    }
+
+    fn generate_hierarchy_from_schema(
+        rng: &mut ThreadRng,
+        fragment: &SchemaFragment,
+    ) -> cedar_policy_core::entities::Result<Entities> {
+        let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
+        rng.fill_bytes(&mut bytes);
+        let mut u = Unstructured::new(&bytes);
+        let schema = Schema::from_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
+            .expect("failed to generate schema!");
+        let h = schema
+            .arbitrary_hierarchy(&mut u)
+            .expect("failed to generate hierarchy!");
+        Entities::from_entities(
+            h.entities().into_iter().map(|e| e.clone()),
+            cedar_policy_core::entities::TCComputation::ComputeNow,
         )
     }
 }

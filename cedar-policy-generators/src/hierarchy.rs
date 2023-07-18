@@ -5,6 +5,41 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{Eid, Entity, EntityUID, Name};
 use cedar_policy_core::entities::{Entities, TCComputation};
 
+// EntityUIDs with the mappings to their indices in the container
+// This is used to generate an entity that is lexicographically smaller/greater than the input entity
+#[derive(Debug, Clone)]
+struct EntityUIDs {
+    pub indices: HashMap<EntityUID, usize>,
+    pub uids: Vec<EntityUID>,
+}
+
+impl From<Vec<EntityUID>> for EntityUIDs {
+    fn from(value: Vec<EntityUID>) -> Self {
+        Self {
+            indices: (0..value.len())
+                .into_iter()
+                .map(|idx| (value[idx].clone(), idx))
+                .collect(),
+            uids: value,
+        }
+    }
+}
+
+impl AsRef<[EntityUID]> for EntityUIDs {
+    fn as_ref(&self) -> &[EntityUID] {
+        &self.uids
+    }
+}
+
+impl EntityUIDs {
+    // Get a slice of `EntityUID`s whose indices are greater than `uid`'s
+    // INVARIANT: `uid` is in `indices`
+    fn get_slice_after_uid(&self, uid: &EntityUID) -> &[EntityUID] {
+        let idx = self.indices[uid];
+        &self.uids[idx + 1..]
+    }
+}
+
 /// Contains data about an entity hierarchy
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
@@ -18,7 +53,7 @@ pub struct Hierarchy {
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: HashMap<Name, Vec<EntityUID>>,
+    uids_by_type: HashMap<Name, EntityUIDs>,
 }
 
 impl Hierarchy {
@@ -33,7 +68,10 @@ impl Hierarchy {
                 .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
                 .collect(),
             uids,
-            uids_by_type,
+            uids_by_type: uids_by_type
+                .into_iter()
+                .map(|(n, uids)| (n, uids.into()))
+                .collect(),
         }
     }
 
@@ -71,9 +109,14 @@ impl Hierarchy {
     ) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
         if u.ratio::<u8>(9, 10)? {
-            let uid = u.choose(self.uids_by_type.get(typename).ok_or(Error::EmptyChoose {
-                doing_what: "getting an existing uid with given type",
-            })?)?;
+            let uid = u.choose(
+                self.uids_by_type
+                    .get(typename)
+                    .ok_or(Error::EmptyChoose {
+                        doing_what: "getting an existing uid with given type",
+                    })?
+                    .as_ref(),
+            )?;
             Ok(uid.clone())
         } else {
             Ok(EntityUID::from_components(typename.clone(), u.arbitrary()?))
@@ -145,9 +188,20 @@ impl Hierarchy {
     }
 
     /// Iterate over the UIDs having the given typename
-    pub fn uids_for_type(&self, ty: &Name) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
-        match self.uids_by_type.get(ty) {
-            Some(v) => Box::new(v.iter()),
+    /// Also ensure that the returned UIDs is lexicographically larger than the input `EntityUID` if its type is the same as the given typename
+    pub fn uids_for_type(
+        &self,
+        dst_ty: &Name,
+        entity: &EntityUID,
+    ) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
+        match self.uids_by_type.get(dst_ty) {
+            Some(v) => {
+                if entity.entity_type().to_string() == dst_ty.to_string() {
+                    Box::new(v.get_slice_after_uid(entity).iter())
+                } else {
+                    Box::new(v.as_ref().iter())
+                }
+            }
             None => Box::new(std::iter::empty()),
         }
     }
