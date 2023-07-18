@@ -836,7 +836,9 @@ impl Schema {
                             allowed_parent_typename,
                         );
                         for possible_parent_uid in
-                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename)
+                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
+                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
+                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename, &uid)
                         {
                             if u.ratio::<u8>(1, 2)? {
                                 parents.insert(possible_parent_uid.clone());
@@ -3584,6 +3586,200 @@ mod tests {
         enable_unknowns: false,
     };
 
+    const GITHUB_SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": {
+                "User": {
+                    "memberOfTypes": [
+                        "UserGroup",
+                        "Team"
+                    ]
+                },
+                "UserGroup": {
+                    "memberOfTypes": [
+                        "UserGroup"
+                    ]
+                },
+                "Repository": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "readers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "traigers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "writers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "maintainers": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "admins": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            }
+                        }
+                    }
+                },
+                "Issue": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "repo": {
+                                "type": "Entity",
+                                "name": "Repository"
+                            },
+                            "reporter": {
+                                "type": "Entity",
+                                "name": "User"
+                            }
+                        }
+                    }
+                },
+                "Org": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "members": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            },
+                            "owners": {
+                                "type": "Entity",
+                                "name": "UserGroup"
+                            }
+                        }
+                    }
+                },
+                "Team": {
+                    "memberOfTypes": [
+                        "UserGroup"
+                    ]
+                }
+            },
+            "actions": {
+                "pull": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "fork": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "delete_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "edit_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "assign_issue": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Issue"
+                        ]
+                    }
+                },
+                "push": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_reader": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_triager": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_writer": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_maintainer": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                },
+                "add_admin": {
+                    "appliesTo": {
+                        "principalTypes": [
+                            "User"
+                        ],
+                        "resourceTypes": [
+                            "Repository"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    "#;
+
     const DOCUMENT_CLOUD_SCHEMA_STR: &str = r#"
     {
         "": {
@@ -3807,6 +4003,16 @@ mod tests {
             }
         }
     }"#;
+
+    #[test]
+    fn entities_generation_github() {
+        let fragment = SchemaFragment::from_file(GITHUB_SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid!");
+        let mut rng = thread_rng();
+        for _ in 0..ITERATION {
+            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+        }
+    }
 
     #[test]
     fn entities_generation_document_cloud() {
