@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use crate::authorizer::ResponseKind;
+use crate::authorizer::{Response, ResponseKind};
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;

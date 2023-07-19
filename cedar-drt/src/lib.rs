@@ -15,7 +15,7 @@
  */
 
 #![forbid(unsafe_code)]
-pub use authorizer::Response;
+pub use cedar_policy::Response;
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
 pub use entities::Entities;

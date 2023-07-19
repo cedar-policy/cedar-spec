@@ -590,7 +590,7 @@ impl<'e> DifferentialTester<'e> {
             .diagnostics
             .errors
             .iter()
-            .any(|e| e.contains("integer overflow"))
+            .any(|e| e.to_string().contains("integer overflow"))
         {
             return rust_res;
         }
@@ -603,14 +603,23 @@ impl<'e> DifferentialTester<'e> {
         let definitional_res = self.def_engine.is_authorized(q, policies, entities);
         // for now, we expect never to receive errors from the definitional engine,
         // and we otherwise ignore errors in the comparison
-        assert_eq!(definitional_res.diagnostics.errors, Vec::<String>::new());
-        let rust_res_for_comparison = Response {
+        assert_eq!(
+            definitional_res
+                .diagnostics()
+                .errors()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>(),
+            Vec::<String>::new()
+        );
+
+        let rust_res_for_comparison: cedar_policy::Response = Response {
             diagnostics: Diagnostics {
                 errors: Vec::new(),
                 ..rust_res.diagnostics
             },
             ..rust_res
-        };
+        }
+        .into();
         assert_eq!(
             rust_res_for_comparison, definitional_res,
             "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
