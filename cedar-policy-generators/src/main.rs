@@ -40,12 +40,12 @@ pub struct HierarchyArgs {
 impl From<&HierarchyArgs> for ABACSettings {
     fn from(value: &HierarchyArgs) -> Self {
         Self {
-            match_types: false,
+            match_types: true,
             enable_extensions: true,
             max_depth: value.max_depth,
             max_width: value.max_width,
             enable_additional_attributes: false,
-            enable_like: false,
+            enable_like: true,
             enable_action_groups_and_attrs: true,
             enable_arbitrary_func_call: false,
             enable_unknowns: false,
