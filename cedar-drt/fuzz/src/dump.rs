@@ -109,7 +109,12 @@ pub fn dump<'a>(
                         .unwrap_or_default(),
                     decision: a.decision,
                     reasons: &a.diagnostics.reason,
-                    errors: &a.diagnostics.errors,
+                    errors: a
+                        .diagnostics
+                        .errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
                 })
                 .collect(),
         },
@@ -166,5 +171,5 @@ struct IntegrationRequest<'a> {
     /// Reasons
     reasons: &'a std::collections::HashSet<PolicyID>,
     /// Errors
-    errors: &'a [String],
+    errors: Vec<String>,
 }

@@ -144,9 +144,10 @@ fuzz_target!(|input: FuzzTargetInput| {
                 .diagnostics
                 .errors
                 .iter()
+                .map(ToString::to_string)
                 .filter(|err| err.contains("wrong number of arguments"))
-                .collect::<Vec<&String>>(),
-            Vec::<&String>::new()
+                .collect::<Vec<String>>(),
+            Vec::<String>::new()
         );
     }
 });

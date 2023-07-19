@@ -347,9 +347,10 @@ fuzz_target!(|input: FuzzTargetInput| {
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("type error"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new(),
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new(),
                         "validated policy produced a type error!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
                     );
                     // or wrong-number-of-arguments errors
@@ -357,18 +358,20 @@ fuzz_target!(|input: FuzzTargetInput| {
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("wrong number of arguments"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new()
                     );
                     // or missing-attribute errors (for either entities or records)
                     assert_eq!(
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("does not have the required attribute"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new()
                     );
                 }
             } else {
