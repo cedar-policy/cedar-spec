@@ -54,23 +54,23 @@ impl From<&HierarchyArgs> for ABACSettings {
 }
 
 fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> Result<Entities> {
-    let f = File::open(args.schema_file.clone())?;
+    let f = File::open(&args.schema_file)?;
     let fragment = SchemaFragment::from_file(f)?;
     let mut rng = thread_rng();
     let mut bytes = Vec::new();
     bytes.resize_with(byte_length, || rng.gen());
     let mut u = Unstructured::new(&bytes);
     let schema = Schema::from_schemafrag(fragment.clone(), args.into(), &mut u)
-        .map_err(|err| anyhow!(format!("failed to construct `Schema`: {:#?}", err)))?;
+        .map_err(|err| anyhow!("failed to construct `Schema`: {err:#?}"))?;
     let h = schema
         .arbitrary_hierarchy(&mut u)
-        .map_err(|err| anyhow!(format!("failed to generate hierarchy: {:#?}", err)))?;
+        .map_err(|err| anyhow!("failed to generate hierarchy: {err:#?}"))?;
     Entities::from_entities(
         h.entities().into_iter().map(|e| e.clone()),
         TCComputation::ComputeNow,
     )?;
     Ok(Entities::from_entities(
-        h.entities().into_iter().map(|e| e.clone()),
+        h.entities().into_iter().cloned(),
         TCComputation::AssumeAlreadyComputed,
     )?)
 }
@@ -82,11 +82,11 @@ fn main() {
             match generate_hierarchy_from_schema(cli.byte_length as usize, args) {
                 Ok(h) => {
                     h.write_to_json(io::stdout()).unwrap_or_else(|err| {
-                        eprintln!("{}", format!("cannot convert entities to JSON: {}", err))
+                        eprintln!("{}", format!("cannot convert entities to JSON: {err}"))
                     });
                 }
                 Err(err) => {
-                    eprintln!("{}", err);
+                    eprintln!("{err}");
                 }
             }
         }
