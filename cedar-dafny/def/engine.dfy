@@ -205,7 +205,7 @@ module def.engine {
           applyIntUnaryOp(a => factor * a, x)
         case Like(p) =>
           var s :- Value.asString(x);
-          Ok(Value.Bool(wildcard.wildcardMatch(s, p)))
+          Ok(Value.Bool(wildcardMatch(s, p)))
       }
     }
 
