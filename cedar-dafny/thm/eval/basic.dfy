@@ -146,7 +146,7 @@ module eval.basic {
     ensures E.interpretSet(es).Ok? ==> forall v | v in E.interpretSet(es).value :: exists i :: 0 <= i < |es| && E.interpret(es[i]) == base.Ok(v)
     ensures (forall e | e in es :: E.interpret(e).Ok?) ==> E.interpretSet(es).Ok?
     ensures (exists i :: 0 <= i < |es| && E.interpret(es[i]).Err?) ==> E.interpretSet(es).Err?
-    ensures E.interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?);
+    ensures E.interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
     ensures E.interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && E.interpret(es[i]).Err? && E.interpret(es[i]).error == E.interpretSet(es).error && (forall j | 0 <= j < i :: E.interpret(es[j]).Ok?)
   {}
 
