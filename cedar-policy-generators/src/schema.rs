@@ -20,7 +20,9 @@ use crate::abac::{
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::hierarchy::Hierarchy;
+use crate::hierarchy::{
+    generate_uid_with_type, Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities,
+};
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
 use crate::settings::ABACSettings;
@@ -41,9 +43,9 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    schema: cedar_policy_validator::NamespaceDefinition,
+    pub schema: cedar_policy_validator::NamespaceDefinition,
     /// Namespace for the schema, as an `ast::Name`
-    namespace: Option<ast::Name>,
+    pub namespace: Option<ast::Name>,
     /// settings
     pub settings: ABACSettings,
     /// constant pool
@@ -55,7 +57,7 @@ pub struct Schema {
     /// list of all entity types that are declared in the schema. Note that this
     /// may contain an entity type that is not in `principal_types` or
     /// `resource_types`.
-    entity_types: Vec<ast::Name>,
+    pub entity_types: Vec<ast::Name>,
     /// list of entity types that occur as a valid principal for at least one
     /// action in the `schema`
     principal_types: Vec<ast::Name>,
@@ -266,7 +268,12 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
 
 /// internal helper function, get the EntityUID corresponding to the given ActionType
 fn uid_for_action_name(namespace: Option<ast::Name>, action_name: &str) -> ast::EntityUID {
-    let entity_type = build_qualified_entity_type_name(namespace, &action_name);
+    let entity_type = build_qualified_entity_type_name(
+        namespace,
+        action_name
+            .parse()
+            .unwrap_or_else(|e| panic!("invalid action name {action_name:?}: {e}")),
+    );
     ast::EntityUID::from_components(entity_type, ast::Eid::new(action_name))
 }
 
@@ -319,26 +326,31 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
 fn parse_name_with_default_namespace(namespace: Option<&ast::Name>, name: &str) -> ast::Name {
-    let schema_entity_type_name =
-        ast::Name::from_str(name).expect("Valid Name required for entity type.");
-    if schema_entity_type_name
-        .namespace_components()
-        .next()
-        .is_none()
-        && namespace.is_some()
-    {
-        build_qualified_entity_type_name(
-            namespace.cloned(),
-            schema_entity_type_name.basename().as_ref(),
-        )
+    name_with_default_namespace(
+        namespace,
+        &ast::Name::from_str(name).expect("invalid entity type name"),
+    )
+}
+
+/// If the given `Name` has a namespace, return it as-is. Otherwise, qualify it
+/// with the default namespace if one is provided.
+pub(crate) fn name_with_default_namespace(
+    namespace: Option<&ast::Name>,
+    name: &ast::Name,
+) -> ast::Name {
+    if name.namespace_components().next().is_none() && namespace.is_some() {
+        build_qualified_entity_type_name(namespace.cloned(), name.basename().clone())
     } else {
-        schema_entity_type_name
+        name.clone()
     }
 }
 
-/// Given an (optional) namespace and a type base name string, build a fully
+/// Given an (optional) namespace and a type base name, build a fully
 /// qualified `Name`.
-fn build_qualified_entity_type_name(namespace: Option<ast::Name>, name: &str) -> ast::Name {
+pub(crate) fn build_qualified_entity_type_name(
+    namespace: Option<ast::Name>,
+    name: ast::Id,
+) -> ast::Name {
     match build_qualified_entity_type(namespace, Some(name)) {
         ast::EntityType::Concrete(type_name) => type_name,
         ast::EntityType::Unspecified => {
@@ -360,7 +372,7 @@ fn unwrap_schema_type(
     }
 }
 
-fn unwrap_attrs_or_context(
+pub(crate) fn unwrap_attrs_or_context(
     attrs: &AttributesOrContext,
 ) -> (&BTreeMap<SmolStr, TypeOfAttribute>, bool) {
     if let cedar_policy_validator::SchemaTypeVariant::Record {
@@ -374,26 +386,20 @@ fn unwrap_attrs_or_context(
     }
 }
 
-/// Given an (optional) namespace and a type base name string, build a fully
-/// qualified `EntityType`.
+/// Given an (optional) namespace and a type base name, build a fully qualified
+/// `EntityType`.
 ///
 /// If `basename` is `None`, then this builds an unspecified entity type. Use
 /// `build_qualified_entity_type_name` if `basename` is not `None`.
 fn build_qualified_entity_type(
     namespace: Option<ast::Name>,
-    basename: Option<&str>,
+    basename: Option<ast::Id>,
 ) -> ast::EntityType {
     match basename {
-        Some(basename) => {
-            let basename_id = ast::Id::from_str(basename)
-                .unwrap_or_else(|e| panic!("invalid type basename {basename:?}: {e}"));
-            match namespace {
-                None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename_id)),
-                Some(ns) => {
-                    ast::EntityType::Concrete(ast::Name::type_in_namespace(basename_id, ns))
-                }
-            }
-        }
+        Some(basename) => match namespace {
+            None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename)),
+            Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(basename, ns)),
+        },
         None => ast::EntityType::Unspecified,
     }
 }
@@ -439,7 +445,14 @@ fn build_attributes_by_type<'a>(
         .into_iter()
         .map(|(name, et)| {
             (
-                build_qualified_entity_type_name(namespace.cloned(), name),
+                // REVIEW: this fails if `name` is a qualified Name like `A::B`.  Is that the desired behavior?
+                // If we want to allow `A::B` for `name`, then the function we want is
+                // parse_name_in_default_namespace().
+                build_qualified_entity_type_name(
+                    namespace.cloned(),
+                    name.parse()
+                        .unwrap_or_else(|e| panic!("invalid type basename {name:?}: {e}")),
+                ),
                 unwrap_attrs_or_context(&et.shape).0,
             )
         })
@@ -563,7 +576,7 @@ impl Schema {
         // types.
         let entity_type_names: Vec<ast::Name> = entity_type_ids
             .iter()
-            .map(|id| build_qualified_entity_type_name(namespace.clone(), id.as_ref()))
+            .map(|id| build_qualified_entity_type_name(namespace.clone(), id.clone()))
             .collect();
 
         // now turn each of those names into an EntityType, no
@@ -646,7 +659,7 @@ impl Schema {
                                                     resource_types.insert(
                                                         build_qualified_entity_type_name(
                                                             namespace.clone(),
-                                                            name,
+                                                            name.parse().unwrap_or_else(|e| panic!("invalid entity type {name:?}: {e}")),
                                                         ),
                                                     );
                                                     Some(name.clone())
@@ -673,7 +686,7 @@ impl Schema {
                                                     principal_types.insert(
                                                         build_qualified_entity_type_name(
                                                             namespace.clone(),
-                                                            name,
+                                                            name.parse().unwrap_or_else(|e| panic!("invalid entity type name {name:?}: {e}")),
                                                         ),
                                                     );
                                                     Some(name.clone())
@@ -779,134 +792,12 @@ impl Schema {
 
     /// Get an arbitrary Hierarchy conforming to the schema.
     pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
-        // For each entity type in the schema, generate one or more entity UIDs of that type
-        let uids_by_type = self
-            .schema
-            .entity_types
-            .keys()
-            .map(|name| {
-                let name = build_qualified_entity_type_name(self.namespace.clone(), name);
-                let mut uids = vec![Self::arbitrary_uid_with_type(&name, None, u)?];
-                u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                    uids.push(Self::arbitrary_uid_with_type(&name, None, u)?);
-                    Ok(std::ops::ControlFlow::Continue(()))
-                })?;
-                Ok((name, uids))
-            })
-            .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
-        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
-        let entitytypes_by_type: HashMap<ast::Name, &cedar_policy_validator::EntityType> = self
-            .schema
-            .entity_types
-            .iter()
-            .map(|(name, et)| {
-                (
-                    build_qualified_entity_type_name(self.namespace.clone(), name),
-                    et,
-                )
-            })
-            .collect();
-        // create an entity hierarchy composed of those entity UIDs, with some
-        // hierarchy-membership edges possibly added in positions where the
-        // schema allows a parent of that type
-        let entities = hierarchy_no_attrs
-            .entities()
-            .map(|e| e.uid())
-            .map(|uid| match uid.entity_type() {
-                // entity data is generated with `arbitrary_uid_with_type`, which can never
-                // produce an unspecified entity
-                ast::EntityType::Unspecified => {
-                    panic!("should not be possible to generate an unspecified entity")
-                }
-                ast::EntityType::Concrete(name) => {
-                    // choose parents for this entity
-                    let mut parents = HashSet::new();
-                    for allowed_parent_typename in &entitytypes_by_type
-                        .get(&name)
-                        .expect("typename should have an EntityType")
-                        .member_of_types
-                    {
-                        let allowed_parent_typename = build_qualified_entity_type_name(
-                            self.namespace.clone(),
-                            allowed_parent_typename,
-                        );
-                        for possible_parent_uid in
-                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
-                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
-                            hierarchy_no_attrs.uids_for_type(&allowed_parent_typename, &uid)
-                        {
-                            if u.ratio::<u8>(1, 2)? {
-                                parents.insert(possible_parent_uid.clone());
-                            }
-                        }
-                    }
-                    // generate appropriate attributes for this entity
-                    let mut attrs = HashMap::new();
-                    let attr_or_context = unwrap_attrs_or_context(
-                        &entitytypes_by_type
-                            .get(&name)
-                            .expect("typename should have an EntityType")
-                            .shape,
-                    );
-                    if attr_or_context.1 {
-                        // maybe add some additional attributes with arbitrary types
-                        u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                            let attr_type = if self.settings.enable_extensions {
-                                u.arbitrary()?
-                            } else {
-                                Type::arbitrary_nonextension(u)?
-                            };
-                            let attr_name: String = u.arbitrary()?;
-                            attrs.insert(
-                                attr_name.into(),
-                                self.arbitrary_attr_value_for_type(
-                                    &attr_type,
-                                    Some(&hierarchy_no_attrs),
-                                    self.settings.max_depth,
-                                    u,
-                                )?
-                                .into(),
-                            );
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                    }
-                    for (attr, ty) in attr_or_context.0 {
-                        // now add the actual optional and required attributes, with the
-                        // correct types.
-                        // Doing this second ensures that we overwrite any "additional"
-                        // attributes so that they definitely have the required type, in
-                        // case we got a name collision between an explicitly specified
-                        // attribute and one of the "additional" ones we added.
-                        if ty.required || u.ratio::<u8>(1, 2)? {
-                            let attr_val = self.arbitrary_attr_value_for_schematype(
-                                &ty.ty,
-                                Some(&hierarchy_no_attrs),
-                                self.settings.max_depth,
-                                u,
-                            )?;
-                            attrs.insert(
-                                attr.parse().expect(
-                                    "all attribute names in the schema should be valid identifiers",
-                                ),
-                                attr_val.into(),
-                            );
-                        }
-                    }
-                    // create the actual ast::Entity object
-                    let entity = ast::Entity::new(
-                        uid.clone(),
-                        attrs.into_iter().collect(),
-                        parents.into_iter().collect(),
-                    );
-                    Ok((uid.clone(), entity))
-                }
-            })
-            .collect::<Result<_>>()?;
-        Ok(hierarchy_no_attrs.replace_entities(entities))
-    }
-    /// size hint for arbitrary_hierarchy()
-    pub fn arbitrary_hierarchy_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        (0, None)
+        HierarchyGenerator {
+            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
+            u,
+        }
+        .generate()
     }
 
     /// Get an arbitrary UID from the schema, that could be used as a `principal`.
@@ -971,14 +862,11 @@ impl Schema {
 
     fn arbitrary_uid_with_optional_type(
         &self,
-        ty_name: Option<&SmolStr>,
+        ty_name: Option<ast::Id>, // REVIEW: should we allow `ast::Name` here?
         hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
-        let ty = build_qualified_entity_type(
-            self.namespace.clone(),
-            ty_name.as_ref().map(|x| x.as_str()),
-        );
+        let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
         match ty {
             ast::EntityType::Concrete(ty) => Self::arbitrary_uid_with_type(&ty, hierarchy, u),
             ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
@@ -996,7 +884,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match hierarchy {
-            None => Ok(ast::EntityUID::from_components(ty.clone(), u.arbitrary()?)),
+            None => generate_uid_with_type(ty.clone(), u),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }
@@ -1128,7 +1016,11 @@ impl Schema {
             .iter()
             .map(|(name, et)| {
                 (
-                    build_qualified_entity_type_name(self.namespace.clone(), name),
+                    build_qualified_entity_type_name(
+                        self.namespace().cloned(),
+                        name.parse()
+                            .unwrap_or_else(|e| panic!("invalid entity type {name:?}: {e}")),
+                    ),
                     unwrap_attrs_or_context(&et.shape).0,
                 )
             })
@@ -1385,7 +1277,7 @@ impl Schema {
     /// `max_depth`: maximum depth of the attribute value expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
-    fn arbitrary_attr_value_for_type(
+    pub fn arbitrary_attr_value_for_type(
         &self,
         target_type: &Type,
         hierarchy: Option<&Hierarchy>,
@@ -1497,7 +1389,7 @@ impl Schema {
 
     /// size hint for arbitrary_attr_value_for_type()
     #[allow(dead_code)]
-    fn arbitrary_attr_value_for_type_size_hint(depth: usize) -> (usize, Option<usize>) {
+    pub fn arbitrary_attr_value_for_type_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::recursion_guard(depth, |depth| {
             arbitrary::size_hint::and(
                 size_hint_for_range(0, 7),
@@ -1530,7 +1422,7 @@ impl Schema {
     /// `max_depth`: maximum depth of the attribute value expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
-    fn arbitrary_attr_value_for_schematype(
+    pub fn arbitrary_attr_value_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaType,
         hierarchy: Option<&Hierarchy>,
@@ -1652,7 +1544,7 @@ impl Schema {
 
     /// size hint for arbitrary_attr_value_for_schematype()
     #[allow(dead_code)]
-    fn arbitrary_attr_value_for_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
+    pub fn arbitrary_attr_value_for_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::recursion_guard(depth, |depth| {
             arbitrary::size_hint::or_all(&[
                 Self::arbitrary_attr_value_for_type_size_hint(depth),
@@ -3474,7 +3366,14 @@ impl Schema {
                     let ty = u.choose(types).map_err(|e| {
                         while_doing("choosing one of the action principal types", e)
                     })?;
-                    self.arbitrary_uid_with_optional_type(Some(ty), Some(hierarchy), u)?
+                    self.arbitrary_uid_with_optional_type(
+                        Some(
+                            ty.parse()
+                                .unwrap_or_else(|e| panic!("invalid action name {ty:?}: {e}")),
+                        ),
+                        Some(hierarchy),
+                        u,
+                    )?
                 }
             },
             action: uid_for_action_name(self.namespace.clone(), action_name),
@@ -3490,7 +3389,14 @@ impl Schema {
                     let ty = u
                         .choose(types)
                         .map_err(|e| while_doing("choosing one of the action resource types", e))?;
-                    self.arbitrary_uid_with_optional_type(Some(ty), Some(hierarchy), u)?
+                    self.arbitrary_uid_with_optional_type(
+                        Some(
+                            ty.parse()
+                                .unwrap_or_else(|e| panic!("invalid action type {ty:?}: {e}")),
+                        ),
+                        Some(hierarchy),
+                        u,
+                    )?
                 }
             },
             context: {

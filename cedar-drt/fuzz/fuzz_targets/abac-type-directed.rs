@@ -22,6 +22,7 @@ use cedar_policy_core::entities::{Entities, TCComputation};
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
+    hierarchy::HierarchyGenerator,
     schema::Schema,
     settings::ABACSettings,
 };
@@ -86,7 +87,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
