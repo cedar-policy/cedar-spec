@@ -21,6 +21,7 @@ module validation.ext.decimal {
   import opened def.std
   import opened def.base
   import opened def.core
+  import opened def.ext.decimal.parseDecimal
   import opened types
 
   // Returns the map from Decimal extension function names to their types.
@@ -41,7 +42,7 @@ module validation.ext.decimal {
     if |args| != 1 then Ok(())
     else match args[0] {
            case PrimitiveLit(String(s)) =>
-             match ext.decimal.parseDecimal.Parse(s) {
+             match Parse(s) {
                case None => Err(ExtensionErr(Call(Name.fromStr("decimal"),args)))
                case Some(_) => Ok(())
              }

@@ -45,13 +45,13 @@ public class DefinitionalEngine {
      * @return JSON string containing Response
      */
     public String isAuthorized_str(String json) {
-	    Timer<Optional<difftest_mhelpers_Compile.Json>> query = new Timer<>(() -> deserializeQuery(json));
+	    Timer<Optional<difftest_mhelpers.Json>> query = new Timer<>(() -> deserializeQuery(json));
 	    Logger.get().set(LogTag.Deserialization, query);
 	    return query.get().map(x -> isAuthorized_json(x)).orElse("null");
     }
 
 
-    private Optional<difftest_mhelpers_Compile.Json> deserializeQuery(String json) { 
+    private Optional<difftest_mhelpers.Json> deserializeQuery(String json) { 
 	    try { 
 		    JsonNode js = mapper.readTree(json);
 		    return Optional.of(DafnyUtils.convertJsonJacksonToDafny(js));
@@ -68,9 +68,9 @@ public class DefinitionalEngine {
      * form of the JSON, not the official interchange format.
      * @return JsonNode containing Response
      */
-    public String isAuthorized_json(difftest_mhelpers_Compile.Json json) {
+    public String isAuthorized_json(difftest_mhelpers.Json json) {
 	    try { 
-		    Timer<difftest_mhelpers_Compile.Json> authResult = new Timer<>(() -> difftest_mmain_Compile.__default.isAuthorizedJson(json));
+		    Timer<difftest_mhelpers.Json> authResult = new Timer<>(() -> difftest_mmain.__default.isAuthorizedJson(json));
 		    Logger.get().set(LogTag.Auth, authResult);
 		    Timer<JsonNode> serialResult = new Timer<>(() -> DafnyUtils.convertJsonDafnyToJackson(authResult.get()));
 		    Logger.get().set(LogTag.Serialization, serialResult);

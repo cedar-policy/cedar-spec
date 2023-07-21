@@ -685,10 +685,10 @@ module validation.thm.soundness {
       }
     }
 
-    lemma SoundEqAux(u1: EntityUID, u2: EntityUID, t: Type, effs: Effects)
+    lemma SoundEqAuxEqUids(u1: EntityUID, u2: EntityUID, t: Type, effs: Effects)
       requires Typesafe(BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),effs,t)
-      ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t)
-    {
+      requires u1 == u2
+      ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t) {
       var e1: Expr := PrimitiveLit(Primitive.EntityUID(u1));
       var e2: Expr := PrimitiveLit(Primitive.EntityUID(u2));
       var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t);
@@ -696,18 +696,39 @@ module validation.thm.soundness {
       // Somehow, these unused variables help nudge Dafny to complete the proof.
       var t1 := getType(e1,effs);
       var t2 := getType(e2,effs);
+      assert t' == Type.Bool(True);
+      assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t') by { EqEntitySameSafe(r,s,u1); }
+      assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t) by {
+        SubtyCompat(t',t);
+        SemSubtyTransport(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t',t); }
+    }
+
+    lemma SoundEqAuxDiffUids(u1: EntityUID, u2: EntityUID, t: Type, effs: Effects)
+      requires Typesafe(BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),effs,t)
+      requires u1 != u2
+      ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t) {
+      var e1: Expr := PrimitiveLit(Primitive.EntityUID(u1));
+      var e2: Expr := PrimitiveLit(Primitive.EntityUID(u2));
+      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t);
+      assert TC.inferEq(e1,e2,effs) == types.Ok(t');
+      // Somehow, these unused variables help nudge Dafny to complete the proof.
+      var t1 := getType(e1,effs);
+      var t2 := getType(e2,effs);
+      assert t' == Type.Bool(False);
+      assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t') by { EqEntityDiffSafe(r,s,u1,u2); }
+      assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t) by {
+        SubtyCompat(t',t);
+        SemSubtyTransport(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t',t); }
+    }
+
+    lemma SoundEqAux(u1: EntityUID, u2: EntityUID, t: Type, effs: Effects)
+      requires Typesafe(BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),effs,t)
+      ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t)
+    {
       if u1 == u2 {
-        assert t' == Type.Bool(True);
-        assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t') by { EqEntitySameSafe(r,s,u1); }
-        assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t) by {
-          SubtyCompat(t',t);
-          SemSubtyTransport(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t',t); }
+        SoundEqAuxEqUids(u1, u2, t, effs);
       } else {
-        assert t' == Type.Bool(False);
-        assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t') by { EqEntityDiffSafe(r,s,u1,u2); }
-        assert IsSafe(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t) by {
-          SubtyCompat(t',t);
-          SemSubtyTransport(r,s,BinaryApp(BinaryOp.Eq,e1,e2),t',t); }
+        SoundEqAuxDiffUids(u1, u2, t, effs);
       }
     }
 
@@ -715,7 +736,7 @@ module validation.thm.soundness {
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(BinaryOp.Eq, e1, e2), effs, t)
       ensures getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t)
-      ensures TC.inferEq(e1,e2,effs) == types.Ok(t');
+      ensures TC.inferEq(e1,e2,effs) == types.Ok(t')
       ensures Typesafe(e1,effs,getType(e1,effs))
       ensures Typesafe(e2,effs,getType(e2,effs))
     {

@@ -21,6 +21,7 @@ module validation.ext.ipaddr {
   import opened def.std
   import opened def.base
   import opened def.core
+  import opened def.ext.ipaddr.parseIPAddr
   import opened types
 
   // Returns the map from IPAddr extension function names to their types.
@@ -42,7 +43,7 @@ module validation.ext.ipaddr {
     if |args| != 1 then Ok(())
     else match args[0] {
            case PrimitiveLit(String(s)) =>
-             match ext.ipaddr.parseIPAddr.parse(s) {
+             match parse(s) {
                case None => Err(ExtensionErr(Call(Name.fromStr("ip"),args)))
                case Some(_) => Ok(())
              }

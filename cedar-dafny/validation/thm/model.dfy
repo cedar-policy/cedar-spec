@@ -1162,6 +1162,10 @@ module validation.thm.model {
       var res := Evaluate(BinaryApp(BinaryOp.In, e1, e2), r, s);
       assert res.Ok?;
       assert InstanceOfType(res.value,Type.Bool(BoolType.False));
+    } else if r1.Ok? {
+      BinaryAppSemanticsErrRight(e1, e2, BinaryOp.In, evaluator);
+    } else if r2.Ok? {
+      BinaryAppSemanticsErrLeft(e1, e2, BinaryOp.In, evaluator);
     }
   }
 }
