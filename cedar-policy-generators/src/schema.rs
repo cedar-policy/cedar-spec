@@ -42,8 +42,8 @@ use std::sync::Arc;
 pub struct Schema {
     /// actual underlying schema
     schema: cedar_policy_validator::NamespaceDefinition,
-    /// Namespace for the schema
-    namespace: Option<SmolStr>,
+    /// Namespace for the schema, as an `ast::Name`
+    namespace: Option<ast::Name>,
     /// settings
     pub settings: ABACSettings,
     /// constant pool
@@ -265,11 +265,9 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
 }
 
 /// internal helper function, get the EntityUID corresponding to the given ActionType
-fn uid_for_action_name(namespace: Option<SmolStr>, action_name: &SmolStr) -> ast::EntityUID {
-    let namespace_prefix = namespace.map(|ns| format!("{ns}::")).unwrap_or_default();
-    format!("{}Action::\"{}\"", namespace_prefix, action_name)
-                .parse()
-                .unwrap_or_else(|e| panic!("schema actions should all be valid EntityUIDs in this context, but {action_name:?} led to an invalid one: {e}"))
+fn uid_for_action_name(namespace: Option<ast::Name>, action_name: &str) -> ast::EntityUID {
+    let entity_type = build_qualified_entity_type_name(namespace, &action_name);
+    ast::EntityUID::from_components(entity_type, ast::Eid::new(action_name))
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
@@ -312,18 +310,15 @@ fn record_schematype_with_attr(
     }
 }
 
-/// Get an arbitrary namespace for a schema. The namespace may be absent or it
-/// may be a string generated from a `Name`.
-fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<SmolStr>> {
-    let namespace: Option<ast::Name> = u
-        .arbitrary()
-        .map_err(|e| while_doing("generating namespace", e))?;
-    Ok(namespace.map(|ns| ns.to_string().into()))
+/// Get an arbitrary namespace for a schema. The namespace may be absent.
+fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
+    u.arbitrary()
+        .map_err(|e| while_doing("generating namespace", e))
 }
 
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
 // it as is. Otherwise, qualify it with the default namespace if one is provided.
-fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr) -> ast::Name {
+fn parse_name_with_default_namespace(namespace: Option<&ast::Name>, name: &str) -> ast::Name {
     let schema_entity_type_name =
         ast::Name::from_str(name).expect("Valid Name required for entity type.");
     if schema_entity_type_name
@@ -333,7 +328,7 @@ fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr
         && namespace.is_some()
     {
         build_qualified_entity_type_name(
-            namespace.clone(),
+            namespace.cloned(),
             schema_entity_type_name.basename().as_ref(),
         )
     } else {
@@ -341,10 +336,9 @@ fn parse_name_with_default_namespace(namespace: &Option<SmolStr>, name: &SmolStr
     }
 }
 
-/// Given a namespace string and a type base name string, build a fully
-/// qualified `Name` parsing `namespace` as a namespace and `name` as an Id and
-/// passing these to the `Name` constructor.
-fn build_qualified_entity_type_name(namespace: Option<SmolStr>, name: &str) -> ast::Name {
+/// Given an (optional) namespace and a type base name string, build a fully
+/// qualified `Name`.
+fn build_qualified_entity_type_name(namespace: Option<ast::Name>, name: &str) -> ast::Name {
     match build_qualified_entity_type(namespace, Some(name)) {
         ast::EntityType::Concrete(type_name) => type_name,
         ast::EntityType::Unspecified => {
@@ -380,26 +374,20 @@ fn unwrap_attrs_or_context(
     }
 }
 
-/// Given a namespace string and a type base name string, build a fully
-/// qualified `EntityType` parsing `namespace` as a namespace and `name` as an
-/// `Id`. If `name` is `None`, then this builds an unspecified entity type. Use
-/// `build_qualified_entity_type_name` if `name` is not `None`.
+/// Given an (optional) namespace and a type base name string, build a fully
+/// qualified `EntityType`.
+///
+/// If `basename` is `None`, then this builds an unspecified entity type. Use
+/// `build_qualified_entity_type_name` if `basename` is not `None`.
 fn build_qualified_entity_type(
-    namespace: Option<SmolStr>,
+    namespace: Option<ast::Name>,
     basename: Option<&str>,
 ) -> ast::EntityType {
     match basename {
         Some(basename) => {
             let basename_id = ast::Id::from_str(basename)
                 .unwrap_or_else(|e| panic!("invalid type basename {basename:?}: {e}"));
-            let type_namespace: Option<ast::Name> = match namespace.as_deref() {
-                None => None,
-                Some("") => None, // we consider "" to be the same as the empty namespace
-                Some(ns) => Some(ast::Name::from_str(&ns).unwrap_or_else(|_| {
-                    panic!("Valid namespace required to build entity type. Got {ns}")
-                })),
-            };
-            match type_namespace {
+            match namespace {
                 None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename_id)),
                 Some(ns) => {
                     ast::EntityType::Concrete(ast::Name::type_in_namespace(basename_id, ns))
@@ -445,13 +433,13 @@ fn attrs_in_schematype(
 /// Build `attributes_by_type` from other components of `Schema`
 fn build_attributes_by_type<'a>(
     entity_types: impl IntoIterator<Item = (&'a SmolStr, &'a cedar_policy_validator::EntityType)>,
-    namespace: &Option<SmolStr>,
+    namespace: Option<&ast::Name>,
 ) -> HashMap<Type, Vec<(ast::Name, SmolStr)>> {
     let triples = entity_types
         .into_iter()
         .map(|(name, et)| {
             (
-                build_qualified_entity_type_name(namespace.clone(), name),
+                build_qualified_entity_type_name(namespace.cloned(), name),
                 unwrap_attrs_or_context(&et.shape).0,
             )
         })
@@ -498,7 +486,14 @@ impl Schema {
         {
             attributes.extend(attrs_in_schematype(schematype));
         }
-        let attributes_by_type = build_attributes_by_type(&nsdef.entity_types, &namespace);
+        let namespace = match namespace.as_deref() {
+            None => None,
+            Some("") => None, // we consider "" to be the same as the empty namespace
+            Some(ns) => {
+                Some(ast::Name::from_str(&ns).unwrap_or_else(|_| panic!("invalid namespace: {ns}")))
+            }
+        };
+        let attributes_by_type = build_attributes_by_type(&nsdef.entity_types, namespace.as_ref());
         Ok(Schema {
             namespace,
             constant_pool: u
@@ -743,7 +738,7 @@ impl Schema {
             })
             .collect();
         let attributes_by_type =
-            build_attributes_by_type(entity_types.iter().map(|(a, b)| (a, b)), &namespace);
+            build_attributes_by_type(entity_types.iter().map(|(a, b)| (a, b)), namespace.as_ref());
         let actions_eids = actions.iter().map(|(name, _)| name.clone()).collect();
         Ok(Schema {
             schema: cedar_policy_validator::NamespaceDefinition {
@@ -1374,7 +1369,7 @@ impl Schema {
                 // SchemaType if one is present. Otherwise, it is the schema
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
-                let entity_type_name = parse_name_with_default_namespace(&self.namespace, name);
+                let entity_type_name = parse_name_with_default_namespace(self.namespace(), name);
                 let euid = Self::arbitrary_uid_with_type(&entity_type_name, hierarchy, u)?;
                 Ok(Value::Lit(euid.into()))
             }
@@ -1633,7 +1628,7 @@ impl Schema {
             SchemaTypeVariant::Entity { name } => {
                 // the only valid entity-typed attribute value is a UID literal
 
-                let entity_type_name = parse_name_with_default_namespace(&self.namespace, name);
+                let entity_type_name = parse_name_with_default_namespace(self.namespace(), name);
                 Ok(AttrValue::UIDLit(Self::arbitrary_uid_with_type(
                     &entity_type_name,
                     hierarchy,
@@ -3094,7 +3089,7 @@ impl Schema {
                     // UID literal
                     13 => {
                         let entity_type_name =
-                            parse_name_with_default_namespace(&self.namespace, name);
+                            parse_name_with_default_namespace(self.namespace(), name);
                         Ok(ast::Expr::val(Self::arbitrary_uid_with_type(
                             &entity_type_name,
                             hierarchy,
@@ -3531,7 +3526,7 @@ impl Schema {
     }
 
     /// Get the namespace of this `Schema`, if any
-    pub fn namespace(&self) -> Option<&SmolStr> {
+    pub fn namespace(&self) -> Option<&ast::Name> {
         self.namespace.as_ref()
     }
 
@@ -3549,8 +3544,19 @@ impl Schema {
 impl From<Schema> for SchemaFragment {
     fn from(schema: Schema) -> SchemaFragment {
         SchemaFragment(
-            HashMap::from_iter([(schema.namespace.unwrap_or_default(), schema.schema)].into_iter())
-                .into(),
+            HashMap::from_iter(
+                [(
+                    schema
+                        .namespace
+                        .as_ref()
+                        .map(ToString::to_string)
+                        .map(SmolStr::new)
+                        .unwrap_or_default(),
+                    schema.schema,
+                )]
+                .into_iter(),
+            )
+            .into(),
         )
     }
 }
