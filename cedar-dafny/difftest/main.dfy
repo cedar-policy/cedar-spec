@@ -31,6 +31,7 @@ module difftest.main {
   import opened restrictedExpr
   import opened validation.types
   import opened validation.strict
+  import opened validation.typechecker
   import opened validation.validator
   import opened helpers
 
@@ -582,6 +583,10 @@ module difftest.main {
       case UnknownEntities(_) => "UnknownEntities"
       case ExtensionErr(_) => "ExtensionErr"
       case EmptyLUB => "EmptyLUB"
+      case EmptySetForbidden => "EmptySetForbidden"
+      case NonLitExtConstructor => "NonLitExtConstructor"
+      case NonSingletonLub => "NonSingletonLub"
+      case StrictIn => "StrictIn"
     }
   }
 

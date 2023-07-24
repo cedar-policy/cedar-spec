@@ -54,7 +54,7 @@ module validation.thm.soundness {
     s: EntityStore)
   {
 
-    const TC := Typechecker(ets,acts,reqty)
+    const TC := Typechecker(ets,acts,reqty, ValidationMode.Permissive)
 
     ghost predicate WellTyped(e: Expr, effs: Effects)
     {
@@ -75,7 +75,7 @@ module validation.thm.soundness {
 
     ghost predicate Typesafe(e: Expr, effs: Effects, t: Type)
     {
-      WellTyped(e,effs) && subty(getType(e, effs), t)
+      WellTyped(e,effs) && subty(getType(e, effs), t, ValidationMode.Permissive)
     }
 
     ghost predicate {:opaque} WellFormedRequestAndStore() {
@@ -132,7 +132,7 @@ module validation.thm.soundness {
       ensures getEffects(Var(x),effs) == Effects.empty()
     {
       assert InstanceOfRequestType(r, reqty) by { reveal WellFormedRequestAndStore(); }
-      var t' :| getType(Var(x),effs) == t' && subty(t',t);
+      var t' :| getType(Var(x),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferVar(x) == types.Ok(t');
       match x {
         case Principal =>
@@ -197,12 +197,12 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,If(e,e1,e2),t)
       ensures GuardedEffectsInvariant(If(e,e1,e2),getEffects(If(e,e1,e2),effs))
     {
-      var t' :| getType(If(e,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(If(e,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferIf(e,e1,e2,effs).Ok?;
       var (bt, effs1) := TC.inferBoolType(e,effs).value;
       assert IsSafe(r,s,e,Type.Bool(bt)) && GuardedEffectsInvariant(e,effs1) by {
         assert getType(e,effs) == Type.Bool(bt);
-        assert subty(Type.Bool(bt),Type.Bool(bt));
+        assert subty(Type.Bool(bt),Type.Bool(bt),ValidationMode.Permissive);
         assert Typesafe(e,effs,Type.Bool(bt));
         Sound(e,Type.Bool(bt),effs);
       }
@@ -261,8 +261,8 @@ module validation.thm.soundness {
           var (t2,effs3) := TC.infer(e2,effs).value;
           assert Typesafe(e1,effs.union(effs1),t1) by { SubtyRefl(t1); }
           assert Typesafe(e2,effs,t2) by { SubtyRefl(t2); }
-          assert t' == lubOpt(t1,t2).value;
-          assert subty(t1,t') && subty(t2,t') by { LubIsUB(t1,t2,t'); }
+          assert t' == lubOpt(t1,t2,ValidationMode.Permissive).value;
+          assert subty(t1,t',ValidationMode.Permissive) && subty(t2,t',ValidationMode.Permissive) by { LubIsUB(t1,t2,t'); }
           if IsSafeStrong(r,s,e,Type.Bool(bt)) {
             if IsTrue(r,s,e) {
               // `e` evaluates to true
@@ -335,7 +335,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,And(e1,e2),t)
       ensures GuardedEffectsInvariant(And(e1,e2),getEffects(And(e1,e2),effs))
     {
-      var t' :| getType(And(e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(And(e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferAnd(e1,e2,effs).Ok?;
       var (bt1, effs1) := TC.inferBoolType(e1,effs).value;
       assert Typesafe(e1,effs,Type.Bool(bt1));
@@ -371,7 +371,7 @@ module validation.thm.soundness {
                 case False =>
                   assert IsFalse(r,s,e2);
                   assert IsSafe(r,s,e1,Type.Bool(AnyBool)) by {
-                    assert subty(Type.Bool(bt1),Type.Bool(AnyBool));
+                    assert subty(Type.Bool(bt1),Type.Bool(AnyBool),ValidationMode.Permissive);
                     SubtyCompat(Type.Bool(bt1),Type.Bool(AnyBool));
                     SemSubtyTransport(r,s,e1,Type.Bool(bt1),Type.Bool(AnyBool));
                   }
@@ -385,7 +385,7 @@ module validation.thm.soundness {
                 case True =>
                   assert IsTrue(r,s,e2);
                   assert SemanticSubty(Type.Bool(bt1),Type.Bool(AnyBool)) by {
-                    assert subty(Type.Bool(bt1),Type.Bool(AnyBool));
+                    assert subty(Type.Bool(bt1),Type.Bool(AnyBool),ValidationMode.Permissive);
                     SubtyCompat(Type.Bool(bt1),Type.Bool(AnyBool));
                   }
                   assert IsSafe(r,s,And(e1,e2),Type.Bool(bt1)) by {
@@ -470,7 +470,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,Or(e1,e2),t)
       ensures GuardedEffectsInvariant(Or(e1,e2),getEffects(Or(e1,e2),effs))
     {
-      var t' :| getType(Or(e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(Or(e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferOr(e1,e2,effs).Ok?;
       var (bt1, effs1) := TC.inferBoolType(e1,effs).value;
       assert Typesafe(e1,effs,Type.Bool(bt1));
@@ -496,7 +496,7 @@ module validation.thm.soundness {
             Sound(e2,Type.Bool(bt2),effs);
           }
           assert SemanticSubty(Type.Bool(bt2),Type.Bool(AnyBool)) by {
-            assert subty(Type.Bool(bt2),Type.Bool(AnyBool));
+            assert subty(Type.Bool(bt2),Type.Bool(AnyBool),ValidationMode.Permissive);
             SubtyCompat(Type.Bool(bt2),Type.Bool(AnyBool));
           }
           assert IsSafe(r,s,Or(e1,e2),Type.Bool(bt2)) by { OrRRetSafe(r,s,e1,e2,Type.Bool(bt2)); }
@@ -584,7 +584,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,UnaryApp(Not,e),t)
       ensures getEffects(UnaryApp(Not,e),effs) == Effects.empty()
     {
-      var t' :| getType(UnaryApp(Not,e),effs) == t' && subty(t',t);
+      var t' :| getType(UnaryApp(Not,e),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferNot(e,effs).Ok?;
       var (bt,_) := TC.inferBoolType(e,effs).value;
       assert t' == Type.Bool(bt.not());
@@ -611,7 +611,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,UnaryApp(Neg,e),t)
       ensures getEffects(UnaryApp(Neg,e),effs) == Effects.empty()
     {
-      var t' :| getType(UnaryApp(Neg,e),effs) == t' && subty(t',t);
+      var t' :| getType(UnaryApp(Neg,e),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferArith1(Neg,e,effs) == types.Ok(Type.Int);
       assert TC.ensureIntType(e,effs).Ok?;
       assert Typesafe(e,effs,Type.Int);
@@ -631,7 +631,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,UnaryApp(MulBy(i),e),t)
       ensures getEffects(UnaryApp(MulBy(i),e),effs) == Effects.empty()
     {
-      var t' :| getType(UnaryApp(MulBy(i),e),effs) == t' && subty(t',t);
+      var t' :| getType(UnaryApp(MulBy(i),e),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferArith1(MulBy(i),e,effs) == types.Ok(Type.Int);
       assert TC.ensureIntType(e,effs).Ok?;
       assert Typesafe(e,effs,Type.Int);
@@ -651,7 +651,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,UnaryApp(Like(p),e),t)
       ensures getEffects(UnaryApp(Like(p),e),effs) == Effects.empty()
     {
-      var t' :| getType(UnaryApp(Like(p),e),effs) == t' && subty(t',t);
+      var t' :| getType(UnaryApp(Like(p),e),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferLike(p,e,effs) == types.Ok(Type.Bool(AnyBool));
       assert TC.ensureStringType(e,effs).Ok?;
       assert Typesafe(e,effs,Type.String);
@@ -671,7 +671,7 @@ module validation.thm.soundness {
     // entity. This might not work in the future if we restructure EntityType to
     // have a separate alternative for unspecified entities like in production.
     lemma UnspecifiedVarHasUnspecifiedEntityType(e: Expr)
-      requires TC.isUnspecifiedVar(e)
+      requires reqty.isUnspecifiedVar(e)
       requires InstanceOfRequestType(r,reqty)
       ensures IsSafe(r,s,e,unspecifiedEntityType)
     {
@@ -691,7 +691,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t) {
       var e1: Expr := PrimitiveLit(Primitive.EntityUID(u1));
       var e2: Expr := PrimitiveLit(Primitive.EntityUID(u2));
-      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferEq(e1,e2,effs) == types.Ok(t');
       // Somehow, these unused variables help nudge Dafny to complete the proof.
       var t1 := getType(e1,effs);
@@ -709,7 +709,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(BinaryOp.Eq,PrimitiveLit(Primitive.EntityUID(u1)),PrimitiveLit(Primitive.EntityUID(u2))),t) {
       var e1: Expr := PrimitiveLit(Primitive.EntityUID(u1));
       var e2: Expr := PrimitiveLit(Primitive.EntityUID(u2));
-      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferEq(e1,e2,effs) == types.Ok(t');
       // Somehow, these unused variables help nudge Dafny to complete the proof.
       var t1 := getType(e1,effs);
@@ -735,12 +735,12 @@ module validation.thm.soundness {
     lemma TypesafeEqSemantics(e1: Expr, e2: Expr, t: Type, effs: Effects) returns (t': Type)
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(BinaryOp.Eq, e1, e2), effs, t)
-      ensures getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t)
+      ensures getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive)
       ensures TC.inferEq(e1,e2,effs) == types.Ok(t')
       ensures Typesafe(e1,effs,getType(e1,effs))
       ensures Typesafe(e2,effs,getType(e2,effs))
     {
-      var tt' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == tt' && subty(tt',t);
+      var tt' :| getType(BinaryApp(BinaryOp.Eq,e1,e2),effs) == tt' && subty(tt',t,ValidationMode.Permissive);
       assert TC.inferEq(e1,e2,effs) == types.Ok(tt');
       t' := tt';
       SubtyRefl(getType(e1,effs));
@@ -768,7 +768,7 @@ module validation.thm.soundness {
           if t1.Entity? && t2.Entity? && t1.lub.disjoint(t2.lub) {
             assert t' == Type.Bool(False);
             EqFalseIsSafe(r,s,e1,e2,t1.lub,t2.lub);
-          } else if TC.isUnspecifiedVar(e1) && t2.Entity? && t2.lub.specified() {
+          } else if reqty.isUnspecifiedVar(e1) && t2.Entity? && t2.lub.specified() {
             assert t' == Type.Bool(False);
             reveal WellFormedRequestAndStore();
             UnspecifiedVarHasUnspecifiedEntityType(e1);
@@ -793,7 +793,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
       ensures getEffects(BinaryApp(op,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferIneq(op,e1,e2,effs) == types.Ok(Type.Bool(AnyBool));
       assert TC.ensureIntType(e1,effs).Ok?;
       assert Typesafe(e1,effs,Type.Int);
@@ -817,7 +817,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
       ensures getEffects(BinaryApp(op,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferArith2(op,e1,e2,effs) == types.Ok(Type.Int);
       assert TC.ensureIntType(e1,effs).Ok?;
       assert Typesafe(e1,effs,Type.Int);
@@ -841,7 +841,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(op,e1,e2),t)
       ensures getEffects(BinaryApp(op,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(op,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferContainsAnyAll(op,e1,e2,effs) == types.Ok(t');
       var t1 := TC.inferSetType(e1,effs).value;
       var t2 := TC.inferSetType(e2,effs).value;
@@ -864,7 +864,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(Contains,e1,e2),t)
       ensures getEffects(BinaryApp(Contains,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(Contains,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(Contains,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferContains(e1,e2,effs) == types.Ok(t');
       var t1 := TC.inferSetType(e1,effs).value;
       assert Typesafe(e1,effs,Type.Set(t1)) by { SubtyRefl(Type.Set(t1)); }
@@ -894,7 +894,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,Expr.Record(es),t)
       ensures getEffects(Expr.Record(es),effs) == Effects.empty()
     {
-      var t' :| getType(Expr.Record(es),effs) == t' && subty(t',t);
+      var t' :| getType(Expr.Record(es),effs) == t' && subty(t',t,ValidationMode.Permissive);
       var rt := TC.inferRecord(Expr.Record(es),es,effs).value;
       InferRecordLemma(Expr.Record(es),es,effs);
       assert t' == Type.Record(rt);
@@ -931,24 +931,24 @@ module validation.thm.soundness {
     lemma InferSetLemma(e: Expr, es: seq<Expr>, effs: Effects)
       requires forall i | 0 <= i < |es| :: es[i] < e
       requires TC.inferSet(e,es,effs).Ok?
-      ensures forall i | 0 <= i < |es| :: TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,TC.inferSet(e,es,effs).value)
+      ensures forall i | 0 <= i < |es| :: TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,TC.inferSet(e,es,effs).value,ValidationMode.Permissive)
     {
       if es == [] {
       } else {
         var (t,_) := TC.infer(es[0],effs).value;
         var t1 := TC.inferSet(e,es[1..],effs).value;
-        var t2 := lubOpt(t,t1).value;
-        assert forall i | 0 <= i < |es| :: TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,t2) by {
+        var t2 := lubOpt(t,t1,ValidationMode.Permissive).value;
+        assert forall i | 0 <= i < |es| :: TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,t2,ValidationMode.Permissive) by {
           forall i | 0 <= i < |es|
-            ensures TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,t2)
+            ensures TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,t2,ValidationMode.Permissive)
           {
             if i == 0 {
-              assert subty(t,t2) by { LubIsUB(t,t1,t2); }
+              assert subty(t,t2,ValidationMode.Permissive) by { LubIsUB(t,t1,t2); }
             } else {
               assert TC.infer(es[i],effs).Ok?;
-              assert subty(TC.infer(es[i],effs).value.0,t2) by {
+              assert subty(TC.infer(es[i],effs).value.0,t2,ValidationMode.Permissive) by {
                 LubIsUB(t,t1,t2);
-                SubtyTrans(TC.infer(es[i],effs).value.0,t1,t2);
+                SubtyTrans(TC.infer(es[i],effs).value.0,t1,t2,ValidationMode.Permissive);
               }
             }
           }
@@ -964,7 +964,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,Expr.Set(es),t)
       ensures getEffects(Expr.Set(es),effs) == Effects.empty()
     {
-      var t' :| getType(Expr.Set(es),effs) == t' && subty(t',t);
+      var t' :| getType(Expr.Set(es),effs) == t' && subty(t',t,ValidationMode.Permissive);
       var st := TC.inferSet(Expr.Set(es),es,effs).value;
       InferSetLemma(Expr.Set(es),es,effs);
       assert t' == Type.Set(st);
@@ -992,7 +992,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,GetAttr(e,k),t)
       ensures getEffects(GetAttr(e,k),effs) == Effects.empty()
     {
-      var t' :| getType(GetAttr(e,k),effs) == t' && subty(t',t);
+      var t' :| getType(GetAttr(e,k),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferGetAttr(e,k,effs).Ok?;
       var ret := TC.inferRecordEntityType(e,effs).value;
       match ret {
@@ -1017,7 +1017,7 @@ module validation.thm.soundness {
           }
         }
         case Entity(lub) => {
-          var rt := ets.getLubRecordType(lub).value;
+          var rt := ets.getLubRecordType(lub,ValidationMode.Permissive).value;
           assert t' == rt.attrs[k].ty;
           assert IsSafe(r,s,e,Type.Entity(lub)) by { Sound(e,Type.Entity(lub),effs); }
           assert IsSafe(r,s,GetAttr(e,k),t') by {
@@ -1046,16 +1046,16 @@ module validation.thm.soundness {
     }
 
     lemma LubRecordType(rt1: RecordType, rt2: RecordType)
-      ensures var rtl := lubRecordType(rt1, rt2);
+      ensures var rtl := lubRecordType(rt1, rt2, ValidationMode.Permissive).value;
               forall k | k in rtl.attrs.Keys ::
-                lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty) == Ok(rtl.attrs[k].ty)
+                lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, ValidationMode.Permissive) == Ok(rtl.attrs[k].ty)
     {}
 
     lemma LubRecordTypeSubty(rt1: RecordType, rt2: RecordType)
-      ensures subtyRecordType(rt1, lubRecordType(rt1, rt2))
-      ensures subtyRecordType(rt2, lubRecordType(rt1, rt2))
+      ensures subtyRecordType(rt1, lubRecordType(rt1, rt2,ValidationMode.Permissive).value,ValidationMode.Permissive)
+      ensures subtyRecordType(rt2, lubRecordType(rt1, rt2,ValidationMode.Permissive).value,ValidationMode.Permissive)
     {
-      var rtl := lubRecordType(rt1, rt2);
+      var rtl := lubRecordType(rt1, rt2, ValidationMode.Permissive).value;
 
       assert rt1.isOpen() ==> rtl.isOpen();
       assert rt2.isOpen() ==> rtl.isOpen();
@@ -1065,7 +1065,7 @@ module validation.thm.soundness {
       reveal WellFormedRequestAndStore();
 
       forall k | k in rtl.attrs.Keys
-        ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k]) && subtyAttrType(rt2.attrs[k], rtl.attrs[k]) {
+        ensures subtyAttrType(rt1.attrs[k], rtl.attrs[k],ValidationMode.Permissive) && subtyAttrType(rt2.attrs[k], rtl.attrs[k],ValidationMode.Permissive) {
         var al := rtl.attrs[k];
         var a1 := rt1.attrs[k];
         var a2 := rt2.attrs[k];
@@ -1074,19 +1074,19 @@ module validation.thm.soundness {
     }
 
     lemma LubRecordTypeSeqSubty(rts: seq<RecordType>, i: nat)
-      requires lubRecordTypeSeq(rts).Ok?
+      requires lubRecordTypeSeq(rts,ValidationMode.Permissive).Ok?
       requires 0 <= i < |rts|
-      ensures subtyRecordType(rts[i], lubRecordTypeSeq(rts).value)
+      ensures subtyRecordType(rts[i], lubRecordTypeSeq(rts,ValidationMode.Permissive).value, ValidationMode.Permissive)
     {
-      var res := lubRecordTypeSeq(rts).value;
+      var res := lubRecordTypeSeq(rts,ValidationMode.Permissive).value;
       if |rts| == 1 {
         SubtyRecordTypeRefl(rts[0]);
       } else {
-        var tailRes := lubRecordTypeSeq(rts[1..]).value;
+        var tailRes := lubRecordTypeSeq(rts[1..],ValidationMode.Permissive).value;
         LubRecordTypeSubty(rts[0], tailRes);
         if i > 0 {
           LubRecordTypeSeqSubty(rts[1..], i - 1);
-          SubtyRecordTypeTrans(rts[i], tailRes, res);
+          SubtyRecordTypeTrans(rts[i], tailRes, res,ValidationMode.Permissive);
         }
       }
     }
@@ -1094,11 +1094,11 @@ module validation.thm.soundness {
     lemma GetLubRecordTypeSubty(lub: EntityLUB, ety: EntityType)
       requires lub.EntityLUB?
       requires ety in lub.tys
-      requires ets.getLubRecordType(lub).Ok?
+      requires ets.getLubRecordType(lub,ValidationMode.Permissive).Ok?
       requires ety in ets.types
-      ensures subtyRecordType(ets.types[ety], ets.getLubRecordType(lub).value)
+      ensures subtyRecordType(ets.types[ety], ets.getLubRecordType(lub, ValidationMode.Permissive).value,ValidationMode.Permissive)
     {
-      var lub_ty := ets.getLubRecordType(lub) ;
+      var lub_ty := ets.getLubRecordType(lub,ValidationMode.Permissive) ;
       if lub_ty != Ok(RecordType(map[], OpenAttributes)) {
         def.util.EntityTypeLeqIsTotalOrder();
         var lubSeq := def.util.SetToSortedSeq(lub.tys,def.util.EntityTypeLeq);
@@ -1116,7 +1116,7 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,HasAttr(e,k),t)
       ensures GuardedEffectsInvariant(HasAttr(e,k),getEffects(HasAttr(e,k),effs))
     {
-      var t' :| getType(HasAttr(e,k),effs) == t' && subty(t',t);
+      var t' :| getType(HasAttr(e,k),effs) == t' && subty(t',t,ValidationMode.Permissive);
       assert TC.inferHasAttr(e,k,effs).Ok?;
       var ret := TC.inferRecordEntityType(e,effs).value;
       assert GuardedEffectsInvariant(HasAttr(e,k),Effects.empty()) by {
@@ -1130,8 +1130,8 @@ module validation.thm.soundness {
             if rt.attrs[k].isRequired {
               assert IsSafe(r,s,e,Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes))) by {
                 SubtyRefl(rt.attrs[k].ty);
-                assert subtyRecordType(rt,RecordType(map[k := rt.attrs[k]], OpenAttributes));
-                assert subty(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
+                assert subtyRecordType(rt,RecordType(map[k := rt.attrs[k]], OpenAttributes),ValidationMode.Permissive);
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)),ValidationMode.Permissive);
                 SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
                 SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[k := rt.attrs[k]], OpenAttributes)));
               }
@@ -1142,7 +1142,7 @@ module validation.thm.soundness {
               }
             } else {
               assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
-                assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+                assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)),ValidationMode.Permissive);
                 SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
                 SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
               }
@@ -1156,7 +1156,7 @@ module validation.thm.soundness {
             }
           } else if rt.isOpen() {
             assert IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes))) by {
-              assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
+              assert subty(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)),ValidationMode.Permissive);
               SubtyCompat(Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
               SemSubtyTransport(r,s,e,Type.Record(rt),Type.Record(RecordType(map[], OpenAttributes)));
             }
@@ -1172,7 +1172,7 @@ module validation.thm.soundness {
             reveal WellFormedRequestAndStore();
             EntityHasImpossibleFalseSafe(r,s,e,k,et);
           } else {
-            var m := ets.getLubRecordType(et).value;
+            var m := ets.getLubRecordType(et,ValidationMode.Permissive).value;
             if k in m.attrs {
               if effs.contains(e,k) {
                 assert IsSafe(r,s,HasAttr(e,k),t') by {
@@ -1209,13 +1209,13 @@ module validation.thm.soundness {
     }
 
     lemma PossibleAttrNotInLubAttrImpliesOpen(lub: EntityLUB, k: Attr, lubR: RecordType)
-      requires ets.getLubRecordType(lub) == Ok(lubR)
+      requires ets.getLubRecordType(lub, ValidationMode.Permissive) == Ok(lubR)
       requires ets.isAttrPossible(lub, k)
       requires k !in lubR.attrs.Keys
       ensures lubR.isOpen()
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et) {
-        assert ets.getLubRecordType(AnyEntity) == Ok(RecordType(map[], OpenAttributes));
+        assert ets.getLubRecordType(AnyEntity,ValidationMode.Permissive) == Ok(RecordType(map[], OpenAttributes));
       } else {
         assert forall et <- lub.tys :: et in ets.types;
         assert exists et <- lub.tys :: et in ets.types && (ets.types[et].isOpen() || k in ets.types[et].attrs);
@@ -1231,7 +1231,7 @@ module validation.thm.soundness {
       requires EffectsInvariant(effs)
       requires WellTyped(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs)
       requires getType(BinaryApp(BinaryOp.In,e1,Expr.Set(ei2s)),effs) == Type.Bool(False)
-      requires !TC.isUnspecifiedVar(e1)
+      requires !reqty.isUnspecifiedVar(e1)
       requires 0 <= i < |ei2s|
       ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,ei2s[i]))
     {
@@ -1278,14 +1278,14 @@ module validation.thm.soundness {
       ensures IsSafe(r,s,BinaryApp(BinaryOp.In,e1,e2),t)
       ensures getEffects(BinaryApp(BinaryOp.In,e1,e2),effs) == Effects.empty()
     {
-      var t' :| getType(BinaryApp(BinaryOp.In,e1,e2),effs) == t' && subty(t',t);
+      var t' :| getType(BinaryApp(BinaryOp.In,e1,e2),effs) == t' && subty(t',t,ValidationMode.Permissive);
 
       assert TC.inferIn(BinaryApp(BinaryOp.In,e1,e2),e1,e2,effs) == types.Ok(t');
 
       assert TC.ensureEntityType(e1,effs).Ok?;
       var t1 := getType(e1,effs);
       assert t1.Entity?;
-      assert subty(t1,Type.Entity(AnyEntity));
+      assert subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive);
       assert IsSafe(r,s,e1,Type.Entity(AnyEntity)) by { Sound(e1,Type.Entity(AnyEntity),effs); }
 
       assert TC.ensureEntitySetType(e2,effs).Ok?;
@@ -1316,7 +1316,7 @@ module validation.thm.soundness {
           }
         // Harder case: we have to prove that the result is false.
         case Bool(False) =>
-          if TC.isUnspecifiedVar(e1) && e2IsSpecified {
+          if reqty.isUnspecifiedVar(e1) && e2IsSpecified {
             reveal WellFormedRequestAndStore();
             UnspecifiedVarHasUnspecifiedEntityType(e1);
             assert IsSafe(r,s,e2,t2) by { Sound(e2,t2,effs); }
@@ -1355,8 +1355,8 @@ module validation.thm.soundness {
                 forall i | 0 <= i < |ei2s|
                   ensures IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity))
                 {
-                  assert subty(getType(ei2s[i],effs), eltType);
-                  SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity));
+                  assert subty(getType(ei2s[i],effs), eltType,ValidationMode.Permissive);
+                  SubtyTrans(getType(ei2s[i],effs), eltType, Type.Entity(AnyEntity),ValidationMode.Permissive);
                   assert IsSafe(r,s,ei2s[i],Type.Entity(AnyEntity)) by { Sound(ei2s[i], Type.Entity(AnyEntity), effs); }
                 }
                 // Argument depending on e1
@@ -1395,8 +1395,11 @@ module validation.thm.soundness {
     {
       assert TC.inferCall(Call(name,es),name,es,effs).Ok?;
       InferCallArgsSound(Call(name,es),name,es,extFunTypes[name].args,effs);
-    }
 
+      assert extFunTypes[name].check.Some? ==> extFunTypes[name].check.value(es).Ok?;
+      assert forall i | 0 <= i < |es| :: Typesafe(es[i],effs,extFunTypes[name].args[i]);
+      assert extFunTypes[name].ret == t;
+    }
 
     lemma SoundCall(name: base.Name, es: seq<Expr>, t: Type, effs: Effects)
       decreases Call(name,es) , 0

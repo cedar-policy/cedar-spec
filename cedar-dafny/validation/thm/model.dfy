@@ -195,10 +195,10 @@ module validation.thm.model {
   }
 
   lemma SubtyCompat(t: Type, t': Type)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     ensures SemanticSubty(t,t')
   {
-    assert subty(t,t');
+    assert subty(t,t',ValidationMode.Permissive);
     assert SemanticSubty(t,t') by {
       forall v: Value | InstanceOfType(v,t)
         ensures InstanceOfType(v,t')
@@ -209,7 +209,7 @@ module validation.thm.model {
   }
 
   lemma SubtyCompatMatchPointwise(t: Type, t': Type, v: Value)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     requires InstanceOfType(v,t)
     ensures InstanceOfType(v,t')
     decreases t
@@ -234,7 +234,7 @@ module validation.thm.model {
             ensures InstanceOfType(rv[k],rt2.attrs[k].ty)
           {
             assert InstanceOfType(rv[k],rt1.attrs[k].ty);
-            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k]);
+            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k],ValidationMode.Permissive);
             SubtyCompatMatchPointwise(rt1.attrs[k].ty,rt2.attrs[k].ty,rv[k]);
           }
         }
@@ -242,7 +242,7 @@ module validation.thm.model {
           forall k | k in rt2.attrs && rt2.attrs[k].isRequired
             ensures k in rv
           {
-            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k]);
+            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k],ValidationMode.Permissive);
           }
         }
       case (Entity(e1),Entity(e2),_) =>
@@ -251,7 +251,7 @@ module validation.thm.model {
   }
 
   lemma SubtyCompatPointwise(t: Type, t': Type, v: Value)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     requires InstanceOfType(v,t)
     ensures InstanceOfType(v,t')
   {
@@ -809,9 +809,14 @@ module validation.thm.model {
     requires ExtensionFunSafeRequires(name, args)
     ensures ExtensionFunSafeEnsures(name, args)
   {
+    assert |args| == 2 && args[0].Extension? && args[0].ex.Decimal? && args[1].Extension? && args[1].ex.Decimal?;
     assert extFunTypes[name].ret == Type.Bool(AnyBool);
     var res := extFuns[name].fun(args);
-    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool));
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool)) by {
+      match res.value {
+        case Primitive(Bool(b)) =>
+      }
+    }
   }
 
   ghost predicate IsIpConstructorName(name: base.Name) {
@@ -837,6 +842,13 @@ module validation.thm.model {
     ensures ExtensionFunSafeEnsures(name, args)
   {
     assert |args| == 1 && args[0].Extension? && args[0].ex.IPAddr?;
+    assert extFunTypes[name].ret == Type.Bool(AnyBool);
+    var res := extFuns[name].fun(args);
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool)) by {
+      match res.value {
+        case Primitive(Bool(b)) =>
+      }
+    }
   }
 
   ghost predicate IsIpBinaryName(name: base.Name) {
@@ -1044,8 +1056,8 @@ module validation.thm.model {
   }
 
   lemma InSingleFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)
-    requires subty(t1,Type.Entity(AnyEntity))
-    requires subty(t2,Type.Entity(AnyEntity))
+    requires subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive)
+    requires subty(t2,Type.Entity(AnyEntity),ValidationMode.Permissive)
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,t2)
     requires forall u1, u2: EntityUID |
@@ -1136,8 +1148,8 @@ module validation.thm.model {
   }
 
   lemma InSetFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)
-    requires subty(t1,Type.Entity(AnyEntity))
-    requires subty(t2,Type.Entity(AnyEntity))
+    requires subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive)
+    requires subty(t2,Type.Entity(AnyEntity),ValidationMode.Permissive)
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,Type.Set(t2))
     requires forall u1, u2: EntityUID |

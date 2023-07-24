@@ -81,21 +81,16 @@ module validation.validator {
     // A policy returns False under all query types
     AllFalse
 
-  // The ValidationMode determines whether to use permissive or strict typechecking
-  datatype ValidationMode = Permissive | Strict
-
   // A Validator typechecks a set of policies.
   datatype Validator = Validator(schema: Schema, mode: ValidationMode) {
 
     // check that e is a bool-typed expression for the input entity store type,
     // action store, and request type
     function Typecheck (e: Expr, ets: EntityTypeStore, acts: ActionStore, reqty: RequestType): std.Result<Type, StrictTypeError> {
-      if mode.Permissive?
-      then match Typechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool)) {
-             case Ok(ty) => std.Ok(ty)
-             case Err(er) => std.Err(strict.TypeError(er))
-           }
-      else StrictTypechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool))
+      match Typechecker(ets, acts, reqty, mode).typecheck(e, Type.Bool(AnyBool)) {
+        case Ok(ty) => std.Ok(ty)
+        case Err(er) => std.Err(strict.TypeError(er))
+      }
     }
 
     // Returns a list of type errors for easier debugging,

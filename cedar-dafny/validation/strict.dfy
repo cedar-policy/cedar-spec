@@ -41,7 +41,7 @@ module validation.strict {
   datatype StrictTypechecker = StrictTypechecker(ets: EntityTypeStore, acts: ActionStore, reqty: RequestType) {
 
     function inferPermissive(e: Expr, effs: Effects): types.Result<(Type,Effects)> {
-      Typechecker(ets,acts,reqty).infer(e,effs)
+      Typechecker(ets,acts,reqty, ValidationMode.Permissive).infer(e,effs)
     }
 
     function inferStrict(e: Expr, effs: Effects): (res: Result<(Type,Effects)>)
@@ -102,7 +102,7 @@ module validation.strict {
             case Set(es) =>
               assert ty.Set?;
               if ty.ty.Never?
-              then Result.Err(EmptySetForbidden)
+              then Result.Err(StrictTypeError.EmptySetForbidden)
               else
                 var tys :- inferStrictSeq(es,effs);
                 // either all elements of the set must match `ty` (no subtyping)
@@ -121,16 +121,16 @@ module validation.strict {
               if (name in extFunTypes && extFunTypes[name].check.Some?) ==>
                    forall i | 0 <= i < |args| :: args[i].PrimitiveLit?
               then Result.Ok((ty,effs0))
-              else Result.Err(NonLitExtConstructor)
+              else Result.Err(StrictTypeError.NonLitExtConstructor)
           }
       }
     }
 
     function typecheck(e: Expr, ty: Type): (res: Result<Type>)
-      ensures res.Ok? ==> Typechecker(ets,acts,reqty).typecheck(e,ty).Ok?
+      ensures res.Ok? ==> Typechecker(ets,acts,reqty, ValidationMode.Permissive).typecheck(e,ty).Ok?
     {
       var (ty1,_) :- inferStrict(e,Effects.empty());
-      match Typechecker(ets,acts,reqty).ensureSubty(ty1,ty) {
+      match Typechecker(ets,acts,reqty, ValidationMode.Permissive).ensureSubty(ty1,ty) {
         case Ok(_) => Result.Ok(ty1)
         case _ => Result.Err(TypeError(UnexpectedType(ty1)))
       }
@@ -185,13 +185,13 @@ module validation.strict {
 
     function extractEntityType(lub: EntityLUB): Result<EntityType> {
       match lub {
-        case AnyEntity => Result.Err(NonSingletonLub)
+        case AnyEntity => Result.Err(StrictTypeError.NonSingletonLub)
         case EntityLUB(tys) =>
           def.util.EntityTypeLeqIsTotalOrder();
           var tySeq := def.util.SetToSortedSeq(lub.tys,def.util.EntityTypeLeq);
           if |tySeq| == 1
           then Result.Ok(tySeq[0])
-          else Result.Err(NonSingletonLub)
+          else Result.Err(StrictTypeError.NonSingletonLub)
       }
     }
 
@@ -203,10 +203,10 @@ module validation.strict {
       match op2 {
         case Eq | ContainsAll | ContainsAny => unify(ty1,ty2)
         case In =>
-          assert Typechecker(ets,acts,reqty).inferIn(BinaryApp(BinaryOp.In,e1,e2),e1,e2,effs).Ok?;
-          assert Typechecker(ets,acts,reqty).ensureEntityType(e1,effs).Ok?;
+          assert Typechecker(ets,acts,reqty,ValidationMode.Permissive).inferIn(BinaryApp(BinaryOp.In,e1,e2),e1,e2,effs).Ok?;
+          assert Typechecker(ets,acts,reqty,ValidationMode.Permissive).ensureEntityType(e1,effs).Ok?;
           assert ty1.Entity?;
-          assert Typechecker(ets,acts,reqty).ensureEntitySetType(e2,effs).Ok?;
+          assert Typechecker(ets,acts,reqty,ValidationMode.Permissive).ensureEntitySetType(e2,effs).Ok?;
           assert ty2.Entity? || ty2.Set?;
           var ety1 :- extractEntityType(ty1.lub);
           if isAction(ety1)
@@ -216,15 +216,15 @@ module validation.strict {
               if ty2.Set?
               then
                 if ty2.ty.Never?
-                then Result.Err(EmptySetForbidden)
+                then Result.Err(StrictTypeError.EmptySetForbidden)
                 else extractEntityType(ty2.ty.lub)
               else extractEntityType(ty2.lub);
             if ets.possibleDescendantOf(ety1, ety2)
             then Result.Ok(())
             else Result.Err(TypesMustMatch)
         case Contains =>
-          assert Typechecker(ets,acts,reqty).inferContains(e1,e2,effs).Ok?;
-          assert Typechecker(ets,acts,reqty).inferSetType(e1,effs).Ok?;
+          assert Typechecker(ets,acts,reqty,ValidationMode.Permissive).inferContains(e1,e2,effs).Ok?;
+          assert Typechecker(ets,acts,reqty,ValidationMode.Permissive).inferSetType(e1,effs).Ok?;
           assert ty1.Set?;
           unify(ty1.ty, ty2)
         // No extra checks required for remaining operators

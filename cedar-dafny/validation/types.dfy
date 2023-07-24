@@ -20,6 +20,16 @@ module validation.types {
   import opened def.base
   import opened def.core
 
+  // The ValidationMode determines whether to use permissive or strict typechecking
+  datatype ValidationMode = Permissive | Strict {
+    predicate isStrict() {
+      match this {
+        case Permissive => false
+        case Strict => true
+      }
+    }
+  }
+
   // --------- Types --------- //
 
   datatype BoolType = AnyBool | True | False {
@@ -57,7 +67,7 @@ module validation.types {
       match (this, other) {
         case (EntityLUB(tys1),EntityLUB(tys2)) =>
           // if either LUB contains an Action, then return AnyEntity
-          if exists ty1 <- tys1 :: isAction(ty1) || exists ty2 <- tys2 :: isAction(ty2)
+          if (exists ty1 <- tys1 :: isAction(ty1) || exists ty2 <- tys2 :: isAction(ty2)) && tys1 != tys2
           then AnyEntity
           else EntityLUB(tys1 + tys2)
         case _ => AnyEntity
@@ -114,7 +124,11 @@ module validation.types {
     AttrNotFound(Type,Attr) |
     UnknownEntities(set<EntityType>) |
     ExtensionErr(Expr) |
-    EmptyLUB
+    EmptyLUB |
+    EmptySetForbidden |
+    NonLitExtConstructor |
+    NonSingletonLub |
+    StrictIn
 
   // --------- Local Names for Useful Types --------- //
 
