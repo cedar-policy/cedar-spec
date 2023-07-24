@@ -3537,7 +3537,8 @@ impl Schema {
 
     /// Get the underlying schema file, as a String containing JSON
     pub fn schemafile_string(&self) -> String {
-        self.schema.to_string()
+        serde_json::to_string_pretty(&self.schema)
+            .expect("failed to serialize schema NamespaceDefinition")
     }
 }
 
