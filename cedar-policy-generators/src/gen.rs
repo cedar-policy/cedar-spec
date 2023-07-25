@@ -41,7 +41,7 @@ macro_rules! accum {
 /// ```
 #[macro_export]
 macro_rules! gen {
-    ($u:ident, $($ws:expr => $vs:expr),+) => {
+    ($u:expr, $($ws:expr => $vs:expr),+) => {
         {
             let x = $u.int_in_range::<u8>(0..=((crate::accum!($([$ws => $vs])+)-1)))?;
             crate::gen_inner!(x, $([$ws => $vs])+)
@@ -53,7 +53,7 @@ macro_rules! gen {
 /// it desugars to the language above where all weights are 1
 #[macro_export]
 macro_rules! uniform {
-    ($u:ident, $($es:expr),+) => {
+    ($u:expr, $($es:expr),+) => {
         {
             let x = $u.int_in_range::<u8>(0..=((crate::accum!($([1 => $es])+)-1)))?;
             crate::gen_inner!(x, $([1 => $es])+)

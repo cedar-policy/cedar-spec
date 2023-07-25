@@ -20,9 +20,9 @@ use crate::abac::{
 };
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
+use crate::expr::ExprGenerator;
 use crate::hierarchy::{
-    generate_uid_with_type, EntityUIDGenMode, Hierarchy, HierarchyGenerator,
-    HierarchyGeneratorMode, NumEntities,
+    EntityUIDGenMode, Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities,
 };
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
@@ -61,13 +61,13 @@ pub struct Schema {
     pub entity_types: Vec<ast::Name>,
     /// list of entity types that occur as a valid principal for at least one
     /// action in the `schema`
-    principal_types: Vec<ast::Name>,
+    pub principal_types: Vec<ast::Name>,
     /// list of Eids that exist as a non-`None` actions name for an action in
     /// the schema.
-    actions_eids: Vec<ast::Eid>,
+    pub actions_eids: Vec<ast::Eid>,
     /// list of entity types that occur as a valid resource for at least one
     /// action in the `schema`
-    resource_types: Vec<ast::Name>,
+    pub resource_types: Vec<ast::Name>,
     /// list of (attribute, type) pairs that occur in the `schema`
     attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)>,
     /// map from type to (entity type, attribute name) pairs indicating
@@ -268,7 +268,10 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
 }
 
 /// internal helper function, get the EntityUID corresponding to the given action
-fn uid_for_action_name(namespace: Option<ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
+pub(crate) fn uid_for_action_name(
+    namespace: Option<ast::Name>,
+    action_name: ast::Eid,
+) -> ast::EntityUID {
     let entity_type =
         build_qualified_entity_type_name(namespace, "Action".parse().expect("valid id"));
     ast::EntityUID::from_components(entity_type, action_name)
@@ -312,6 +315,17 @@ fn record_schematype_with_attr(
         .collect(),
         additional_attributes: true,
     }
+}
+
+/// Get a totally arbitrary UID (but not Unspecified), with no regards to
+/// existing schema or hierarchy
+pub(crate) fn arbitrary_specified_uid_without_schema(
+    u: &mut Unstructured<'_>,
+) -> Result<ast::EntityUID> {
+    Ok(ast::EntityUID::from_components(
+        u.arbitrary::<ast::Name>()?,
+        u.arbitrary::<ast::Eid>()?,
+    ))
 }
 
 /// Get an arbitrary namespace for a schema. The namespace may be absent.
@@ -547,6 +561,20 @@ impl Schema {
                 ),
                 None => Self::from_nsdef(nsdef, Some(ns), settings, u),
             },
+        }
+    }
+
+    /// Get an `ExprGenerator` for generating expressions that conform to this `Schema`.
+    ///
+    /// If `hierarchy` is present, any literal UIDs included in generated `Expr`s will
+    /// (usually) exist in the hierarchy.
+    fn exprgenerator<'s>(&'s self, hierarchy: Option<&'s Hierarchy>) -> ExprGenerator<'s> {
+        ExprGenerator {
+            schema: self,
+            settings: &self.settings,
+            constant_pool: &self.constant_pool,
+            ext_funcs: &self.ext_funcs,
+            hierarchy,
         }
     }
 
@@ -816,66 +844,6 @@ impl Schema {
         .generate()
     }
 
-    /// Get an arbitrary UID from the schema, that could be used as a `principal`.
-    ///
-    /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
-    pub fn arbitrary_principal_uid(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityUID> {
-        Self::arbitrary_uid_with_type(
-            u.choose(&self.principal_types)
-                .map_err(|e| while_doing("choosing a principal type", e))?,
-            hierarchy,
-            u,
-        )
-    }
-    /// size hint for arbitrary_principal_uid()
-    pub fn arbitrary_principal_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            size_hint_for_choose(None),
-            Self::arbitrary_uid_with_type_size_hint(depth),
-        )
-    }
-    /// Get an arbitrary UID from the schema, that could be used as an `action`.
-    ///
-    /// This doesn't take the `Hierarchy` as an input, because we assume that
-    /// all actions are defined in the schema, and we just give you one of the
-    /// actions from the schema.
-    pub fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        let action = u
-            .choose(&self.actions_eids)
-            .map_err(|e| while_doing("choosing an action", e))?;
-        Ok(uid_for_action_name(self.namespace.clone(), action.clone()))
-    }
-    /// size hint for arbitrary_action_uid()
-    pub fn arbitrary_action_uid_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        size_hint_for_choose(None)
-    }
-    /// Get an arbitrary UID from the schema, that could be used as a `resource`.
-    ///
-    /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
-    pub fn arbitrary_resource_uid(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityUID> {
-        Self::arbitrary_uid_with_type(
-            u.choose(&self.resource_types)
-                .map_err(|e| while_doing("choosing a resource type", e))?,
-            hierarchy,
-            u,
-        )
-    }
-    /// size hint for arbitrary_resource_uid()
-    pub fn arbitrary_resource_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            size_hint_for_choose(None),
-            Self::arbitrary_uid_with_type_size_hint(depth),
-        )
-    }
-
     fn arbitrary_uid_with_optional_type(
         &self,
         ty_name: Option<ast::Id>, // REVIEW: should we allow `ast::Name` here?
@@ -884,67 +852,13 @@ impl Schema {
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
         match ty {
-            ast::EntityType::Concrete(ty) => Self::arbitrary_uid_with_type(&ty, hierarchy, u),
+            ast::EntityType::Concrete(ty) => self
+                .exprgenerator(hierarchy)
+                .arbitrary_uid_with_type(&ty, u),
             ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
                 ast::Eid::new("Unspecified"),
             )),
         }
-    }
-
-    /// Get an arbitrary UID with the given typename.
-    ///
-    /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
-    fn arbitrary_uid_with_type(
-        ty: &ast::Name,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityUID> {
-        match hierarchy {
-            None => generate_uid_with_type(ty.clone(), EntityUIDGenMode::default(), u),
-            Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
-        }
-    }
-    /// size hint for arbitrary_uid_with_type()
-    fn arbitrary_uid_with_type_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::or(
-            <ast::Eid as Arbitrary>::size_hint(depth),
-            Hierarchy::arbitrary_uid_with_type_size_hint(depth),
-        )
-    }
-
-    /// get an arbitrary UID from the schema -- may be a principal, action, or resource UID.
-    ///
-    /// If `hierarchy` is present, (usually) choose a UID that exists in the hierarchy.
-    fn arbitrary_uid(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::EntityUID> {
-        uniform!(
-            u,
-            self.arbitrary_principal_uid(hierarchy, u),
-            self.arbitrary_action_uid(u),
-            self.arbitrary_resource_uid(hierarchy, u)
-        )
-    }
-
-    fn arbitrary_specified_uid_without_schema(u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        Ok(ast::EntityUID::from_components(
-            u.arbitrary::<ast::Name>()?,
-            u.arbitrary::<ast::Eid>()?,
-        ))
-    }
-
-    #[allow(dead_code)]
-    fn arbitrary_uid_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            size_hint_for_range(0, 2),
-            arbitrary::size_hint::or_all(&[
-                Self::arbitrary_principal_uid_size_hint(depth),
-                Self::arbitrary_action_uid_size_hint(depth),
-                Self::arbitrary_resource_uid_size_hint(depth),
-            ]),
-        )
     }
 
     /// internal helper function, try to convert `Type` into `SchemaType`
@@ -971,7 +885,7 @@ impl Schema {
                 additional_attributes: true,
             }),
             Type::Entity => {
-                let entity_type = self.arbitrary_uid(None, u)?.components().0;
+                let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
                 // not possible for Schema::arbitrary_uid to generate an unspecified entity
                 match entity_type {
                     ast::EntityType::Unspecified => {
@@ -991,7 +905,7 @@ impl Schema {
     }
 
     /// get an attribute name and its `SchemaType`, from the schema
-    fn arbitrary_attr(
+    pub fn arbitrary_attr(
         &self,
         u: &mut Unstructured<'_>,
     ) -> Result<&(SmolStr, cedar_policy_validator::SchemaType)> {
@@ -1052,41 +966,6 @@ impl Schema {
             .map_err(|e| while_doing("getting arbitrary attr for schematype", e))
     }
 
-    /// get a literal value of an arbitrary type.
-    /// This function is guaranteed to not recurse, directly or indirectly.
-    fn arbitrary_literal(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        gen!(u,
-        11 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
-        10 => Ok(ast::Expr::val(
-            self.constant_pool.arbitrary_int_constant(u)?,
-        )),
-        10 => Ok(ast::Expr::val(
-            self.constant_pool.arbitrary_string_constant(u)?,
-        )),
-        20 => Ok(ast::Expr::val(self.arbitrary_uid(hierarchy, u)?)),
-        4 => Ok(ast::Expr::val(
-            Self::arbitrary_specified_uid_without_schema(u)?,
-        )))
-    }
-
-    /// get a literal value or variable of an arbitrary type.
-    /// This function is guaranteed to not recurse, directly or indirectly.
-    fn arbitrary_literal_or_var(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        if u.ratio(1, 4)? {
-            Ok(ast::Expr::var(u.arbitrary()?))
-        } else {
-            self.arbitrary_literal(hierarchy, u)
-        }
-    }
-
     /// generate an arbitrary `Value` of the given `target_type`
     pub fn arbitrary_value_for_type(
         &self,
@@ -1116,7 +995,9 @@ impl Schema {
             }
             Type::Entity => {
                 // the only valid entity-typed attribute value is a UID literal
-                Ok(Value::Lit(self.arbitrary_uid(hierarchy, u)?.into()))
+                Ok(Value::Lit(
+                    self.exprgenerator(hierarchy).generate_uid(u)?.into(),
+                ))
             }
             Type::Set(target_element_ty) => {
                 // the only valid Set-typed attribute value is a set literal
@@ -1278,7 +1159,9 @@ impl Schema {
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name = parse_name_with_default_namespace(self.namespace(), name);
-                let euid = Self::arbitrary_uid_with_type(&entity_type_name, hierarchy, u)?;
+                let euid = self
+                    .exprgenerator(hierarchy)
+                    .arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::Lit(euid.into()))
             }
             _ => Err(Error::ExtensionsDisabled),
@@ -1319,7 +1202,9 @@ impl Schema {
             }
             Type::Entity => {
                 // the only valid entity-typed attribute value is a UID literal
-                Ok(AttrValue::UIDLit(self.arbitrary_uid(hierarchy, u)?))
+                Ok(AttrValue::UIDLit(
+                    self.exprgenerator(hierarchy).generate_uid(u)?,
+                ))
             }
             Type::IPAddr | Type::Decimal => {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
@@ -1413,7 +1298,7 @@ impl Schema {
                     <bool as Arbitrary>::size_hint(depth),
                     ConstantPool::arbitrary_int_constant_size_hint(depth),
                     ConstantPool::arbitrary_string_constant_size_hint(depth),
-                    Schema::arbitrary_uid_size_hint(depth),
+                    ExprGenerator::generate_uid_size_hint(depth),
                     arbitrary::size_hint::and_all(&[
                         AvailableExtensionFunctions::arbitrary_constructor_for_type_size_hint(
                             depth,
@@ -1535,13 +1420,11 @@ impl Schema {
             }
             SchemaTypeVariant::Entity { name } => {
                 // the only valid entity-typed attribute value is a UID literal
-
                 let entity_type_name = parse_name_with_default_namespace(self.namespace(), name);
-                Ok(AttrValue::UIDLit(Self::arbitrary_uid_with_type(
-                    &entity_type_name,
-                    hierarchy,
-                    u,
-                )?))
+                Ok(AttrValue::UIDLit(
+                    self.exprgenerator(hierarchy)
+                        .arbitrary_uid_with_type(&entity_type_name, u)?,
+                ))
             }
             SchemaTypeVariant::Extension { .. } if !self.settings.enable_extensions => {
                 panic!("shouldn't have SchemaTypeVariant::Extension with extensions disabled")
@@ -1565,248 +1448,9 @@ impl Schema {
             arbitrary::size_hint::or_all(&[
                 Self::arbitrary_attr_value_for_type_size_hint(depth),
                 (1, None), // not sure how to hint for arbitrary_loop()
-                Self::arbitrary_uid_with_type_size_hint(depth),
+                ExprGenerator::arbitrary_uid_with_type_size_hint(depth),
                 Self::arbitrary_attr_value_for_type_size_hint(depth),
             ])
-        })
-    }
-
-    /// get a (fully general) arbitrary expression conforming to the schema, but
-    /// no attempt to match types.
-    ///
-    /// If `hierarchy` is present, any literal UIDs included in the Expr will
-    /// (usually) exist in the hierarchy.
-    ///
-    /// `max_depth`: maximum size (i.e., depth) of the expression.
-    /// For instance, maximum depth of nested sets. Not to be confused with the
-    /// `depth` parameter to size_hint.
-    pub fn arbitrary_expr(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        if max_depth == 0 {
-            // no recursion allowed: just generate a literal
-            self.arbitrary_literal_or_var(hierarchy, u)
-        } else {
-            gen!(u,
-            2 => {
-                // a literal or variable
-                self.arbitrary_literal_or_var(hierarchy, u)
-            },
-            1 => {
-                // == expression
-                Ok(ast::Expr::is_eq(
-                    self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                ))
-            },
-            1 => {
-                // not expression
-                Ok(ast::Expr::not(self.arbitrary_expr(
-                    hierarchy,
-                    max_depth - 1,
-                    u,
-                )?))
-            },
-            1 => {
-                // any other expression
-                gen!(u,
-                    2 => Ok(ast::Expr::ite(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    2 => Ok(ast::Expr::and(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    2 => Ok(ast::Expr::or(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::less(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::lesseq(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::greater(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::greatereq(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::add(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::sub(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => {
-                        // arbitrary expression, which may be a constant
-                        let expr = self.arbitrary_expr(hierarchy, max_depth - 1, u)?;
-                        // arbitrary constant integer
-                        let c = self.constant_pool.arbitrary_int_constant(u)?;
-                        Ok(ast::Expr::mul(expr, c))
-                    },
-                    1 => {
-                        // negation expression
-                        Ok(ast::Expr::neg(self.arbitrary_expr(
-                            hierarchy,
-                            max_depth - 1,
-                            u,
-                        )?))
-                    },
-                    6 => Ok(ast::Expr::is_in(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::contains(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::contains_all(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    1 => Ok(ast::Expr::contains_any(
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                        self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                    )),
-                    2 => {
-                        if self.settings.enable_like {
-                            Ok(ast::Expr::like(
-                                self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                                self.constant_pool.arbitrary_pattern_literal(u)?,
-                            ))
-                        } else {
-                            Err(Error::LikeDisabled)
-                        }
-                    },
-                    1 => {
-                        let mut l = Vec::new();
-                        u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                            l.push(self.arbitrary_expr(hierarchy, max_depth - 1, u)?);
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                        Ok(ast::Expr::set(l))
-                    },
-                    1 => {
-                        let mut r = Vec::new();
-                        u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                            let (attr_name, _) = self.arbitrary_attr(u)?;
-                            r.push((
-                                attr_name.clone(),
-                                self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                            ));
-                            Ok(std::ops::ControlFlow::Continue(()))
-                        })?;
-                        Ok(ast::Expr::record(r))
-                    },
-                    1 => {
-                        if !self.settings.enable_extensions {
-                            return Err(Error::ExtensionsDisabled);
-                        };
-                        let func = self.ext_funcs.arbitrary_all(u)?;
-                        let arity = if !self.settings.enable_arbitrary_func_call
-                            || u.ratio::<u8>(9, 10)?
-                        {
-                            // 90% of the time respect the correct arity, but sometimes don't
-                            func.parameter_types.len()
-                        } else {
-                            u.int_in_range::<usize>(0..=4)?
-                        };
-                        let fn_name = if !self.settings.enable_arbitrary_func_call
-                            || u.ratio::<u8>(9, 10)?
-                        {
-                            // 90% of the time choose an existing extension function, but sometimes don't
-                            func.name.clone()
-                        } else {
-                            u.arbitrary()?
-                        };
-                        Ok(ast::Expr::call_extension_fn(
-                            fn_name,
-                            (0..arity)
-                                .map(|_| self.arbitrary_expr(hierarchy, max_depth - 1, u))
-                                .collect::<Result<_>>()?,
-                        ))
-                    },
-                    7 => {
-                        let attr_name = gen!(u,
-                            1 => {
-                                let s: String = u.arbitrary()?;
-                                SmolStr::from(s)
-                            },
-                            6 => self.arbitrary_attr(u)?.0.clone());
-                        let e = self.arbitrary_expr(hierarchy, max_depth - 1, u)?;
-                        // We should be able to have an arbitrary expression
-                        // as the base of an `GetAttr` operation.
-                        // However, in one case this will fail to parse
-                        // after being pretty-printed: the case where the
-                        // base is a string literal (e.g.,
-                        // "c"["attr_name"]).
-                        // So when we get a string lit, compose a record out
-                        // of it to recover gracefully.
-                        let e = if let ast::ExprKind::Lit(ast::Literal::String(ref s)) =
-                            e.expr_kind()
-                        {
-                            ast::Expr::record([((s).clone(), e)])
-                        } else {
-                            e
-                        };
-                        Ok(ast::Expr::get_attr(e, attr_name))
-                    },
-                    4 => {
-                        let attr_name = uniform!(u,
-                           self.arbitrary_attr(u)?.0.clone(),
-                            {
-                                let s: String = u.arbitrary()?;
-                                SmolStr::from(s)
-                            });
-                        Ok(ast::Expr::has_attr(
-                            self.arbitrary_expr(hierarchy, max_depth - 1, u)?,
-                            attr_name,
-                        ))
-                    })
-            })
-        }
-    }
-    /// get a (fully general) arbitrary constant, as an expression.
-    ///
-    /// If `hierarchy` is present, any literal UIDs included in the Expr will
-    /// (usually) exist in the hierarchy.
-    #[allow(dead_code)]
-    fn arbitrary_const_expr(
-        &self,
-        hierarchy: Option<&Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        gen!(u,
-        4 => self.arbitrary_literal(hierarchy, u),
-        1 => {
-            let mut l = Vec::new();
-            u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                l.push(self.arbitrary_const_expr(hierarchy, u)?);
-                Ok(std::ops::ControlFlow::Continue(()))
-            })?;
-            Ok(ast::Expr::set(l))
-        },
-        1 => {
-            let mut r = Vec::new();
-            u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                let (attr_name, _) = self.arbitrary_attr(u)?;
-                r.push((attr_name.clone(), self.arbitrary_const_expr(hierarchy, u)?));
-                Ok(std::ops::ControlFlow::Continue(()))
-            })?;
-            Ok(ast::Expr::record(r))
         })
     }
 
@@ -2587,10 +2231,10 @@ impl Schema {
                     } else {
                         gen!(u,
                         // UID literal, that exists
-                        11 => Ok(ast::Expr::val(self.arbitrary_uid(hierarchy, u)?)),
+                        11 => Ok(ast::Expr::val(self.exprgenerator(hierarchy).generate_uid(u)?)),
                         // UID literal, that doesn't exist
                         2 => Ok(ast::Expr::val(
-                            Self::arbitrary_specified_uid_without_schema(u)?,
+                            arbitrary_specified_uid_without_schema(u)?,
                         )),
                         // `principal`
                         6 => Ok(ast::Expr::var(ast::Var::Principal)),
@@ -2998,10 +2642,8 @@ impl Schema {
                     13 => {
                         let entity_type_name =
                             parse_name_with_default_namespace(self.namespace(), name);
-                        Ok(ast::Expr::val(Self::arbitrary_uid_with_type(
-                            &entity_type_name,
-                            hierarchy,
-                            u,
+                        Ok(ast::Expr::val(self.exprgenerator(hierarchy).arbitrary_uid_with_type(
+                            &entity_type_name, u,
                         )?))
                     },
                     // `principal`
@@ -3106,7 +2748,7 @@ impl Schema {
                 let mut l = Vec::new();
                 u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                     let el = match el_ty {
-                        None => self.arbitrary_const_expr(hierarchy, u)?,
+                        None => self.exprgenerator(hierarchy).generate_const_expr(u)?,
                         Some(el_ty) => self.arbitrary_const_expr_for_type(el_ty, hierarchy, u)?,
                     };
                     l.push(el);
@@ -3118,7 +2760,10 @@ impl Schema {
                 let mut r = Vec::new();
                 u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                     let (attr_name, _) = self.arbitrary_attr(u)?;
-                    r.push((attr_name.clone(), self.arbitrary_const_expr(hierarchy, u)?));
+                    r.push((
+                        attr_name.clone(),
+                        self.exprgenerator(hierarchy).generate_const_expr(u)?,
+                    ));
                     Ok(std::ops::ControlFlow::Continue(()))
                 })?;
                 Ok(ast::Expr::record(r))
@@ -3126,10 +2771,10 @@ impl Schema {
             Type::Entity => {
                 gen!(u,
                 // UID literal, that exists
-                3 => Ok(ast::Expr::val(self.arbitrary_uid(hierarchy, u)?)),
+                3 => Ok(ast::Expr::val(self.exprgenerator(hierarchy).generate_uid(u)?)),
                 // UID literal, that doesn't exist
                 1 => Ok(ast::Expr::val(
-                    Self::arbitrary_specified_uid_without_schema(u)?,
+                    arbitrary_specified_uid_without_schema(u)?,
                 )))
             }
             Type::IPAddr | Type::Decimal => {
@@ -3231,11 +2876,10 @@ impl Schema {
                     u,
                 )?);
             } else {
-                abac_constraints.push(self.arbitrary_expr(
-                    Some(hierarchy),
-                    self.settings.max_depth,
-                    u,
-                )?);
+                abac_constraints.push(
+                    self.exprgenerator(Some(hierarchy))
+                        .generate(self.settings.max_depth, u)?,
+                );
             }
             Ok(std::ops::ControlFlow::Continue(()))
         })?;
@@ -3278,10 +2922,10 @@ impl Schema {
         gen!(u,
         2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
         4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.arbitrary_principal_uid(Some(hierarchy), u)?,
+            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
         )),
         4 => Ok(PrincipalOrResourceConstraint::In(
-            self.arbitrary_principal_uid(Some(hierarchy), u)?,
+            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
         )))
     }
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
@@ -3289,8 +2933,8 @@ impl Schema {
             size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
-                Self::arbitrary_principal_uid_size_hint(depth),
-                Self::arbitrary_principal_uid_size_hint(depth),
+                ExprGenerator::arbitrary_principal_uid_size_hint(depth),
+                ExprGenerator::arbitrary_principal_uid_size_hint(depth),
             ]),
         )
     }
@@ -3304,10 +2948,10 @@ impl Schema {
         gen!(u,
         2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
         4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.arbitrary_resource_uid(Some(hierarchy), u)?,
+            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
         )),
         4 => Ok(PrincipalOrResourceConstraint::In(
-            self.arbitrary_resource_uid(Some(hierarchy), u)?,
+            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
         )))
     }
     fn arbitrary_resource_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
@@ -3315,8 +2959,8 @@ impl Schema {
             size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
-                Self::arbitrary_resource_uid_size_hint(depth),
-                Self::arbitrary_resource_uid_size_hint(depth),
+                ExprGenerator::arbitrary_resource_uid_size_hint(depth),
+                ExprGenerator::arbitrary_resource_uid_size_hint(depth),
             ]),
         )
     }
@@ -3329,12 +2973,12 @@ impl Schema {
         // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
         gen!(u,
         1 => Ok(ActionConstraint::NoConstraint),
-        3 => Ok(ActionConstraint::Eq(self.arbitrary_action_uid(u)?)),
-        3 => Ok(ActionConstraint::In(self.arbitrary_action_uid(u)?)),
+        3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)),
+        3 => Ok(ActionConstraint::In(self.exprgenerator(None).arbitrary_action_uid(u)?)),
         3 => {
             let mut uids = vec![];
             u.arbitrary_loop(Some(0), max_list_length, |u| {
-                uids.push(self.arbitrary_action_uid(u)?);
+                uids.push(self.exprgenerator(None).arbitrary_action_uid(u)?);
                 Ok(std::ops::ControlFlow::Continue(()))
             })?;
             Ok(ActionConstraint::InList(uids))
@@ -3345,8 +2989,8 @@ impl Schema {
             size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
                 (0, Some(0)),
-                Self::arbitrary_action_uid_size_hint(depth),
-                Self::arbitrary_action_uid_size_hint(depth),
+                ExprGenerator::arbitrary_action_uid_size_hint(depth),
+                ExprGenerator::arbitrary_action_uid_size_hint(depth),
                 (1, None), // not sure how to hint for arbitrary_loop()
             ]),
         )
