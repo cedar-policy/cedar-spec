@@ -1,12 +1,16 @@
-use crate::collections::HashMap;
+use crate::abac::Type;
+use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
+use crate::schema::{
+    build_qualified_entity_type_name, name_with_default_namespace, unwrap_attrs_or_context, Schema,
+};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast::{Eid, Entity, EntityUID, Name};
+use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, TCComputation};
 
-// EntityUIDs with the mappings to their indices in the container
-// This is used to generate an entity that is lexicographically smaller/greater than the input entity
+/// EntityUIDs with the mappings to their indices in the container.
+/// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
 #[derive(Debug, Clone)]
 struct EntityUIDs {
     pub indices: HashMap<EntityUID, usize>,
@@ -53,14 +57,14 @@ pub struct Hierarchy {
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: HashMap<Name, EntityUIDs>,
+    uids_by_type: HashMap<ast::Name, EntityUIDs>,
 }
 
 impl Hierarchy {
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: HashMap<Name, Vec<EntityUID>>) -> Self {
+    pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, Vec<EntityUID>>) -> Self {
         let uids: Vec<EntityUID> = uids_by_type.values().flatten().cloned().collect();
         Self {
             entities: uids
@@ -104,7 +108,7 @@ impl Hierarchy {
     /// generate an arbitrary uid based on the hierarchy, with the given typename
     pub fn arbitrary_uid_with_type(
         &self,
-        typename: &Name,
+        typename: &ast::Name,
         u: &mut Unstructured<'_>,
     ) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
@@ -191,7 +195,7 @@ impl Hierarchy {
     /// Also ensure that the returned UIDs is lexicographically larger than the input `EntityUID` if its type is the same as the given typename
     pub fn uids_for_type(
         &self,
-        dst_ty: &Name,
+        dst_ty: &ast::Name,
         entity: &EntityUID,
     ) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
         match self.uids_by_type.get(dst_ty) {
@@ -212,5 +216,307 @@ impl TryFrom<Hierarchy> for Entities {
     fn try_from(h: Hierarchy) -> std::result::Result<Entities, String> {
         Entities::from_entities(h.into_entities().map(Into::into), TCComputation::ComputeNow)
             .map_err(|e| e.to_string())
+    }
+}
+
+/// Struct for generating hierarchies; contains options and settings
+pub struct HierarchyGenerator<'a, 'u> {
+    /// Mode for hierarchy generation, e.g., whether to conform to a schema
+    pub mode: HierarchyGeneratorMode<'a>,
+    /// How many entities to generate for the hierarchy
+    pub num_entities: NumEntities,
+    /// `Unstructured` used for making random choices
+    pub u: &'a mut Unstructured<'u>,
+}
+
+// can't auto-derive `Debug` because of the `Unstructured`
+impl<'a, 'u> std::fmt::Debug for HierarchyGenerator<'a, 'u> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <HierarchyGeneratorMode<'a> as std::fmt::Debug>::fmt(&self.mode, f)?;
+        <NumEntities as std::fmt::Debug>::fmt(&self.num_entities, f)?;
+        Ok(())
+    }
+}
+
+/// Modes of hierarchy generation
+#[derive(Debug)]
+pub enum HierarchyGeneratorMode<'a> {
+    /// The generated `Hierarchy` will conform to this `Schema`.
+    SchemaBased {
+        /// Schema that the generated `Hierarchy` will conform to
+        schema: &'a Schema,
+    },
+    /// The generated `Hierarchy` will be fully arbitrary
+    Arbitrary {
+        /// Mode for generating attributes (or not)
+        attributes_mode: AttributesMode,
+    },
+}
+
+/// Restrictions (or lack of) on the number of entities in the generated hierarchy
+#[derive(Debug)]
+pub enum NumEntities {
+    /// The hierarchy will contain exactly this many entities, split evenly
+    /// across all entity types declared in the schema. If the number here is
+    /// not a multiple of the number of entity types, the actual number of
+    /// entities may be slightly less than the number here.
+    Exactly(usize),
+    /// The hierarchy will contain exactly this many entities per entity type.
+    ExactlyPerEntityType(usize),
+    /// The hierarchy will contain between some min and some max number of
+    /// entities (inclusive) per entity type.
+    RangePerEntityType(std::ops::RangeInclusive<usize>),
+}
+
+/// Settings for generating hierarchy attributes
+#[derive(Debug)]
+pub enum AttributesMode {
+    /// No attributes (RBAC)
+    NoAttributes,
+    // For now, we don't support any other modes. Generating attributes is only
+    // supported in schema-based mode. If you want arbitrary attributes without
+    // a schema, consider first generating an arbitrary schema and then using
+    // schema-based mode.
+}
+
+/// Helper function that generates a new UID with the given type.
+/// Unlike `Hierarchy::arbitrary_uid_with_type()`, this doesn't take a
+/// `Hierarchy` parameter and doesn't make any effort to generate a UID that
+/// actually exists (yet) in any given hierarchy.
+pub(crate) fn generate_uid_with_type(
+    ty: ast::Name,
+    u: &mut Unstructured<'_>,
+) -> Result<ast::EntityUID> {
+    Ok(ast::EntityUID::from_components(ty, u.arbitrary()?))
+}
+
+impl<'a, 'u> HierarchyGenerator<'a, 'u> {
+    /// Generate a `Hierarchy` according to the specified parameters
+    pub fn generate(&mut self) -> Result<Hierarchy> {
+        let entity_types = match &self.mode {
+            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types.clone(),
+            HierarchyGeneratorMode::Arbitrary { .. } => {
+                // generate a HashSet first to avoid duplicates
+                let entity_types: HashSet<ast::EntityType> = self.u.arbitrary()?;
+                // drop generated Unspecified types
+                entity_types
+                    .into_iter()
+                    .filter_map(|ty| match ty {
+                        ast::EntityType::Concrete(name) => Some(name),
+                        ast::EntityType::Unspecified => None,
+                    })
+                    .collect()
+            }
+        };
+        // For each entity type, generate entity UIDs of that type
+        let uids_by_type = entity_types
+            .iter()
+            .map(|name| {
+                let name = match &self.mode {
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        name_with_default_namespace(schema.namespace(), name)
+                    }
+                    HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
+                };
+                let uids = match &self.num_entities {
+                    NumEntities::RangePerEntityType(r) => {
+                        let mut uids = vec![];
+                        self.u.arbitrary_loop(
+                            Some((*r.start()).try_into().unwrap()),
+                            Some((*r.end()).try_into().unwrap()),
+                            |u| {
+                                uids.push(generate_uid_with_type(name.clone(), u)?);
+                                Ok(std::ops::ControlFlow::Continue(()))
+                            },
+                        )?;
+                        uids
+                    }
+                    NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
+                        // generate `num_entities` entity UIDs of this type
+                        (1..=*num_entities_per_type)
+                            .map(|_| generate_uid_with_type(name.clone(), &mut self.u))
+                            .collect::<Result<_>>()?
+                    }
+                    NumEntities::Exactly(num_entities) => {
+                        // generate a fixed number of entity UIDs of this type
+                        let num_entities_per_type = num_entities / entity_types.len();
+                        (1..=num_entities_per_type)
+                            .map(|_| generate_uid_with_type(name.clone(), &mut self.u))
+                            .collect::<Result<_>>()?
+                    }
+                };
+                Ok((name, uids))
+            })
+            .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
+        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
+        let entitytypes_by_type: Option<HashMap<ast::Name, &cedar_policy_validator::EntityType>> =
+            match &self.mode {
+                HierarchyGeneratorMode::SchemaBased { schema } => Some(
+                    schema
+                        .schema
+                        .entity_types
+                        .iter()
+                        .map(|(name, et)| {
+                            (
+                                build_qualified_entity_type_name(
+                                    schema.namespace.clone(),
+                                    name.parse().unwrap_or_else(|e| {
+                                        panic!("invalid entity type {name:?}: {e:?}")
+                                    }),
+                                ),
+                                et,
+                            )
+                        })
+                        .collect(),
+                ),
+                HierarchyGeneratorMode::Arbitrary { .. } => None,
+            };
+        // now create an entity hierarchy composed of those entity UIDs
+        let entities = hierarchy_no_attrs
+            .entities()
+            .map(|e| e.uid())
+            .map(|uid| {
+                let ast::EntityType::Concrete(name) = uid.entity_type() else {
+                    // `entity_types` was generated in such a way as to never produce
+                    // unspecified entities
+                    panic!("should not be possible to generate an unspecified entity")
+                };
+                // choose parents for this entity
+                let mut parents = HashSet::new();
+                match &self.mode {
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        // we have schema data. Choose parents of appropriate types.
+                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
+                            unreachable!("in schema-based mode, this should always be Some")
+                        };
+                        for allowed_parent_typename in &entitytypes_by_type
+                            .get(&name)
+                            .expect("typename should have an EntityType")
+                            .member_of_types
+                        {
+                            let allowed_parent_typename = build_qualified_entity_type_name(
+                                schema.namespace.clone(),
+                                allowed_parent_typename.parse().unwrap_or_else(|e| {
+                                    panic!(
+                                        "invalid parent typename {allowed_parent_typename:?}: {e:?}"
+                                    )
+                                }),
+                            );
+                            for possible_parent_uid in
+                                // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
+                                // It should be very unlikely where loops involving multiple entity types occur in the schemas
+                                hierarchy_no_attrs
+                                    .uids_for_type(&allowed_parent_typename, &uid)
+                            {
+                                if self.u.ratio::<u8>(1, 2)? {
+                                    parents.insert(possible_parent_uid.clone());
+                                }
+                            }
+                        }
+                    }
+                    HierarchyGeneratorMode::Arbitrary { .. } => {
+                        // no schema data.
+                        // for each uid in the pool, flip a weighted coin to decide whether
+                        // to add it as a parent. We only consider uids appearing after the
+                        // given one in the pool; this ensures we get a DAG (no cycles)
+                        // without loss of generality
+                        let this_idx = hierarchy_no_attrs
+                            .uids()
+                            .iter()
+                            .position(|x| x == &uid)
+                            .expect("uid should be in the pool");
+                        for pool_uid in &hierarchy_no_attrs.uids()[(this_idx + 1)..] {
+                            if self.u.ratio(1, 3)? {
+                                parents.insert(pool_uid.clone());
+                            }
+                        }
+                        // assert there is no self-edge
+                        assert!(!parents.contains(&uid));
+                    }
+                }
+                // generate appropriate attributes for this entity
+                let mut attrs = HashMap::new();
+                match &self.mode {
+                    HierarchyGeneratorMode::Arbitrary {
+                        attributes_mode: AttributesMode::NoAttributes,
+                    } => {
+                        // don't add any attributes
+                    }
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        // add attributes
+                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
+                            unreachable!("in schema-based mode, this should always be Some")
+                        };
+                        let (attr_or_context, additional_attrs) = unwrap_attrs_or_context(
+                            &entitytypes_by_type
+                                .get(&name)
+                                .expect("typename should have an EntityType")
+                                .shape,
+                        );
+                        if additional_attrs {
+                            // maybe add some additional attributes with arbitrary types
+                            self.u.arbitrary_loop(
+                                None,
+                                Some(schema.settings.max_width as u32),
+                                |u| {
+                                    let attr_type = if schema.settings.enable_extensions {
+                                        u.arbitrary()?
+                                    } else {
+                                        Type::arbitrary_nonextension(u)?
+                                    };
+                                    let attr_name: String = u.arbitrary()?;
+                                    attrs.insert(
+                                        attr_name.into(),
+                                        schema
+                                            .arbitrary_attr_value_for_type(
+                                                &attr_type,
+                                                Some(&hierarchy_no_attrs),
+                                                schema.settings.max_depth,
+                                                u,
+                                            )?
+                                            .into(),
+                                    );
+                                    Ok(std::ops::ControlFlow::Continue(()))
+                                },
+                            )?;
+                        }
+                        for (attr, ty) in attr_or_context {
+                            // now add the actual optional and required attributes, with the
+                            // correct types.
+                            // Doing this second ensures that we overwrite any "additional"
+                            // attributes so that they definitely have the required type, in
+                            // case we got a name collision between an explicitly specified
+                            // attribute and one of the "additional" ones we added.
+                            if ty.required || self.u.ratio::<u8>(1, 2)? {
+                                let attr_val = schema.arbitrary_attr_value_for_schematype(
+                                    &ty.ty,
+                                    Some(&hierarchy_no_attrs),
+                                    schema.settings.max_depth,
+                                    &mut self.u,
+                                )?;
+                                attrs.insert(
+                                attr.parse().expect(
+                                    "all attribute names in the schema should be valid identifiers",
+                                ),
+                                attr_val.into(),
+                            );
+                            }
+                        }
+                    }
+                }
+                // create the actual ast::Entity object
+                let entity = ast::Entity::new(
+                    uid.clone(),
+                    attrs.into_iter().collect(),
+                    parents.into_iter().collect(),
+                );
+                Ok((uid, entity))
+            })
+            .collect::<Result<_>>()?;
+        Ok(hierarchy_no_attrs.replace_entities(entities))
+    }
+    /// size hint for generate()
+    pub fn size_hint(_depth: usize) -> (usize, Option<usize>) {
+        (0, None)
     }
 }
