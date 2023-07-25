@@ -63,7 +63,7 @@ pub struct Schema {
     principal_types: Vec<ast::Name>,
     /// list of Eids that exist as a non-`None` actions name for an action in
     /// the schema.
-    actions_eids: Vec<SmolStr>,
+    actions_eids: Vec<ast::Eid>,
     /// list of entity types that occur as a valid resource for at least one
     /// action in the `schema`
     resource_types: Vec<ast::Name>,
@@ -266,15 +266,11 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     <cedar_policy_validator::SchemaType as Arbitrary>::size_hint(depth)
 }
 
-/// internal helper function, get the EntityUID corresponding to the given ActionType
-fn uid_for_action_name(namespace: Option<ast::Name>, action_name: &str) -> ast::EntityUID {
-    let entity_type = build_qualified_entity_type_name(
-        namespace,
-        action_name
-            .parse()
-            .unwrap_or_else(|e| panic!("invalid action name {action_name:?}: {e:?}")),
-    );
-    ast::EntityUID::from_components(entity_type, ast::Eid::new(action_name))
+/// internal helper function, get the EntityUID corresponding to the given action
+fn uid_for_action_name(namespace: Option<ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
+    let entity_type =
+        build_qualified_entity_type_name(namespace, "Action".parse().expect("valid id"));
+    ast::EntityUID::from_components(entity_type, action_name)
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
@@ -524,7 +520,7 @@ impl Schema {
                 .into_iter()
                 .map(|p| ast::Name::from_str(&p).expect("entity type should be valid Name"))
                 .collect(),
-            actions_eids: nsdef.actions.keys().cloned().collect(),
+            actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
             resource_types: resource_types
                 .into_iter()
                 .map(|r| ast::Name::from_str(&r).expect("entity type should be valid Name"))
@@ -752,7 +748,10 @@ impl Schema {
             .collect();
         let attributes_by_type =
             build_attributes_by_type(entity_types.iter().map(|(a, b)| (a, b)), namespace.as_ref());
-        let actions_eids = actions.iter().map(|(name, _)| name.clone()).collect();
+        let actions_eids = actions
+            .iter()
+            .map(|(name, _)| ast::Eid::new(name.clone()))
+            .collect();
         Ok(Schema {
             schema: cedar_policy_validator::NamespaceDefinition {
                 common_types: HashMap::new().into(),
@@ -828,10 +827,10 @@ impl Schema {
     /// all actions are defined in the schema, and we just give you one of the
     /// actions from the schema.
     pub fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-        let action = &u
+        let action = u
             .choose(&self.actions_eids)
             .map_err(|e| while_doing("choosing an action", e))?;
-        Ok(uid_for_action_name(self.namespace.clone(), action))
+        Ok(uid_for_action_name(self.namespace.clone(), action.clone()))
     }
     /// size hint for arbitrary_action_uid()
     pub fn arbitrary_action_uid_size_hint(_depth: usize) -> (usize, Option<usize>) {
@@ -3376,7 +3375,7 @@ impl Schema {
                     )?
                 }
             },
-            action: uid_for_action_name(self.namespace.clone(), action_name),
+            action: uid_for_action_name(self.namespace.clone(), ast::Eid::new(action_name.clone())),
             resource: match action
                 .applies_to
                 .as_ref()
