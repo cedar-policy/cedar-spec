@@ -3,7 +3,11 @@ use std::{fs::File, io};
 use anyhow::{anyhow, Result};
 use arbitrary::Unstructured;
 use cedar_policy_core::entities::{Entities, TCComputation};
-use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
+use cedar_policy_generators::{
+    hierarchy::{HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
+    schema::Schema,
+    settings::ABACSettings,
+};
 use cedar_policy_validator::SchemaFragment;
 use clap::{Args, Parser, Subcommand};
 use rand::{thread_rng, Rng};
@@ -29,6 +33,10 @@ pub struct HierarchyArgs {
     /// Schema file
     #[arg(short, long = "schema", value_name = "FILE")]
     pub schema_file: String,
+    /// Exact number of entities to generate
+    /// (if this is omitted, then you will get 1 to max_depth per entity type)
+    #[arg(long)]
+    pub num_entities: Option<usize>,
     /// Maximum depth
     #[arg(long, default_value_t = 4)]
     pub max_depth: usize,
@@ -62,15 +70,27 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     let mut u = Unstructured::new(&bytes);
     let schema = Schema::from_schemafrag(fragment.clone(), args.into(), &mut u)
         .map_err(|err| anyhow!("failed to construct `Schema`: {err:#?}"))?;
-    let h = schema
-        .arbitrary_hierarchy(&mut u)
-        .map_err(|err| anyhow!("failed to generate hierarchy: {err:#?}"))?;
+    let h = HierarchyGenerator {
+        mode: HierarchyGeneratorMode::SchemaBased { schema: &schema },
+        num_entities: match args.num_entities {
+            Some(exact_num) => NumEntities::Exactly(exact_num),
+            None => NumEntities::RangePerEntityType(1..=args.max_depth),
+        },
+        u: &mut u,
+    }
+    .generate()
+    .map_err(|err| anyhow!("failed to generate hierarchy: {err:#?}"))?;
+    // this is just to ensure no cycles.
+    // we throw away the `Entities` built with `ComputeNow`, because we want to
+    // generate hierarchies that aren't necessarily TC-closed.
     Entities::from_entities(
         h.entities().into_iter().map(|e| e.clone()),
         TCComputation::ComputeNow,
     )?;
     Ok(Entities::from_entities(
         h.entities().into_iter().cloned(),
+        // use `AssumeAlreadyComputed` because we want a hierarchy that isn't
+        // necessarily TC-closed.
         TCComputation::AssumeAlreadyComputed,
     )?)
 }
