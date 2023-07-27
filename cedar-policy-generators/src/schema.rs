@@ -883,7 +883,9 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match hierarchy {
-            None => generate_uid_with_type(ty.clone(), u),
+            None => {
+                generate_uid_with_type(ty.clone(), &HierarchyGeneratorMode::arbitrary_default(), u)
+            }
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }
