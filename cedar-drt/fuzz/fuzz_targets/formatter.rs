@@ -99,13 +99,13 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
         line_width: 80,
     };
     let mut uuids = Vec::new();
-    let commented_policy_str = &attach_comment(&p.to_string(), &mut uuids);
+    let formatted_policy_str =
+        &policies_str_to_pretty(&attach_comment(&p.to_string(), &mut uuids), &config)
+            .expect("pretty-printing should not fail");
     // check if pretty-printing drops any comment
     for u in &uuids {
-        assert!(commented_policy_str.contains(u), "missing comment: {}\n", u);
+        assert!(formatted_policy_str.contains(u), "missing comment: {}\n", u);
     }
-    let formatted_policy_str = &policies_str_to_pretty(commented_policy_str, &config)
-        .expect("pretty-printing should not fail");
     parse_policy(None, formatted_policy_str)
 }
 
