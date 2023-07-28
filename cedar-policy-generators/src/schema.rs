@@ -21,7 +21,8 @@ use crate::abac::{
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{
-    generate_uid_with_type, Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities,
+    generate_uid_with_type, EntityUIDGenMode, Hierarchy, HierarchyGenerator,
+    HierarchyGeneratorMode, NumEntities,
 };
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
@@ -790,9 +791,14 @@ impl Schema {
     }
 
     /// Get an arbitrary Hierarchy conforming to the schema.
-    pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
+    pub fn arbitrary_hierarchy(
+        &self,
+        uid_gen_mode: EntityUIDGenMode,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Hierarchy> {
         HierarchyGenerator {
             mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            uid_gen_mode,
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
         }
@@ -883,9 +889,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match hierarchy {
-            None => {
-                generate_uid_with_type(ty.clone(), &HierarchyGeneratorMode::arbitrary_default(), u)
-            }
+            None => generate_uid_with_type(ty.clone(), EntityUIDGenMode::default(), u),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }
@@ -3479,7 +3483,7 @@ impl TryFrom<Schema> for ValidatorSchema {
 #[cfg(test)]
 mod tests {
     use super::Schema;
-    use crate::settings::ABACSettings;
+    use crate::{hierarchy::EntityUIDGenMode, settings::ABACSettings};
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_validator::SchemaFragment;
@@ -3924,7 +3928,12 @@ mod tests {
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
-            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+            assert!(generate_hierarchy_from_schema(
+                EntityUIDGenMode::default_nanoid_mode(),
+                &mut rng,
+                &fragment
+            )
+            .is_ok());
         }
     }
 
@@ -3934,11 +3943,17 @@ mod tests {
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
-            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+            assert!(generate_hierarchy_from_schema(
+                EntityUIDGenMode::default_nanoid_mode(),
+                &mut rng,
+                &fragment
+            )
+            .is_ok());
         }
     }
 
     fn generate_hierarchy_from_schema(
+        uid_gen_mode: EntityUIDGenMode,
         rng: &mut ThreadRng,
         fragment: &SchemaFragment,
     ) -> cedar_policy_core::entities::Result<Entities> {
@@ -3948,7 +3963,7 @@ mod tests {
         let schema = Schema::from_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
             .expect("failed to generate schema!");
         let h = schema
-            .arbitrary_hierarchy(&mut u)
+            .arbitrary_hierarchy(uid_gen_mode, &mut u)
             .expect("failed to generate hierarchy!");
         Entities::from_entities(
             h.entities().into_iter().map(|e| e.clone()),

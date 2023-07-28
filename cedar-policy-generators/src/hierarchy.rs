@@ -235,6 +235,8 @@ impl TryFrom<Hierarchy> for Entities {
 pub struct HierarchyGenerator<'a, 'u> {
     /// Mode for hierarchy generation, e.g., whether to conform to a schema
     pub mode: HierarchyGeneratorMode<'a>,
+    /// Mode for generating entity uids
+    pub uid_gen_mode: EntityUIDGenMode,
     /// How many entities to generate for the hierarchy
     pub num_entities: NumEntities,
     /// `Unstructured` used for making random choices
@@ -247,6 +249,32 @@ impl<'a, 'u> std::fmt::Debug for HierarchyGenerator<'a, 'u> {
         <HierarchyGeneratorMode<'a> as std::fmt::Debug>::fmt(&self.mode, f)?;
         <NumEntities as std::fmt::Debug>::fmt(&self.num_entities, f)?;
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+/// Modes of entity uid generation
+pub enum EntityUIDGenMode {
+    /// By calling `arbitrary`
+    Arbitrary,
+    /// By calling `nanoid`
+    Nanoid(usize),
+}
+
+impl EntityUIDGenMode {
+    /// The default nanoid length is 8
+    pub fn default_nanoid_len() -> usize {
+        8
+    }
+    /// Use nanoid with the default length
+    pub fn default_nanoid_mode() -> Self {
+        Self::Nanoid(Self::default_nanoid_len())
+    }
+}
+
+impl Default for EntityUIDGenMode {
+    fn default() -> Self {
+        Self::Arbitrary
     }
 }
 
@@ -306,12 +334,12 @@ pub enum AttributesMode {
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::Name,
-    mode: &HierarchyGeneratorMode<'_>,
+    mode: EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
     let eid: Eid = match mode {
-        HierarchyGeneratorMode::Arbitrary { attributes_mode: _ } => u.arbitrary()?,
-        HierarchyGeneratorMode::SchemaBased { schema: _ } => Eid::new(nanoid!(8)),
+        EntityUIDGenMode::Arbitrary => u.arbitrary()?,
+        EntityUIDGenMode::Nanoid(n) => Eid::new(nanoid!(n)),
     };
     Ok(ast::EntityUID::from_components(ty, eid))
 }
@@ -351,7 +379,11 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.insert(generate_uid_with_type(name.clone(), &self.mode, u)?);
+                                uids.insert(generate_uid_with_type(
+                                    name.clone(),
+                                    self.uid_gen_mode.clone(),
+                                    u,
+                                )?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -360,7 +392,13 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), &self.mode, &mut self.u))
+                            .map(|_| {
+                                generate_uid_with_type(
+                                    name.clone(),
+                                    self.uid_gen_mode.clone(),
+                                    &mut self.u,
+                                )
+                            })
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
@@ -368,8 +406,11 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let num_entities_per_type = num_entities / entity_types.len();
                         let mut uids = HashSet::new();
                         while uids.len() < num_entities_per_type {
-                            let uid =
-                                generate_uid_with_type(name.clone(), &self.mode, &mut self.u)?;
+                            let uid = generate_uid_with_type(
+                                name.clone(),
+                                self.uid_gen_mode.clone(),
+                                &mut self.u,
+                            )?;
                             uids.insert(uid);
                         }
                         uids
