@@ -1,9 +1,8 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{
-    build_qualified_entity_type_name, name_with_default_namespace, unwrap_attrs_or_context, Schema,
-};
+use crate::expr::name_with_default_namespace;
+use crate::schema::{build_qualified_entity_type_name, unwrap_attrs_or_context, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -539,9 +538,9 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                                     attrs.insert(
                                         attr_name.into(),
                                         schema
-                                            .arbitrary_attr_value_for_type(
+                                            .exprgenerator(Some(&hierarchy_no_attrs))
+                                            .generate_attr_value_for_type(
                                                 &attr_type,
-                                                Some(&hierarchy_no_attrs),
                                                 schema.settings.max_depth,
                                                 u,
                                             )?
@@ -559,12 +558,13 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             // case we got a name collision between an explicitly specified
                             // attribute and one of the "additional" ones we added.
                             if ty.required || self.u.ratio::<u8>(1, 2)? {
-                                let attr_val = schema.arbitrary_attr_value_for_schematype(
-                                    &ty.ty,
-                                    Some(&hierarchy_no_attrs),
-                                    schema.settings.max_depth,
-                                    &mut self.u,
-                                )?;
+                                let attr_val = schema
+                                    .exprgenerator(Some(&hierarchy_no_attrs))
+                                    .generate_attr_value_for_schematype(
+                                        &ty.ty,
+                                        schema.settings.max_depth,
+                                        &mut self.u,
+                                    )?;
                                 attrs.insert(
                                 attr.parse().expect(
                                     "all attribute names in the schema should be valid identifiers",
