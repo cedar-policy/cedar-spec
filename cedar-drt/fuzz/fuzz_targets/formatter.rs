@@ -22,7 +22,10 @@ use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Templa
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    abac::ABACPolicy,
+    hierarchy::{EntityUIDGenMode, HierarchyGenerator},
+    schema::Schema,
+    settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
