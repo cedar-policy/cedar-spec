@@ -1042,7 +1042,7 @@ impl Schema {
         3 => Ok(ActionConstraint::In(self.exprgenerator(None).arbitrary_action_uid(u)?)),
         3 => {
             let mut uids = vec![];
-            let mut exprgenerator = self.exprgenerator(None);
+            let exprgenerator = self.exprgenerator(None);
             u.arbitrary_loop(Some(0), max_list_length, |u| {
                 uids.push(exprgenerator.arbitrary_action_uid(u)?);
                 Ok(std::ops::ControlFlow::Continue(()))
