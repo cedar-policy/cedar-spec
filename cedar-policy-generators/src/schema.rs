@@ -21,7 +21,8 @@ use crate::abac::{
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{
-    generate_uid_with_type, Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities,
+    generate_uid_with_type, EntityUIDGenMode, Hierarchy, HierarchyGenerator,
+    HierarchyGeneratorMode, NumEntities,
 };
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
@@ -793,6 +794,22 @@ impl Schema {
     pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
         HierarchyGenerator {
             mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            uid_gen_mode: EntityUIDGenMode::default(),
+            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
+            u,
+        }
+        .generate()
+    }
+
+    /// Get an arbitrary Hierarchy conforming to the schema but with nanoid uids.
+    pub fn arbitrary_hierarchy_with_nanoid_uids(
+        &self,
+        nanoid_len: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Hierarchy> {
+        HierarchyGenerator {
+            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
+            uid_gen_mode: EntityUIDGenMode::Nanoid(nanoid_len),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
         }
@@ -883,7 +900,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match hierarchy {
-            None => generate_uid_with_type(ty.clone(), u),
+            None => generate_uid_with_type(ty.clone(), EntityUIDGenMode::default(), u),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }
@@ -3476,7 +3493,7 @@ impl TryFrom<Schema> for ValidatorSchema {
 #[cfg(test)]
 mod tests {
     use super::Schema;
-    use crate::settings::ABACSettings;
+    use crate::{hierarchy::EntityUIDGenMode, settings::ABACSettings};
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_validator::SchemaFragment;
@@ -3945,7 +3962,7 @@ mod tests {
         let schema = Schema::from_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
             .expect("failed to generate schema!");
         let h = schema
-            .arbitrary_hierarchy(&mut u)
+            .arbitrary_hierarchy_with_nanoid_uids(EntityUIDGenMode::default_nanoid_len(), &mut u)
             .expect("failed to generate hierarchy!");
         Entities::from_entities(
             h.entities().into_iter().map(|e| e.clone()),

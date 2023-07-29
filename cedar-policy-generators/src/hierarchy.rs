@@ -8,6 +8,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, TCComputation};
+use nanoid::nanoid;
 
 /// EntityUIDs with the mappings to their indices in the container.
 /// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
@@ -26,6 +27,13 @@ impl From<Vec<EntityUID>> for EntityUIDs {
                 .collect(),
             uids: value,
         }
+    }
+}
+
+impl FromIterator<EntityUID> for EntityUIDs {
+    fn from_iter<T: IntoIterator<Item = EntityUID>>(iter: T) -> Self {
+        let uids: Vec<EntityUID> = iter.into_iter().collect();
+        uids.into()
     }
 }
 
@@ -64,8 +72,12 @@ impl Hierarchy {
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, Vec<EntityUID>>) -> Self {
-        let uids: Vec<EntityUID> = uids_by_type.values().flatten().cloned().collect();
+    pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, HashSet<EntityUID>>) -> Self {
+        let uids: Vec<EntityUID> = uids_by_type
+            .values()
+            .map(|uids_inner| uids_inner.iter().map(|uid| uid.clone()))
+            .flatten()
+            .collect();
         Self {
             entities: uids
                 .iter()
@@ -74,7 +86,7 @@ impl Hierarchy {
             uids,
             uids_by_type: uids_by_type
                 .into_iter()
-                .map(|(n, uids)| (n, uids.into()))
+                .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
                 .collect(),
         }
     }
@@ -223,6 +235,8 @@ impl TryFrom<Hierarchy> for Entities {
 pub struct HierarchyGenerator<'a, 'u> {
     /// Mode for hierarchy generation, e.g., whether to conform to a schema
     pub mode: HierarchyGeneratorMode<'a>,
+    /// Mode for generating entity uids
+    pub uid_gen_mode: EntityUIDGenMode,
     /// How many entities to generate for the hierarchy
     pub num_entities: NumEntities,
     /// `Unstructured` used for making random choices
@@ -235,6 +249,32 @@ impl<'a, 'u> std::fmt::Debug for HierarchyGenerator<'a, 'u> {
         <HierarchyGeneratorMode<'a> as std::fmt::Debug>::fmt(&self.mode, f)?;
         <NumEntities as std::fmt::Debug>::fmt(&self.num_entities, f)?;
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+/// Modes of entity uid generation
+pub enum EntityUIDGenMode {
+    /// By calling `arbitrary`
+    Arbitrary,
+    /// By calling `nanoid`
+    Nanoid(usize),
+}
+
+impl EntityUIDGenMode {
+    /// The default nanoid length is 8
+    pub fn default_nanoid_len() -> usize {
+        8
+    }
+    /// Use nanoid with the default length
+    pub fn default_nanoid_mode() -> Self {
+        Self::Nanoid(Self::default_nanoid_len())
+    }
+}
+
+impl Default for EntityUIDGenMode {
+    fn default() -> Self {
+        Self::Arbitrary
     }
 }
 
@@ -251,6 +291,15 @@ pub enum HierarchyGeneratorMode<'a> {
         /// Mode for generating attributes (or not)
         attributes_mode: AttributesMode,
     },
+}
+
+impl HierarchyGeneratorMode<'_> {
+    /// Generate the default arbitrary mode
+    pub fn arbitrary_default() -> Self {
+        Self::Arbitrary {
+            attributes_mode: AttributesMode::NoAttributes,
+        }
+    }
 }
 
 /// Restrictions (or lack of) on the number of entities in the generated hierarchy
@@ -285,9 +334,14 @@ pub enum AttributesMode {
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::Name,
+    mode: EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
-    Ok(ast::EntityUID::from_components(ty, u.arbitrary()?))
+    let eid: Eid = match mode {
+        EntityUIDGenMode::Arbitrary => u.arbitrary()?,
+        EntityUIDGenMode::Nanoid(n) => Eid::new(nanoid!(n)),
+    };
+    Ok(ast::EntityUID::from_components(ty, eid))
 }
 
 impl<'a, 'u> HierarchyGenerator<'a, 'u> {
@@ -309,7 +363,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             }
         };
         // For each entity type, generate entity UIDs of that type
-        let uids_by_type = entity_types
+        let uids_by_type: HashMap<ast::Name, HashSet<EntityUID>> = entity_types
             .iter()
             .map(|name| {
                 let name = match &self.mode {
@@ -320,12 +374,16 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 };
                 let uids = match &self.num_entities {
                     NumEntities::RangePerEntityType(r) => {
-                        let mut uids = vec![];
+                        let mut uids = HashSet::new();
                         self.u.arbitrary_loop(
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.push(generate_uid_with_type(name.clone(), u)?);
+                                uids.insert(generate_uid_with_type(
+                                    name.clone(),
+                                    self.uid_gen_mode.clone(),
+                                    u,
+                                )?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -334,20 +392,33 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), &mut self.u))
+                            .map(|_| {
+                                generate_uid_with_type(
+                                    name.clone(),
+                                    self.uid_gen_mode.clone(),
+                                    &mut self.u,
+                                )
+                            })
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
                         // generate a fixed number of entity UIDs of this type
                         let num_entities_per_type = num_entities / entity_types.len();
-                        (1..=num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), &mut self.u))
-                            .collect::<Result<_>>()?
+                        let mut uids = HashSet::new();
+                        while uids.len() < num_entities_per_type {
+                            let uid = generate_uid_with_type(
+                                name.clone(),
+                                self.uid_gen_mode.clone(),
+                                &mut self.u,
+                            )?;
+                            uids.insert(uid);
+                        }
+                        uids
                     }
                 };
                 Ok((name, uids))
             })
-            .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
+            .collect::<Result<HashMap<ast::Name, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: Option<HashMap<ast::Name, &cedar_policy_validator::EntityType>> =
             match &self.mode {

@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use arbitrary::Unstructured;
 use cedar_policy_core::entities::{Entities, TCComputation};
 use cedar_policy_generators::{
-    hierarchy::{HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
+    hierarchy::{EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
     schema::Schema,
     settings::ABACSettings,
 };
@@ -43,6 +43,8 @@ pub struct HierarchyArgs {
     /// Maximum width
     #[arg(long, default_value_t = 4)]
     pub max_width: usize,
+    #[arg(long, default_value_t = EntityUIDGenMode::default_nanoid_len())]
+    pub uid_length: usize,
 }
 
 impl From<&HierarchyArgs> for ABACSettings {
@@ -72,6 +74,7 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
         .map_err(|err| anyhow!("failed to construct `Schema`: {err:#?}"))?;
     let h = HierarchyGenerator {
         mode: HierarchyGeneratorMode::SchemaBased { schema: &schema },
+        uid_gen_mode: EntityUIDGenMode::Nanoid(args.uid_length),
         num_entities: match args.num_entities {
             Some(exact_num) => NumEntities::Exactly(exact_num),
             None => NumEntities::RangePerEntityType(1..=args.max_depth),
