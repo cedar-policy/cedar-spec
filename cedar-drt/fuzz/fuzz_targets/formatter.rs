@@ -72,7 +72,7 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
 
 // Attach each token two uuids as leading comment and one uuid as trailing comment
 fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
-    let mut tokens = lexer::get_token_stream(p);
+    let mut tokens = lexer::get_token_stream(p).expect("tokens should exist");
     for t in tokens.iter_mut() {
         let mut ids: Vec<String> = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]
             .iter()
