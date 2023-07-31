@@ -531,6 +531,7 @@ impl Schema {
             unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
+            uid_gen_mode: EntityUIDGenMode::default(),
         }
     }
 

@@ -333,12 +333,15 @@ pub enum AttributesMode {
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::Name,
-    mode: EntityUIDGenMode,
+    mode: &EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
     let eid: Eid = match mode {
         EntityUIDGenMode::Arbitrary => u.arbitrary()?,
-        EntityUIDGenMode::Nanoid(n) => Eid::new(nanoid!(n)),
+        EntityUIDGenMode::Nanoid(n) => {
+            let n = *n;
+            Eid::new(nanoid!(n))
+        }
     };
     Ok(ast::EntityUID::from_components(ty, eid))
 }
@@ -380,7 +383,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             |u| {
                                 uids.insert(generate_uid_with_type(
                                     name.clone(),
-                                    self.uid_gen_mode.clone(),
+                                    &self.uid_gen_mode,
                                     u,
                                 )?);
                                 Ok(std::ops::ControlFlow::Continue(()))
@@ -394,7 +397,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .map(|_| {
                                 generate_uid_with_type(
                                     name.clone(),
-                                    self.uid_gen_mode.clone(),
+                                    &self.uid_gen_mode,
                                     &mut self.u,
                                 )
                             })
@@ -407,7 +410,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         while uids.len() < num_entities_per_type {
                             let uid = generate_uid_with_type(
                                 name.clone(),
-                                self.uid_gen_mode.clone(),
+                                &self.uid_gen_mode,
                                 &mut self.u,
                             )?;
                             uids.insert(uid);

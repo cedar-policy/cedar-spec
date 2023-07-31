@@ -86,10 +86,7 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     // this is just to ensure no cycles.
     // we throw away the `Entities` built with `ComputeNow`, because we want to
     // generate hierarchies that aren't necessarily TC-closed.
-    Entities::from_entities(
-        h.entities().cloned(),
-        TCComputation::ComputeNow,
-    )?;
+    Entities::from_entities(h.entities().cloned(), TCComputation::ComputeNow)?;
     Ok(Entities::from_entities(
         h.entities().cloned(),
         // use `AssumeAlreadyComputed` because we want a hierarchy that isn't
@@ -104,9 +101,8 @@ fn main() {
         Commands::Hierarchy(args) => {
             match generate_hierarchy_from_schema(cli.byte_length as usize, args) {
                 Ok(h) => {
-                    h.write_to_json(io::stdout()).unwrap_or_else(|err| {
-                        eprintln!("cannot convert entities to JSON: {err}")
-                    });
+                    h.write_to_json(io::stdout())
+                        .unwrap_or_else(|err| eprintln!("cannot convert entities to JSON: {err}"));
                 }
                 Err(err) => {
                     eprintln!("{err}");
