@@ -391,7 +391,7 @@ fn attrs_in_schematype(
                         .collect::<Vec<_>>();
                     let recursed = toplevel
                         .iter()
-                        .map(|(_, v)| attrs_in_schematype(&v))
+                        .map(|(_, v)| attrs_in_schematype(v))
                         .flatten()
                         .collect::<Vec<_>>();
                     Box::new(toplevel.into_iter().chain(recursed.into_iter()))
@@ -469,7 +469,7 @@ impl Schema {
             None => None,
             Some("") => None, // we consider "" to be the same as the empty namespace
             Some(ns) => {
-                Some(ast::Name::from_str(&ns).unwrap_or_else(|_| panic!("invalid namespace: {ns}")))
+                Some(ast::Name::from_str(ns).unwrap_or_else(|_| panic!("invalid namespace: {ns}")))
             }
         };
         let attributes_by_type = build_attributes_by_type(&nsdef.entity_types, namespace.as_ref());
@@ -484,16 +484,16 @@ impl Schema {
             entity_types: nsdef
                 .entity_types
                 .keys()
-                .map(|k| ast::Name::from_str(&k).expect("entity type should be valid Name"))
+                .map(|k| ast::Name::from_str(k).expect("entity type should be valid Name"))
                 .collect(),
             principal_types: principal_types
                 .into_iter()
-                .map(|p| ast::Name::from_str(&p).expect("entity type should be valid Name"))
+                .map(|p| ast::Name::from_str(p).expect("entity type should be valid Name"))
                 .collect(),
             actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
             resource_types: resource_types
                 .into_iter()
-                .map(|r| ast::Name::from_str(&r).expect("entity type should be valid Name"))
+                .map(|r| ast::Name::from_str(r).expect("entity type should be valid Name"))
                 .collect(),
             attributes,
             attributes_by_type,
