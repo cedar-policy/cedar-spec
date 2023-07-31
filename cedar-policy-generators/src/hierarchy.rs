@@ -1,9 +1,8 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{
-    build_qualified_entity_type_name, name_with_default_namespace, unwrap_attrs_or_context, Schema,
-};
+use crate::expr::name_with_default_namespace;
+use crate::schema::{build_qualified_entity_type_name, unwrap_attrs_or_context, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -22,7 +21,6 @@ impl From<Vec<EntityUID>> for EntityUIDs {
     fn from(value: Vec<EntityUID>) -> Self {
         Self {
             indices: (0..value.len())
-                .into_iter()
                 .map(|idx| (value[idx].clone(), idx))
                 .collect(),
             uids: value,
@@ -75,8 +73,7 @@ impl Hierarchy {
     pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, HashSet<EntityUID>>) -> Self {
         let uids: Vec<EntityUID> = uids_by_type
             .values()
-            .map(|uids_inner| uids_inner.iter().map(|uid| uid.clone()))
-            .flatten()
+            .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
         Self {
             entities: uids
@@ -334,12 +331,15 @@ pub enum AttributesMode {
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::Name,
-    mode: EntityUIDGenMode,
+    mode: &EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
     let eid: Eid = match mode {
         EntityUIDGenMode::Arbitrary => u.arbitrary()?,
-        EntityUIDGenMode::Nanoid(n) => Eid::new(nanoid!(n)),
+        EntityUIDGenMode::Nanoid(n) => {
+            let n = *n;
+            Eid::new(nanoid!(n))
+        }
     };
     Ok(ast::EntityUID::from_components(ty, eid))
 }
@@ -381,7 +381,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             |u| {
                                 uids.insert(generate_uid_with_type(
                                     name.clone(),
-                                    self.uid_gen_mode.clone(),
+                                    &self.uid_gen_mode,
                                     u,
                                 )?);
                                 Ok(std::ops::ControlFlow::Continue(()))
@@ -393,11 +393,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
                             .map(|_| {
-                                generate_uid_with_type(
-                                    name.clone(),
-                                    self.uid_gen_mode.clone(),
-                                    &mut self.u,
-                                )
+                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)
                             })
                             .collect::<Result<_>>()?
                     }
@@ -406,11 +402,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let num_entities_per_type = num_entities / entity_types.len();
                         let mut uids = HashSet::new();
                         while uids.len() < num_entities_per_type {
-                            let uid = generate_uid_with_type(
-                                name.clone(),
-                                self.uid_gen_mode.clone(),
-                                &mut self.u,
-                            )?;
+                            let uid =
+                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)?;
                             uids.insert(uid);
                         }
                         uids
@@ -461,7 +454,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
                         for allowed_parent_typename in &entitytypes_by_type
-                            .get(&name)
+                            .get(name)
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
@@ -520,7 +513,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         };
                         let (attr_or_context, additional_attrs) = unwrap_attrs_or_context(
                             &entitytypes_by_type
-                                .get(&name)
+                                .get(name)
                                 .expect("typename should have an EntityType")
                                 .shape,
                         );
@@ -539,9 +532,9 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                                     attrs.insert(
                                         attr_name.into(),
                                         schema
-                                            .arbitrary_attr_value_for_type(
+                                            .exprgenerator(Some(&hierarchy_no_attrs))
+                                            .generate_attr_value_for_type(
                                                 &attr_type,
-                                                Some(&hierarchy_no_attrs),
                                                 schema.settings.max_depth,
                                                 u,
                                             )?
@@ -559,12 +552,13 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             // case we got a name collision between an explicitly specified
                             // attribute and one of the "additional" ones we added.
                             if ty.required || self.u.ratio::<u8>(1, 2)? {
-                                let attr_val = schema.arbitrary_attr_value_for_schematype(
-                                    &ty.ty,
-                                    Some(&hierarchy_no_attrs),
-                                    schema.settings.max_depth,
-                                    &mut self.u,
-                                )?;
+                                let attr_val = schema
+                                    .exprgenerator(Some(&hierarchy_no_attrs))
+                                    .generate_attr_value_for_schematype(
+                                        &ty.ty,
+                                        schema.settings.max_depth,
+                                        self.u,
+                                    )?;
                                 attrs.insert(
                                 attr.parse().expect(
                                     "all attribute names in the schema should be valid identifiers",
