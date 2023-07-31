@@ -396,10 +396,10 @@ pub struct GeneratedLinkedPolicy {
 }
 
 impl GeneratedLinkedPolicy {
-    fn arbitrary_slot_value<'a>(
+    fn arbitrary_slot_value(
         prc: &PrincipalOrResourceConstraint,
         hierarchy: &Hierarchy,
-        u: &mut Unstructured<'a>,
+        u: &mut Unstructured<'_>,
     ) -> Result<Option<EntityUID>> {
         if prc.has_slot() {
             Ok(Some(hierarchy.arbitrary_uid(u)?))
@@ -409,11 +409,11 @@ impl GeneratedLinkedPolicy {
     }
 
     /// Generate an arbitrary `GeneratedLinkedPolicy` from the given template
-    pub fn arbitrary<'a>(
+    pub fn arbitrary(
         id: PolicyID,
         template: &GeneratedPolicy,
         hierarchy: &Hierarchy,
-        u: &mut Unstructured<'a>,
+        u: &mut Unstructured<'_>,
     ) -> Result<Self> {
         Ok(Self {
             id,

@@ -383,7 +383,7 @@ fn attrs_in_schematype(
                 SchemaTypeVariant::String => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Set { element } => attrs_in_schematype(&element),
+                SchemaTypeVariant::Set { element } => attrs_in_schematype(element),
                 SchemaTypeVariant::Record { attributes, .. } => {
                     let toplevel = attributes
                         .iter()
@@ -391,8 +391,7 @@ fn attrs_in_schematype(
                         .collect::<Vec<_>>();
                     let recursed = toplevel
                         .iter()
-                        .map(|(_, v)| attrs_in_schematype(v))
-                        .flatten()
+                        .flat_map(|(_, v)| attrs_in_schematype(v))
                         .collect::<Vec<_>>();
                     Box::new(toplevel.into_iter().chain(recursed.into_iter()))
                 }

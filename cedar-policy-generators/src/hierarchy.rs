@@ -21,7 +21,6 @@ impl From<Vec<EntityUID>> for EntityUIDs {
     fn from(value: Vec<EntityUID>) -> Self {
         Self {
             indices: (0..value.len())
-                .into_iter()
                 .map(|idx| (value[idx].clone(), idx))
                 .collect(),
             uids: value,
@@ -74,8 +73,7 @@ impl Hierarchy {
     pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, HashSet<EntityUID>>) -> Self {
         let uids: Vec<EntityUID> = uids_by_type
             .values()
-            .map(|uids_inner| uids_inner.iter().map(|uid| uid.clone()))
-            .flatten()
+            .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
         Self {
             entities: uids
@@ -395,11 +393,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
                             .map(|_| {
-                                generate_uid_with_type(
-                                    name.clone(),
-                                    &self.uid_gen_mode,
-                                    &mut self.u,
-                                )
+                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)
                             })
                             .collect::<Result<_>>()?
                     }
@@ -408,11 +402,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let num_entities_per_type = num_entities / entity_types.len();
                         let mut uids = HashSet::new();
                         while uids.len() < num_entities_per_type {
-                            let uid = generate_uid_with_type(
-                                name.clone(),
-                                &self.uid_gen_mode,
-                                &mut self.u,
-                            )?;
+                            let uid =
+                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)?;
                             uids.insert(uid);
                         }
                         uids
@@ -463,7 +454,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
                         for allowed_parent_typename in &entitytypes_by_type
-                            .get(&name)
+                            .get(name)
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
@@ -522,7 +513,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         };
                         let (attr_or_context, additional_attrs) = unwrap_attrs_or_context(
                             &entitytypes_by_type
-                                .get(&name)
+                                .get(name)
                                 .expect("typename should have an EntityType")
                                 .shape,
                         );
@@ -566,7 +557,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                                     .generate_attr_value_for_schematype(
                                         &ty.ty,
                                         schema.settings.max_depth,
-                                        &mut self.u,
+                                        self.u,
                                     )?;
                                 attrs.insert(
                                 attr.parse().expect(
