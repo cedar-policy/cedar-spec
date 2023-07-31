@@ -13,6 +13,9 @@ pub mod collections;
 /// This module contains error types used by the crate
 pub mod err;
 
+/// This module contains functionality for generating `Expr`s
+pub mod expr;
+
 /// This module contains helper macros for generators
 #[macro_use]
 pub mod gen;

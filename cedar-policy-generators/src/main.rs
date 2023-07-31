@@ -70,7 +70,7 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     let mut bytes = Vec::new();
     bytes.resize_with(byte_length, || rng.gen());
     let mut u = Unstructured::new(&bytes);
-    let schema = Schema::from_schemafrag(fragment.clone(), args.into(), &mut u)
+    let schema = Schema::from_schemafrag(fragment, args.into(), &mut u)
         .map_err(|err| anyhow!("failed to construct `Schema`: {err:#?}"))?;
     let h = HierarchyGenerator {
         mode: HierarchyGeneratorMode::SchemaBased { schema: &schema },
@@ -86,12 +86,9 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     // this is just to ensure no cycles.
     // we throw away the `Entities` built with `ComputeNow`, because we want to
     // generate hierarchies that aren't necessarily TC-closed.
-    Entities::from_entities(
-        h.entities().into_iter().map(|e| e.clone()),
-        TCComputation::ComputeNow,
-    )?;
+    Entities::from_entities(h.entities().cloned(), TCComputation::ComputeNow)?;
     Ok(Entities::from_entities(
-        h.entities().into_iter().cloned(),
+        h.entities().cloned(),
         // use `AssumeAlreadyComputed` because we want a hierarchy that isn't
         // necessarily TC-closed.
         TCComputation::AssumeAlreadyComputed,
@@ -104,9 +101,8 @@ fn main() {
         Commands::Hierarchy(args) => {
             match generate_hierarchy_from_schema(cli.byte_length as usize, args) {
                 Ok(h) => {
-                    h.write_to_json(io::stdout()).unwrap_or_else(|err| {
-                        eprintln!("{}", format!("cannot convert entities to JSON: {err}"))
-                    });
+                    h.write_to_json(io::stdout())
+                        .unwrap_or_else(|err| eprintln!("cannot convert entities to JSON: {err}"));
                 }
                 Err(err) => {
                     eprintln!("{err}");
