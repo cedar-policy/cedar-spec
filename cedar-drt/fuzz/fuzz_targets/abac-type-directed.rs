@@ -38,6 +38,8 @@ struct FuzzTargetInput {
     pub schema: Schema,
     /// generated entity slice
     pub entities: Entities,
+    /// Should we pre-evaluate entity attributes
+    pub should_cache_entities: bool,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -76,9 +78,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let entities = drop_some_entities(all_entities, u)?;
+        let should_cache_entities = bool::arbitrary(u)?;
         Ok(Self {
             schema,
             entities,
+            should_cache_entities,
             policy,
             requests,
         })
@@ -132,10 +136,15 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
+    let entities = if input.should_cache_entities {
+        input.entities.evaluate().unwrap()
+    } else {
+        input.entities
+    };
     for q in input.requests.into_iter().map(Into::into) {
         debug!("Request : {q}");
         let (rust_res, total_dur) =
-            time_function(|| diff_tester.run_single_test(&q, &policyset, &input.entities));
+            time_function(|| diff_tester.run_single_test(&q, &policyset, &entities));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 
         // additional invariant:
