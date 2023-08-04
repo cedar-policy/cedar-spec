@@ -247,7 +247,7 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         if self.should_generate_unknown(max_depth, u)? {
-            let v = self.generate_value_for_type(target_type, max_depth - 1, u)?;
+            let v = self.generate_value_for_type(target_type, max_depth, u)?;
             let name = self.unknown_pool.alloc(target_type.clone(), v);
             Ok(ast::Expr::unknown(name))
         } else {
