@@ -31,8 +31,8 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID};
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, TypeOfAttribute,
-    ValidatorSchema,
+    ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
+    TypeOfAttribute, ValidatorSchema,
 };
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
@@ -177,7 +177,6 @@ fn arbitrary_schematype_with_bounded_depth(
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<cedar_policy_validator::SchemaType> {
-    use cedar_policy_validator::SchemaType;
     use cedar_policy_validator::SchemaTypeVariant;
     Ok(SchemaType::Type(uniform!(
         u,
@@ -241,7 +240,7 @@ fn arbitrary_schematype_with_bounded_depth(
                 }
             }
         },
-        entity_type_name_to_schema_type(u.choose(entity_types)?),
+        entity_type_name_to_schema_type_variant(u.choose(entity_types)?),
         SchemaTypeVariant::Extension {
             name: "ipaddr".into(),
         },
@@ -252,13 +251,19 @@ fn arbitrary_schematype_with_bounded_depth(
 }
 
 /// Convert a `Name` representing an entity type into the corresponding
-/// SchemaType for an entity reference with that entity type.
-pub fn entity_type_name_to_schema_type(
+/// `SchemaTypeVariant` for an entity reference with that entity type.
+pub fn entity_type_name_to_schema_type_variant(
     name: &ast::Name,
 ) -> cedar_policy_validator::SchemaTypeVariant {
     cedar_policy_validator::SchemaTypeVariant::Entity {
         name: name.to_string().into(),
     }
+}
+
+/// Convert a `Name` representing an entity type into the corresponding
+/// SchemaType for an entity reference with that entity type.
+pub fn entity_type_name_to_schema_type(name: &ast::Name) -> cedar_policy_validator::SchemaType {
+    SchemaType::Type(entity_type_name_to_schema_type_variant(name))
 }
 
 /// size hint for arbitrary_schematype_with_bounded_depth
@@ -289,20 +294,31 @@ pub(crate) fn unwrap_schema_type(
 
 /// internal helper function, convert a SchemaType to a Type (loses some
 /// information)
-fn schematype_to_type(schematy: &cedar_policy_validator::SchemaType) -> Type {
+fn schematype_to_type(
+    schema: &cedar_policy_validator::NamespaceDefinition,
+    schematy: &cedar_policy_validator::SchemaType,
+) -> Type {
     use cedar_policy_validator::SchemaTypeVariant;
-    let schematy = unwrap_schema_type(schematy);
     match schematy {
-        SchemaTypeVariant::Boolean => Type::bool(),
-        SchemaTypeVariant::Long => Type::long(),
-        SchemaTypeVariant::String => Type::string(),
-        SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(element)),
-        SchemaTypeVariant::Record { .. } => Type::record(),
-        SchemaTypeVariant::Entity { .. } => Type::entity(),
-        SchemaTypeVariant::Extension { name } => match name.as_str() {
-            "ipaddr" => Type::ipaddr(),
-            "decimal" => Type::decimal(),
-            _ => panic!("unrecognized extension type: {name:?}"),
+        SchemaType::TypeDef { type_name } => schematype_to_type(
+            schema,
+            schema
+                .common_types
+                .get(type_name)
+                .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+        ),
+        SchemaType::Type(ty) => match ty {
+            SchemaTypeVariant::Boolean => Type::bool(),
+            SchemaTypeVariant::Long => Type::long(),
+            SchemaTypeVariant::String => Type::string(),
+            SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(schema, element)),
+            SchemaTypeVariant::Record { .. } => Type::record(),
+            SchemaTypeVariant::Entity { .. } => Type::entity(),
+            SchemaTypeVariant::Extension { name } => match name.as_str() {
+                "ipaddr" => Type::ipaddr(),
+                "decimal" => Type::decimal(),
+                _ => panic!("unrecognized extension type: {name:?}"),
+            },
         },
     }
 }
@@ -403,6 +419,7 @@ fn attrs_in_schematype(
 
 /// Build `attributes_by_type` from other components of `Schema`
 fn build_attributes_by_type<'a>(
+    schema: &cedar_policy_validator::NamespaceDefinition,
     entity_types: impl IntoIterator<Item = (&'a SmolStr, &'a cedar_policy_validator::EntityType)>,
     namespace: Option<&ast::Name>,
 ) -> HashMap<Type, Vec<(ast::Name, SmolStr)>> {
@@ -424,7 +441,7 @@ fn build_attributes_by_type<'a>(
         .flat_map(|(tyname, attrs)| {
             attrs.iter().map(move |(attr_name, ty)| {
                 (
-                    schematype_to_type(&ty.ty),
+                    schematype_to_type(schema, &ty.ty),
                     (tyname.clone(), attr_name.clone()),
                 )
             })
@@ -471,7 +488,8 @@ impl Schema {
                 Some(ast::Name::from_str(ns).unwrap_or_else(|_| panic!("invalid namespace: {ns}")))
             }
         };
-        let attributes_by_type = build_attributes_by_type(&nsdef.entity_types, namespace.as_ref());
+        let attributes_by_type =
+            build_attributes_by_type(&nsdef, &nsdef.entity_types, namespace.as_ref());
         Ok(Schema {
             namespace,
             constant_pool: u
@@ -731,18 +749,23 @@ impl Schema {
                 })
             })
             .collect();
-        let attributes_by_type =
-            build_attributes_by_type(entity_types.iter().map(|(a, b)| (a, b)), namespace.as_ref());
-        let actions_eids = actions
+        let nsdef = cedar_policy_validator::NamespaceDefinition {
+            common_types: HashMap::new().into(),
+            entity_types: entity_types.into_iter().collect(),
+            actions: actions.into_iter().collect(),
+        };
+        let attributes_by_type = build_attributes_by_type(
+            &nsdef,
+            nsdef.entity_types.iter().map(|(a, b)| (a, b)),
+            namespace.as_ref(),
+        );
+        let actions_eids = nsdef
+            .actions
             .iter()
             .map(|(name, _)| ast::Eid::new(name.clone()))
             .collect();
         Ok(Schema {
-            schema: cedar_policy_validator::NamespaceDefinition {
-                common_types: HashMap::new().into(),
-                entity_types: entity_types.into_iter().collect(),
-                actions: actions.into_iter().collect(),
-            },
+            schema: nsdef,
             namespace,
             constant_pool: u
                 .arbitrary()
@@ -823,7 +846,6 @@ impl Schema {
         ty: &Type,
         u: &mut Unstructured<'_>,
     ) -> Result<Option<cedar_policy_validator::SchemaType>> {
-        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
@@ -847,7 +869,9 @@ impl Schema {
                     ast::EntityType::Unspecified => {
                         panic!("should not be possible to generate an unspecified entity")
                     }
-                    ast::EntityType::Concrete(name) => Some(entity_type_name_to_schema_type(&name)),
+                    ast::EntityType::Concrete(name) => {
+                        Some(entity_type_name_to_schema_type_variant(&name))
+                    }
                 }
             }
             Type::IPAddr => Some(SchemaTypeVariant::Extension {
