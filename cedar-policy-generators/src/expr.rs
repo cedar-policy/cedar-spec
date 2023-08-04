@@ -1680,21 +1680,22 @@ impl<'a> ExprGenerator<'a> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
-        let target_type = unwrap_schema_type(target_type);
         match target_type {
-            SchemaTypeVariant::Boolean => {
+            SchemaType::TypeDef { type_name } => self.generate_attr_value_for_schematype(self.schema.schema.common_types.get(type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")), max_depth, u),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaTypeVariant::Long => {
+            SchemaType::Type(SchemaTypeVariant::Long) => {
                 self.generate_attr_value_for_type(&Type::long(), max_depth, u)
             }
-            SchemaTypeVariant::String => {
+            SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_attr_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaTypeVariant::Set {
+            SchemaType::Type(SchemaTypeVariant::Set {
                 element: element_ty,
-            } => {
+            }) => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -1712,10 +1713,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            SchemaTypeVariant::Record {
+            SchemaType::Type(SchemaTypeVariant::Record {
                 attributes,
                 additional_attributes,
-            } => {
+            }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1765,7 +1766,7 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Record(r))
                 }
             }
-            SchemaTypeVariant::Entity { name } => {
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
                     parse_name_with_default_namespace(self.schema.namespace(), name);
@@ -1773,10 +1774,10 @@ impl<'a> ExprGenerator<'a> {
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
             }
-            SchemaTypeVariant::Extension { .. } if !self.settings.enable_extensions => {
+            SchemaType::Type(SchemaTypeVariant::Extension { .. }) if !self.settings.enable_extensions => {
                 panic!("shouldn't have SchemaTypeVariant::Extension with extensions disabled")
             }
-            SchemaTypeVariant::Extension { name } => match name.as_str() {
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_str() {
                 "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
                 _ => unimplemented!("extension type {name:?}"),
