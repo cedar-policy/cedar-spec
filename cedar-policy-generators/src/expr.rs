@@ -3,8 +3,8 @@ use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, EntityUIDGenMode, Hierarchy};
 use crate::schema::{
-    arbitrary_specified_uid_without_schema, build_qualified_entity_type_name,
-    entity_type_name_to_schema_type, uid_for_action_name, unwrap_attrs_or_context, Schema,
+    arbitrary_specified_uid_without_schema, attrs_from_attrs_or_context,
+    build_qualified_entity_type_name, entity_type_name_to_schema_type, uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -520,8 +520,8 @@ impl<'a> ExprGenerator<'a> {
                                 )
                                 .expect("Failed to select entity from map.");
                             let attr_names: Vec<&SmolStr> =
-                                unwrap_attrs_or_context(&entity_type.shape)
-                                    .0
+                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
+                                    .attrs
                                     .keys()
                                     .collect::<Vec<_>>();
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);

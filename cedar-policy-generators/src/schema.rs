@@ -279,19 +279,6 @@ pub fn uid_for_action_name(namespace: Option<ast::Name>, action_name: ast::Eid) 
     ast::EntityUID::from_components(entity_type, action_name)
 }
 
-/// Given a `SchemaType` unwrap it to retrieve the inner `SchemaTypeVariant`.
-/// This is not possible if the `SchemaType` is `TypeDef` instead of `Type`, but
-/// we do not yet generate this sort of type.
-pub(crate) fn unwrap_schema_type(
-    ty: &cedar_policy_validator::SchemaType,
-) -> &cedar_policy_validator::SchemaTypeVariant {
-    if let cedar_policy_validator::SchemaType::Type(ty) = ty {
-        ty
-    } else {
-        panic!("DRT does not currently generate schema type using type defs, so `unwrap_schema_type` should not fail.")
-    }
-}
-
 /// internal helper function, convert a SchemaType to a Type (loses some
 /// information)
 fn schematype_to_type(
@@ -354,17 +341,28 @@ pub(crate) fn build_qualified_entity_type_name(
     }
 }
 
-pub(crate) fn unwrap_attrs_or_context(
-    attrs: &AttributesOrContext,
-) -> (&BTreeMap<SmolStr, TypeOfAttribute>, bool) {
-    if let cedar_policy_validator::SchemaTypeVariant::Record {
-        attributes,
-        additional_attributes,
-    } = unwrap_schema_type(&attrs.0)
-    {
-        (attributes, *additional_attributes)
-    } else {
-        panic!("DRT does not currently generate schema entity type attributes or action contexts that are not record types, so `unwrap_attrs_or_context` should not fail.")
+/// Information about attributes from the schema
+pub(crate) struct Attributes<'a> {
+    /// the actual attributes
+    pub attrs: &'a BTreeMap<SmolStr, TypeOfAttribute>,
+    /// whether `additional_attributes` is set
+    pub additional_attrs: bool,
+}
+
+/// Given an `AttributesOrContext`, get the actual attributes map from it, and whether it has `additional_attributes` set
+pub(crate) fn attrs_from_attrs_or_context<'a>(
+    schema: &'a cedar_policy_validator::NamespaceDefinition,
+    attrsorctx: &'a AttributesOrContext,
+) -> Attributes<'a> {
+    use cedar_policy_validator::SchemaTypeVariant;
+    match &attrsorctx.0 {
+        SchemaType::TypeDef { type_name } => match schema.common_types.get(type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
+            SchemaType::TypeDef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
+            SchemaType::Type(SchemaTypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+        SchemaType::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
+        }
+        SchemaType::Type(SchemaTypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+        SchemaType::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
     }
 }
 
@@ -388,6 +386,7 @@ fn build_qualified_entity_type(
 
 /// Given a `SchemaType`, return all (attribute, type) pairs that occur inside it
 fn attrs_in_schematype(
+    schema: &cedar_policy_validator::NamespaceDefinition,
     schematype: &cedar_policy_validator::SchemaType,
 ) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType)>> {
     match schematype {
@@ -399,7 +398,7 @@ fn attrs_in_schematype(
                 SchemaTypeVariant::String => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Set { element } => attrs_in_schematype(element),
+                SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
                 SchemaTypeVariant::Record { attributes, .. } => {
                     let toplevel = attributes
                         .iter()
@@ -407,13 +406,19 @@ fn attrs_in_schematype(
                         .collect::<Vec<_>>();
                     let recursed = toplevel
                         .iter()
-                        .flat_map(|(_, v)| attrs_in_schematype(v))
+                        .flat_map(|(_, v)| attrs_in_schematype(schema, v))
                         .collect::<Vec<_>>();
                     Box::new(toplevel.into_iter().chain(recursed.into_iter()))
                 }
             }
         }
-        cedar_policy_validator::SchemaType::TypeDef { .. } => Box::new(std::iter::empty()),
+        cedar_policy_validator::SchemaType::TypeDef { type_name } => attrs_in_schematype(
+            schema,
+            schema
+                .common_types
+                .get(type_name)
+                .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+        ),
     }
 }
 
@@ -435,11 +440,11 @@ fn build_attributes_by_type<'a>(
                     name.parse()
                         .unwrap_or_else(|e| panic!("invalid type basename {name:?}: {e}")),
                 ),
-                unwrap_attrs_or_context(&et.shape).0,
+                attrs_from_attrs_or_context(schema, &et.shape),
             )
         })
-        .flat_map(|(tyname, attrs)| {
-            attrs.iter().map(move |(attr_name, ty)| {
+        .flat_map(|(tyname, attributes)| {
+            attributes.attrs.iter().map(move |(attr_name, ty)| {
                 (
                     schematype_to_type(schema, &ty.ty),
                     (tyname.clone(), attr_name.clone()),
@@ -479,7 +484,7 @@ impl Schema {
             .values()
             .chain(nsdef.entity_types.values().map(|etype| &etype.shape.0))
         {
-            attributes.extend(attrs_in_schematype(schematype));
+            attributes.extend(attrs_in_schematype(&nsdef, schematype));
         }
         let namespace = match namespace.as_deref() {
             None => None,
@@ -735,13 +740,18 @@ impl Schema {
             }
         }
 
-        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = entity_types
+        let nsdef = cedar_policy_validator::NamespaceDefinition {
+            common_types: HashMap::new().into(),
+            entity_types: entity_types.into_iter().collect(),
+            actions: actions.into_iter().collect(),
+        };
+        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types
             .iter()
-            .map(|(_, et)| unwrap_attrs_or_context(&et.shape))
-            .chain(actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| unwrap_attrs_or_context(&a.context)));
+            .map(|(_, et)| attrs_from_attrs_or_context(&nsdef, &et.shape))
+            .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
         let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)> = attrsorcontexts
-            .flat_map(|(attributes, _)| {
-                attributes.iter().map(|(s, ty)| {
+            .flat_map(|attributes| {
+                attributes.attrs.iter().map(|(s, ty)| {
                     (
                         s.parse().expect("attribute names should be valid Ids"),
                         ty.ty.clone(),
@@ -749,11 +759,6 @@ impl Schema {
                 })
             })
             .collect();
-        let nsdef = cedar_policy_validator::NamespaceDefinition {
-            common_types: HashMap::new().into(),
-            entity_types: entity_types.into_iter().collect(),
-            actions: actions.into_iter().collect(),
-        };
         let attributes_by_type = build_attributes_by_type(
             &nsdef,
             nsdef.entity_types.iter().map(|(a, b)| (a, b)),
@@ -931,11 +936,12 @@ impl Schema {
                         name.parse()
                             .unwrap_or_else(|e| panic!("invalid entity type {name:?}: {e}")),
                     ),
-                    unwrap_attrs_or_context(&et.shape).0,
+                    attrs_from_attrs_or_context(&self.schema, &et.shape),
                 )
             })
-            .flat_map(|(tyname, attrs)| {
-                attrs
+            .flat_map(|(tyname, attributes)| {
+                attributes
+                    .attrs
                     .iter()
                     .filter(|(_, ty)| ty.ty == target_type)
                     .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
@@ -1153,9 +1159,9 @@ impl Schema {
                 let mut attributes: Vec<_> = action
                     .applies_to
                     .as_ref()
-                    .map(|a| unwrap_attrs_or_context(&a.context).0)
+                    .map(|a| attrs_from_attrs_or_context(&self.schema, &a.context))
                     .iter()
-                    .flat_map(|a| a.iter())
+                    .flat_map(|attributes| attributes.attrs.iter())
                     .collect();
                 attributes.sort();
                 let exprgenerator = self.exprgenerator(Some(hierarchy));
