@@ -5,7 +5,7 @@ use crate::hierarchy::{generate_uid_with_type, EntityUIDGenMode, Hierarchy};
 use crate::schema::{
     arbitrary_specified_uid_without_schema, build_qualified_entity_type_name,
     entity_type_name_to_schema_type, uid_for_action_name, unwrap_attrs_or_context,
-    unwrap_schema_type, Schema,
+    Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -1886,17 +1886,18 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Value> {
         use ast::Value;
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
-        let target_type = unwrap_schema_type(target_type);
         match target_type {
-            SchemaTypeVariant::Boolean => self.generate_value_for_type(&Type::bool(), max_depth, u),
-            SchemaTypeVariant::Long => self.generate_value_for_type(&Type::long(), max_depth, u),
-            SchemaTypeVariant::String => {
+            SchemaType::TypeDef { type_name } => self.generate_value_for_schematype(self.schema.schema.common_types.get(type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")), max_depth, u),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => self.generate_value_for_type(&Type::bool(), max_depth, u),
+            SchemaType::Type(SchemaTypeVariant::Long) => self.generate_value_for_type(&Type::long(), max_depth, u),
+            SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaTypeVariant::Set {
+            SchemaType::Type(SchemaTypeVariant::Set {
                 element: element_ty,
-            } => {
+            }) => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -1910,10 +1911,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::set(l))
                 }
             }
-            SchemaTypeVariant::Record {
+            SchemaType::Type(SchemaTypeVariant::Record {
                 attributes,
                 additional_attributes,
-            } => {
+            }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1958,7 +1959,7 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::Record(Arc::new(m)))
                 }
             }
-            SchemaTypeVariant::Entity { name } => {
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
 
                 // The namespace for the entity type is the namespace of the
