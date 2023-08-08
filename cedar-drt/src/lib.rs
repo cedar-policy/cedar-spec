@@ -30,7 +30,15 @@ pub use logger::*;
 pub fn initialize_log() {
     match env_logger::try_init() {
         Ok(()) => (),
-        Err(e) => warn!("SetLogError : {}", e),
+        Err(e) => {
+            let msg = e.to_string();
+            if &msg == "attempted to set a logger after the logging system was already initialized"
+            {
+                // don't log that error, it's expected
+            } else {
+                warn!("SetLogError : {msg}");
+            }
+        }
     };
 }
 
