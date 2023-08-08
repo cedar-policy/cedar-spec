@@ -22,8 +22,7 @@ use super::{while_doing, ActionConstraint, Error, PrincipalOrResourceConstraint,
 use crate::collections::{HashMap, HashSet};
 use crate::{gen, uniform};
 use ast::{Effect, PolicyID};
-use cedar_policy_core::ast::Value;
-use cedar_policy_core::{ast, parser};
+use cedar_policy_core::ast;
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition, SchemaFragment,
     TypeOfAttribute,
