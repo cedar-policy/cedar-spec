@@ -67,7 +67,7 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     let f = File::open(&args.schema_file)?;
     let fragment = SchemaFragment::from_file(f)?;
     let mut rng = thread_rng();
-    let mut bytes = Vec::new();
+    let mut bytes = Vec::with_capacity(byte_length);
     bytes.resize_with(byte_length, || rng.gen());
     let mut u = Unstructured::new(&bytes);
     let schema = Schema::from_schemafrag(fragment, args.into(), &mut u)

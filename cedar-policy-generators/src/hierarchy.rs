@@ -2,7 +2,7 @@ use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::name_with_default_namespace;
-use crate::schema::{build_qualified_entity_type_name, unwrap_attrs_or_context, Schema};
+use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_name, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -511,13 +511,14 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        let (attr_or_context, additional_attrs) = unwrap_attrs_or_context(
+                        let attributes = attrs_from_attrs_or_context(
+                            &schema.schema,
                             &entitytypes_by_type
                                 .get(name)
                                 .expect("typename should have an EntityType")
                                 .shape,
                         );
-                        if additional_attrs {
+                        if attributes.additional_attrs {
                             // maybe add some additional attributes with arbitrary types
                             self.u.arbitrary_loop(
                                 None,
@@ -544,7 +545,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                                 },
                             )?;
                         }
-                        for (attr, ty) in attr_or_context {
+                        for (attr, ty) in attributes.attrs {
                             // now add the actual optional and required attributes, with the
                             // correct types.
                             // Doing this second ensures that we overwrite any "additional"
