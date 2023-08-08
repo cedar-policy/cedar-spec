@@ -3,9 +3,8 @@ use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, EntityUIDGenMode, Hierarchy};
 use crate::schema::{
-    arbitrary_specified_uid_without_schema, build_qualified_entity_type_name,
-    entity_type_name_to_schema_type, uid_for_action_name, unwrap_attrs_or_context,
-    unwrap_schema_type, Schema,
+    arbitrary_specified_uid_without_schema, attrs_from_attrs_or_context,
+    build_qualified_entity_type_name, entity_type_name_to_schema_type, uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -521,19 +520,21 @@ impl<'a> ExprGenerator<'a> {
                                 )
                                 .expect("Failed to select entity from map.");
                             let attr_names: Vec<&SmolStr> =
-                                unwrap_attrs_or_context(&entity_type.shape)
-                                    .0
+                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
+                                    .attrs
                                     .keys()
                                     .collect::<Vec<_>>();
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
-                                    &cedar_policy_validator::SchemaTypeVariant::Entity {
-                                        // This does not use an explicit namespace because entity types
-                                        // implicitly use the schema namespace if an explicit one is not
-                                        // provided.
-                                        name: entity_name.clone(),
-                                    },
+                                    &cedar_policy_validator::SchemaType::Type(
+                                        cedar_policy_validator::SchemaTypeVariant::Entity {
+                                            // This does not use an explicit namespace because entity types
+                                            // implicitly use the schema namespace if an explicit one is not
+                                            // provided.
+                                            name: entity_name.clone(),
+                                        }
+                                    ),
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1097,18 +1098,34 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_expr_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaTypeVariant,
+        target_type: &cedar_policy_validator::SchemaType,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaTypeVariant::Boolean => self.generate_expr_for_type(&Type::bool(), max_depth, u),
-            SchemaTypeVariant::Long => self.generate_expr_for_type(&Type::long(), max_depth, u),
-            SchemaTypeVariant::String => self.generate_expr_for_type(&Type::string(), max_depth, u),
-            SchemaTypeVariant::Set {
+            SchemaType::TypeDef { type_name } => self.generate_expr_for_schematype(
+                self.schema
+                    .schema
+                    .common_types
+                    .get(type_name)
+                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+                max_depth,
+                u,
+            ),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+                self.generate_expr_for_type(&Type::bool(), max_depth, u)
+            }
+            SchemaType::Type(SchemaTypeVariant::Long) => {
+                self.generate_expr_for_type(&Type::long(), max_depth, u)
+            }
+            SchemaType::Type(SchemaTypeVariant::String) => {
+                self.generate_expr_for_type(&Type::string(), max_depth, u)
+            }
+            SchemaType::Type(SchemaTypeVariant::Set {
                 element: element_ty,
-            } => {
+            }) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed, so, just do empty-set
                     Ok(ast::Expr::set(vec![]))
@@ -1119,7 +1136,7 @@ impl<'a> ExprGenerator<'a> {
                         let mut l = Vec::new();
                         u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                             l.push(self.generate_expr_for_schematype(
-                                unwrap_schema_type(element_ty),
+                                element_ty,
                                 max_depth - 1,
                                 u,
                             )?);
@@ -1135,19 +1152,19 @@ impl<'a> ExprGenerator<'a> {
                             u,
                         )?,
                         self.generate_expr_for_schematype(
-                            unwrap_schema_type(element_ty),
+                            element_ty,
                             max_depth - 1,
                             u,
                         )?,
                         self.generate_expr_for_schematype(
-                            unwrap_schema_type(element_ty),
+                            element_ty,
                             max_depth - 1,
                             u,
                         )?,
                     )),
                     // extension function that returns an (appropriate) set
                     1 => self.generate_ext_func_call_for_schematype(
-                        unwrap_schema_type(element_ty),
+                        element_ty,
                         max_depth - 1,
                         u,
                     ),
@@ -1179,10 +1196,10 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaTypeVariant::Record {
+            SchemaType::Type(SchemaTypeVariant::Record {
                 attributes,
                 additional_attributes,
-            } => {
+            }) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed
                     Err(Error::TooDeep)
@@ -1226,7 +1243,7 @@ impl<'a> ExprGenerator<'a> {
                             // attribute and one of the "additional" ones we added.
                             if ty.required || u.ratio::<u8>(1, 2)? {
                                 let attr_val = self.generate_expr_for_schematype(
-                                    unwrap_schema_type(&ty.ty),
+                                    &ty.ty,
                                     max_depth - 1,
                                     u,
                                 )?;
@@ -1293,7 +1310,7 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaTypeVariant::Entity { name } => {
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed, so, just do `principal`, `action`, or `resource`
                     Ok(ast::Expr::var(*u.choose(&[
@@ -1374,7 +1391,7 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaTypeVariant::Extension { name } => match name.as_str() {
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_str() {
                 "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
                 _ => panic!("unrecognized extension type: {name:?}"),
@@ -1463,38 +1480,52 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     fn generate_ext_func_call_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaTypeVariant,
+        target_type: &cedar_policy_validator::SchemaType,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaTypeVariant::Boolean => {
-                self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
-            }
-            SchemaTypeVariant::Long => {
-                self.generate_ext_func_call_for_type(&Type::long(), max_depth, u)
-            }
-            SchemaTypeVariant::String => {
-                self.generate_ext_func_call_for_type(&Type::string(), max_depth, u)
-            }
-            SchemaTypeVariant::Extension { name } => match name.as_str() {
-                "ipaddr" => self.generate_ext_func_call_for_type(&Type::ipaddr(), max_depth, u),
-                "decimal" => self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u),
-                _ => panic!("unrecognized extension type: {name:?}"),
+            SchemaType::TypeDef { type_name } => self.generate_ext_func_call_for_schematype(
+                self.schema
+                    .schema
+                    .common_types
+                    .get(type_name)
+                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+                max_depth,
+                u,
+            ),
+            SchemaType::Type(ty) => match ty {
+                SchemaTypeVariant::Boolean => {
+                    self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
+                }
+                SchemaTypeVariant::Long => {
+                    self.generate_ext_func_call_for_type(&Type::long(), max_depth, u)
+                }
+                SchemaTypeVariant::String => {
+                    self.generate_ext_func_call_for_type(&Type::string(), max_depth, u)
+                }
+                SchemaTypeVariant::Extension { name } => match name.as_str() {
+                    "ipaddr" => self.generate_ext_func_call_for_type(&Type::ipaddr(), max_depth, u),
+                    "decimal" => {
+                        self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
+                    }
+                    _ => panic!("unrecognized extension type: {name:?}"),
+                },
+                // no existing extension functions return set type
+                SchemaTypeVariant::Set { .. } => Err(Error::EmptyChoose {
+                    doing_what: "getting an extension function returning set type",
+                }),
+                // no existing extension functions return record type
+                SchemaTypeVariant::Record { .. } => Err(Error::EmptyChoose {
+                    doing_what: "getting an extension function returning record type",
+                }),
+                // no existing extension functions return entity type
+                SchemaTypeVariant::Entity { .. } => Err(Error::EmptyChoose {
+                    doing_what: "getting an extension function returning entity type",
+                }),
             },
-            // no existing extension functions return set type
-            SchemaTypeVariant::Set { .. } => Err(Error::EmptyChoose {
-                doing_what: "getting an extension function returning set type",
-            }),
-            // no existing extension functions return record type
-            SchemaTypeVariant::Record { .. } => Err(Error::EmptyChoose {
-                doing_what: "getting an extension function returning record type",
-            }),
-            // no existing extension functions return entity type
-            SchemaTypeVariant::Entity { .. } => Err(Error::EmptyChoose {
-                doing_what: "getting an extension function returning entity type",
-            }),
         }
     }
 
@@ -1648,21 +1679,30 @@ impl<'a> ExprGenerator<'a> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
-        let target_type = unwrap_schema_type(target_type);
         match target_type {
-            SchemaTypeVariant::Boolean => {
+            SchemaType::TypeDef { type_name } => self.generate_attr_value_for_schematype(
+                self.schema
+                    .schema
+                    .common_types
+                    .get(type_name)
+                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+                max_depth,
+                u,
+            ),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaTypeVariant::Long => {
+            SchemaType::Type(SchemaTypeVariant::Long) => {
                 self.generate_attr_value_for_type(&Type::long(), max_depth, u)
             }
-            SchemaTypeVariant::String => {
+            SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_attr_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaTypeVariant::Set {
+            SchemaType::Type(SchemaTypeVariant::Set {
                 element: element_ty,
-            } => {
+            }) => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -1680,10 +1720,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            SchemaTypeVariant::Record {
+            SchemaType::Type(SchemaTypeVariant::Record {
                 attributes,
                 additional_attributes,
-            } => {
+            }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1733,7 +1773,7 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Record(r))
                 }
             }
-            SchemaTypeVariant::Entity { name } => {
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
                     parse_name_with_default_namespace(self.schema.namespace(), name);
@@ -1741,10 +1781,12 @@ impl<'a> ExprGenerator<'a> {
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
             }
-            SchemaTypeVariant::Extension { .. } if !self.settings.enable_extensions => {
+            SchemaType::Type(SchemaTypeVariant::Extension { .. })
+                if !self.settings.enable_extensions =>
+            {
                 panic!("shouldn't have SchemaTypeVariant::Extension with extensions disabled")
             }
-            SchemaTypeVariant::Extension { name } => match name.as_str() {
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_str() {
                 "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
                 _ => unimplemented!("extension type {name:?}"),
@@ -1853,17 +1895,30 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Value> {
         use ast::Value;
+        use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
-        let target_type = unwrap_schema_type(target_type);
         match target_type {
-            SchemaTypeVariant::Boolean => self.generate_value_for_type(&Type::bool(), max_depth, u),
-            SchemaTypeVariant::Long => self.generate_value_for_type(&Type::long(), max_depth, u),
-            SchemaTypeVariant::String => {
+            SchemaType::TypeDef { type_name } => self.generate_value_for_schematype(
+                self.schema
+                    .schema
+                    .common_types
+                    .get(type_name)
+                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+                max_depth,
+                u,
+            ),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+                self.generate_value_for_type(&Type::bool(), max_depth, u)
+            }
+            SchemaType::Type(SchemaTypeVariant::Long) => {
+                self.generate_value_for_type(&Type::long(), max_depth, u)
+            }
+            SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaTypeVariant::Set {
+            SchemaType::Type(SchemaTypeVariant::Set {
                 element: element_ty,
-            } => {
+            }) => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -1877,10 +1932,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::set(l))
                 }
             }
-            SchemaTypeVariant::Record {
+            SchemaType::Type(SchemaTypeVariant::Record {
                 attributes,
                 additional_attributes,
-            } => {
+            }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1925,7 +1980,7 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::Record(Arc::new(m)))
                 }
             }
-            SchemaTypeVariant::Entity { name } => {
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
 
                 // The namespace for the entity type is the namespace of the
@@ -2105,8 +2160,8 @@ impl<'a> ExprGenerator<'a> {
 fn record_schematype_with_attr(
     attr_name: SmolStr,
     attr_type: impl Into<cedar_policy_validator::SchemaType>,
-) -> cedar_policy_validator::SchemaTypeVariant {
-    cedar_policy_validator::SchemaTypeVariant::Record {
+) -> cedar_policy_validator::SchemaType {
+    cedar_policy_validator::SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Record {
         attributes: [(
             attr_name,
             cedar_policy_validator::TypeOfAttribute {
@@ -2117,7 +2172,7 @@ fn record_schematype_with_attr(
         .into_iter()
         .collect(),
         additional_attributes: true,
-    }
+    })
 }
 
 // Parse `name` into a `Name`. The result may have a namespace. If it does, keep
