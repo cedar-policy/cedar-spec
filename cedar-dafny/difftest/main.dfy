@@ -98,6 +98,31 @@ module difftest.main {
         "Neg" := Neg
       ])
 
+  function maybeValueFromProdJson(j : Json) : FromProdResult<std.Option<Value>> {
+    maybeFromJson(j, valueFromProdJson)
+  }
+
+  function maybeFromJson<T>(j : Json, f : Json -> FromProdResult<T>) : FromProdResult<std.Option<T>> {
+    match j {
+      case JsonNull => Ok(None)
+      case _ =>
+        var v :- f(j);
+        Ok(Some(v))
+    }
+  }
+
+  function valueFromProdJson(j : Json) : FromProdResult<Value> {
+    var sourceExpr :- exprFromProdJson(j);
+    var euid := EntityUID.EntityUID(EntityType(Name.fromStr("test")), "test");
+    var request := Request(euid, euid, euid, map[]);
+    var store := EntityStore(map[]);
+    var eval := Evaluator(request, store);
+    match eval.interpret(sourceExpr) {
+      case Ok(v) => Ok(v)
+      case _ => Err({UnexpectedFromProdErr("expr did not evaluate to a value")})
+    }
+  }
+
   function exprFromProdJson(j: Json): FromProdResult<Expr> {
     var jkind :- getJsonField(j, "expr_kind");
     var exprFromProdJsonRec := jr requires jr < jkind => exprFromProdJson(jr);
@@ -327,6 +352,26 @@ module difftest.main {
         )
     )
 
+  const evaluatorFromPropjson :=
+    objDeserializer4Fields(
+      "request", jrequest => (
+        var principal :- getEntityUIDEntryField(jrequest, "principal");
+        var action :- getEntityUIDEntryField(jrequest, "action");
+        var resource :- getEntityUIDEntryField(jrequest, "resource");
+        var context :- deserializeField(jrequest, "context", buildContext);
+        Ok(Request(principal, action, resource, context))
+      ),
+
+      "entities", jentities => (
+          var entities :- deserializeField(jentities, "entities", seqDeserializer(entityEntryFromProdJson));
+          var entitiesMap :- mapFromEntriesProd(entities);
+          Ok(EntityStore(entitiesMap))
+      ),
+      "expr", jexpr => exprFromProdJson(jexpr),
+      "expected", jv => maybeValueFromProdJson(jv),
+      (request, entities, expr, maybe_value) => Ok((Evaluator(request, entities), expr, maybe_value))
+    )
+
   const authorizerFromProdJson :=
     objDeserializer3Fields(
       "request", jrequest => (
@@ -355,6 +400,51 @@ module difftest.main {
   function isAuthorizedJson1(request: Json): FromProdResult<Response> {
     var authorizer :- authorizerFromProdJson(request);
     Ok(authorizer.isAuthorized())
+  }
+
+  function evalJson1(request : Json) : FromProdResult<bool> {
+    var (eval, expr, maybe_v) :- evaluatorFromPropjson(request);
+    var r := eval.interpret(expr);
+    match (r, maybe_v) {
+      case (Ok(def_answer), Some(prod_answer)) =>
+        if def_answer == prod_answer then
+          Ok(true)
+        else
+          var _ := printMismatch(expr, def_answer, prod_answer);
+          Ok(false)
+      case (Err(_), None) => Ok(true)
+      case (Err(_), Some(v)) =>
+        var _ := printFromFunction("Evaluation errored but prod engine got result: ");
+        var _ := printFromFunction(v);
+        Ok(false)
+      case (Ok(v1), None) =>
+        var _ := printFromFunction("Evaluation return result but prod engine errored: ");
+        var _ := printFromFunction(v1);
+        Ok(false)
+    }
+  }
+
+  function printMismatch(expr : Expr, def_answer : Value, prod_answer : Value) : () {
+    var _ := printFromFunction("EVALUATION MISMATCH\n");
+    var _ := printFromFunction("Expression: ");
+    var _ := printFromFunction(expr);
+    var _ := printFromFunction("Evaluated to: ");
+    var _ := printFromFunction(def_answer);
+    var _ := printFromFunction("Production engine got: ");
+    var _ := printFromFunction(prod_answer);
+    ()
+  }
+
+  function evalResponseToProdJson(r : FromProdResult<bool>) : Json {
+    JsonObject(match r {
+      case Ok(b) => map["matches" := JsonBool(b)]
+      case Err(e) => map["error" := JsonString("JSON Decoding error encountered")]
+    })
+  }
+
+  method evalJson(request : Json) returns (response : Json) {
+    var answer := evalJson1(request);
+    response := evalResponseToProdJson(answer);
   }
 
   // Main differential-testing entry point: receives Json and responds in Json

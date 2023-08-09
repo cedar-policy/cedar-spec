@@ -406,6 +406,31 @@ module difftest.helpers {
   {
     j => deserializeObj3Fields(j, fn1, fd1, fn2, fd2, fn3, fd3, cons)
   }
+    function deserializeObj4Fields<T, F1, F2, F3, F4>(
+    j: Json,
+    fn1: string, fd1: PartialDeserializer<F1>,
+    fn2: string, fd2: PartialDeserializer<F2>,
+    fn3: string, fd3: PartialDeserializer<F3>,
+    fn4: string, fd4: PartialDeserializer<F4>,
+    cons: (F1, F2, F3, F4) -> FromProdResult<T>): FromProdResult<T>
+    requires deserializerAcceptsSubterms(fd1, j) && deserializerAcceptsSubterms(fd2, j)
+             && deserializerAcceptsSubterms(fd3, j)
+  {
+    var f1 :- deserializeField(j, fn1, fd1);
+    var f2 :- deserializeField(j, fn2, fd2);
+    var f3 :- deserializeField(j, fn3, fd3);
+    var f4 :- deserializeField(j, fn4, fd4);
+    cons(f1, f2, f3, f4)
+  }
+  function objDeserializer4Fields<T, F1, F2, F3, F4>(
+    fn1: string, fd1: Deserializer<F1>,
+    fn2: string, fd2: Deserializer<F2>,
+    fn3: string, fd3: Deserializer<F3>,
+    fn4 : string, fd4 : Deserializer<F4>,
+    cons: (F1, F2, F3, F4) -> FromProdResult<T>): Deserializer<T>
+  {
+    j => deserializeObj4Fields(j, fn1, fd1, fn2, fd2, fn3, fd3, fn4, fd4, cons)
+  }
   function deserializeObj5Fields<T, F1, F2, F3, F4, F5>(
     j: Json,
     fn1: string, fd1: PartialDeserializer<F1>,

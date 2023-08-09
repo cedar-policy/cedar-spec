@@ -48,7 +48,7 @@ pub struct Schema {
     /// settings
     pub settings: ABACSettings,
     /// constant pool
-    constant_pool: ConstantPool,
+    pub constant_pool: ConstantPool,
     /// unknown pool
     pub unknown_pool: UnknownPool,
     /// data on available extension functions
@@ -171,7 +171,7 @@ fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
 /// settings.enable_additional_attributes; it always behaves as if that setting
 /// is `true` (ie, it may generate `additional_attributes` as either `true` or
 /// `false`).
-fn arbitrary_schematype_with_bounded_depth(
+pub fn arbitrary_schematype_with_bounded_depth(
     settings: &ABACSettings,
     entity_types: &[ast::Name],
     max_depth: usize,
@@ -459,6 +459,11 @@ fn build_attributes_by_type<'a>(
 }
 
 impl Schema {
+    /// Get a slice of all of the entity types in this schema
+    pub fn entity_types(&self) -> &[ast::Name] {
+        &self.entity_types
+    }
+
     /// Create an arbitrary `Schema` based on (compatible with) the given Validator `NamespaceDefinition`.
     pub fn from_nsdef(
         nsdef: cedar_policy_validator::NamespaceDefinition,
