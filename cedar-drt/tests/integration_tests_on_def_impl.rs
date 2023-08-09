@@ -18,9 +18,12 @@
 //! `CedarIntegrationTests` on the definitional implementation. See the
 //! "Integration test" section of README.md for more information.
 
-use cedar_policy::integration_testing::{
-    perform_integration_test_from_json_custom, resolve_integration_test_path, CustomCedarImpl,
-    IntegrationTestValidationResult,
+use cedar_policy::{
+    frontend::is_authorized::InterfaceResponse,
+    integration_testing::{
+        perform_integration_test_from_json_custom, resolve_integration_test_path, CustomCedarImpl,
+        IntegrationTestValidationResult,
+    },
 };
 
 use cedar_drt::*;
@@ -50,7 +53,7 @@ impl<'e> CustomCedarImpl for DefinitionalImplementation<'e> {
         r: &ast::Request,
         p: &ast::PolicySet,
         e: &entities::Entities,
-    ) -> cedar_policy::Response {
+    ) -> InterfaceResponse {
         self.def_engine.is_authorized(r, p, e)
     }
 

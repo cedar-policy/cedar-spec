@@ -22,6 +22,7 @@ pub use prt::*;
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
+use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
@@ -108,9 +109,11 @@ impl<'e> DifferentialTester<'e> {
         }
         .into();
         assert_eq!(
-            rust_res_for_comparison, definitional_res,
+            Into::<InterfaceResponse>::into(rust_res_for_comparison),
+            definitional_res,
             "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
-            &policies, &entities
+            &policies,
+            &entities
         );
         ret
     }
