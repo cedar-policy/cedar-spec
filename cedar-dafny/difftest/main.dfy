@@ -352,7 +352,7 @@ module difftest.main {
         )
     )
 
-  const evaluatorFromPropjson :=
+  const evaluatorFromProdJson :=
     objDeserializer4Fields(
       "request", jrequest => (
         var principal :- getEntityUIDEntryField(jrequest, "principal");
@@ -403,7 +403,7 @@ module difftest.main {
   }
 
   function evalJson1(request : Json) : FromProdResult<bool> {
-    var (eval, expr, maybe_v) :- evaluatorFromPropjson(request);
+    var (eval, expr, maybe_v) :- evaluatorFromProdJson(request);
     var r := eval.interpret(expr);
     match (r, maybe_v) {
       case (Ok(def_answer), Some(prod_answer)) =>
