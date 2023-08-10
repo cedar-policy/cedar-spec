@@ -40,7 +40,7 @@ struct FuzzTargetInput {
     pub entities: Entities,
     /// generated expression
     pub expression: Expr,
-    /// the requests to try for this hirarchy and policy. We try 8 requests per
+    /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
     pub request: ABACRequest,
 }
