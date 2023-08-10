@@ -132,7 +132,7 @@ impl<'j> DefinitionalEngine<'j> {
             &[jstr.into()],
         );
         match response {
-            Ok(v) => self.deserialize_eval_reponse(v),
+            Ok(v) => self.deserialize_eval_response(v),
             Err(e) => {
                 self.thread
                     .exception_describe()
@@ -161,7 +161,7 @@ impl<'j> DefinitionalEngine<'j> {
             .expect("failed to create Java object for eval request string")
     }
 
-    fn deserialize_eval_reponse(&self, response: JValue) -> bool {
+    fn deserialize_eval_response(&self, response: JValue) -> bool {
         let jstr = response
             .l()
             .unwrap_or_else(|_| {

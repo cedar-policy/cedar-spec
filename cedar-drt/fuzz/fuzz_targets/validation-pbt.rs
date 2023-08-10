@@ -79,6 +79,7 @@ const LOG_FILENAME_ERR_EXTENSIONS_DISABLED: &str = "./logs/err_extensions_disabl
 const LOG_FILENAME_ERR_LIKE_DISABLED: &str = "./logs/err_like_disabled.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
+const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -109,6 +110,9 @@ fn checkpoint(filename: impl AsRef<std::path::Path>) {
 fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         match &res {
+            Err(Error::EntitiesError(s)) => {
+                checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
+            }
             Err(Error::NotEnoughData) => {
                 checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
             }
