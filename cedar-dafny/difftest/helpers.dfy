@@ -416,7 +416,7 @@ module difftest.helpers {
     fn4: string, fd4: PartialDeserializer<F4>,
     cons: (F1, F2, F3, F4) -> FromProdResult<T>): FromProdResult<T>
     requires deserializerAcceptsSubterms(fd1, j) && deserializerAcceptsSubterms(fd2, j)
-             && deserializerAcceptsSubterms(fd3, j) && deserializerAcceptsSubterms(fd3, j)
+             && deserializerAcceptsSubterms(fd3, j) && deserializerAcceptsSubterms(fd4, j)
   {
     var f1 :- deserializeField(j, fn1, fd1);
     var f2 :- deserializeField(j, fn2, fd2);
