@@ -100,6 +100,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
+/// Randomly drops some of the entities from the final list of entities, so we can some invalid derefs
 fn drop_some_entities(entities: Entities, u: &mut Unstructured<'_>) -> arbitrary::Result<Entities> {
     let should_drop: bool = u.arbitrary()?;
     if should_drop {
@@ -128,5 +129,10 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
     debug!("Entities: {}\n", input.entities);
-    assert!(diff_tester.run_eval_test(&input.request.into(), &input.expression, &input.entities))
+    assert!(diff_tester.run_eval_test(
+        &input.request.into(),
+        &input.expression,
+        &input.entities,
+        SETTINGS.enable_extensions
+    ))
 });

@@ -62,8 +62,18 @@ impl<'e> DifferentialTester<'e> {
 
     /// Differentially test evaluating the given expression.
     /// `r` and `entities` are used to populate the evaluator.
-    pub fn run_eval_test(&self, r: &ast::Request, expr: &Expr, entities: &Entities) -> bool {
-        let exts = Extensions::all_available();
+    pub fn run_eval_test(
+        &self,
+        r: &ast::Request,
+        expr: &Expr,
+        entities: &Entities,
+        enable_extensions: bool,
+    ) -> bool {
+        let exts = if enable_extensions {
+            Extensions::all_available()
+        } else {
+            Extensions::none()
+        };
         let eval = match Evaluator::new(r, entities, &exts) {
             Ok(e) => e,
             Err(_) => return true, // FOR NOW just ignore errors in the restricted exprs
