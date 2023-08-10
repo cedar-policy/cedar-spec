@@ -110,7 +110,7 @@ fn checkpoint(filename: impl AsRef<std::path::Path>) {
 fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         match &res {
-            Err(Error::EntitiesError(s)) => {
+            Err(Error::EntitiesError(_)) => {
                 checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
             }
             Err(Error::NotEnoughData) => {
