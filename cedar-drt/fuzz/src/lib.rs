@@ -15,10 +15,9 @@
  */
 
 mod dump;
-use cedar_policy_core::evaluator::{EvaluationError, Evaluator};
-use cedar_policy_core::extensions::Extensions;
-pub use dump::*;
 mod prt;
+
+pub use dump::*;
 pub use prt::*;
 
 use cedar_drt::{
@@ -28,6 +27,8 @@ use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::ast::{self, Expr};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::evaluator::{EvaluationError, Evaluator};
+use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use log::info;
 

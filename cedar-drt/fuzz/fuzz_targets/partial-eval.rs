@@ -23,7 +23,6 @@ use cedar_policy_core::ast::Policy;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::{Entities, TCComputation};
-pub use cedar_policy_core::*;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
