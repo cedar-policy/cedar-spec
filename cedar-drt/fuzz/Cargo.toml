@@ -113,3 +113,9 @@ name = "wildcard-matching"
 path = "fuzz_targets/wildcard-matching.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "eval-type-directed"
+path = "fuzz_targets/eval-type-directed.rs"
+test = false
+doc = false

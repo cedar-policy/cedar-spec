@@ -15,17 +15,20 @@
  */
 
 mod dump;
-pub use dump::*;
 mod prt;
+
+pub use dump::*;
 pub use prt::*;
 
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
-use cedar_policy_core::ast;
 use cedar_policy_core::ast::PolicySet;
+use cedar_policy_core::ast::{self, Expr};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::evaluator::{EvaluationError, Evaluator};
+use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use log::info;
 
@@ -55,6 +58,32 @@ impl<'e> DifferentialTester<'e> {
             def_validator: DefinitionalValidator::new()
                 .expect("failed to create definitional validator"),
         }
+    }
+
+    /// Differentially test evaluating the given expression.
+    /// `r` and `entities` are used to populate the evaluator.
+    pub fn run_eval_test(
+        &self,
+        r: &ast::Request,
+        expr: &Expr,
+        entities: &Entities,
+        enable_extensions: bool,
+    ) -> bool {
+        let exts = if enable_extensions {
+            Extensions::all_available()
+        } else {
+            Extensions::none()
+        };
+        let eval = match Evaluator::new(r, entities, &exts) {
+            Ok(e) => e,
+            Err(_) => return true, // FOR NOW just ignore errors in the restricted exprs
+        };
+        let v = match eval.interpret(expr, &std::collections::HashMap::default()) {
+            Ok(v) => Some(v),
+            Err(EvaluationError::IntegerOverflow(_)) => return true,
+            Err(_) => None,
+        };
+        self.def_engine.eval(r, entities, expr, v)
     }
 
     /// Differentially test the given authorization request.
