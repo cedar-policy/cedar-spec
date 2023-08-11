@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 pub use cedar_policy::Response;
+use cedar_policy_core::ast::{Expr, PartialValue, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
 pub use entities::Entities;
@@ -31,7 +32,15 @@ pub use logger::*;
 pub fn initialize_log() {
     match env_logger::try_init() {
         Ok(()) => (),
-        Err(e) => warn!("SetLogError : {}", e),
+        Err(e) => {
+            let msg = e.to_string();
+            if &msg == "attempted to set a logger after the logging system was already initialized"
+            {
+                // don't log that error, it's expected
+            } else {
+                warn!("SetLogError : {msg}");
+            }
+        }
     };
 }
 
@@ -69,6 +78,20 @@ pub struct DefinitionalAuthResponse {
     response: InterfaceResponse,
 }
 
+#[derive(Debug, Serialize)]
+struct EvalRequestForDefEngine<'a> {
+    request: &'a ast::Request,
+    entities: &'a Entities,
+    expr: &'a ast::Expr,
+    expected: Option<ast::Expr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[repr(transparent)]
+struct DefinitionalEvalResponse {
+    matches: bool,
+}
+
 /// The lifetime parameter 'j is the lifetime of the JVM instance
 pub struct DefinitionalEngine<'j> {
     /// Thread attached to the JVM
@@ -93,6 +116,76 @@ impl<'j> DefinitionalEngine<'j> {
             thread,
             java_def_engine,
         })
+    }
+
+    pub fn eval(
+        &self,
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<Value>,
+    ) -> bool {
+        let jstr = self.serialize_eval_request(request, entities, expr, expected.map(make_expr));
+        let response = self.thread.call_method(
+            self.java_def_engine,
+            "eval_str",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            &[jstr.into()],
+        );
+        match response {
+            Ok(v) => self.deserialize_eval_response(v),
+            Err(e) => {
+                self.thread
+                    .exception_describe()
+                    .expect("Failed to print exception information");
+                panic!("JVM Exception Occurred!: {:?}", e);
+            }
+        }
+    }
+
+    fn serialize_eval_request(
+        &self,
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<Expr>,
+    ) -> JString {
+        let request: String = serde_json::to_string(&EvalRequestForDefEngine {
+            request,
+            entities,
+            expr,
+            expected,
+        })
+        .expect("Failed to serialize request");
+        self.thread
+            .new_string(request)
+            .expect("failed to create Java object for eval request string")
+    }
+
+    fn deserialize_eval_response(&self, response: JValue) -> bool {
+        let jstr = response
+            .l()
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expected eval_str to return an Object (String), but it returned {:?}",
+                    response
+                )
+            })
+            .into();
+        let response: String = self
+            .thread
+            .get_string(jstr)
+            .expect("Failed to get JavaStr")
+            .into();
+        self.thread
+            .delete_local_ref(*jstr)
+            .expect("Deletion failed");
+        let r: DefinitionalEvalResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
+            panic!(
+                "JSON response received from the definitional engine was malformed: \n{response}"
+            )
+        });
+        r.matches
     }
 
     fn serialize_request(
@@ -182,6 +275,10 @@ impl<'j> DefinitionalEngine<'j> {
             .expect("Deletion failed");
         response
     }
+}
+
+fn make_expr(v: Value) -> Expr {
+    PartialValue::Value(v).into()
 }
 
 #[derive(Debug, Serialize)]
