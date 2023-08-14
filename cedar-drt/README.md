@@ -16,7 +16,7 @@ The table below lists all available fuzz targets, including which component of t
 | [`pp`](fuzz/fuzz_targets/pp.rs) | Pretty printer, Parser | PBT | Test round trip property: parse ∘ pretty-print == id for ASTs |
 | [`rbac-authorizer`](fuzz/fuzz_targets/rbac-authorizer.rs) | Authorizer | PBT + DRT | Test for correct authorization responses over a set of simple policies |
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |
-| [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | DRT | Test that parsing doesn't crash with random input strings |
+| [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`strict-validation-drt-type-directed`](fuzz/fuzz_targets/strict-validation-drt-type-directed.rs) | Validator | DRT | Diff test strict validation using (mostly) well-typed inputs |
 | [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test permissive validation using (mostly) well-typed inputs |
 | [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test permissive validation |
