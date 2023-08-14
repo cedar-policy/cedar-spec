@@ -15,6 +15,7 @@
  */
 
 #![forbid(unsafe_code)]
+use cedar_policy::frontend::is_authorized::InterfaceResponse;
 pub use cedar_policy::Response;
 use cedar_policy_core::ast::{Expr, PartialValue, Value};
 pub use cedar_policy_core::*;
@@ -74,7 +75,7 @@ pub struct DefinitionalAuthResponse {
     serialization_nanos: i64,
     deserialization_nanos: i64,
     auth_nanos: i64,
-    response: Response,
+    response: InterfaceResponse,
 }
 
 #[derive(Debug, Serialize)]
@@ -204,7 +205,7 @@ impl<'j> DefinitionalEngine<'j> {
             .expect("failed to create Java object for authorization request string")
     }
 
-    fn deserialize_response(&self, response: JValue) -> Response {
+    fn deserialize_response(&self, response: JValue) -> InterfaceResponse {
         let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
@@ -250,7 +251,7 @@ impl<'j> DefinitionalEngine<'j> {
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> Response {
+    ) -> InterfaceResponse {
         let (jstring, dur) = time_function(|| self.serialize_request(request, policies, entities));
         info!("{}{}", logger::RUST_SERIALIZATION_MSG, dur.as_nanos());
         let response = self.thread.call_method(

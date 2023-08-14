@@ -17,6 +17,7 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::fuzz_target;
+use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
@@ -152,8 +153,10 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     }
     .into();
     assert_eq!(
-        rust_res_for_comparison, definitional_res,
+        InterfaceResponse::from(rust_res_for_comparison),
+        definitional_res,
         "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
-        &policyset, &entities
+        &policyset,
+        &entities
     );
 });

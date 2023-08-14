@@ -23,11 +23,12 @@ pub use prt::*;
 use cedar_drt::{
     time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
 };
+use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::ast::{self, Expr};
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
-use cedar_policy_core::evaluator::{EvaluationError, Evaluator};
+use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
 use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use log::info;
@@ -80,7 +81,9 @@ impl<'e> DifferentialTester<'e> {
         };
         let v = match eval.interpret(expr, &std::collections::HashMap::default()) {
             Ok(v) => Some(v),
-            Err(EvaluationError::IntegerOverflow(_)) => return true,
+            Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
+                return true
+            }
             Err(_) => None,
         };
         self.def_engine.eval(r, entities, expr, v)
@@ -137,9 +140,11 @@ impl<'e> DifferentialTester<'e> {
         }
         .into();
         assert_eq!(
-            rust_res_for_comparison, definitional_res,
+            InterfaceResponse::from(rust_res_for_comparison),
+            definitional_res,
             "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
-            &policies, &entities
+            &policies,
+            &entities
         );
         ret
     }
