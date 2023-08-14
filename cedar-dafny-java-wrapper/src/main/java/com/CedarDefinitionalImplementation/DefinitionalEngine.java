@@ -51,8 +51,7 @@ public class DefinitionalEngine {
     }
 
     public String eval_str(String json) {
-	    var query = deserializeEvalQuery(json);
-	    return query.map(x -> eval_json(x)).orElse("null");
+	    return deserializeEvalQuery(json).map(x -> eval_json(x)).orElse("null");
     }
 
     private Optional<difftest_mhelpers.Json> deserializeEvalQuery(String json) {
@@ -66,7 +65,7 @@ public class DefinitionalEngine {
 
     public String eval_json(difftest_mhelpers.Json json) {
 	try {
-		var result = difftest_mmain.__default.evalJson(json);
+		difftest_mhelpers.Json result = difftest_mmain.__default.evalJson(json);
 		JsonNode serialized = DafnyUtils.convertJsonDafnyToJackson(result);
 		return mapper.writeValueAsString(serialized);
 	} catch (JsonProcessingException e) {
