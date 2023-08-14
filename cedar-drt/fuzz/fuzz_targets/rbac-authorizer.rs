@@ -153,7 +153,7 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     }
     .into();
     assert_eq!(
-        Into::<InterfaceResponse>::into(rust_res_for_comparison),
+        InterfaceResponse::from(rust_res_for_comparison),
         definitional_res,
         "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
         &policyset,

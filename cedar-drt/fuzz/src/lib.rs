@@ -140,7 +140,7 @@ impl<'e> DifferentialTester<'e> {
         }
         .into();
         assert_eq!(
-            Into::<InterfaceResponse>::into(rust_res_for_comparison),
+            InterfaceResponse::from(rust_res_for_comparison),
             definitional_res,
             "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
             &policies,
