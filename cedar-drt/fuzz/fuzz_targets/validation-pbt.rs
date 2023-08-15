@@ -353,6 +353,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                                 // Evaluation errors the validator should prevent.
                                 cedar_policy::EvaluationErrorKind::UnspecifiedEntityAccess(_) |
                                 cedar_policy::EvaluationErrorKind::RecordAttrDoesNotExist(_, _) |
+                                cedar_policy::EvaluationErrorKind::EntityAttrDoesNotExist { .. } |
                                 cedar_policy::EvaluationErrorKind::FailedExtensionFunctionLookup(_) |
                                 cedar_policy::EvaluationErrorKind::TypeError { .. } |
                                 cedar_policy::EvaluationErrorKind::WrongNumArguments { .. } => Some(error.to_string()),
@@ -361,7 +362,6 @@ fuzz_target!(|input: FuzzTargetInput| {
                                 // consider if a new error type should cause
                                 // this target to fail.
                                 cedar_policy::EvaluationErrorKind::EntityDoesNotExist(_) |
-                                cedar_policy::EvaluationErrorKind::EntityAttrDoesNotExist { .. } |
                                 cedar_policy::EvaluationErrorKind::IntegerOverflow(_) |
                                 cedar_policy::EvaluationErrorKind::InvalidRestrictedExpression(_) |
                                 cedar_policy::EvaluationErrorKind::UnlinkedSlot(_) |
