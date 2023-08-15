@@ -346,37 +346,37 @@ fuzz_target!(|input: FuzzTargetInput| {
                     debug!("Request: {q}");
                     let ans = authorizer.is_authorized(&q, &policyset, &entities);
 
-                    // validated policies should never produce type errors
+                    let unexpected_errs = ans.diagnostics.errors.iter().filter_map(|error|
+                        match error {
+                            cedar_policy::AuthorizationError::AttributeEvaluationError(_) => None,
+                            cedar_policy::AuthorizationError::PolicyEvaluationError { error, .. } => match error.error_kind() {
+                                // Evaluation errors the validator should prevent.
+                                cedar_policy::EvaluationErrorKind::UnspecifiedEntityAccess(_) |
+                                cedar_policy::EvaluationErrorKind::RecordAttrDoesNotExist(_, _) |
+                                cedar_policy::EvaluationErrorKind::EntityAttrDoesNotExist { .. } |
+                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionLookup(_) |
+                                cedar_policy::EvaluationErrorKind::TypeError { .. } |
+                                cedar_policy::EvaluationErrorKind::WrongNumArguments { .. } => Some(error.to_string()),
+                                // Evaluation errors it shouldn't prevent. Not
+                                // written with a catch all so that we must
+                                // consider if a new error type should cause
+                                // this target to fail.
+                                cedar_policy::EvaluationErrorKind::EntityDoesNotExist(_) |
+                                cedar_policy::EvaluationErrorKind::IntegerOverflow(_) |
+                                cedar_policy::EvaluationErrorKind::InvalidRestrictedExpression(_) |
+                                cedar_policy::EvaluationErrorKind::UnlinkedSlot(_) |
+                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionApplication { .. } |
+                                cedar_policy::EvaluationErrorKind::NonValue(_) |
+                                cedar_policy::EvaluationErrorKind::RecursionLimit => None,
+                            }
+                        }
+                    ).collect::<Vec<_>>();
+
                     assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .map(ToString::to_string)
-                            .filter(|err| err.contains("type error"))
-                            .collect::<Vec<String>>(),
+                        unexpected_errs,
                         Vec::<String>::new(),
-                        "validated policy produced a type error!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
-                    );
-                    // or wrong-number-of-arguments errors
-                    assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .map(ToString::to_string)
-                            .filter(|err| err.contains("wrong number of arguments"))
-                            .collect::<Vec<String>>(),
-                        Vec::<String>::new()
-                    );
-                    // or missing-attribute errors (for either entities or records)
-                    assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .map(ToString::to_string)
-                            .filter(|err| err.contains("does not have the required attribute"))
-                            .collect::<Vec<String>>(),
-                        Vec::<String>::new()
-                    );
+                        "validated policy produced unexpected errors {unexpected_errs:?}!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
+                    )
                 }
             } else {
                 maybe_log_schemastats(schemafile.as_ref(), "vno");
