@@ -25,7 +25,7 @@ pub enum Error {
     /// to `.choose()` (or equivalent) on an empty slice
     EmptyChoose {
         /// short string describing what we were doing when this happened
-        doing_what: &'static str,
+        doing_what: String,
     },
     /// Tried to generate an expression deeper than allowed, and couldn't
     /// recover by putting some depth-0 expression in the leaf
@@ -44,7 +44,7 @@ pub enum Error {
     /// preferring the more specific errors above
     IncorrectFormat {
         /// short string describing what we were doing when this happened
-        doing_what: &'static str,
+        doing_what: String,
     },
     /// An error that occurs attempting to convert a hierarchy into an entities structure
     EntitiesError(String),
@@ -78,8 +78,8 @@ impl From<arbitrary::Error> for Error {
     fn from(e: arbitrary::Error) -> Error {
         match e {
             arbitrary::Error::NotEnoughData => Error::NotEnoughData,
-            arbitrary::Error::EmptyChoose => Error::EmptyChoose { doing_what: "" },
-            arbitrary::Error::IncorrectFormat => Error::IncorrectFormat { doing_what: "" },
+            arbitrary::Error::EmptyChoose => Error::EmptyChoose { doing_what: String::new() },
+            arbitrary::Error::IncorrectFormat => Error::IncorrectFormat { doing_what: String::new() },
             e => Error::OtherArbitrary(e),
         }
     }
@@ -87,7 +87,7 @@ impl From<arbitrary::Error> for Error {
 
 /// Apply this to an `arbitrary::Error` to get an `Error` with a more
 /// informative `doing_what` in the EmptyChoose or IncorrectFormat cases
-pub fn while_doing(what: &'static str, e: arbitrary::Error) -> Error {
+pub fn while_doing(what: String, e: arbitrary::Error) -> Error {
     match e {
         arbitrary::Error::EmptyChoose => Error::EmptyChoose { doing_what: what },
         arbitrary::Error::IncorrectFormat => Error::IncorrectFormat { doing_what: what },

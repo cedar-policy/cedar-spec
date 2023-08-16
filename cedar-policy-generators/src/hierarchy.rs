@@ -94,7 +94,7 @@ impl Hierarchy {
         if u.ratio::<u8>(9, 10)? {
             let uid = u
                 .choose(&self.uids)
-                .map_err(|e| while_doing("getting an arbitrary uid", e))?;
+                .map_err(|e| while_doing("getting an arbitrary uid".into(), e))?;
             Ok(uid.clone())
         } else {
             // Note: may generate an unspecified entity
@@ -126,7 +126,7 @@ impl Hierarchy {
                 self.uids_by_type
                     .get(typename)
                     .ok_or(Error::EmptyChoose {
-                        doing_what: "getting an existing uid with given type",
+                        doing_what: format!("getting an existing uid with type {typename}"),
                     })?
                     .as_ref(),
             )?;

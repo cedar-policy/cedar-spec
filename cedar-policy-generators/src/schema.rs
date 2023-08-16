@@ -83,7 +83,7 @@ fn arbitrary_attrspec(
 ) -> Result<AttributesOrContext> {
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
-        .map_err(|e| while_doing("generating attribute names for an attrspec", e))?;
+        .map_err(|e| while_doing("generating attribute names for an attrspec".into(), e))?;
     Ok(AttributesOrContext(cedar_policy_validator::SchemaType::Type(
         cedar_policy_validator::SchemaTypeVariant::Record {
             attributes: attr_names
@@ -216,7 +216,7 @@ pub fn arbitrary_schematype_with_bounded_depth(
                     attributes: {
                         let attr_names: HashSet<String> = u
                             .arbitrary()
-                            .map_err(|e| while_doing("generating attribute names", e))?;
+                            .map_err(|e| while_doing("generating attribute names".into(), e))?;
                         attr_names
                             .into_iter()
                             .map(|attr_name| {
@@ -324,7 +324,7 @@ pub(crate) fn arbitrary_specified_uid_without_schema(
 /// Get an arbitrary namespace for a schema. The namespace may be absent.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
     u.arbitrary()
-        .map_err(|e| while_doing("generating namespace", e))
+        .map_err(|e| while_doing("generating namespace".into(), e))
 }
 
 /// Given an (optional) namespace and a type base name, build a fully
@@ -504,7 +504,7 @@ impl Schema {
             namespace,
             constant_pool: u
                 .arbitrary()
-                .map_err(|e| while_doing("generating constant pool", e))?,
+                .map_err(|e| while_doing("generating constant pool".into(), e))?,
             unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
@@ -571,7 +571,7 @@ impl Schema {
         // ordered, even though we want the order to be arbitrary)
         let entity_type_ids: HashSet<ast::Id> = u
             .arbitrary()
-            .map_err(|e| while_doing("generating entity type ids", e))?;
+            .map_err(|e| while_doing("generating entity type ids".into(), e))?;
         let entity_type_ids: Vec<ast::Id> = if entity_type_ids.is_empty() {
             // we want there to be at least one valid Name
             vec!["a".parse().expect("should be a valid Name")]
@@ -620,7 +620,7 @@ impl Schema {
         // same for actions
         let action_names: HashSet<String> = u
             .arbitrary()
-            .map_err(|e| while_doing("generating action names", e))?;
+            .map_err(|e| while_doing("generating action names".into(), e))?;
         let action_names: HashSet<SmolStr> = action_names.into_iter().map(SmolStr::from).collect();
         let action_names: Vec<SmolStr> = action_names
             .into_iter()
@@ -779,7 +779,7 @@ impl Schema {
             namespace,
             constant_pool: u
                 .arbitrary()
-                .map_err(|e| while_doing("generating constant pool", e))?,
+                .map_err(|e| while_doing("generating constant pool".into(), e))?,
             unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
@@ -900,7 +900,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<&(SmolStr, cedar_policy_validator::SchemaType)> {
         u.choose(&self.attributes)
-            .map_err(|e| while_doing("getting arbitrary attr from schema", e))
+            .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
     }
 
     /// Given a type, get an entity type name and attribute name, such that
@@ -914,9 +914,9 @@ impl Schema {
         match self.attributes_by_type.get(target_type) {
             Some(vec) => u
                 .choose(vec)
-                .map_err(|e| while_doing("getting arbitrary attr for type", e)),
+                .map_err(|e| while_doing(format!("getting arbitrary attr for type {target_type:?}"), e)),
             None => Err(Error::EmptyChoose {
-                doing_what: "getting arbitrary attr for type",
+                doing_what: format!("getting arbitrary attr for type {target_type:?}"),
             }),
         }
     }
@@ -954,7 +954,7 @@ impl Schema {
             .collect();
         u.choose(&pairs)
             .cloned()
-            .map_err(|e| while_doing("getting arbitrary attr for schematype", e))
+            .map_err(|e| while_doing(format!("getting arbitrary attr for schematype {target_type:?}"), e))
     }
 
     /// get an arbitrary policy conforming to this schema
@@ -1125,7 +1125,7 @@ impl Schema {
                     // Assert that these are vec, so it's safe to draw from directly
                     let types: &Vec<_> = types;
                     let ty = u.choose(types).map_err(|e| {
-                        while_doing("choosing one of the action principal types", e)
+                        while_doing("choosing one of the action principal types".into(), e)
                     })?;
                     self.arbitrary_uid_with_optional_type(
                         Some(
@@ -1149,7 +1149,7 @@ impl Schema {
                     let types: &Vec<_> = types;
                     let ty = u
                         .choose(types)
-                        .map_err(|e| while_doing("choosing one of the action resource types", e))?;
+                        .map_err(|e| while_doing("choosing one of the action resource types".into(), e))?;
                     self.arbitrary_uid_with_optional_type(
                         Some(
                             ty.parse()
