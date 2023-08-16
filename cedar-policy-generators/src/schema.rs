@@ -912,9 +912,12 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<&(ast::Name, SmolStr)> {
         match self.attributes_by_type.get(target_type) {
-            Some(vec) => u
-                .choose(vec)
-                .map_err(|e| while_doing(format!("getting arbitrary attr for type {target_type:?}"), e)),
+            Some(vec) => u.choose(vec).map_err(|e| {
+                while_doing(
+                    format!("getting arbitrary attr for type {target_type:?}"),
+                    e,
+                )
+            }),
             None => Err(Error::EmptyChoose {
                 doing_what: format!("getting arbitrary attr for type {target_type:?}"),
             }),
@@ -952,9 +955,12 @@ impl Schema {
                     .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
             })
             .collect();
-        u.choose(&pairs)
-            .cloned()
-            .map_err(|e| while_doing(format!("getting arbitrary attr for schematype {target_type:?}"), e))
+        u.choose(&pairs).cloned().map_err(|e| {
+            while_doing(
+                format!("getting arbitrary attr for schematype {target_type:?}"),
+                e,
+            )
+        })
     }
 
     /// get an arbitrary policy conforming to this schema
@@ -1147,9 +1153,9 @@ impl Schema {
                 Some(types) => {
                     // Assert that these are vec, so it's safe to draw from directly
                     let types: &Vec<_> = types;
-                    let ty = u
-                        .choose(types)
-                        .map_err(|e| while_doing("choosing one of the action resource types".into(), e))?;
+                    let ty = u.choose(types).map_err(|e| {
+                        while_doing("choosing one of the action resource types".into(), e)
+                    })?;
                     self.arbitrary_uid_with_optional_type(
                         Some(
                             ty.parse()

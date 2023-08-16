@@ -475,8 +475,12 @@ impl AvailableExtensionFunctions {
                 .ok_or(Error::EmptyChoose {
                     doing_what: format!("getting extfunc constructors for type {ty:?}"),
                 })?;
-        u.choose(choices)
-            .map_err(|e| while_doing(format!("getting arbitrary extfunc constructor with return type {ty:?}"), e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc constructor with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_constructor_for_type()
@@ -494,8 +498,12 @@ impl AvailableExtensionFunctions {
             self.all_by_type.get(ty).ok_or(Error::EmptyChoose {
                 doing_what: format!("getting arbitrary extfunc with return type {ty:?}"),
             })?;
-        u.choose(choices)
-            .map_err(|e| while_doing(format!("getting arbitrary extfunc with return type {ty:?}"), e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_for_type()

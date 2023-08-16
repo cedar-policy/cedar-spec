@@ -78,8 +78,12 @@ impl From<arbitrary::Error> for Error {
     fn from(e: arbitrary::Error) -> Error {
         match e {
             arbitrary::Error::NotEnoughData => Error::NotEnoughData,
-            arbitrary::Error::EmptyChoose => Error::EmptyChoose { doing_what: String::new() },
-            arbitrary::Error::IncorrectFormat => Error::IncorrectFormat { doing_what: String::new() },
+            arbitrary::Error::EmptyChoose => Error::EmptyChoose {
+                doing_what: String::new(),
+            },
+            arbitrary::Error::IncorrectFormat => Error::IncorrectFormat {
+                doing_what: String::new(),
+            },
             e => Error::OtherArbitrary(e),
         }
     }
