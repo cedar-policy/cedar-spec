@@ -20,6 +20,10 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::abac::{ABACPolicy, ABACRequest, ABACSettings};
+use cedar_policy_generators::err::{Error, Result};
+use cedar_policy_generators::hierarchy::Hierarchy;
+use cedar_policy_generators::schema::Schema;
 use cedar_policy_validator::{
     ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
     ValidatorNamespaceDef, ValidatorSchemaFragment,
@@ -206,7 +210,7 @@ fn maybe_log_hierarchystats(hierarchy: &Hierarchy, suffix: &str) {
                 + "_"
                 + suffix
                 + "_"
-                + &format!("{:03}", hierarchy.num_uids()),
+                + &format!("{:03}", hierarchy.num_entities()),
         );
     }
 }
@@ -339,28 +343,31 @@ fuzz_target!(|input: FuzzTargetInput| {
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("type error"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new(),
-                        "validated policy produced a type error!\npolicies:\n{}\nentities:\n{}\nschema:\n{}\nrequest:\n{}\n", &policyset, &entities, &input.schema.schemafile_string(), &q,
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new(),
+                        "validated policy produced a type error!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\nrequest:\n{q}\n",
                     );
                     // or wrong-number-of-arguments errors
                     assert_eq!(
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("wrong number of arguments"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new()
                     );
                     // or missing-attribute errors (for either entities or records)
                     assert_eq!(
                         ans.diagnostics
                             .errors
                             .iter()
+                            .map(ToString::to_string)
                             .filter(|err| err.contains("does not have the required attribute"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
+                            .collect::<Vec<String>>(),
+                        Vec::<String>::new()
                     );
                 }
             } else {

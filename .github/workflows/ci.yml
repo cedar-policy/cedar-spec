@@ -3,7 +3,7 @@ name: Build cedar-spec
 on:
   pull_request:
 
-env: 
+env:
   dotnet-version: 6.0.x # SDK Version for building Dafny
 
 jobs:
@@ -66,19 +66,28 @@ jobs:
         run: ./gradlew build dumpClasspath
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - name: cargo fmt
+      - name: cargo fmt (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo fmt --all --check
+      - name: cargo fmt (cedar-drt)
         working-directory: ./cedar-drt
         run: cargo fmt --all --check
-      - name: cargo fmt (fuzz/)
+      - name: cargo fmt (cedar-drt/fuzz/)
         working-directory: ./cedar-drt/fuzz
         run: cargo fmt --all --check
-      - name: cargo rustc
+      - name: cargo rustc (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo rustc (cedar-drt)
         working-directory: ./cedar-drt
         run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo rustc (fuzz/)
+      - name: cargo rustc (cedar-drt/fuzz/)
         working-directory: ./cedar-drt/fuzz
         run: RUSTFLAGS="--cfg=fuzzing -D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo test
+      - name: cargo test (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo test --verbose
+      - name: cargo test (cedar-drt)
         working-directory: ./cedar-drt
         shell: bash
         run: |

@@ -17,8 +17,8 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast::{self, Context, Request};
-use cedar_policy_core::authorizer::{Authorizer, Diagnostics};
+use cedar_policy_core::ast;
+use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::parser;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
@@ -99,11 +99,11 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     assert_eq!(policyset.policies().count(), input.policies.len());
     let entities = Entities::new();
     let authorizer = Authorizer::new();
-    let q = Request::new(
+    let q = ast::Request::new(
         "User::\"alice\"".parse().expect("should be valid"),
         "Action::\"read\"".parse().expect("should be valid"),
         "Resource::\"foo\"".parse().expect("should be valid"),
-        Context::empty(),
+        ast::Context::empty(),
     );
     let rust_res = authorizer.is_authorized(&q, &policyset, &entities);
 
@@ -118,7 +118,15 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         // doing the assertion this way, rather than assert!(.is_empty()), gives
         // us a better assertion-failure message (showing what items were
         // present on the LHS)
-        assert_eq!(rust_res.diagnostics.errors, Vec::<String>::new());
+        assert_eq!(
+            rust_res
+                .diagnostics
+                .errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>(),
+            Vec::<String>::new()
+        );
     }
 
     // check agreement with definitional engine
@@ -127,14 +135,22 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
     let definitional_engine =
         DefinitionalEngine::new().expect("failed to create definitional engine");
     let definitional_res = definitional_engine.is_authorized(&q, &policyset, &entities);
-    assert_eq!(definitional_res.diagnostics.errors, Vec::<String>::new());
-    let rust_res_for_comparison = Response {
+    assert_eq!(
+        definitional_res
+            .diagnostics()
+            .errors()
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+    let rust_res_for_comparison: cedar_policy::Response = Response {
         diagnostics: Diagnostics {
             errors: Vec::new(),
             ..rust_res.diagnostics
         },
         ..rust_res
-    };
+    }
+    .into();
     assert_eq!(
         rust_res_for_comparison, definitional_res,
         "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
