@@ -228,6 +228,31 @@ impl TryFrom<Hierarchy> for Entities {
     }
 }
 
+impl From<Entities> for Hierarchy {
+    fn from(entities: Entities) -> Hierarchy {
+        let mut uids = Vec::new();
+        let mut uids_by_type: HashMap<ast::Name, HashSet<ast::EntityUID>> = HashMap::new();
+        for e in entities.iter() {
+            let etype = match e.uid().entity_type() {
+                ast::EntityType::Concrete(name) => name.clone(),
+                ast::EntityType::Unspecified => {
+                    panic!("didn't expect unspecified entity in Entities")
+                }
+            };
+            uids_by_type.entry(etype).or_default().insert(e.uid());
+            uids.push(e.uid());
+        }
+        Hierarchy {
+            uids,
+            uids_by_type: uids_by_type
+                .into_iter()
+                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter())))
+                .collect(),
+            entities: entities.into_iter().map(|e| (e.uid(), e)).collect(),
+        }
+    }
+}
+
 /// Struct for generating hierarchies; contains options and settings
 pub struct HierarchyGenerator<'a, 'u> {
     /// Mode for hierarchy generation, e.g., whether to conform to a schema
