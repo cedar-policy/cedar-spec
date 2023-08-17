@@ -258,28 +258,12 @@ module validation.subtyping {
           case (Record(rt1), Record(rt2)) => {
             if m.isStrict() {
               assert lubRecordType(rt1, rt2, ValidationMode.Strict).Err?;
-              var attrs := map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, m).Ok? :: lubAttrType(rt1.attrs[k], rt2.attrs[k], m);
-              assert attrs.Keys != (rt1.attrs.Keys + rt2.attrs.Keys);
-              assert (exists k | k in rt1.attrs.Keys :: k !in rt2.attrs.Keys) ||
-                     (exists k | k in rt2.attrs.Keys :: k !in rt1.attrs.Keys) ||
-                     (exists k | k in rt1.attrs.Keys && k in rt2.attrs.Keys ::  !LubDefined(rt1.attrs[k].ty, rt2.attrs[k].ty, m));
 
               if exists k | k in rt1.attrs.Keys && k in rt2.attrs.Keys :: !LubDefined(rt1.attrs[k].ty, rt2.attrs[k].ty, m) {
                 var k :| k in rt1.attrs.Keys && k in rt2.attrs.Keys && !LubDefined(rt1.attrs[k].ty, rt2.attrs[k].ty, m);
-
                 if k in rt.attrs.Keys {
-                  var rt1k := rt1.attrs[k];
-                  var rt2k := rt2.attrs[k];
-                  var rtk := rt.attrs[k];
-                  assert !subty(rt1k.ty, rt.attrs[k].ty, m) ||
-                         !subty(rt2k.ty, rt.attrs[k].ty, m) by { LubUndefUbUndef(rt1k.ty, rt2k.ty, rtk.ty, m); }
-                  if !subty(rt1k.ty, rtk.ty, m) {
-                    assert (exists k' | k' in rt.attrs.Keys && k' in rt1.attrs.Keys :: !subtyAttrType(rt1.attrs[k'], rt.attrs[k'], m));
-                    assert !subty(t1, t, m);
-                  } else if !subty(rt2k.ty, rtk.ty, m) {
-                    assert (exists k' | k' in rt.attrs.Keys && k' in rt2.attrs.Keys :: !subtyAttrType(rt2.attrs[k'], rt.attrs[k'], m));
-                    assert !subty(t2, t, m);
-                  }
+                  assert (exists k' | k' in rt.attrs.Keys && k' in rt1.attrs.Keys :: !subtyAttrType(rt1.attrs[k'], rt.attrs[k'], m)) ||
+                         (exists k' | k' in rt.attrs.Keys && k' in rt2.attrs.Keys :: !subtyAttrType(rt2.attrs[k'], rt.attrs[k'], m));
                 }
               }
             } else {
@@ -323,21 +307,20 @@ module validation.subtyping {
       case (Entity(e1),Entity(e2)) =>
       case (Set(t1'),Set(t2')) =>
       case (Record(rt1),Record(rt2)) => {
-        var slub_attrs :=
+        assert lubRecordType(rt1, rt2, ValidationMode.Strict).Ok?;
+        assert lubRecordType(rt1, rt2, ValidationMode.Permissive).Ok?;
+
+        var strict_attrs :=
           map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, ValidationMode.Strict).Ok? ::
             lubAttrType(rt1.attrs[k], rt2.attrs[k], ValidationMode.Strict);
-        if slub_attrs.Keys == (rt1.attrs.Keys + rt2.attrs.Keys) {
-          var plub_attrs :=
-            map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, ValidationMode.Permissive).Ok? ::
-              lubAttrType(rt1.attrs[k], rt2.attrs[k], ValidationMode.Permissive);
-          assert plub_attrs == slub_attrs;
+        assert strict_attrs == lubRecordType(rt1, rt2, ValidationMode.Strict).value.attrs;
 
-          var openTag := if rt1.isOpen() || rt2.isOpen() then OpenAttributes else ClosedAttributes;
-          var lubrt := RecordType(slub_attrs, openTag);
+        var permissive_attrs :=
+          map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, ValidationMode.Permissive).Ok? ::
+            lubAttrType(rt1.attrs[k], rt2.attrs[k], ValidationMode.Permissive);
+        assert permissive_attrs == lubRecordType(rt1, rt2, ValidationMode.Permissive).value.attrs;
 
-          assert lubRecordType(rt1, rt2, ValidationMode.Strict).value == lubrt;
-          assert lubRecordType(rt1, rt2, ValidationMode.Permissive).value == lubrt;
-        }
+        assert permissive_attrs == strict_attrs;
       }
       case (Extension(n1),Extension(n2)) =>
     }
