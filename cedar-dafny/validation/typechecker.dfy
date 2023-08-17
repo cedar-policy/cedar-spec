@@ -387,7 +387,6 @@ module validation.typechecker {
         case Principal => reqty.principal
         case Resource => reqty.resource
       }
-
     }
 
     function extractEntityType(lub: EntityLUB): Result<EntityType> {

@@ -66,7 +66,7 @@ module validation.types {
     function union(other: EntityLUB): EntityLUB {
       match (this, other) {
         case (EntityLUB(tys1),EntityLUB(tys2)) =>
-          // if either LUB contains an Action, then return AnyEntity
+          // if either LUB contains an Action, and they are not the same action, then return AnyEntity
           if (exists ty1 <- tys1 :: isAction(ty1) || exists ty2 <- tys2 :: isAction(ty2)) && tys1 != tys2
           then AnyEntity
           else EntityLUB(tys1 + tys2)

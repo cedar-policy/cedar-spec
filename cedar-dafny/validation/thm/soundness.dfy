@@ -262,7 +262,7 @@ module validation.thm.soundness {
           assert Typesafe(e1,effs.union(effs1),t1) by { SubtyRefl(t1); }
           assert Typesafe(e2,effs,t2) by { SubtyRefl(t2); }
           assert t' == lubOpt(t1,t2,ValidationMode.Permissive).value;
-          assert subty(t1,t',ValidationMode.Permissive) && subty(t2,t',ValidationMode.Permissive) by { LubIsUB(t1,t2,t'); }
+          assert subty(t1,t',ValidationMode.Permissive) && subty(t2,t',ValidationMode.Permissive) by { LubIsUB(t1,t2,t',ValidationMode.Permissive); }
           if IsSafeStrong(r,s,e,Type.Bool(bt)) {
             if IsTrue(r,s,e) {
               // `e` evaluates to true
@@ -943,11 +943,11 @@ module validation.thm.soundness {
             ensures TC.infer(es[i],effs).Ok? && subty(TC.infer(es[i],effs).value.0,t2,ValidationMode.Permissive)
           {
             if i == 0 {
-              assert subty(t,t2,ValidationMode.Permissive) by { LubIsUB(t,t1,t2); }
+              assert subty(t,t2,ValidationMode.Permissive) by { LubIsUB(t,t1,t2,ValidationMode.Permissive); }
             } else {
               assert TC.infer(es[i],effs).Ok?;
               assert subty(TC.infer(es[i],effs).value.0,t2,ValidationMode.Permissive) by {
-                LubIsUB(t,t1,t2);
+                LubIsUB(t,t1,t2,ValidationMode.Permissive);
                 SubtyTrans(TC.infer(es[i],effs).value.0,t1,t2,ValidationMode.Permissive);
               }
             }
@@ -1069,7 +1069,7 @@ module validation.thm.soundness {
         var al := rtl.attrs[k];
         var a1 := rt1.attrs[k];
         var a2 := rt2.attrs[k];
-        LubIsUB(a1.ty, a2.ty, al.ty);
+        LubIsUB(a1.ty, a2.ty, al.ty, ValidationMode.Permissive);
       }
     }
 
