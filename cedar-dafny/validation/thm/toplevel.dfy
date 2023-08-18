@@ -23,7 +23,6 @@ include "strict_soundness.dfy"
 
 // This module contains the high-level statement of type soundness.
 module validation.thm.toplevel {
-  import opened strict
   import opened typechecker
   import opened types
   import opened subtyping

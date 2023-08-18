@@ -22,7 +22,6 @@ include "soundness.dfy"
 
 // This module contains the proof of soundness for strict typechecking.
 module validation.thm.strict_soundness {
-  import opened strict
   import opened typechecker
   import opened types
   import opened subtyping

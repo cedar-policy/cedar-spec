@@ -30,7 +30,6 @@ module difftest.main {
   import opened def.ext.fun
   import opened restrictedExpr
   import opened validation.types
-  import opened validation.strict
   import opened validation.typechecker
   import opened validation.validator
   import opened helpers
@@ -590,20 +589,10 @@ module difftest.main {
     }
   }
 
-  function strictTypeErrorToString(e: StrictTypeError): string {
-    match e {
-      case TypeError(e1) => typeErrorToString(e1)
-      case TypesMustMatch => "TypesMustMatch"
-      case EmptySetForbidden => "EmptySetForbidden"
-      case NonLitExtConstructor => "NonLitExtConstructor"
-      case NonSingletonLub => "NonSingletonLub"
-    }
-  }
-
   function validationErrorToString(e: ValidationError): string {
     match e {
       case AllFalse => "AllFalse"
-      case StrictTypeError(e1) => strictTypeErrorToString(e1)
+      case TypeError(e1) => typeErrorToString(e1)
     }
   }
 
