@@ -29,7 +29,9 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Effect, PolicyID};
+use cedar_policy_core::ast::{
+    self, BinaryOp, Effect, EntityUID, PolicyID, PolicySet, SlotId, Template,
+};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
     TypeOfAttribute, ValidatorSchema,
@@ -1101,6 +1103,88 @@ impl Schema {
                 (1, None), // not sure how to hint for arbitrary_loop()
             ]),
         )
+    }
+
+    /// generate template link
+    pub fn arbitrary_link(
+        &self,
+        p: &Template,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<BTreeMap<SlotId, EntityUID>> {
+        // the generation process is driven by the action
+        let action = match p.action_constraint().as_expr().expr_kind() {
+            // if the template already specifies the exact action, then we use it
+            ast::ExprKind::BinaryApp {
+                op: BinaryOp::Eq,
+                arg1: _,
+                arg2: _,
+            } => p
+                .action_constraint()
+                .iter_euids()
+                .next()
+                .map(|uid| SmolStr::new(uid.to_string()))
+                .unwrap(),
+            // otherwise randomly pick an action
+            _ => u
+                .choose(
+                    &self
+                        .schema
+                        .actions
+                        .keys()
+                        .map(|a| a.clone())
+                        .collect::<Vec<SmolStr>>(),
+                )?
+                .clone(),
+        };
+        let mut links = BTreeMap::new();
+        let r#as = self
+            .schema
+            .actions
+            .get(&SmolStr::new(action.to_string()))
+            .expect("action should exist in schema")
+            .applies_to
+            .as_ref()
+            .expect("action spec should exist if action exists");
+        for slot in p.slots() {
+            if slot.is_principal() {
+                let ty_name = Some(
+                    ast::Id::from_str(if let Some(pt) = &r#as.principal_types {
+                        // choose an applicable principal type
+                        u.choose(&pt)?
+                    } else {
+                        // choose a random entity type
+                        u.choose(&self.schema.entity_types.keys().collect::<Vec<&SmolStr>>())?
+                    })
+                    .map_err(|_| Error::IncorrectFormat {
+                        doing_what: "generating links".to_owned(),
+                    })?,
+                );
+                links.insert(
+                    slot.clone(),
+                    self.arbitrary_uid_with_optional_type(ty_name, Some(hierarchy), u)?,
+                );
+            }
+            if slot.is_resource() {
+                let ty_name = Some(
+                    ast::Id::from_str(if let Some(pt) = &r#as.resource_types {
+                        // choose an applicable resource type
+                        u.choose(&pt)?
+                    } else {
+                        // choose a random entity type
+                        u.choose(&self.schema.entity_types.keys().collect::<Vec<&SmolStr>>())?
+                    })
+                    .map_err(|_| Error::IncorrectFormat {
+                        doing_what: "generating links".to_owned(),
+                    })?,
+                );
+                links.insert(
+                    slot.clone(),
+                    self.arbitrary_uid_with_optional_type(ty_name, Some(hierarchy), u)?,
+                );
+            }
+        }
+        Ok(links)
     }
 
     /// generate an arbitrary `ABACRequest` conforming to the schema
