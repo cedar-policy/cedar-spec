@@ -473,7 +473,7 @@ module validation.typechecker {
             case _ => Ok(Type.Bool(AnyBool))
           };
 
-      if this.mode.isStrict() && outTy != Type.Bool(True) && outTy != Type.Bool(False)
+      if this.mode.isStrict() && outTy == Type.Bool(AnyBool)
       then
         var ety1 :- extractEntityType(elub1);
         var ety2 :- extractEntityType(elub2.value);
