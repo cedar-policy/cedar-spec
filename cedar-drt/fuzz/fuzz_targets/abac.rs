@@ -19,9 +19,13 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
-use cedar_policy_validator::{
-    ActionBehavior, ValidationMode, Validator, ValidatorNamespaceDef, ValidatorSchemaFragment,
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema::Schema,
+    settings::ABACSettings,
 };
+use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
@@ -83,7 +87,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
@@ -128,18 +132,8 @@ fuzz_target!(|input: FuzzTargetInput| {
             responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-            // only dump testcases where the policy passes validation
             let passes_validation = {
-                if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
-                    input.schema.namespace().clone(),
-                    input.schema.schemafile().clone(),
-                    ActionBehavior::ProhibitAttributes,
-                )
-                .and_then(|f| {
-                    ValidatorSchema::from_schema_fragments([
-                        ValidatorSchemaFragment::from_namespaces([f]),
-                    ])
-                }) {
+                if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
                     let validator = Validator::new(schema);
                     passes_validation(&validator, &policyset)
                 } else {

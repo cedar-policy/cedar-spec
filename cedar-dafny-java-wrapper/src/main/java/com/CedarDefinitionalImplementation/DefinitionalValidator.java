@@ -45,12 +45,12 @@ public class DefinitionalValidator {
      * @return JSON string containing validation result
      */
     public String validate_str(String json) {
-	    Timer<Optional<difftest_mhelpers_Compile.Json>> query = new Timer<>(() -> deserializeQuery(json));
+	    Timer<Optional<difftest_mhelpers.Json>> query = new Timer<>(() -> deserializeQuery(json));
 	    Logger.get().set(LogTag.Deserialization, query);
 	    return query.get().map(x -> validate_json(x)).orElse("null");
     }
 
-    private Optional<difftest_mhelpers_Compile.Json> deserializeQuery(String json) { 
+    private Optional<difftest_mhelpers.Json> deserializeQuery(String json) { 
 	    try { 
 		    JsonNode js = mapper.readTree(json);
 		    return Optional.of(DafnyUtils.convertJsonJacksonToDafny(js));
@@ -67,9 +67,9 @@ public class DefinitionalValidator {
      * form of the JSON, not the official interchange format.
      * @return JsonNode containing validation result
      */
-    public String validate_json(difftest_mhelpers_Compile.Json json) {
+    public String validate_json(difftest_mhelpers.Json json) {
 	    try { 
-		    Timer<difftest_mhelpers_Compile.Json> valResult = new Timer<>(() -> difftest_mmain_Compile.__default.validateJson(json));
+		    Timer<difftest_mhelpers.Json> valResult = new Timer<>(() -> difftest_mmain.__default.validateJson(json));
 		    Logger.get().set(LogTag.Validation, valResult);
 		    Timer<JsonNode> serialResult = new Timer<>(() -> DafnyUtils.convertJsonDafnyToJackson(valResult.get()));
 		    Logger.get().set(LogTag.Serialization, serialResult);

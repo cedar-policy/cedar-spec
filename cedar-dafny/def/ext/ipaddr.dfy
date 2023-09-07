@@ -88,8 +88,8 @@ module def.ext.ipaddr.core {
   newtype numV4 = x: nat | x <= 0xff
 
   // The network address bit width
-  const V6_SIZE := 128;
-  const V4_SIZE := 32;
+  const V6_SIZE := 128
+  const V4_SIZE := 32
   newtype prefixV6 = x: nat | x <= V6_SIZE
   newtype prefixV4 = x: nat | x <= V4_SIZE
 

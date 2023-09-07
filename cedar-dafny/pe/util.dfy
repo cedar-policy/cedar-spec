@@ -6,7 +6,7 @@ module pe.util {
   function {:opaque} Map<T,R>(xs: seq<T>, f: (T ~> R)): (result: seq<R>)
     requires forall i :: 0 <= i < |xs| ==> f.requires(xs[i])
     ensures |result| == |xs|
-    ensures forall i {:trigger result[i]} :: 0 <= i < |xs| ==> result[i] == f(xs[i]);
+    ensures forall i {:trigger result[i]} :: 0 <= i < |xs| ==> result[i] == f(xs[i])
     reads set i, o | 0 <= i < |xs| && o in f.reads(xs[i]) :: o
   {
     // This uses a sequence comprehension because it will usually be
@@ -38,7 +38,8 @@ module pe.util {
     requires forall i :: 0 <= i < |es| ==> f.requires(es[i])
     ensures Map(Map(es, f), g) == Map(es, e requires f.requires(e) => g(f(e))) {
     if |es| == 0 {
-      assume false;
+      assert Map(Map(es, f), g) == [];
+      assert Map(es, e requires f.requires(e) => g(f(e))) == [];
     } else {
       MapCompose(es[1..], f, g);
       assert Map(Map(es, f), g) == Map([f(es[0])] + Map(es[1..], f), g) == [g(f(es[0]))] + Map(Map(es[1..], f), g);

@@ -19,6 +19,12 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::err::Result;
+use cedar_policy_generators::hierarchy::{
+    AttributesMode, EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode,
+};
+use cedar_policy_generators::policy::GeneratedLinkedPolicy;
+use cedar_policy_generators::rbac::{RBACHierarchy, RBACPolicy, RBACRequest};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use std::convert::TryFrom;
@@ -79,6 +85,9 @@ fn arbitrary_vec<'a, T>(
     })?;
     Ok(v)
 }
+fn arbitrary_vec_size_hint(_depth: usize) -> (usize, Option<usize>) {
+    (0, None)
+}
 
 impl PolicyGroup {
     fn arbitrary_for_hierarchy<'a>(
@@ -118,7 +127,19 @@ impl PolicyGroup {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let hierarchy: RBACHierarchy = u.arbitrary()?;
+        let hierarchy = RBACHierarchy(
+            HierarchyGenerator {
+                mode: HierarchyGeneratorMode::Arbitrary {
+                    attributes_mode: AttributesMode::NoAttributes,
+                },
+                uid_gen_mode: EntityUIDGenMode::default(),
+                num_entities: cedar_policy_generators::hierarchy::NumEntities::RangePerEntityType(
+                    0..=4,
+                ),
+                u,
+            }
+            .generate()?,
+        );
         let policy_groups: Vec<PolicyGroup> = arbitrary_vec(u, Some(1), Some(2), |idx, u| {
             Ok(PolicyGroup::arbitrary_for_hierarchy(idx, &hierarchy, u)?)
         })?;
@@ -141,8 +162,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
-            <RBACHierarchy as Arbitrary>::size_hint(depth),
-            (0, None),
+            HierarchyGenerator::size_hint(depth),
+            arbitrary_vec_size_hint(depth),
             RBACRequest::arbitrary_size_hint(depth),
             RBACRequest::arbitrary_size_hint(depth),
             RBACRequest::arbitrary_size_hint(depth),

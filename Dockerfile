@@ -34,8 +34,10 @@ FROM prepare AS build
 
 ENV CEDAR_SPEC_ROOT=/opt/src/cedar-spec
 COPY . $CEDAR_SPEC_ROOT
+
 # Get cedar
-RUN git clone https://github.com/cedar-policy/cedar.git $CEDAR_SPEC_ROOT/cedar
+WORKDIR $CEDAR_SPEC_ROOT
+RUN git submodule init && git submodule update --recursive
 
 # Build cedar-dafny
 WORKDIR $CEDAR_SPEC_ROOT/cedar-dafny

@@ -14,85 +14,20 @@
  * limitations under the License.
  */
 
-use super::{while_doing, Error, Result};
 use crate::collections::HashMap;
-use crate::Schema;
-use crate::{gen, uniform};
-use ast::{EntityUID, Name, Request, RestrictedExpr, StaticPolicy};
+use crate::err::{while_doing, Error, Result};
+use crate::policy::GeneratedPolicy;
+use crate::request::Request;
+use crate::settings::*;
+use crate::size_hint_utils::size_hint_for_choose;
+use crate::{accum, gen, gen_inner, uniform};
+use arbitrary::{Arbitrary, Unstructured};
+use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
-
-const MAX_PATTERN_LEN: usize = 6;
-
-#[derive(Debug, Clone)]
-pub struct ABACSettings {
-    /// If true, generates well-typed hierarchies/policies/requests.
-    /// Specifically:
-    /// - policies will not throw type errors, ie, we generate subexpressions of the proper type for ops like < or .contains()
-    /// - attribute values (in the hierarchy and in the request contexts) will strictly adhere to the types suggested in pool.ty_data
-    ///
-    /// If false, does not attempt to match types.
-    pub match_types: bool,
-    /// If true, may generate extension function calls in policies and/or
-    /// attribute values.
-    pub enable_extensions: bool,
-    /// Maximum depth of an expression or type. E.g., maximum nesting of sets.
-    ///
-    /// This is used in the following places:
-    /// - Maximum depth of the expression in a when/unless clause
-    ///     - Note that this is only the limit for _each_ `when` and `unless`
-    ///     clause.
-    ///     Some generated policies will have multiple `when` and `unless`
-    ///     clauses, in which case the conjunction of all conditions may exceed
-    ///     the `max_depth`. But, the `max_depth` still applies for each clause
-    ///     individually.
-    /// - Maximum depth of expressions in attribute values in the hierarchy,
-    ///     and also of attributes of `context` in each request
-    /// - Maximum depth of a type specified in a generated schema
-    /// - Maximum number of when/unless clauses in a policy
-    pub max_depth: usize,
-    /// Maximum width of an expression or type. E.g., maximum number of elements
-    /// in a set.
-    ///
-    /// This is used in the following places:
-    /// - Maximum number of elements in a set in an attribute value in the
-    ///     hierarchy
-    /// - Maximum number of elements in a set literal in a policy
-    /// - Maximum number of attributes in a record in an attribute value in the
-    ///     hierarchy
-    /// - Maximum number of attributes in a record literal in a policy
-    /// - Maximum number of UIDs in the hierarchy of any given entity type
-    /// - Maximum number of "additional attributes" on any entity in the
-    ///     hierarchy
-    pub max_width: usize,
-    /// Whether to enable the `additional_attributes` flag in generated schemas.
-    /// If this option is `false`, `additional_attributes` will always be false
-    /// in all generated schemas.
-    /// If this option is `true`, `additional_attributes` will be randomly
-    /// chosen to be either true or false every time it appears.
-    /// Generated attribute data also respects the value of
-    /// `additional_attributes` in the schema: it may add additional attributes,
-    /// but only if `additional_attributes` is true.
-    pub enable_additional_attributes: bool,
-    /// Flag to globally enable/disable generation of expressions containing the
-    /// `like` operator.
-    pub enable_like: bool,
-    /// Flag to enable/disable generating actions in groups and declaring
-    /// attributes on entity types.
-    pub enable_action_groups_and_attrs: bool,
-    /// Flag to enable/disable generating arbitrary extension function calls.
-    /// Note that this flag is only considered if `enable_extensions` is true.
-    /// This flag should only be disabled for target `pp` because the parser now
-    /// rejects unknown extension function calls.
-    pub enable_arbitrary_func_call: bool,
-
-    /// Flag to enable/disable generating unknowns, exercising partial evaluation
-    pub enable_unknowns: bool,
-}
 
 // Mutate a hypothetically valid string (randomly).
 // We want to the make the probability of keeping the valid input reasonable:
@@ -132,12 +67,15 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
     Ok(res.into_iter().collect())
 }
 
+/// Pool of "unknowns"
 #[derive(Debug, Clone, Default)]
 pub struct UnknownPool {
     unknowns: RefCell<HashMap<String, (Type, Value)>>,
 }
 
 impl UnknownPool {
+    /// Given the name of an unknown, get its `Type`, or `None` if it's not in
+    /// the pool
     pub fn get_type(&self, unk: impl AsRef<str>) -> Option<Type> {
         self.unknowns
             .borrow()
@@ -146,28 +84,28 @@ impl UnknownPool {
             .cloned()
     }
 
+    /// Iterate over the unknowns in the pool, getting the name of the unknown
+    /// and its `Type`
     pub fn unknowns(self) -> impl Iterator<Item = (String, Type)> {
         self.unknowns.take().into_iter().map(|(k, (t, _))| (k, t))
     }
 
+    /// Iterate over the unknowns in the pool, getting the name of the unknown
+    /// and its `Value`
     pub fn mapping(self) -> impl Iterator<Item = (String, Value)> {
         self.unknowns.take().into_iter().map(|(k, (_, v))| (k, v))
     }
 
-    pub fn alloc(
-        &self,
-        t: Type,
-        schema: &Schema,
-        hierarchy: Option<&super::Hierarchy>,
-        u: &mut Unstructured<'_>,
-    ) -> Result<String> {
+    /// Create a new unknown with the given `Type` and `Value`. Returns the new
+    /// name as a `String`
+    pub fn alloc(&self, t: Type, v: Value) -> String {
         let this = format!("{}", self.unknowns.borrow().len());
-        let v = schema.arbitrary_value_for_type(&t, hierarchy, 3, u)?;
         self.unknowns.borrow_mut().insert(this.clone(), (t, v));
-        Ok(this)
+        this
     }
 }
 
+/// Pool of integer and string constants
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
     /// integer constants to choose from. we generate a finite list as part of
@@ -204,33 +142,18 @@ impl ConstantPool {
     pub fn arbitrary_int_constant(&self, u: &mut Unstructured<'_>) -> Result<i64> {
         u.choose(&self.int_constants).copied().or_else(|_| {
             u.arbitrary()
-                .map_err(|e| while_doing("getting an arbitrary int constant", e))
+                .map_err(|e| while_doing("getting an arbitrary int constant".into(), e))
         })
     }
 
     /// size hint for arbitrary_int_constant()
     pub fn arbitrary_int_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        super::size_hint_for_choose(None)
+        size_hint_for_choose(None)
     }
 
-    pub fn arbitrary_string(
-        &self,
-        u: &mut Unstructured<'_>,
-        bound: Option<usize>,
-    ) -> Result<SmolStr> {
-        let s: String = u.arbitrary()?;
-        let result_s = if let Some(bound) = bound {
-            if s.len() < bound {
-                SmolStr::from(s)
-            } else {
-                s.chars().take(bound).collect()
-            }
-        } else {
-            s.into()
-        };
-        Ok(result_s)
-    }
-
+    /// Get an arbitrary string constant from the pool, with maximum size
+    /// indicated by `bound`. If there are no string constants in the pool,
+    /// get a purely arbitrary string constant with that maximum size
     pub fn arbitrary_string_constant_bounded(
         &self,
         u: &mut Unstructured<'_>,
@@ -243,8 +166,8 @@ impl ConstantPool {
             .collect();
         u.choose(&short_consts)
             .map(|s| (*s).clone())
-            .map_err(|e| while_doing("Getting an arbitrary string constant", e))
-            .or_else(|_| self.arbitrary_string(u, Some(bound)))
+            .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
+            .or_else(|_| arbitrary_string(u, Some(bound)))
     }
 
     /// Get an arbitrary string constant from the pool.
@@ -253,7 +176,7 @@ impl ConstantPool {
         u.choose(&self.string_constants).cloned().or_else(|_| {
             u.arbitrary::<String>()
                 .map(|s| s.into())
-                .map_err(|e| while_doing("getting an arbitrary string constant", e))
+                .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
         })
     }
 
@@ -322,7 +245,7 @@ impl ConstantPool {
         })
     }
 
-    // Generate a valid IP net representation and mutate it
+    /// Generate a valid IP net representation and mutate it
     pub fn arbitrary_ip_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         let valid_str = if u.ratio(1, 2)? {
             self.arbitrary_ipv4_str(u)?
@@ -332,7 +255,7 @@ impl ConstantPool {
         mutate_str(u, &valid_str).map(SmolStr::new)
     }
 
-    // Generate a valid decimal number representation and mutate it
+    /// Generate a valid decimal number representation and mutate it
     pub fn arbitrary_decimal_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         let bytes = u.bytes(8)?;
         let i = i64::from_be_bytes(bytes.try_into().unwrap());
@@ -346,10 +269,26 @@ impl ConstantPool {
 
     /// size hint for arbitrary_string_constant()
     pub fn arbitrary_string_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        super::size_hint_for_choose(None)
+        size_hint_for_choose(None)
     }
 }
 
+/// Generate an arbitrary string of up to `bound` size
+fn arbitrary_string(u: &mut Unstructured<'_>, bound: Option<usize>) -> Result<SmolStr> {
+    let s: String = u.arbitrary()?;
+    let result_s = if let Some(bound) = bound {
+        if s.len() < bound {
+            SmolStr::from(s)
+        } else {
+            s.chars().take(bound).collect()
+        }
+    } else {
+        s.into()
+    };
+    Ok(result_s)
+}
+
+/// Data describing an extension function available for use in policies/etc
 #[derive(Debug, Clone)]
 pub struct AvailableExtensionFunction {
     /// Name of the extension function
@@ -364,6 +303,7 @@ pub struct AvailableExtensionFunction {
     pub return_ty: Type,
 }
 
+/// Struct holding information about all available extension functions
 #[derive(Debug, Clone)]
 pub struct AvailableExtensionFunctions {
     /// available extension functions (constructors only).
@@ -381,6 +321,7 @@ pub struct AvailableExtensionFunctions {
 }
 
 impl AvailableExtensionFunctions {
+    /// Create a new `AvailableExtensionFunctions` object based on the given `settings`
     pub fn create(settings: &ABACSettings) -> Self {
         let available_ext_funcs = if settings.enable_extensions {
             vec![
@@ -502,10 +443,11 @@ impl AvailableExtensionFunctions {
         u: &mut Unstructured<'_>,
     ) -> Result<&'s AvailableExtensionFunction> {
         u.choose(&self.constructors)
-            .map_err(|e| while_doing("getting arbitrary extfunc constructor", e))
+            .map_err(|e| while_doing("getting arbitrary extfunc constructor".into(), e))
     }
+    /// size hint for `arbitrary_constructor()`
     pub fn arbitrary_constructor_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(3))
+        size_hint_for_choose(Some(3))
     }
 
     /// Get any extension function
@@ -514,10 +456,11 @@ impl AvailableExtensionFunctions {
         u: &mut Unstructured<'_>,
     ) -> Result<&'s AvailableExtensionFunction> {
         u.choose(&self.all)
-            .map_err(|e| while_doing("getting arbitrary extfunc", e))
+            .map_err(|e| while_doing("getting arbitrary extfunc".into(), e))
     }
+    /// size hint for `arbitrary_all()`
     pub fn arbitrary_all_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(8))
+        size_hint_for_choose(Some(8))
     }
 
     /// Get an extension constructor that returns the given type
@@ -530,15 +473,19 @@ impl AvailableExtensionFunctions {
             self.constructors_by_type
                 .get(ty)
                 .ok_or(Error::EmptyChoose {
-                    doing_what: "getting extfunc constructors for given type",
+                    doing_what: format!("getting extfunc constructors for type {ty:?}"),
                 })?;
-        u.choose(choices)
-            .map_err(|e| while_doing("getting arbitrary extfunc constructor with given type", e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc constructor with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_constructor_for_type()
     pub fn arbitrary_constructor_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(3))
+        size_hint_for_choose(Some(3))
     }
 
     /// Get an extension function that returns the given type
@@ -549,15 +496,19 @@ impl AvailableExtensionFunctions {
     ) -> Result<&'a AvailableExtensionFunction> {
         let choices: &'a [AvailableExtensionFunction] =
             self.all_by_type.get(ty).ok_or(Error::EmptyChoose {
-                doing_what: "getting arbitrary extfunc with given return type",
+                doing_what: format!("getting arbitrary extfunc with return type {ty:?}"),
             })?;
-        u.choose(choices)
-            .map_err(|e| while_doing("getting arbitrary extfunc with given type", e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_for_type()
     pub fn arbitrary_for_type_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        crate::size_hint_for_choose(Some(8))
+        size_hint_for_choose(Some(8))
     }
 }
 
@@ -565,8 +516,11 @@ impl AvailableExtensionFunctions {
 /// generator
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Arbitrary)]
 pub enum Type {
+    /// Bool
     Bool,
+    /// Long (integer)
     Long,
+    /// String
     String,
     /// Set, with the given element type. Note that we only generate
     /// homogeneous sets.
@@ -586,30 +540,40 @@ pub enum Type {
 }
 
 impl Type {
+    /// Bool type
     pub fn bool() -> Self {
         Type::Bool
     }
+    /// Long type
     pub fn long() -> Self {
         Type::Long
     }
+    /// String type
     pub fn string() -> Self {
         Type::String
     }
+    /// Set type, with the given element type
     pub fn set_of(element_ty: Type) -> Self {
         Type::Set(Some(Box::new(element_ty)))
     }
+    /// Set type, without specifying the element type. (It will still be a
+    /// homogeneous set.)
     pub fn any_set() -> Self {
         Type::Set(None)
     }
+    /// Record type
     pub fn record() -> Self {
         Type::Record
     }
+    /// Entity type
     pub fn entity() -> Self {
         Type::Entity
     }
+    /// IP type
     pub fn ipaddr() -> Self {
         Type::IPAddr
     }
+    /// Decimal type
     pub fn decimal() -> Self {
         Type::Decimal
     }
@@ -644,12 +608,24 @@ impl Type {
 /// - attribute access, record field access/indexing
 #[derive(Debug, Clone)]
 pub enum AttrValue {
+    /// Bool literal
     BoolLit(bool),
+    /// Integer literal
     IntLit(i64),
+    /// String literal
     StringLit(SmolStr),
+    /// UID literal
     UIDLit(EntityUID),
-    ExtFuncCall { fn_name: Name, args: Vec<AttrValue> },
+    /// Extension function call
+    ExtFuncCall {
+        /// Name of the function being called
+        fn_name: Name,
+        /// Args to the function
+        args: Vec<AttrValue>,
+    },
+    /// Set literal
     Set(Vec<AttrValue>),
+    /// Record literal
     Record(HashMap<SmolStr, AttrValue>),
 }
 
@@ -673,8 +649,9 @@ impl From<AttrValue> for RestrictedExpr {
     }
 }
 
+/// Represents an ABAC policy, i.e., fully general
 #[derive(Debug, Clone)]
-pub struct ABACPolicy(pub super::GeneratedPolicy);
+pub struct ABACPolicy(pub GeneratedPolicy);
 
 impl std::fmt::Display for ABACPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -683,14 +660,14 @@ impl std::fmt::Display for ABACPolicy {
 }
 
 impl Deref for ABACPolicy {
-    type Target = super::GeneratedPolicy;
-    fn deref(&self) -> &super::GeneratedPolicy {
+    type Target = GeneratedPolicy;
+    fn deref(&self) -> &GeneratedPolicy {
         &self.0
     }
 }
 
 impl DerefMut for ABACPolicy {
-    fn deref_mut(&mut self) -> &mut super::GeneratedPolicy {
+    fn deref_mut(&mut self) -> &mut GeneratedPolicy {
         &mut self.0
     }
 }
@@ -701,8 +678,9 @@ impl From<ABACPolicy> for StaticPolicy {
     }
 }
 
+/// Represents an ABAC request, i.e., fully general
 #[derive(Debug, Clone)]
-pub struct ABACRequest(pub super::Request);
+pub struct ABACRequest(pub Request);
 
 impl std::fmt::Display for ABACRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -711,25 +689,20 @@ impl std::fmt::Display for ABACRequest {
 }
 
 impl Deref for ABACRequest {
-    type Target = super::Request;
-    fn deref(&self) -> &super::Request {
+    type Target = Request;
+    fn deref(&self) -> &Request {
         &self.0
     }
 }
 
 impl DerefMut for ABACRequest {
-    fn deref_mut(&mut self) -> &mut super::Request {
+    fn deref_mut(&mut self) -> &mut Request {
         &mut self.0
     }
 }
 
-impl From<ABACRequest> for Request {
-    fn from(abac: ABACRequest) -> Request {
-        Request::new(
-            abac.0.principal,
-            abac.0.action,
-            abac.0.resource,
-            ast::Context::from_pairs(abac.0.context),
-        )
+impl From<ABACRequest> for ast::Request {
+    fn from(abac: ABACRequest) -> ast::Request {
+        abac.0.into()
     }
 }

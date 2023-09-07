@@ -56,26 +56,26 @@ module difftest.main {
         ]);
   }
 
-  const idFromProdJson := stringDeserializer(s => Ok(Id(s)));
+  const idFromProdJson := stringDeserializer(s => Ok(Id(s)))
 
   const nameFromProdJson :=
     objDeserializer2Fields(
       "path", seqDeserializer(idFromProdJson),
       "id", idFromProdJson,
-      (tyPathIds, tyId) => Ok(Name(tyId, tyPathIds)));
+      (tyPathIds, tyId) => Ok(Name(tyId, tyPathIds)))
 
   const entitytypeFromProdJson :=
     sumDeserializer(
       map[
         "Concrete" := j => var n :- nameFromProdJson(j); Ok(EntityType(n)),
         "Unspecified" := _ => Ok(EntityType.UNSPECIFIED)
-      ]);
+      ])
 
   const entityUIDFromProdJson :=
     objDeserializer2Fields(
       "ty", entitytypeFromProdJson,
       "eid", getJsonString,
-      (et, eid) => Ok(EntityUID.EntityUID(et, eid)));
+      (et, eid) => Ok(EntityUID.EntityUID(et, eid)))
 
   const binaryOpFromProdJson :=
     enumDeserializer(
@@ -89,14 +89,39 @@ module difftest.main {
         "ContainsAny" := ContainsAny,
         "Add" := Add,
         "Sub" := Sub
-      ]);
+      ])
 
   const unaryOpFromProdJson :=
     enumDeserializer(
       map[
         "Not" := Not,
         "Neg" := Neg
-      ]);
+      ])
+
+  function maybeValueFromProdJson(j : Json) : FromProdResult<std.Option<Value>> {
+    maybeFromJson(j, valueFromProdJson)
+  }
+
+  function maybeFromJson<T>(j : Json, f : Json -> FromProdResult<T>) : FromProdResult<std.Option<T>> {
+    match j {
+      case JsonNull => Ok(None)
+      case _ =>
+        var v :- f(j);
+        Ok(Some(v))
+    }
+  }
+
+  function valueFromProdJson(j : Json) : FromProdResult<Value> {
+    var sourceExpr :- exprFromProdJson(j);
+    var euid := EntityUID.EntityUID(EntityType(Name.fromStr("test")), "test");
+    var request := Request(euid, euid, euid, map[]);
+    var store := EntityStore(map[]);
+    var eval := Evaluator(request, store);
+    match eval.interpret(sourceExpr) {
+      case Ok(v) => Ok(v)
+      case _ => Err({UnexpectedFromProdErr("expr did not evaluate to a value")})
+    }
+  }
 
   function exprFromProdJson(j: Json): FromProdResult<Expr> {
     var jkind :- getJsonField(j, "expr_kind");
@@ -201,9 +226,9 @@ module difftest.main {
             else
               Err({UnexpectedFromProdErr("Unicode value out of valid range")})),
         "Wildcard" := _ => Ok(Star)
-      ]);
+      ])
 
-  const patternFromProdJson := seqDeserializer(patElemFromProdJson);
+  const patternFromProdJson := seqDeserializer(patElemFromProdJson)
 
   // Deserializers for datatypes where the definitional version contains the
   // SlotId and the production one doesn't, so we need outside knowledge of the
@@ -217,7 +242,7 @@ module difftest.main {
           // The temporary variable is needed to work around a verification issue,
           // probably https://github.com/dafny-lang/dafny/issues/2083.
           "Slot" := (var d := _ => Ok(EntityUIDOrSlot.Slot(slotId)); d)
-        ]);
+        ])
 
     // Corresponds to production `PrincipalOrResourceConstraint`.
     const scopeTemplateFromProdJson :=
@@ -226,7 +251,7 @@ module difftest.main {
           "Any" := _ => Ok(ScopeTemplate.Any),
           "In" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.In(e))),
           "Eq" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e)))
-        ]);
+        ])
   }
 
   // Corresponds to production `ActionConstraint`.
@@ -236,7 +261,7 @@ module difftest.main {
         "Any" := _ => Ok(ActionScope(Scope.Any)),
         "In" := bodyDeserializer(seqDeserializer(entityUIDFromProdJson), es => Ok(ActionInAny(es))),
         "Eq" := bodyDeserializer(entityUIDFromProdJson, e => Ok(ActionScope(Scope.Eq(e))))
-      ]);
+      ])
 
   const policyTemplateFromProdJson :=
     objDeserializer5Fields(
@@ -253,7 +278,7 @@ module difftest.main {
         s => Ok(ResourceScopeTemplate(s))),
       "non_head_constraints", exprFromProdJson,
       (effect, pScope, aScope, rScope, cond) => Ok(PolicyTemplate(effect, pScope, aScope, rScope, cond))
-    );
+    )
 
   function attrsFromProdJsonObject(j: Json): FromProdResult<map<Attr, Value>> {
     var attr_keys :- getJsonObject(j);
@@ -267,7 +292,7 @@ module difftest.main {
   // evaluation). We currently don't support partial evaluation, so we just
   // translate the "concrete" variant to an EntityUID.
   const entityUIDEntryFromProdJson :=
-    sumDeserializer(map["Concrete" := entityUIDFromProdJson]);
+    sumDeserializer(map["Concrete" := entityUIDFromProdJson])
 
   function getEntityUIDEntryField(request: Json, f: string): FromProdResult<EntityUID> {
     deserializeField(request, f, entityUIDEntryFromProdJson)
@@ -282,7 +307,7 @@ module difftest.main {
         (attrs, ancestors) => Ok(EntityData(attrs, ancestors))
       ),
       (uid, edata) => Ok((uid, edata))
-    );
+    )
 
   function exprToValue(expr: Expr): FromProdResult<Value> {
     match evaluate(expr) {
@@ -305,7 +330,7 @@ module difftest.main {
       "template_id", stringDeserializer(s => Ok(PolicyTemplateID(s))),
       "values", mapDeserializer(entityUIDFromProdJson),
       (tid, slotEnv) => Ok(TemplateLinkedPolicy(tid, slotEnv))
-    );
+    )
 
   const policyStoreFromProdJson :=
     objDeserializer2Fields(
@@ -325,7 +350,27 @@ module difftest.main {
           then Ok(linkPolicyStore(policyStore))
           else Err({UnexpectedFromProdErr("Invalid policy template link(s)")})
         )
-    );
+    )
+
+  const evaluatorFromProdJson :=
+    objDeserializer4Fields(
+      "request", jrequest => (
+        var principal :- getEntityUIDEntryField(jrequest, "principal");
+        var action :- getEntityUIDEntryField(jrequest, "action");
+        var resource :- getEntityUIDEntryField(jrequest, "resource");
+        var context :- deserializeField(jrequest, "context", buildContext);
+        Ok(Request(principal, action, resource, context))
+      ),
+
+      "entities", jentities => (
+          var entities :- deserializeField(jentities, "entities", seqDeserializer(entityEntryFromProdJson));
+          var entitiesMap :- mapFromEntriesProd(entities);
+          Ok(EntityStore(entitiesMap))
+      ),
+      "expr", jexpr => exprFromProdJson(jexpr),
+      "expected", jv => maybeValueFromProdJson(jv),
+      (request, entities, expr, maybe_value) => Ok((Evaluator(request, entities), expr, maybe_value))
+    )
 
   const authorizerFromProdJson :=
     objDeserializer3Fields(
@@ -350,11 +395,56 @@ module difftest.main {
       "policies", jpolicySet => policyStoreFromProdJson(jpolicySet),
       (request, entityStore, policyStore) =>
         Ok(Authorizer(request, Store(entityStore, policyStore)))
-    );
+    )
 
   function isAuthorizedJson1(request: Json): FromProdResult<Response> {
     var authorizer :- authorizerFromProdJson(request);
     Ok(authorizer.isAuthorized())
+  }
+
+  function evalJson1(request : Json) : FromProdResult<bool> {
+    var (eval, expr, maybe_v) :- evaluatorFromProdJson(request);
+    var r := eval.interpret(expr);
+    match (r, maybe_v) {
+      case (Ok(def_answer), Some(prod_answer)) =>
+        if def_answer == prod_answer then
+          Ok(true)
+        else
+          var _ := printMismatch(expr, def_answer, prod_answer);
+          Ok(false)
+      case (Err(_), None) => Ok(true)
+      case (Err(_), Some(v)) =>
+        var _ := printFromFunction("Evaluation errored but prod engine got result: ");
+        var _ := printFromFunction(v);
+        Ok(false)
+      case (Ok(v1), None) =>
+        var _ := printFromFunction("Evaluation return result but prod engine errored: ");
+        var _ := printFromFunction(v1);
+        Ok(false)
+    }
+  }
+
+  function printMismatch(expr : Expr, def_answer : Value, prod_answer : Value) : () {
+    var _ := printFromFunction("EVALUATION MISMATCH\n");
+    var _ := printFromFunction("Expression: ");
+    var _ := printFromFunction(expr);
+    var _ := printFromFunction("Evaluated to: ");
+    var _ := printFromFunction(def_answer);
+    var _ := printFromFunction("Production engine got: ");
+    var _ := printFromFunction(prod_answer);
+    ()
+  }
+
+  function evalResponseToProdJson(r : FromProdResult<bool>) : Json {
+    JsonObject(match r {
+      case Ok(b) => map["matches" := JsonBool(b)]
+      case Err(e) => map["error" := JsonString("JSON Decoding error encountered")]
+    })
+  }
+
+  method evalJson(request : Json) returns (response : Json) {
+    var answer := evalJson1(request);
+    response := evalResponseToProdJson(answer);
   }
 
   // Main differential-testing entry point: receives Json and responds in Json
@@ -394,7 +484,7 @@ module difftest.main {
           case "Record" =>
             var attrs :- getJsonField(body1, "attrs");
             var attrs1 :- deserializeField(attrs, "attrs", attrTypesFromProdJsonObjectRec);
-            Ok(Type.Record(attrs1))
+            Ok(Type.Record(RecordType(attrs1, ClosedAttributes)))
           case "Entity" =>
             var lub :- deserializeField(body1, "lub_elements", setDeserializer(nameFromProdJson));
             Ok(Type.Entity(EntityLUB(set e <- lub :: EntityType(e))))
@@ -439,7 +529,7 @@ module difftest.main {
       map[
         "Concrete" := j => var n :- nameFromProdJson(j); Ok(Some(EntityType(n))),
         "Unspecified" := _ => Ok(None)
-      ]);
+      ])
 
   function applySpecFromProdJson(j: Json): FromProdResult<TypecheckerApplySpec> {
     var pas :- deserializeField(j, "principalApplySpec", setDeserializer(entitytypeFromProdJsonOption));
@@ -475,7 +565,7 @@ module difftest.main {
       "mode", jmode =>
         deserializeEnum(jmode, map[ "Strict" := Strict, "Permissive" := Permissive ]),
       (policyStore, schema, mode) => Ok((policyStore,Validator(schema,mode)))
-    );
+    )
 
   method validateJson1(request: Json) returns (res: FromProdResult<seq<ValidationError>>) {
     var policyStoreAndValidator :- validatorFromProdJson(request);
