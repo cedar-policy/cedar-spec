@@ -94,7 +94,7 @@ impl Hierarchy {
         if u.ratio::<u8>(9, 10)? {
             let uid = u
                 .choose(&self.uids)
-                .map_err(|e| while_doing("getting an arbitrary uid", e))?;
+                .map_err(|e| while_doing("getting an arbitrary uid".into(), e))?;
             Ok(uid.clone())
         } else {
             // Note: may generate an unspecified entity
@@ -126,7 +126,7 @@ impl Hierarchy {
                 self.uids_by_type
                     .get(typename)
                     .ok_or(Error::EmptyChoose {
-                        doing_what: "getting an existing uid with given type",
+                        doing_what: format!("getting an existing uid with type {typename}"),
                     })?
                     .as_ref(),
             )?;
@@ -225,6 +225,31 @@ impl TryFrom<Hierarchy> for Entities {
     fn try_from(h: Hierarchy) -> std::result::Result<Entities, String> {
         Entities::from_entities(h.into_entities().map(Into::into), TCComputation::ComputeNow)
             .map_err(|e| e.to_string())
+    }
+}
+
+impl From<Entities> for Hierarchy {
+    fn from(entities: Entities) -> Hierarchy {
+        let mut uids = Vec::new();
+        let mut uids_by_type: HashMap<ast::Name, HashSet<ast::EntityUID>> = HashMap::new();
+        for e in entities.iter() {
+            let etype = match e.uid().entity_type() {
+                ast::EntityType::Concrete(name) => name.clone(),
+                ast::EntityType::Unspecified => {
+                    panic!("didn't expect unspecified entity in Entities")
+                }
+            };
+            uids_by_type.entry(etype).or_default().insert(e.uid());
+            uids.push(e.uid());
+        }
+        Hierarchy {
+            uids,
+            uids_by_type: uids_by_type
+                .into_iter()
+                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter())))
+                .collect(),
+            entities: entities.into_iter().map(|e| (e.uid(), e)).collect(),
+        }
     }
 }
 

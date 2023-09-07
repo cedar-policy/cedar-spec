@@ -816,7 +816,7 @@ impl<'a> ExprGenerator<'a> {
                             match self.schema.try_into_schematype(target_type, u)? {
                                 Some(schematy) => schematy,
                                 None => return Err(Error::IncorrectFormat {
-                                    doing_what: "this particular complicated type not supported in this position",
+                                    doing_what: format!("target_type {target_type:?} not supported in this position"),
                                 })
                             };
                             Ok(ast::Expr::get_attr(
@@ -1515,15 +1515,15 @@ impl<'a> ExprGenerator<'a> {
                 },
                 // no existing extension functions return set type
                 SchemaTypeVariant::Set { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning set type",
+                    doing_what: "getting an extension function returning set type".into(),
                 }),
                 // no existing extension functions return record type
                 SchemaTypeVariant::Record { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning record type",
+                    doing_what: "getting an extension function returning record type".into(),
                 }),
                 // no existing extension functions return entity type
                 SchemaTypeVariant::Entity { .. } => Err(Error::EmptyChoose {
-                    doing_what: "getting an extension function returning entity type",
+                    doing_what: "getting an extension function returning entity type".into(),
                 }),
             },
         }
@@ -2075,7 +2075,7 @@ impl<'a> ExprGenerator<'a> {
     pub fn arbitrary_principal_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
         self.arbitrary_uid_with_type(
             u.choose(&self.schema.principal_types)
-                .map_err(|e| while_doing("choosing a principal type", e))?,
+                .map_err(|e| while_doing("choosing a principal type".into(), e))?,
             u,
         )
     }
@@ -2095,7 +2095,7 @@ impl<'a> ExprGenerator<'a> {
     pub fn arbitrary_action_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
         let action = u
             .choose(&self.schema.actions_eids)
-            .map_err(|e| while_doing("choosing an action", e))?;
+            .map_err(|e| while_doing("choosing an action".into(), e))?;
         Ok(uid_for_action_name(
             self.schema.namespace.clone(),
             action.clone(),
@@ -2110,7 +2110,7 @@ impl<'a> ExprGenerator<'a> {
     pub fn arbitrary_resource_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
         self.arbitrary_uid_with_type(
             u.choose(&self.schema.resource_types)
-                .map_err(|e| while_doing("choosing a resource type", e))?,
+                .map_err(|e| while_doing("choosing a resource type".into(), e))?,
             u,
         )
     }

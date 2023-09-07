@@ -142,7 +142,7 @@ impl ConstantPool {
     pub fn arbitrary_int_constant(&self, u: &mut Unstructured<'_>) -> Result<i64> {
         u.choose(&self.int_constants).copied().or_else(|_| {
             u.arbitrary()
-                .map_err(|e| while_doing("getting an arbitrary int constant", e))
+                .map_err(|e| while_doing("getting an arbitrary int constant".into(), e))
         })
     }
 
@@ -166,7 +166,7 @@ impl ConstantPool {
             .collect();
         u.choose(&short_consts)
             .map(|s| (*s).clone())
-            .map_err(|e| while_doing("Getting an arbitrary string constant", e))
+            .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
             .or_else(|_| arbitrary_string(u, Some(bound)))
     }
 
@@ -176,7 +176,7 @@ impl ConstantPool {
         u.choose(&self.string_constants).cloned().or_else(|_| {
             u.arbitrary::<String>()
                 .map(|s| s.into())
-                .map_err(|e| while_doing("getting an arbitrary string constant", e))
+                .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
         })
     }
 
@@ -443,7 +443,7 @@ impl AvailableExtensionFunctions {
         u: &mut Unstructured<'_>,
     ) -> Result<&'s AvailableExtensionFunction> {
         u.choose(&self.constructors)
-            .map_err(|e| while_doing("getting arbitrary extfunc constructor", e))
+            .map_err(|e| while_doing("getting arbitrary extfunc constructor".into(), e))
     }
     /// size hint for `arbitrary_constructor()`
     pub fn arbitrary_constructor_size_hint(_depth: usize) -> (usize, Option<usize>) {
@@ -456,7 +456,7 @@ impl AvailableExtensionFunctions {
         u: &mut Unstructured<'_>,
     ) -> Result<&'s AvailableExtensionFunction> {
         u.choose(&self.all)
-            .map_err(|e| while_doing("getting arbitrary extfunc", e))
+            .map_err(|e| while_doing("getting arbitrary extfunc".into(), e))
     }
     /// size hint for `arbitrary_all()`
     pub fn arbitrary_all_size_hint(_depth: usize) -> (usize, Option<usize>) {
@@ -473,10 +473,14 @@ impl AvailableExtensionFunctions {
             self.constructors_by_type
                 .get(ty)
                 .ok_or(Error::EmptyChoose {
-                    doing_what: "getting extfunc constructors for given type",
+                    doing_what: format!("getting extfunc constructors for type {ty:?}"),
                 })?;
-        u.choose(choices)
-            .map_err(|e| while_doing("getting arbitrary extfunc constructor with given type", e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc constructor with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_constructor_for_type()
@@ -492,10 +496,14 @@ impl AvailableExtensionFunctions {
     ) -> Result<&'a AvailableExtensionFunction> {
         let choices: &'a [AvailableExtensionFunction] =
             self.all_by_type.get(ty).ok_or(Error::EmptyChoose {
-                doing_what: "getting arbitrary extfunc with given return type",
+                doing_what: format!("getting arbitrary extfunc with return type {ty:?}"),
             })?;
-        u.choose(choices)
-            .map_err(|e| while_doing("getting arbitrary extfunc with given type", e))
+        u.choose(choices).map_err(|e| {
+            while_doing(
+                format!("getting arbitrary extfunc with return type {ty:?}"),
+                e,
+            )
+        })
     }
 
     /// size hint for arbitrary_for_type()
