@@ -102,6 +102,10 @@ module validation.types {
     predicate isOpen() {
       attrsTag.OpenAttributes?
     }
+
+    predicate isStrictType() {
+      forall k | k in attrs.Keys :: attrs[k].ty.isStrictType()
+    }
   }
 
   // Each extension function is associated with argument types, a return type,
@@ -117,6 +121,17 @@ module validation.types {
     Record(RecordType) |
     Entity(lub: EntityLUB) |
     Extension(Name)
+  {
+    predicate isStrictType() {
+      match this {
+        case Never => false
+        case String | Int | Bool(_) | Extension(_) => true
+        case Set(t) => t.isStrictType()
+        case Record(rt) => rt.isStrictType()
+        case Entity(lub) => lub.EntityLUB? && |lub.tys| == 1
+      }
+    }
+  }
 
   datatype SetStringType = SetType(Type) | StringType
   datatype RecordEntityType = Record(RecordType) | Entity(EntityLUB)

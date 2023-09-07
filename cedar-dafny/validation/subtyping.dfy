@@ -328,4 +328,35 @@ module validation.subtyping {
       case (Extension(n1),Extension(n2)) =>
     }
   }
+
+  lemma StrictTypeLub(t1: Type, t2: Type)
+    requires t1.isStrictType() || t1 == Never
+    requires t2.isStrictType() || t2 == Never
+    requires t1 != Never || t2 != Never
+    requires LubDefined(t1, t2, ValidationMode.Strict)
+    ensures lub(t1, t2, ValidationMode.Strict).isStrictType()
+  {
+    match (t1,t2) {
+      case (Never,_) =>
+      case (_,Never) =>
+      case (Int,Int) =>
+      case (String,String) =>
+      case (Bool(b1),Bool(b2)) =>
+      case (Entity(e1),Entity(e2)) => assert e1 == e1.union(e2);
+      case (Set(t1'),Set(t2')) => StrictTypeLub(t1', t2');
+      case (Record(rt1),Record(rt2)) => {
+        var strict_attrs :=
+          map k | k in rt1.attrs.Keys && k in rt2.attrs.Keys && lubOpt(rt1.attrs[k].ty, rt2.attrs[k].ty, ValidationMode.Strict).Ok? ::
+            lubAttrType(rt1.attrs[k], rt2.attrs[k], ValidationMode.Strict);
+        assert strict_attrs == lubRecordType(rt1, rt2, ValidationMode.Strict).value.attrs;
+
+        forall k | k in strict_attrs.Keys
+          ensures strict_attrs[k].ty.isStrictType()
+        {
+          StrictTypeLub(rt1.attrs[k].ty, rt2.attrs[k].ty);
+        }
+      }
+      case (Extension(n1),Extension(n2)) =>
+    }
+  }
 }
