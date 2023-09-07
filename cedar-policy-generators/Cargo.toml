@@ -10,4 +10,5 @@ cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "2.*", feat
 cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "2.*", features = ["arbitrary"] }
 highway = "0.8.1"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
 smol_str = "0.2"

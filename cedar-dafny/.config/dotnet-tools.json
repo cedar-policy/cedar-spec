@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "dafny": {
-      "version": "4.0.0.50302",
+      "version": "4.2.0",
       "commands": [
         "dafny"
       ]
