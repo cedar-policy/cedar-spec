@@ -477,9 +477,13 @@ module validation.typechecker {
       then
         var ety1 :- extractEntityType(elub1);
         var ety2 :- extractEntityType(elub2.value);
+        // If LHS cannot be a member of RHS, but we did not assign this
+        // expression type `False`, then this is a strict type checking error.
+        // Note that is it should be sound to just return type `False`, but I'm
+        // putting off that code and proof update for later.
         if ets.possibleDescendantOf(ety1, ety2)
         then Ok(outTy)
-        else Err(StrictIn)
+        else Err(HierarchyNotRespected)
       else Ok(outTy)
     }
 

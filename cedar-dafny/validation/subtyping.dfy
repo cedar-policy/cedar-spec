@@ -87,10 +87,13 @@ module validation.subtyping {
     AttrType(lubOpt(a1.ty, a2.ty, m).value, a1.isRequired && a2.isRequired)
   }
 
-  // This function produces a valid lub for any two maps, including ones that
+  // In permissive mode, this function produces a valid lub for any two maps, including ones that
   // are inconsistent. For example: the upper bound of { foo: Int } and
   // { foo: String } is the empty map type {}. This decision was made for the
   // sake of consistency with the Rust production implementation.
+  // In strict mode, a lub does not exist for the case described above. A lub
+  // will also not exist if any field exists in one record type without existing
+  // in the other.
   function lubRecordType(rt1: RecordType, rt2: RecordType, m: ValidationMode): Result<RecordType>
     decreases Type.Record(rt1) , Type.Record(rt2) , 0
   {

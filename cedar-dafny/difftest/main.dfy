@@ -585,7 +585,7 @@ module difftest.main {
       case EmptySetForbidden => "EmptySetForbidden"
       case NonLitExtConstructor => "NonLitExtConstructor"
       case NonSingletonLub => "NonSingletonLub"
-      case StrictIn => "StrictIn"
+      case HierarchyNotRespected => "HierarchyNotRespected"
     }
   }
 

@@ -66,7 +66,13 @@ module validation.types {
     function union(other: EntityLUB): EntityLUB {
       match (this, other) {
         case (EntityLUB(tys1),EntityLUB(tys2)) =>
-          // if either LUB contains an Action, and they are not the same action, then return AnyEntity
+          // Check if either LUB contains an Action entity type. We do not
+          // permit any LUBs that contain different action entity types, so
+          // their union is `AnyEntity` if they are not the same action entity
+          // type. This also gives `AnyEntity` if they are the same action
+          // entity type, but some other entity types in the LUB differ. We
+          // never construct non-singleton action EntityLUBs, so this cannot
+          // occur.
           if (exists ty1 <- tys1 :: isAction(ty1) || exists ty2 <- tys2 :: isAction(ty2)) && tys1 != tys2
           then AnyEntity
           else EntityLUB(tys1 + tys2)
@@ -128,7 +134,7 @@ module validation.types {
     EmptySetForbidden |
     NonLitExtConstructor |
     NonSingletonLub |
-    StrictIn
+    HierarchyNotRespected
 
   // --------- Local Names for Useful Types --------- //
 
