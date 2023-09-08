@@ -640,7 +640,7 @@ impl Schema {
         };
         let mut principal_types = HashSet::new();
         let mut resource_types = HashSet::new();
-        // optionally return a list of entity types and add them to `tys` in the same time
+        // optionally return a list of entity types and add them to `tys` at the same time
         let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
             Result::Ok(if u.ratio::<u8>(1, 4)? {
                 // The action applies to an unspecified
