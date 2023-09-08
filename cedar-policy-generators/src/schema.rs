@@ -29,7 +29,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Effect, PolicyID};
+use cedar_policy_core::ast::{self, Effect, Name, PolicyID};
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
     TypeOfAttribute, ValidatorSchema,
@@ -635,74 +635,84 @@ impl Schema {
         };
         let mut principal_types = HashSet::new();
         let mut resource_types = HashSet::new();
+        // optionally return a list of entity types and add them to `tys` at the same time
+        let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
+            Result::Ok(if u.ratio::<u8>(1, 4)? {
+                // The action applies to an unspecified
+                // resource and no other entity types.
+                None
+            } else {
+                // for each entity type, flip a coin to see
+                // whether to include it as a possible
+                // principal type for this action
+                Some(
+                    entity_types
+                        .iter()
+                        .filter_map(|(name, _)| match u.ratio::<u8>(1, 2) {
+                            Ok(true) => {
+                                tys.insert(build_qualified_entity_type_name(
+                                    namespace.clone(),
+                                    name.parse().unwrap_or_else(|e| {
+                                        panic!("invalid entity type {name:?}: {e:?}")
+                                    }),
+                                ));
+                                Some(name.clone())
+                            }
+                            Ok(false) => None,
+                            Err(_) => None,
+                        })
+                        .collect::<Vec<SmolStr>>(),
+                )
+            })
+        };
         let mut actions: Vec<(SmolStr, ActionType)> = action_names
             .iter()
             .map(|name| {
                 Ok((
                     name.clone(),
                     ActionType {
-                        applies_to: if u.ratio::<u8>(1, 8)? {
-                            // The action applies to an unspecified principal
-                            // and resource, and no other entity types.
-                            None
-                        } else {
-                            Some(ApplySpec {
-                                resource_types: if u.ratio::<u8>(1, 4)? {
-                                    // The action applies to an unspecified
-                                    // principal an no other entity types.
-                                    None
-                                } else {
-                                    // for each entity type, flip a coin to see
-                                    // whether to include it as a possible
-                                    // resource type for this action
-                                    Some(
-                                        entity_types
-                                            .iter()
-                                            .filter_map(|(name, _)| match u.ratio::<u8>(1, 2) {
-                                                Ok(true) => {
-                                                    resource_types.insert(
-                                                        build_qualified_entity_type_name(
-                                                            namespace.clone(),
-                                                            name.parse().unwrap_or_else(|e| panic!("invalid entity type {name:?}: {e:?}")),
-                                                        ),
-                                                    );
-                                                    Some(name.clone())
-                                                }
-                                                Ok(false) => None,
-                                                Err(_) => None,
-                                            })
-                                            .collect(),
-                                    )
-                                },
-                                principal_types: if u.ratio::<u8>(1, 4)? {
-                                    // The action applies to an unspecified
-                                    // resource and no other entity types.
-                                    None
-                                } else {
-                                    // for each entity type, flip a coin to see
-                                    // whether to include it as a possible
-                                    // principal type for this action
-                                    Some(
-                                        entity_types
-                                            .iter()
-                                            .filter_map(|(name, _)| match u.ratio::<u8>(1, 2) {
-                                                Ok(true) => {
-                                                    principal_types.insert(
-                                                        build_qualified_entity_type_name(
-                                                            namespace.clone(),
-                                                            name.parse().unwrap_or_else(|e| panic!("invalid entity type name {name:?}: {e:?}")),
-                                                        ),
-                                                    );
-                                                    Some(name.clone())
-                                                }
-                                                Ok(false) => None,
-                                                Err(_) => None,
-                                            })
-                                            .collect(),
-                                    )
-                                },
-                                context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                            })
+                        applies_to: {
+                            let apply_spec = if u.ratio::<u8>(1, 8)? {
+                                // The action applies to an unspecified principal
+                                // and resource, and no other entity types.
+                                None
+                            } else {
+                                Some(ApplySpec {
+                                    resource_types: pick_entity_types(&mut resource_types, u)?,
+                                    principal_types: pick_entity_types(&mut principal_types, u)?,
+                                    context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                                })
+                            };
+                            if settings.enable_unspecified_apply_spec {
+                                apply_spec
+                            } else {
+                                match apply_spec {
+                                    Some(ApplySpec {
+                                        resource_types,
+                                        principal_types,
+                                        context,
+                                    }) if resource_types.is_some() || principal_types.is_some() => {
+                                        Some(ApplySpec {
+                                            resource_types: if resource_types.is_none() {
+                                                Some(vec![])
+                                            } else {
+                                                resource_types
+                                            },
+                                            principal_types: if principal_types.is_none() {
+                                                Some(vec![])
+                                            } else {
+                                                principal_types
+                                            },
+                                            context,
+                                        })
+                                    }
+                                    // `apply_spec` either is None or has both resource and principal types to be None
+                                    //  we fail early for these cases
+                                    _ => {
+                                        return Err(Error::NoValidPrincipalOrResourceTypes);
+                                    }
+                                }
+                            }
                         },
                         member_of: if settings.enable_action_groups_and_attrs {
                             Some(vec![])
@@ -1065,20 +1075,27 @@ impl Schema {
         u: &mut Unstructured<'_>,
         max_list_length: Option<u32>,
     ) -> Result<ActionConstraint> {
-        // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
-        gen!(u,
+        if !self.settings.enable_action_in_constraints {
+            // 25% of the time, NoConstraint; 75%, Eq
+            gen!(u,
         1 => Ok(ActionConstraint::NoConstraint),
-        3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)),
-        3 => Ok(ActionConstraint::In(self.exprgenerator(None).arbitrary_action_uid(u)?)),
-        3 => {
-            let mut uids = vec![];
-            let exprgenerator = self.exprgenerator(None);
-            u.arbitrary_loop(Some(0), max_list_length, |u| {
-                uids.push(exprgenerator.arbitrary_action_uid(u)?);
-                Ok(std::ops::ControlFlow::Continue(()))
-            })?;
-            Ok(ActionConstraint::InList(uids))
-        })
+        3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)))
+        } else {
+            // 10% of the time, NoConstraint; 30%, Eq; 30%, In; 30%, InList
+            gen!(u,
+            1 => Ok(ActionConstraint::NoConstraint),
+            3 => Ok(ActionConstraint::Eq(self.exprgenerator(None).arbitrary_action_uid(u)?)),
+            3 => Ok(ActionConstraint::In(self.exprgenerator(None).arbitrary_action_uid(u)?)),
+            3 => {
+                let mut uids = vec![];
+                let exprgenerator = self.exprgenerator(None);
+                u.arbitrary_loop(Some(0), max_list_length, |u| {
+                    uids.push(exprgenerator.arbitrary_action_uid(u)?);
+                    Ok(std::ops::ControlFlow::Continue(()))
+                })?;
+                Ok(ActionConstraint::InList(uids))
+            })
+        }
     }
     fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
@@ -1253,6 +1270,8 @@ mod tests {
         enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
         enable_unknowns: false,
+        enable_unspecified_apply_spec: true,
+        enable_action_in_constraints: true,
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"
