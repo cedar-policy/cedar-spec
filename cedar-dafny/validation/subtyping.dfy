@@ -329,6 +329,10 @@ module validation.subtyping {
     }
   }
 
+  // Proof that the LUB of two strict types is also strict. Additionally proves
+  // that the LUB is still strict if one of `t1` or `t2` is `Never` (not a
+  // strict type) which is required for proving that strict typechecking infers
+  // a strict type for sets.
   lemma StrictTypeLub(t1: Type, t2: Type)
     requires t1.isStrictType() || t1 == Never
     requires t2.isStrictType() || t2 == Never

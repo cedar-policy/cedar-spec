@@ -20,6 +20,10 @@ include "base.dfy"
 include "model.dfy"
 include "soundness.dfy"
 
+// A quick proof checking that strict validation is reasonable.  Given a
+// strictly-type environment (see predicate `strictEnvironment`), the strict
+// typechecker should always infer a strict type (see `Type::isStrict()`) for
+// any expression assuming the expression is well typed.
 module validation.thm.strict_inf_strict {
   import opened typechecker
   import opened types
@@ -38,9 +42,9 @@ module validation.thm.strict_inf_strict {
   ) {
 
     predicate strictEnvironment() {
-      reqty.context.isStrictType() &&
       reqty.principal.Some? &&
       reqty.resource.Some? &&
+      reqty.context.isStrictType() &&
       forall k | k in ets.types.Keys ::  ets.types[k].isStrictType()
     }
 
