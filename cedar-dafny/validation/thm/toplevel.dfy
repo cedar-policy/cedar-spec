@@ -19,17 +19,20 @@ include "../all.dfy"
 include "base.dfy"
 include "model.dfy"
 include "soundness.dfy"
+include "strict_soundness.dfy"
 
 // This module contains the high-level statement of type soundness.
 module validation.thm.toplevel {
-  import opened strict
   import opened typechecker
   import opened types
+  import opened subtyping
   import opened base
   import opened model
   import opened soundness
+  import opened strict_soundness
   import opened def.core
   import opened def.engine
+  import opened ext
 
   datatype Schema = Schema(
     reqty: RequestType,
@@ -46,7 +49,7 @@ module validation.thm.toplevel {
   function permissiveTypecheck(pid: PolicyID, policies: PolicyStore, schema: Schema): types.Result<Type>
     requires pid in policies.policies.Keys
   {
-    var typechecker := Typechecker(schema.ets, schema.acts, schema.reqty);
+    var typechecker := Typechecker(schema.ets, schema.acts, schema.reqty, ValidationMode.Permissive);
     typechecker.typecheck(policies.policies[pid].toExpr(), Type.Bool(AnyBool))
   }
 
@@ -77,10 +80,10 @@ module validation.thm.toplevel {
     }
   }
 
-  function strictTypecheck(pid: PolicyID, policies: PolicyStore, schema: Schema): strict.Result<Type>
+  function strictTypecheck(pid: PolicyID, policies: PolicyStore, schema: Schema): types.Result<Type>
     requires pid in policies.policies.Keys
   {
-    var typechecker := StrictTypechecker(schema.ets, schema.acts, schema.reqty);
+    var typechecker := Typechecker(schema.ets, schema.acts, schema.reqty, ValidationMode.Strict);
     typechecker.typecheck(policies.policies[pid].toExpr(), Type.Bool(AnyBool))
   }
 
@@ -102,7 +105,10 @@ module validation.thm.toplevel {
     ensures res.Ok? ==> InstanceOfType(res.value, Type.Bool(AnyBool))
     ensures res.Err? ==> res.error.EntityDoesNotExist? || res.error.ExtensionError?
   {
-    assert permissiveTypecheck(pid, store.policies, schema).Ok?;
+    assert permissiveTypecheck(pid, store.policies, schema).Ok? by {
+      var expr := store.policies.policies[pid].toExpr();
+      StrictProof(schema.reqty, schema.ets, schema.acts).StrictTypecheckingIsStrict(expr, Effects.empty());
+    }
     PermissiveTypecheckingIsSound(pid, request, store, schema, res);
   }
 }
