@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-use crate::collections::{HashMap, HashSet};
+use crate::collections::HashMap;
 use crate::hierarchy::Hierarchy;
 use crate::policy::GeneratedPolicy;
 use crate::request::Request;
-use crate::size_hint_utils::size_hint_for_ratio;
-use arbitrary::{self, Arbitrary, Unstructured};
-use ast::{Entity, EntityUID, Expr, Name, PolicyID, StaticPolicy};
+use arbitrary::{self, Unstructured};
+use ast::{Entity, Expr, PolicyID, StaticPolicy};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
 use std::ops::{Deref, DerefMut};
@@ -86,49 +85,6 @@ impl TryFrom<RBACHierarchy> for Entities {
     }
 }
 
-impl<'a> Arbitrary<'a> for RBACHierarchy {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        // first generate the pool of names. we generate a set (so there are no
-        // duplicates), but then convert it to a Vec (because we want them
-        // ordered, even though we want the order to be arbitrary)
-        let uids: HashSet<EntityUID> = u.arbitrary()?;
-        let uids: Vec<EntityUID> = uids
-            .into_iter()
-            // drop generated Unspecified entities
-            .filter(|uid| matches!((*uid).entity_type(), ast::EntityType::Concrete(_)))
-            .collect();
-        let mut uids_by_type: HashMap<Name, Vec<EntityUID>> = HashMap::new();
-        for (uid, ty) in uids
-            .into_iter()
-            .map(|uid| (uid.clone(), uid.components().0))
-        {
-            // all entities in `uids` will be `Concrete`
-            if let ast::EntityType::Concrete(name) = ty {
-                uids_by_type.entry(name).or_default().push(uid)
-            }
-        }
-        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
-        // now generate the RBACEntity objects, given these uids
-        let entities = hierarchy_no_attrs
-            .entities()
-            .map(|e| e.uid())
-            .map(|uid| RBACEntity::arbitrary_for_pool(uid, hierarchy_no_attrs.uids(), u))
-            .collect::<arbitrary::Result<Vec<RBACEntity>>>()?
-            .into_iter()
-            .map(|entity| (entity.uid(), entity.into()))
-            .collect();
-        Ok(Self(hierarchy_no_attrs.replace_entities(entities)))
-    }
-
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and(
-            <HashSet<EntityUID> as Arbitrary>::size_hint(depth),
-            // actually we make many calls to RBACEntity::arbitrary_for_pool(), but not sure how to say that
-            RBACEntity::arbitrary_size_hint(depth),
-        )
-    }
-}
-
 /// Represents an RBAC entity, ie, without attributes
 #[derive(Debug, Clone)]
 pub struct RBACEntity(pub Entity);
@@ -180,46 +136,6 @@ impl std::fmt::Display for RBACEntity {
 impl From<RBACEntity> for Entity {
     fn from(rbac: RBACEntity) -> Entity {
         rbac.0
-    }
-}
-
-impl RBACEntity {
-    /// Generate an arbitrary RBACEntity with the name `uid` and parents taken
-    /// from the `pool` (which should contain `uid` somewhere)
-    fn arbitrary_for_pool(
-        uid: EntityUID,
-        pool: &[EntityUID],
-        u: &mut Unstructured<'_>,
-    ) -> arbitrary::Result<Self> {
-        let mut parents = HashSet::new();
-        // for each uid in the pool, flip a weighted coin to decide whether
-        // to add it as a parent. We only consider uids appearing after the
-        // given one in the pool; this ensures we get a DAG (no cycles)
-        // without loss of generality
-        let this_idx = pool
-            .iter()
-            .position(|x| x == &uid)
-            .expect("uid should be in the pool");
-        for pool_uid in &pool[(this_idx + 1)..] {
-            if u.ratio(1, 3)? {
-                parents.insert(pool_uid.clone());
-            }
-        }
-        // assert there is no self-edge
-        assert!(!parents.contains(&uid));
-        Ok(Self(Entity::new(
-            uid,
-            HashMap::new().into(),
-            parents.into(),
-        )))
-    }
-
-    /// size hint for arbitrary_for_pool()
-    fn arbitrary_size_hint(_depth: usize) -> (usize, Option<usize>) {
-        // there's 0 or more of these calls, but we'll hint it as minimum one
-        // with no maximum
-        let (min, _max) = size_hint_for_ratio(1, 3);
-        (min, None)
     }
 }
 
