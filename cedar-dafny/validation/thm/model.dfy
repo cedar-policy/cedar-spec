@@ -229,20 +229,20 @@ module validation.thm.model {
           }
         }
       case (Record(rt1),Record(rt2),Record(rv)) =>
-        assert forall k | k in rt2.attrs && k in rv :: InstanceOfType(rv[k],rt2.attrs[k].ty) by {
-          forall k: Attr | k in rt2.attrs && k in rv
-            ensures InstanceOfType(rv[k],rt2.attrs[k].ty)
+        assert forall k | k in rt2 && k in rv :: InstanceOfType(rv[k],rt2[k].ty) by {
+          forall k: Attr | k in rt2 && k in rv
+            ensures InstanceOfType(rv[k],rt2[k].ty)
           {
-            assert InstanceOfType(rv[k],rt1.attrs[k].ty);
-            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k]);
-            SubtyCompatMatchPointwise(rt1.attrs[k].ty,rt2.attrs[k].ty,rv[k]);
+            assert InstanceOfType(rv[k],rt1[k].ty);
+            assert subtyAttrType(rt1[k],rt2[k]);
+            SubtyCompatMatchPointwise(rt1[k].ty,rt2[k].ty,rv[k]);
           }
         }
-        assert forall k | k in rt2.attrs && rt2.attrs[k].isRequired :: k in rv by {
-          forall k | k in rt2.attrs && rt2.attrs[k].isRequired
+        assert forall k | k in rt2 && rt2[k].isRequired :: k in rv by {
+          forall k | k in rt2 && rt2[k].isRequired
             ensures k in rv
           {
-            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k]);
+            assert subtyAttrType(rt1[k],rt2[k]);
           }
         }
       case (Entity(e1),Entity(e2),_) =>
@@ -901,8 +901,7 @@ module validation.thm.model {
     // every entry has some type
     requires forall ae :: ae in es ==> ExistsSafeType(r,s,ae.1)
     // and the last instance of every required key is safe at the correct type.
-    requires forall k :: k in rt.attrs ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty)
-    requires !rt.isOpen() ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
+    requires forall k :: k in rt ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty)
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
     var E := Evaluator(r,s);
@@ -911,11 +910,11 @@ module validation.thm.model {
       case Ok(rv) =>
         assert E.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
         RecordSemanticsOk(es, E);
-        forall k | k in rt.attrs
-          ensures InstanceOfType(rv[k],rt.attrs[k].ty)
+        forall k | k in rt
+          ensures InstanceOfType(rv[k],rt[k].ty)
         {
-          assert KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty);
-          IsSafeSemanticsOkRev(r, s, LastOfKey(k,es),rt.attrs[k].ty);
+          assert KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty);
+          IsSafeSemanticsOkRev(r, s, LastOfKey(k,es),rt[k].ty);
         }
         assert InstanceOfType(Value.Record(rv),Type.Record(rt));
         IsSafeSemanticsOk(r, s, Expr.Record(es), Type.Record(rt));
@@ -932,7 +931,7 @@ module validation.thm.model {
   lemma ObjectProjSafeRequired(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
     requires t'.isRequired
-    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
+    requires SemanticSubty(t,Type.Record(map[l := t']))
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
     reveal IsSafe();
@@ -940,7 +939,7 @@ module validation.thm.model {
 
   lemma ObjectProjSafeGetAttrSafe(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
-    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
+    requires SemanticSubty(t,Type.Record(map[l := t']))
     requires GetAttrSafe(r,s,e,l)
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
@@ -957,7 +956,7 @@ module validation.thm.model {
   }
 
   lemma RecordHasRequiredTrueSafe(r: Request, s: EntityStore, e: Expr, l: Attr, t: AttrType)
-    requires IsSafe(r,s,e,Type.Record(RecordType(map[l := t], OpenAttributes)))
+    requires IsSafe(r,s,e,Type.Record(map[l := t]))
     requires t.isRequired
     ensures IsTrue(r,s,HasAttr(e,l))
   {
@@ -965,25 +964,10 @@ module validation.thm.model {
   }
 
   lemma RecordHasOpenRecSafe(r: Request, s: EntityStore, e: Expr, l: Attr)
-    requires IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes)))
+    requires IsSafe(r,s,e,Type.Record(map[]))
     ensures IsSafe(r,s,HasAttr(e,l),Type.Bool(AnyBool))
   {
     reveal IsSafe();
-  }
-
-  lemma RecordHasClosedRecFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, rt: RecordType)
-    requires IsSafe(r,s,e,Type.Record(rt))
-    requires l !in rt.attrs.Keys
-    requires !rt.isOpen()
-    ensures IsFalse(r,s,HasAttr(e,l))
-  {
-    reveal IsSafe();
-    var evaluator := Evaluator(r,s);
-    var v := evaluator.interpret(e);
-    if v.Ok? {
-      var rv :- assert Value.asRecord(v.value);
-      assert l !in rv.Keys;
-    }
   }
 
   lemma EntityHasImpossibleFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, lub: EntityLUB)

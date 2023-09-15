@@ -142,8 +142,8 @@ module validation.strict {
         case (Bool(bt1), Bool(bt2)) => Result.Ok(())
         case (Set(ty1), Set(ty2)) => unify(ty1, ty2)
         case (Record(rty1), Record(rty2)) =>
-          if rty1.attrs.Keys == rty2.attrs.Keys &&
-             forall k | k in rty1.attrs.Keys :: unify(rty1.attrs[k].ty,rty2.attrs[k].ty).Ok? && rty1.attrs[k].isRequired == rty2.attrs[k].isRequired
+          if rty1.Keys == rty2.Keys &&
+             forall k | k in rty1.Keys :: unify(rty1[k].ty,rty2[k].ty).Ok? && rty1[k].isRequired == rty2[k].isRequired
           then Result.Ok(())
           else Result.Err(TypesMustMatch)
         case _ =>

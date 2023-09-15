@@ -55,7 +55,7 @@ module validation.typechecker {
     function getLubRecordType(lub: EntityLUB): Result<RecordType>
     {
       if lub.AnyEntity? || exists et <- lub.tys :: isAction(et)
-      then Ok(RecordType(map[], OpenAttributes))
+      then Ok(map[])
       else
         if forall et <- lub.tys :: et in types
         then
@@ -68,7 +68,7 @@ module validation.typechecker {
     // Check if an Attr is allowed by any entity type in the LUB
     predicate isAttrPossible(lub: EntityLUB, k: Attr)
     {
-      lub.AnyEntity? || exists e <- lub.tys :: e in types && (types[e].isOpen() || k in types[e].attrs)
+      lub.AnyEntity? || exists e <- lub.tys :: e in types && k in types[e]
     }
   }
 
@@ -474,26 +474,24 @@ module validation.typechecker {
       decreases e , 0 , r
     {
       if r == [] then
-        Ok(RecordType(map[], ClosedAttributes))
+        Ok(map[])
       else
         var k := r[0].0;
         var (t,_) :- infer(r[0].1,effs);
         assert r[0] < e;
         var m :- inferRecord(e,r[1..],effs);
-        Ok(RecordType(if k in m.attrs.Keys then m.attrs else m.attrs[k := AttrType(t,true)], ClosedAttributes))
+        if k in m.Keys then Ok(m) else Ok(m[k := AttrType(t,true)])
     }
 
     function inferHasAttrHelper(e: Expr, k: Attr, rt: RecordType, effs: Effects, knownToExist: bool): Result<(Type,Effects)>
     {
-      if k in rt.attrs
+      if k in rt
       then
-        if rt.attrs[k].isRequired && knownToExist then wrap(Ok(Type.Bool(True)))
+        if rt[k].isRequired && knownToExist then wrap(Ok(Type.Bool(True)))
         else if effs.contains(e,k)
         then wrap(Ok(Type.Bool(True)))
         else Ok((Type.Bool(AnyBool),Effects.singleton(e,k)))
-      else if rt.isOpen()
-        then wrap(Ok(Type.Bool(AnyBool)))
-        else wrap(Ok(Type.Bool(False)))
+      else wrap(Ok(Type.Bool(AnyBool)))
     }
 
     function inferHasAttr(e: Expr, k: Attr, effs: Effects): Result<(Type,Effects)>
@@ -541,13 +539,13 @@ module validation.typechecker {
       var ret :- inferRecordEntityType(e,effs);
       match ret {
         case Record(rt) =>
-          if k in rt.attrs && (rt.attrs[k].isRequired || effs.contains(e,k))
-          then Ok(rt.attrs[k].ty)
+          if k in rt && (rt[k].isRequired || effs.contains(e,k))
+          then Ok(rt[k].ty)
           else Err(AttrNotFound(Type.Record(rt),k))
         case Entity(lub) =>
           var rt :- ets.getLubRecordType(lub);
-          if k in rt.attrs && (rt.attrs[k].isRequired || effs.contains(e,k))
-          then Ok(rt.attrs[k].ty)
+          if k in rt && (rt[k].isRequired || effs.contains(e,k))
+          then Ok(rt[k].ty)
           else Err(AttrNotFound(Type.Entity(lub),k))
       }
     }

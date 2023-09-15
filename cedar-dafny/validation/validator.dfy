@@ -42,12 +42,12 @@ module validation.validator {
       set a,p,r | a in actionIds.Keys &&
                   p in actionIds[a].appliesTo.principalApplySpec &&
                   r in actionIds[a].appliesTo.resourceApplySpec ::
-        RequestType(p, a, r, RecordType(actionIds[a].context, ClosedAttributes))
+        RequestType(p, a, r, actionIds[a].context)
     }
 
     // Generate an EntityTypeStore
     function makeEntityTypeStore(): EntityTypeStore {
-      var types := map et | et in entityTypes :: RecordType(entityTypes[et].attributes, ClosedAttributes);
+      var types := map et | et in entityTypes :: entityTypes[et].attributes;
       var descendants := map et | et in entityTypes :: entityTypes[et].descendants;
       EntityTypeStore(types, descendants)
     }
