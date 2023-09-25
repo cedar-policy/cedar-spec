@@ -134,7 +134,8 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let mut policyset = ast::PolicySet::new();
     policyset.add_static(input.policy.into()).unwrap();
-    let diff_tester = DifferentialTester::new();
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
@@ -144,16 +145,18 @@ fuzz_target!(|input: FuzzTargetInput| {
     } else {
         None
     };
-    for q in input.requests.into_iter().map(Into::into) {
-        debug!("Request : {q}");
-        let (rust_res, total_dur) =
-            time_function(|| diff_tester.run_single_test(&q, &policyset, &original_entities));
+    for request in input.requests.into_iter().map(Into::into) {
+        debug!("Request : {request}");
+        let (rust_res, total_dur) = time_function(|| {
+            run_auth_test(&java_def_engine, &request, &policyset, &original_entities)
+        });
 
         if let Some(ref entities) = cached_entities {
             match entities {
                 Ok(entities) => {
-                    let (cached_rust_res, _total_dur) =
-                        time_function(|| diff_tester.run_single_test(&q, &policyset, entities));
+                    let (cached_rust_res, _total_dur) = time_function(|| {
+                        run_auth_test(&java_def_engine, &request, &policyset, entities)
+                    });
                     assert_eq!(rust_res, cached_rust_res);
                 }
                 Err(eval_er) => match &rust_res.diagnostics.errors[0] {

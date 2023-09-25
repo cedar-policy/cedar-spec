@@ -20,9 +20,7 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{
-    time_function, DefinitionalEngine, DefinitionalValidator, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
-};
+use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALIDATION_MSG};
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::ast::{self, Expr};
@@ -33,180 +31,158 @@ use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use log::info;
 
-pub struct DifferentialTester<'e> {
-    /// Rust engine instance
-    authorizer: Authorizer,
-    /// Definitional engine instance
-    def_engine: DefinitionalEngine<'e>,
-    /// Definitional validator instance
-    def_validator: DefinitionalValidator<'e>,
-}
-
-impl<'e> Default for DifferentialTester<'e> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'e> DifferentialTester<'e> {
-    /// Create a new `DifferentialTester`.
-    ///
-    /// Relatively expensive operation / large object, avoid calling this a lot
-    pub fn new() -> Self {
-        Self {
-            authorizer: Authorizer::new(),
-            def_engine: DefinitionalEngine::new().expect("failed to create definitional engine"),
-            def_validator: DefinitionalValidator::new()
-                .expect("failed to create definitional validator"),
-        }
-    }
-
-    /// Differentially test evaluating the given expression.
-    /// `r` and `entities` are used to populate the evaluator.
-    pub fn run_eval_test(
-        &self,
-        r: &ast::Request,
-        expr: &Expr,
-        entities: &Entities,
-        enable_extensions: bool,
-    ) -> bool {
-        let exts = if enable_extensions {
-            Extensions::all_available()
-        } else {
-            Extensions::none()
-        };
-        let eval = match Evaluator::new(r, entities, &exts) {
-            Ok(e) => e,
-            Err(_) => return true, // FOR NOW just ignore errors in the restricted exprs
-        };
-        let v = match eval.interpret(expr, &std::collections::HashMap::default()) {
-            Ok(v) => Some(v),
-            Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
-                return true
-            }
-            Err(_) => None,
-        };
-        self.def_engine.eval(r, entities, expr, v)
-    }
-
-    /// Differentially test the given authorization request.
-    /// Panics if the two engines do not agree.
-    /// Returns the response which the engines agree on.
-    pub fn run_single_test(
-        &self,
-        q: &ast::Request,
-        policies: &PolicySet,
-        entities: &Entities,
-    ) -> Response {
-        let (rust_res, rust_auth_dur) =
-            time_function(|| self.authorizer.is_authorized(q, policies, entities));
-        info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
-
-        // For now, we ignore all tests where the Rust side returns an integer
-        // overflow error, as the behavior between Rust and Dafny is
-        // intentionally different
-        if rust_res
-            .diagnostics
-            .errors
-            .iter()
-            .any(|e| e.to_string().contains("integer overflow"))
-        {
-            return rust_res;
-        }
-
-        // very important that we return the Rust response, with its rich errors,
-        // in case the caller wants to expect those. (and not the definitional
-        // response, which as of this writing contains less-rich errors)
-        let ret = rust_res.clone();
-
-        let definitional_res = self.def_engine.is_authorized(q, policies, entities);
-        // for now, we expect never to receive errors from the definitional engine,
-        // and we otherwise ignore errors in the comparison
-        assert_eq!(
-            definitional_res
-                .diagnostics()
-                .errors()
-                .map(|e| e.to_string())
-                .collect::<Vec<String>>(),
-            Vec::<String>::new()
-        );
-
-        let rust_res_for_comparison: cedar_policy::Response = Response {
-            diagnostics: Diagnostics {
-                errors: Vec::new(),
-                ..rust_res.diagnostics
-            },
-            ..rust_res
-        }
-        .into();
-        assert_eq!(
-            InterfaceResponse::from(rust_res_for_comparison),
-            definitional_res,
-            "Mismatch for {q}\nPolicies:\n{}\nEntities:\n{}",
-            &policies,
-            &entities
-        );
-        ret
-    }
-
-    /// Differentially test validation on the given policy and schema.
-    /// Panics if the two engines do not agree.
-    pub fn run_validation(
-        &self,
-        schema: ValidatorSchema,
-        policies: &PolicySet,
-        mode: ValidationMode,
-    ) {
-        let validator = Validator::new(schema.clone());
-        let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
-        info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
-
-        let definitional_res = self.def_validator.validate(schema.clone(), policies, mode);
-
-        assert!(
-            definitional_res.parsing_succeeded(),
-            "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}",
-            &policies,
-            schema
-        );
-
-        // Temporary fix to ignore a known mismatch between the Dafny and Rust.
-        // The issue is that the Rust code will always return an error for an
-        // unrecognized entity or action, even if that part of the expression
-        // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
-        // should be well typed due to short-circuiting).
-        if rust_res.validation_errors().any(|e| {
-            matches!(
-                e.error_kind(),
-                ValidationErrorKind::UnrecognizedEntityType(_)
-                    | ValidationErrorKind::UnrecognizedActionId(_)
-            )
-        }) {
+/// Compare the behavior of the evaluator in cedar-policy against a custom Cedar
+/// implementation. Panics if the two do not agree. `expr` is the expression to
+/// evaluate and `request` and `entities` are used to populate the evaluator.
+pub fn run_eval_test(
+    custom_impl: &dyn CedarTestImplementation,
+    request: &ast::Request,
+    expr: &Expr,
+    entities: &Entities,
+    enable_extensions: bool,
+) {
+    let exts = if enable_extensions {
+        Extensions::all_available()
+    } else {
+        Extensions::none()
+    };
+    let eval = match Evaluator::new(request, entities, &exts) {
+        Ok(e) => e,
+        Err(_) => return, // FOR NOW just ignore errors in the restricted exprs
+    };
+    let v = match eval.interpret(expr, &std::collections::HashMap::default()) {
+        Ok(v) => Some(v),
+        Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
+            // ignore the input if it results in an integer overflow error
             return;
         }
+        Err(_) => None,
+    };
+    // custom_impl.eval() returns true when the result of evaluating expr
+    // matches the expected value v
+    assert!(custom_impl.interpret(request, entities, expr, v))
+}
 
-        assert_eq!(
-            rust_res.validation_passed(),
-            definitional_res.validation_passed(),
-            "Mismatch for Policies:\n{}\nSchema:\n{:?}\nRust response: {:?}\nDafny response: {:?}\n",
-            &policies,
-            schema,
-            rust_res,
-            definitional_res,
-        );
-        // NOTE: We currently don't check for a relationship between validation errors.
-        // E.g., the error reported by the definitional validator should be in the list
-        // of errors reported by the production validator, but we don't check this.
+/// Compare the behavior of the authorizer in cedar-policy against a custom Cedar
+/// implementation. Panics if the two do not agree. Returns the response that
+/// the two agree on.
+pub fn run_auth_test(
+    custom_impl: &dyn CedarTestImplementation,
+    request: &ast::Request,
+    policies: &PolicySet,
+    entities: &Entities,
+) -> Response {
+    let authorizer = Authorizer::new();
+    let (rust_res, rust_auth_dur) =
+        time_function(|| authorizer.is_authorized(request, policies, entities));
+    info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+
+    // For now, we ignore all tests where the Rust side returns an integer
+    // overflow error, as the behavior between Rust and Dafny is
+    // intentionally different
+    if rust_res
+        .diagnostics
+        .errors
+        .iter()
+        .any(|e| e.to_string().contains("integer overflow"))
+    {
+        return rust_res;
     }
+
+    // very important that we return the Rust response, with its rich errors,
+    // in case the caller wants to expect those. (and not the definitional
+    // response, which as of this writing contains less-rich errors)
+    let ret = rust_res.clone();
+
+    let definitional_res = custom_impl.is_authorized(request, policies, entities);
+    // for now, we expect never to receive errors from the definitional engine,
+    // and we otherwise ignore errors in the comparison
+    assert_eq!(
+        definitional_res
+            .diagnostics()
+            .errors()
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    let rust_res_for_comparison: cedar_policy::Response = Response {
+        diagnostics: Diagnostics {
+            errors: Vec::new(),
+            ..rust_res.diagnostics
+        },
+        ..rust_res
+    }
+    .into();
+    assert_eq!(
+        InterfaceResponse::from(rust_res_for_comparison),
+        definitional_res,
+        "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
+        &policies,
+        &entities
+    );
+    ret
+}
+
+/// Compare the behavior of the validator in cedar-policy against a custom Cedar
+/// implementation. Panics if the two do not agree.
+pub fn run_val_test(
+    custom_impl: &dyn CedarTestImplementation,
+    schema: ValidatorSchema,
+    policies: &PolicySet,
+    mode: ValidationMode,
+) {
+    let validator = Validator::new(schema.clone());
+    let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
+    info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
+
+    let definitional_res = custom_impl.validate(schema.clone(), policies, mode);
+
+    assert!(
+        definitional_res.parsing_succeeded(),
+        "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}",
+        &policies,
+        schema
+    );
+
+    // Temporary fix to ignore a known mismatch between the Dafny and Rust.
+    // The issue is that the Rust code will always return an error for an
+    // unrecognized entity or action, even if that part of the expression
+    // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
+    // should be well typed due to short-circuiting).
+    if rust_res.validation_errors().any(|e| {
+        matches!(
+            e.error_kind(),
+            ValidationErrorKind::UnrecognizedEntityType(_)
+                | ValidationErrorKind::UnrecognizedActionId(_)
+        )
+    }) {
+        return;
+    }
+
+    assert_eq!(
+        rust_res.validation_passed(),
+        definitional_res.validation_passed(),
+        "Mismatch for Policies:\n{}\nSchema:\n{:?}\nRust response: {:?}\nDafny response: {:?}\n",
+        &policies,
+        schema,
+        rust_res,
+        definitional_res,
+    );
+    // NOTE: We currently don't check for a relationship between validation errors.
+    // E.g., the error reported by the definitional validator should be in the list
+    // of errors reported by the production validator, but we don't check this.
 }
 
 #[test]
-fn call_def_engine() {
+fn test_run_auth_test() {
+    use cedar_drt::JavaDefinitionalEngine;
     use cedar_policy_core::ast::{Entity, EntityUID, RestrictedExpr};
     use cedar_policy_core::entities::TCComputation;
     use smol_str::SmolStr;
 
-    let diff_tester = DifferentialTester::new();
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
     ));
@@ -268,5 +244,5 @@ fn call_def_engine() {
         TCComputation::AssumeAlreadyComputed,
     )
     .unwrap();
-    diff_tester.run_single_test(&query, &policies, &entities);
+    run_auth_test(&java_def_engine, &query, &policies, &entities);
 }

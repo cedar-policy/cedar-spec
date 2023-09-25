@@ -15,9 +15,10 @@
  */
 
 #![forbid(unsafe_code)]
-mod logger;
-pub use logger::*;
 mod cedar_test_impl;
-pub use cedar_test_impl::*;
 mod dafny_java_impl;
+mod logger;
+
+pub use cedar_test_impl::*;
 pub use dafny_java_impl::*;
+pub use logger::*;
