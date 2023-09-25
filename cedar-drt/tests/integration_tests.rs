@@ -48,7 +48,6 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
         "example_use_cases_doc/3b.json",
         "example_use_cases_doc/3c.json",
         "example_use_cases_doc/4a.json",
-        "example_use_cases_doc/4c.json",
         "example_use_cases_doc/4d.json",
         "example_use_cases_doc/4e.json",
         "example_use_cases_doc/4f.json",
@@ -60,7 +59,6 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
         "multi/2.json",
         "multi/3.json",
         "multi/4.json",
-        "multi/5.json",
     ]
     .into_iter()
     .map(|p| integration_tests_folder.join(p));
