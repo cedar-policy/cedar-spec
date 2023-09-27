@@ -86,7 +86,7 @@ fn make_expr(v: Value) -> Expr {
 
 #[derive(Debug, Serialize)]
 struct RequestForDefValidator<'a> {
-    schema: ValidatorSchema,
+    schema: &'a ValidatorSchema,
     policies: &'a ast::PolicySet,
     mode: ValidationMode,
 }
@@ -295,7 +295,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
 
     fn serialize_val_request(
         &self,
-        schema: ValidatorSchema,
+        schema: &ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
     ) -> JString {
@@ -351,7 +351,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
     /// Use the definitional validator to validate the given `policies` given a `schema`
     pub fn validate(
         &self,
-        schema: ValidatorSchema,
+        schema: &ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
@@ -402,7 +402,7 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
 
     fn validate(
         &self,
-        schema: cedar_policy_validator::ValidatorSchema,
+        schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
@@ -427,7 +427,7 @@ impl<'j> CustomCedarImpl for JavaDefinitionalEngine<'j> {
         policies: &ast::PolicySet,
     ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
         let definitional_res = self.validate(
-            schema.clone(),
+            &schema,
             policies,
             cedar_policy_validator::ValidationMode::default(),
         );

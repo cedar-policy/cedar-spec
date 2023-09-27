@@ -37,6 +37,8 @@ pub trait CedarTestImplementation {
 
     /// Custom evaluator entry point. The bool return value indicates the whether
     /// evaluating the provided expression produces the expected value.
+    /// `expected` is optional to allow for the case where no return value is
+    /// expected due to errors.
     fn interpret(
         &self,
         request: &Request,
@@ -48,7 +50,7 @@ pub trait CedarTestImplementation {
     /// Custom validator entry point.
     fn validate(
         &self,
-        schema: ValidatorSchema,
+        schema: &ValidatorSchema,
         policies: &PolicySet,
         mode: ValidationMode,
     ) -> ValidationInterfaceResponse;
@@ -71,7 +73,7 @@ impl ValidationInterfaceResponse {
         self.parse_errors.is_empty()
     }
 
-    pub fn contains_error(&self, s: String) -> bool {
-        self.validation_errors.contains(&s)
+    pub fn contains_error(&self, s: &String) -> bool {
+        self.validation_errors.contains(s)
     }
 }

@@ -24,10 +24,6 @@ use cedar_policy::integration_testing::{
 use cedar_drt::*;
 use std::path::Path;
 
-// Note: Some of the following code is based on cedar-policy/tests/corpus_tests.rs, but
-// there probably isn't enough commonality left to be worth trying to share the
-// code.
-
 /// Path of the folder containing the integration tests
 fn folder() -> &'static Path {
     Path::new("tests")

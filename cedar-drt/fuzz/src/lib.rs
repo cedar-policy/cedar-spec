@@ -35,7 +35,7 @@ use log::info;
 /// implementation. Panics if the two do not agree. `expr` is the expression to
 /// evaluate and `request` and `entities` are used to populate the evaluator.
 pub fn run_eval_test(
-    custom_impl: &dyn CedarTestImplementation,
+    custom_impl: &impl CedarTestImplementation,
     request: &ast::Request,
     expr: &Expr,
     entities: &Entities,
@@ -58,7 +58,7 @@ pub fn run_eval_test(
         }
         Err(_) => None,
     };
-    // custom_impl.eval() returns true when the result of evaluating expr
+    // custom_impl.interpret() returns true when the result of evaluating expr
     // matches the expected value v
     assert!(custom_impl.interpret(request, entities, expr, v))
 }
@@ -67,7 +67,7 @@ pub fn run_eval_test(
 /// implementation. Panics if the two do not agree. Returns the response that
 /// the two agree on.
 pub fn run_auth_test(
-    custom_impl: &dyn CedarTestImplementation,
+    custom_impl: &impl CedarTestImplementation,
     request: &ast::Request,
     policies: &PolicySet,
     entities: &Entities,
@@ -77,9 +77,8 @@ pub fn run_auth_test(
         time_function(|| authorizer.is_authorized(request, policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
-    // For now, we ignore all tests where the Rust side returns an integer
-    // overflow error, as the behavior between Rust and Dafny is
-    // intentionally different
+    // For now, we ignore tests where cedar-policy returns an integer
+    // overflow error.
     if rust_res
         .diagnostics
         .errors
@@ -89,14 +88,13 @@ pub fn run_auth_test(
         return rust_res;
     }
 
-    // very important that we return the Rust response, with its rich errors,
-    // in case the caller wants to expect those. (and not the definitional
-    // response, which as of this writing contains less-rich errors)
+    // Important that we return the cedar-policy response, with its rich errors,
+    // in case the caller wants to expect those.
     let ret = rust_res.clone();
 
     let definitional_res = custom_impl.is_authorized(request, policies, entities);
-    // for now, we expect never to receive errors from the definitional engine,
-    // and we otherwise ignore errors in the comparison
+    // For now, we expect never to receive errors from the definitional engine,
+    // and we otherwise ignore errors in the comparison.
     assert_eq!(
         definitional_res
             .diagnostics()
@@ -127,7 +125,7 @@ pub fn run_auth_test(
 /// Compare the behavior of the validator in cedar-policy against a custom Cedar
 /// implementation. Panics if the two do not agree.
 pub fn run_val_test(
-    custom_impl: &dyn CedarTestImplementation,
+    custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
     policies: &PolicySet,
     mode: ValidationMode,
@@ -136,13 +134,15 @@ pub fn run_val_test(
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
 
-    let definitional_res = custom_impl.validate(schema.clone(), policies, mode);
+    let definitional_res = custom_impl.validate(&schema, policies, mode);
 
     assert!(
         definitional_res.parsing_succeeded(),
-        "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}",
+        "JSON parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
         &policies,
-        schema
+        schema,
+        rust_res,
+        definitional_res
     );
 
     // Temporary fix to ignore a known mismatch between the Dafny and Rust.
@@ -163,7 +163,7 @@ pub fn run_val_test(
     assert_eq!(
         rust_res.validation_passed(),
         definitional_res.validation_passed(),
-        "Mismatch for Policies:\n{}\nSchema:\n{:?}\nRust response: {:?}\nDafny response: {:?}\n",
+        "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
         &policies,
         schema,
         rust_res,
