@@ -90,10 +90,10 @@ fn arbitrary_vec_size_hint(_depth: usize) -> (usize, Option<usize>) {
 }
 
 impl PolicyGroup {
-    fn arbitrary_for_hierarchy<'a>(
+    fn arbitrary_for_hierarchy(
         pg_idx: usize,
         hierarchy: &RBACHierarchy,
-        u: &mut Unstructured<'a>,
+        u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
         // A policy ID collision would cause a DRT failure. The easiest way to
         // prevent that is to generate the policy IDs following a fixed pattern
@@ -111,7 +111,7 @@ impl PolicyGroup {
                 GeneratedLinkedPolicy::arbitrary(
                     ast::PolicyID::from_string(format!("t{}_l{}", pg_idx, l_idx)),
                     &policy,
-                    &hierarchy,
+                    hierarchy,
                     u,
                 )
             })?;
@@ -195,10 +195,12 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }
             };
         }
-        let diff_tester = DifferentialTester::new();
-        for r in input.requests.into_iter() {
-            let q = ast::Request::from(r);
-            let (_, dur) = time_function(|| diff_tester.run_single_test(&q, &policyset, &entities));
+        let java_def_engine =
+            JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+        for rbac_request in input.requests.into_iter() {
+            let request = ast::Request::from(rbac_request);
+            let (_, dur) =
+                time_function(|| run_auth_test(&java_def_engine, &request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, dur.as_nanos());
         }
     }
