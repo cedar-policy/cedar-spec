@@ -32,7 +32,7 @@ use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-/// Times to (de)serialize JSON content sent to / received from the Dafny-Java 
+/// Times to (de)serialize JSON content sent to / received from the Dafny-Java
 /// implementation.
 pub const RUST_SERIALIZATION_MSG: &str = "rust_serialization (ns) : ";
 pub const RUST_DESERIALIZATION_MSG: &str = "rust_deserialization (ns) : ";
