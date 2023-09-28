@@ -22,7 +22,7 @@ use crate::logger::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 pub use cedar_policy::Response;
-use cedar_policy_core::ast::{Expr, PartialValue, Value};
+use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
 pub use entities::Entities;
@@ -31,6 +31,22 @@ use jni::{JNIVersion, JavaVM};
 use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
+
+/// Times to (de)serialize JSON content sent to / received from the Dafny-Java 
+/// implementation.
+pub const RUST_SERIALIZATION_MSG: &str = "rust_serialization (ns) : ";
+pub const RUST_DESERIALIZATION_MSG: &str = "rust_deserialization (ns) : ";
+
+/// Times for cedar-policy authorization and validation.
+pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
+pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
+
+/// Times for JSON (de)serialization, authorization, and validation as reported
+/// by the Dafny-Java implementation.
+pub const JAVA_SERIALIZATION_MSG: &str = "java_serialization (ns) : ";
+pub const JAVA_DESERIALIZATION_MSG: &str = "java_deserialization (ns) : ";
+pub const JAVA_AUTH_MSG: &str = "java_auth (ns) : ";
+pub const JAVA_VALIDATION_MSG: &str = "java_validation (ns) : ";
 
 lazy_static! {
     /// The JVM instance
@@ -71,17 +87,13 @@ struct EvalRequestForDefEngine<'a> {
     request: &'a ast::Request,
     entities: &'a Entities,
     expr: &'a ast::Expr,
-    expected: Option<ast::Expr>,
+    expected: Option<&'a ast::Expr>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 #[repr(transparent)]
 struct DefinitionalEvalResponse {
     matches: bool,
-}
-
-fn make_expr(v: Value) -> Expr {
-    PartialValue::Value(v).into()
 }
 
 #[derive(Debug, Serialize)]
@@ -141,7 +153,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         request: &ast::Request,
         entities: &Entities,
         expr: &Expr,
-        expected: Option<Expr>,
+        expected: Option<&Expr>,
     ) -> JString {
         let request: String = serde_json::to_string(&EvalRequestForDefEngine {
             request,
@@ -188,7 +200,8 @@ impl<'j> JavaDefinitionalEngine<'j> {
         expr: &Expr,
         expected: Option<Value>,
     ) -> bool {
-        let jstr = self.serialize_eval_request(request, entities, expr, expected.map(make_expr));
+        let expected_as_expr = expected.map(|v| v.into());
+        let jstr = self.serialize_eval_request(request, entities, expr, expected_as_expr.as_ref());
         let response = self.thread.call_method(
             self.def_authorizer,
             "eval_str",

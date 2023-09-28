@@ -50,7 +50,7 @@ pub fn run_eval_test(
         Ok(e) => e,
         Err(_) => return, // FOR NOW just ignore errors in the restricted exprs
     };
-    let v = match eval.interpret(expr, &std::collections::HashMap::default()) {
+    let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
         Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
             // ignore the input if it results in an integer overflow error
@@ -60,7 +60,7 @@ pub fn run_eval_test(
     };
     // custom_impl.interpret() returns true when the result of evaluating expr
     // matches the expected value v
-    assert!(custom_impl.interpret(request, entities, expr, v))
+    assert!(custom_impl.interpret(request, entities, expr, expected))
 }
 
 /// Compare the behavior of the authorizer in cedar-policy against a custom Cedar
