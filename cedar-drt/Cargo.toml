@@ -1,17 +1,17 @@
 [package]
 name = "cedar-drt"
 edition = "2021"
-version = "2.0.0"
+version = "3.0.0"
 publish = false
 
 [dependencies]
 env_logger = "0.10"
 log = "0.4"
 libfuzzer-sys = "0.4"
-cedar-policy = { path = "../cedar/cedar-policy", version = "2.*", features = ["integration_testing"] }
-cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "2.*", features = ["arbitrary"] }
-cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "2.*", features = ["arbitrary"] }
-cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "2.*" }
+cedar-policy = { path = "../cedar/cedar-policy", version = "3.*", features = ["integration_testing"] }
+cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "3.*", features = ["arbitrary"] }
+cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "3.*", features = ["arbitrary"] }
+cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "3.*" }
 jni = { version = "0.19.0", features = ["invocation"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
