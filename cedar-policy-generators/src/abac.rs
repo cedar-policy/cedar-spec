@@ -120,11 +120,38 @@ pub struct ConstantPool {
     string_constants: Vec<SmolStr>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct BiasedI64(i64);
+
+impl<'a> Arbitrary<'a> for BiasedI64 {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(gen!(u,
+            1 => std::i64::MAX,
+            1 => std::i64::MIN,
+            8 => <i64 as Arbitrary>::arbitrary(u)?
+        )
+        .into())
+    }
+}
+
+impl From<i64> for BiasedI64 {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<BiasedI64> for i64 {
+    fn from(value: BiasedI64) -> Self {
+        value.0
+    }
+}
+
 impl<'a> Arbitrary<'a> for ConstantPool {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let sc: Vec<String> = u.arbitrary()?;
         Ok(Self {
-            int_constants: u.arbitrary()?,
+            int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
+                .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
             string_constants: sc.iter().map(|s| s.into()).collect(),
         })
     }
@@ -219,8 +246,7 @@ impl ConstantPool {
 
     // Generate a valid IPv4 net representation
     fn arbitrary_ipv4_str(&self, u: &mut Unstructured<'_>) -> Result<String> {
-        let bytes: [u8; 4] = u.bytes(4)?.try_into().unwrap();
-        let ip = Ipv4Addr::from(bytes);
+        let ip: Ipv4Addr = u.arbitrary()?;
         // Produce a CIDR notation out of 50% probability
         Ok(if u.ratio(1, 2)? {
             ip.to_string()
@@ -233,8 +259,7 @@ impl ConstantPool {
 
     // Generate a valid IPv6 net representation
     fn arbitrary_ipv6_str(&self, u: &mut Unstructured<'_>) -> Result<String> {
-        let bytes: [u8; 16] = u.bytes(16)?.try_into().unwrap();
-        let ip = Ipv6Addr::from(bytes);
+        let ip: Ipv6Addr = u.arbitrary()?;
         // Produce a CIDR notation out of a 50% probability
         Ok(if u.ratio(1, 2)? {
             ip.to_string()
@@ -257,8 +282,7 @@ impl ConstantPool {
 
     /// Generate a valid decimal number representation and mutate it
     pub fn arbitrary_decimal_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
-        let bytes = u.bytes(8)?;
-        let i = i64::from_be_bytes(bytes.try_into().unwrap());
+        let i = self.arbitrary_int_constant(u)?;
         mutate_str(
             u,
             // Replicate from Core
