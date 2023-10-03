@@ -120,17 +120,18 @@ fuzz_target!(|input: FuzzTargetInput| {
         policyset.add_static(input.policy.into()).unwrap();
         debug!("Policies: {policyset}");
         debug!("Entities: {entities}");
-        let diff_tester = DifferentialTester::new();
-        let queries = input
+        let java_def_engine =
+            JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+        let requests = input
             .requests
             .into_iter()
             .map(Into::into)
             .collect::<Vec<_>>();
-        let mut responses = Vec::with_capacity(queries.len());
-        for q in &queries {
-            debug!("Q: {q}");
+        let mut responses = Vec::with_capacity(requests.len());
+        for request in &requests {
+            debug!("Request: {request}");
             let (ans, total_dur) =
-                time_function(|| diff_tester.run_single_test(q, &policyset, &entities));
+                time_function(|| run_auth_test(&java_def_engine, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
             responses.push(ans);
         }
@@ -151,7 +152,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 passes_validation,
                 &policyset,
                 &entities,
-                std::iter::zip(queries.iter(), responses.iter()),
+                std::iter::zip(requests.iter(), responses.iter()),
             )
             .expect("failed to dump test case");
         }
