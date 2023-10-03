@@ -128,7 +128,8 @@ impl<'a> Arbitrary<'a> for BiasedI64 {
         Ok(gen!(u,
             1 => std::i64::MAX,
             1 => std::i64::MIN,
-            8 => <i64 as Arbitrary>::arbitrary(u)?
+            1 => -1,
+            7 => <i64 as Arbitrary>::arbitrary(u)?
         )
         .into())
     }
