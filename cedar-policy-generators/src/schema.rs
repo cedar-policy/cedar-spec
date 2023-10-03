@@ -181,13 +181,13 @@ pub fn arbitrary_schematype_with_bounded_depth(
     Ok(SchemaType::Type(uniform!(
         u,
         SchemaTypeVariant::String,
-        SchemaTypeVariant::Long,
+        cedar_policy_validator::arbitrary_schematypevariant_long(settings.enable_long_any, u)?,
         SchemaTypeVariant::Boolean,
         {
             if max_depth == 0 {
                 // can't recurse; we arbitrarily choose Set<Long> in this case
                 SchemaTypeVariant::Set {
-                    element: Box::new(SchemaType::Type(SchemaTypeVariant::Long)),
+                    element: Box::new(SchemaType::Type(SchemaTypeVariant::long_static_top())),
                 }
             } else {
                 SchemaTypeVariant::Set {
@@ -296,7 +296,7 @@ fn schematype_to_type(
         ),
         SchemaType::Type(ty) => match ty {
             SchemaTypeVariant::Boolean => Type::bool(),
-            SchemaTypeVariant::Long => Type::long(),
+            SchemaTypeVariant::Long { .. } => Type::long(),
             SchemaTypeVariant::String => Type::string(),
             SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(schema, element)),
             SchemaTypeVariant::Record { .. } => Type::record(),
@@ -394,7 +394,7 @@ fn attrs_in_schematype(
             use cedar_policy_validator::SchemaTypeVariant;
             match variant {
                 SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Long => Box::new(std::iter::empty()),
+                SchemaTypeVariant::Long { .. } => Box::new(std::iter::empty()),
                 SchemaTypeVariant::String => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
                 SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
@@ -869,7 +869,10 @@ impl Schema {
         use cedar_policy_validator::SchemaTypeVariant;
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
-            Type::Long => Some(SchemaTypeVariant::Long),
+            Type::Long => Some(cedar_policy_validator::arbitrary_schematypevariant_long(
+                self.settings.enable_long_any,
+                u,
+            )?),
             Type::String => Some(SchemaTypeVariant::String),
             Type::Set(None) => None, // SchemaType doesn't support any-set
             Type::Set(Some(el_ty)) => {
@@ -934,9 +937,28 @@ impl Schema {
         }
     }
 
+    fn attr_schematype_matches(
+        actual: &cedar_policy_validator::SchemaType,
+        wanted: &cedar_policy_validator::SchemaType,
+    ) -> bool {
+        match (actual, wanted) {
+            (
+                cedar_policy_validator::SchemaType::Type(
+                    cedar_policy_validator::SchemaTypeVariant::Long { .. },
+                ),
+                cedar_policy_validator::SchemaType::Type(
+                    cedar_policy_validator::SchemaTypeVariant::Long { .. },
+                ),
+            ) => true,
+            _ => actual == wanted,
+        }
+    }
+
     /// Given a schematype, get an entity type name and attribute name, such
     /// that entities with that typename have a (possibly optional) attribute
     /// with the given schematype
+    ///
+    /// Like `generate_expr_for_schematype`, this ignores `Long` bounds,
     pub fn arbitrary_attr_for_schematype(
         &self,
         target_type: impl Into<cedar_policy_validator::SchemaType>,
@@ -961,7 +983,7 @@ impl Schema {
                 attributes
                     .attrs
                     .iter()
-                    .filter(|(_, ty)| ty.ty == target_type)
+                    .filter(|(_, ty)| Self::attr_schematype_matches(&ty.ty, &target_type))
                     .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
             })
             .collect();
@@ -1284,6 +1306,7 @@ mod tests {
         enable_unknowns: false,
         enable_unspecified_apply_spec: true,
         enable_action_in_constraints: true,
+        enable_long_any: false,
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"

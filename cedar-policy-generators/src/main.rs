@@ -51,6 +51,7 @@ impl From<&HierarchyArgs> for ABACSettings {
     fn from(value: &HierarchyArgs) -> Self {
         Self {
             match_types: true,
+            enable_long_any: false,
             enable_extensions: true,
             max_depth: value.max_depth,
             max_width: value.max_width,

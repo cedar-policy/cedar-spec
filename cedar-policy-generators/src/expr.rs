@@ -11,6 +11,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast;
+use cedar_policy_validator::{SchemaLongDetails, SchemaLongBounds};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -646,7 +647,7 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type long
                         4 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Long,
+                                cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -665,7 +666,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Long,
+                                        cedar_policy_validator::SchemaTypeVariant::long_static_top(),
                                     ),
                                     max_depth - 1,
                                     u,
@@ -1096,6 +1097,11 @@ impl<'a> ExprGenerator<'a> {
     /// `max_depth`: maximum size (i.e., depth) of the expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
+    ///
+    /// This does not honor the bounds of `Long` types (indeed, generating an
+    /// arbitrary expression with given bounds is a nontrivial problem), so the
+    /// generated expression may raise overflow errors during validation or at
+    /// runtime. That should be OK for our current fuzz targets.
     pub fn generate_expr_for_schematype(
         &self,
         target_type: &cedar_policy_validator::SchemaType,
@@ -1117,7 +1123,7 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_expr_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
+            SchemaType::Type(SchemaTypeVariant::Long { .. }) => {
                 self.generate_expr_for_type(&Type::long(), max_depth, u)
             }
             SchemaType::Type(SchemaTypeVariant::String) => {
@@ -1500,7 +1506,7 @@ impl<'a> ExprGenerator<'a> {
                 SchemaTypeVariant::Boolean => {
                     self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
                 }
-                SchemaTypeVariant::Long => {
+                SchemaTypeVariant::Long { .. } => {
                     self.generate_ext_func_call_for_type(&Type::long(), max_depth, u)
                 }
                 SchemaTypeVariant::String => {
@@ -1694,8 +1700,16 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
-                self.generate_attr_value_for_type(&Type::long(), max_depth, u)
+            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt})) => {
+                match bounds_opt {
+                    None => {
+                        self.generate_attr_value_for_type(&Type::long(), max_depth, u)
+                    }
+                    Some(SchemaLongBounds {min, max}) =>
+                    {
+                        Ok(AttrValue::IntLit(u.int_in_range(*min..=*max)?.into()))
+                    }
+                }
             }
             SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_attr_value_for_type(&Type::string(), max_depth, u)
@@ -1910,8 +1924,16 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
-                self.generate_value_for_type(&Type::long(), max_depth, u)
+            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt})) => {
+                match bounds_opt {
+                    None => {
+                        self.generate_value_for_type(&Type::long(), max_depth, u)
+                    }
+                    Some(SchemaLongBounds {min, max}) =>
+                    {
+                        Ok(Value::Lit(u.int_in_range(*min..=*max)?.into()))
+                    }
+                }
             }
             SchemaType::Type(SchemaTypeVariant::String) => {
                 self.generate_value_for_type(&Type::string(), max_depth, u)
