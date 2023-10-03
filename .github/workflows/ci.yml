@@ -3,7 +3,7 @@ name: Build cedar-spec
 on:
   pull_request:
 
-env: 
+env:
   dotnet-version: 6.0.x # SDK Version for building Dafny
 
 jobs:
@@ -19,23 +19,31 @@ jobs:
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
-      - name: Download Dafny
+      - name: Install Z3
         shell: bash
-        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
-      - name: Unzip Dafny
+        run: |
+          wget -q --show-progress https://github.com/Z3Prover/z3/releases/download/z3-4.12.1/z3-4.12.1-x64-glibc-2.35.zip
+          unzip z3-4.12.1-x64-glibc-2.35.zip
+          echo "$(pwd)/z3-4.12.1-x64-glibc-2.35/bin" >> $GITHUB_PATH
+      - name: Audit Dafny files
         shell: bash
-        run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
-      - name: Symlink z3
-        shell: bash
-        run: ln -s $(pwd)/dafny/z3/bin/z3-4.12.1 $(pwd)/dafny/z3/bin/z3
+        working-directory: ./cedar-dafny
+        run : |
+          dotnet tool restore
+          sudo apt-get install ack
+          find . -path test -prune -o -name '*.dfy' | xargs -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
       - name: verify dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make verify
+        run: make GEN_STATS=1 verify
       - name: test dafny
         working-directory: ./cedar-dafny
-        run: export PATH=$PATH:$(pwd)/../dafny/z3/bin && make test
+        run: make test
+      - name: log resource usage
+        working-directory: ./cedar-dafny
+        run: |
+          dotnet tool restore
+          dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 . || true
 
-  
   build_and_test_drt:
     name: Build and Test DRT
     runs-on: ubuntu-latest
@@ -49,51 +57,47 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Download Dafny
-        shell: bash
-        run: wget https://github.com/dafny-lang/dafny/releases/download/v4.0.0/dafny-4.0.0-x64-ubuntu-20.04.zip
-      - name: Unzip Dafny
-        shell: bash
-        run: unzip dafny-4.0.0-x64-ubuntu-20.04.zip
-      - name: Symlink z3
-        shell: bash
-        run: ln -s $(pwd)/dafny/z3/bin/z3-4.12.1 $(pwd)/dafny/z3/bin/z3
       - name: Get Java 17
         uses: actions/setup-java@v3
         with:
           distribution: 'corretto'
           java-version: '17'
           cache: 'gradle'
-      - name: build dafny def engine
+      - name: Build Dafny def engine
         working-directory: ./cedar-dafny
-        run: |
-              export PATH=$PATH:$(pwd)/../dafny/z3/bin && 
-              export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" && 
-              export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server && 
-              make compile-difftest
+        shell: bash
+        run: make compile-difftest
       - name: Build cedar-dafny-java-wrapper
         working-directory: ./cedar-dafny-java-wrapper
         shell: bash
         run: ./gradlew build dumpClasspath
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - name: cargo fmt
+      - name: cargo fmt (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo fmt --all --check
+      - name: cargo fmt (cedar-drt)
         working-directory: ./cedar-drt
         run: cargo fmt --all --check
-      - name: cargo fmt (fuzz/)
+      - name: cargo fmt (cedar-drt/fuzz/)
         working-directory: ./cedar-drt/fuzz
         run: cargo fmt --all --check
-      - name: cargo rustc
+      - name: cargo rustc (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo rustc (cedar-drt)
         working-directory: ./cedar-drt
         run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo rustc (fuzz/)
+      - name: cargo rustc (cedar-drt/fuzz/)
         working-directory: ./cedar-drt/fuzz
-        run: RUSTFLAGS="--cfg=fuzzing -D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo test
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo test (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo test --verbose
+      - name: cargo test (cedar-drt)
         working-directory: ./cedar-drt
         shell: bash
         run: |
-             export JAVA_HOME="/opt/hostedtoolcache/Java_Corretto_jdk/17.0.7.7.1/x64" &&
-             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server &&
-             export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar" &&
+             source ./set_env_vars.sh
+             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server
              cargo test --verbose

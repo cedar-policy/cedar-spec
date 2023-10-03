@@ -53,13 +53,13 @@ module validation.thm.base {
 
   // Note that this is stronger than the alternative
   //   `InstanceOfType(Value.Record(r), Type.Record(rt))`
-  // because it enforces that the record type `rt` exactly describes the
-  // fields in `r`.
+  // when `rt` has an open attributes record because it always enforces that the
+  // record type `rt` exactly describes the fields in `r`
   ghost predicate InstanceOfRecordType(r: Record, rt: RecordType) {
     // all attributes are declared and well typed
-    (forall k | k in r :: k in rt && InstanceOfType(r[k], rt[k].ty)) &&
+    (forall k | k in r :: k in rt.attrs && InstanceOfType(r[k], rt.attrs[k].ty)) &&
     // required attributes are present
-    (forall k | k in rt && rt[k].isRequired :: k in r)
+    (forall k | k in rt.attrs && rt.attrs[k].isRequired :: k in r)
   }
 
   ghost predicate InstanceOfEntityTypeStore(s: EntityStore, ets: EntityTypeStore)
@@ -132,10 +132,11 @@ module validation.thm.base {
       case (Set(s),Set(ty1)) =>
         forall v1 | v1 in s :: InstanceOfType(v1,ty1)
       case (Record(r),Record(rt)) =>
+        (!rt.isOpen() ==> (forall k | k in r :: k in rt.attrs)) &&
         // if an attribute is present, then it has the expected type
-        (forall k | k in rt && k in r :: InstanceOfType(r[k],rt[k].ty)) &&
+        (forall k | k in rt.attrs && k in r :: InstanceOfType(r[k],rt.attrs[k].ty)) &&
         // required attributes are present
-        (forall k | k in rt && rt[k].isRequired :: k in r)
+        (forall k | k in rt.attrs && rt.attrs[k].isRequired :: k in r)
       case (Extension(Decimal(_)),_) => ty == Type.Extension(Name.fromStr("decimal"))
       case (Extension(IPAddr(_)),_) => ty == Type.Extension(Name.fromStr("ipaddr"))
       case _ => false

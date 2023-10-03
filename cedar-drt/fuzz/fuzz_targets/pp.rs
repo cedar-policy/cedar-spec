@@ -17,9 +17,12 @@
 #![no_main]
 
 use cedar_drt::initialize_log;
-use cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
+use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
-use cedar_policy_core::parser::{err, parse_policy};
+use cedar_policy_core::parser::{self, parse_policy};
+use cedar_policy_generators::{
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 
@@ -43,6 +46,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
     enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -56,7 +61,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ])
     }
@@ -68,7 +73,7 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
 
 // round-tripping of a policy
 // i.e., print a policy to string and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, Vec<err::ParseError>> {
+fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors> {
     parse_policy(None, &p.to_string())
 }
 

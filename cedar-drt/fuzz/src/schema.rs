@@ -675,7 +675,7 @@ impl Schema {
                 })?;
                 Ok((name, uids))
             })
-            .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID>>>>()?;
+            .collect::<Result<HashMap<ast::Name, Vec<ast::EntityUID
         let entities = uids_by_type
             .iter()
             .flat_map(|(_, uids)| {

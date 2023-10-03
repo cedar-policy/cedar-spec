@@ -149,7 +149,7 @@ module def.core {
       Coerce(Value.String, Value.asString),
       Coerce(Value.Ext,    Value.asExt))
 
-  const extFuns: map<Name, ext.fun.ExtFun<Value>> := ext.register(coerce);
+  const extFuns: map<Name, ext.fun.ExtFun<Value>> := ext.register(coerce)
 
   // ----- Expressions ----- //
 

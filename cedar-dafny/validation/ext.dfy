@@ -28,5 +28,5 @@ module validation.ext {
     decimal.register() + ipaddr.register()
   }
 
-  const extFunTypes: map<base.Name, ExtFunType> := register();
+  const extFunTypes: map<base.Name, ExtFunType> := register()
 }

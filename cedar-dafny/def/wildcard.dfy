@@ -99,15 +99,15 @@ module def.wildcard {
   }
 
   method wildcardMatchIdxMem(text: string, pattern: Pattern, i: nat, j: nat, cache: array2<std.Option<bool>>) returns(r: bool)
-    requires i <= |text| && j <= |pattern|;
-    requires cache.Length0 == |text| + 1 && cache.Length1 == |pattern| + 1;
-    requires forall p: nat, q: nat | p < cache.Length0 &&  q < cache.Length1 && cache[p, q].Some? :: cache[p, q].value == wildcardMatchIdx(text, pattern, p, q);
-    modifies cache;
-    decreases |text| - i;
-    decreases |pattern| - j;
-    ensures r == wildcardMatchIdx(text, pattern, i, j);
-    ensures cache[i, j] == Some(wildcardMatchIdx(text, pattern, i, j));
-    ensures forall p: nat, q: nat | p < cache.Length0 &&  q < cache.Length1 && cache[p, q].Some? :: cache[p, q].value == wildcardMatchIdx(text, pattern, p, q);
+    requires i <= |text| && j <= |pattern|
+    requires cache.Length0 == |text| + 1 && cache.Length1 == |pattern| + 1
+    requires forall p: nat, q: nat | p < cache.Length0 &&  q < cache.Length1 && cache[p, q].Some? :: cache[p, q].value == wildcardMatchIdx(text, pattern, p, q)
+    modifies cache
+    decreases |text| - i
+    decreases |pattern| - j
+    ensures r == wildcardMatchIdx(text, pattern, i, j)
+    ensures cache[i, j] == Some(wildcardMatchIdx(text, pattern, i, j))
+    ensures forall p: nat, q: nat | p < cache.Length0 &&  q < cache.Length1 && cache[p, q].Some? :: cache[p, q].value == wildcardMatchIdx(text, pattern, p, q)
   {
     if cache[i, j].Some? {
       r := cache[i, j].value;

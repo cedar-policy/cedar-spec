@@ -18,14 +18,12 @@ include "../def/all.dfy"
 include "subtyping.dfy"
 include "typechecker.dfy"
 include "types.dfy"
-include "strict.dfy"
 include "util.dfy"
 
 // This module contains the specification of Cedar's validator.
 module validation.validator {
   import opened def.base
   import opened def.core
-  import opened strict
   import opened typechecker
   import opened types
   import opened util
@@ -42,12 +40,12 @@ module validation.validator {
       set a,p,r | a in actionIds.Keys &&
                   p in actionIds[a].appliesTo.principalApplySpec &&
                   r in actionIds[a].appliesTo.resourceApplySpec ::
-        RequestType(p, a, r, actionIds[a].context)
+        RequestType(p, a, r, RecordType(actionIds[a].context, ClosedAttributes))
     }
 
     // Generate an EntityTypeStore
     function makeEntityTypeStore(): EntityTypeStore {
-      var types := map et | et in entityTypes :: entityTypes[et].attributes;
+      var types := map et | et in entityTypes :: RecordType(entityTypes[et].attributes, ClosedAttributes);
       var descendants := map et | et in entityTypes :: entityTypes[et].descendants;
       EntityTypeStore(types, descendants)
     }
@@ -77,25 +75,17 @@ module validation.validator {
 
   datatype ValidationError =
     // Error when typechecking a policy
-    StrictTypeError(StrictTypeError) |
+    TypeError(TypeError) |
     // A policy returns False under all query types
     AllFalse
-
-  // The ValidationMode determines whether to use permissive or strict typechecking
-  datatype ValidationMode = Permissive | Strict
 
   // A Validator typechecks a set of policies.
   datatype Validator = Validator(schema: Schema, mode: ValidationMode) {
 
     // check that e is a bool-typed expression for the input entity store type,
     // action store, and request type
-    function Typecheck (e: Expr, ets: EntityTypeStore, acts: ActionStore, reqty: RequestType): std.Result<Type, StrictTypeError> {
-      if mode.Permissive?
-      then match Typechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool)) {
-             case Ok(ty) => std.Ok(ty)
-             case Err(er) => std.Err(strict.TypeError(er))
-           }
-      else StrictTypechecker(ets, acts, reqty).typecheck(e, Type.Bool(AnyBool))
+    function Typecheck (e: Expr, ets: EntityTypeStore, acts: ActionStore, reqty: RequestType): std.Result<Type, TypeError> {
+      Typechecker(ets, acts, reqty, mode).typecheck(e, Type.Bool(AnyBool))
     }
 
     // Returns a list of type errors for easier debugging,
@@ -123,7 +113,7 @@ module validation.validator {
             case Ok(_) => allFalse := false;
             case Err(e) =>
               allFalse := false;
-              errs := errs + [StrictTypeError(e)];
+              errs := errs + [ValidationError.TypeError(e)];
           }
           reqtys := reqtys - { reqty };
         }

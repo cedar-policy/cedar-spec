@@ -18,7 +18,7 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_validator::{ActionBehavior, ValidatorNamespaceDef, ValidatorSchemaFragment};
+use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 
@@ -43,6 +43,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -66,14 +68,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
 
     // generate a schema
-    if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
-        input.schema.namespace().clone(),
-        input.schema.schemafile().clone(),
-        ActionBehavior::ProhibitAttributes,
-    )
-    .and_then(|f| {
-        ValidatorSchema::from_schema_fragments([ValidatorSchemaFragment::from_namespaces([f])])
-    }) {
+    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
 
         // generate a policy

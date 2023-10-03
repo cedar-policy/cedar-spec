@@ -16,6 +16,7 @@
 
 include "../../def/all.dfy"
 include "../all.dfy"
+include "../../thm/eval/basic.dfy"
 include "base.dfy"
 
 // This module contains an abstract model for the Cedar evaluator semantics.
@@ -23,47 +24,12 @@ module validation.thm.model {
   import opened def
   import opened def.core
   import opened def.engine
+  import opened def.util
+  import opened eval.basic
   import opened types
   import opened subtyping
   import opened base
   import opened ext
-
-  // ----- Utilities ----- //
-
-  // KeyExists and LastOfKey are helpers about association lists that are used in
-  // validation.dfy, so we lift them here.
-  // We use these as an abbreviation for the quantifier alternation:
-  // exists i :: 0 <= i < |es| && (forall j :: i < j < |es| => ...)
-  // This helps dafny prove some of our lemmas about record evaluation and validation.
-  ghost predicate KeyExists<K,V>(k: K, es: seq<(K,V)>) {
-    exists i :: 0 <= i < |es| && es[i].0 == k
-  }
-
-  opaque ghost function LastOfKey<K,V>(k: K, es: seq<(K,V)>): (res: V)
-    requires KeyExists(k,es)
-    ensures exists i :: 0 <= i < |es| && es[i].0 == k && es[i].1 == res && (forall j | i < j < |es| :: es[j].0 != k)
-  {
-    if (es[0].0 == k && (forall j | 0 < j < |es| :: es[j].0 != k)) then es[0].1 else LastOfKey(k,es[1..])
-  }
-
-  lemma InterpretRecordLemmaOk(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
-    requires Evaluator(r,s).interpretRecord(es).Ok?
-    ensures forall i :: 0 <= i < |es| ==> es[i].0 in Evaluator(r,s).interpretRecord(es).value.Keys && Evaluator(r,s).interpret(es[i].1).Ok?
-    ensures forall k | k in Evaluator(r,s).interpretRecord(es).value.Keys :: KeyExists(k,es) && Evaluator(r,s).interpret(LastOfKey(k,es)) == base.Ok(Evaluator(r,s).interpretRecord(es).value[k])
-  {}
-
-  lemma InterpretRecordLemmaErr(es: seq<(Attr,Expr)>, r: Request, s: EntityStore)
-    requires Evaluator(r,s).interpretRecord(es).Err?
-    ensures exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i].1) == base.Err(Evaluator(r,s).interpretRecord(es).error) && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j].1).Ok?)
-  {}
-
-  lemma InterpretSetLemma(es: seq<Expr>, r: Request, s: EntityStore)
-    ensures Evaluator(r,s).interpretSet(es).Ok? ==> forall v | v in Evaluator(r,s).interpretSet(es).value :: exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]) == base.Ok(v)
-    ensures (forall e | e in es :: Evaluator(r,s).interpret(e).Ok?) ==> Evaluator(r,s).interpretSet(es).Ok?
-    ensures (exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err?) ==> Evaluator(r,s).interpretSet(es).Err?
-    ensures Evaluator(r,s).interpretSet(es).Err? <==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
-    ensures Evaluator(r,s).interpretSet(es).Err? ==> exists i :: 0 <= i < |es| && Evaluator(r,s).interpret(es[i]).Err? && Evaluator(r,s).interpret(es[i]).error == Evaluator(r,s).interpretSet(es).error && (forall j | 0 <= j < i :: Evaluator(r,s).interpret(es[j]).Ok?);
-  {}
 
   // ----- Semantic model of Cedar ----- //
 
@@ -135,6 +101,56 @@ module validation.thm.model {
     (Evaluate(e,r,s).Ok? && InstanceOfType(Evaluate(e,r,s).value,t))
   }
 
+  lemma IsSafeSemanticsOk(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires Evaluate(e,r,s).Ok? && InstanceOfType(Evaluate(e,r,s).value,t)
+    ensures IsSafe(r, s, e, t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma IsSafeSemanticsErr(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires Evaluate(e, r, s) == base.Err(base.EntityDoesNotExist) || Evaluate(e,r,s) == base.Err(base.ExtensionError)
+    ensures IsSafe(r, s, e, t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma IsSafeSemanticsOkRev(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires IsSafe(r, s, e, t)
+    requires Evaluate(e, r, s).Ok?
+    ensures InstanceOfType(Evaluate(e,r,s).value,t)
+  {
+    reveal IsSafe();
+  }
+
+  lemma ExtensionFunSafeEnsuresSafe(r: Request, s: EntityStore, name: base.Name, es: seq<Expr>, args: seq<Value>)
+    requires name in extFunTypes
+    requires |es| == |args|
+    requires Evaluator(r, s).interpretList(es).Ok? && Evaluator(r, s).interpretList(es).value == args
+    requires ExtensionFunSafeEnsures(name, args)
+    ensures IsSafe(r, s, Call(name, es), extFunTypes[name].ret)
+  {
+    var eft := extFunTypes[name];
+    var res := extFuns[name].fun(args);
+    assert res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret));
+    var E := Evaluator(r, s);
+    assert E.interpretList(es).Ok?;
+    CallWithOkArgs(name, es, E);
+    if res == base.Err(base.ExtensionError) {
+      IsSafeSemanticsErr(r, s, Call(name, es), extFunTypes[name].ret);
+    } else {
+      IsSafeSemanticsOk(r, s, Call(name, es), extFunTypes[name].ret);
+    }
+  }
+
+  lemma IsSafeSemanticsErrRev(r: Request, s: EntityStore, e: Expr, t: Type)
+    requires IsSafe(r, s, e, t)
+    requires Evaluate(e, r, s).Err?
+    ensures Evaluate(e, r, s) == base.Err(base.EntityDoesNotExist) || Evaluate(e,r,s) == base.Err(base.ExtensionError)
+  {
+    reveal IsSafe();
+  }
+
   opaque ghost predicate IsSafeStrong (r: Request, s: EntityStore, e: Expr, t: Type) {
     IsSafe(r,s,e,t) && Evaluate(e,r,s).Ok?
   }
@@ -179,10 +195,10 @@ module validation.thm.model {
   }
 
   lemma SubtyCompat(t: Type, t': Type)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     ensures SemanticSubty(t,t')
   {
-    assert subty(t,t');
+    assert subty(t,t',ValidationMode.Permissive);
     assert SemanticSubty(t,t') by {
       forall v: Value | InstanceOfType(v,t)
         ensures InstanceOfType(v,t')
@@ -193,7 +209,7 @@ module validation.thm.model {
   }
 
   lemma SubtyCompatMatchPointwise(t: Type, t': Type, v: Value)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     requires InstanceOfType(v,t)
     ensures InstanceOfType(v,t')
     decreases t
@@ -213,20 +229,20 @@ module validation.thm.model {
           }
         }
       case (Record(rt1),Record(rt2),Record(rv)) =>
-        assert forall k | k in rt2 && k in rv :: InstanceOfType(rv[k],rt2[k].ty) by {
-          forall k: Attr | k in rt2 && k in rv
-            ensures InstanceOfType(rv[k],rt2[k].ty)
+        assert forall k | k in rt2.attrs && k in rv :: InstanceOfType(rv[k],rt2.attrs[k].ty) by {
+          forall k: Attr | k in rt2.attrs && k in rv
+            ensures InstanceOfType(rv[k],rt2.attrs[k].ty)
           {
-            assert InstanceOfType(rv[k],rt1[k].ty);
-            assert subtyAttrType(rt1[k],rt2[k]);
-            SubtyCompatMatchPointwise(rt1[k].ty,rt2[k].ty,rv[k]);
+            assert InstanceOfType(rv[k],rt1.attrs[k].ty);
+            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k],ValidationMode.Permissive);
+            SubtyCompatMatchPointwise(rt1.attrs[k].ty,rt2.attrs[k].ty,rv[k]);
           }
         }
-        assert forall k | k in rt2 && rt2[k].isRequired :: k in rv by {
-          forall k | k in rt2 && rt2[k].isRequired
+        assert forall k | k in rt2.attrs && rt2.attrs[k].isRequired :: k in rv by {
+          forall k | k in rt2.attrs && rt2.attrs[k].isRequired
             ensures k in rv
           {
-            assert subtyAttrType(rt1[k],rt2[k]);
+            assert subtyAttrType(rt1.attrs[k],rt2.attrs[k],ValidationMode.Permissive);
           }
         }
       case (Entity(e1),Entity(e2),_) =>
@@ -235,7 +251,7 @@ module validation.thm.model {
   }
 
   lemma SubtyCompatPointwise(t: Type, t': Type, v: Value)
-    requires subty(t,t')
+    requires subty(t,t',ValidationMode.Permissive)
     requires InstanceOfType(v,t)
     ensures InstanceOfType(v,t')
   {
@@ -729,11 +745,12 @@ module validation.thm.model {
     ensures IsSafe(r,s,Expr.Set(es),Type.Set(t))
   {
     reveal IsSafe();
-    InterpretSetLemma(es,r,s);
+    var E := Evaluator(r,s);
+    SetSemantics(es,E);
     if(forall i | 0 <= i < |es| :: exists v :: Evaluate(es[i],r,s) == base.Ok(v) && InstanceOfType(v,t)){
       assert forall e | e in es :: Evaluate(e,r,s).Ok?;
       assert Evaluate(Expr.Set(es),r,s).Ok?;
-      var vs :| Evaluator(r,s).interpretSet(es) == base.Ok(vs);
+      var vs :| E.interpretSet(es) == base.Ok(vs);
       assert InstanceOfType(Value.Set(vs),Type.Set(t)) by {
         forall v | v in vs ensures InstanceOfType(v,t) {}
       }
@@ -833,7 +850,16 @@ module validation.thm.model {
     requires IsDecimalComparisonName(name)
     requires ExtensionFunSafeRequires(name, args)
     ensures ExtensionFunSafeEnsures(name, args)
-  {}
+  {
+    assert |args| == 2 && args[0].Extension? && args[0].ex.Decimal? && args[1].Extension? && args[1].ex.Decimal?;
+    assert extFunTypes[name].ret == Type.Bool(AnyBool);
+    var res := extFuns[name].fun(args);
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool)) by {
+      match res.value {
+        case Primitive(Bool(b)) =>
+      }
+    }
+  }
 
   ghost predicate IsIpConstructorName(name: base.Name) {
     name == base.Name.fromStr("ip")
@@ -858,6 +884,13 @@ module validation.thm.model {
     ensures ExtensionFunSafeEnsures(name, args)
   {
     assert |args| == 1 && args[0].Extension? && args[0].ex.IPAddr?;
+    assert extFunTypes[name].ret == Type.Bool(AnyBool);
+    var res := extFuns[name].fun(args);
+    assert res.Ok? && InstanceOfType(res.value, Type.Bool(AnyBool)) by {
+      match res.value {
+        case Primitive(Bool(b)) =>
+      }
+    }
   }
 
   ghost predicate IsIpBinaryName(name: base.Name) {
@@ -870,51 +903,47 @@ module validation.thm.model {
     ensures ExtensionFunSafeEnsures(name, args)
   {}
 
-  lemma InterpretListEnsures(eval: Evaluator, es: seq<Expr>)
-    ensures eval.interpretList(es).Ok? ==> (|eval.interpretList(es).value| == |es| &&
-                                            forall i | 0 <= i < |es| :: eval.interpret(es[i]) == base.Ok(eval.interpretList(es).value[i]))
-    ensures (forall e | e in es :: eval.interpret(e).Ok?) ==> eval.interpretList(es).Ok?
-    ensures (exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err?) ==> eval.interpretList(es).Err?
-    ensures eval.interpretList(es).Err? <==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
-    ensures eval.interpretList(es).Err? ==> exists i :: 0 <= i < |es| && eval.interpret(es[i]).Err? && eval.interpret(es[i]).error == eval.interpretList(es).error && (forall j | 0 <= j < i :: eval.interpret(es[j]).Ok?)
-  {}
-
   lemma CallSafe(r: Request, s: EntityStore, name: base.Name, args: seq<Expr>)
     requires name in extFunTypes
     requires |args| == |extFunTypes[name].args|
     requires forall i | 0 <= i < |args| :: IsSafe(r,s,args[i],extFunTypes[name].args[i])
     ensures IsSafe(r,s,Call(name,args),extFunTypes[name].ret)
   {
-    reveal IsSafe();
     var eft := extFunTypes[name];
-    if (forall i | 0 <= i < |args| :: Evaluate(args[i],r,s).Ok?) {
-      assert forall e <- args :: Evaluate(e,r,s).Ok?;
+    var E := Evaluator(r, s);
+    if (forall i | 0 <= i < |args| :: E.interpret(args[i]).Ok?) {
+      ListSemanticsOk(args, E);
 
-      InterpretListEnsures(Evaluator(r, s), args);
-      var argVals := Evaluator(r, s).interpretList(args).value;
-
-      var res := Evaluator(r, s).applyExtFun(name, argVals);
-      assert Evaluate(Call(name,args),r,s) == res;
-      assert forall i | 0 <= i < |args| :: InstanceOfType(argVals[i], eft.args[i]);
-      var isSafe := (res == base.Err(base.ExtensionError) || (res.Ok? && InstanceOfType(res.value, eft.ret)));
+      var argVals := E.interpretList(args).value;
+      var res := E.applyExtFun(name, argVals);
+      assert forall i:nat | i < |args| :: InstanceOfType(argVals[i], eft.args[i]) by {
+        forall i: nat | i < |args| ensures InstanceOfType(argVals[i], eft.args[i]) {
+          assert E.interpret(args[i]) == base.Ok(argVals[i]);
+          IsSafeSemanticsOkRev(r, s, args[i], eft.args[i]);
+        }
+      }
       if IsDecimalConstructorName(name) {
         DecimalConstructorSafe(name, argVals);
-        assert isSafe;
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
       } else if IsDecimalComparisonName(name) {
         DecimalComparisonSafe(name, argVals);
-        assert isSafe;
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
       } else if IsIpConstructorName(name) {
         IpConstructorSafe(name, argVals);
-        assert isSafe;
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
       } else if IsIpUnaryName(name) {
         IpUnarySafe(name, argVals);
-        assert isSafe;
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
       } else if IsIpBinaryName(name) {
         IpBinarySafe(name, argVals);
-        assert isSafe;
+        ExtensionFunSafeEnsuresSafe(r, s, name, args, argVals);
       }
+
     } else {
-      InterpretListEnsures(Evaluator(r, s), args);
+      var i := ListSemanticsErrRet(args, E);
+      IsSafeSemanticsErrRev(r, s, args[i], extFunTypes[name].args[i]);
+      CallWithErrArgs(name, args, E);
+      IsSafeSemanticsErr(r,s,Call(name,args),extFunTypes[name].ret);
     }
   }
 
@@ -926,33 +955,38 @@ module validation.thm.model {
     // every entry has some type
     requires forall ae :: ae in es ==> ExistsSafeType(r,s,ae.1)
     // and the last instance of every required key is safe at the correct type.
-    requires forall k :: k in rt ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt[k].ty)
+    requires forall k :: k in rt.attrs ==> KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty)
+    requires !rt.isOpen() ==> forall ae :: ae in es ==> ae.0 in rt.attrs.Keys
     ensures IsSafe(r,s,Expr.Record(es),Type.Record(rt))
   {
-    reveal IsSafe();
-    var evaluator := Evaluator(r,s);
-    var res := evaluator.interpretRecord(es);
-    if res.Ok? {
-      var rv := res.value;
-      assert evaluator.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
-      InterpretRecordLemmaOk(es,r,s);
-      forall k | k in rt
-        ensures InstanceOfType(rv[k],rt[k].ty)
-      {
-        var vres := evaluator.interpret(LastOfKey(k,es));
-        assert vres == base.Ok(rv[k]);
-        assert InstanceOfType(vres.value,rt[k].ty);
-      }
-      assert InstanceOfType(Value.Record(rv),Type.Record(rt));
-    } else {
-      InterpretRecordLemmaErr(es,r,s);
+    var E := Evaluator(r,s);
+    var res := E.interpretRecord(es);
+    match res {
+      case Ok(rv) =>
+        assert E.interpret(Expr.Record(es)) == base.Ok(Value.Record(rv));
+        RecordSemanticsOk(es, E);
+        forall k | k in rt.attrs
+          ensures InstanceOfType(rv[k],rt.attrs[k].ty)
+        {
+          assert KeyExists(k,es) && IsSafe(r,s,LastOfKey(k,es),rt.attrs[k].ty);
+          IsSafeSemanticsOkRev(r, s, LastOfKey(k,es),rt.attrs[k].ty);
+        }
+        assert InstanceOfType(Value.Record(rv),Type.Record(rt));
+        IsSafeSemanticsOk(r, s, Expr.Record(es), Type.Record(rt));
+      case Err(err) =>
+        var i := RecordSemanticsErrRet(es, E);
+        var e := es[i].1;
+        var t :| IsSafe(r,s,e,t);
+        IsSafeSemanticsErrRev(r, s, e, t);
+        RecordSemanticsErr(es, E);
+        IsSafeSemanticsErr(r, s, Expr.Record(es), Type.Record(rt));
     }
   }
 
   lemma ObjectProjSafeRequired(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
     requires t'.isRequired
-    requires SemanticSubty(t,Type.Record(map[l := t']))
+    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
     reveal IsSafe();
@@ -960,7 +994,7 @@ module validation.thm.model {
 
   lemma ObjectProjSafeGetAttrSafe(r: Request, s: EntityStore, e: Expr, t: Type, l: Attr, t': AttrType)
     requires IsSafe(r,s,e,t)
-    requires SemanticSubty(t,Type.Record(map[l := t']))
+    requires SemanticSubty(t,Type.Record(RecordType(map[l := t'], OpenAttributes)))
     requires GetAttrSafe(r,s,e,l)
     ensures IsSafe(r,s,GetAttr(e,l),t'.ty)
   {
@@ -977,7 +1011,7 @@ module validation.thm.model {
   }
 
   lemma RecordHasRequiredTrueSafe(r: Request, s: EntityStore, e: Expr, l: Attr, t: AttrType)
-    requires IsSafe(r,s,e,Type.Record(map[l := t]))
+    requires IsSafe(r,s,e,Type.Record(RecordType(map[l := t], OpenAttributes)))
     requires t.isRequired
     ensures IsTrue(r,s,HasAttr(e,l))
   {
@@ -985,10 +1019,25 @@ module validation.thm.model {
   }
 
   lemma RecordHasOpenRecSafe(r: Request, s: EntityStore, e: Expr, l: Attr)
-    requires IsSafe(r,s,e,Type.Record(map[]))
+    requires IsSafe(r,s,e,Type.Record(RecordType(map[], OpenAttributes)))
     ensures IsSafe(r,s,HasAttr(e,l),Type.Bool(AnyBool))
   {
     reveal IsSafe();
+  }
+
+  lemma RecordHasClosedRecFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, rt: RecordType)
+    requires IsSafe(r,s,e,Type.Record(rt))
+    requires l !in rt.attrs.Keys
+    requires !rt.isOpen()
+    ensures IsFalse(r,s,HasAttr(e,l))
+  {
+    reveal IsSafe();
+    var evaluator := Evaluator(r,s);
+    var v := evaluator.interpret(e);
+    if v.Ok? {
+      var rv :- assert Value.asRecord(v.value);
+      assert l !in rv.Keys;
+    }
   }
 
   lemma EntityHasImpossibleFalseSafe(r: Request, s: EntityStore, e: Expr, l: Attr, lub: EntityLUB)
@@ -1049,8 +1098,8 @@ module validation.thm.model {
   }
 
   lemma InSingleFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)
-    requires subty(t1,Type.Entity(AnyEntity))
-    requires subty(t2,Type.Entity(AnyEntity))
+    requires subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive)
+    requires subty(t2,Type.Entity(AnyEntity),ValidationMode.Permissive)
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,t2)
     requires forall u1, u2: EntityUID |
@@ -1058,18 +1107,24 @@ module validation.thm.model {
                !EntityInEntity(s,u1,u2)
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2))
   {
-    var evaluator := Evaluator(r,s);
-    var r1 := evaluator.interpret(e1);
-    var r2 := evaluator.interpret(e2);
-    var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,e2));
+    var E := Evaluator(r,s);
+    var r1 := E.interpret(e1);
+    var r2 := E.interpret(e2);
+    var res := E.interpret(BinaryApp(BinaryOp.In,e1,e2));
 
-    reveal IsSafe();
     if r1.Err? {
+      BinaryAppSemanticsErrLeft(e1, e2, BinaryOp.In, E);
       assert res == r1;
+      IsSafeSemanticsErrRev(r, s, e1, t1);
+      IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In, e1, e2), Type.Bool(False));
     } else if r2.Err? {
+      BinaryAppSemanticsErrRight(e1, e2, BinaryOp.In, E);
       assert res == r2;
+      IsSafeSemanticsErrRev(r, s, e2, t2);
+      IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In, e1, e2), Type.Bool(False));
     } else {
-      assert res == evaluator.applyBinaryOp(BinaryOp.In,r1.value,r2.value);
+      IsSafeSemanticsOkRev(r, s, e1, t1);
+      IsSafeSemanticsOkRev(r, s, e2, t2);
       assert InstanceOfType(r1.value,t1);
       assert InstanceOfType(r2.value,t2);
       assert r1.value.Primitive? && r1.value.primitive.EntityUID?;
@@ -1077,7 +1132,11 @@ module validation.thm.model {
       var u1 := r1.value.primitive.uid;
       var u2 := r2.value.primitive.uid;
       assert !EntityInEntity(s,u1,u2);
+      BinaryAppSemanticsOk(e1, e2, BinaryOp.In, E);
+      assert res == E.applyBinaryOp(BinaryOp.In,r1.value,r2.value);
       assert res.value == Value.FALSE;
+      assert InstanceOfType(res.value, Type.Bool(False));
+      IsSafeSemanticsOk(r, s, BinaryApp(BinaryOp.In,e1,e2), Type.Bool(False));
     }
   }
 
@@ -1096,17 +1155,43 @@ module validation.thm.model {
                IsFalse(r,s,BinaryApp(BinaryOp.In,e1,e2s[i]))
     ensures IsFalse(r,s,BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)))
   {
-    reveal IsSafe();
-    InterpretSetLemma(e2s,r,s);
-    var evaluator := Evaluator(r,s);
-    var res := evaluator.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
-    var r1 := evaluator.interpret(e1);
-    var r2 := evaluator.interpret(Expr.Set(e2s));
+    var E := Evaluator(r,s);
+    var res := E.interpret(BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)));
+    var r1 := E.interpret(e1);
+    var r2 := E.interpret(Expr.Set(e2s));
+    assert r2.Ok? ==> E.interpretSet(e2s).Ok? by {
+      assert r2 == E.interpretSet(e2s).Map(v => core.Value.Set(v));
+    }
+    match (r1, r2) {
+      case (Ok(v1), Ok(v2)) =>
+        IsSafeSemanticsOkRev(r, s, e1, Type.Entity(AnyEntity));
+        assert core.Value.asEntity(v1).Ok?;
+        SetSemanticsOk(e2s, E);
+        forall i: nat | i < |e2s|
+          ensures E.interpret(e2s[i]).Ok?
+          ensures core.Value.asEntity(E.interpret(e2s[i]).value).Ok?
+          ensures E.interpret(BinaryApp(BinaryOp.In, e1, e2s[i])) == base.Ok(Value.Bool(false)) {
+          assert E.interpret(e2s[i]).Ok?;
+          IsSafeSemanticsOkRev(r, s, e2s[i], Type.Entity(AnyEntity));
+          assert core.Value.asEntity(E.interpret(e2s[i]).value).Ok?;
+          IsSafeSemanticsOkRev(r, s, BinaryApp(BinaryOp.In, e1, e2s[i]), Type.Bool(False));
+          assert E.interpret(BinaryApp(BinaryOp.In, e1, e2s[i])) == base.Ok(Value.Bool(false));
+        }
+        InSetSemantics(e1, e2s, E);
+        IsSafeSemanticsOk(r, s, BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)), Type.Bool(False));
+      case (Err(err1), _) =>
+        IsSafeSemanticsErrRev(r, s, e1, Type.Entity(AnyEntity));
+        IsSafeSemanticsErr(r, s, BinaryApp(BinaryOp.In,e1,Expr.Set(e2s)), Type.Bool(False));
+      case (_, Err(err2)) =>
+        // Probably we're gonna pay for my laziness here in the future.
+        reveal IsSafe();
+        SetSemantics(e2s, E);
+    }
   }
 
   lemma InSetFalseTypes(r: Request, s: EntityStore, e1: Expr, e2: Expr, t1: Type, t2: Type)
-    requires subty(t1,Type.Entity(AnyEntity))
-    requires subty(t2,Type.Entity(AnyEntity))
+    requires subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive)
+    requires subty(t2,Type.Entity(AnyEntity),ValidationMode.Permissive)
     requires IsSafe(r,s,e1,t1)
     requires IsSafe(r,s,e2,Type.Set(t2))
     requires forall u1, u2: EntityUID |
@@ -1123,7 +1208,18 @@ module validation.thm.model {
       var s2 := Value.asSet(r2.value).value;
       assert forall us2 <- s2 :: InstanceOfType(us2,t2);
       var us2 :- assert evaluator.checkEntitySet(s2);
-      assert forall u2 <- us2 :: !EntityInEntity(s,u1,u2);
+      forall u2 <- us2 ensures !EntityInEntity(s,u1,u2) {
+        assert InstanceOfType(Value.EntityUID(u1), t1);
+        assert InstanceOfType(Value.EntityUID(u2), t2);
+      }
+
+      var res := Evaluate(BinaryApp(BinaryOp.In, e1, e2), r, s);
+      assert res.Ok?;
+      assert InstanceOfType(res.value,Type.Bool(BoolType.False));
+    } else if r1.Ok? {
+      BinaryAppSemanticsErrRight(e1, e2, BinaryOp.In, evaluator);
+    } else if r2.Ok? {
+      BinaryAppSemanticsErrLeft(e1, e2, BinaryOp.In, evaluator);
     }
   }
 }

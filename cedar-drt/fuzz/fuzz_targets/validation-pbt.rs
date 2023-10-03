@@ -20,9 +20,15 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    err::{Error, Result},
+    hierarchy::{Hierarchy, HierarchyGenerator},
+    schema::Schema,
+    settings::ABACSettings,
+};
 use cedar_policy_validator::{
-    ActionBehavior, ApplySpec, NamespaceDefinition, ValidationMode, Validator,
-    ValidatorNamespaceDef, ValidatorSchemaFragment,
+    ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -60,6 +66,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
 };
 
 const LOG_FILENAME_GENERATION_START: &str = "./logs/01_generation_start.txt";
@@ -79,6 +87,7 @@ const LOG_FILENAME_ERR_EXTENSIONS_DISABLED: &str = "./logs/err_extensions_disabl
 const LOG_FILENAME_ERR_LIKE_DISABLED: &str = "./logs/err_like_disabled.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
+const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -109,6 +118,9 @@ fn checkpoint(filename: impl AsRef<std::path::Path>) {
 fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         match &res {
+            Err(Error::EntitiesError(_)) => {
+                checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
+            }
             Err(Error::NotEnoughData) => {
                 checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
             }
@@ -151,8 +163,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats(schema: &NamespaceDefinition, suffix: &str) {
+fn maybe_log_schemastats(schema: Option<&NamespaceDefinition>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
             LOG_FILENAME_TOTAL_ENTITY_TYPES.to_string()
                 + "_"
@@ -212,7 +225,7 @@ fn maybe_log_hierarchystats(hierarchy: &Hierarchy, suffix: &str) {
                 + "_"
                 + suffix
                 + "_"
-                + &format!("{:03}", hierarchy.num_uids()),
+                + &format!("{:03}", hierarchy.num_entities()),
         );
     }
 }
@@ -285,7 +298,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
@@ -309,14 +322,15 @@ fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool 
 // The main fuzz target. This is for PBT on the validator
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    if let Ok(schema) = ValidatorNamespaceDef::from_namespace_definition(
-        input.schema.namespace().clone(),
-        input.schema.schemafile().clone(),
-        ActionBehavior::ProhibitAttributes,
-    )
-    .and_then(|f| {
-        ValidatorSchema::from_schema_fragments([ValidatorSchemaFragment::from_namespaces([f])])
-    }) {
+    // preserve the schemafile for later logging, if we'll need it
+    let schemafile = if std::env::var("FUZZ_LOG_STATS").is_ok() {
+        Some(input.schema.schemafile().clone())
+    } else {
+        None
+    };
+    // preserve the schema in string format, which may be needed for error messages later
+    let schemafile_string = input.schema.schemafile_string();
+    if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         checkpoint(LOG_FILENAME_SCHEMA_VALID);
         if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
@@ -327,7 +341,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             policyset.add_static(policy.clone()).unwrap();
             if passes_validation(&validator, &policyset) {
                 checkpoint(LOG_FILENAME_VALIDATION_PASS);
-                maybe_log_schemastats(input.schema.schemafile(), "vyes");
+                maybe_log_schemastats(schemafile.as_ref(), "vyes");
                 maybe_log_hierarchystats(&input.hierarchy, "vyes");
                 maybe_log_policystats(&policy, "vyes");
                 // policy successfully validated, let's make sure we don't get any
@@ -340,46 +354,40 @@ fuzz_target!(|input: FuzzTargetInput| {
                     debug!("Request: {q}");
                     let ans = authorizer.is_authorized(&q, &policyset, &entities);
 
-                    // validated policies should never produce type errors
+                    let unexpected_errs = ans.diagnostics.errors.iter().filter_map(|error|
+                        match error {
+                            cedar_policy::AuthorizationError::AttributeEvaluationError(_) => None,
+                            cedar_policy::AuthorizationError::PolicyEvaluationError { error, .. } => match error.error_kind() {
+                                // Evaluation errors the validator should prevent.
+                                cedar_policy::EvaluationErrorKind::IntegerOverflow(_) |
+                                cedar_policy::EvaluationErrorKind::UnspecifiedEntityAccess(_) |
+                                cedar_policy::EvaluationErrorKind::RecordAttrDoesNotExist(_, _) |
+                                cedar_policy::EvaluationErrorKind::EntityAttrDoesNotExist { .. } |
+                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionLookup(_) |
+                                cedar_policy::EvaluationErrorKind::TypeError { .. } |
+                                cedar_policy::EvaluationErrorKind::WrongNumArguments { .. } => Some(error.to_string()),
+                                // Evaluation errors it shouldn't prevent. Not
+                                // written with a catch all so that we must
+                                // consider if a new error type should cause
+                                // this target to fail.
+                                cedar_policy::EvaluationErrorKind::EntityDoesNotExist(_) |
+                                cedar_policy::EvaluationErrorKind::InvalidRestrictedExpression(_) |
+                                cedar_policy::EvaluationErrorKind::UnlinkedSlot(_) |
+                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionApplication { .. } |
+                                cedar_policy::EvaluationErrorKind::NonValue(_) |
+                                cedar_policy::EvaluationErrorKind::RecursionLimit => None,
+                            }
+                        }
+                    ).collect::<Vec<_>>();
+
                     assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .filter(|err| err.contains("type error"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new(),
-                        "validated policy produced a type error!\npolicies:\n{}\nentities:\n{}\nschema:\n{}\nrequest:\n{}\n", &policyset, &entities, &input.schema.schemafile_string(), &q,
-                    );
-                    // or wrong-number-of-arguments errors
-                    assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .filter(|err| err.contains("wrong number of arguments"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
-                    );
-                    // or missing-attribute errors (for either entities or records)
-                    assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .filter(|err| err.contains("does not have the required attribute"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
-                    );
-                    // or integer overflow errors
-                    assert_eq!(
-                        ans.diagnostics
-                            .errors
-                            .iter()
-                            .filter(|err| err.contains("integer overflow"))
-                            .collect::<Vec<&String>>(),
-                        Vec::<&String>::new()
-                    );
+                        unexpected_errs,
+                        Vec::<String>::new(),
+                        "validated policy produced unexpected errors {unexpected_errs:?}!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
+                    )
                 }
             } else {
-                maybe_log_schemastats(input.schema.schemafile(), "vno");
+                maybe_log_schemastats(schemafile.as_ref(), "vno");
                 maybe_log_hierarchystats(&input.hierarchy, "vno");
                 maybe_log_policystats(&policy, "vno");
             }

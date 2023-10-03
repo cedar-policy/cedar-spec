@@ -19,6 +19,13 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_generators::{
+    abac::{ABACPolicy, ABACRequest},
+    err::Error,
+    hierarchy::HierarchyGenerator,
+    schema::Schema,
+    settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use std::convert::TryFrom;
@@ -31,6 +38,8 @@ struct FuzzTargetInput {
     pub schema: Schema,
     /// generated entity slice
     pub entities: Entities,
+    /// Should we pre-evaluate entity attributes
+    pub should_cache_entities: bool,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -50,6 +59,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -70,9 +81,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let entities = drop_some_entities(all_entities, u)?;
+        let should_cache_entities = bool::arbitrary(u)?;
         Ok(Self {
             schema,
             entities,
+            should_cache_entities,
             policy,
             requests,
         })
@@ -81,7 +94,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
@@ -126,10 +139,35 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
+    let original_entities = input.entities.clone();
+    let cached_entities = if input.should_cache_entities {
+        Some(input.entities.evaluate())
+    } else {
+        None
+    };
     for q in input.requests.into_iter().map(Into::into) {
         debug!("Request : {q}");
         let (rust_res, total_dur) =
-            time_function(|| diff_tester.run_single_test(&q, &policyset, &input.entities));
+            time_function(|| diff_tester.run_single_test(&q, &policyset, &original_entities));
+
+        if let Some(ref entities) = cached_entities {
+            match entities {
+                Ok(entities) => {
+                    let (cached_rust_res, _total_dur) =
+                        time_function(|| diff_tester.run_single_test(&q, &policyset, entities));
+                    assert_eq!(rust_res, cached_rust_res);
+                }
+                Err(eval_er) => match &rust_res.diagnostics.errors[0] {
+                    authorizer::AuthorizationError::AttributeEvaluationError(e) => {
+                        assert_eq!(eval_er, e)
+                    }
+                    authorizer::AuthorizationError::PolicyEvaluationError { id, error } => {
+                        panic!("Wrong error! Got policy eval error {id} {error}")
+                    }
+                },
+            }
+        }
+
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 
         // additional invariant:
@@ -139,9 +177,10 @@ fuzz_target!(|input: FuzzTargetInput| {
                 .diagnostics
                 .errors
                 .iter()
+                .map(ToString::to_string)
                 .filter(|err| err.contains("wrong number of arguments"))
-                .collect::<Vec<&String>>(),
-            Vec::<&String>::new()
+                .collect::<Vec<String>>(),
+            Vec::<String>::new()
         );
     }
 });

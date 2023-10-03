@@ -17,10 +17,13 @@
 #![no_main]
 
 use cedar_drt::initialize_log;
-use cedar_drt_inner::{fuzz_target, ABACPolicy, ABACSettings, Schema};
+use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
-use cedar_policy_core::parser::{err, parse_policy};
+use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
+use cedar_policy_generators::{
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use uuid::Uuid;
@@ -45,6 +48,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
     enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -58,7 +63,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
-            Schema::arbitrary_hierarchy_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ])
     }
@@ -70,7 +75,7 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
 
 // Attach each token two uuids as leading comment and one uuid as trailing comment
 fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
-    let mut tokens = lexer::get_token_stream(p);
+    let mut tokens = lexer::get_token_stream(p).expect("tokens should exist");
     for t in tokens.iter_mut() {
         let mut ids: Vec<String> = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]
             .iter()
@@ -91,19 +96,19 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, Vec<err::ParseError>> {
+fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors> {
     let config = Config {
         indent_width: 2,
         line_width: 80,
     };
     let mut uuids = Vec::new();
-    let commented_policy_str = &attach_comment(&p.to_string(), &mut uuids);
+    let formatted_policy_str =
+        &policies_str_to_pretty(&attach_comment(&p.to_string(), &mut uuids), &config)
+            .expect("pretty-printing should not fail");
     // check if pretty-printing drops any comment
     for u in &uuids {
-        assert!(commented_policy_str.contains(u), "missing comment: {}\n", u);
+        assert!(formatted_policy_str.contains(u), "missing comment: {}\n", u);
     }
-    let formatted_policy_str = &policies_str_to_pretty(commented_policy_str, &config)
-        .expect("pretty-printing should not fail");
     parse_policy(None, formatted_policy_str)
 }
 
