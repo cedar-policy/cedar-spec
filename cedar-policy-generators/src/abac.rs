@@ -129,7 +129,8 @@ impl<'a> Arbitrary<'a> for BiasedI64 {
             1 => std::i64::MAX,
             1 => std::i64::MIN,
             1 => -1,
-            7 => <i64 as Arbitrary>::arbitrary(u)?
+            1 => 0,
+            6 => <i64 as Arbitrary>::arbitrary(u)?
         )
         .into())
     }
