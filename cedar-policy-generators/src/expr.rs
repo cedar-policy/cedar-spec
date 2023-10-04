@@ -11,7 +11,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast;
-use cedar_policy_validator::{SchemaLongDetails, SchemaLongBounds};
+use cedar_policy_validator::{SchemaLongBounds, SchemaLongDetails};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -1700,13 +1700,10 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt})) => {
+            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt })) => {
                 match bounds_opt {
-                    None => {
-                        self.generate_attr_value_for_type(&Type::long(), max_depth, u)
-                    }
-                    Some(SchemaLongBounds {min, max}) =>
-                    {
+                    None => self.generate_attr_value_for_type(&Type::long(), max_depth, u),
+                    Some(SchemaLongBounds { min, max }) => {
                         Ok(AttrValue::IntLit(u.int_in_range(*min..=*max)?.into()))
                     }
                 }
@@ -1924,13 +1921,10 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt})) => {
+            SchemaType::Type(SchemaTypeVariant::Long(SchemaLongDetails { bounds_opt })) => {
                 match bounds_opt {
-                    None => {
-                        self.generate_value_for_type(&Type::long(), max_depth, u)
-                    }
-                    Some(SchemaLongBounds {min, max}) =>
-                    {
+                    None => self.generate_value_for_type(&Type::long(), max_depth, u),
+                    Some(SchemaLongBounds { min, max }) => {
                         Ok(Value::Lit(u.int_in_range(*min..=*max)?.into()))
                     }
                 }
