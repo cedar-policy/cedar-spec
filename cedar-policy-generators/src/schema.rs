@@ -300,7 +300,7 @@ fn schematype_to_type(
             SchemaTypeVariant::String => Type::string(),
             SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(schema, element)),
             SchemaTypeVariant::Record { .. } => Type::record(),
-            SchemaTypeVariant::Entity { .. } => Type::entity(),
+            SchemaTypeVariant::Entity { name } => Type::entity(Some(name.parse().unwrap())),
             SchemaTypeVariant::Extension { name } => match name.as_str() {
                 "ipaddr" => Type::ipaddr(),
                 "decimal" => Type::decimal(),
@@ -760,9 +760,7 @@ impl Schema {
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
         };
-        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types
-            .iter()
-            .map(|(_, et)| attrs_from_attrs_or_context(&nsdef, &et.shape))
+        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
         let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)> = attrsorcontexts
             .flat_map(|attributes| {
@@ -780,9 +778,7 @@ impl Schema {
             namespace.as_ref(),
         );
         let actions_eids = nsdef
-            .actions
-            .iter()
-            .map(|(name, _)| ast::Eid::new(name.clone()))
+            .actions.keys().map(|name| ast::Eid::new(name.clone()))
             .collect();
         Ok(Schema {
             schema: nsdef,
@@ -882,7 +878,7 @@ impl Schema {
                 attributes: BTreeMap::new(),
                 additional_attributes: true,
             }),
-            Type::Entity => {
+            Type::Entity(_) => {
                 let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
                 // not possible for Schema::arbitrary_uid to generate an unspecified entity
                 match entity_type {
@@ -1737,7 +1733,7 @@ mod tests {
             .arbitrary_hierarchy_with_nanoid_uids(EntityUIDGenMode::default_nanoid_len(), &mut u)
             .expect("failed to generate hierarchy!");
         Entities::from_entities(
-            h.entities().into_iter().map(|e| e.clone()),
+            h.entities().cloned(),
             cedar_policy_core::entities::TCComputation::ComputeNow,
         )
     }

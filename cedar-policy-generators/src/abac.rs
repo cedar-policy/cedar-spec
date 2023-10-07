@@ -558,7 +558,7 @@ pub enum Type {
     /// Note that for now we have only a single Entity type: all entities are
     /// the same type, no effort to generate entities with particular
     /// attributes, or distinguish entities of different entity types
-    Entity,
+    Entity(Option<Name>),
     /// IP address
     IPAddr,
     /// Decimal numbers
@@ -592,8 +592,8 @@ impl Type {
         Type::Record
     }
     /// Entity type
-    pub fn entity() -> Self {
-        Type::Entity
+    pub fn entity(et: Option<Name>) -> Self {
+        Type::Entity(et)
     }
     /// IP type
     pub fn ipaddr() -> Self {
@@ -615,7 +615,7 @@ impl Type {
             Type::set_of(Self::arbitrary_nonextension(u)?),
             Type::any_set(),
             Type::record(),
-            Type::entity()
+            Type::entity(None)
         ))
     }
 }

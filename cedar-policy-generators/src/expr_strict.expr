@@ -1,0 +1,7 @@
+    /// Get an arbitrary tuple of entity types `(t1, t2)` where `t1` is a member of `t2`.
+    // TODO: We should compute TC for entity types.
+    pub fn arbitrary_member_types(&self, u: &mut Unstructured<'_>) -> Result<(EntityType, EntityType)> {
+        let candidate_types: Vec<(&SmolStr, &cedar_policy_validator::EntityType)> = self.schema.entity_types.iter().filter(|(_, ty)| !ty.member_of_types.is_empty()).collect();
+        let candidate_type = u.choose(&candidate_types)?;
+        Ok((entity_type_from_str(candidate_type.0).unwrap(), entity_type_from_str(u.choose(&candidate_type.1.member_of_types)?).unwrap()))
+    }

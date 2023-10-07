@@ -407,30 +407,31 @@ impl<'a> ExprGenerator<'a> {
                     11 => {
                         Ok(ast::Expr::is_in(
                         self.generate_expr_for_type(
-                            &Type::entity(),
+                            &Type::entity(None),
                             max_depth - 1,
                             u,
                         )?,
                         self.generate_expr_for_type(
-                            &Type::entity(),
+                            &Type::entity(None),
                             max_depth - 1,
                             u,
                         )?,
                     ))
                 },
                     // in expression, set form
-                    2 => Ok(ast::Expr::is_in(
+                    2 => {
+                        Ok(ast::Expr::is_in(
                         self.generate_expr_for_type(
-                            &Type::entity(),
+                            &Type::entity(None),
                             max_depth - 1,
                             u,
                         )?,
                         self.generate_expr_for_type(
-                            &Type::set_of(Type::entity()),
+                            &Type::set_of(Type::entity(None)),
                             max_depth - 1,
                             u,
                         )?,
-                    )),
+                    ))},
                     // contains() on a set
                     2 => {
                         let element_ty = u.arbitrary()?;
@@ -562,7 +563,7 @@ impl<'a> ExprGenerator<'a> {
                     // has expression on an entity, for an arbitrary attribute name
                     1 => Ok(ast::Expr::has_attr(
                         self.generate_expr_for_type(
-                            &Type::entity(),
+                            &Type::entity(None),
                             max_depth - 1,
                             u,
                         )?,
@@ -841,7 +842,7 @@ impl<'a> ExprGenerator<'a> {
                     ))
                 })
             }
-            Type::Entity => {
+            Type::Entity(_) => {
                 gen!(u,
                 // UID literal, that exists
                 11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
@@ -857,7 +858,7 @@ impl<'a> ExprGenerator<'a> {
                 6 => Ok(ast::Expr::var(ast::Var::Resource)),
                 // extension function that returns an entity
                 1 => self.generate_ext_func_call_for_type(
-                    &Type::entity(),
+                    &Type::entity(None),
                     max_depth - 1,
                     u,
                 ),
@@ -1287,7 +1288,7 @@ impl<'a> ExprGenerator<'a> {
                 })?;
                 Ok(ast::Expr::record(r))
             }
-            Type::Entity => {
+            Type::Entity(_) => {
                 gen!(u,
                 // UID literal, that exists
                 3 => Ok(ast::Expr::val(self.generate_uid(u)?)),
@@ -1412,7 +1413,7 @@ impl<'a> ExprGenerator<'a> {
                     self.constant_pool.arbitrary_string_constant(u)?,
                 ))
             }
-            Type::Entity => {
+            Type::Entity(_) => {
                 // the only valid entity-typed attribute value is a UID literal
                 Ok(AttrValue::UIDLit(self.generate_uid(u)?))
             }
@@ -1685,7 +1686,7 @@ impl<'a> ExprGenerator<'a> {
                     self.constant_pool.arbitrary_string_constant(u)?.into(),
                 ))
             }
-            Type::Entity => {
+            Type::Entity(_) => {
                 // the only valid entity-typed attribute value is a UID literal
                 Ok(Value::Lit(self.generate_uid(u)?.into()))
             }
