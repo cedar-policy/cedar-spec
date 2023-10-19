@@ -49,7 +49,7 @@ module def.ext.ipaddr {
     function ip(args: seq<T>): Result<T> {
       var s :- checkUnary(args, coerce.String);
       match parse(s) {
-        case Some(ip) => Ok(coerce.fromExt(ip.normalize()))
+        case Some(ip) => Ok(coerce.fromExt(ip))
         case None => Err(ExtensionError)
       }
     }
