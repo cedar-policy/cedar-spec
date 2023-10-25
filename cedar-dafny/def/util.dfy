@@ -29,9 +29,9 @@ module def.util {
   ghost predicate IsTotalOrder<A(!new)>(R: (A, A) -> bool) {
     // connexity
     && (forall a, b :: R(a, b) || R(b, a))
-    // antisymmetry
+       // antisymmetry
     && (forall a, b | R(a, b) && R(b, a) :: a == b)
-    // transitivity
+       // transitivity
     && (forall a, b, c | R(a, b) && R(b, c) :: R(a, c))
   }
 
@@ -72,6 +72,14 @@ module def.util {
     ThereIsAMinimum(s, R);
     var x :| x in s && forall y | y in s :: R(x, y);
     [x] + SetToSortedSeq(s - {x}, R)
+  }
+
+  function {: opaque } MapToSortedSeq<A(!new)>(s: map<string, A>): (ret: seq<(string, A)>)
+    ensures |s| == |ret|
+  {
+    StringLeqIsTotalOrder();
+    var sortedKeys := SetToSortedSeq(s.Keys, StringLeq);
+    seq(|s|, i requires 0 <= i < |s| => (sortedKeys[i], s[sortedKeys[i]]))
   }
 
   // --------- Sequence and string ordering --------- //

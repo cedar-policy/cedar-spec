@@ -670,6 +670,7 @@ impl From<AttrValue> for RestrictedExpr {
             AttrValue::Set(l) => RestrictedExpr::set(l.into_iter().map(Into::into)),
             AttrValue::Record(r) => {
                 RestrictedExpr::record(r.into_iter().map(|(k, v)| (k, v.into())))
+                    .expect("can't have duplicate keys, because the keys are the same as in the input `r` which was already a HashMap")
             }
         }
     }
