@@ -28,6 +28,7 @@ module difftest.main {
   import opened def.std
   import opened def.templates
   import opened def.ext.fun
+  import opened def.util
   import opened restrictedExpr
   import opened validation.types
   import opened validation.typechecker
@@ -196,15 +197,10 @@ module difftest.main {
         var exprs :- deserializeSeq(body, exprFromProdJsonRec);
         Ok(Expr.Set(exprs))
       case "Record" =>
-        var pairs :- deserializeSeq(
+        var pairs :- deserializeMap(
                        body,
-                       ja requires ja < body =>
-                         deserializeTuple2Elts(
-                           ja,
-                           getJsonString,
-                           exprFromProdJsonRec,
-                           (attr, expr) => Ok((attr, expr))));
-        Ok(Expr.Record(pairs))
+                       exprFromProdJsonRec);
+        Ok(Expr.Record(MapToSortedSeq(pairs)))
       case _ => Err({UnexpectedFromProdErr("expr case " + tag)})
     }
   }
@@ -354,18 +350,18 @@ module difftest.main {
   const evaluatorFromProdJson :=
     objDeserializer4Fields(
       "request", jrequest => (
-        var principal :- getEntityUIDEntryField(jrequest, "principal");
-        var action :- getEntityUIDEntryField(jrequest, "action");
-        var resource :- getEntityUIDEntryField(jrequest, "resource");
-        var context :- deserializeField(jrequest, "context", buildContext);
-        Ok(Request(principal, action, resource, context))
-      ),
+          var principal :- getEntityUIDEntryField(jrequest, "principal");
+          var action :- getEntityUIDEntryField(jrequest, "action");
+          var resource :- getEntityUIDEntryField(jrequest, "resource");
+          var context :- deserializeField(jrequest, "context", buildContext);
+          Ok(Request(principal, action, resource, context))
+        ),
 
       "entities", jentities => (
           var entities :- deserializeField(jentities, "entities", seqDeserializer(entityEntryFromProdJson));
           var entitiesMap :- mapFromEntriesProd(entities);
           Ok(EntityStore(entitiesMap))
-      ),
+        ),
       "expr", jexpr => exprFromProdJson(jexpr),
       "expected", jv => maybeValueFromProdJson(jv),
       (request, entities, expr, maybe_value) => Ok((Evaluator(request, entities), expr, maybe_value))
@@ -436,9 +432,9 @@ module difftest.main {
 
   function evalResponseToProdJson(r : FromProdResult<bool>) : Json {
     JsonObject(match r {
-      case Ok(b) => map["matches" := JsonBool(b)]
-      case Err(e) => map["error" := JsonString("JSON Decoding error encountered")]
-    })
+                 case Ok(b) => map["matches" := JsonBool(b)]
+                 case Err(e) => map["error" := JsonString("JSON Decoding error encountered")]
+               })
   }
 
   method evalJson(request : Json) returns (response : Json) {
