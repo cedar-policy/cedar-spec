@@ -131,9 +131,21 @@ macro_rules! fuzz_target {
             | x : $dty| {
                 use std::fs::OpenOptions;
                 use std::io::prelude::*;
+                use std::str::FromStr;
+                use rand::{thread_rng, Rng};
                 use serde::Serialize;
-                let mut f = OpenOptions::new().write(true).append(true).create(true).open(std::env::var("LOGFILE").unwrap()).unwrap();
-                serde_json::to_writer(f, &x).unwrap();
+                let should_sample = if let Ok(rate_str) = std::env::var("RATE") {
+                    let rate = u32::from_str(&rate_str).unwrap();
+                    let mut rng = thread_rng();
+                    let n:u32 = rng.gen_range(0..=100);
+                    n < rate
+                } else {
+                    false
+                };
+                if should_sample {
+                    let mut f = OpenOptions::new().write(true).append(true).create(true).open(std::env::var("LOGFILE").unwrap()).unwrap();
+                    serde_json::to_writer(f, &x).unwrap();
+                }
                 let internal = |$data : $dty| $e;
                 internal(x);
             }

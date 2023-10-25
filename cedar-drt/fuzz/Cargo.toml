@@ -32,7 +32,7 @@ features = ["v4", "fast-rng"]
 
 [features]
 prt = ["dep:rayon", "dep:rand", "dep:clap", "dep:rand_chacha"]
-log = []
+log = ["dep:rand"]
 
 [lib]
 path = "src/lib.rs"
