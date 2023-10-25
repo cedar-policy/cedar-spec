@@ -196,10 +196,9 @@ module difftest.main {
         var exprs :- deserializeSeq(body, exprFromProdJsonRec);
         Ok(Expr.Set(exprs))
       case "Record" =>
-        var list :- getJsonField(body, "map");
         var pairs :- deserializeSeq(
-                       list,
-                       ja requires ja < list =>
+                       body,
+                       ja requires ja < body =>
                          deserializeTuple2Elts(
                            ja,
                            getJsonString,
