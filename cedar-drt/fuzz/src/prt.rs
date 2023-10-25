@@ -123,5 +123,24 @@ macro_rules! fuzz_target {
     };
 }
 
+#[cfg(feature = "log")]
+#[macro_export]
+macro_rules! fuzz_target {
+    (|$data:ident: $dty: ty| $e:expr) => {
+        libfuzzer_sys::fuzz_target! {
+            | x : $dty| {
+                use std::fs::OpenOptions;
+                use std::io::prelude::*;
+                use serde::Serialize;
+                let mut f = OpenOptions::new().write(true).append(true).create(true).open(std::env::var("LOGFILE").unwrap()).unwrap();
+                serde_json::to_writer(f, &x).unwrap();
+                let internal = |$data : $dty| $e;
+                internal(x);
+            }
+        }
+    }
+}
+
 #[cfg(not(feature = "prt"))]
+#[cfg(not(feature = "log"))]
 pub use libfuzzer_sys::fuzz_target;

@@ -26,10 +26,11 @@ use cedar_policy_generators::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
+use serde::Serialize;
 use uuid::Uuid;
 
 // A thin wrapper for policy
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     // the generated policy
     policy: ABACPolicy,

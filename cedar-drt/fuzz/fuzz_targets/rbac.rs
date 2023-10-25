@@ -27,13 +27,15 @@ use cedar_policy_generators::policy::GeneratedLinkedPolicy;
 use cedar_policy_generators::rbac::{RBACHierarchy, RBACPolicy, RBACRequest};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
+use serde::Serialize;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An RBAC hierarchy, policy set, and 8 associated requests
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     /// the hierarchy
+    #[serde(skip)]
     pub hierarchy: RBACHierarchy,
     /// The policy set is made up of groups, each of which consists of either a
     /// single static policy or a template with one or more linked policies.
@@ -44,10 +46,11 @@ struct FuzzTargetInput {
     pub policy_groups: Vec<PolicyGroup>,
     /// the requests to try for this hierarchy and policy set. We try 8 requests
     /// per policy set / hierarchy
+    #[serde(skip)]
     pub requests: [RBACRequest; 8],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 enum PolicyGroup {
     StaticPolicy(RBACPolicy),
     TemplateWithLinks {
