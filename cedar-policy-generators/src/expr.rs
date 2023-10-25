@@ -155,16 +155,16 @@ impl<'a> ExprGenerator<'a> {
                         Ok(ast::Expr::set(l))
                     },
                     1 => {
-                        let mut r = Vec::new();
+                        let mut r = HashMap::new();
                         u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                             let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                            r.push((
+                            r.insert(
                                 attr_name.clone(),
                                 self.generate_expr(max_depth - 1, u)?,
-                            ));
+                            );
                             Ok(std::ops::ControlFlow::Continue(()))
                         })?;
-                        Ok(ast::Expr::record(r))
+                        Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                     },
                     1 => {
                         if !self.settings.enable_extensions {
@@ -214,6 +214,7 @@ impl<'a> ExprGenerator<'a> {
                             e.expr_kind()
                         {
                             ast::Expr::record([((s).clone(), e)])
+                                .expect("can't have duplicate keys because there is only one key")
                         } else {
                             e
                         };
@@ -778,7 +779,7 @@ impl<'a> ExprGenerator<'a> {
                 gen!(u,
                 // record literal
                 2 => {
-                    let mut r = Vec::new();
+                    let mut r = HashMap::new();
                     u.arbitrary_loop(
                         Some(0),
                         Some(self.settings.max_width as u32),
@@ -788,14 +789,14 @@ impl<'a> ExprGenerator<'a> {
                                 max_depth - 1,
                                 u,
                             )?;
-                            r.push((
+                            r.insert(
                                 self.constant_pool.arbitrary_string_constant(u)?,
                                 attr_val,
-                            ));
+                            );
                             Ok(std::ops::ControlFlow::Continue(()))
                         },
                     )?;
-                    Ok(ast::Expr::record(r))
+                    Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                 },
                 // extension function that returns a record
                 1 => self.generate_ext_func_call_for_type(
@@ -1068,7 +1069,7 @@ impl<'a> ExprGenerator<'a> {
                     gen!(u,
                     // record literal
                     2 => {
-                        let mut r: Vec<(SmolStr, ast::Expr)> = Vec::new();
+                        let mut r: HashMap<SmolStr, ast::Expr> = HashMap::new();
                         if *additional_attributes {
                             // maybe add some additional attributes with arbitrary types
                             u.arbitrary_loop(
@@ -1080,17 +1081,18 @@ impl<'a> ExprGenerator<'a> {
                                     } else {
                                         Type::arbitrary_nonextension(u)?
                                     };
-                                    r.push((
-                                        {
-                                            let s: String = u.arbitrary()?;
-                                            SmolStr::from(s)
-                                        },
+                                    let attr_name = {
+                                        let s: String = u.arbitrary()?;
+                                        SmolStr::from(s)
+                                    };
+                                    r.insert(
+                                        attr_name,
                                         self.generate_expr_for_type(
                                             &attr_type,
                                             max_depth - 1,
                                             u,
                                         )?,
-                                    ));
+                                    );
                                     Ok(std::ops::ControlFlow::Continue(()))
                                 },
                             )?;
@@ -1108,10 +1110,10 @@ impl<'a> ExprGenerator<'a> {
                                     max_depth - 1,
                                     u,
                                 )?;
-                                r.push((attr.clone(), attr_val));
+                                r.insert(attr.clone(), attr_val);
                             }
                         }
-                        Ok(ast::Expr::record(r))
+                        Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                     },
                     // `context`, if `context` is an appropriate record type
                     // TODO: Check if the `context` is the appropriate type, and
@@ -1279,13 +1281,14 @@ impl<'a> ExprGenerator<'a> {
                 Ok(ast::Expr::set(l))
             }
             Type::Record => {
-                let mut r = Vec::new();
+                let mut r = HashMap::new();
                 u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                     let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                    r.push((attr_name.clone(), self.generate_const_expr(u)?));
+                    r.insert(attr_name.clone(), self.generate_const_expr(u)?);
                     Ok(std::ops::ControlFlow::Continue(()))
                 })?;
-                Ok(ast::Expr::record(r))
+                Ok(ast::Expr::record(r)
+                    .expect("can't have duplicate keys because `r` was already a HashMap"))
             }
             Type::Entity => {
                 gen!(u,
@@ -1862,13 +1865,13 @@ impl<'a> ExprGenerator<'a> {
             Ok(ast::Expr::set(l))
         },
         1 => {
-            let mut r = Vec::new();
+            let mut r = HashMap::new();
             u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                 let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                r.push((attr_name.clone(), self.generate_const_expr(u)?));
+                r.insert(attr_name.clone(), self.generate_const_expr(u)?);
                 Ok(std::ops::ControlFlow::Continue(()))
             })?;
-            Ok(ast::Expr::record(r))
+            Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
         })
     }
 

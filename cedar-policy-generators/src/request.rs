@@ -41,7 +41,8 @@ impl From<Request> for ast::Request {
             req.principal,
             req.action,
             req.resource,
-            ast::Context::from_pairs(req.context),
+            ast::Context::from_pairs(req.context)
+                .expect("can't have duplicate keys because `req.context` was already a HashMap"),
         )
     }
 }
