@@ -22,3 +22,9 @@ The table below lists all available fuzz targets, including which component of t
 | [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test permissive validation |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |
 | [`wildcard-matching`](fuzz/fuzz_targets/wildcard-matching.rs) | String matching algorithm used for the `like` operator | DRT | Diff test wildcard matching using a regex-based implementation |
+
+
+## Logging
+
+If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable. 
+The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
