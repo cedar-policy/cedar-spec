@@ -4,6 +4,7 @@ This repository contains the Dafny formalization of Cedar and infrastructure for
 
 ## Repository Structure
 
+* [`cedar-lean`](./cedar-lean) contains the Lean formalization of, and proofs about, Cedar.
 * [`cedar-dafny`](./cedar-dafny) contains the Dafny formalization of, and proofs about, Cedar.
 * [`cedar-dafny-java-wrapper`](./cedar-dafny-java-wrapper) contains the Java interface for DRT.
 * [`cedar-drt`](./cedar-drt) contains code for fuzzing, property-based testing, and differential testing of Cedar.
