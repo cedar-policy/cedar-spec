@@ -3,12 +3,13 @@ use std::{fs::File, io};
 use anyhow::{anyhow, Result};
 use arbitrary::Unstructured;
 use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::{
     hierarchy::{EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode, NumEntities},
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::{CoreSchema, SchemaFragment, ValidatorSchema};
 use clap::{Args, Parser, Subcommand};
 use rand::{thread_rng, Rng};
 
@@ -85,15 +86,25 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
     }
     .generate()
     .map_err(|err| anyhow!("failed to generate hierarchy: {err:#?}"))?;
+    let vschema = ValidatorSchema::try_from(schema)
+        .map_err(|err| anyhow!("failed to convert schema to ValidatorSchema: {err}"))?;
+    let coreschema = CoreSchema::new(&vschema);
     // this is just to ensure no cycles.
     // we throw away the `Entities` built with `ComputeNow`, because we want to
     // generate hierarchies that aren't necessarily TC-closed.
-    Entities::from_entities(h.entities().cloned(), TCComputation::ComputeNow)?;
+    Entities::from_entities(
+        h.entities().cloned(),
+        Some(&coreschema),
+        TCComputation::ComputeNow,
+        Extensions::all_available(),
+    )?;
     Ok(Entities::from_entities(
         h.entities().cloned(),
+        Some(&coreschema),
         // use `AssumeAlreadyComputed` because we want a hierarchy that isn't
         // necessarily TC-closed.
         TCComputation::AssumeAlreadyComputed,
+        Extensions::all_available(),
     )?)
 }
 
