@@ -288,8 +288,8 @@ module def.ext.ipaddr.parseIPAddr {
         if 0 < |ds| <= 2
         then
           var n := DecStrToNat(ds);
-          if n <= V4_SIZE then
-            Some((n, ns'))
+          if n <= V4_SIZE && (ds[0] == '0' ==> (|ds| == 1 && n == 0)) then
+              Some((n, ns'))
           else None
         else None
       case None => None
@@ -530,7 +530,8 @@ module def.ext.ipaddr.parseIPAddr {
       case Some((ds, ns')) =>
         if 0 < |ds| <= 3 then
           var n := DecStrToNat(ds);
-          if n <= V6_SIZE then Some((n, ns'))
+          if n <= V6_SIZE && (ds[0] == '0' ==> (|ds| == 1 && n == 0)) then
+            Some((n, ns'))
           else None
         else None
       case None => None
