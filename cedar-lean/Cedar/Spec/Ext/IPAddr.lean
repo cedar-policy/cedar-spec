@@ -148,7 +148,7 @@ def IPNet.isMulticast (ip : IPNet) : Bool :=
 
 def parseCIDR (str : String) (digits : Nat) (size : Nat) : Option (Fin (size + 1)) :=
   let len := str.length
-  if 0 < len && len ≤ digits
+  if 0 < len && len ≤ digits && (str.startsWith "0" → str = "0")
   then do
     let n ← str.toNat?
     if n ≤ size then .some (Fin.ofNat n) else .none
