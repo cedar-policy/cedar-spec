@@ -1266,7 +1266,8 @@ mod tests {
     use crate::{hierarchy::EntityUIDGenMode, settings::ABACSettings};
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
-    use cedar_policy_validator::SchemaFragment;
+    use cedar_policy_core::extensions::Extensions;
+    use cedar_policy_validator::{CoreSchema, SchemaFragment, ValidatorSchema};
     use rand::{rngs::ThreadRng, thread_rng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
@@ -1736,9 +1737,14 @@ mod tests {
         let h = schema
             .arbitrary_hierarchy_with_nanoid_uids(EntityUIDGenMode::default_nanoid_len(), &mut u)
             .expect("failed to generate hierarchy!");
+        let vschema =
+            ValidatorSchema::try_from(schema).expect("failed to convert to ValidatorSchema");
+        let coreschema = CoreSchema::new(&vschema);
         Entities::from_entities(
             h.entities().into_iter().map(|e| e.clone()),
+            Some(&coreschema),
             cedar_policy_core::entities::TCComputation::ComputeNow,
+            Extensions::all_available(),
         )
     }
 }

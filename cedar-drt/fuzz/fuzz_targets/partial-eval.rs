@@ -22,7 +22,8 @@ use cedar_policy_core::ast;
 use cedar_policy_core::ast::Policy;
 use cedar_policy_core::ast::PolicySet;
 use cedar_policy_core::authorizer::Authorizer;
-use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
@@ -120,10 +121,13 @@ fn drop_some_entities(entities: Entities, u: &mut Unstructured<'_>) -> arbitrary
                 }
             }
         }
-        Ok(
-            Entities::from_entities(set.into_iter(), TCComputation::AssumeAlreadyComputed)
-                .expect("Should be valid"),
+        Ok(Entities::from_entities(
+            set.into_iter(),
+            None::<&NoEntitiesSchema>,
+            TCComputation::AssumeAlreadyComputed,
+            Extensions::all_available(),
         )
+        .expect("Should be valid"))
     } else {
         Ok(entities)
     }

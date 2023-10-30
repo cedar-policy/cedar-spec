@@ -178,7 +178,7 @@ pub fn run_val_test(
 fn test_run_auth_test() {
     use cedar_drt::JavaDefinitionalEngine;
     use cedar_policy_core::ast::{Entity, EntityUID, RestrictedExpr};
-    use cedar_policy_core::entities::TCComputation;
+    use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
     let java_def_engine =
@@ -241,7 +241,9 @@ fn test_run_auth_test() {
     );
     let entities = Entities::from_entities(
         vec![entity_alice, entity_view, entity_vacation],
+        None::<&NoEntitiesSchema>,
         TCComputation::AssumeAlreadyComputed,
+        Extensions::all_available(),
     )
     .unwrap();
     run_auth_test(&java_def_engine, &query, &policies, &entities);

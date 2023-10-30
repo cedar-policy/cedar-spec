@@ -6,7 +6,8 @@ use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_nam
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
-use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
+use cedar_policy_core::extensions::Extensions;
 use nanoid::nanoid;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -223,8 +224,13 @@ impl Hierarchy {
 impl TryFrom<Hierarchy> for Entities {
     type Error = String;
     fn try_from(h: Hierarchy) -> std::result::Result<Entities, String> {
-        Entities::from_entities(h.into_entities().map(Into::into), TCComputation::ComputeNow)
-            .map_err(|e| e.to_string())
+        Entities::from_entities(
+            h.into_entities().map(Into::into),
+            None::<&NoEntitiesSchema>,
+            TCComputation::ComputeNow,
+            Extensions::all_available(),
+        )
+        .map_err(|e| e.to_string())
     }
 }
 
