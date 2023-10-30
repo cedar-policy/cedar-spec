@@ -64,7 +64,12 @@ def testsForInvalidStrings :=
     testInvalid "F:A" "too few groups",
     testInvalid "::ffff1" "group out of range",
     testInvalid "F:AE::F:5:F:F:0/129" "prefix out of range",
-    testInvalid "::ffff:127.0.0.1" "no IPv4 embedded in IPv6"
+    testInvalid "::ffff:127.0.0.1" "no IPv4 embedded in IPv6",
+    testInvalid "::/00" "no leading zeros",
+    testInvalid "::/01" "no leading zeros",
+    testInvalid "::/001" "no leading zeros",
+    testInvalid "127.0.0.1/01" "no leading zeros",
+    testInvalid "F:AE::F:5:F:F:0/01" "no leading zeros"
   ]
 
 deriving instance Inhabited for IPNet
