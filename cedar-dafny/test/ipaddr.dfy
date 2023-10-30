@@ -42,7 +42,10 @@ module test.ipaddr {
         "::::", // too many double colons
         "F:AE::F:5:F:F:0:0", // too many groups
         "F:A:F:5:F:F:0:0:1", // too many groups
-        "F:A" // too few groups
+        "F:A", // too few groups
+        "::/01", // leading zeros
+        "::/001", // leading zeros
+        "127.0.0.1/01" // leading zeros
       ];
     var i := |invalidStr| - 1;
     while 0 <= i {
