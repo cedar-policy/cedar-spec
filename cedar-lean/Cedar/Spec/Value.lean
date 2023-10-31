@@ -47,6 +47,9 @@ structure EntityUID where
   ty : EntityType
   eid : String
 
+def EntityUID.isAction (uid : EntityUID) : Bool :=
+  uid.ty.id == "Action"
+
 inductive Prim where
   | bool (b : Bool)
   | int (i : Int)
