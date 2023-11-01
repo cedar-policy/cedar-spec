@@ -108,18 +108,23 @@ def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (
 The type soundness property says that if the typechecker assigns a type to an
 expression, then it must be the case that the expression `EvaluatesTo` a value
 of that type. The `EvaluatesTo` predicate covers the (obvious) case where evaluation
-has no errors, but it also allows for an error of type `entityDoesNotExist`.
+has no errors, but it also allows for errors of type `entityDoesNotExist` and
+`extensionError`.
 
-The typechecker cannot protect against `entityDoesNotExist` errors because they
-depend on runtime information (i.e., the entities passed into the authorization
-request). All other errors (`attrDoesNotExist`, `typeError`, and `extensionError`)
-can be prevented statically. `extensionError` errors can be prevented because
-validation only allows extension function constructors to apply to string literals,
-meaning that they can be fully evaluated during validation. Currently, only
-extension function constructors can return an `extensionError`.
+The typechecker cannot protect against these errors because they depend on runtime
+information (i.e., the entities passed into the authorization request, and
+extension function applications on authorization-time data). All other errors
+(`attrDoesNotExist` and `typeError`) can be prevented statically.
+
+_Note_: Currently, `extensionError`s can also be ruled out at validation time
+because the only extension functions that can error are constructors, and all
+constructors are required to be applied to string literals, meaning that they
+can be fully evaluated during validation. This is not guaranteed to be the case
+in the future.
 -/
 def EvaluatesTo (e: Expr) (request : Request) (entities : Entities) (v : Value) : Prop :=
   evaluate e request entities = .error .entityDoesNotExist ∨
+  evaluate e request entities = .error .extensionError ∨
   evaluate e request entities = .ok v
 
 /--
@@ -157,9 +162,10 @@ theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
 
 /--
 If an expression is well-typed according to the typechecker, and the input
-environment and capabilities satisfy some invariants, then either (i)
-evaluation produces a value of the returned type or (ii) it returns an error of
-type `entityDoesNotExist`. All other errors are impossible.
+environment and capabilities satisfy some invariants, then either (1) evaluation
+produces a value of the returned type or (2) it returns an error of type
+`entityDoesNotExist` or `extensionError`. Both options are encoded in the
+`EvaluatesTo` predicate.
 -/
 theorem typeOf_is_sound (e : Expr) (c₁ c₂ : Capabilities) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
   CapabilitiesInvariant c₁ request entities →

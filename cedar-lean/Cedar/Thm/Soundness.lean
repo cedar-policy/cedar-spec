@@ -35,10 +35,11 @@ def EvaluatesToBool (policy : Policy) (request : Request) (entities : Entities) 
 
 /--
 If a policy successfully validates, then evaluating that policy with any request
-will either (1) return an `entityDoesNotExist` error or (2) return a Boolean value.
-Both options are encoded in the `EvaluatesToBool` predicate. The validator cannot
-protect against `entityDoesNotExist` error because it has no knowledge of which
-entities will be passed in at authorization time.
+will either (1) return a Boolean value or (2) return an error of type `entityDoesNotExist`
+or `extensionError`. Both options are encoded in the `EvaluatesToBool` predicate.
+The validator cannot protect against `entityDoesNotExist` and `extensionError`
+errors because it has no knowledge of the entities/context that will be provided
+at authorization time.
 -/
 theorem typecheckPolicy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
