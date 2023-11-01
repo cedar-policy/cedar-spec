@@ -40,13 +40,11 @@ inductive Qualified (α : Type u) where
   | optional (a : α)
   | required (a : α)
 
-def Qualified.getType {α} (qt : Qualified α) : α :=
-  match qt with
+def Qualified.getType {α} : Qualified α → α
   | optional a => a
   | required a => a
 
-def Qualified.isRequired {α} (qt : Qualified α) : Bool :=
-  match qt with
+def Qualified.isRequired {α} : Qualified α → Bool
   | optional _ => false
   | required _ => true
 

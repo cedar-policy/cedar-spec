@@ -89,6 +89,6 @@ none are guaranteed to be false under all possible environments.
 -/
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
   let envs := schema.toEnvironments
-  do _ ← policies.mapM (typecheckPolicyWithEnvironments · envs)
+  policies.forM (typecheckPolicyWithEnvironments · envs)
 
 end Cedar.Validation

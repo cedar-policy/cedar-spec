@@ -30,40 +30,44 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-def InstanceOfBoolType (b : Bool) (bty : BoolType) : Prop :=
-  match (b, bty) with
-  | (true, .tt) => True
-  | (false, .ff) => True
-  | (_, .anyBool) => True
-  | _ => False
+def InstanceOfBoolType : Bool → BoolType → Prop
+  | true,  .tt      => True
+  | false, .ff      => True
+  | _,     .anyBool => True
+  | _, _            => False
 
 def InstanceOfEntityType (e : EntityUID) (ety: EntityType) : Prop :=
   ety = e.ty
 
-def InstanceOfExtType (e : Ext) (ety : ExtType) : Prop :=
-  match (e, ety) with
-  | (.decimal _, .decimal) => True
-  | (.ipaddr _, .ipAddr) => True
-  | _ => False
+def InstanceOfExtType : Ext → ExtType → Prop
+  | .decimal _, .decimal => True
+  | .ipaddr _,  .ipAddr  => True
+  | _, _                 => False
 
 inductive InstanceOfType : Value → CedarType → Prop :=
-  | instance_of_bool (b : Bool) (bty : BoolType) : InstanceOfBoolType b bty →
+  | instance_of_bool (b : Bool) (bty : BoolType)
+      (h₁ : InstanceOfBoolType b bty) :
       InstanceOfType (.prim (.bool b)) (.bool bty)
-  | instance_of_int : InstanceOfType (.prim (.int _)) .int
-  | instance_of_string : InstanceOfType (.prim (.string _)) .string
-  | instance_of_entity (e : EntityUID) (ety: EntityType) : InstanceOfEntityType e ety →
+  | instance_of_int :
+      InstanceOfType (.prim (.int _)) .int
+  | instance_of_string :
+      InstanceOfType (.prim (.string _)) .string
+  | instance_of_entity (e : EntityUID) (ety: EntityType)
+      (h₁ : InstanceOfEntityType e ety) :
       InstanceOfType (.prim (.entityUID e)) (.entity ety)
-  | instance_of_set (s : Set Value) (ty : CedarType) : (forall v, v ∈ s → InstanceOfType v ty) →
+  | instance_of_set (s : Set Value) (ty : CedarType)
+      (h₁ : forall v, v ∈ s → InstanceOfType v ty) :
       InstanceOfType (.set s) (.set ty)
-  | instance_of_record (r : Map Attr Value) (rty : RecordType) :
+  | instance_of_record (r : Map Attr Value) (rty : RecordType)
       -- if an attribute is present, then it has the expected type
-      (∀ (k : Attr) (v : Value) (qty : QualifiedType),
-        rty.find? k = some qty → r.find? k = some v → InstanceOfType v qty.getType) →
+      (h₁ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
+        rty.find? k = some qty → r.find? k = some v → InstanceOfType v qty.getType)
       -- required attributes are present
-      (∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) →
+      (h₂ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
       InstanceOfType (.record r) (.record rty)
-  | instance_of_ext (e : Ext) (ety : ExtType) : InstanceOfExtType e ety →
-      InstanceOfType (.ext e) (.ext ety)
+  | instance_of_ext (x : Ext) (xty : ExtType)
+      (h₁ : InstanceOfExtType x xty) :
+      InstanceOfType (.ext x) (.ext xty)
 
 def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
   InstanceOfEntityType request.principal reqty.principal ∧
@@ -82,8 +86,8 @@ def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Pro
   ∀ uid data, entities.find? uid = some data →
     ∃ attrTys descendantTys, ets.find? uid.ty = some (attrTys, descendantTys) ∧
       InstanceOfType data.attrs (.record attrTys) ∧
-        ∀ ancestor, ancestor ∈ data.ancestors →
-          ∃ descendants, ets.find? ancestor.ty = some descendants ∧ uid.ty ∈ descendantTys
+      ∀ ancestor, ancestor ∈ data.ancestors →
+        ∃ descendants, ets.find? ancestor.ty = some descendants ∧ uid.ty ∈ descendantTys
 
 /--
 For every action in the entity store, the action's ancestors are defined in the
