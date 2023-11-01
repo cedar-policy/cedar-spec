@@ -22,6 +22,7 @@ use arbitrary::{self, Unstructured};
 use ast::{Entity, Expr, PolicyID, StaticPolicy};
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use serde::Serialize;
 use std::ops::{Deref, DerefMut};
 
 /// Represents an RBAC hierarchy, ie, with no attributes
@@ -140,7 +141,8 @@ impl From<RBACEntity> for Entity {
 }
 
 /// Represents an RBAC policy, ie, with no `when` or `unless` clauses
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(transparent)]
 pub struct RBACPolicy(pub GeneratedPolicy);
 
 impl Deref for RBACPolicy {

@@ -24,6 +24,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
 use cedar_policy_core::ast::{self, Value};
+use serde::Serialize;
 use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -677,7 +678,8 @@ impl From<AttrValue> for RestrictedExpr {
 }
 
 /// Represents an ABAC policy, i.e., fully general
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(transparent)]
 pub struct ABACPolicy(pub GeneratedPolicy);
 
 impl std::fmt::Display for ABACPolicy {

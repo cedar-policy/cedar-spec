@@ -7,16 +7,18 @@ use cedar_policy_core::ast;
 use cedar_policy_core::ast::{
     Effect, EntityUID, Expr, Id, PolicyID, PolicySet, StaticPolicy, Template,
 };
+use serde::Serialize;
 use smol_str::SmolStr;
 use std::fmt::Display;
 
 /// Data structure representing a generated policy (or template)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 // `GeneratedPolicy` is now a bit of a misnomer: it may have slots depending on
 // how it is generated, e.g., the `allow_slots` parameter to
 // `arbitrary_for_hierarchy()`. But as of this writing, it feels like renaming
 // `GeneratedPolicy` to something like `GeneratedTemplate` seems unduly
 // disruptive.
+#[serde(into = "String")]
 pub struct GeneratedPolicy {
     id: PolicyID,
     // use String for the impl of Arbitrary
@@ -149,6 +151,13 @@ impl From<GeneratedPolicy> for Template {
             gen.resource_constraint.into(),
             gen.abac_constraints,
         )
+    }
+}
+
+impl From<GeneratedPolicy> for String {
+    fn from(g: GeneratedPolicy) -> String {
+        let t = Template::from(g);
+        t.to_string()
     }
 }
 
@@ -385,7 +394,7 @@ impl ActionConstraint {
 }
 
 /// Data structure representing a generated linked policy
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GeneratedLinkedPolicy {
     /// ID of the linked policy
     pub id: PolicyID,
