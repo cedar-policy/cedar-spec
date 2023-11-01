@@ -95,7 +95,7 @@ action store, and the ancestor relationships in the entity store are consistent
 with the descendants information in the action store.
 -/
 def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ uid data, entities.find? uid = some data → uid.isAction →
+  ∀ uid data, entities.find? uid = some data → isAction uid as →
     ∀ ancestor, ancestor ∈ data.ancestors →
       ∃ descendants, as.find? ancestor = some descendants ∧ uid ∈ descendants
 
