@@ -136,4 +136,4 @@ jobs:
           else \
             echo "Unit tests passed" \
             return 0 \
-          fi \
+          fi
