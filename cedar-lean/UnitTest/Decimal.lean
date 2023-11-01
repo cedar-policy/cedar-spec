@@ -29,7 +29,7 @@ private def testValid (str : String) (rep : Int) : TestCase :=
 def testsForValidStrings :=
   suite "Decimal.parse for valid strings"
   [
-    testValid "0.0" 0,
+    testValid "0.0." 0,
     testValid "0.0000" 0,
     testValid "12.34" 123400,
     testValid "1.2345" 12345,
