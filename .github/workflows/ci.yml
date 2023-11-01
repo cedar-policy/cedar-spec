@@ -115,18 +115,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-      - name: Install elan
+      - name: Install Lean
         shell: bash
         run: |
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
-      - name: Install lean
-        shell: bash
-        run:
-          elan install nightly
       - name: Build
         working-directory: ./cedar-lean
         shell: bash
-        run: lake build Cedar
+        run: source ~/.profile && lake build Cedar
