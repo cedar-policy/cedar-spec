@@ -19,5 +19,5 @@ import UnitTest.IPAddr
 
 open UnitTest
 
-def main : IO Unit := do
+def main : IO UInt32 := do
   TestSuite.runAll (Decimal.tests ++ IPAddr.tests)
