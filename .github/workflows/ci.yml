@@ -127,4 +127,4 @@ jobs:
       - name: Test
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && if (lake exe CedarUnitTests | grep "FAILED") then echo "A unit test failed"; lake exe CedarUnitTests; return 1; else echo "Unit tests passed"; return 0; fi
+        run: source ~/.profile && lake exe CedarUnitTests
