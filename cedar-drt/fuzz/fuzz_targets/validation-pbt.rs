@@ -61,6 +61,7 @@ const SETTINGS: ABACSettings = ABACSettings {
     max_width: 7,
     enable_additional_attributes: true,
     enable_like: true,
+    enable_is: true,
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
@@ -141,6 +142,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
                 checkpoint(LOG_FILENAME_ERR_EXTENSIONS_DISABLED.to_string() + "_" + doing_what)
             }
             Err(Error::LikeDisabled) => {
+                checkpoint(LOG_FILENAME_ERR_LIKE_DISABLED.to_string() + "_" + doing_what)
+            }
+            Err(Error::IsDisabled) => {
                 checkpoint(LOG_FILENAME_ERR_LIKE_DISABLED.to_string() + "_" + doing_what)
             }
             Err(Error::IncorrectFormat {

@@ -147,6 +147,16 @@ impl<'a> ExprGenerator<'a> {
                         }
                     },
                     1 => {
+                        if self.settings.enable_is {
+                            Ok(ast::Expr::is_entity_type(
+                                self.generate_expr(max_depth - 1, u)?,
+                                u.choose(&self.schema.entity_types)?.clone(),
+                            ))
+                        } else {
+                            Err(Error::IsDisabled)
+                        }
+                    },
+                    1 => {
                         let mut l = Vec::new();
                         u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
                             l.push(self.generate_expr(max_depth - 1, u)?);
@@ -467,6 +477,21 @@ impl<'a> ExprGenerator<'a> {
                                         u,
                                     )?,
                                     self.constant_pool.arbitrary_pattern_literal(u)?,
+                                ))
+                            } else {
+                                Err(Error::LikeDisabled)
+                            }
+                        },
+                        // is
+                        2 => {
+                            if self.settings.enable_is {
+                                Ok(ast::Expr::is_entity_type(
+                                    self.generate_expr_for_type(
+                                        &Type::entity(),
+                                        max_depth - 1,
+                                        u,
+                                    )?,
+                                    u.choose(&self.schema.entity_types)?.clone(),
                                 ))
                             } else {
                                 Err(Error::LikeDisabled)

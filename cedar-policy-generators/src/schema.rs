@@ -1280,6 +1280,7 @@ mod tests {
         max_width: 4,
         enable_additional_attributes: false,
         enable_like: false,
+        enable_is: false,
         enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
         enable_unknowns: false,

@@ -57,6 +57,7 @@ const SETTINGS: ABACSettings = ABACSettings {
     max_width: 7,
     enable_additional_attributes: false,
     enable_like: true,
+    enable_is: false,
     // ABAC fuzzing restricts the use of action because it is used to generate
     // the corpus tests which will be run on Cedar and CedarCLI.
     // These packages only expose the restricted action behavior.
