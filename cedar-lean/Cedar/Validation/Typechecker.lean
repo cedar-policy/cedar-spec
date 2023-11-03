@@ -127,12 +127,9 @@ def entityUIDs? : Expr → Option (List EntityUID)
   | .set xs => xs.mapM entityUID?
   | _       => .none
 
-def isAction (uid : EntityUID) (acts: ActionStore) : Bool :=
-  acts.contains uid
-
 def actionUID? (x : Expr) (acts: ActionStore) : Option EntityUID := do
   let uid ← entityUID? x
-  if isAction uid acts then .some uid else .none
+  if acts.contains uid then .some uid else .none
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
 def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : ResultType :=

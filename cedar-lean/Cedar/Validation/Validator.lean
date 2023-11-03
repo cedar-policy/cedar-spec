@@ -78,10 +78,13 @@ def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationErr
     else .error (.typeError policy.id (.unexpectedType ty))
   | .error e => .error (.typeError policy.id e)
 
+def allFalse (tys : List CedarType) : Bool :=
+  tys.all (· == .bool .ff)
+
 /-- Check a policy under multiple environments. -/
 def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) : ValidationResult := do
   let policyTypes ← envs.mapM (typecheckPolicy policy)
-  if policyTypes.all (· == .bool .ff) then .error (.impossiblePolicy policy.id) else .ok ()
+  if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /--
 Analyze a set of policies to checks that all are boolean-typed, and that

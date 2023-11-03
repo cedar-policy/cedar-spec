@@ -79,25 +79,23 @@ def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
 For every entity in the store,
 1. The entity's type is defined in the type store.
 2. The entity's attributes match the attribute types indicated in the type store.
-3. The entity's ancestors' types are defined in the type store, and the ancestor
-   relationship is consistent with the descendants information in the type store.
+3. The entity's ancestors' types are consistent with the ancestor information
+   in the type store.
 -/
 def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Prop :=
   ∀ uid data, entities.find? uid = some data →
-    ∃ attrTys descendantTys, ets.find? uid.ty = some (attrTys, descendantTys) ∧
+    ∃ attrTys ancestorTys, ets.find? uid.ty = some (attrTys, ancestorTys) ∧
       InstanceOfType data.attrs (.record attrTys) ∧
-      ∀ ancestor, ancestor ∈ data.ancestors →
-        ∃ descendants, ets.find? ancestor.ty = some descendants ∧ uid.ty ∈ descendantTys
+      ∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ ancestorTys
 
 /--
-For every action in the entity store, the action's ancestors are defined in the
-action store, and the ancestor relationships in the entity store are consistent
-with the descendants information in the action store.
+For every action in the entity store, the action's ancestors are consistent
+with the ancestor information in the action store.
 -/
 def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ uid data, entities.find? uid = some data → isAction uid as →
-    ∀ ancestor, ancestor ∈ data.ancestors →
-      ∃ descendants, as.find? ancestor = some descendants ∧ uid ∈ descendants
+  ∀ uid data, entities.find? uid = some data →
+    ∃ ancestors, as.find? uid = some ancestors →
+      ∀ ancestor, ancestor ∈ data.ancestors → ancestor ∈ ancestors
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
