@@ -16,3 +16,4 @@
 
 import Cedar.Thm.Basic
 import Cedar.Thm.Slicing
+import Cedar.Thm.Soundness
