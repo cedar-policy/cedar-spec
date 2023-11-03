@@ -41,7 +41,7 @@ The validator cannot protect against `entityDoesNotExist` and `extensionError`
 errors because it has no knowledge of the entities/context that will be provided
 at authorization time.
 -/
-theorem typecheckPolicy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
   typecheckPolicy policy env = .ok t →
   EvaluatesToBool policy request entities
@@ -57,8 +57,8 @@ theorem typecheckPolicy_is_sound (policy : Policy) (env : Environment) (t : Ceda
     simp at h₁
     clear h₁ t
     have h₁ : GuardedCapabilitiesInvariant policy.toExpr res.2 request entities ∧ ∃ (v : Value), EvaluatesTo policy.toExpr request entities v ∧ InstanceOfType v res.1 := by
-      apply typeOf_is_sound (env:=env) (c₁:=∅)
-      apply empty_CapabilitiesInvariant
+      apply type_of_is_sound (env:=env) (c₁:=∅)
+      apply empty_capabilities_invariant
       apply h₀
       apply h₂
     cases h₁ with

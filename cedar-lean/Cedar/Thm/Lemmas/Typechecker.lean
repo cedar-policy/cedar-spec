@@ -93,7 +93,7 @@ For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
 def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ uid data, entities.find? uid = some data →
+  ∀ uid data, entities.find? uid = some data → as.contains uid →
     ∃ ancestors, as.find? uid = some ancestors →
       ∀ ancestor, ancestor ∈ data.ancestors → ancestor ∈ ancestors
 
@@ -141,7 +141,7 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
   CapabilitiesInvariant c request entities
 
 -- Easy property: the empty capability set satisifies the invariant
-theorem empty_CapabilitiesInvariant (request : Request) (entities : Entities) :
+theorem empty_capabilities_invariant (request : Request) (entities : Entities) :
   CapabilitiesInvariant ∅ request entities
 := by
   intro e k h
@@ -165,7 +165,7 @@ produces a value of the returned type or (2) it returns an error of type
 `entityDoesNotExist` or `extensionError`. Both options are encoded in the
 `EvaluatesTo` predicate.
 -/
-theorem typeOf_is_sound (e : Expr) (c₁ c₂ : Capabilities) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+theorem type_of_is_sound (e : Expr) (c₁ c₂ : Capabilities) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
   CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (t, c₂) →
