@@ -29,20 +29,24 @@ use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, S
 use cedar_policy_generators::settings::ABACSettings;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
+use serde::Serialize;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, policy, and 8 associated requests
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     /// generated schema
+    #[serde(skip)]
     pub schema: Schema,
     /// generated entity slice
+    #[serde(skip)]
     pub entities: Entities,
     /// generated expression
     pub expression: Expr,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
+    #[serde(skip)]
     pub request: ABACRequest,
 }
 

@@ -101,3 +101,30 @@ jobs:
              source ./set_env_vars.sh
              export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server
              cargo test --verbose
+
+  build_cedar_lean:
+    name: Build cedar-lean
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Lean
+        shell: bash
+        run: |
+              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+              bash elan-init.sh -y
+      - name: Build
+        working-directory: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && lake build Cedar
+      - name: Test
+        working-directory: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && lake exe CedarUnitTests

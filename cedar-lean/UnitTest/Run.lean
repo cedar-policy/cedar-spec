@@ -71,12 +71,13 @@ def TestSuite.run (suite : TestSuite) : IO Nat := do
 /--
 Runs all the given test suites and prints the stats.
 -/
-def TestSuite.runAll (suites : List TestSuite) : IO Unit := do
+def TestSuite.runAll (suites : List TestSuite) : IO UInt32 := do
   let outcomes ← suites.mapM TestSuite.run
   let total := suites.foldl (fun n ts => n + ts.tests.length) 0
   let failures := outcomes.foldl (· + ·) 0
   let successes := total - failures
   IO.println "====== TOTAL ======="
   IO.println s!"{successes} success(es) {failures} failure(s) {total} test(s) run"
+  pure (UInt32.ofNat failures)
 
 end UnitTest

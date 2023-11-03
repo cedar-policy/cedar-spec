@@ -21,11 +21,13 @@ use cedar_policy_core::ast;
 use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
+use serde::Serialize;
 
 /// Input expected by this fuzz target
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     /// generated schema
+    #[serde(skip)]
     pub schema: Schema,
     /// generated policy
     pub policy: ABACPolicy,
