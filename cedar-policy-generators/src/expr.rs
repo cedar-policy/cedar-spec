@@ -839,7 +839,7 @@ impl<'a> ExprGenerator<'a> {
                         gen!(u,
                         // record literal
                         2 => {
-                            let mut r = Vec::new();
+                            let mut r = HashMap::new();
                             u.arbitrary_loop(
                                 Some(0),
                                 Some(self.settings.max_width as u32),
@@ -849,10 +849,10 @@ impl<'a> ExprGenerator<'a> {
                                         max_depth - 1,
                                         u,
                                     )?;
-                                    r.push((
+                                    r.insert(
                                         self.constant_pool.arbitrary_string_constant(u)?,
                                         attr_val,
-                                    ));
+                                    );
                                     Ok(std::ops::ControlFlow::Continue(()))
                                 },
                             )?;
