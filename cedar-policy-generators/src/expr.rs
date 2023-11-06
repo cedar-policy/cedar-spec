@@ -856,7 +856,6 @@ impl<'a> ExprGenerator<'a> {
                                     Ok(std::ops::ControlFlow::Continue(()))
                                 },
                             )?;
-                            println!("Vector before conversion: {:?}", r);
                             Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
                         },
                         // if-then-else expression, where both arms are records
