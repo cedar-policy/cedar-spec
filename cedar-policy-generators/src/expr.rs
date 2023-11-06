@@ -236,19 +236,6 @@ impl<'a> ExprGenerator<'a> {
         }
     }
 
-    fn generate_ite_for_type(
-        &self,
-        target_type: &Type,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Expr> {
-        Ok(ast::Expr::ite(
-            self.generate_expr_for_type(&Type::bool(), max_depth - 1, u)?,
-            self.generate_expr_for_type(target_type, max_depth - 1, u)?,
-            self.generate_expr_for_type(target_type, max_depth - 1, u)?,
-        ))
-    }
-
     /// get an arbitrary expression of a given type conforming to the schema
     ///
     /// `max_depth`: maximum size (i.e., depth) of the expression.
@@ -263,689 +250,841 @@ impl<'a> ExprGenerator<'a> {
         if self.should_generate_unknown(max_depth, u)? {
             let v = self.generate_value_for_type(target_type, max_depth, u)?;
             let name = self.unknown_pool.alloc(target_type.clone(), v);
-            return Ok(ast::Expr::unknown(name));
-        }
-
-        // run out of recursion depth, generate literal
-        if max_depth == 0 {
-            return Ok(match target_type {
-                Type::Decimal | Type::IPAddr => {
-                    // no recursion allowed, so, just call the constructor
-                    // Invariant (MethodStyleArgs), Function Style, no worries
-                    let constructor = self
-                        .ext_funcs
-                        .arbitrary_constructor_for_type(target_type, u)?;
-                    let args = vec![ast::Expr::val(match target_type {
-                        Type::IPAddr => self.constant_pool.arbitrary_ip_str(u)?,
-                        Type::Decimal => self.constant_pool.arbitrary_decimal_str(u)?,
-                        _ => unreachable!("ty is deemed to be an extension type"),
-                    })];
-                    ast::Expr::call_extension_fn(constructor.name.clone(), args)
-                }
-                _ => self.generate_value_for_type(target_type, 0, u)?.into(),
-            });
-        }
-
-        if u.ratio(1, 10)? {
-            return self.generate_ite_for_type(target_type, max_depth, u);
-        }
-
-        match target_type {
-            Type::Bool => {
-                gen!(u,
-                    // bool literal
-                    2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
-                    // == expression, where types on both sides match
-                    5 => {
-                        let ty: Type = u.arbitrary()?;
-                        Ok(ast::Expr::is_eq(
-                            self.generate_expr_for_type(&ty, max_depth - 1, u)?,
-                            self.generate_expr_for_type(&ty, max_depth - 1, u)?,
-                        ))
-                    },
-                    // == expression, where types do not match
-                    2 => {
-                        let ty1: Type = u.arbitrary()?;
-                        let ty2: Type = u.arbitrary()?;
-                        Ok(ast::Expr::is_eq(
-                            self.generate_expr_for_type(
-                                &ty1,
-                                max_depth - 1,
-                                u,
-                            )?,
-                            self.generate_expr_for_type(
-                                &ty2,
-                                max_depth - 1,
-                                u,
-                            )?,
-                        ))
-                    },
-                    // not expression
-                    5 => Ok(ast::Expr::not(self.generate_expr_for_type(
-                        &Type::bool(),
-                        max_depth - 1,
-                        u,
-                    )?)),
-                    // && expression
-                    5 => Ok(ast::Expr::and(
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // || expression
-                    5 => Ok(ast::Expr::or(
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::bool(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // < expression
-                    1 => Ok(ast::Expr::less(
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // <= expression
-                    1 => Ok(ast::Expr::lesseq(
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // > expression
-                    1 => Ok(ast::Expr::greater(
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // >= expression
-                    1 => Ok(ast::Expr::greatereq(
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::long(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // in expression, non-set form
-                    11 => {
-                        Ok(ast::Expr::is_in(
-                        self.generate_expr_for_type(
-                            &Type::entity(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::entity(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    ))
-                },
-                    // in expression, set form
-                    2 => Ok(ast::Expr::is_in(
-                        self.generate_expr_for_type(
-                            &Type::entity(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::set_of(Type::entity()),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // contains() on a set
-                    2 => {
-                        let element_ty = u.arbitrary()?;
-                        let element = self.generate_expr_for_type(
-                            &element_ty,
-                            max_depth - 1,
-                            u,
-                        )?;
-                        let set = self.generate_expr_for_type(
-                            &Type::set_of(element_ty),
-                            max_depth - 1,
-                            u,
-                        )?;
-                        Ok(ast::Expr::contains(set, element))
-                    },
-                    // containsAll()
-                    1 => Ok(ast::Expr::contains_all(
-                        // doesn't require the input sets to have the same element type
-                        self.generate_expr_for_type(
-                            &Type::set_of(u.arbitrary()?),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::set_of(u.arbitrary()?),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // containsAny()
-                    1 => Ok(ast::Expr::contains_any(
-                        // doesn't require the input sets to have the same element type
-                        self.generate_expr_for_type(
-                            &Type::set_of(u.arbitrary()?),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.generate_expr_for_type(
-                            &Type::set_of(u.arbitrary()?),
-                            max_depth - 1,
-                            u,
-                        )?,
-                    )),
-                    // like
-                    2 => {
-                        if self.settings.enable_like {
-                            Ok(ast::Expr::like(
+            Ok(ast::Expr::unknown(name))
+        } else {
+            match target_type {
+                Type::Bool => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just do a literal
+                        Ok(ast::Expr::val(u.arbitrary::<bool>()?))
+                    } else {
+                        gen!(u,
+                        // bool literal
+                        2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
+                        // == expression, where types on both sides match
+                        5 => {
+                            let ty: Type = u.arbitrary()?;
+                            Ok(ast::Expr::is_eq(
+                                self.generate_expr_for_type(&ty, max_depth - 1, u)?,
+                                self.generate_expr_for_type(&ty, max_depth - 1, u)?,
+                            ))
+                        },
+                        // == expression, where types do not match
+                        2 => {
+                            let ty1: Type = u.arbitrary()?;
+                            let ty2: Type = u.arbitrary()?;
+                            Ok(ast::Expr::is_eq(
                                 self.generate_expr_for_type(
-                                    &Type::string(),
+                                    &ty1,
                                     max_depth - 1,
                                     u,
                                 )?,
-                                self.constant_pool.arbitrary_pattern_literal(u)?,
+                                self.generate_expr_for_type(
+                                    &ty2,
+                                    max_depth - 1,
+                                    u,
+                                )?,
                             ))
-                        } else {
-                            Err(Error::LikeDisabled)
-                        }
-                    },
-                    // extension function that returns bool
-                    2 => self.generate_ext_func_call_for_type(
-                        &Type::bool(),
-                        max_depth - 1,
-                        u,
-                    ),
-                    // getting an attr (on an entity) with type bool
-                    1 => {
-                        let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                            cedar_policy_validator::SchemaTypeVariant::Boolean,
-                            u,
-                        )?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &entity_type_name_to_schema_type(&entity_type),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // getting an attr (on a record) with type bool
-                    1 => {
-                        let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                        Ok(ast::Expr::get_attr(
-                            self.generate_expr_for_schematype(
-                                &record_schematype_with_attr(
-                                    attr_name.clone(),
-                                    cedar_policy_validator::SchemaTypeVariant::Boolean,
-                                ),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // has expression on an entity, for a (possibly optional) attribute the entity does have in the schema
-                    2 => {
-                        let (entity_name, entity_type) = self
-                            .schema
-                            .schema
-                            .entity_types
-                            .iter()
-                            .nth(
-                                u.choose_index(self.schema.entity_types.len())
-                                    .expect("Failed to select entity index."),
-                            )
-                            .expect("Failed to select entity from map.");
-                        let attr_names: Vec<&SmolStr> =
-                            attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
-                                .attrs
-                                .keys()
-                                .collect::<Vec<_>>();
-                        let attr_name = SmolStr::clone(u.choose(&attr_names)?);
-                        Ok(ast::Expr::has_attr(
-                            self.generate_expr_for_schematype(
-                                &cedar_policy_validator::SchemaType::Type(
-                                    cedar_policy_validator::SchemaTypeVariant::Entity {
-                                        // This does not use an explicit namespace because entity types
-                                        // implicitly use the schema namespace if an explicit one is not
-                                        // provided.
-                                        name: entity_name.clone(),
-                                    }
-                                ),
-                                max_depth - 1,
-                                u,
-                            )?,
-                            attr_name,
-                        ))
-                    },
-                    // has expression on an entity, for an arbitrary attribute name
-                    1 => Ok(ast::Expr::has_attr(
-                        self.generate_expr_for_type(
-                            &Type::entity(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.constant_pool.arbitrary_string_constant(u)?,
-                    )),
-                    // has expression on a record
-                    2 => Ok(ast::Expr::has_attr(
-                        self.generate_expr_for_type(
-                            &Type::record(),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        self.constant_pool.arbitrary_string_constant(u)?,
-                    )))
-            }
-            Type::Long => {
-                gen!(u,
-                // int literal. weighted highly because all the other choices
-                // are recursive, and we don't want a scenario where we have,
-                // say, a 90% chance to recurse every time
-                16 => Ok(ast::Expr::val(
-                    self.constant_pool.arbitrary_int_constant(u)?,
-                )),
-                // + expression
-                1 => Ok(ast::Expr::add(
-                    self.generate_expr_for_type(
-                        &Type::long(),
-                        max_depth - 1,
-                        u,
-                    )?,
-                    self.generate_expr_for_type(
-                        &Type::long(),
-                        max_depth - 1,
-                        u,
-                    )?,
-                )),
-                // - expression
-                1 => Ok(ast::Expr::sub(
-                    self.generate_expr_for_type(
-                        &Type::long(),
-                        max_depth - 1,
-                        u,
-                    )?,
-                    self.generate_expr_for_type(
-                        &Type::long(),
-                        max_depth - 1,
-                        u,
-                    )?,
-                )),
-                // * expression
-                1 => {
-                    // arbitrary expression, which may be a constant
-                    let expr = self.generate_expr_for_type(
-                        &Type::long(),
-                        max_depth - 1,
-                        u,
-                    )?;
-                    // arbitrary integer constant
-                    let c = self.constant_pool.arbitrary_int_constant(u)?;
-                    Ok(ast::Expr::mul(expr, c))
-                },
-                // negation expression
-                1 => Ok(ast::Expr::neg(self.generate_expr_for_type(
-                    &Type::long(),
-                    max_depth - 1,
-                    u,
-                )?)),
-                // extension function that returns a long
-                1 => self.generate_ext_func_call_for_type(
-                    &Type::long(),
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with type long
-                4 => {
-                    let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                        cedar_policy_validator::SchemaTypeVariant::Long,
-                        u,
-                    )?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(&entity_type),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                },
-                // getting an attr (on a record) with type long
-                4 => {
-                    let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
-                                attr_name.clone(),
-                                cedar_policy_validator::SchemaTypeVariant::Long,
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
-            }
-            Type::String => {
-                gen!(u,
-                // string literal. weighted highly because all the other choices
-                // are recursive, and we don't want a scenario where we have, say,
-                // a 90% chance to recurse every time
-                16 => Ok(ast::Expr::val(
-                    self.constant_pool.arbitrary_string_constant(u)?,
-                )),
-                // extension function that returns a string
-                1 => self.generate_ext_func_call_for_type(
-                    &Type::string(),
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with type string
-                4 => {
-                    let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                        cedar_policy_validator::SchemaTypeVariant::String,
-                        u,
-                    )?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(&entity_type),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                },
-                // getting an attr (on a record) with type string
-                4 => {
-                    let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
-                                attr_name.clone(),
-                                cedar_policy_validator::SchemaTypeVariant::String,
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
-            }
-            Type::Set(target_element_ty) => {
-                gen!(u,
-                // set literal
-                6 => {
-                    let mut l = Vec::new();
-                    let target_element_ty = target_element_ty
-                        .as_ref()
-                        .map_or_else(|| u.arbitrary(), |ty| Ok((*ty).clone()))?;
-                    u.arbitrary_loop(
-                        Some(0),
-                        Some(self.settings.max_width as u32),
-                        |u| {
-                            l.push(self.generate_expr_for_type(
-                                &target_element_ty,
-                                max_depth - 1,
-                                u,
-                            )?);
-                            Ok(std::ops::ControlFlow::Continue(()))
                         },
-                    )?;
-                    Ok(ast::Expr::set(l))
-                },
-                // extension function that returns an (appropriate) set
-                1 => self.generate_ext_func_call_for_type(
-                    target_type,
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with the appropriate set type
-                4 => {
-                    let (entity_type, attr_name) =
-                        self.schema.arbitrary_attr_for_type(target_type, u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(entity_type),
+                        // not expression
+                        5 => Ok(ast::Expr::not(self.generate_expr_for_type(
+                            &Type::bool(),
                             max_depth - 1,
                             u,
-                        )?,
-                        attr_name.clone(),
-                    ))
-                },
-                // getting an attr (on a record) with the appropriate set type
-                3 => {
-                    let attr_name: SmolStr =
-                        self.constant_pool.arbitrary_string_constant(u)?;
-                    let attr_ty: cedar_policy_validator::SchemaType =
-                    match self.schema.try_into_schematype(target_type, u)? {
-                        Some(schematy) => schematy,
-                        None => return Err(Error::IncorrectFormat {
-                            doing_what: format!("target_type {target_type:?} not supported in this position"),
-                        })
-                    };
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(attr_name.clone(), attr_ty),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
-            }
-            Type::Record => {
-                gen!(u,
-                // record literal
-                2 => {
-                    let mut r = HashMap::new();
-                    u.arbitrary_loop(
-                        Some(0),
-                        Some(self.settings.max_width as u32),
-                        |u| {
-                            let attr_val = self.generate_expr_for_type(
-                                &u.arbitrary()?,
+                        )?)),
+                        // if-then-else expression, where both arms are bools
+                        5 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // && expression
+                        5 => Ok(ast::Expr::and(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // || expression
+                        5 => Ok(ast::Expr::or(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // < expression
+                        1 => Ok(ast::Expr::less(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // <= expression
+                        1 => Ok(ast::Expr::lesseq(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // > expression
+                        1 => Ok(ast::Expr::greater(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // >= expression
+                        1 => Ok(ast::Expr::greatereq(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // in expression, non-set form
+                        11 => Ok(ast::Expr::is_in(
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // in expression, set form
+                        2 => Ok(ast::Expr::is_in(
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::set_of(Type::entity()),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // contains() on a set
+                        2 => {
+                            let element_ty = u.arbitrary()?;
+                            let element = self.generate_expr_for_type(
+                                &element_ty,
                                 max_depth - 1,
                                 u,
                             )?;
-                            r.insert(
-                                self.constant_pool.arbitrary_string_constant(u)?,
-                                attr_val,
-                            );
-                            Ok(std::ops::ControlFlow::Continue(()))
+                            let set = self.generate_expr_for_type(
+                                &Type::set_of(element_ty),
+                                max_depth - 1,
+                                u,
+                            )?;
+                            Ok(ast::Expr::contains(set, element))
                         },
-                    )?;
-                    Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
-                },
-                // extension function that returns a record
-                1 => self.generate_ext_func_call_for_type(
-                    &Type::record(),
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with type record
-                4 => {
-                    let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                        cedar_policy_validator::SchemaTypeVariant::Record {
-                            // TODO: should we put in some other attributes that appear in schema?
-                            attributes: BTreeMap::new(),
-                            additional_attributes: true,
+                        // containsAll()
+                        1 => Ok(ast::Expr::contains_all(
+                            // doesn't require the input sets to have the same element type
+                            self.generate_expr_for_type(
+                                &Type::set_of(u.arbitrary()?),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::set_of(u.arbitrary()?),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // containsAny()
+                        1 => Ok(ast::Expr::contains_any(
+                            // doesn't require the input sets to have the same element type
+                            self.generate_expr_for_type(
+                                &Type::set_of(u.arbitrary()?),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::set_of(u.arbitrary()?),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // like
+                        2 => {
+                            if self.settings.enable_like {
+                                Ok(ast::Expr::like(
+                                    self.generate_expr_for_type(
+                                        &Type::string(),
+                                        max_depth - 1,
+                                        u,
+                                    )?,
+                                    self.constant_pool.arbitrary_pattern_literal(u)?,
+                                ))
+                            } else {
+                                Err(Error::LikeDisabled)
+                            }
                         },
-                        u,
-                    )?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(&entity_type),
+                        // extension function that returns bool
+                        2 => self.generate_ext_func_call_for_type(
+                            &Type::bool(),
                             max_depth - 1,
                             u,
-                        )?,
-                        attr_name,
-                    ))
-                },
-                // getting an attr (on a record) with type record
-                3 => {
-                    let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
+                        ),
+                        // getting an attr (on an entity) with type bool
+                        1 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
+                                cedar_policy_validator::SchemaTypeVariant::Boolean,
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // getting an attr (on a record) with type bool
+                        1 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        cedar_policy_validator::SchemaTypeVariant::Boolean,
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // has expression on an entity, for a (possibly optional) attribute the entity does have in the schema
+                        2 => {
+                            let (entity_name, entity_type) = self
+                                .schema
+                                .schema
+                                .entity_types
+                                .iter()
+                                .nth(
+                                    u.choose_index(self.schema.entity_types.len())
+                                        .expect("Failed to select entity index."),
+                                )
+                                .expect("Failed to select entity from map.");
+                            let attr_names: Vec<&SmolStr> =
+                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
+                                    .attrs
+                                    .keys()
+                                    .collect::<Vec<_>>();
+                            let attr_name = SmolStr::clone(u.choose(&attr_names)?);
+                            Ok(ast::Expr::has_attr(
+                                self.generate_expr_for_schematype(
+                                    &cedar_policy_validator::SchemaType::Type(
+                                        cedar_policy_validator::SchemaTypeVariant::Entity {
+                                            // This does not use an explicit namespace because entity types
+                                            // implicitly use the schema namespace if an explicit one is not
+                                            // provided.
+                                            name: entity_name.clone(),
+                                        }
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // has expression on an entity, for an arbitrary attribute name
+                        1 => Ok(ast::Expr::has_attr(
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.constant_pool.arbitrary_string_constant(u)?,
+                        )),
+                        // has expression on a record
+                        2 => Ok(ast::Expr::has_attr(
+                            self.generate_expr_for_type(
+                                &Type::record(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.constant_pool.arbitrary_string_constant(u)?,
+                        )))
+                    }
+                }
+                Type::Long => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just do a literal
+                        Ok(ast::Expr::val(
+                            self.constant_pool.arbitrary_int_constant(u)?,
+                        ))
+                    } else {
+                        gen!(u,
+                        // int literal. weighted highly because all the other choices
+                        // are recursive, and we don't want a scenario where we have,
+                        // say, a 90% chance to recurse every time
+                        16 => Ok(ast::Expr::val(
+                            self.constant_pool.arbitrary_int_constant(u)?,
+                        )),
+                        // if-then-else expression, where both arms are longs
+                        5 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // + expression
+                        1 => Ok(ast::Expr::add(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // - expression
+                        1 => Ok(ast::Expr::sub(
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // * expression
+                        1 => {
+                            // arbitrary expression, which may be a constant
+                            let expr = self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?;
+                            // arbitrary integer constant
+                            let c = self.constant_pool.arbitrary_int_constant(u)?;
+                            Ok(ast::Expr::mul(expr, c))
+                        },
+                        // negation expression
+                        1 => Ok(ast::Expr::neg(self.generate_expr_for_type(
+                            &Type::long(),
+                            max_depth - 1,
+                            u,
+                        )?)),
+                        // extension function that returns a long
+                        1 => self.generate_ext_func_call_for_type(
+                            &Type::long(),
+                            max_depth - 1,
+                            u,
+                        ),
+                        // getting an attr (on an entity) with type long
+                        4 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
+                                cedar_policy_validator::SchemaTypeVariant::Long,
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // getting an attr (on a record) with type long
+                        4 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        cedar_policy_validator::SchemaTypeVariant::Long,
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
+                Type::String => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just do a literal
+                        Ok(ast::Expr::val(
+                            self.constant_pool.arbitrary_string_constant(u)?,
+                        ))
+                    } else {
+                        gen!(u,
+                        // string literal. weighted highly because all the other choices
+                        // are recursive, and we don't want a scenario where we have, say,
+                        // a 90% chance to recurse every time
+                        16 => Ok(ast::Expr::val(
+                            self.constant_pool.arbitrary_string_constant(u)?,
+                        )),
+                        // if-then-else expression, where both arms are strings
+                        5 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::string(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::string(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // extension function that returns a string
+                        1 => self.generate_ext_func_call_for_type(
+                            &Type::string(),
+                            max_depth - 1,
+                            u,
+                        ),
+                        // getting an attr (on an entity) with type string
+                        4 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
+                                cedar_policy_validator::SchemaTypeVariant::String,
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // getting an attr (on a record) with type string
+                        4 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        cedar_policy_validator::SchemaTypeVariant::String,
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
+                Type::Set(target_element_ty) => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just do empty-set
+                        Ok(ast::Expr::set(vec![]))
+                    } else {
+                        gen!(u,
+                        // set literal
+                        6 => {
+                            let mut l = Vec::new();
+                            let target_element_ty = target_element_ty
+                                .as_ref()
+                                .map_or_else(|| u.arbitrary(), |ty| Ok((*ty).clone()))?;
+                            u.arbitrary_loop(
+                                Some(0),
+                                Some(self.settings.max_width as u32),
+                                |u| {
+                                    l.push(self.generate_expr_for_type(
+                                        &target_element_ty,
+                                        max_depth - 1,
+                                        u,
+                                    )?);
+                                    Ok(std::ops::ControlFlow::Continue(()))
+                                },
+                            )?;
+                            Ok(ast::Expr::set(l))
+                        },
+                        // if-then-else expression, where both arms are (appropriate) sets
+                        2 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                target_type,
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                target_type,
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // extension function that returns an (appropriate) set
+                        1 => self.generate_ext_func_call_for_type(
+                            target_type,
+                            max_depth - 1,
+                            u,
+                        ),
+                        // getting an attr (on an entity) with the appropriate set type
+                        4 => {
+                            let (entity_type, attr_name) =
+                                self.schema.arbitrary_attr_for_type(target_type, u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
                                 attr_name.clone(),
+                            ))
+                        },
+                        // getting an attr (on a record) with the appropriate set type
+                        3 => {
+                            let attr_name: SmolStr =
+                                self.constant_pool.arbitrary_string_constant(u)?;
+                            let attr_ty: cedar_policy_validator::SchemaType =
+                            match self.schema.try_into_schematype(target_type, u)? {
+                                Some(schematy) => schematy,
+                                None => return Err(Error::IncorrectFormat {
+                                    doing_what: format!("target_type {target_type:?} not supported in this position"),
+                                })
+                            };
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(attr_name.clone(), attr_ty),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
+                Type::Record => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed
+                        Err(Error::TooDeep)
+                    } else {
+                        gen!(u,
+                        // record literal
+                        2 => {
+                            let mut r = Vec::new();
+                            u.arbitrary_loop(
+                                Some(0),
+                                Some(self.settings.max_width as u32),
+                                |u| {
+                                    let attr_val = self.generate_expr_for_type(
+                                        &u.arbitrary()?,
+                                        max_depth - 1,
+                                        u,
+                                    )?;
+                                    r.push((
+                                        self.constant_pool.arbitrary_string_constant(u)?,
+                                        attr_val,
+                                    ));
+                                    Ok(std::ops::ControlFlow::Continue(()))
+                                },
+                            )?;
+                            Ok(ast::Expr::record(r).expect("can't have duplicate keys because `r` was already a HashMap"))
+                        },
+                        // if-then-else expression, where both arms are records
+                        2 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::record(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::record(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // extension function that returns a record
+                        1 => self.generate_ext_func_call_for_type(
+                            &Type::record(),
+                            max_depth - 1,
+                            u,
+                        ),
+                        // getting an attr (on an entity) with type record
+                        4 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
                                 cedar_policy_validator::SchemaTypeVariant::Record {
+                                    // TODO: should we put in some other attributes that appear in schema?
                                     attributes: BTreeMap::new(),
                                     additional_attributes: true,
                                 },
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
-            }
-            Type::Entity => {
-                gen!(u,
-                // UID literal, that exists
-                11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
-                // UID literal, that doesn't exist
-                2 => Ok(ast::Expr::val(
-                    arbitrary_specified_uid_without_schema(u)?,
-                )),
-                // `principal`
-                6 => Ok(ast::Expr::var(ast::Var::Principal)),
-                // `action`
-                6 => Ok(ast::Expr::var(ast::Var::Action)),
-                // `resource`
-                6 => Ok(ast::Expr::var(ast::Var::Resource)),
-                // extension function that returns an entity
-                1 => self.generate_ext_func_call_for_type(
-                    &Type::entity(),
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with type entity
-                6 => {
-                    let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                        entity_type_name_to_schema_type(u.choose(&self.schema.entity_types)?),
-                        u,
-                    )?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(&entity_type),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                },
-                // getting an attr (on a record) with type entity
-                5 => {
-                    let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
-                                attr_name.clone(),
-                                entity_type_name_to_schema_type(
-                                    u.choose(&self.schema.entity_types)?,
-                                ),
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
-            }
-            Type::IPAddr | Type::Decimal => {
-                if !self.settings.enable_extensions {
-                    return Err(Error::ExtensionsDisabled);
-                };
-                let type_name: SmolStr = match target_type {
-                    Type::IPAddr => "ipaddr",
-                    Type::Decimal => "decimal",
-                    _ => unreachable!("target type is deemed to be an extension type!"),
-                }
-                .into();
-                gen!(u,
-                // extension function that returns an extension type
-                9 => self.generate_ext_func_call_for_type(
-                    target_type,
-                    max_depth - 1,
-                    u,
-                ),
-                // getting an attr (on an entity) with extension type
-                2 => {
-                    let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                        cedar_policy_validator::SchemaTypeVariant::Extension {
-                            name: type_name,
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
                         },
-                        u,
-                    )?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &entity_type_name_to_schema_type(&entity_type),
+                        // getting an attr (on a record) with type record
+                        3 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        cedar_policy_validator::SchemaTypeVariant::Record {
+                                            attributes: BTreeMap::new(),
+                                            additional_attributes: true,
+                                        },
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
+                Type::Entity => {
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just do `principal`, `action`, or `resource`
+                        Ok(ast::Expr::var(*u.choose(&[
+                            ast::Var::Principal,
+                            ast::Var::Action,
+                            ast::Var::Resource,
+                        ])?))
+                    } else {
+                        gen!(u,
+                        // UID literal, that exists
+                        11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
+                        // UID literal, that doesn't exist
+                        2 => Ok(ast::Expr::val(
+                            arbitrary_specified_uid_without_schema(u)?,
+                        )),
+                        // `principal`
+                        6 => Ok(ast::Expr::var(ast::Var::Principal)),
+                        // `action`
+                        6 => Ok(ast::Expr::var(ast::Var::Action)),
+                        // `resource`
+                        6 => Ok(ast::Expr::var(ast::Var::Resource)),
+                        // if-then-else expression, where both arms are entities
+                        2 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // extension function that returns an entity
+                        1 => self.generate_ext_func_call_for_type(
+                            &Type::entity(),
                             max_depth - 1,
                             u,
-                        )?,
-                        attr_name,
-                    ))
-                },
-                // getting an attr (on a record) with type extension type
-                2 => {
-                    let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
-                    Ok(ast::Expr::get_attr(
-                        self.generate_expr_for_schematype(
-                            &record_schematype_with_attr(
-                                attr_name.clone(),
+                        ),
+                        // getting an attr (on an entity) with type entity
+                        6 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
+                                entity_type_name_to_schema_type(u.choose(&self.schema.entity_types)?),
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // getting an attr (on a record) with type entity
+                        5 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        entity_type_name_to_schema_type(
+                                            u.choose(&self.schema.entity_types)?,
+                                        ),
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
+                Type::IPAddr | Type::Decimal => {
+                    if !self.settings.enable_extensions {
+                        return Err(Error::ExtensionsDisabled);
+                    };
+                    if max_depth == 0 || u.len() < 10 {
+                        // no recursion allowed, so, just call the constructor
+                        // Invariant (MethodStyleArgs), Function Style, no worries
+                        let constructor = self
+                            .ext_funcs
+                            .arbitrary_constructor_for_type(target_type, u)?;
+                        let args = vec![ast::Expr::val(match target_type {
+                            Type::IPAddr => self.constant_pool.arbitrary_ip_str(u)?,
+                            Type::Decimal => self.constant_pool.arbitrary_decimal_str(u)?,
+                            _ => unreachable!("ty is deemed to be an extension type"),
+                        })];
+                        Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
+                    } else {
+                        let type_name: SmolStr = match target_type {
+                            Type::IPAddr => "ipaddr",
+                            Type::Decimal => "decimal",
+                            _ => unreachable!("target type is deemed to be an extension type!"),
+                        }
+                        .into();
+                        gen!(u,
+                        // if-then-else expression, where both arms are extension types
+                        2 => Ok(ast::Expr::ite(
+                            self.generate_expr_for_type(
+                                &Type::bool(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                target_type,
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                target_type,
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // extension function that returns an extension type
+                        9 => self.generate_ext_func_call_for_type(
+                            target_type,
+                            max_depth - 1,
+                            u,
+                        ),
+                        // getting an attr (on an entity) with extension type
+                        2 => {
+                            let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
                                 cedar_policy_validator::SchemaTypeVariant::Extension {
                                     name: type_name,
                                 },
-                            ),
-                            max_depth - 1,
-                            u,
-                        )?,
-                        attr_name,
-                    ))
-                })
+                                u,
+                            )?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &entity_type_name_to_schema_type(&entity_type),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        },
+                        // getting an attr (on a record) with type extension type
+                        2 => {
+                            let attr_name = self.constant_pool.arbitrary_string_constant(u)?;
+                            Ok(ast::Expr::get_attr(
+                                self.generate_expr_for_schematype(
+                                    &record_schematype_with_attr(
+                                        attr_name.clone(),
+                                        cedar_policy_validator::SchemaTypeVariant::Extension {
+                                            name: type_name,
+                                        },
+                                    ),
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                                attr_name,
+                            ))
+                        })
+                    }
+                }
             }
         }
     }
@@ -1215,6 +1354,15 @@ impl<'a> ExprGenerator<'a> {
                             u,
                         )?,
                     )),
+                    // extension function that returns an entity
+                    1 => {
+                        // TODO: this doesn't guarantee it returns the _correct_ entity type
+                        self.generate_ext_func_call_for_type(
+                            &Type::entity(),
+                            max_depth - 1,
+                            u,
+                        )
+                    },
                     // getting an attr (on an entity) with the appropriate entity type
                     6 => {
                         let (entity_type, attr_name) =
@@ -1738,7 +1886,7 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::Record(Arc::new(map)))
                 }
             }
-            Type::Decimal | Type::IPAddr => Err(Error::ExtensionsDisabled),
+            _ => Err(Error::ExtensionsDisabled),
         }
     }
 
