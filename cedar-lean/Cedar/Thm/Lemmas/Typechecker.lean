@@ -105,24 +105,29 @@ def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (
 /--
 The type soundness property says that if the typechecker assigns a type to an
 expression, then it must be the case that the expression `EvaluatesTo` a value
-of that type. The `EvaluatesTo` predicate covers the (obvious) case where evaluation
-has no errors, but it also allows for errors of type `entityDoesNotExist` and
-`extensionError`.
+of that type. The `EvaluatesTo` predicate covers the (obvious) case where
+evaluation has no errors, but it also allows for errors of type
+`entityDoesNotExist`, `extensionError`, and `arithBoundsError`.
 
-The typechecker cannot protect against these errors because they depend on runtime
-information (i.e., the entities passed into the authorization request, and
-extension function applications on authorization-time data). All other errors
-(`attrDoesNotExist` and `typeError`) can be prevented statically.
+The typechecker cannot protect against these errors because they depend on
+runtime information (i.e., the entities passed into the authorization request,
+extension function applications on authorization-time data, and arithmetic
+overflow errors). All other errors (`attrDoesNotExist` and `typeError`) can be
+prevented statically.
 
 _Note_: Currently, `extensionError`s can also be ruled out at validation time
 because the only extension functions that can error are constructors, and all
 constructors are required to be applied to string literals, meaning that they
 can be fully evaluated during validation. This is not guaranteed to be the case
 in the future.
+
+_Note_: We plan to implement a range analysis that will be able to rule out
+`arithBoundsError`s.
 -/
 def EvaluatesTo (e: Expr) (request : Request) (entities : Entities) (v : Value) : Prop :=
   evaluate e request entities = .error .entityDoesNotExist ∨
   evaluate e request entities = .error .extensionError ∨
+  evaluate e request entities = .error .arithBoundsError ∨
   evaluate e request entities = .ok v
 
 /--
