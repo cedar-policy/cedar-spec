@@ -105,8 +105,9 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         "Resource::\"foo\"".parse().expect("should be valid"),
         ast::Context::empty(),
         None::<&ast::RequestSchemaAllPass>,
-        Extensions::none()
-    ).expect("we aren't doing request validation here, so new() can't fail");
+        Extensions::none(),
+    )
+    .expect("we aren't doing request validation here, so new() can't fail");
 
     // Check agreement with definitional engine. Note that run_auth_test returns
     // the result of the call to is_authorized.
