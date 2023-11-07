@@ -1,0 +1,82 @@
+/-
+ Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Std
+
+/-!
+This file defines a signed 64-bit integer datatype similar to Rust's `i64`.
+-/
+
+namespace Cedar.Data
+
+def INT64_MIN : Int := -9223372036854775808
+def INT64_MAX : Int :=  9223372036854775807
+
+abbrev Int64 := { i : Int // INT64_MIN ≤ i ∧ i ≤ INT64_MAX }
+
+instance : Inhabited Int64 where
+  default := Subtype.mk 0 (by simp)
+
+
+namespace Int64
+
+----- Definitions -----
+
+def mk (i : Int) (h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX) : Int64 :=
+  Subtype.mk i h
+
+def mk? (i : Int) : Option Int64 :=
+  if h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX
+  then .some (mk i h)
+  else .none
+
+def mk! (i : Int) : Int64 :=
+  if h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX
+  then mk i h
+  else panic! s!"not a signed 64-bit integer {i}"
+
+def lt (i₁ i₂ : Int64) : Bool := i₁.1 < i₂.1
+
+def le (i₁ i₂ : Int64) : Bool := i₁.1 ≤ i₂.1
+
+def add? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 + i₂.1)
+
+def sub? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 - i₂.1)
+
+def mul? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 * i₂.1)
+
+def neg? (i₁ : Int64) : Option Int64 := mk? (- i₁.1)
+
+----- Derivations -----
+instance : LT Int64 where
+  lt := fun i₁ i₂ => Int64.lt i₁ i₂
+
+instance : LE Int64 where
+  le := fun i₁ i₂ => Int64.le i₁ i₂
+
+instance int64Lt (i₁ i₂ : Int64) : Decidable (i₁ < i₂) :=
+if h : Int64.lt i₁ i₂ then isTrue h else isFalse h
+
+instance int64Le (i₁ i₂ : Int64) : Decidable (i₁ ≤ i₂) :=
+if h : Int64.le i₁ i₂ then isTrue h else isFalse h
+
+deriving instance Repr for Int64
+deriving instance DecidableEq for Int64
+
+end Int64
+
+
+end Cedar.Data

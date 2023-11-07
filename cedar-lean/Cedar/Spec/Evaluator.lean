@@ -26,10 +26,14 @@ open Cedar.Data
 open Except
 open Error
 
+def intOrErr : Option Int64 → Result Value
+  | .some i => ok (.prim (.int i))
+  | .none   => error .arithBoundsError
+
 def apply₁ : UnaryOp → Value → Result Value
   | .not,     .prim (.bool b)        => ok !b
-  | .neg,     .prim (.int i)         => ok ((- i) : Int)
-  | .mulBy c, .prim (.int i)         => ok (c * i)
+  | .neg,     .prim (.int i)         => intOrErr i.neg?
+  | .mulBy c, .prim (.int i)         => intOrErr (c.mul? i)
   | .like p,  .prim (.string s)      => ok (wildcardMatch s p)
   | .is ety,  .prim (.entityUID uid) => ok (ety == uid.ty)
   | _, _                             => error .typeError
@@ -46,8 +50,8 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .eq, _, _                                              => ok (v₁ == v₂)
   | .less,   .prim (.int i), .prim (.int j)                => ok ((i < j): Bool)
   | .lessEq, .prim (.int i), .prim (.int j)                => ok ((i ≤ j): Bool)
-  | .add,    .prim (.int i), .prim (.int j)                => ok (i + j)
-  | .sub,    .prim (.int i), .prim (.int j)                => ok (i - j)
+  | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j)
+  | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j)
   | .contains,    .set vs₁, _                              => ok (vs₁.contains v₂)
   | .containsAll, .set vs₁, .set vs₂                       => ok (vs₂.subset vs₁)
   | .containsAny, .set vs₁, .set vs₂                       => ok (vs₁.intersects vs₂)

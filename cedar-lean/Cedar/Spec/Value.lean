@@ -31,6 +31,7 @@ inductive Error where
   | entityDoesNotExist
   | attrDoesNotExist
   | typeError
+  | arithBoundsError
   | extensionError
 
 abbrev Result (α) := Except Error α
@@ -49,7 +50,7 @@ structure EntityUID where
 
 inductive Prim where
   | bool (b : Bool)
-  | int (i : Int)
+  | int (i : Int64)
   | string (s : String)
   | entityUID (uid : EntityUID)
 
@@ -79,7 +80,7 @@ def Value.asString : Value →  Result String
   | .prim (.string s) => ok s
   | _ => error Error.typeError
 
-def Value.asInt : Value →  Result Int
+def Value.asInt : Value →  Result Int64
   | .prim (.int i) => ok i
   | _ => error Error.typeError
 
@@ -90,7 +91,7 @@ def Result.as {α} (β) [Coe α (Result β)] : Result α → Result β
 instance : Coe Bool Value where
   coe b := .prim (.bool b)
 
-instance : Coe Int Value where
+instance : Coe Int64 Value where
   coe i := .prim (.int i)
 
 instance : Coe String Value where
@@ -114,7 +115,7 @@ instance : Coe (Map Attr Value) Value where
 instance : Coe Value (Result Bool) where
   coe v := v.asBool
 
-instance : Coe Value (Result Int) where
+instance : Coe Value (Result Int64) where
   coe v := v.asInt
 
 instance : Coe Value (Result String) where
@@ -230,9 +231,6 @@ instance : LT Name where
 instance Name.decLt (n m : Name) : Decidable (n < m) :=
   if h : Name.lt n m then isTrue h else isFalse h
 
--- lol for some reason eta reduction breaks this (can't handle the implicit arguments)
-instance : Ord EntityType where
-  compare a b := compareOfLessAndEq a b
 
 def EntityUID.lt (a b : EntityUID) : Bool :=
   (a.ty < b.ty) ∨ (a.ty = b.ty ∧ a.eid < b.eid)
@@ -316,10 +314,6 @@ instance : LT Value where
 
 instance Value.decLt (n m : Value) : Decidable (n < m) :=
 if h : Value.lt n m then isTrue h else isFalse h
-
-instance : Ord Value where
-  compare a b := compareOfLessAndEq a b
-
 
 deriving instance Inhabited for Value
 
