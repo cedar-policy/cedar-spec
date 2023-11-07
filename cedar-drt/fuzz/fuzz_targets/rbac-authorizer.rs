@@ -19,6 +19,7 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::parser;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 use serde::Serialize;
@@ -103,7 +104,10 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         "Action::\"read\"".parse().expect("should be valid"),
         "Resource::\"foo\"".parse().expect("should be valid"),
         ast::Context::empty(),
-    );
+        None::<&ast::RequestSchemaAllPass>,
+        Extensions::none(),
+    )
+    .expect("we aren't doing request validation here, so new() can't fail");
 
     // Check agreement with definitional engine. Note that run_auth_test returns
     // the result of the call to is_authorized.
