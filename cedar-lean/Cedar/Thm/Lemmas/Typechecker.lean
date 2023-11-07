@@ -158,6 +158,8 @@ theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
   case instance_of_bool b bty =>
     exists b
 
+#print Cedar.Spec.Expr.rec
+
 /--
 If an expression is well-typed according to the typechecker, and the input
 environment and capabilities satisfy some invariants, then either (1) evaluation
