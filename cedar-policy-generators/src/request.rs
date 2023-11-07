@@ -1,8 +1,8 @@
 use crate::collections::HashMap;
 use crate::hierarchy::Hierarchy;
 use arbitrary::Unstructured;
-use cedar_policy_core::ast;
-use cedar_policy_core::ast::{EntityUID, RestrictedExpr};
+use cedar_policy_core::ast::{self, EntityUID, RestrictedExpr};
+use cedar_policy_core::extensions::Extensions;
 use smol_str::SmolStr;
 
 /// Data structure representing an authorization request
@@ -43,7 +43,10 @@ impl From<Request> for ast::Request {
             req.resource,
             ast::Context::from_pairs(req.context)
                 .expect("can't have duplicate keys because `req.context` was already a HashMap"),
+            None::<&ast::RequestSchemaAllPass>,
+            Extensions::none(),
         )
+        .expect("we aren't doing request validation here, so new() can't fail")
     }
 }
 
