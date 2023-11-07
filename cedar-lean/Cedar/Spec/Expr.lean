@@ -14,12 +14,15 @@
  limitations under the License.
 -/
 
+import Cedar.Data
 import Cedar.Spec.ExtFun
 import Cedar.Spec.Wildcard
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
 namespace Cedar.Spec
+
+open Cedar.Data
 
 ----- Definitions -----
 
@@ -32,7 +35,7 @@ inductive Var where
 inductive UnaryOp where
   | not
   | neg
-  | mulBy (i : Int)
+  | mulBy (i : Int64)
   | like (p : Pattern)
   | is (ety : EntityType)
 
