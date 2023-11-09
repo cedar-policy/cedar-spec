@@ -115,6 +115,7 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
   | .unaryApp op₁ x₁ =>
     match op₁ with
     | .not => exact type_of_not_is_sound h₁ h₂ h₃
+    | .neg => exact type_of_neg_is_sound h₁ h₂ h₃
     | _    => sorry
   | .binaryApp op₂ x₁ x₂ => sorry
   | .hasAttr x₁ a => sorry
@@ -161,6 +162,37 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
         exact true_is_instance_of_tt
     all_goals {
       exact type_is_inhabited (CedarType.bool (BoolType.not bty))
+    }
+
+theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.unaryApp .neg x₁) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.unaryApp .neg x₁) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.unaryApp .neg x₁) request entities v ∧ InstanceOfType v ty
+:= by
+  rcases (type_of_neg_inversion h₃) with ⟨h₅, h₆, c₁', h₄⟩
+  subst h₅; subst h₆
+  apply And.intro
+  case left => exact empty_guarded_capabilities_invariant
+  case right =>
+    rcases (type_of_is_sound h₁ h₂ h₄) with ⟨h₅, v₁, h₆, h₇⟩ -- IH
+    simp [EvaluatesTo] at h₆
+    simp [EvaluatesTo, evaluate]
+    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+    case intro.intro.intro.inr.inr.inr =>
+      rcases (instance_of_int_is_int h₇) with ⟨i, h₈⟩
+      subst h₈
+      simp [apply₁, intOrErr]
+      cases h₉ : i.neg?
+      case intro.none =>
+        simp only [or_false, or_true, true_and]
+        exact type_is_inhabited CedarType.int
+      case intro.some i' =>
+        simp only [Except.ok.injEq, false_or, exists_eq_left']
+        apply InstanceOfType.instance_of_int
+    all_goals {
+      exact type_is_inhabited CedarType.int
     }
 
 end

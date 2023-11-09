@@ -156,6 +156,15 @@ theorem instance_of_anyBool_is_bool {v₁ : Value} :
     apply Exists.intro b
     rfl
 
+theorem instance_of_int_is_int {v₁ : Value} :
+  InstanceOfType v₁ CedarType.int →
+  ∃ i, v₁ = .prim (.int i)
+:= by
+  intro h₁
+  cases h₁
+  rename_i y
+  exists y
+
 theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
   InstanceOfType v ty →
   ty ⊑ .bool .anyBool →
