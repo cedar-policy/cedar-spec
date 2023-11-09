@@ -28,13 +28,13 @@ Use Map.make to construct well-formed maps from lists of key-value pairs.
 namespace Cedar.Data
 
 inductive Map (α : Type u) (β : Type v) where
-| mk : List (α × β) -> Map α β
+| mk : List (α × β) → Map α β
 deriving Repr
 deriving instance DecidableEq, Repr, Inhabited for Map
 
 namespace Map
 
-private def kvs {α : Type u} {β : Type v} : Map α β -> List (Prod α β)
+private def kvs {α : Type u} {β : Type v} : Map α β → List (Prod α β)
 | .mk kvs => kvs
 
 
@@ -83,17 +83,17 @@ def size {α β} (m : Map α β) : Nat :=
   m.kvs.length
 
 def mapOnValues {α β γ} [LT α] [DecidableLT α] (f : β → γ) (m : Map α β) : Map α γ :=
-  Map.make (m.kvs.map (λ (k,v) => (k, f v )))
+  Map.mk (m.kvs.map (λ (k,v) => (k, f v)))
 
 def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
-  Map.make (m.kvs.map (λ (k,v) => (f k, v) ))
+  Map.make (m.kvs.map (λ (k,v) => (f k, v)))
 
 ----- Props and Theorems -----
 
 instance [LT (Prod α β)] : LT (Map α β) where
 lt a b := a.kvs < b.kvs
 
-instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n m : Map α β) -> Decidable (n < m)
+instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n m : Map α β) → Decidable (n < m)
   | .mk nkvs, .mk mkvs => List.hasDecidableLt nkvs mkvs
 
 instance : Membership α (Map α β) where

@@ -15,6 +15,9 @@
 -/
 
 import Cedar.Spec
+import Cedar.Thm.Lemmas.Std
+import Cedar.Thm.Lemmas.Types
+import Cedar.Thm.Lemmas.TypecheckerInversion
 import Cedar.Validation
 
 /-!
@@ -29,78 +32,6 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
-
-def InstanceOfBoolType : Bool → BoolType → Prop
-  | true,  .tt      => True
-  | false, .ff      => True
-  | _,     .anyBool => True
-  | _, _            => False
-
-def InstanceOfEntityType (e : EntityUID) (ety: EntityType) : Prop :=
-  ety = e.ty
-
-def InstanceOfExtType : Ext → ExtType → Prop
-  | .decimal _, .decimal => True
-  | .ipaddr _,  .ipAddr  => True
-  | _, _                 => False
-
-inductive InstanceOfType : Value → CedarType → Prop :=
-  | instance_of_bool (b : Bool) (bty : BoolType)
-      (h₁ : InstanceOfBoolType b bty) :
-      InstanceOfType (.prim (.bool b)) (.bool bty)
-  | instance_of_int :
-      InstanceOfType (.prim (.int _)) .int
-  | instance_of_string :
-      InstanceOfType (.prim (.string _)) .string
-  | instance_of_entity (e : EntityUID) (ety: EntityType)
-      (h₁ : InstanceOfEntityType e ety) :
-      InstanceOfType (.prim (.entityUID e)) (.entity ety)
-  | instance_of_set (s : Set Value) (ty : CedarType)
-      (h₁ : forall v, v ∈ s → InstanceOfType v ty) :
-      InstanceOfType (.set s) (.set ty)
-  | instance_of_record (r : Map Attr Value) (rty : RecordType)
-      -- if an attribute is present, then it has the expected type
-      (h₁ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
-        rty.find? k = some qty → r.find? k = some v → InstanceOfType v qty.getType)
-      -- required attributes are present
-      (h₂ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
-      InstanceOfType (.record r) (.record rty)
-  | instance_of_ext (x : Ext) (xty : ExtType)
-      (h₁ : InstanceOfExtType x xty) :
-      InstanceOfType (.ext x) (.ext xty)
-
-def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
-  InstanceOfEntityType request.principal reqty.principal ∧
-  request.action = reqty.action ∧
-  InstanceOfEntityType request.resource reqty.resource ∧
-  InstanceOfType request.context (.record reqty.context)
-
-/--
-For every entity in the store,
-1. The entity's type is defined in the type store.
-2. The entity's attributes match the attribute types indicated in the type store.
-3. The entity's ancestors' types are consistent with the ancestor information
-   in the type store.
--/
-def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Prop :=
-  ∀ uid data, entities.find? uid = some data →
-    ∃ attrTys ancestorTys, ets.find? uid.ty = some (attrTys, ancestorTys) ∧
-      InstanceOfType data.attrs (.record attrTys) ∧
-      ∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ ancestorTys
-
-/--
-For every action in the entity store, the action's ancestors are consistent
-with the ancestor information in the action store.
--/
-def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ uid data, entities.find? uid = some data → as.contains uid →
-    ∃ ancestors, as.find? uid = some ancestors →
-      ∀ ancestor, ancestor ∈ data.ancestors → ancestor ∈ ancestors
-
-def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
-  InstanceOfRequestType request env.reqty ∧
-  InstanceOfEntityTypeStore entities env.ets ∧
-  InstanceOfActionStore entities env.acts
 
 /--
 The type soundness property says that if the typechecker assigns a type to an
@@ -152,31 +83,84 @@ theorem empty_capabilities_invariant (request : Request) (entities : Entities) :
   intro e k h
   contradiction
 
-theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
-  InstanceOfType v ty →
-  ty ⊑ .bool .anyBool →
-  ∃ b, v = .prim (.bool b)
+theorem empty_guarded_capabilities_invariant {e: Expr} {request : Request} {entities : Entities} :
+  GuardedCapabilitiesInvariant e ∅ request entities
 := by
-  intro h₀ h₁
-  cases v <;> cases ty <;> try cases h₀ <;>
-  try simp [subty, lub?] at h₁
-  case instance_of_bool b bty =>
-    exists b
+  intro _
+  exact empty_capabilities_invariant request entities
 
-#print Cedar.Spec.Expr.rec
+mutual
 
 /--
 If an expression is well-typed according to the typechecker, and the input
 environment and capabilities satisfy some invariants, then either (1) evaluation
 produces a value of the returned type or (2) it returns an error of type
-`entityDoesNotExist` or `extensionError`. Both options are encoded in the
-`EvaluatesTo` predicate.
+`entityDoesNotExist`, `extensionError`, or `arithBoundsError`. Both options are
+encoded in the `EvaluatesTo` predicate.
 -/
-theorem type_of_is_sound (e : Expr) (c₁ c₂ : Capabilities) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
-  typeOf e c₁ env = .ok (t, c₂) →
+  typeOf e c₁ env = .ok (ty, c₂) →
   GuardedCapabilitiesInvariant e c₂ request entities ∧
-  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v t
+  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v ty
 := by
-  sorry
+  intro h₁ h₂ h₃
+  match e with -- We do the proof using mutually inductive theorems.
+  | .lit l => sorry
+  | .var var => sorry
+  | .ite x₁ x₂ x₃ => sorry
+  | .and x₁ x₂ => sorry
+  | .or x₁ x₂ => sorry
+  | .unaryApp op₁ x₁ =>
+    match op₁ with
+    | .not => exact type_of_not_is_sound h₁ h₂ h₃
+    | _    => sorry
+  | .binaryApp op₂ x₁ x₂ => sorry
+  | .hasAttr x₁ a => sorry
+  | .getAttr x₁ a => sorry
+  | .set xs => sorry
+  | .record axs => sorry
+  | .call xfn xs => sorry
+
+----- Unary op lemmas -----
+
+theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty
+:= by
+  rcases (type_of_not_inversion h₃) with ⟨h₅, bty, c₁', h₆, h₄⟩
+  subst h₅; subst h₆
+  apply And.intro
+  case left => exact empty_guarded_capabilities_invariant
+  case right =>
+    rcases (type_of_is_sound h₁ h₂ h₄) with ⟨h₅, v₁, h₆, h₇⟩ -- IH
+    simp [EvaluatesTo] at h₆
+    simp [EvaluatesTo, evaluate]
+    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+    case intro.intro.intro.inr.inr.inr =>
+      cases bty
+      case anyBool =>
+        rcases (instance_of_anyBool_is_bool h₇) with ⟨b, h₈⟩
+        cases b <;>
+        subst h₈ <;>
+        simp [apply₁] <;>
+        apply bool_is_instance_of_anyBool
+      case tt =>
+        rcases (instance_of_tt_is_true h₇) with h₈
+        subst h₈
+        simp [apply₁, BoolType.not]
+        exact false_is_instance_of_ff
+      case ff =>
+        rcases (instance_of_ff_is_false h₇) with h₈
+        subst h₈
+        simp [apply₁, BoolType.not]
+        exact true_is_instance_of_tt
+    all_goals {
+      exact type_is_inhabited (CedarType.bool (BoolType.not bty))
+    }
+
+end

@@ -258,6 +258,7 @@ def IPNet.lt : IPNet → IPNet → Bool
 
 deriving instance Repr for IPNet
 deriving instance DecidableEq for IPNet
+deriving instance Inhabited for IPNet
 
 instance : LT IPNet where
   lt := fun d₁ d₂ => IPNet.lt d₁ d₂
