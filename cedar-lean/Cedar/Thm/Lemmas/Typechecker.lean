@@ -119,7 +119,17 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
     | .mulBy k => exact type_of_mulBy_is_sound h₁ h₂ h₃
     | .like p  => exact type_of_like_is_sound h₁ h₂ h₃
     | .is ety  => exact type_of_is_is_sound h₁ h₂ h₃
-  | .binaryApp op₂ x₁ x₂ => sorry
+  | .binaryApp op₂ x₁ x₂ =>
+    match op₂ with
+    | .eq          => sorry
+    | .mem         => sorry
+    | .less        => sorry
+    | .lessEq      => sorry
+    | .add         => exact type_of_add_is_sound h₁ h₂ h₃
+    | .sub         => sorry
+    | .contains    => sorry
+    | .containsAll => sorry
+    | .containsAny => sorry
   | .hasAttr x₁ a => sorry
   | .getAttr x₁ a => sorry
   | .set xs => sorry
@@ -327,6 +337,47 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
       simp [h₁₀]
       case intro.intro.false => exact false_is_instance_of_ff
       case intro.intro.true => exact true_is_instance_of_tt
+    all_goals {
+      apply type_is_inhabited
+    }
+
+
+----- Binary op lemmas -----
+
+theorem type_of_add_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.binaryApp BinaryOp.add x₁ x₂) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.binaryApp BinaryOp.add x₁ x₂) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.binaryApp BinaryOp.add x₁ x₂) request entities v ∧ InstanceOfType v ty
+:= by
+  rcases (type_of_add_inversion h₃) with ⟨h₅, c₁', c₁'', h₆, h₇, h₈⟩
+  subst h₅; subst h₆
+  simp [EvaluatesTo, evaluate]
+  apply And.intro
+  case left => exact empty_guarded_capabilities_invariant
+  case right =>
+    rcases (type_of_is_sound h₁ h₂ h₇) with ⟨_, v₁, h₆, h₅⟩ -- IH
+    rcases (instance_of_int_is_int h₅) with ⟨i₁, hv₁⟩
+    simp [EvaluatesTo] at h₆
+    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+    case intro.intro.intro.inr.inr.inr =>
+      rcases (type_of_is_sound h₁ h₂ h₈) with ⟨_, v₂, h11, h12⟩ -- IH
+      rcases (instance_of_int_is_int h12) with ⟨i₂, hv₂⟩
+      simp [EvaluatesTo] at h11
+      rcases h11 with h11 | h11 | h11 | h11 <;> simp [h11]
+      case intro.intro.intro.inr.inr.inr =>
+        simp [apply₂, hv₁, hv₂]
+        rcases hfoo: (i₁.add? i₂) with err | val
+        case none =>
+          simp
+          apply type_is_inhabited
+        case some =>
+          simp [intOrErr]
+          constructor
+      all_goals {
+        apply type_is_inhabited
+      }
     all_goals {
       apply type_is_inhabited
     }

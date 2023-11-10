@@ -119,4 +119,25 @@ theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capab
         exists ety', c₁'
         simp only [h₁, and_self]
 
+
+theorem type_of_add_inversion {x₁ x₂: Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.binaryApp BinaryOp.add x₁ x₂) c₁ env = Except.ok (ty, c₂)) :
+  c₂ = ∅ ∧
+  ∃ c₁' c₁'',
+    ty = .int ∧
+    typeOf x₁ c₁ env = Except.ok (.int, c₁') ∧
+    typeOf x₂ c₁ env = Except.ok (.int, c₁'')
+:= by
+  simp [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  case ok res =>
+    rcases res with ⟨ty₁, c₁'⟩
+    cases h₃ : typeOf x₂ c₁ env <;> simp [h₃] at h₁
+    case ok res =>
+      rcases res with ⟨ty₁, c₁'⟩
+      simp [typeOfBinaryApp] at h₁
+      split at h₁ <;> try contradiction
+      cases h₁
+      simp
+
 end Cedar.Thm
