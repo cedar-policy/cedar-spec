@@ -117,7 +117,7 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
     | .not     => exact type_of_not_is_sound h₁ h₂ h₃
     | .neg     => exact type_of_neg_is_sound h₁ h₂ h₃
     | .mulBy k => exact type_of_mulBy_is_sound h₁ h₂ h₃
-    | .like p  => sorry
+    | .like p  => exact type_of_like_is_sound h₁ h₂ h₃
     | .is ety  => sorry
   | .binaryApp op₂ x₁ x₂ => sorry
   | .hasAttr x₁ a => sorry
@@ -227,5 +227,31 @@ theorem type_of_mulBy_is_sound {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabiliti
     all_goals {
       exact type_is_inhabited CedarType.int
     }
+
+theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.unaryApp (.like p) x₁) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.unaryApp (.like p) x₁) request entities v ∧ InstanceOfType v ty
+:= by
+  rcases (type_of_like_inversion h₃) with ⟨h₅, h₆, c₁', h₄⟩
+  subst h₅; subst h₆
+  apply And.intro
+  case left => exact empty_guarded_capabilities_invariant
+  case right =>
+    rcases (type_of_is_sound h₁ h₂ h₄) with ⟨h₅, v₁, h₆, h₇⟩ -- IH
+    simp [EvaluatesTo] at h₆
+    simp [EvaluatesTo, evaluate]
+    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+    case intro.intro.intro.inr.inr.inr =>
+      rcases (instance_of_string_is_string h₇) with ⟨s, h₈⟩
+      subst h₈
+      simp [apply₁]
+      exact bool_is_instance_of_anyBool (wildcardMatch s p)
+    all_goals {
+      exact type_is_inhabited (.bool .anyBool)
+    }
+
 
 end

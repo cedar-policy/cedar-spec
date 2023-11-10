@@ -165,6 +165,15 @@ theorem instance_of_int_is_int {v₁ : Value} :
   rename_i y
   exists y
 
+theorem instance_of_string_is_string {v₁ : Value} :
+  InstanceOfType v₁ CedarType.string →
+  ∃ s, v₁ = .prim (.string s)
+:= by
+  intro h₁
+  cases h₁
+  rename_i y
+  exists y
+
 theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
   InstanceOfType v ty →
   ty ⊑ .bool .anyBool →

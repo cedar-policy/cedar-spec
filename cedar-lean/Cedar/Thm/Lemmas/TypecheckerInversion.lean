@@ -81,4 +81,19 @@ theorem type_of_mulBy_inversion {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabilit
     simp [ok] at h₁
     simp [h₁]
 
+theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂)) :
+  c₂ = ∅ ∧
+  ty = .bool .anyBool ∧
+  ∃ c₁', typeOf x₁ c₁ env = Except.ok (.string, c₁')
+:= by
+  simp [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  case ok res =>
+    rcases res with ⟨ty₁, c₁'⟩
+    simp [typeOfUnaryApp] at h₁
+    split at h₁ <;> try contradiction
+    simp [ok] at h₁
+    simp [h₁]
+
 end Cedar.Thm
