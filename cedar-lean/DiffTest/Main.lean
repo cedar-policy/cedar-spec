@@ -14,22 +14,25 @@
  limitations under the License.
 -/
 
-import Lake
-open Lake DSL
+import Lean.Data.Json.FromToJson
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4"
+import Cedar.Spec
+import DiffTest.Parser
 
-package Cedar
+/-! This file defines the public interfaces for the Lean implementation.
+    The input and output are stringified JSON objects. -/
 
-lean_lib Cedar where
-  defaultFacets := #[LeanLib.staticFacet]
+namespace DiffTest
 
-lean_lib UnitTest where
-  defaultFacets := #[LeanLib.staticFacet]
+open Cedar.Spec
+open Cedar.Data
 
-lean_lib DiffTest where
-  defaultFacets := #[LeanLib.staticFacet]
+@[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
+  let json := Lean.Json.parse req
+  let request := jsonToRequest json
+  let entities := jsonToEntities json
+  let policies := jsonToPolicies json
+  let json := Lean.toJson (isAuthorized request entities policies)
+  toString json
 
-lean_exe CedarUnitTests where
-  root := `UnitTest.Main
+end DiffTest

@@ -14,22 +14,5 @@
  limitations under the License.
 -/
 
-import Lake
-open Lake DSL
-
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4"
-
-package Cedar
-
-lean_lib Cedar where
-  defaultFacets := #[LeanLib.staticFacet]
-
-lean_lib UnitTest where
-  defaultFacets := #[LeanLib.staticFacet]
-
-lean_lib DiffTest where
-  defaultFacets := #[LeanLib.staticFacet]
-
-lean_exe CedarUnitTests where
-  root := `UnitTest.Main
+import DiffTest.Main
+import DiffTest.Parser
