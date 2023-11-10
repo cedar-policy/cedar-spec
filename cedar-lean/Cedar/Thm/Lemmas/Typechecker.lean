@@ -108,7 +108,7 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
   intro h₁ h₂ h₃
   match e with -- We do the proof using mutually inductive theorems.
   | .lit l => exact type_of_lit_is_sound h₁ h₂ h₃
-  | .var var => sorry
+  | .var var => exact type_of_var_is_sound h₁ h₂ h₃
   | .ite x₁ x₂ x₃ => sorry
   | .and x₁ x₂ => sorry
   | .or x₁ x₂ => sorry
@@ -151,6 +151,30 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_string |
       apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
   }
+
+theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType v ty
+:= by
+  simp [EvaluatesTo, evaluate]
+  simp [typeOf, typeOfVar] at h₃
+  rcases h₂ with ⟨h₂, _⟩
+  simp [InstanceOfRequestType] at h₂
+  split at h₃ <;> simp <;> simp [ok] at h₃ <;>
+  rcases h₃ with ⟨h₃, h₄⟩ <;> rw [←h₃, ←h₄] <;> constructor <;>
+  try { exact empty_guarded_capabilities_invariant }
+  case intro.h_1.intro.right =>
+    apply InstanceOfType.instance_of_entity; simp [h₂]
+  case intro.h_2.intro.right =>
+    apply InstanceOfType.instance_of_entity
+    simp [h₂, InstanceOfEntityType]
+  case intro.h_3.intro.right =>
+    apply InstanceOfType.instance_of_entity; simp [h₂]
+  case intro.h_4.intro.right =>
+    simp [h₂]
 
 ----- Unary op lemmas -----
 
