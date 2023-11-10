@@ -96,4 +96,27 @@ theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabili
     simp [ok] at h₁
     simp [h₁]
 
+theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env = Except.ok (ty, c₂)) :
+  c₂ = ∅ ∧
+  ∃ ety' c₁',
+    ty = (.bool (if ety = ety' then .tt else .ff)) ∧
+    typeOf x₁ c₁ env = Except.ok (.entity ety', c₁')
+:= by
+  simp [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  case ok res =>
+    rcases res with ⟨ty₁, c₁'⟩
+    simp [typeOfUnaryApp] at h₁
+    split at h₁ <;> try contradiction
+    case mk.h_5 _ _ ety' h₃ =>
+      simp only [UnaryOp.is.injEq] at h₃
+      subst h₃
+      simp [ok] at h₁
+      apply And.intro
+      case left => simp [h₁]
+      case right =>
+        exists ety', c₁'
+        simp only [h₁, and_self]
+
 end Cedar.Thm

@@ -174,6 +174,18 @@ theorem instance_of_string_is_string {v₁ : Value} :
   rename_i y
   exists y
 
+
+theorem instance_of_entity_type_is_entity {ety : EntityType} :
+  InstanceOfType v₁ (.entity ety) →
+  ∃ euid, euid.ty = ety ∧ v₁ = .prim (.entityUID euid)
+:= by
+  intro h₁
+  cases h₁
+  rename_i euid h₁
+  simp [InstanceOfEntityType] at h₁
+  exists euid
+  simp [h₁]
+
 theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
   InstanceOfType v ty →
   ty ⊑ .bool .anyBool →
