@@ -81,7 +81,7 @@ def litHelper (json : Except String Lean.Json) : Expr := match json.isOk with
   match json with
     | Lean.Json.bool b => .lit (.bool b)
     | Lean.Json.num n => match n.exponent with
-      | 0 => .lit (.int n.mantissa)
+      | 0 => .lit (.int (Int64.mk! n.mantissa))
       | _ => panic! "litHelper: num has exponent: " ++ json.pretty
     | Lean.Json.str s => .lit (.string s)
     | _ => panic! "litHelper: not known format for json: " ++ json.pretty
@@ -143,7 +143,7 @@ partial def jsonToExpr (json : Except String Lean.Json) : Expr := match json.isO
   | Lean.Json.null => panic! "sorry"
   | Lean.Json.bool b => .lit (.bool b)
   | Lean.Json.num n => match n.exponent with
-    | 0 => .lit (.int n.mantissa)
+    | 0 => .lit (.int (Int64.mk! n.mantissa))
     | _ => panic! "sorry"
   | Lean.Json.str s => .lit (.string s)
   | Lean.Json.arr _ => panic! "sorry"
@@ -198,7 +198,7 @@ partial def jsonToExpr (json : Except String Lean.Json) : Expr := match json.isO
                   let constJson := unwrapExcept (json.getObjVal? "constant")
                   match constJson with
                   | Lean.Json.num n => match n.exponent with
-                    | 0 => .unaryApp (.mulBy n.mantissa) (jsonToExpr arg)
+                    | 0 => .unaryApp (.mulBy (Int64.mk! n.mantissa)) (jsonToExpr arg)
                     | _ => panic! "sorry"
                   | _ => panic! "constant for mul by is not a numebr"
                 | false => match (json.getObjVal? "Like").isOk with

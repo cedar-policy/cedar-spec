@@ -74,3 +74,10 @@ fn integration_tests_on_java_def_impl() {
         JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     run_integration_tests(&java_def_impl)
 }
+
+#[test]
+fn integration_tests_on_lean_def_impl() {
+    let lean_def_impl =
+        LeanDefinitionalEngine::new();
+    run_integration_tests(&lean_def_impl)
+}

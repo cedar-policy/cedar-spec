@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#![forbid(unsafe_code)]
+// #![forbid(unsafe_code)]
 mod cedar_test_impl;
 mod dafny_java_impl;
+mod lean_impl;
 mod logger;
 
 pub use cedar_test_impl::*;
 pub use dafny_java_impl::*;
+pub use lean_impl::*;
 pub use logger::*;

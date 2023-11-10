@@ -68,10 +68,10 @@ lazy_static! {
 }
 
 #[derive(Debug, Serialize)]
-struct RequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    policies: &'a ast::PolicySet,
-    entities: &'a Entities,
+pub struct RequestForDefEngine<'a> {
+    pub request: &'a ast::Request,
+    pub policies: &'a ast::PolicySet,
+    pub entities: &'a Entities,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
