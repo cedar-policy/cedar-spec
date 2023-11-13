@@ -252,8 +252,8 @@ impl<'a> ExprGenerator<'a> {
             let name = self.unknown_pool.alloc(target_type.clone(), v);
             let unknown_type: Option<ast::Type> = target_type.clone().try_into().ok();
             match unknown_type {
-                Some(ty) => Ok(ast::Expr::unknown(ast::Unknown::new_with_type(name, ty))),
-                None => Ok(ast::Expr::unknown(ast::Unknown::new_untyped(name))),
+                Some(ty) => Ok(ast::Expr::unknown_with_type(name, Some(ty))),
+                None => Ok(ast::Expr::unknown(name)),
             }
         } else {
             match target_type {
