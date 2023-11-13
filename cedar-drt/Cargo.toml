@@ -12,7 +12,6 @@ cedar-policy = { path = "../cedar/cedar-policy", version = "3.*", features = ["i
 cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "3.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "3.*", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "3.*" }
-jni = { version = "0.19.0", features = ["invocation"] }
 lean-sys = { version = "0.0.5", features = ["small_allocator"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

@@ -8,6 +8,8 @@ all:
 	cd fuzz && LEAN_LIB_DIR=`lean --print-libdir` cargo build
 
 test: all
+	DYLD_LIBRARY_PATH=`lean --print-libdir` \
+	LD_LIBRARY_PATH=`lean --print-libdir` \
 	LEAN_LIB_DIR=`lean --print-libdir` \
 	cargo test
 

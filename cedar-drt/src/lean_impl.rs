@@ -21,7 +21,6 @@ use core::panic;
 use std::{collections::HashSet, ffi::CString};
 
 use crate::cedar_test_impl::*;
-use crate::dafny_java_impl::RequestForDefEngine;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 pub use cedar_policy::Response;
@@ -34,6 +33,8 @@ pub use lean_sys::lean_object;
 pub use lean_sys::string::lean_mk_string;
 use lean_sys::{lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world};
 
+use crate::definitional_request_types::*;
+
 /// Times for JSON (de)serialization, authorization, and validation as reported
 /// by the Lean implementation.
 pub const LEAN_SERIALIZATION_MSG: &str = "lean_serialization (ns) : ";
@@ -44,16 +45,22 @@ pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 #[link(name = "Cedar")]
 #[link(name = "Lean")]
 #[link(name = "Std")]
+#[link(name = "DiffTest")]
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_Cedar(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
+#[derive(Debug)]
+pub enum LeanDefEngineError {
+
+}
+
 pub struct LeanDefinitionalEngine {}
 
 impl LeanDefinitionalEngine {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new() -> Result<Self, LeanDefEngineError> {
+        Ok(Self {})
     }
 
     fn serialize_request(

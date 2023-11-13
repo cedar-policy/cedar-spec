@@ -79,10 +79,10 @@ fuzz_target!(|input: FuzzTargetInput| {
         debug!("Policies: {policyset}");
 
         // run the policy through both validators and compare the result
-        let java_def_engine =
-            JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+        let lean_def_engine =
+            LeanDefinitionalEngine::new().expect("failed to create definitional engine");
         let (_, total_dur) = time_function(|| {
-            run_val_test(&java_def_engine, schema, &policyset, ValidationMode::Strict)
+            run_val_test(&lean_def_engine, schema, &policyset, ValidationMode::Strict)
         });
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }

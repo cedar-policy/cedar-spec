@@ -198,12 +198,12 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }
             };
         }
-        let java_def_engine =
-            JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+        let lean_def_engine =
+            LeanDefinitionalEngine::new().expect("failed to create definitional engine");
         for rbac_request in input.requests.into_iter() {
             let request = ast::Request::from(rbac_request);
             let (_, dur) =
-                time_function(|| run_auth_test(&java_def_engine, &request, &policyset, &entities));
+                time_function(|| run_auth_test(&lean_def_engine, &request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, dur.as_nanos());
         }
     }
