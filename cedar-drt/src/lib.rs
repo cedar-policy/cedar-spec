@@ -20,7 +20,7 @@ mod definitional_request_types;
 mod lean_impl;
 mod logger;
 
-pub use definitional_request_types::*;
 pub use cedar_test_impl::*;
+pub use definitional_request_types::*;
 pub use lean_impl::*;
 pub use logger::*;

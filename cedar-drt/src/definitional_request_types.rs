@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 use crate::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 pub use cedar_policy::Response;
@@ -31,7 +30,6 @@ pub const RUST_DESERIALIZATION_MSG: &str = "rust_deserialization (ns) : ";
 /// Times for cedar-policy authorization and validation.
 pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
 pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
-
 
 #[derive(Debug, Serialize)]
 pub struct RequestForDefEngine<'a> {

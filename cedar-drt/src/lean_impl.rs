@@ -23,6 +23,7 @@ use std::{collections::HashSet, ffi::CString};
 use crate::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
+use cedar_policy::Diagnostics;
 pub use cedar_policy::Response;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
@@ -52,9 +53,7 @@ extern "C" {
 }
 
 #[derive(Debug)]
-pub enum LeanDefEngineError {
-
-}
+pub enum LeanDefEngineError {}
 
 pub struct LeanDefinitionalEngine {}
 
@@ -122,7 +121,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         _expr: &Expr,
         _expected: Option<Value>,
     ) -> bool {
-        panic!("Unimplemented: interpret");
+        unimplemented!("Unimplemented: interpret");
     }
 
     fn validate(
@@ -131,7 +130,14 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         _policies: &ast::PolicySet,
         _mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
-        panic!("Unimplemented: validate");
+        println!("validating");
+        let parse_errors = Vec::new();
+        let validation_errors = Vec::new();
+        ValidationInterfaceResponse {
+            parse_errors,
+            validation_errors,
+        }
+        // unimplemented!("Unimplemented: validate");
     }
 }
 
@@ -143,6 +149,9 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
+        // println!("Performing is_authorized");
+        // let decision = authorizer::Decision::Allow;
+        // InterfaceResponse::new(decision, HashSet::new(), HashSet::new())
         self.is_authorized(request, policies, entities)
     }
 

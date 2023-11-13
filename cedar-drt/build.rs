@@ -8,4 +8,4 @@ fn main() {
     println!("cargo:rustc-link-search=native=../cedar-lean/lake-packages/Qq/build/lib");
     println!("cargo:rustc-link-search=native=../cedar-lean/lake-packages/aesop/build/lib");
     println!("cargo:rustc-link-search=native=../cedar-lean/lake-packages/proofwidgets/build/lib");
- }
+}

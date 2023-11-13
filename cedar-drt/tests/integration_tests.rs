@@ -70,7 +70,7 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
 
 #[test]
 fn integration_tests_on_lean_def_impl() {
-    let lean_def_impl =
-        LeanDefinitionalEngine::new().unwrap();
+    let lean_def_impl = LeanDefinitionalEngine::new().unwrap();
+
     run_integration_tests(&lean_def_impl)
 }

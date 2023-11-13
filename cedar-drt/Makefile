@@ -11,7 +11,7 @@ test: all
 	DYLD_LIBRARY_PATH=`lean --print-libdir` \
 	LD_LIBRARY_PATH=`lean --print-libdir` \
 	LEAN_LIB_DIR=`lean --print-libdir` \
-	cargo test
+	cargo test --test integration_tests
 
 run: all
 	DYLD_LIBRARY_PATH=`lean --print-libdir` \
