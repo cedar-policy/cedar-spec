@@ -3,10 +3,10 @@ use crate::err::Result;
 use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast;
 use cedar_policy_core::ast::{
-    Effect, EntityUID, Expr, Id, PolicyID, PolicySet, StaticPolicy, Template,
+    Effect, EntityUID, Expr, Id, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
+use cedar_policy_core::{ast, est};
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::fmt::Display;
@@ -18,7 +18,7 @@ use std::fmt::Display;
 // `arbitrary_for_hierarchy()`. But as of this writing, it feels like renaming
 // `GeneratedPolicy` to something like `GeneratedTemplate` seems unduly
 // disruptive.
-#[serde(into = "String")]
+#[serde(into = "est::Policy")]
 pub struct GeneratedPolicy {
     id: PolicyID,
     // use String for the impl of Arbitrary
@@ -28,6 +28,14 @@ pub struct GeneratedPolicy {
     action_constraint: ActionConstraint,
     resource_constraint: PrincipalOrResourceConstraint,
     abac_constraints: Expr,
+}
+
+impl From<GeneratedPolicy> for est::Policy {
+    fn from(gp: GeneratedPolicy) -> est::Policy {
+        let sp: StaticPolicy = gp.into();
+        let p: Policy = sp.into();
+        p.into()
+    }
 }
 
 impl GeneratedPolicy {
