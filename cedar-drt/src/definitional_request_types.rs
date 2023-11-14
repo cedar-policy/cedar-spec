@@ -22,15 +22,6 @@ pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSche
 pub use entities::Entities;
 use serde::{Deserialize, Serialize};
 
-/// Times to (de)serialize JSON content sent to / received from the Dafny-Java
-/// implementation.
-pub const RUST_SERIALIZATION_MSG: &str = "rust_serialization (ns) : ";
-pub const RUST_DESERIALIZATION_MSG: &str = "rust_deserialization (ns) : ";
-
-/// Times for cedar-policy authorization and validation.
-pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
-pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
-
 #[derive(Debug, Serialize)]
 pub struct RequestForDefEngine<'a> {
     pub request: &'a ast::Request,
@@ -40,37 +31,37 @@ pub struct RequestForDefEngine<'a> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DefinitionalAuthResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    auth_nanos: i64,
-    response: InterfaceResponse,
+    pub serialization_nanos: i64,
+    pub deserialization_nanos: i64,
+    pub auth_nanos: i64,
+    pub response: InterfaceResponse,
 }
 
 #[derive(Debug, Serialize)]
-struct EvalRequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    entities: &'a Entities,
-    expr: &'a ast::Expr,
-    expected: Option<&'a ast::Expr>,
+pub struct EvalRequestForDefEngine<'a> {
+    pub request: &'a ast::Request,
+    pub entities: &'a Entities,
+    pub expr: &'a ast::Expr,
+    pub expected: Option<&'a ast::Expr>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 #[repr(transparent)]
-struct DefinitionalEvalResponse {
-    matches: bool,
+pub struct DefinitionalEvalResponse {
+    pub matches: bool,
 }
 
 #[derive(Debug, Serialize)]
-struct RequestForDefValidator<'a> {
-    schema: &'a ValidatorSchema,
-    policies: &'a ast::PolicySet,
-    mode: ValidationMode,
+pub struct RequestForDefValidator<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub policies: &'a ast::PolicySet,
+    pub mode: ValidationMode,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DefinitionalValResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    validation_nanos: i64,
-    response: ValidationInterfaceResponse,
+    pub serialization_nanos: i64,
+    pub deserialization_nanos: i64,
+    pub validation_nanos: i64,
+    pub response: ValidationInterfaceResponse,
 }

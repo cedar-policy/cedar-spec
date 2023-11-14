@@ -35,4 +35,11 @@ open Cedar.Data
   let json := Lean.toJson (isAuthorized request entities policies)
   toString json
 
+def test : IO Unit := do
+  let input ← IO.FS.readFile "DiffTest/example.json"
+  IO.println (isAuthorizedDRT input)
+
+-- result should be "allow" due to policy0
+#eval test
+
 end DiffTest

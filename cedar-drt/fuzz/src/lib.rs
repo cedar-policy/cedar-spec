@@ -176,13 +176,13 @@ pub fn run_val_test(
 
 #[test]
 fn test_run_auth_test() {
-    use cedar_drt::LeanDefinitionalEngine;
+    use cedar_drt::JavaDefinitionalEngine;
     use cedar_policy_core::ast::{Entity, EntityUID, RestrictedExpr};
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
-    let lean_def_engine =
-        LeanDefinitionalEngine::new().expect("failed to create definitional engine");
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
     ));
@@ -246,5 +246,5 @@ fn test_run_auth_test() {
         Extensions::all_available(),
     )
     .unwrap();
-    run_auth_test(&lean_def_engine, &query, &policies, &entities);
+    run_auth_test(&java_def_engine, &query, &policies, &entities);
 }

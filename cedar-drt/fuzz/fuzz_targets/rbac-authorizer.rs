@@ -111,9 +111,9 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
 
     // Check agreement with definitional engine. Note that run_auth_test returns
     // the result of the call to is_authorized.
-    let lean_def_engine =
-        LeanDefinitionalEngine::new().expect("failed to create definitional engine");
-    let res = run_auth_test(&lean_def_engine, &request, &policyset, &entities);
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+    let res = run_auth_test(&java_def_engine, &request, &policyset, &entities);
 
     // Check the following property: there should be an error reported iff we
     // had either PermitError or ForbidError

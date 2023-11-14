@@ -135,13 +135,13 @@ fn drop_some_entities(entities: Entities, u: &mut Unstructured<'_>) -> arbitrary
 // The main fuzz target. This is for type-directed fuzzing of expression evaluation
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let lean_def_engine =
-        LeanDefinitionalEngine::new().expect("failed to create definitional engine");
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
     debug!("Entities: {}\n", input.entities);
     run_eval_test(
-        &lean_def_engine,
+        &java_def_engine,
         &input.request.into(),
         &input.expression,
         &input.entities,

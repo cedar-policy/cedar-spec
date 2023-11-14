@@ -123,8 +123,8 @@ fuzz_target!(|input: FuzzTargetInput| {
         policyset.add_static(input.policy.into()).unwrap();
         debug!("Policies: {policyset}");
         debug!("Entities: {entities}");
-        let lean_def_engine =
-            LeanDefinitionalEngine::new().expect("failed to create definitional engine");
+        let java_def_engine =
+            JavaDefinitionalEngine::new().expect("failed to create definitional engine");
         let requests = input
             .requests
             .into_iter()
@@ -134,7 +134,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         for request in &requests {
             debug!("Request: {request}");
             let (ans, total_dur) =
-                time_function(|| run_auth_test(&lean_def_engine, request, &policyset, &entities));
+                time_function(|| run_auth_test(&java_def_engine, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
             responses.push(ans);
         }

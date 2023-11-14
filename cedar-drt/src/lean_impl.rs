@@ -24,6 +24,7 @@ use core::panic;
 use std::{collections::HashSet, env, ffi::CString};
 
 use crate::cedar_test_impl::*;
+use crate::definitional_request_types::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy::Diagnostics;
@@ -43,8 +44,6 @@ use serde::{Deserialize, Serialize};
 use std::ffi::CStr;
 use std::str::FromStr;
 
-use crate::definitional_request_types::*;
-
 /// Times for JSON (de)serialization, authorization, and validation as reported
 /// by the Lean implementation.
 pub const LEAN_SERIALIZATION_MSG: &str = "lean_serialization (ns) : ";
@@ -52,8 +51,8 @@ pub const LEAN_DESERIALIZATION_MSG: &str = "lean_deserialization (ns) : ";
 pub const LEAN_AUTH_MSG: &str = "lean_auth (ns) : ";
 pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 
+
 #[link(name = "Cedar", kind = "static")]
-// #[link(name = "Lean")]
 #[link(name = "Std", kind = "static")]
 #[link(name = "DiffTest", kind = "static")]
 #[link(name = "leanshared", kind = "dylib")]
@@ -168,6 +167,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
+        println!("Running is_authorized");
         self.is_authorized(request, policies, entities)
     }
 
@@ -207,6 +207,6 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         _schema: cedar_policy_validator::ValidatorSchema,
         _policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        panic!("Unimplemented: validate (test)");
+        unimplemented!("Unimplemented: validate");
     }
 }
