@@ -23,12 +23,14 @@ use crate::size_hint_utils::size_hint_for_choose;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
-use cedar_policy_core::ast::{self, Value};
+use cedar_policy_core::ast;
+use cedar_policy_core::extensions;
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
+use thiserror::Error;
 
 // Mutate a hypothetically valid string (randomly).
 // We want to the make the probability of keeping the valid input reasonable:
@@ -71,7 +73,7 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
 /// Pool of "unknowns"
 #[derive(Debug, Clone, Default)]
 pub struct UnknownPool {
-    unknowns: RefCell<HashMap<String, (Type, Value)>>,
+    unknowns: RefCell<HashMap<String, (Type, ast::Value)>>,
 }
 
 impl UnknownPool {
@@ -93,13 +95,13 @@ impl UnknownPool {
 
     /// Iterate over the unknowns in the pool, getting the name of the unknown
     /// and its `Value`
-    pub fn mapping(self) -> impl Iterator<Item = (String, Value)> {
+    pub fn mapping(self) -> impl Iterator<Item = (String, ast::Value)> {
         self.unknowns.take().into_iter().map(|(k, (_, v))| (k, v))
     }
 
     /// Create a new unknown with the given `Type` and `Value`. Returns the new
     /// name as a `String`
-    pub fn alloc(&self, t: Type, v: Value) -> String {
+    pub fn alloc(&self, t: Type, v: ast::Value) -> String {
         let this = format!("{}", self.unknowns.borrow().len());
         self.unknowns.borrow_mut().insert(this.clone(), (t, v));
         this
@@ -619,6 +621,36 @@ impl Type {
             Type::entity()
         ))
     }
+}
+
+impl TryFrom<Type> for ast::Type {
+    type Error = NotEnoughTypeInformation;
+    fn try_from(ty: Type) -> std::result::Result<ast::Type, Self::Error> {
+        match ty {
+            Type::Bool => Ok(ast::Type::Bool),
+            Type::Long => Ok(ast::Type::Long),
+            Type::String => Ok(ast::Type::String),
+            Type::Set(_) => Ok(ast::Type::Set),
+            Type::Record => Ok(ast::Type::Record),
+            Type::Entity => Err(NotEnoughTypeInformation::NeedEntityTypename),
+            Type::IPAddr => Ok(ast::Type::Extension {
+                name: extensions::ipaddr::extension().name().clone(),
+            }),
+            Type::Decimal => Ok(ast::Type::Extension {
+                name: extensions::decimal::extension().name().clone(),
+            }),
+        }
+    }
+}
+
+/// Error encountered when trying to convert `Type` to `ast::Type` but there
+/// isn't enough type information to determine which `ast::Type` to return.
+#[derive(Debug, Error)]
+pub enum NotEnoughTypeInformation {
+    /// `Type` doesn't distinguish entities with different typenames, but
+    /// `ast::Type` needs the entity typename
+    #[error("can't convert to `ast::Type` because we need the entity typename")]
+    NeedEntityTypename,
 }
 
 /// attribute values are restricted expressions: just
