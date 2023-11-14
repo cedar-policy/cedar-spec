@@ -88,8 +88,24 @@ impl LeanDefinitionalEngine {
     }
 
     fn deserialize_response(response: *mut lean_object) -> InterfaceResponse {
-        println!("{:?}", response);
-        InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
+        let resp: ResponseDef =
+            serde_json::from_str(response).expect("could not convert string to json");
+        let dec: authorizer::Decision = if resp.decision == "allow" {
+            authorizer::Decision::Allow
+        } else if resp.decision == "deny" {
+            authorizer::Decision::Deny
+        } else {
+            panic!("unknown decision")
+        };
+
+        let reason = resp
+            .policies
+            .mk
+            .l
+            .into_iter()
+            .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
+            .collect();
+        Response::new(dec, reason, HashSet::new())
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -108,7 +124,6 @@ impl LeanDefinitionalEngine {
         let req = Self::serialize_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
         Self::deserialize_response(response)
-        // InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
     }
 }
 
@@ -138,14 +153,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         _policies: &ast::PolicySet,
         _mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
-        println!("validating");
-        let parse_errors = Vec::new();
-        let validation_errors = Vec::new();
-        ValidationInterfaceResponse {
-            parse_errors,
-            validation_errors,
-        }
-        // unimplemented!("Unimplemented: validate");
+        unimplemented!("Unimplemented: validate");
     }
 }
 
@@ -157,9 +165,6 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        // println!("Performing is_authorized");
-        // let decision = authorizer::Decision::Allow;
-        // InterfaceResponse::new(decision, HashSet::new(), HashSet::new())
         self.is_authorized(request, policies, entities)
     }
 
