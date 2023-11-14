@@ -43,23 +43,30 @@ pub const LEAN_DESERIALIZATION_MSG: &str = "lean_deserialization (ns) : ";
 pub const LEAN_AUTH_MSG: &str = "lean_auth (ns) : ";
 pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 
-#[link(name = "Cedar")]
-#[link(name = "Lean")]
+#[link(name = "Cedar", kind = "static")]
+// #[link(name = "Lean")]
 #[link(name = "Std")]
-#[link(name = "DiffTest")]
+#[link(name = "DiffTest", kind = "static")]
+#[link(name = "leanshared", kind = "dylib")]
+#[link(name = "Mathlib", kind = "static")]
+#[link(name = "Qq", kind = "static")]
+#[link(name = "ProofWidgets", kind = "static")]
+#[link(name = "Aesop", kind = "static")]
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
-    fn initialize_Cedar(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
+    fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
 #[derive(Debug)]
 pub enum LeanDefEngineError {}
 
-pub struct LeanDefinitionalEngine {}
+pub struct LeanDefinitionalEngine {
+    initialized: bool,
+}
 
 impl LeanDefinitionalEngine {
     pub fn new() -> Result<Self, LeanDefEngineError> {
-        Ok(Self {})
+        Ok(Self { initialized: false })
     }
 
     fn serialize_request(
@@ -82,7 +89,7 @@ impl LeanDefinitionalEngine {
 
     fn deserialize_response(response: *mut lean_object) -> InterfaceResponse {
         println!("{:?}", response);
-        InterfaceResponse::new(authorizer::Decision::Deny, HashSet::new(), HashSet::new())
+        InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -95,12 +102,13 @@ impl LeanDefinitionalEngine {
     ) -> InterfaceResponse {
         unsafe { lean_initialize_runtime_module() };
         unsafe { lean_initialize() };
-        unsafe { initialize_Cedar(1, lean_io_mk_world()) };
+        unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
         unsafe { lean_io_mark_end_initialization() };
 
         let req = Self::serialize_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
         Self::deserialize_response(response)
+        // InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
     }
 }
 
