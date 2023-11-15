@@ -31,8 +31,6 @@ structure Request where
   resource : EntityUID
   context : Map Attr Value
 
-deriving instance Repr for Request
-deriving instance DecidableEq for Request
-deriving instance Inhabited for Request
+deriving instance Repr, DecidableEq, Inhabited for Request
 
 end Cedar.Spec

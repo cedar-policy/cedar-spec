@@ -39,8 +39,7 @@ def Ext.lt : Ext → Ext → Bool
 
 ----- Derivations -----
 
-deriving instance Repr for Ext
-deriving instance DecidableEq for Ext
+deriving instance Repr, DecidableEq for Ext
 
 instance : LT Ext where
 lt := fun x y => Ext.lt x y
