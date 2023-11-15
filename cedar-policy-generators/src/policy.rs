@@ -75,17 +75,11 @@ impl GeneratedPolicy {
         };
         let annotations = u.arbitrary()?;
         let effect = u.arbitrary()?;
-        let principal_constraint = PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
-            hierarchy,
-            allow_slots,
-            u,
-        )?;
+        let principal_constraint =
+            PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, allow_slots, u)?;
         let action_constraint = ActionConstraint::arbitrary_for_hierarchy(hierarchy, u, Some(3))?;
-        let resource_constraint = PrincipalOrResourceConstraint::arbitrary_for_hierarchy(
-            hierarchy,
-            allow_slots,
-            u,
-        )?;
+        let resource_constraint =
+            PrincipalOrResourceConstraint::arbitrary_for_hierarchy(hierarchy, allow_slots, u)?;
         Ok(Self {
             id,
             annotations,
