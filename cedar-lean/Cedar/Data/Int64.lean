@@ -73,8 +73,7 @@ if h : Int64.lt i₁ i₂ then isTrue h else isFalse h
 instance int64Le (i₁ i₂ : Int64) : Decidable (i₁ ≤ i₂) :=
 if h : Int64.le i₁ i₂ then isTrue h else isFalse h
 
-deriving instance Repr for Int64
-deriving instance DecidableEq for Int64
+deriving instance Repr, DecidableEq for Int64
 
 end Int64
 

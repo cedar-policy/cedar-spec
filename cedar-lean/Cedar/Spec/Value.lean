@@ -129,27 +129,14 @@ instance : Coe Value (Result (Data.Set Value)) where
 
 ----- Derivations -----
 
-deriving instance Repr for Except
-deriving instance Repr for Error
-deriving instance Repr for Name
-deriving instance Repr for EntityType
-deriving instance Repr for EntityUID
-deriving instance Repr for Prim
+deriving instance Repr, DecidableEq, BEq for Except
+deriving instance Repr, DecidableEq for Error
+deriving instance Repr, DecidableEq, Inhabited for Name
+deriving instance Repr, DecidableEq, Inhabited for EntityType
+deriving instance Repr, DecidableEq, Inhabited for EntityUID
+deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr for Value
 
-deriving instance DecidableEq for Except
-deriving instance DecidableEq for Error
-deriving instance DecidableEq for Name
-deriving instance DecidableEq for EntityType
-deriving instance DecidableEq for EntityUID
-deriving instance DecidableEq for Prim
-
-deriving instance Inhabited for Name
-deriving instance Inhabited for EntityType
-deriving instance Inhabited for EntityUID
-deriving instance Inhabited for Prim
-
-deriving instance BEq for Except
 
 mutual
 

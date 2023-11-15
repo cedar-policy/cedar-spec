@@ -30,8 +30,7 @@ namespace Cedar.Data
 
 inductive Set (α : Type u) where
 | mk (l : List α)
-deriving Repr
-deriving instance DecidableEq, Repr, Inhabited, Lean.ToJson for Set
+deriving Repr, DecidableEq, Inhabited, Lean.ToJson
 
 namespace Set
 
@@ -106,6 +105,7 @@ def singleton {α} (a : α) : Set α :=
 
 def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
   s.elts.foldl f init
+
 ----- Props and Theorems -----
 
 instance [LT α] : LT (Set α) where
