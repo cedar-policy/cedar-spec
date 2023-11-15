@@ -32,7 +32,13 @@ pub use entities::Entities;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
 pub use lean_sys::string::lean_mk_string;
-use lean_sys::{lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world};
+use lean_sys::{
+    lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world,
+    lean_string_cstr,
+};
+use serde::{Deserialize, Serialize};
+use std::ffi::CStr;
+use std::str::FromStr;
 
 use crate::definitional_request_types::*;
 
@@ -57,11 +63,33 @@ extern "C" {
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
+#[derive(Serialize, Deserialize)]
+struct ListDef<String> {
+    l: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SetDef<String> {
+    mk: ListDef<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ResponseDef {
+    policies: SetDef<String>,
+    decision: String,
+}
+
 #[derive(Debug)]
 pub enum LeanDefEngineError {}
 
 pub struct LeanDefinitionalEngine {
     initialized: bool,
+}
+
+fn lean_obj_to_string(o: *mut lean_object) -> String {
+    let lean_obj_p = unsafe { lean_string_cstr(o) };
+    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
+    lean_obj_cstr.to_string_lossy().into_owned() //TODO: lossy
 }
 
 impl LeanDefinitionalEngine {
@@ -88,24 +116,28 @@ impl LeanDefinitionalEngine {
     }
 
     fn deserialize_response(response: *mut lean_object) -> InterfaceResponse {
-        let resp: ResponseDef =
-            serde_json::from_str(response).expect("could not convert string to json");
-        let dec: authorizer::Decision = if resp.decision == "allow" {
-            authorizer::Decision::Allow
-        } else if resp.decision == "deny" {
-            authorizer::Decision::Deny
-        } else {
-            panic!("unknown decision")
-        };
+        let response_string = lean_obj_to_string(response);
+        println!("Response string:");
+        println!("{response_string:?}");
+        // let resp: ResponseDef =
+        //     serde_json::from_str(&response_string).expect("could not convert string to json");
+        // let dec: authorizer::Decision = if resp.decision == "allow" {
+        //     authorizer::Decision::Allow
+        // } else if resp.decision == "deny" {
+        //     authorizer::Decision::Deny
+        // } else {
+        //     panic!("unknown decision")
+        // };
 
-        let reason = resp
-            .policies
-            .mk
-            .l
-            .into_iter()
-            .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
-            .collect();
-        Response::new(dec, reason, HashSet::new())
+        // let reason = resp
+        //     .policies
+        //     .mk
+        //     .l
+        //     .into_iter()
+        //     .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
+        //     .collect();
+        // InterfaceResponse::new(dec, reason, HashSet::new())
+        InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
