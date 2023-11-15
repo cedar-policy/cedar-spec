@@ -19,12 +19,14 @@ import Lean.Data.Json.FromToJson
 import Cedar.Spec
 import DiffTest.Parser
 
+
 /-! This file defines the public interfaces for the Lean implementation.
     The input and output are stringified JSON objects. -/
 
 open Cedar.Spec
 open Cedar.Data
 open DiffTest
+
 
 def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
   let fileExists ← filename.pathExists
@@ -39,7 +41,6 @@ def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
 def readFile (filename : String) : IO String :=
   IO.FS.readFile filename
 
-
 def main (args : List String) : IO Unit :=
   match args.length with
     | 1 => do
@@ -47,8 +48,15 @@ def main (args : List String) : IO Unit :=
       let req ← readFile filename
       let json := Lean.Json.parse req
       let request := jsonToRequest json
-      let entities := jsonToEntities json
-      let policies := jsonToPolicies json
-      let json := Lean.toJson (isAuthorized request entities policies)
-      IO.println (toString json)
+      IO.println (repr request)
+      -- let entities := jsonToEntities json
+      -- IO.println (repr entities)
+      -- let policies := jsonToPolicies json
+      -- IO.println (repr policies)
+
+      -- let response := isAuthorized request entities policies
+      -- IO.println "Response: "
+      -- IO.println (repr response)
+      -- let json := Lean.toJson response
+      -- IO.println (toString json)
     | _ => IO.println s!"Incorrect number of arguments"

@@ -29,17 +29,19 @@ open Cedar.Data
 inductive Decision where
   | allow
   | deny
+deriving Repr, DecidableEq
 
 structure Response where
   decision : Decision
   policies : Set PolicyID
+deriving Repr, DecidableEq
 
 ----- Derivations -----
 
-deriving instance Repr for Decision, Response
+-- deriving instance Repr for Decision, Response
 
-deriving instance DecidableEq for Decision
-deriving instance DecidableEq for Response
+-- deriving instance DecidableEq for Decision
+-- deriving instance DecidableEq for Response
 
 deriving instance Lean.ToJson for Decision
 deriving instance Lean.ToJson for Response

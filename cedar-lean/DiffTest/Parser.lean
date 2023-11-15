@@ -323,7 +323,7 @@ def jsonToContext (json : Except String Lean.Json) : Map Attr Value := match jso
         let keys := List.map strNodeToString kvs.fst
         let vals := List.map (jsonToValue ∘ Except.ok) kvs.snd
         Map.mk (List.zip keys vals)
-      | _ => panic! "sorry"
+      | _ => Map.empty
 
 partial def jsonToRequest (json : Except String Lean.Json) : Request := match json.isOk with
   | false => panic! "sorry"
