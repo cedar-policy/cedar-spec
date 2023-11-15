@@ -5,3 +5,4 @@
 !lake-manifest.json
 *.olean
 
+!/diff_test_jsons/*.json
