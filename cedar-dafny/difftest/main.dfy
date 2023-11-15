@@ -251,10 +251,11 @@ module difftest.main {
           "In" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.In(e))),
           "Eq" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e))),
           "Is" := bodyDeserializer(nameFromProdJson, ety => Ok(ScopeTemplate.Is(EntityType(ety)))),
-          "IsIn" := objDeserializer2Fields(
-                      "Name", nameFromProdJson,
-                      "EntityReference", entityUIDOrSlotFromProdJson,
-                      (ety, e) => Ok(ScopeTemplate.IsIn(EntityType(ety),e)))
+          "IsIn" := tupleDeserializer2Elts(
+                      nameFromProdJson,
+                      entityUIDOrSlotFromProdJson,
+                      (ety, e) => Ok(ScopeTemplate.IsIn(EntityType(ety),e))
+                    )
         ])
   }
 
