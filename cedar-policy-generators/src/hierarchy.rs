@@ -153,8 +153,8 @@ impl Hierarchy {
         )
     }
 
-    // Generate an entity type, usually picking on that's used by some entity in
-    // the hierarchy.
+    /// Generate an entity type, usually picking on that's used by some entity in
+    /// the hierarchy.
     pub fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<ast::Name> {
         // entity type that is used by some entity or isn't. 90% of the time
         // pick one that is used.

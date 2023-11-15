@@ -83,7 +83,6 @@ const LOG_FILENAME_ERR_TOO_DEEP: &str = "./logs/err_too_deep.txt";
 const LOG_FILENAME_ERR_NO_VALID_TYPES: &str = "./logs/err_no_valid_types.txt";
 const LOG_FILENAME_ERR_EXTENSIONS_DISABLED: &str = "./logs/err_extensions_disabled.txt";
 const LOG_FILENAME_ERR_LIKE_DISABLED: &str = "./logs/err_like_disabled.txt";
-const LOG_FILENAME_ERR_IS_DISABLED: &str = "./logs/err_is_disabled.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
 const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
@@ -143,9 +142,6 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
             }
             Err(Error::LikeDisabled) => {
                 checkpoint(LOG_FILENAME_ERR_LIKE_DISABLED.to_string() + "_" + doing_what)
-            }
-            Err(Error::IsDisabled) => {
-                checkpoint(LOG_FILENAME_ERR_IS_DISABLED.to_string() + "_" + doing_what)
             }
             Err(Error::IncorrectFormat {
                 doing_what: doing_2,
