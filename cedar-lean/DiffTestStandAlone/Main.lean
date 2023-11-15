@@ -46,9 +46,10 @@ def main (args : List String) : IO Unit :=
     | 1 => do
       let filename := args.head!
       let req ← readFile filename
+      IO.println (req)
       let json := Lean.Json.parse req
-      let request := jsonToRequest json
-      IO.println (repr request)
+      --let request := jsonToRequest json
+      --IO.println (repr request)
       -- let entities := jsonToEntities json
       -- IO.println (repr entities)
       -- let policies := jsonToPolicies json
