@@ -65,6 +65,9 @@ pub struct Hierarchy {
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
     uids_by_type: HashMap<ast::Name, EntityUIDs>,
+    /// Vec of all entity types used by entities in the hierarchy, again kept in
+    /// sync with the `entities` HashMap. Makes `arbitrary_entity_type()` fast.
+    entity_types: Vec<ast::Name>,
 }
 
 impl Hierarchy {
@@ -76,16 +79,19 @@ impl Hierarchy {
             .values()
             .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
+        let uids_by_type: HashMap<_, _> = uids_by_type
+            .into_iter()
+            .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
+            .collect();
+        let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
         Self {
             entities: uids
                 .iter()
                 .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
                 .collect(),
             uids,
-            uids_by_type: uids_by_type
-                .into_iter()
-                .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
-                .collect(),
+            uids_by_type,
+            entity_types,
         }
     }
 
@@ -147,6 +153,19 @@ impl Hierarchy {
         )
     }
 
+    /// Generate an entity type, usually picking on that's used by some entity in
+    /// the hierarchy.
+    pub fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<ast::Name> {
+        // entity type that is used by some entity or isn't. 90% of the time
+        // pick one that is used.
+        if u.ratio::<u8>(9, 10)? {
+            let ety = u.choose(&self.entity_types)?;
+            Ok(ety.clone())
+        } else {
+            Ok(u.arbitrary()?)
+        }
+    }
+
     /// Get an Entity object by UID
     pub fn entity(&self, uid: &EntityUID) -> Option<&Entity> {
         self.entities.get(uid)
@@ -198,6 +217,7 @@ impl Hierarchy {
             entities: new_entities,
             uids: self.uids,
             uids_by_type: self.uids_by_type,
+            entity_types: self.entity_types,
         }
     }
 
@@ -248,6 +268,7 @@ impl From<Entities> for Hierarchy {
             uids_by_type.entry(etype).or_default().insert(e.uid());
             uids.push(e.uid());
         }
+        let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
         Hierarchy {
             uids,
             uids_by_type: uids_by_type
@@ -255,6 +276,7 @@ impl From<Entities> for Hierarchy {
                 .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter())))
                 .collect(),
             entities: entities.into_iter().map(|e| (e.uid(), e)).collect(),
+            entity_types,
         }
     }
 }
