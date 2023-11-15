@@ -155,7 +155,8 @@ module def.core {
   datatype UnaryOp =
     Not |
     Neg | MulBy(i: int) |
-    Like(p: Pattern)
+    Like(p: Pattern) |
+    Is(ety: EntityType)
 
   datatype BinaryOp =
     Eq | In |
@@ -228,13 +229,22 @@ module def.core {
     }
   }
 
-  datatype Scope = Any | Eq(entity: EntityUID) | In(entity: EntityUID)
+  datatype Scope = 
+    Any | 
+    Eq(entity: EntityUID) | 
+    In(entity: EntityUID) | 
+    Is(ety: EntityType) | 
+    IsIn(ety:EntityType, entity: EntityUID)
   {
     function toExpr(v: Var): Expr {
       match this {
         case Any   => PrimitiveLit(Primitive.Bool(true))
         case Eq(e) => BinaryApp(BinaryOp.Eq, Var(v), PrimitiveLit(Primitive.EntityUID(e)))
         case In(e) => BinaryApp(BinaryOp.In, Var(v), PrimitiveLit(Primitive.EntityUID(e)))
+        case Is(ety) => UnaryApp(UnaryOp.Is(ety), Var(v))
+        case IsIn(ety, e) => 
+          And(UnaryApp(UnaryOp.Is(ety), Var(v)),
+              BinaryApp(BinaryOp.In, Var(v), PrimitiveLit(Primitive.EntityUID(e))))
       }
     }
   }

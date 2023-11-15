@@ -557,6 +557,21 @@ module validation.typechecker {
       Ok(Type.Bool(AnyBool))
     }
 
+    function inferIs(ety: EntityType, e: Expr, effs: Effects): Result<Type>
+      decreases UnaryApp(UnaryOp.Is(ety),e) , 0
+    {
+      var elub :- ensureEntityType(e,effs);
+      match elub {
+        case AnyEntity => Ok(Type.Bool(AnyBool))
+        case EntityLUB(tys) =>
+          if ety !in tys
+          then Ok(Type.Bool(False))
+          else if ety in tys && |tys| == 1
+          then Ok(Type.Bool(True))
+          else Ok(Type.Bool(AnyBool))
+      }
+    }
+
     function inferArith1(ghost op: UnaryOp, e: Expr, effs: Effects): Result<Type>
       requires op.Neg? || op.MulBy?
       decreases UnaryApp(op,e) , 0
@@ -667,6 +682,7 @@ module validation.typechecker {
         case UnaryApp(Neg,e1) => wrap(inferArith1(Neg,e1,effs))
         case UnaryApp(MulBy(i),e1) => wrap(inferArith1(MulBy(i),e1,effs))
         case UnaryApp(Like(p),e1) => wrap(inferLike(p,e1,effs))
+        case UnaryApp(Is(ety),e1) => wrap(inferIs(ety,e1,effs))
         case BinaryApp(Eq,e1,e2) => wrap(inferEq(e1,e2,effs))
         case BinaryApp(Less,e1,e2) => wrap(inferIneq(Less,e1,e2,effs))
         case BinaryApp(LessEq,e1,e2) => wrap(inferIneq(LessEq,e1,e2,effs))

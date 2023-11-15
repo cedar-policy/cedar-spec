@@ -121,6 +121,17 @@ module validation.thm.strict_soundness {
       }
     }
 
+    lemma StrictIs(ety: EntityType, e: Expr, effs: Effects)
+      decreases UnaryApp(UnaryOp.Is(ety), e), 0
+      requires S_TC.infer(UnaryApp(UnaryOp.Is(ety), e), effs).Ok?
+      ensures P_TC.infer(UnaryApp(UnaryOp.Is(ety), e), effs) == S_TC.infer(UnaryApp(UnaryOp.Is(ety), e), effs)
+    {
+      assert S_TC.ensureEntityType(e, effs).Ok?;
+      assert P_TC.ensureEntityType(e, effs) == S_TC.ensureEntityType(e, effs) by { 
+        StrictTypecheckingIsStrict(e, effs); 
+      }
+    }
+
     lemma StrictArith2Ineq(o: BinaryOp, e1: Expr, e2: Expr, effs: Effects)
       decreases BinaryApp(o, e1, e2), 0
       requires o.Add? || o.Sub? || o.Less? || o.LessEq?
@@ -361,6 +372,7 @@ module validation.thm.strict_soundness {
         case UnaryApp(Neg,e') => StrictArith1(Neg, e', effs);
         case UnaryApp(MulBy(i),e') => StrictArith1(MulBy(i), e', effs);
         case UnaryApp(Like(p),e') => StrictLike(p, e', effs);
+        case UnaryApp(Is(ety),e') => StrictIs(ety, e', effs);
         case BinaryApp(Eq,e1,e2) => StrictEq(e1, e2, effs);
         case BinaryApp(Less,e1,e2) => StrictArith2Ineq(Less, e1, e2, effs);
         case BinaryApp(LessEq,e1,e2) => StrictArith2Ineq(LessEq, e1, e2, effs);

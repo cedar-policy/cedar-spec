@@ -126,11 +126,16 @@ module def.templates {
     }
   }
 
-  datatype ScopeTemplate = Any | Eq(entityOrSlot: EntityUIDOrSlot) | In(entityOrSlot: EntityUIDOrSlot)
+  datatype ScopeTemplate = 
+    Any | 
+    Eq(entityOrSlot: EntityUIDOrSlot) | 
+    In(entityOrSlot: EntityUIDOrSlot) |
+    Is(ety: EntityType) | 
+    IsIn(ety: EntityType, entityOrSlot: EntityUIDOrSlot)
   {
     function slotReqs(): SlotReqs {
       match this {
-        case Any => emptySlotReqs
+        case Any | Is(_) => emptySlotReqs
         case _ => entityOrSlot.slotReqs()
       }
     }
@@ -191,6 +196,8 @@ module def.templates {
         case Any => Scope.Any
         case In(e) => Scope.In(linkEntityUIDOrSlot(e))
         case Eq(e) => Scope.Eq(linkEntityUIDOrSlot(e))
+        case Is(ety) => Scope.Is(ety)
+        case IsIn(ety,e) => Scope.IsIn(ety,linkEntityUIDOrSlot(e))
       }
     }
 
