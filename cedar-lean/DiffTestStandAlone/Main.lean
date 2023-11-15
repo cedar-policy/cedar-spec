@@ -46,18 +46,17 @@ def main (args : List String) : IO Unit :=
     | 1 => do
       let filename := args.head!
       let req ← readFile filename
-      IO.println (req)
       let json := Lean.Json.parse req
-      --let request := jsonToRequest json
-      --IO.println (repr request)
-      -- let entities := jsonToEntities json
+      IO.println (toString json)
+      let request := jsonToRequest json
+      -- IO.println (repr request)
+      let entities := jsonToEntities json
       -- IO.println (repr entities)
-      -- let policies := jsonToPolicies json
+      let policies := jsonToPolicies json
       -- IO.println (repr policies)
-
-      -- let response := isAuthorized request entities policies
+      let response := isAuthorized request entities policies
       -- IO.println "Response: "
       -- IO.println (repr response)
-      -- let json := Lean.toJson response
-      -- IO.println (toString json)
+      let json := Lean.toJson response
+      IO.println (toString json)
     | _ => IO.println s!"Incorrect number of arguments"
