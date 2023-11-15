@@ -55,9 +55,6 @@ pub struct ABACSettings {
     /// Flag to globally enable/disable generation of expressions containing the
     /// `like` operator.
     pub enable_like: bool,
-    /// Flag to globally enable/disable generation of expressions containing the
-    /// `is` operator.
-    pub enable_is: bool,
     /// Flag to enable/disable generating actions in groups and declaring
     /// attributes on entity types.
     pub enable_action_groups_and_attrs: bool,

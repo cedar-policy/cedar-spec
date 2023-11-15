@@ -43,7 +43,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     max_width: 7,
     enable_additional_attributes: true,
     enable_like: true,
-    enable_is: true,
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
     enable_unknowns: false,

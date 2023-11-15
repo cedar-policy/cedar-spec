@@ -147,14 +147,10 @@ impl<'a> ExprGenerator<'a> {
                         }
                     },
                     1 => {
-                        if self.settings.enable_is {
                             Ok(ast::Expr::is_entity_type(
                                 self.generate_expr(max_depth - 1, u)?,
                                 u.choose(&self.schema.entity_types)?.clone(),
                             ))
-                        } else {
-                            Err(Error::IsDisabled)
-                        }
                     },
                     1 => {
                         let mut l = Vec::new();
@@ -488,7 +484,6 @@ impl<'a> ExprGenerator<'a> {
                         },
                         // is
                         2 => {
-                            if self.settings.enable_is {
                                 Ok(ast::Expr::is_entity_type(
                                     self.generate_expr_for_type(
                                         &Type::entity(),
@@ -497,9 +492,6 @@ impl<'a> ExprGenerator<'a> {
                                     )?,
                                     u.choose(&self.schema.entity_types)?.clone(),
                                 ))
-                            } else {
-                                Err(Error::LikeDisabled)
-                            }
                         },
                         // extension function that returns bool
                         2 => self.generate_ext_func_call_for_type(
