@@ -325,19 +325,6 @@ def jsonToContext (json : Except String Lean.Json) : Map Attr Value := match jso
       Map.mk (List.zip keys vals)
     | _ => panic! "uh oh"
 
-def myPrincipalEUID : EntityUID :=
-  {ty := {id:= "User", path := []}, eid := "alice"}
-def myActionEUID : EntityUID :=
-  {ty := {id:= "Action", path := []}, eid := "view"}
-def myResourceEUID : EntityUID :=
-  {ty := {id:= "Photo", path := []}, eid := "vacation.jpg"}
-
-def myJsonRequest : Request :=
-  {principal := myPrincipalEUID, action := myActionEUID, resource := myResourceEUID, context := Map.empty}
-
-def myStr : String := "{\"request\": {\"resource\":  {\"Concrete\":   {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Photo\"}}, \"eid\": \"vacation.jpg\"}},  \"principal\":  {\"Concrete\":   {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"User\"}}, \"eid\": \"alice\"}},  \"context\": {\"source_info\": null, \"expr_kind\": {\"Record\": {}}, \"data\": null},  \"action\":  {\"Concrete\":   {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Action\"}}, \"eid\": \"view\"}}}, \"policies\": {\"templates\":  {\"policy0\":   {\"resource_constraint\":    {\"constraint\":     {\"Eq\":      {\"EUID\":       {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Photo\"}},        \"eid\": \"vacation.jpg\"}}}},    \"principal_constraint\":    {\"constraint\":     {\"Eq\":      {\"EUID\":       {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"User\"}}, \"eid\": \"alice\"}}}},    \"non_head_constraints\":    {\"source_info\": {\"start\": 56, \"end\": 161},     \"expr_kind\": {\"Lit\": {\"Bool\": true}},     \"data\": null},    \"id\": \"policy0\",    \"effect\": \"permit\",    \"annotations\": {},    \"action_constraint\":    {\"Eq\": {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Action\"}}, \"eid\": \"view\"}}}},  \"links\":  {\"policy0\": {\"values\": {}, \"template_id\": \"policy0\", \"link_id\": null}}}, \"entities\": {\"entities\":  [[{\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Photo\"}}, \"eid\": \"vacation.jpg\"},    {\"uid\":     {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Photo\"}}, \"eid\": \"vacation.jpg\"},     \"attrs\": {},     \"ancestors\": []}],   [{\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"User\"}}, \"eid\": \"alice\"},    {\"uid\": {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"User\"}}, \"eid\": \"alice\"},     \"attrs\": {},     \"ancestors\": []}],   [{\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Action\"}}, \"eid\": \"view\"},    {\"uid\": {\"ty\": {\"Concrete\": {\"path\": [], \"id\": \"Action\"}}, \"eid\": \"view\"},     \"attrs\": {},     \"ancestors\": []}]]}}"
-def myJson := Lean.Json.parse myStr
-
 partial def jsonToRequest (json : Except String Lean.Json) : Request := match json.isOk with
   | false => panic! "sorry"
   | true =>
@@ -353,10 +340,6 @@ partial def jsonToRequest (json : Except String Lean.Json) : Request := match js
       resource := resource,
       context := context,
     }
-    -- myJsonRequest
-
--- #eval jsonToRequest myJson
--- #eval myJsonRequest == jsonToRequest myJson
 
 def jsonToEntityData (json : Except String Lean.Json) : EntityData := match json.isOk with
 | false => panic! "sorry"
