@@ -663,6 +663,57 @@ module validation.thm.soundness {
       }
     }
 
+    lemma SoundIs(e: Expr, ety: EntityType, t: Type, effs: Effects)
+      decreases UnaryApp(UnaryOp.Is(ety),e) , 0
+      requires WellFormedRequestAndStore()
+      requires EffectsInvariant(effs)
+      requires Typesafe(UnaryApp(UnaryOp.Is(ety),e),effs,t)
+      ensures IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),t)
+      ensures getEffects(UnaryApp(UnaryOp.Is(ety),e),effs) == Effects.empty()
+    {
+      var t' :| getType(UnaryApp(UnaryOp.Is(ety),e),effs) == t' && subty(t',t,ValidationMode.Permissive);
+      assert TC.inferIs(ety,e,effs) == types.Ok(t');
+    
+      assert TC.ensureEntityType(e,effs).Ok?;
+      var t1 := getType(e,effs);
+      assert t1.Entity?;
+
+      assert IsSafe(r,s,e,t1) by { Sound(e,t1,effs); }
+      match t1 {
+        case Entity(AnyEntity) =>
+          assert t' == Type.Bool(AnyBool);
+          assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),Type.Bool(AnyBool)) by {
+            IsOpSafe(r,s,e,ety);
+          }
+        case Entity(EntityLUB(tys)) =>
+          if ety !in tys {
+            assert t' == Type.Bool(False);
+            assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),t') by { 
+              IsOpSafeFalse(r,s,e,ety,EntityLUB(tys)); 
+            }
+            assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),t) by {
+              SubtyCompat(t',t);
+              SemSubtyTransport(r,s,UnaryApp(UnaryOp.Is(ety),e),t',t);
+            }
+          } else if ety in tys && |tys| == 1 {
+            assert t' == Type.Bool(True);
+            assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),t') by { 
+              IsOpSafeTrue(r,s,e,ety,EntityLUB(tys)); 
+            }
+            assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),t) by {
+              SubtyCompat(t',t);
+              SemSubtyTransport(r,s,UnaryApp(UnaryOp.Is(ety),e),t',t);
+            }
+          } else {
+            assert IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),Type.Bool(AnyBool)) by {
+              assert subty(t1,Type.Entity(AnyEntity),ValidationMode.Permissive);
+              assert IsSafe(r,s,e,Type.Entity(AnyEntity)) by { Sound(e,Type.Entity(AnyEntity),effs); }
+              IsOpSafe(r,s,e,ety);
+            }
+          }
+      }
+    }
+
     const unspecifiedEntityType := Type.Entity(EntityLUB({EntityType.UNSPECIFIED}))
 
     // Take advantage of the fact that in the current implementation, an
@@ -1439,6 +1490,7 @@ module validation.thm.soundness {
         case UnaryApp(Neg,e') => SoundNeg(e',t,effs);
         case UnaryApp(MulBy(i),e') => SoundMulBy(i,e',t,effs);
         case UnaryApp(Like(p),e') => SoundLike(e',p,t,effs);
+        case UnaryApp(Is(ety),e') => SoundIs(e',ety,t,effs);
         case BinaryApp(Eq,e1,e2) => SoundEq(e1,e2,t,effs);
         case BinaryApp(Less,e1,e2) => SoundIneq(Less,e1,e2,t,effs);
         case BinaryApp(LessEq,e1,e2) => SoundIneq(BinaryOp.LessEq,e1,e2,t,effs);

@@ -152,6 +152,7 @@ module validation.thm.strict_inf_strict {
         case UnaryApp(Neg,e') =>
         case UnaryApp(MulBy(i),e') =>
         case UnaryApp(Like(p),e') =>
+        case UnaryApp(Is(ety),e') =>
         case BinaryApp(Eq,e1,e2) =>
         case BinaryApp(Less,e1,e2) =>
         case BinaryApp(LessEq,e1,e2) =>

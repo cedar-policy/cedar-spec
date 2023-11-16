@@ -1037,15 +1037,22 @@ impl Schema {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint; 40%, Eq; 40%, In
-        gen!(u,
-        2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
-        4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
-        )),
-        4 => Ok(PrincipalOrResourceConstraint::In(
-            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
-        )))
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_principal_uid(u)?;
+            let ety = u.choose(self.entity_types())?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
     }
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
@@ -1063,15 +1070,22 @@ impl Schema {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint; 40%, Eq; 40%, In
-        gen!(u,
-        2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
-        4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
-        )),
-        4 => Ok(PrincipalOrResourceConstraint::In(
-            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
-        )))
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_resource_uid(u)?;
+            let ety = u.choose(self.entity_types())?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
     }
     fn arbitrary_resource_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(

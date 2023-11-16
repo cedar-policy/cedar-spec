@@ -292,7 +292,7 @@ impl PrincipalOrResourceConstraint {
                     1 => Ok(Self::IsTypeInSlot(hierarchy.arbitrary_entity_type(u)?))
                 )
             } else {
-                // 32% Eq, 32% In (16% with and without Is), 32% Is (16% with and without In)
+                // 32% Eq, 16% In, 16% Is, 16% IsIn
                 let uid = hierarchy.arbitrary_uid(u)?;
                 gen!(u,
                     2 => Ok(Self::Eq(uid)),
