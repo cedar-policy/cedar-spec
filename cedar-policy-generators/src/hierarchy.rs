@@ -631,7 +631,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     attrs.into_iter().collect(),
                     parents.into_iter().collect(),
                     &self.extensions,
-                ).map_err(|e| Error::EntitiesError(e.to_string()))?;
+                )
+                .map_err(|e| Error::EntitiesError(e.to_string()))?;
                 Ok((uid, entity))
             })
             .collect::<Result<_>>()?;
