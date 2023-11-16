@@ -350,11 +350,10 @@ fuzz_target!(|input: FuzzTargetInput| {
                 for r in input.requests.into_iter() {
                     let q = ast::Request::from(r);
                     debug!("Request: {q}");
-                    let ans = authorizer.is_authorized(&q, &policyset, &entities);
+                    let ans = authorizer.is_authorized(q.clone(), &policyset, &entities);
 
                     let unexpected_errs = ans.diagnostics.errors.iter().filter_map(|error|
                         match error {
-                            cedar_policy::AuthorizationError::AttributeEvaluationError(_) => None,
                             cedar_policy::AuthorizationError::PolicyEvaluationError { error, .. } => match error.error_kind() {
                                 // Evaluation errors the validator should prevent.
                                 cedar_policy::EvaluationErrorKind::UnspecifiedEntityAccess(_) |

@@ -30,7 +30,7 @@ pub trait CedarTestImplementation {
     /// Custom authorizer entry point.
     fn is_authorized(
         &self,
-        request: &Request,
+        request: Request,
         policies: &PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse;
@@ -41,7 +41,7 @@ pub trait CedarTestImplementation {
     /// expected due to errors.
     fn interpret(
         &self,
-        request: &Request,
+        request: Request,
         entities: &Entities,
         expr: &Expr,
         expected: Option<Value>,

@@ -30,6 +30,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Name, PolicyID};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
     TypeOfAttribute, ValidatorSchema,
@@ -824,6 +825,7 @@ impl Schema {
             uid_gen_mode: EntityUIDGenMode::default(),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
+            extensions: Extensions::all_available(),
         }
         .generate()
     }
@@ -839,6 +841,7 @@ impl Schema {
             uid_gen_mode: EntityUIDGenMode::Nanoid(nanoid_len),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
+            extensions: Extensions::all_available(),
         }
         .generate()
     }

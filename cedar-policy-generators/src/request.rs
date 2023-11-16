@@ -41,10 +41,10 @@ impl From<Request> for ast::Request {
             req.principal,
             req.action,
             req.resource,
-            ast::Context::from_pairs(req.context)
+            ast::Context::from_pairs(req.context, Extensions::all_available())
                 .expect("can't have duplicate keys because `req.context` was already a HashMap"),
             None::<&ast::RequestSchemaAllPass>,
-            Extensions::none(),
+            Extensions::all_available(),
         )
         .expect("we aren't doing request validation here, so new() can't fail")
     }

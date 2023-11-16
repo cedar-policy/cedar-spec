@@ -396,21 +396,21 @@ impl<'j> JavaDefinitionalEngine<'j> {
 impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
     fn is_authorized(
         &self,
-        request: &ast::Request,
+        request: ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        self.is_authorized(request, policies, entities)
+        self.is_authorized(&request, policies, entities)
     }
 
     fn interpret(
         &self,
-        request: &ast::Request,
+        request: ast::Request,
         entities: &Entities,
         expr: &Expr,
         expected: Option<Value>,
     ) -> bool {
-        self.eval(request, entities, expr, expected)
+        self.eval(&request, entities, expr, expected)
     }
 
     fn validate(

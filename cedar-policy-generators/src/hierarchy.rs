@@ -291,6 +291,8 @@ pub struct HierarchyGenerator<'a, 'u> {
     pub num_entities: NumEntities,
     /// `Unstructured` used for making random choices
     pub u: &'a mut Unstructured<'u>,
+    /// Extensions active for the attribute values in the hierarchy
+    pub extensions: Extensions<'a>,
 }
 
 // can't auto-derive `Debug` because of the `Unstructured`
@@ -628,7 +630,9 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     uid.clone(),
                     attrs.into_iter().collect(),
                     parents.into_iter().collect(),
-                );
+                    &self.extensions,
+                )
+                .map_err(|e| Error::EntitiesError(e.to_string()))?;
                 Ok((uid, entity))
             })
             .collect::<Result<_>>()?;
