@@ -126,7 +126,7 @@ List.unzip (List.map (fun x => match x with
 -- "GetAttr" : {"expr": Expr, "attr": String}
 -- "HasAttr" : {"expr": Expr, "arg": String}
 -- "Set" : {[Expr]}
--- "Record" : {"pairs": ["id": Expr]}
+-- "Record" : {"id1": Expr, "id2": Expr, ...}
 -- }
 
 /-
@@ -247,20 +247,14 @@ partial def jsonToExpr (json : Except String Lean.Json) : Expr := match json.isO
                             | _,_ => panic! "sorry"
                         | false => match (json.getObjVal? "Record").isOk with
                           | true =>
-                            let e := (unwrapExcept (json.getObjVal? "Record")).getObjVal? "pairs"
-                            match e.isOk with
-                              | true =>
-                                let e := (unwrapExcept e).getArr?
-                                match e.isOk with
-                                | true =>
-                                  let e := Option.get! e.toOption
-                                  let kv := arrayToKVPairList e
-                                  let v_exprs := List.map jsonToExpr (List.map Except.ok kv.snd)
-                                  let k_strs := List.map strNodeToString kv.fst
-                                  let er : Expr := .record (List.zip k_strs v_exprs)
-                                  er
-                                | false => panic! "sorry"
-                              | false => panic! "sorry"
+                            let attrs := unwrapExcept (json.getObjVal? "Record")
+                            match attrs with
+                              | Lean.Json.obj obj =>
+                                let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
+                                let keys := List.map Prod.fst pairs
+                                let vals := List.map (jsonToExpr ∘ Except.ok ∘ Prod.snd) pairs
+                                Expr.record (List.zip keys vals)
+                              | _ => panic! "Invalid record shape"
                           | false => match (json.getObjVal? "Set").isOk with
                             | true =>
                               let e := (unwrapExcept (json.getObjVal? "Set")).getArr?
@@ -321,7 +315,7 @@ def jsonToContext (json : Except String Lean.Json) : Map Attr Value := match jso
     | Lean.Json.obj obj =>
       let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
       let keys := List.map Prod.fst pairs
-      let vals := List.map (jsonToValue ∘ Except.ok ∘ Prod.snd) pairs
+      let vals := List.map (exprToValue ∘ jsonToExpr ∘ Except.ok ∘ Prod.snd) pairs
       Map.mk (List.zip keys vals)
     | _ => panic! "uh oh"
 
@@ -333,7 +327,7 @@ partial def jsonToRequest (json : Except String Lean.Json) : Request := match js
     let principal := jsonToEUID ((unwrapExcept (json.getObjVal? "principal")).getObjVal? "Concrete")
     let action := jsonToEUID ((unwrapExcept (json.getObjVal? "action")).getObjVal? "Concrete")
     let resource := jsonToEUID ((unwrapExcept (json.getObjVal? "resource")).getObjVal? "Concrete")
-    let context := jsonToContext (json.getObjVal? "context")
+    let context := (jsonToContext ∘ json.getObjVal?) "context"
     {
       principal := principal,
       action := action,
