@@ -105,8 +105,16 @@ pub fn dump<'a>(
                         .map(|ctx| {
                             ctx.iter()
                                 .map(|it| {
-                                    it.map(|(k, pval)| (k.clone(), RestrictedExpr::try_from(pval).unwrap().to_natural_json().unwrap()))
-                                        .collect::<HashMap<_, _>>()
+                                    it.map(|(k, pval)| {
+                                        (
+                                            k.clone(),
+                                            RestrictedExpr::try_from(pval)
+                                                .unwrap()
+                                                .to_natural_json()
+                                                .unwrap(),
+                                        )
+                                    })
+                                    .collect::<HashMap<_, _>>()
                                 })
                                 .unwrap_or_default() // for purely-unknown Context, use empty map
                         })

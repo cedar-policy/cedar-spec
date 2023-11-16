@@ -145,9 +145,8 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Entities: {}\n", input.entities);
     for request in input.requests.into_iter().map(Into::into) {
         debug!("Request : {request}");
-        let (rust_res, total_dur) = time_function(|| {
-            run_auth_test(&java_def_engine, request, &policyset, &input.entities)
-        });
+        let (rust_res, total_dur) =
+            time_function(|| run_auth_test(&java_def_engine, request, &policyset, &input.entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 

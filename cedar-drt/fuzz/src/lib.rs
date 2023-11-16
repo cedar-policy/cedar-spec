@@ -217,15 +217,17 @@ fn test_run_auth_test() {
         .expect("Adding static policy in Policy form should succeed");
 
     let alice_attributes: std::collections::HashMap<SmolStr, RestrictedExpr> =
-        std::collections::HashMap::from_iter([
-        ("foo".into(), RestrictedExpr::val(cedar_policy_core::ast::Literal::Bool(true)))
-        ]);
+        std::collections::HashMap::from_iter([(
+            "foo".into(),
+            RestrictedExpr::val(cedar_policy_core::ast::Literal::Bool(true)),
+        )]);
     let entity_alice = Entity::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
         alice_attributes,
         std::collections::HashSet::new(),
         &Extensions::all_available(),
-    ).unwrap();
+    )
+    .unwrap();
     let entity_view = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
         std::collections::HashMap::new(),
