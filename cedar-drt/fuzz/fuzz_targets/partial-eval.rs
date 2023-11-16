@@ -167,14 +167,14 @@ fuzz_target!(|input: FuzzTargetInput| {
         return; // Don't waste time testing a policy w/ no unknowns
     }
 
-    for q in input.requests.into_iter().map(Into::into) {
+    for q in input.requests.into_iter().map(ast::Request::from) {
         let auth = Authorizer::new();
-        let ans = auth.is_authorized_core(&q, &policyset, &input.entities);
+        let ans = auth.is_authorized_core(q.clone(), &policyset, &input.entities);
 
         match ans {
             ResponseKind::FullyEvaluated(ans) => {
                 // Concrete evaluation should also succeed w/out any substitutions
-                let concrete_res = auth.is_authorized(&q, &policyset, &input.entities);
+                let concrete_res = auth.is_authorized(q, &policyset, &input.entities);
                 assert!(responses_equiv(ans, concrete_res));
             }
             ResponseKind::Partial(residual_set) => {
@@ -185,7 +185,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }) {
                     subst_set.add(policy).unwrap();
                 }
-                let final_res = auth.is_authorized(&q, &subst_set, &input.entities);
+                let final_res = auth.is_authorized(q.clone(), &subst_set, &input.entities);
 
                 let mut concrete_set = PolicySet::new();
                 for policy in policyset.policies().map(|p: &Policy| {
@@ -194,7 +194,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                 }) {
                     concrete_set.add(policy).unwrap();
                 }
-                let concrete_res = auth.is_authorized(&q, &concrete_set, &input.entities);
+                let concrete_res = auth.is_authorized(q, &concrete_set, &input.entities);
                 assert!(responses_equiv(concrete_res, final_res));
             }
         };

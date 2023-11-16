@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request};
+use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request, RestrictedExpr};
 use cedar_policy_core::authorizer::{Decision, Response};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::SchemaFragment;
 use serde::Serialize;
+use smol_str::SmolStr;
 use std::io::Write;
 use std::path::Path;
 
@@ -101,10 +102,13 @@ pub fn dump<'a>(
                     resource: dump_request_var(q.resource()),
                     context: q
                         .context()
-                        .map(|ctxt| {
-                            ctxt.iter()
-                                .map(|(k, expr)| (k.to_string(), expr.to_natural_json().unwrap()))
-                                .collect::<HashMap<_, _>>()
+                        .map(|ctx| {
+                            ctx.iter()
+                                .map(|it| {
+                                    it.map(|(k, pval)| (k.clone(), RestrictedExpr::try_from(pval).unwrap().to_natural_json().unwrap()))
+                                        .collect::<HashMap<_, _>>()
+                                })
+                                .unwrap_or_default() // for purely-unknown Context, use empty map
                         })
                         .unwrap_or_default(),
                     decision: a.decision,
@@ -165,7 +169,7 @@ struct IntegrationRequest<'a> {
     /// Resource
     resource: Option<String>,
     /// Context
-    context: HashMap<String, serde_json::Value>,
+    context: HashMap<SmolStr, serde_json::Value>,
     /// Decision
     decision: Decision,
     /// Reasons

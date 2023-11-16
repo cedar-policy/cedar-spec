@@ -144,7 +144,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Entities: {}\n", input.entities);
     run_eval_test(
         &java_def_engine,
-        &input.request.into(),
+        input.request.into(),
         &input.expression,
         &input.entities,
         SETTINGS.enable_extensions,
