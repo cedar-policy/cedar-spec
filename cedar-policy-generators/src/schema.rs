@@ -1039,7 +1039,9 @@ impl Schema {
             Ok(PrincipalOrResourceConstraint::NoConstraint)
         } else {
             // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?;
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_principal_uid(u)?;
             let ety = u.choose(self.entity_types())?.clone();
             gen!(u,
                 2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
@@ -1070,7 +1072,9 @@ impl Schema {
             Ok(PrincipalOrResourceConstraint::NoConstraint)
         } else {
             // 32% Eq, 16% In, 16% Is, 16% IsIn
-            let uid = self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?;
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_resource_uid(u)?;
             let ety = u.choose(self.entity_types())?.clone();
             gen!(u,
                 2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
