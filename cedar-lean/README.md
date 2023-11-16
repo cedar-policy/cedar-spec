@@ -24,6 +24,11 @@ To run the unit tests:
 $ lake exe CedarUnitTests
 ```
 
+To run integration test JSON file:
+```shell
+lake exe DiffTestStandAlone diff_test_jsons/5b.json
+```
+
 ## Updating the Lean toolchain
 
 Cedar depends on [`mathlib4`](https://github.com/leanprover-community/mathlib4), and it is configured to use the same version of Lean as `mathlib4`.
@@ -34,6 +39,14 @@ Follow [these instructions](https://github.com/leanprover-community/mathlib4/wik
 $ curl https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain -o lean-toolchain
 $ lake update
 $ lake exe cache get
+```
+
+## Linking with Rust
+
+To link with Rust, compile as static libraries:
+
+```shell
+lake build DiffTest:static Std:static Aesop:static ProofWidgets:static Qq:static Mathlib:static Cedar:static
 ```
 
 ## Contributing
