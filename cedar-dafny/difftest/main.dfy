@@ -193,6 +193,10 @@ module difftest.main {
         var expr :- deserializeField(body, "expr", exprFromProdJsonRec);
         var pat :- deserializeField(body, "pattern", patternFromProdJson);
         Ok(UnaryApp(Like(pat), expr))
+      case "Is" =>
+        var expr :- deserializeField(body, "expr", exprFromProdJsonRec);
+        var ety :- deserializeField(body, "entity_type", nameFromProdJson);
+        Ok(UnaryApp(UnaryOp.Is(EntityType(ety)), expr))
       case "Set" =>
         var exprs :- deserializeSeq(body, exprFromProdJsonRec);
         Ok(Expr.Set(exprs))
@@ -245,7 +249,13 @@ module difftest.main {
         map[
           "Any" := _ => Ok(ScopeTemplate.Any),
           "In" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.In(e))),
-          "Eq" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e)))
+          "Eq" := bodyDeserializer(entityUIDOrSlotFromProdJson, e => Ok(ScopeTemplate.Eq(e))),
+          "Is" := bodyDeserializer(nameFromProdJson, ety => Ok(ScopeTemplate.Is(EntityType(ety)))),
+          "IsIn" := tupleDeserializer2Elts(
+                      nameFromProdJson,
+                      entityUIDOrSlotFromProdJson,
+                      (ety, e) => Ok(ScopeTemplate.IsIn(EntityType(ety),e))
+                    )
         ])
   }
 

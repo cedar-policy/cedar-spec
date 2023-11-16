@@ -715,6 +715,35 @@ module validation.thm.model {
     ensures IsSafe(r,s,UnaryApp(Like(p),e),Type.Bool(AnyBool))
   {
     reveal IsSafe();
+  }      
+
+  lemma IsOpSafe(r: Request, s: EntityStore, e: Expr, ety: EntityType)
+    requires IsSafe(r,s,e,Type.Entity(AnyEntity))
+    ensures IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),Type.Bool(AnyBool))
+  {
+    reveal IsSafe();
+  }
+
+  lemma IsOpSafeTrue(r: Request, s: EntityStore, e: Expr, ety: EntityType, lub: EntityLUB)
+    requires IsSafe(r,s,e,Type.Entity(lub))
+    requires lub.EntityLUB?
+    requires ety in lub.tys && |lub.tys| == 1
+    ensures IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),Type.Bool(True))
+  {
+    assert lub.tys == {ety} by {
+      def.util.EntityTypeLeqIsTotalOrder();
+      var _ := def.util.SetToSortedSeq(lub.tys,def.util.EntityTypeLeq);
+    }
+    reveal IsSafe();
+  }
+
+  lemma IsOpSafeFalse(r: Request, s: EntityStore, e: Expr, ety: EntityType, lub: EntityLUB)
+    requires IsSafe(r,s,e,Type.Entity(lub))
+    requires lub.EntityLUB?
+    requires ety !in lub.tys
+    ensures IsSafe(r,s,UnaryApp(UnaryOp.Is(ety),e),Type.Bool(False))
+  {
+    reveal IsSafe();
   }
 
   lemma SetConstrSafe(r: Request, s: EntityStore, es: seq<Expr>, t: Type)
