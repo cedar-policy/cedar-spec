@@ -83,6 +83,7 @@ fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> R
             None => NumEntities::RangePerEntityType(1..=args.max_depth),
         },
         u: &mut u,
+        extensions: Extensions::all_available(),
     }
     .generate()
     .map_err(|err| anyhow!("failed to generate hierarchy: {err:#?}"))?;
