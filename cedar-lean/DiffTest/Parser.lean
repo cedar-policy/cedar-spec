@@ -442,10 +442,6 @@ def jsonToPolicy (json : Except String Lean.Json) : Policy := match json.isOk wi
       condition := condition
     }
 
--- def myPolicy : Policy :=
---   {id := "policy0", effect := Effect.permit, principalScope := PrincipalScope.principalScope Scope.any, actionScope := ActionScope.actionScope Scope.any, resourceScope := ResourceScope.resourceScope Scope.any, condition := Expr.lit (Prim.bool true): Policy}
-
-
 -- for now, doesn't include policy templates.
 -- a static policy is just a policy template with no blanks.
 def jsonToPolicies (json : Except String Lean.Json) : Policies := match json.isOk with
