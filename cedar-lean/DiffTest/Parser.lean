@@ -317,13 +317,13 @@ def jsonToContext (json : Except String Lean.Json) : Map Attr Value := match jso
   | true =>
     let json := Option.get! json.toOption
     let pairs_arr := unwrapExcept ((unwrapExcept (json.getObjVal? "expr_kind")).getObjVal? "Record")
-    match unwrapExcept (pairs_arr.getObjVal? "pairs") with
-      | Lean.Json.arr pairs_json =>
-        let kvs := arrayToKVPairList pairs_json
-        let keys := List.map strNodeToString kvs.fst
-        let vals := List.map (jsonToValue ∘ Except.ok) kvs.snd
-        Map.mk (List.zip keys vals)
-      | _ => Map.empty
+    match pairs_arr with
+    | Lean.Json.obj obj =>
+      let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
+      let keys := List.map Prod.fst pairs
+      let vals := List.map (jsonToValue ∘ Except.ok ∘ Prod.snd) pairs
+      Map.mk (List.zip keys vals)
+    | _ => panic! "uh oh"
 
 def myPrincipalEUID : EntityUID :=
   {ty := {id:= "User", path := []}, eid := "alice"}
@@ -346,17 +346,17 @@ partial def jsonToRequest (json : Except String Lean.Json) : Request := match js
     let principal := jsonToEUID ((unwrapExcept (json.getObjVal? "principal")).getObjVal? "Concrete")
     let action := jsonToEUID ((unwrapExcept (json.getObjVal? "action")).getObjVal? "Concrete")
     let resource := jsonToEUID ((unwrapExcept (json.getObjVal? "resource")).getObjVal? "Concrete")
-    let context := (jsonToContext ∘ json.getObjVal?) "context"
-    -- {
-    --   principal := principal,
-    --   action := action,
-    --   resource := resource,
-    --   context := context
-    -- }
-    myJsonRequest
+    let context := jsonToContext (json.getObjVal? "context")
+    {
+      principal := principal,
+      action := action,
+      resource := resource,
+      context := context,
+    }
+    -- myJsonRequest
 
-#eval jsonToRequest myJson
-#eval myJsonRequest == jsonToRequest myJson
+-- #eval jsonToRequest myJson
+-- #eval myJsonRequest == jsonToRequest myJson
 
 def jsonToEntityData (json : Except String Lean.Json) : EntityData := match json.isOk with
 | false => panic! "sorry"
