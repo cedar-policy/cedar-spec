@@ -17,8 +17,11 @@
 //! Implementation of the [`CedarTestImplementation`] trait for the Cedar Lean
 //! implementation.
 
+//NOTE: We use the env var RUST_LEAN_INTERFACE_INIT to save the fact that
+//we've already initialized
+
 use core::panic;
-use std::{collections::HashSet, ffi::CString};
+use std::{collections::HashSet, env, ffi::CString};
 
 use crate::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
@@ -51,7 +54,7 @@ pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 
 #[link(name = "Cedar", kind = "static")]
 // #[link(name = "Lean")]
-#[link(name = "Std")]
+#[link(name = "Std", kind = "static")]
 #[link(name = "DiffTest", kind = "static")]
 #[link(name = "leanshared", kind = "dylib")]
 #[link(name = "Mathlib", kind = "static")]
@@ -109,7 +112,6 @@ impl LeanDefinitionalEngine {
         })
         .expect("Failed to serialize request, policies, or entities");
         eprintln!("{request}");
-        println!("{:?}", request.clone().as_ptr());
         let cstring = CString::new(request).expect("CString::new failed");
         let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         return s;
@@ -117,27 +119,24 @@ impl LeanDefinitionalEngine {
 
     fn deserialize_response(response: *mut lean_object) -> InterfaceResponse {
         let response_string = lean_obj_to_string(response);
-        println!("Response string:");
-        println!("{response_string:?}");
-        // let resp: ResponseDef =
-        //     serde_json::from_str(&response_string).expect("could not convert string to json");
-        // let dec: authorizer::Decision = if resp.decision == "allow" {
-        //     authorizer::Decision::Allow
-        // } else if resp.decision == "deny" {
-        //     authorizer::Decision::Deny
-        // } else {
-        //     panic!("unknown decision")
-        // };
+        let resp: ResponseDef =
+            serde_json::from_str(&response_string).expect("could not convert string to json");
+        let dec: authorizer::Decision = if resp.decision == "allow" {
+            authorizer::Decision::Allow
+        } else if resp.decision == "deny" {
+            authorizer::Decision::Deny
+        } else {
+            panic!("unknown decision")
+        };
 
-        // let reason = resp
-        //     .policies
-        //     .mk
-        //     .l
-        //     .into_iter()
-        //     .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
-        //     .collect();
-        // InterfaceResponse::new(dec, reason, HashSet::new())
-        InterfaceResponse::new(authorizer::Decision::Allow, HashSet::new(), HashSet::new())
+        let reason = resp
+            .policies
+            .mk
+            .l
+            .into_iter()
+            .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
+            .collect();
+        InterfaceResponse::new(dec, reason, HashSet::new())
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -148,10 +147,13 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        unsafe { lean_initialize_runtime_module() };
-        unsafe { lean_initialize() };
-        unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
-        unsafe { lean_io_mark_end_initialization() };
+        if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
+            unsafe { lean_initialize_runtime_module() };
+            unsafe { lean_initialize() };
+            unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
+            unsafe { lean_io_mark_end_initialization() };
+            env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
+        }
 
         let req = Self::serialize_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };

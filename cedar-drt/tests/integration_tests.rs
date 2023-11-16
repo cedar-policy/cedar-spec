@@ -34,8 +34,10 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
     // Hard-code the list of tests that the cedar-policy package
     // currently runs (last updated 2023-09-25).
     let test_jsons = vec![
-        "decimal/1.json",
+        // "decimal/1.json",
         // "decimal/2.json",
+        // "example_use_cases_doc/simple.json",
+        //
         // "example_use_cases_doc/1a.json",
         // "example_use_cases_doc/2a.json",
         // "example_use_cases_doc/2b.json",
@@ -47,7 +49,7 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
         // "example_use_cases_doc/4d.json",
         // "example_use_cases_doc/4e.json",
         // "example_use_cases_doc/4f.json",
-        // "example_use_cases_doc/5b.json",
+        "example_use_cases_doc/5b.json",
         // "ip/1.json",
         // "ip/2.json",
         // "ip/3.json",
