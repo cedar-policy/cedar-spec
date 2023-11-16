@@ -1,0 +1,1585 @@
+{
+    "request": {
+        "principal": {
+            "Concrete": {
+                "ty": {
+                    "Concrete": {
+                        "id": "User",
+                        "path": []
+                    }
+                },
+                "eid": "ahmad"
+            }
+        },
+        "action": {
+            "Concrete": {
+                "ty": {
+                    "Concrete": {
+                        "id": "Action",
+                        "path": []
+                    }
+                },
+                "eid": "addPhoto"
+            }
+        },
+        "resource": {
+            "Concrete": {
+                "ty": {
+                    "Concrete": {
+                        "id": "Album",
+                        "path": []
+                    }
+                },
+                "eid": "alice_vacation"
+            }
+        },
+        "context": {
+            "expr_kind": {
+                "Record": {
+                    "authenticated": {
+                        "expr_kind": {
+                            "Lit": {
+                                "Bool": true
+                            }
+                        },
+                        "source_info": null,
+                        "data": null
+                    },
+                    "photo": {
+                        "expr_kind": {
+                            "Record": {
+                                "filesize_mb": {
+                                    "expr_kind": {
+                                        "Lit": {
+                                            "Long": 1
+                                        }
+                                    },
+                                    "source_info": null,
+                                    "data": null
+                                },
+                                "filetype": {
+                                    "expr_kind": {
+                                        "Lit": {
+                                            "String": "PNG"
+                                        }
+                                    },
+                                    "source_info": null,
+                                    "data": null
+                                }
+                            }
+                        },
+                        "source_info": null,
+                        "data": null
+                    }
+                }
+            },
+            "source_info": null,
+            "data": null
+        }
+    },
+    "policies": {
+        "templates": {
+            "policy0": {
+                "id": "policy0",
+                "annotations": {},
+                "effect": "permit",
+                "principal_constraint": {
+                    "constraint": "Any"
+                },
+                "action_constraint": {
+                    "Eq": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "addPhoto"
+                    }
+                },
+                "resource_constraint": {
+                    "constraint": {
+                        "In": {
+                            "EUID": {
+                                "ty": {
+                                    "Concrete": {
+                                        "id": "Account",
+                                        "path": []
+                                    }
+                                },
+                                "eid": "alice"
+                            }
+                        }
+                    }
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "Or": {
+                            "left": {
+                                "expr_kind": {
+                                    "And": {
+                                        "left": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "Contains",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "Set": [
+                                                                {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "JPEG"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 322,
+                                                                        "end": 328
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "PNG"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 330,
+                                                                        "end": 335
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            ]
+                                                        },
+                                                        "source_info": {
+                                                            "start": 321,
+                                                            "end": 336
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "GetAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "Var": "context"
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 346,
+                                                                                    "end": 353
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "photo"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 346,
+                                                                        "end": 368
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "filetype"
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 346,
+                                                            "end": 368
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 321,
+                                                "end": 369
+                                            },
+                                            "data": null
+                                        },
+                                        "right": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "LessEq",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "GetAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "Var": "context"
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 376,
+                                                                                    "end": 383
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "photo"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 376,
+                                                                        "end": 401
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "filesize_mb"
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 376,
+                                                            "end": 401
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "Lit": {
+                                                                "Long": 1
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 405,
+                                                            "end": 406
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 376,
+                                                "end": 406
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_info": {
+                                    "start": 321,
+                                    "end": 406
+                                },
+                                "data": null
+                            },
+                            "right": {
+                                "expr_kind": {
+                                    "And": {
+                                        "left": {
+                                            "expr_kind": {
+                                                "And": {
+                                                    "left": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "Eq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "context"
+                                                                                            },
+                                                                                            "source_info": {
+                                                                                                "start": 414,
+                                                                                                "end": 421
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "photo"
+                                                                                    }
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 414,
+                                                                                    "end": 436
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "filetype"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 414,
+                                                                        "end": 436
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "RAW"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 440,
+                                                                        "end": 445
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 414,
+                                                            "end": 445
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "right": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "LessEq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "context"
+                                                                                            },
+                                                                                            "source_info": {
+                                                                                                "start": 452,
+                                                                                                "end": 459
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "photo"
+                                                                                    }
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 452,
+                                                                                    "end": 477
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "filesize_mb"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 452,
+                                                                        "end": 477
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "Long": 100
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 481,
+                                                                        "end": 484
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 452,
+                                                            "end": 484
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 414,
+                                                "end": 523
+                                            },
+                                            "data": null
+                                        },
+                                        "right": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "In",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "Var": "principal"
+                                                        },
+                                                        "source_info": {
+                                                            "start": 491,
+                                                            "end": 500
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "Lit": {
+                                                                "EntityUID": {
+                                                                    "ty": {
+                                                                        "Concrete": {
+                                                                            "id": "UserGroup",
+                                                                            "path": []
+                                                                        }
+                                                                    },
+                                                                    "eid": "AVTeam"
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 504,
+                                                            "end": 523
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 491,
+                                                "end": 523
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_info": {
+                                    "start": 414,
+                                    "end": 523
+                                },
+                                "data": null
+                            }
+                        }
+                    },
+                    "source_info": {
+                        "start": 320,
+                        "end": 524
+                    },
+                    "data": null
+                }
+            }
+        },
+        "links": {
+            "policy0": {
+                "template_id": "policy0",
+                "link_id": null,
+                "values": {}
+            }
+        }
+    },
+    "entities": {
+        "entities": [
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Album",
+                            "path": []
+                        }
+                    },
+                    "eid": "device_prototypes"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Album",
+                                "path": []
+                            }
+                        },
+                        "eid": "device_prototypes"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "view"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "view"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "prototype_v0.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "prototype_v0.jpg"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "ahmad"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Album",
+                                    "path": []
+                                }
+                            },
+                            "eid": "device_prototypes"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "giuseppe"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "giuseppe"
+                    },
+                    "attrs": {
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "CustomerSupport"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 7
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "AVTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "addPhoto"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "addPhoto"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "ahmad"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "ahmad"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "ahmad"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "UserGroup",
+                            "path": []
+                        }
+                    },
+                    "eid": "AVTeam"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "UserGroup",
+                                "path": []
+                            }
+                        },
+                        "eid": "AVTeam"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "ahmad"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "ahmad"
+                    },
+                    "attrs": {
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 4
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "HardwareEngineering"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "stacey"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "stacey"
+                    },
+                    "attrs": {
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 6
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "Sales"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_friends"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "AccountGroup",
+                            "path": []
+                        }
+                    },
+                    "eid": "GeronimoTeam"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "AccountGroup",
+                                "path": []
+                            }
+                        },
+                        "eid": "GeronimoTeam"
+                    },
+                    "attrs": {
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "comment"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice"
+                    },
+                    "attrs": {
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 5
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "HardwareEngineering"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "AVTeam"
+                        },
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_friends"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "sales_projections.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "sales_projections.jpg"
+                    },
+                    "attrs": {
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "stacey"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": [
+                                    {
+                                        "expr_kind": {
+                                            "Lit": {
+                                                "EntityUID": {
+                                                    "ty": {
+                                                        "Concrete": {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    },
+                                                    "eid": "giuseppe"
+                                                }
+                                            }
+                                        },
+                                        "source_info": null,
+                                        "data": null
+                                    }
+                                ]
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "stacey"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice_w2.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice_w2.jpg"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": true
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "listPhotos"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "listPhotos"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Album",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice_vacation"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Album",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice_vacation"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "vacation.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "vacation.jpg"
+                    },
+                    "attrs": {
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        },
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Album",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_vacation"
+                        },
+                        {
+                            "ty": {
+                                "Concrete": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "UserGroup",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice_friends"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "UserGroup",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice_friends"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "edit"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "edit"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "stacey"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "stacey"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Concrete": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "stacey"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Concrete": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Concrete": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "delete"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ]
+        ]
+    }
+}
