@@ -68,7 +68,7 @@ module difftest.main {
   const entitytypeFromProdJson :=
     sumDeserializer(
       map[
-        "Concrete" := j => var n :- nameFromProdJson(j); Ok(EntityType(n)),
+        "Specified" := j => var n :- nameFromProdJson(j); Ok(EntityType(n)),
         "Unspecified" := _ => Ok(EntityType.UNSPECIFIED)
       ])
 
@@ -293,11 +293,11 @@ module difftest.main {
   }
 
   // In the production engine, `EntityUIDEntry` is the data type for a request
-  // field that is either a "concrete" EntityUID or "unknown" (for partial
+  // field that is either a "known" EntityUID or "unknown" (for partial
   // evaluation). We currently don't support partial evaluation, so we just
-  // translate the "concrete" variant to an EntityUID.
+  // translate the "known" variant to an EntityUID.
   const entityUIDEntryFromProdJson :=
-    sumDeserializer(map["Concrete" := entityUIDFromProdJson])
+    sumDeserializer(map["Known" := entityUIDFromProdJson])
 
   function getEntityUIDEntryField(request: Json, f: string): FromProdResult<EntityUID> {
     deserializeField(request, f, entityUIDEntryFromProdJson)
@@ -532,7 +532,7 @@ module difftest.main {
   const entitytypeFromProdJsonOption :=
     sumDeserializer(
       map[
-        "Concrete" := j => var n :- nameFromProdJson(j); Ok(Some(EntityType(n))),
+        "Specified" := j => var n :- nameFromProdJson(j); Ok(Some(EntityType(n))),
         "Unspecified" := _ => Ok(None)
       ])
 
