@@ -26,5 +26,19 @@ The table below lists all available fuzz targets, including which component of t
 
 ## Logging
 
-If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable. 
+If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable.
 The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
+
+
+## Linking Issues (Lean)
+If you get weird linking issues make sure:
+- `LD_PRELOAD` is set to the same lean version mathlib is using
+- You built all the lean code with static linking.
+- You cargo clean and rebuild (sometimes seemed necessary?)
+
+If you get SIG intercept issues make sure:
+- You initialize Lean before you start the JVM
+- You have Lean and the JVM in the same thread
+
+If you get errors for initializing Lean more than once make sure:
+- You only initialize Lean once.

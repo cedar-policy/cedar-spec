@@ -26,3 +26,5 @@ unset -f add_lib_to_path
 if [ -f "$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar" ]; then
     export CLASSPATH="$(< ../cedar-dafny-java-wrapper/build/runtimeClasspath.txt):$(pwd)/../cedar-dafny-java-wrapper/build/libs/cedar-dafny-java-wrapper.jar"
 fi
+
+export CEDAR_INTEGRATION_TESTS_PATH="$(pwd)/../cedar/cedar-integration-tests"

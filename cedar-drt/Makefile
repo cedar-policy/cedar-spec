@@ -1,7 +1,7 @@
 .PHONY: all run test
 
 all:
-	cd ../cedar-lean && lake build Cedar DiffTest Std:static Mathlib:static Qq:static Aesop:static ProofWidgets:static
+	cd ../cedar-lean && lake build Cedar:static DiffTest:static Std:static Mathlib:static Qq:static Aesop:static ProofWidgets:static
 	LEAN_LIB_DIR=`lean --print-libdir` \
 	cargo build;
 	LEAN_LIB_DIR=`lean --print-libdir` \
@@ -11,7 +11,7 @@ test: all
 	DYLD_LIBRARY_PATH=`lean --print-libdir`:${DYLD_LIBRARY_PATH} \
 	LD_LIBRARY_PATH=`lean --print-libdir`:${LD_LIBRARY_PATH} \
 	LEAN_LIB_DIR=`lean --print-libdir` \
-	cargo test --test integration_tests
+	cargo test
 
 run: all
 	DYLD_LIBRARY_PATH=`lean --print-libdir`:${DYLD_LIBRARY_PATH} \

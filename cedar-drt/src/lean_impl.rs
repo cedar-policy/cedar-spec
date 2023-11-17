@@ -51,7 +51,6 @@ pub const LEAN_DESERIALIZATION_MSG: &str = "lean_deserialization (ns) : ";
 pub const LEAN_AUTH_MSG: &str = "lean_auth (ns) : ";
 pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 
-
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Std", kind = "static")]
 #[link(name = "DiffTest", kind = "static")]
@@ -96,7 +95,14 @@ fn lean_obj_to_string(o: *mut lean_object) -> String {
 
 impl LeanDefinitionalEngine {
     pub fn new() -> Result<Self, LeanDefEngineError> {
-        Ok(Self { initialized: false })
+        if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
+            unsafe { lean_initialize_runtime_module() };
+            unsafe { lean_initialize() };
+            unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
+            unsafe { lean_io_mark_end_initialization() };
+            env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
+        }
+        Ok(Self { initialized: true })
     }
 
     fn serialize_request(
@@ -146,14 +152,6 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
-            unsafe { lean_initialize_runtime_module() };
-            unsafe { lean_initialize() };
-            unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
-            unsafe { lean_io_mark_end_initialization() };
-            env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
-        }
-
         let req = Self::serialize_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
         Self::deserialize_response(response)
