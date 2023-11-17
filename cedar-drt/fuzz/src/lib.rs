@@ -179,13 +179,13 @@ fn test_run_auth_test() {
 
     let java_def_engine =
         JavaDefinitionalEngine::new().expect("failed to create definitional engine");
-    let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+    let principal = ast::EntityUIDEntry::Known(std::sync::Arc::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
     ));
-    let action = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+    let action = ast::EntityUIDEntry::Known(std::sync::Arc::new(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
     ));
-    let resource = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+    let resource = ast::EntityUIDEntry::Known(std::sync::Arc::new(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
     ));
     let query = ast::Request::new_with_unknowns(
