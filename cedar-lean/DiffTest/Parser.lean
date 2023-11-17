@@ -24,428 +24,288 @@ import Cedar.Data
 import Cedar.Spec
 import Cedar.Spec.Ext
 
+import DiffTest.Util
+
 namespace DiffTest
 
 open Cedar.Spec
 open Cedar.Data
 open Cedar.Spec.Ext
 
-def unwrapExcept (e: Except String Lean.Json) : Lean.Json := match e.isOk with
-  | true => Option.get! e.toOption
-  | false => panic! "unwrapExcept: is not ok"
+def jsonToName (json : Lean.Json) : Name :=
+  let id := jsonToString (getJsonField json "id")
+  let path_json := jsonToArray (getJsonField json "path")
+  let path := List.map jsonToString path_json.toList
+  {
+    id := id,
+    path := path
+  }
 
-def strNodeToString (node : Lean.Json) : String := match node with
-  | Lean.Json.str s => s
-  | _ => panic! "strNodeToString"
+def jsonToEntityType (json : Lean.Json) : EntityType :=
+  jsonToName (getJsonField json "Concrete")
 
-def jsonToEUID (json : Except String Lean.Json) : EntityUID := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    let json := Option.get! json.toOption
-    let eid := (match unwrapExcept (json.getObjVal? "eid") with
-      | Lean.Json.str str => str
-      | _ => panic! json.pretty)
-    match json.getObjVal? "ty" with
-    | .error _ => {
-      ty := {
-        id := "Unspecified",
-        path := []
-      },
-      eid := eid
-    }
-    | .ok (Lean.Json.str str) => {
-      ty := {
-        id := str,
-        path := []
-      },
-      eid := eid
-    }
-    | .ok _ =>
-      let ty := (unwrapExcept (json.getObjVal? "ty")).getObjVal? "Concrete"
-      let ty := Option.get! ty.toOption
-      match (unwrapExcept (ty.getObjVal? "id")), (unwrapExcept (ty.getObjVal? "path")) with
-        | Lean.Json.str id, Lean.Json.arr path_json =>
-          let path := List.map strNodeToString path_json.toList
-          {
-            ty := {
-              id := id,
-              path := path
-            },
-            eid := eid
-          }
-        | _,_ => panic! "sorry"
+def jsonToEuid (json : Lean.Json) : EntityUID :=
+  let eid := jsonToString (getJsonField json "eid")
+  let ty := jsonToEntityType (getJsonField json "ty")
+  {
+    ty := ty,
+    eid := eid
+  }
 
-def litHelper (json : Except String Lean.Json) : Expr := match json.isOk with
-  | false => panic! "litHelper: is not ok"
-  | true => let json := Option.get! json.toOption
-  match json with
-    | Lean.Json.bool b => .lit (.bool b)
-    | Lean.Json.num n => match n.exponent with
-      | 0 => .lit (.int (Int64.mk! n.mantissa))
-      | _ => panic! "litHelper: num has exponent: " ++ json.pretty
-    | Lean.Json.str s => .lit (.string s)
-    | _ => panic! "litHelper: not known format for json: " ++ json.pretty
+def jsonToPrim (json : Lean.Json) : Prim :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "Bool" => .bool (jsonToBool body)
+  | "Long" => .int (jsonToInt64 body)
+  | "String" => .string (jsonToString body)
+  | "EntityUID" => .entityUID (jsonToEuid body)
+  | tag => panic! s!"jsonToPrim: unknown tag {tag}"
 
-def handleLit (json : Except String Lean.Json) : Expr := match json.isOk with
-  | false => panic! "handleLit: not ok json"
-  | true => let json := Option.get! json.toOption
-  match (json.getObjVal? "Bool").isOk with
-    | true => litHelper (json.getObjVal? "Bool")
-    | false => match (json.getObjVal? "Long").isOk with
-      | true => litHelper (json.getObjVal? "Long")
-      | false => match (json.getObjVal? "String").isOk with
-        | true => litHelper (json.getObjVal? "String")
-        | false => match (json.getObjVal? "EntityUID").isOk with
-          | true => .lit (.entityUID (jsonToEUID (json.getObjVal? "EntityUID")))
-          | false => panic! "handleLit: not known format" ++ json.pretty
+def jsonToVar (json : Lean.Json) : Var :=
+  let var := jsonToString json
+  match var with
+  | "principal" => .principal
+  | "action" => .action
+  | "resource" => .resource
+  | "context" => .context
+  | _ => panic! s!"jsonToVar: unknown variable {var}"
 
-def handleWildcardObj (json : Lean.Json) : PatElem := match json with
-| Lean.Json.str "Wildcard" => .star
-| Lean.Json.obj _ => match (json.getObjVal? "Char") with
-  | .ok (Lean.Json.num n) => match n.exponent with
-    | 0 => .justChar (Char.ofNat (n.mantissa.toNat))
-    | _ => panic! "handleWildcardObj: non zero exponent: " ++ json.pretty
-  | _ => panic! "handleWildcardObj: something unknown in wildcard: " ++ json.pretty
-| _ => panic! "handleWildcardObj: " ++ json.pretty
+def jsonToUnaryOp (json : Lean.Json) : UnaryOp :=
+  let op := jsonToString json
+  match op with
+  | "Not" => .not
+  | "Neg" => .neg
+  | op => panic! s!"jsonToUnaryOp: unknown operator {op}"
 
-def arrayToKVPairList (json : Array Lean.Json) : Prod (List Lean.Json) (List Lean.Json) :=
-List.unzip (List.map (fun x => match x with
-                                      | Lean.Json.arr kv => (kv[0]!, kv[1]!)
-                                      | _ => panic! "arrayToKVPairList: " ++ x.pretty) json.toList)
+def jsonToPatElem (json : Lean.Json) : PatElem :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "Wildcard" => .star
+  | "Char" => .justChar (jsonToChar body)
+  | tag => panic! s!"jsonToPatElem: unsupported tag {tag}"
 
--- Need to convert JSON structure to Expr structure. We expect JSON to have format:
---
--- "Expr": {
--- "Lit" : { "Bool" | "Long" | "String" | "EntityUID" : blah}
--- "Var" : { "Principal" | "Action" | "Resource" | "Context" }
--- "If" : {"test_expr": Expr, "then_expr": Expr, "else_expr": Expr}
--- "And" : {"left": Expr, "right": Expr}
--- "Or" : {"left": Expr, "right": Expr}
--- "UnaryApp" : {"op": UnaryOp, "arg": Expr}
--- "BinaryApp" : {"op": UnaryOp, "arg1": Expr, "arg2": Expr}
--- "GetAttr" : {"expr": Expr, "attr": String}
--- "HasAttr" : {"expr": Expr, "arg": String}
--- "Set" : {[Expr]}
--- "Record" : {"id1": Expr, "id2": Expr, ...}
--- }
+def jsonToPattern (json : Lean.Json) : Pattern :=
+  let elems := jsonToArray json
+  List.map jsonToPatElem elems.toList
+
+def jsonToBinaryOp (json : Lean.Json) : BinaryOp :=
+  let op := jsonToString json
+  match op with
+  | "Eq" => .eq
+  | "In" => .mem
+  | "Less" => .less
+  | "LessEq" => .lessEq
+  | "Add" => .add
+  | "Sub" => .sub
+  | "Contains" => .contains
+  | "ContainsAll" => .containsAll
+  | "ContainsAny" => .containsAny
+  | op => panic! s!"jsonToBinaryOp: unknown operator {op}"
+
+def jsonToExtFun (json : Lean.Json) : ExtFun :=
+  let xfn := jsonToName json
+  match xfn.id with
+  | "decimal" => .decimal
+  | "lessThan" => .lessThan
+  | "lessThanOrEqual" => .lessThanOrEqual
+  | "greaterThan" => .greaterThan
+  | "greaterThanOrEqual" => .greaterThanOrEqual
+  | "ip" => .ip
+  | "isIpv4" => .isIpv4
+  | "isIpv6" => .isIpv6
+  | "isLoopback" => .isLoopback
+  | "isMulticast" => .isMulticast
+  | "isInRange" => .isInRange
+  | xfn => panic! s!"jsonToExtFun: unknown extension function {xfn}"
 
 /-
-defined as partial to avoid writing the proof of termination, which isn't really required
-as we don't need to prove correctness of the parser -- no proofs involve the parser, and
-we can be confident it terminates :)
+Defined as partial to avoid writing the proof of termination, which isn't required
+since we don't prove correctness of the parser.
 -/
-partial def jsonToExpr (json : Except String Lean.Json) : Expr := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-  let json := Option.get! json.toOption
-  let json := unwrapExcept (json.getObjVal? "expr_kind")
-  match json with
-  | Lean.Json.null => panic! "sorry"
-  | Lean.Json.bool b => .lit (.bool b)
-  | Lean.Json.num n => match n.exponent with
-    | 0 => .lit (.int (Int64.mk! n.mantissa))
-    | _ => panic! "sorry"
-  | Lean.Json.str s => .lit (.string s)
-  | Lean.Json.arr _ => panic! "sorry"
-  | _ =>
-    match (json.getObjVal? "Lit").isOk with
-    | true => handleLit (json.getObjVal? "Lit")
-    | false => match (json.getObjVal? "Var").isOk with
-      | true =>
-        let v := unwrapExcept (json.getObjVal? "Var")
-        match v with
-        | Lean.Json.str s => match s with
-          | "principal" => .var .principal
-          | "action" => .var .action
-          | "resource" => .var .resource
-          | "context" => .var .context
-          | _ => panic! "unknown string in var"
-        | _ => panic! "var not string"
-      | false => match (json.getObjVal? "And").isOk with
-        | true =>
-          let lhs := (unwrapExcept (json.getObjVal? "And")).getObjVal? "left"
-          let rhs := (unwrapExcept (json.getObjVal? "And")).getObjVal? "right"
-          .and (jsonToExpr lhs) (jsonToExpr rhs)
-        | false => match (json.getObjVal? "Or").isOk with
-          | true =>
-            let lhs := (unwrapExcept (json.getObjVal? "Or")).getObjVal? "left"
-            let rhs := (unwrapExcept (json.getObjVal? "Or")).getObjVal? "right"
-            .or (jsonToExpr lhs) (jsonToExpr rhs)
-          | false => match (json.getObjVal? "If").isOk with
-            | true =>
-              let g := (unwrapExcept (json.getObjVal? "If")).getObjVal? "test_expr"
-              let t := (unwrapExcept (json.getObjVal? "If")).getObjVal? "then_expr"
-              let e := (unwrapExcept (json.getObjVal? "If")).getObjVal? "else_expr"
-              .ite (jsonToExpr g) (jsonToExpr t) (jsonToExpr e)
-            | false => match (json.getObjVal? "UnaryApp").isOk with
-              | true =>
-                let json := unwrapExcept (json.getObjVal? "UnaryApp")
-                match (json.getObjVal? "op").isOk, (json.getObjVal? "arg").isOk with
-                | true, true =>
-                  let objVal := Option.get! (json.getObjVal? "op").toOption
-                  let arg := json.getObjVal? "arg"
-                  match objVal with
-                  | Lean.Json.str s => match s with
-                    | "Not" => .unaryApp .not (jsonToExpr arg)
-                    | "Neg" => .unaryApp .neg (jsonToExpr arg)
-                    | _ => panic! "unknown unary op"
-                  | _ => panic! "incorrect op for unary app"
-                | _ , _ => panic! "unary app does not have right fields: " ++ json.pretty
-              | false => match (json.getObjVal? "MulByConst").isOk with
-                | true =>
-                  let json := Option.get! (json.getObjVal? "MulByConst").toOption
-                  let arg := json.getObjVal? "arg"
-                  let constJson := unwrapExcept (json.getObjVal? "constant")
-                  match constJson with
-                  | Lean.Json.num n => match n.exponent with
-                    | 0 => .unaryApp (.mulBy (Int64.mk! n.mantissa)) (jsonToExpr arg)
-                    | _ => panic! "sorry"
-                  | _ => panic! "constant for mul by is not a numebr"
-                | false => match (json.getObjVal? "Like").isOk with
-                  | true =>
-                    let json := Option.get! (json.getObjVal? "Like").toOption
-                    let expr := jsonToExpr (json.getObjVal? "expr")
-                    match (json.getObjVal? "pattern") with
-                      | .ok (Lean.Json.arr arr) => .unaryApp (.like (List.map handleWildcardObj arr.toList)) expr
-                      | _ => panic! "not an array in Like"
-                  | false => match (json.getObjVal? "BinaryApp").isOk with
-                    | true =>
-                      let json := unwrapExcept (json.getObjVal? "BinaryApp")
-                      let op := unwrapExcept (json.getObjVal? "op")
-                      let arg1 := jsonToExpr (json.getObjVal? "arg1")
-                      let arg2 := jsonToExpr (json.getObjVal? "arg2")
-                      match op with
-                      | Lean.Json.str s => match s with
-                        | "Eq" => .binaryApp .eq arg1 arg2
-                        | "In" => .binaryApp .mem arg1 arg2
-                        | "Less" => .binaryApp .less arg1 arg2
-                        | "LessEq" => .binaryApp .lessEq arg1 arg2
-                        | "Add" => .binaryApp .add arg1 arg2
-                        | "Sub" => .binaryApp .sub arg1 arg2
-                        | "Contains" => .binaryApp .contains arg1 arg2
-                        | "ContainsAll" => .binaryApp .containsAll arg1 arg2
-                        | "ContainsAny" => .binaryApp .containsAny arg1 arg2
-                        | _ => panic! "unknown op for binary app"
-                      | _ => panic "op for binary app is not a string"
-                    | false => match (json.getObjVal? "GetAttr").isOk with
-                      | true =>
-                        let e := (unwrapExcept (json.getObjVal? "GetAttr")).getObjVal? "expr"
-                        let wrapped_attr := (unwrapExcept (json.getObjVal? "GetAttr")).getObjVal? "attr"
-                        match e.isOk, wrapped_attr.isOk with
-                          | true,true => match unwrapExcept wrapped_attr with
-                            | Lean.Json.str s => .getAttr (jsonToExpr e) s
-                            | _ => panic! "sorry"
-                          | _,_ => panic! "sorry"
-                      | false => match (json.getObjVal? "HasAttr").isOk with
-                        | true =>
-                          let e := (unwrapExcept (json.getObjVal? "HasAttr")).getObjVal? "expr"
-                          let wrapped_attr := (unwrapExcept (json.getObjVal? "HasAttr")).getObjVal? "attr"
-                          match e.isOk, wrapped_attr.isOk with
-                            | true,true => match unwrapExcept wrapped_attr with
-                              | Lean.Json.str s => .hasAttr (jsonToExpr e) s
-                              | _ => panic! "sorry"
-                            | _,_ => panic! "sorry"
-                        | false => match (json.getObjVal? "Record").isOk with
-                          | true =>
-                            let attrs := unwrapExcept (json.getObjVal? "Record")
-                            match attrs with
-                              | Lean.Json.obj obj =>
-                                let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
-                                let keys := List.map Prod.fst pairs
-                                let vals := List.map (jsonToExpr ∘ Except.ok ∘ Prod.snd) pairs
-                                Expr.record (List.zip keys vals)
-                              | _ => panic! "Invalid record shape"
-                          | false => match (json.getObjVal? "Set").isOk with
-                            | true =>
-                              let e := (unwrapExcept (json.getObjVal? "Set")).getArr?
-                              match e.isOk with
-                              | true =>
-                                let e := Option.get! e.toOption
-                                let es := List.map jsonToExpr (List.map Except.ok e.toList)
-                                let exs : Expr := .set es
-                                exs
-                              | false => panic! "sorry"
-                            | false => match (json.getObjVal? "ExtensionFunctionApp").isOk with
-                              | true =>
-                              let e := (unwrapExcept (json.getObjVal? "ExtensionFunctionApp"))
-                              let args := Option.get! ((unwrapExcept (e.getObjVal? "args")).getArr?).toOption
-                              let args := List.map (jsonToExpr ∘ Except.ok) args.toList
-                              let fn_name := (unwrapExcept ((unwrapExcept (e.getObjVal? "fn_name")).getObjVal? "id")).getStr?
-                              match fn_name with
-                                | .ok "decimal" => .call .decimal args
-                                | .ok "lessThan" => .call .lessThan args
-                                | .ok "lessThanOrEqual" => .call .lessThanOrEqual args
-                                | .ok "greaterThan" => .call .greaterThan args
-                                | .ok "greaterThanOrEqual" => .call .greaterThanOrEqual args
-                                | .ok "ip" => .call .ip args
-                                | .ok "isIpv4" => .call .isIpv4 args
-                                | .ok "isIpv6" => .call .isIpv6 args
-                                | .ok "isLoopback" => .call .isLoopback args
-                                | .ok "isMulticast" => .call .isMulticast args
-                                | .ok "isInRange" => .call .isInRange args
-                                | .ok name => panic! "unknown extension function: "++name
-                                | .error e => panic! "extension fn name error: "++e
-                              | false => panic! json.pretty
+partial def jsonToExpr (json : Lean.Json) : Expr :=
+  let json := getJsonField json "expr_kind"
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "Lit" => .lit (jsonToPrim body)
+  | "Var" =>
+    let var := jsonToString body
+    .var (jsonToVar var)
+  | "And" =>
+    let lhs := getJsonField body "left"
+    let rhs := getJsonField body "right"
+    .and (jsonToExpr lhs) (jsonToExpr rhs)
+  | "Or" =>
+    let lhs := getJsonField body "left"
+    let rhs := getJsonField body "right"
+    .or (jsonToExpr lhs) (jsonToExpr rhs)
+  | "If" =>
+    let i := getJsonField body "test_expr"
+    let t := getJsonField body "then_expr"
+    let e := getJsonField body "else_expr"
+    .ite (jsonToExpr i) (jsonToExpr t) (jsonToExpr e)
+  | "UnaryApp" =>
+    let op := getJsonField body "op"
+    let arg := getJsonField body "arg"
+    .unaryApp (jsonToUnaryOp op) (jsonToExpr arg)
+  | "MulByConst" =>
+    let c := getJsonField body "constant"
+    let expr := getJsonField body "expr"
+    .unaryApp (.mulBy (jsonToInt64 c)) (jsonToExpr expr)
+  | "Like" =>
+    let pat := getJsonField body "pattern"
+    let expr := getJsonField body "expr"
+    .unaryApp (.like (jsonToPattern pat)) (jsonToExpr expr)
+  | "Is" =>
+    let ety := getJsonField body "entity_type"
+    let expr := getJsonField body "expr"
+    .unaryApp (.is (jsonToName ety)) (jsonToExpr expr)
+  | "BinaryApp" =>
+    let op := getJsonField body "op"
+    let arg1 := getJsonField body "arg1"
+    let arg2 := getJsonField body "arg2"
+    .binaryApp (jsonToBinaryOp op) (jsonToExpr arg1) (jsonToExpr arg2)
+  | "GetAttr" =>
+    let e :=  getJsonField body "expr"
+    let attr := getJsonField body "attr"
+    .getAttr (jsonToExpr e) (jsonToString attr)
+  | "HasAttr" =>
+    let e :=  getJsonField body "expr"
+    let attr := getJsonField body "attr"
+    .hasAttr (jsonToExpr e) (jsonToString attr)
+  | "Record" =>
+    let kvs := jsonObjToKVList body
+    .record (List.map (λ (k,v) => (k,jsonToExpr v)) kvs)
+  | "Set" =>
+    let arr := jsonToArray body
+    .set (List.map jsonToExpr arr.toList)
+  | "ExtensionFunctionApp" =>
+    let args := jsonToArray (getJsonField body "args")
+    let fn := getJsonField body "fn_name"
+    .call (jsonToExtFun fn) (List.map jsonToExpr args.toList)
+  | tag => panic! s!"jsonToExpr: unknown tag {tag}"
 
-partial def exprToValue (expr : Expr) : Value := match expr with
+def extExprToValue (xfn : ExtFun) (args : List Expr) : Value :=
+  match xfn, args with
+  | .decimal, [.lit (.string s)] => match Decimal.decimal s with
+    | .some v => .ext (.decimal v)
+    | .none => panic! s!"exprToValue: failed to parse decimal {s}"
+  | .ip, [.lit (.string s)] => match IPAddr.ip s with
+    | .some v => .ext (.ipaddr v)
+    | .none => panic! s!"exprToValue: failed to parse ip {s}"
+  | _,_ => panic! "exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args))
+
+/-
+Convert an expression to a value. This function is used to parse values
+that were serialized as expressions in the JSON, so it fails if the
+conversion is non-trivial.
+-/
+partial def exprToValue : Expr → Value
   | Expr.lit p => Value.prim p
-  | Expr.record r => Value.record (Map.mk (List.map (λ (a,ex) => (a , exprToValue ex)) r))
+  | Expr.record r => Value.record (Map.mk (List.map (λ (k,v) => (k,exprToValue v)) r))
   | Expr.set s => Value.set (Set.mk (List.map exprToValue s))
-  | Expr.call ty arg => match ty, arg with
-    | .decimal, [.lit (.string s)] => match Decimal.decimal s with
-      | .some v => .ext (.decimal v)
-      | .none => panic! "could not parse decimal"
-    | .ip, [.lit (.string s)] => match IPAddr.ip s with
-      | .some v => .ext (.ipaddr v)
-      | .none => panic! "could not parse ip"
-    | _,_ => panic! "unexpected extension function in exprToValue"
-  | _ => panic! toString (repr expr)
+  | Expr.call xfn args => extExprToValue xfn args
+  | expr => panic! "exprToValue: invalid input expression\n" ++ toString (repr expr)
 
-def jsonToValue (json : Except String Lean.Json) : Value := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    (exprToValue ∘ jsonToExpr) json
+def jsonToValue : Lean.Json → Value := exprToValue ∘ jsonToExpr
 
-def jsonToContext (json : Except String Lean.Json) : Map Attr Value := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    let json := Option.get! json.toOption
-    let pairs_arr := unwrapExcept ((unwrapExcept (json.getObjVal? "expr_kind")).getObjVal? "Record")
-    match pairs_arr with
-    | Lean.Json.obj obj =>
-      let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
-      let keys := List.map Prod.fst pairs
-      let vals := List.map (exprToValue ∘ jsonToExpr ∘ Except.ok ∘ Prod.snd) pairs
-      Map.mk (List.zip keys vals)
-    | _ => panic! "uh oh"
+def jsonToContext (json : Lean.Json) : Map Attr Value :=
+  let value := jsonToValue json
+  match value with
+  | .record kvs => kvs
+  | _ => panic! "jsonToContext: context must be a record\n" ++ toString (repr value)
 
-partial def jsonToRequest (json : Except String Lean.Json) : Request := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    let json := Option.get! json.toOption
-    let json := unwrapExcept (json.getObjVal? "request")
-    let principal := jsonToEUID ((unwrapExcept (json.getObjVal? "principal")).getObjVal? "Concrete")
-    let action := jsonToEUID ((unwrapExcept (json.getObjVal? "action")).getObjVal? "Concrete")
-    let resource := jsonToEUID ((unwrapExcept (json.getObjVal? "resource")).getObjVal? "Concrete")
-    let context := (jsonToContext ∘ json.getObjVal?) "context"
-    {
-      principal := principal,
-      action := action,
-      resource := resource,
-      context := context,
-    }
+/-
+The "Concrete" in this function refers to "concrete" vs. "unknown" entities.
+We only need to support the "Concrete" case here because the Lean does not
+support partial evaluation.
+-/
+partial def jsonToRequest (json : Lean.Json) : Request :=
+  let principal := getJsonField (getJsonField json "principal") "Concrete"
+  let action := getJsonField (getJsonField json "action") "Concrete"
+  let resource := getJsonField (getJsonField json "resource") "Concrete"
+  let context := getJsonField json "context"
+  {
+    principal := jsonToEuid principal,
+    action := jsonToEuid action,
+    resource := jsonToEuid resource,
+    context := jsonToContext context,
+  }
 
-def jsonToEntityData (json : Except String Lean.Json) : EntityData := match json.isOk with
-| false => panic! "sorry"
-| true =>
-  let json := Option.get! json.toOption
-  let ancestors_json := unwrapExcept (json.getObjVal? "ancestors")
-  let ancestors := match ancestors_json with
-    | Lean.Json.arr arr => Set.mk (List.map (jsonToEUID ∘ Except.ok) arr.toList)
-    | _ => Set.empty
-  let attrs_json := unwrapExcept (json.getObjVal? "attrs")
-  let attrs := match attrs_json with
-  | Lean.Json.obj obj =>
-    let pairs := (obj.fold (fun l s j => (s,j) :: l) [])
-    let keys := List.map Prod.fst pairs
-    let vals := List.map (exprToValue ∘ jsonToExpr ∘ Except.ok ∘ Prod.snd) pairs
-    Map.mk (List.zip keys vals)
-  | _ => panic! "uh oh"
+def jsonToEntityData (json : Lean.Json) : EntityData :=
+  let ancestorsArr := jsonToArray (getJsonField json "ancestors")
+  let ancestors := Set.mk (List.map jsonToEuid ancestorsArr.toList)
+  let attrsKvs := jsonObjToKVList (getJsonField json "attrs")
+  let attrs := Map.mk (List.map (λ (k,v) => (k,jsonToValue v)) attrsKvs)
   {
     ancestors := ancestors,
     attrs := attrs
   }
 
-def jsonToEntities (json : Except String Lean.Json) : Entities := match json.isOk with
-| false => panic! "sorry"
-| true =>
-  let json := Option.get! json.toOption
-  let json := unwrapExcept (json.getObjVal? "entities")
-  let entities := unwrapExcept (json.getObjVal? "entities")
-  match entities with
-    | Lean.Json.arr arr =>
-      let vs := (arrayToKVPairList arr).snd
-      let entityid := List.map (fun x => jsonToEUID (x.getObjVal? "uid")) vs
-      let entitydata := List.map (jsonToEntityData ∘ Except.ok) vs
-      Map.mk (List.zip entityid entitydata)
-    | _ => panic! "sorry"
+def jsonToEntities (json : Lean.Json) : Entities :=
+  let entities := getJsonField json "entities"
+  let kvs := jsonArrayToKVList entities
+  Map.mk (List.map (λ (k,v) => (jsonToEuid k, jsonToEntityData v)) kvs)
 
-def strToScopeAny (str : String) : Scope := match str with
-| "Any" => .any
-| _ => panic! "sorry"
+def jsonToEffect (json : Lean.Json) : Effect :=
+  let eff := jsonToString json
+  match eff with
+  | "permit" => .permit
+  | "forbid" => .forbid
+  | eff => panic! s!"jsonToEffect: unknown effect {eff}"
 
-def jsonToArgedScopePR (json : Lean.Json) (isEq : Bool) (isActionScope : Bool) : Scope :=
-  let euidJson := if isActionScope then json else unwrapExcept (json.getObjVal? "EUID")
-  let euid := jsonToEUID (Except.ok euidJson)
-  if isEq then .eq euid else .mem euid
+/-
+Slots not currently supported, but will be added in the future.
+-/
+def jsonToEuidOrSlot (json : Lean.Json) : EntityUID :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "EUID" => jsonToEuid body
+  | tag => panic! s!"jsonToEuidOrSlot: unknown tag {tag}"
 
-def jsonToActionInAnyListEUID (json : Lean.Json) : List EntityUID := match json.getArr? with
-| .ok arr => List.map (jsonToEUID ∘ Except.ok) arr.toList
-| .error _ => panic! "sorry"
+def jsonToScope (json : Lean.Json) : Scope :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "Any" => .any
+  | "In" => .mem (jsonToEuidOrSlot body)
+  | "Eq" => .eq (jsonToEuidOrSlot body)
+  | "Is" => .is (jsonToName body)
+  | "IsIn" =>
+    let (ety,e) := jsonToTuple body
+    .isMem (jsonToName ety) (jsonToEuidOrSlot e)
+  | tag => panic! s!"jsonToScope: unknown tag {tag}"
 
-def jsonToPolicy (json : Except String Lean.Json) : Policy := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    let json := Option.get! json.toOption
-    let idJson := unwrapExcept (json.getObjVal? "id")
-    let id := match idJson.getStr? with
-      | .ok str => str
-      | _ => panic! "sorry"
-    let effectJson := unwrapExcept (json.getObjVal? "effect")
-    let effect := match effectJson.getStr? with
-      | .ok str => match str with
-        | "permit" => Effect.permit
-        | "forbid" => Effect.forbid
-        | _ => panic! "sorry"
-      | .error _ => panic! "sorry"
-    let principalConstraintWrapped := unwrapExcept (json.getObjVal? "principal_constraint")
-    let principalConstraintJson := unwrapExcept (principalConstraintWrapped.getObjVal? "constraint")
-    let principalConstraint := match principalConstraintJson.getStr? with
-      | .ok str => .principalScope (strToScopeAny str)
-      | .error _ => match principalConstraintJson.getObjVal? "Eq" with
-        | .ok eqObj => .principalScope (jsonToArgedScopePR eqObj true false)
-        | .error _ => match principalConstraintJson.getObjVal? "In" with
-          | .ok inObj => .principalScope (jsonToArgedScopePR inObj false false)
-          | _ => panic! "sorry"
-    let actionConstraintJson := unwrapExcept (json.getObjVal? "action_constraint")
-    let actionConstraint := match actionConstraintJson.getStr? with
-      | .ok str => .actionScope (strToScopeAny str)
-      | .error _ => match actionConstraintJson.getObjVal? "Eq" with
-        | .ok eqObj => .actionScope (jsonToArgedScopePR eqObj true true)
-        | .error _ => match actionConstraintJson.getObjVal? "In" with
-          | .ok inObj => match inObj.getArr? with
-            | .ok _ => .actionInAny (jsonToActionInAnyListEUID inObj)
-            | .error _ => .actionScope (jsonToArgedScopePR inObj false true)
-          | _ => panic! "sorry"
-    let resourceConstraintWrapped := unwrapExcept (json.getObjVal? "resource_constraint")
-    let resourceConstraintJson := unwrapExcept (resourceConstraintWrapped.getObjVal? "constraint")
-    let resourceConstraint := match resourceConstraintJson.getStr? with
-      | .ok str => .resourceScope (strToScopeAny str)
-      | .error _ => match resourceConstraintJson.getObjVal? "Eq" with
-        | .ok eqObj => .resourceScope (jsonToArgedScopePR eqObj true false)
-        | .error _ => match resourceConstraintJson.getObjVal? "In" with
-          | .ok inObj => .resourceScope (jsonToArgedScopePR inObj false false)
-          | _ => panic! "sorry"
-    let condition := jsonToExpr (json.getObjVal? "non_head_constraints")
-    {
-      id := id
-      effect := effect,
-      principalScope := principalConstraint,
-      resourceScope := resourceConstraint,
-      actionScope := actionConstraint,
-      condition := condition
-    }
+def jsonToActionScope (json : Lean.Json) : ActionScope :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+  | "Any" => .actionScope .any
+  | "In" =>
+    let arr := jsonToArray body
+    .actionInAny (List.map jsonToEuid arr.toList)
+  | "Eq" => .actionScope (.eq (jsonToEuid body))
+  | tag => panic! s!"jsonToActionScope: unknown tag {tag}"
 
--- for now, doesn't include policy templates.
--- a static policy is just a policy template with no blanks.
-def jsonToPolicies (json : Except String Lean.Json) : Policies := match json.isOk with
-  | false => panic! "sorry"
-  | true =>
-    let json := Option.get! json.toOption
-    let json := unwrapExcept (json.getObjVal? "policies")
-    let templates := unwrapExcept (json.getObjVal? "templates")
-    match templates.getObj? with
-      | .ok obj => List.map (jsonToPolicy ∘ Except.ok ∘ Prod.snd) (obj.fold (fun l s j => (s,j) :: l) [])
-      | _ => panic! "sorry"
+def jsonToPolicy (json : Lean.Json) : Policy :=
+  let id := jsonToString (getJsonField json "id")
+  let effect := jsonToEffect (getJsonField json "effect")
+  let principalConstraint := getJsonField (getJsonField json "principal_constraint") "constraint"
+  let actionConstraint := getJsonField json "action_constraint"
+  let resourceConstraint := getJsonField (getJsonField json "resource_constraint") "constraint"
+  let condition := jsonToExpr (getJsonField json "non_head_constraints")
+  {
+    id := id
+    effect := effect,
+    principalScope := .principalScope (jsonToScope principalConstraint),
+    resourceScope := .resourceScope (jsonToScope resourceConstraint),
+    actionScope := jsonToActionScope actionConstraint,
+    condition := condition
+  }
+
+/-
+For now, doesn't support policy templates.
+A static policy is just a policy template with no blanks.
+-/
+def jsonToPolicies (json : Lean.Json) : Policies :=
+  let templates_kvs := jsonObjToKVList (getJsonField json "templates")
+  List.map (λ (_,v) => jsonToPolicy v) templates_kvs
 
 end DiffTest

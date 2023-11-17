@@ -16,3 +16,4 @@
 
 import DiffTest.Main
 import DiffTest.Parser
+import DiffTest.Util

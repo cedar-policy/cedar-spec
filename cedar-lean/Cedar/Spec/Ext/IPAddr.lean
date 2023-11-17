@@ -257,6 +257,7 @@ def IPNet.lt : IPNet → IPNet → Bool
 ----- IPNet deriviations -----
 
 deriving instance Repr for IPNet
+deriving instance Inhabited for IPNet
 deriving instance DecidableEq for IPNet
 
 instance : LT IPNet where

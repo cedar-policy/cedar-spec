@@ -40,6 +40,7 @@ def Ext.lt : Ext → Ext → Bool
 ----- Derivations -----
 
 deriving instance Repr for Ext
+deriving instance Inhabited for Ext
 deriving instance DecidableEq for Ext
 
 instance : LT Ext where

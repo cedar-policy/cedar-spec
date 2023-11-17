@@ -65,6 +65,7 @@ def call : ExtFun → List Value → Result Value
 ----- Derivations -----
 
 deriving instance Repr for ExtFun
+deriving instance Inhabited for ExtFun
 deriving instance DecidableEq for ExtFun
 
 end Cedar.Spec

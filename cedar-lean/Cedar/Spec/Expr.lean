@@ -71,6 +71,9 @@ deriving instance Repr for UnaryOp
 deriving instance Repr for BinaryOp
 deriving instance Repr for Expr
 
+deriving instance Inhabited for Var
+deriving instance Inhabited for UnaryOp
+deriving instance Inhabited for BinaryOp
 deriving instance Inhabited for Expr
 
 deriving instance DecidableEq for Var

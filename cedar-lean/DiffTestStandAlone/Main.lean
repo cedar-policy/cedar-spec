@@ -47,10 +47,13 @@ def main (args : List String) : IO Unit :=
       let filename := args.head!
       let req ← readFile filename
       let json := Lean.Json.parse req
-      let request := jsonToRequest json
-      let entities := jsonToEntities json
-      let policies := jsonToPolicies json
-      let response := isAuthorized request entities policies
-      let json := Lean.toJson response
-      IO.println (toString json)
+      match json with
+      | .error e => panic! s!"isAuthorizedDRT: failed to parse input: {e}"
+      | .ok json =>
+        let request := jsonToRequest (getJsonField json "request")
+        let entities := jsonToEntities (getJsonField json "entities")
+        let policies := jsonToPolicies (getJsonField json "policies")
+        let response := isAuthorized request entities policies
+        let json := Lean.toJson response
+        IO.println (toString json)
     | _ => IO.println s!"Incorrect number of arguments"

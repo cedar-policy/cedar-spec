@@ -65,6 +65,9 @@ def le (d₁ d₂ : Decimal) : Bool := d₁.1 ≤ d₂.1
 
 ----- Derivations -----
 
+instance : Inhabited Decimal where
+  default := Subtype.mk 0 (by simp)
+
 instance : LT Decimal where
   lt := fun d₁ d₂ => Decimal.lt d₁ d₂
 
