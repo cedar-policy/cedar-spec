@@ -228,7 +228,7 @@ partial def jsonToRequest (json : Lean.Json) : Request :=
     principal := jsonToEuid principal,
     action := jsonToEuid action,
     resource := jsonToEuid resource,
-    context := jsonToContext context,
+    context := jsonToContext context
   }
 
 def jsonToEntityData (json : Lean.Json) : EntityData :=
