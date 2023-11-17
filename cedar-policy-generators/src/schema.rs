@@ -335,7 +335,7 @@ pub(crate) fn build_qualified_entity_type_name(
     name: ast::Id,
 ) -> ast::Name {
     match build_qualified_entity_type(namespace, Some(name)) {
-        ast::EntityType::Concrete(type_name) => type_name,
+        ast::EntityType::Specified(type_name) => type_name,
         ast::EntityType::Unspecified => {
             panic!("Should not have built an unspecified type from `Some(name)`.")
         }
@@ -378,8 +378,8 @@ fn build_qualified_entity_type(
 ) -> ast::EntityType {
     match basename {
         Some(basename) => match namespace {
-            None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename)),
-            Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(basename, ns)),
+            None => ast::EntityType::Specified(ast::Name::unqualified_name(basename)),
+            Some(ns) => ast::EntityType::Specified(ast::Name::type_in_namespace(basename, ns)),
         },
         None => ast::EntityType::Unspecified,
     }
@@ -854,7 +854,7 @@ impl Schema {
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
         match ty {
-            ast::EntityType::Concrete(ty) => self
+            ast::EntityType::Specified(ty) => self
                 .exprgenerator(hierarchy)
                 .arbitrary_uid_with_type(&ty, u),
             ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
@@ -892,7 +892,7 @@ impl Schema {
                     ast::EntityType::Unspecified => {
                         panic!("should not be possible to generate an unspecified entity")
                     }
-                    ast::EntityType::Concrete(name) => {
+                    ast::EntityType::Specified(name) => {
                         Some(entity_type_name_to_schema_type_variant(&name))
                     }
                 }

@@ -260,7 +260,7 @@ impl From<Entities> for Hierarchy {
         let mut uids_by_type: HashMap<ast::Name, HashSet<ast::EntityUID>> = HashMap::new();
         for e in entities.iter() {
             let etype = match e.uid().entity_type() {
-                ast::EntityType::Concrete(name) => name.clone(),
+                ast::EntityType::Specified(name) => name.clone(),
                 ast::EntityType::Unspecified => {
                     panic!("didn't expect unspecified entity in Entities")
                 }
@@ -411,7 +411,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 entity_types
                     .into_iter()
                     .filter_map(|ty| match ty {
-                        ast::EntityType::Concrete(name) => Some(name),
+                        ast::EntityType::Specified(name) => Some(name),
                         ast::EntityType::Unspecified => None,
                     })
                     .collect()
@@ -495,7 +495,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .entities()
             .map(|e| e.uid())
             .map(|uid| {
-                let ast::EntityType::Concrete(name) = uid.entity_type() else {
+                let ast::EntityType::Specified(name) = uid.entity_type() else {
                     // `entity_types` was generated in such a way as to never produce
                     // unspecified entities
                     panic!("should not be possible to generate an unspecified entity")
