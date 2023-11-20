@@ -28,7 +28,7 @@ open Cedar.Data
 structure SchemaActionEntry where
   appliesToPricipal : Set EntityType
   appliesToResource : Set EntityType
-  descendants : Set EntityUID
+  ancestors : Set EntityUID
   context : RecordType
 
 abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
@@ -59,7 +59,7 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
-    acts := schema.acts.mapOnValues (fun entry => entry.descendants),
+    acts := schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }),
     reqty := ·
   })
 
@@ -93,5 +93,14 @@ none are guaranteed to be false under all possible environments.
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
   let envs := schema.toEnvironments
   policies.forM (typecheckPolicyWithEnvironments · envs)
+
+----- Derivations -----
+
+deriving instance Lean.ToJson for Except
+deriving instance Lean.ToJson for ValidationError
+
+instance : Lean.ToJson Unit where
+  toJson := λ _ => Lean.Json.null
+
 
 end Cedar.Validation

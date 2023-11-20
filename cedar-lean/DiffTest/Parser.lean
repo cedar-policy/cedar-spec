@@ -20,17 +20,21 @@ import Lean.Data.Json.FromToJson
 import Lean.Data.AssocList
 import Lean.Data.RBMap
 
+import Std
+
 import Cedar.Data
 import Cedar.Spec
 import Cedar.Spec.Ext
+import Cedar.Validation
 
 import DiffTest.Util
 
 namespace DiffTest
 
-open Cedar.Spec
 open Cedar.Data
+open Cedar.Spec
 open Cedar.Spec.Ext
+open Cedar.Validation
 
 def jsonToName (json : Lean.Json) : Name :=
   let id := jsonToString (getJsonField json "id")
@@ -42,7 +46,7 @@ def jsonToName (json : Lean.Json) : Name :=
   }
 
 def jsonToEntityType (json : Lean.Json) : EntityType :=
-  jsonToName (getJsonField json "Concrete")
+  jsonToName (getJsonField json "Specified")
 
 def jsonToEuid (json : Lean.Json) : EntityUID :=
   let eid := jsonToString (getJsonField json "eid")
@@ -215,14 +219,14 @@ def jsonToContext (json : Lean.Json) : Map Attr Value :=
   | _ => panic! "jsonToContext: context must be a record\n" ++ toString (repr value)
 
 /-
-The "Concrete" in this function refers to "concrete" vs. "unknown" entities.
-We only need to support the "Concrete" case here because the Lean does not
+The "Known" in this function refers to "known" vs. "unknown" entities.
+We only need to support the known case here because the Lean does not
 support partial evaluation.
 -/
-partial def jsonToRequest (json : Lean.Json) : Request :=
-  let principal := getJsonField (getJsonField json "principal") "Concrete"
-  let action := getJsonField (getJsonField json "action") "Concrete"
-  let resource := getJsonField (getJsonField json "resource") "Concrete"
+def jsonToRequest (json : Lean.Json) : Request :=
+  let principal := getJsonField (getJsonField json "principal") "Known"
+  let action := getJsonField (getJsonField json "action") "Known"
+  let resource := getJsonField (getJsonField json "resource") "Known"
   let context := getJsonField json "context"
   {
     principal := jsonToEuid principal,
@@ -234,8 +238,8 @@ partial def jsonToRequest (json : Lean.Json) : Request :=
 def jsonToEntityData (json : Lean.Json) : EntityData :=
   let ancestorsArr := jsonToArray (getJsonField json "ancestors")
   let ancestors := Set.mk (List.map jsonToEuid ancestorsArr.toList)
-  let attrsKvs := jsonObjToKVList (getJsonField json "attrs")
-  let attrs := Map.mk (List.map (λ (k,v) => (k,jsonToValue v)) attrsKvs)
+  let attrsKVs := jsonObjToKVList (getJsonField json "attrs")
+  let attrs := Map.mk (List.map (λ (k,v) => (k,jsonToValue v)) attrsKVs)
   {
     ancestors := ancestors,
     attrs := attrs
@@ -301,11 +305,153 @@ def jsonToPolicy (json : Lean.Json) : Policy :=
   }
 
 /-
-For now, doesn't support policy templates.
+For now, `jsonToPolicies` doesn't support policy templates.
 A static policy is just a policy template with no blanks.
 -/
 def jsonToPolicies (json : Lean.Json) : Policies :=
-  let templates_kvs := jsonObjToKVList (getJsonField json "templates")
-  List.map (λ (_,v) => jsonToPolicy v) templates_kvs
+  let templatesKVs := jsonObjToKVList (getJsonField json "templates")
+  List.map (λ (_,v) => jsonToPolicy v) templatesKVs
+
+def jsonToPrimType (json : Lean.Json) : CedarType :=
+  let tag := jsonToString json
+  match tag with
+  | "Bool" => .bool .anyBool
+  | "Long" => .int
+  | "String" => .string
+  | tag => panic! s!"jsonToPrimType: unknown tag {tag}"
+
+def jsonToExtType (json : Lean.Json) : ExtType :=
+  let xty := jsonToName json
+  match xty.id with
+  | "ipaddr" => .ipAddr
+  | "decimal" => .decimal
+  | xty => panic! s!"jsonToExtType: unknown extension type {xty}"
+
+/-
+The Rust data types store _descendant_ information for the entity type store
+and action store, but _ancestor_ information for the entity store. The Lean
+formalization standardizes on ancestor information.
+
+The definitions and utility functions below are used to convert the descendant
+representation to the ancestor representation.
+-/
+def findInMapValues [LT α] [BEq α] [DecidableLT α] (m : Map α (Set α)) (k₁ : α) : Set α :=
+  let setOfSets := List.map (λ (k₂,v) => if v.contains k₁ then Set.singleton k₂ else Set.empty) m.toList
+  setOfSets.foldl (λ acc v => acc.union v) Set.empty
+
+def descendantsToAncestors [LT α] [BEq α] [DecidableLT α] (descendants : Map α (Set α)) : Map α (Set α) :=
+  Map.mk (List.map
+    (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
+
+structure JsonEntityTypeStoreEntry where
+  descendants : Cedar.Data.Set EntityType
+  attrs : RecordType
+
+abbrev JsonEntityTypeStore := Map EntityType JsonEntityTypeStoreEntry
+
+structure JsonSchemaActionEntry where
+  appliesToPricipal : Set EntityType
+  appliesToResource : Set EntityType
+  descendants : Set EntityUID
+  context : RecordType
+
+abbrev JsonSchemaActionStore := Map EntityUID JsonSchemaActionEntry
+
+def invertJsonEntityTypeStore (ets : JsonEntityTypeStore) : EntityTypeStore :=
+  let ets := ets.toList
+  let descendantMap := Map.mk (List.map (λ (k,v) => (k,v.descendants)) ets)
+  let ancestorMap := descendantsToAncestors descendantMap
+  Map.mk (List.map
+    (λ (k,v) => (k,
+      {
+        ancestors := ancestorMap.find! k,
+        attrs := v.attrs
+      })) ets)
+
+def invertJsonSchemaActionStore (acts : JsonSchemaActionStore) : SchemaActionStore :=
+  let acts := acts.toList
+  let descendantMap := Map.mk (List.map (λ (k,v) => (k,v.descendants)) acts)
+  let ancestorMap := descendantsToAncestors descendantMap
+  Map.mk (List.map
+    (λ (k,v) => (k,
+      {
+        appliesToPricipal := v.appliesToPricipal,
+        appliesToResource := v.appliesToResource,
+        ancestors := ancestorMap.find! k,
+        context := v.context
+      })) acts)
+
+mutual
+
+partial def jsonToQualifiedCedarType (json : Lean.Json) : Qualified CedarType :=
+  let attrType := jsonToCedarType (getJsonField json "attrType")
+  let isRequired := jsonToBool (getJsonField json "isRequired")
+  if isRequired
+  then .required attrType
+  else .optional attrType
+
+partial def jsonToRecordType (json : Lean.Json) : RecordType :=
+  let kvs := jsonObjToKVList json
+  Map.mk (List.map (λ (k,v) => (k,jsonToQualifiedCedarType v)) kvs)
+
+partial def jsonToEntityOrRecordType (json : Lean.Json) : CedarType :=
+  let (tag,body) := unpackJsonSum json
+  match tag with
+  | "Record" =>
+    let attrs := getJsonField (getJsonField body "attrs") "attrs"
+    .record (jsonToRecordType attrs)
+  | "Entity" =>
+    let lubArr := jsonToArray (getJsonField body "lub_elements")
+    let lub := Array.map jsonToName lubArr
+    if lub.size == 1
+    then .entity lub[0]!
+    else panic! "jsonToEntityOrRecordType: expected lub to have exactly one element" ++ json.pretty
+  | tag => panic! s!"jsonToEntityOrRecordType: unknown tag {tag}"
+
+partial def jsonToCedarType (json : Lean.Json) : CedarType :=
+  let (tag, body) := unpackJsonSum json
+  match tag with
+    | "Primitive" => jsonToPrimType (getJsonField body "primitiveType")
+    | "Set" =>
+      let elementType := getJsonField body "elementType"
+      .set (jsonToCedarType elementType)
+    | "EntityOrRecord" => jsonToEntityOrRecordType body
+    | "ExtensionType" =>
+      let name := getJsonField body "name"
+      .ext (jsonToExtType name)
+    | tag => panic! s!"jsonToCedarType: unknown tag {tag}"
+
+partial def jsonToEntityTypeEntry (json : Lean.Json) : JsonEntityTypeStoreEntry :=
+  let descendants := jsonToArray (getJsonField json "descendants")
+  let attrs := getJsonField (getJsonField json "attributes") "attrs"
+  {
+    descendants := Set.mk (List.map jsonToName descendants.toList),
+    attrs := jsonToRecordType attrs
+  }
+
+partial def jsonToSchemaActionEntry (json : Lean.Json) : JsonSchemaActionEntry :=
+  let appliesTo := getJsonField json "appliesTo"
+  let appliesToPrincipal := jsonToArray (getJsonField appliesTo "principalApplySpec")
+  let appliesToResource := jsonToArray (getJsonField appliesTo "resourceApplySpec")
+  let descendants := jsonToArray (getJsonField json "descendants")
+  let context := getJsonField (getJsonField json "context") "attrs"
+  {
+    appliesToPricipal := Set.mk (List.map jsonToEntityType appliesToPrincipal.toList),
+    appliesToResource := Set.mk (List.map jsonToEntityType appliesToResource.toList),
+    descendants := Set.mk (List.map jsonToEuid descendants.toList),
+    context := jsonToRecordType context
+  }
+
+partial def jsonToSchema (json : Lean.Json) : Schema :=
+  let entityTypesKVs := jsonArrayToKVList (getJsonField json "entityTypes")
+  let entityTypes := Map.mk (List.map (λ (k,v) => (jsonToName k,jsonToEntityTypeEntry v)) entityTypesKVs)
+  let actionsKVs := jsonArrayToKVList (getJsonField json "actionIds")
+  let actions := Map.mk (List.map (λ (k,v) => (jsonToEuid k,jsonToSchemaActionEntry v)) actionsKVs)
+  {
+    ets := invertJsonEntityTypeStore entityTypes,
+    acts := invertJsonSchemaActionStore actions
+  }
+
+end -- end mutual block
 
 end DiffTest

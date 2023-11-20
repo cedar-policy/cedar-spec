@@ -53,12 +53,6 @@ def jsonArrayToKVList (json : Json) : List (Json × Json) :=
   let arr := jsonToArray json
   List.map jsonToTuple arr.toList
 
-def arrayToKVPairList (json : Array Lean.Json) : Prod (List Lean.Json) (List Lean.Json) :=
-List.unzip (List.map (λ x => match x with
-                                      | Lean.Json.arr kv => (kv[0]!, kv[1]!)
-                                      | _ => panic! "arrayToKVPairList: " ++ x.pretty) json.toList)
-
-
 def jsonObjToKVList (json : Json) : List (String × Json) :=
   match json.getObj? with
   | .ok kvs => kvs.fold (λ acc k v => (k,v) :: acc) []

@@ -75,6 +75,12 @@ def findOrErr {α β ε} [BEq α] (m : Map α β) (k : α) (err: ε) : Except ε
   | some v => ok v
   | _      => error err
 
+/-- Returns the binding for `k` in `m`, or panics if none is found. -/
+def find! {α β} [Repr α] [BEq α] [Inhabited β] (m : Map α β) (k : α) : β :=
+  match m.find? k with
+  | some v => v
+  | _      => panic! s!"find!: key {repr k} not found"
+
 /-- Filters `m` using `f`. -/
 def filter {α β} (f : α → β → Bool) (m : Map α β) : Map α β :=
   Map.mk (m.kvs.filter (fun ⟨k, v⟩ => f k v))

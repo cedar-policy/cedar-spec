@@ -17,6 +17,7 @@
 import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
+import Cedar.Validation
 import DiffTest.Util
 import DiffTest.Parser
 
@@ -26,7 +27,7 @@ import DiffTest.Parser
 namespace DiffTest
 
 open Cedar.Spec
-open Cedar.Data
+open Cedar.Validation
 
 @[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
   let json := Lean.Json.parse req
@@ -37,6 +38,16 @@ open Cedar.Data
     let entities := jsonToEntities (getJsonField json "entities")
     let policies := jsonToPolicies (getJsonField json "policies")
     let response := isAuthorized request entities policies
+    toString (Lean.toJson response)
+
+@[export validateDRT] def validateDRT (req : String) : String :=
+  let json := Lean.Json.parse req
+  match json with
+  | .error e => panic! s!"validateDRT: failed to parse input: {e}"
+  | .ok json =>
+    let policies := jsonToPolicies (getJsonField json "policies")
+    let schema := jsonToSchema (getJsonField json "schema")
+    let response := validate policies schema
     toString (Lean.toJson response)
 
 end DiffTest

@@ -89,7 +89,7 @@ def RequestMatchesSchema (schema : Schema) (request : Request) : Prop :=
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
   RequestMatchesSchema schema request ∧
   InstanceOfEntityTypeStore entities schema.ets ∧
-  InstanceOfActionStore entities (schema.acts.mapOnValues (fun entry => entry.descendants))
+  InstanceOfActionStore entities (schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }))
 
 /--
 Top-level soundness theorem: If validation succeeds, then for any request

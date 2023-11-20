@@ -45,13 +45,6 @@ use std::str::FromStr;
 
 use crate::definitional_request_types::*;
 
-/// Times for JSON (de)serialization, authorization, and validation as reported
-/// by the Lean implementation.
-pub const LEAN_SERIALIZATION_MSG: &str = "lean_serialization (ns) : ";
-pub const LEAN_DESERIALIZATION_MSG: &str = "lean_deserialization (ns) : ";
-pub const LEAN_AUTH_MSG: &str = "lean_auth (ns) : ";
-pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
-
 #[link(name = "Cedar", kind = "static")]
 // #[link(name = "Lean")]
 #[link(name = "Std", kind = "static")]
@@ -63,6 +56,7 @@ pub const LEAN_VALIDATION_MSG: &str = "lean_validation (ns) : ";
 #[link(name = "Aesop", kind = "static")]
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
+    fn validateDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
@@ -80,6 +74,11 @@ struct SetDef<String> {
 struct ResponseDef {
     policies: SetDef<String>,
     decision: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ValResponseDef {
+    errors: SetDef<String>,
 }
 
 #[derive(Debug)]
@@ -100,7 +99,17 @@ impl LeanDefinitionalEngine {
         Ok(Self { initialized: false })
     }
 
-    fn serialize_request(
+    fn initialize() {
+        if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
+            unsafe { lean_initialize_runtime_module() };
+            unsafe { lean_initialize() };
+            unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
+            unsafe { lean_io_mark_end_initialization() };
+            env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
+        }
+    }
+
+    fn serialize_authorization_request(
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
@@ -111,13 +120,12 @@ impl LeanDefinitionalEngine {
             entities,
         })
         .expect("Failed to serialize request, policies, or entities");
-        eprintln!("{request}");
         let cstring = CString::new(request).expect("CString::new failed");
         let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         return s;
     }
 
-    fn deserialize_response(response: *mut lean_object) -> InterfaceResponse {
+    fn deserialize_authorization_response(response: *mut lean_object) -> InterfaceResponse {
         let response_string = lean_obj_to_string(response);
         let resp: ResponseDef =
             serde_json::from_str(&response_string).expect("could not convert string to json");
@@ -147,17 +155,50 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
-            unsafe { lean_initialize_runtime_module() };
-            unsafe { lean_initialize() };
-            unsafe { initialize_DiffTest_Main(1, lean_io_mk_world()) };
-            unsafe { lean_io_mark_end_initialization() };
-            env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
-        }
-
-        let req = Self::serialize_request(request, policies, entities);
+        Self::initialize();
+        let req = Self::serialize_authorization_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
-        Self::deserialize_response(response)
+        Self::deserialize_authorization_response(response)
+    }
+
+    fn serialize_validation_request(
+        schema: &ValidatorSchema,
+        policies: &ast::PolicySet,
+    ) -> *mut lean_object {
+        let request: String = serde_json::to_string(&RequestForDefValidator {
+            schema,
+            policies,
+            mode: cedar_policy_validator::ValidationMode::default(), // == Strict
+        })
+        .expect("Failed to serialize schema or policies");
+        println!("{request}");
+        assert!(false);
+        let cstring = CString::new(request).expect("CString::new failed");
+        let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        return s;
+    }
+
+    fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
+        let response_string = lean_obj_to_string(response);
+        let resp: ValResponseDef =
+            serde_json::from_str(&response_string).expect("could not convert string to json");
+        let errors = resp.errors.mk.l.into_iter().collect();
+        ValidationInterfaceResponse {
+            validation_errors: errors,
+            parse_errors: Vec::new(),
+        }
+    }
+
+    /// Use the definitional validator to validate the given `policies` given a `schema`
+    pub fn validate(
+        &self,
+        schema: &ValidatorSchema,
+        policies: &ast::PolicySet,
+    ) -> ValidationInterfaceResponse {
+        Self::initialize();
+        let req = Self::serialize_validation_request(schema, policies);
+        let response = unsafe { validateDRT(req) };
+        Self::deserialize_validation_response(response)
     }
 }
 
@@ -183,11 +224,12 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
 
     fn validate(
         &self,
-        _schema: &cedar_policy_validator::ValidatorSchema,
-        _policies: &ast::PolicySet,
+        schema: &cedar_policy_validator::ValidatorSchema,
+        policies: &ast::PolicySet,
         _mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
-        unimplemented!("Unimplemented: validate");
+        // Note: only strict mode is supported in Lean
+        self.validate(schema, policies)
     }
 }
 
@@ -204,9 +246,20 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
 
     fn validate(
         &self,
-        _schema: cedar_policy_validator::ValidatorSchema,
-        _policies: &ast::PolicySet,
+        schema: cedar_policy_validator::ValidatorSchema,
+        policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        panic!("Unimplemented: validate (test)");
+        let result = self.validate(&schema, policies);
+        assert!(
+            result.parsing_succeeded(),
+            "Lean json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}Errors:\n{:?}",
+            &policies,
+            schema,
+            result.parse_errors
+        );
+        IntegrationTestValidationResult {
+            validation_passed: result.validation_passed(),
+            validation_errors_debug: format!("{:?}", result.validation_errors),
+        }
     }
 }

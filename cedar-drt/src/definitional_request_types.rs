@@ -61,10 +61,10 @@ struct DefinitionalEvalResponse {
 }
 
 #[derive(Debug, Serialize)]
-struct RequestForDefValidator<'a> {
-    schema: &'a ValidatorSchema,
-    policies: &'a ast::PolicySet,
-    mode: ValidationMode,
+pub struct RequestForDefValidator<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub policies: &'a ast::PolicySet,
+    pub mode: ValidationMode,
 }
 
 #[derive(Debug, Deserialize)]

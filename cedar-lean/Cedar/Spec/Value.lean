@@ -151,6 +151,8 @@ deriving instance Inhabited for Prim
 
 deriving instance BEq for Except
 
+deriving instance Lean.ToJson for Name
+
 mutual
 
 def decValue (a b : Value) : Decidable (a = b) := by
