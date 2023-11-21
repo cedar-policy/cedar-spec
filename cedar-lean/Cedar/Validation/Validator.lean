@@ -149,8 +149,6 @@ deriving instance Repr for SchemaActionEntry
 deriving instance Repr for Schema
 deriving instance Repr for ValidationError
 
-deriving instance Lean.ToJson for Except
-
 /-
 Lossy serialization of errors to Json. This serialization provides some extra
 information to DRT without having to derive `Lean.ToJson` for `Expr` and `CedarType`.
@@ -168,6 +166,8 @@ def validationErrorToJson : ValidationError → Lean.Json
 instance : Lean.ToJson ValidationError where
   toJson := validationErrorToJson
 
+-- Used to serialize `ValidationResult`
+deriving instance Lean.ToJson for Except
 instance : Lean.ToJson Unit where
   toJson := λ _ => Lean.Json.null
 

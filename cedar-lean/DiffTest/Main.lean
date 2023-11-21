@@ -38,7 +38,8 @@ open Cedar.Validation
     let entities := jsonToEntities (getJsonField json "entities")
     let policies := jsonToPolicies (getJsonField json "policies")
     let response := isAuthorized request entities policies
-    toString (Lean.toJson response)
+    let json := Lean.toJson response
+    toString json
 
 @[export validateDRT] def validateDRT (req : String) : String :=
   let json := Lean.Json.parse req
@@ -48,6 +49,7 @@ open Cedar.Validation
     let policies := jsonToPolicies (getJsonField json "policies")
     let schema := jsonToSchema (getJsonField json "schema")
     let response := validate policies schema
-    toString (Lean.toJson response)
+    let json := Lean.toJson response
+    toString json
 
 end DiffTest

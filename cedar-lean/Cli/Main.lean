@@ -16,28 +16,13 @@
 
 import Lean.Data.Json.FromToJson
 
-import Cedar.Spec
-import Cedar.Validation
+import DiffTest.Main
 import DiffTest.Parser
 
+/-! This file provides a basic command line interface for authorization
+    and validation. It uses the interface functions defined in `Difftest`. -/
 
-/-! This file defines the public interfaces for the Lean implementation.
-    The input and output are stringified JSON objects. -/
-
-open Cedar.Spec
-open Cedar.Validation
-open Cedar.Data
 open DiffTest
-
-def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
-  let fileExists ← filename.pathExists
-  if not fileExists then
-    let stderr ← IO.getStderr
-    stderr.putStrLn s!"File not found: {filename}"
-    pure none
-  else
-    let handle ← IO.FS.Handle.mk filename IO.FS.Mode.read
-    pure (some (IO.FS.Stream.ofHandle handle))
 
 def readFile (filename : String) : IO String :=
   IO.FS.readFile filename
@@ -50,24 +35,13 @@ def main (args : List String) : IO Unit :=
     | 2 => do
       let command := args.get! 0
       let filename := args.get! 1
-      let req ← readFile filename
-      let json := Lean.Json.parse req
-      match json with
-      | .error e => panic! s!"Failed to parse input: {e}"
-      | .ok json =>
-        match command with
-        | "authorize" =>
-          let request := jsonToRequest (getJsonField json "request")
-          let entities := jsonToEntities (getJsonField json "entities")
-          let policies := jsonToPolicies (getJsonField json "policies")
-          let response := isAuthorized request entities policies
-          let json := Lean.toJson response
-          IO.println (toString json)
-        | "validate" =>
-          let policies := jsonToPolicies (getJsonField json "policies")
-          let schema := jsonToSchema (getJsonField json "schema")
-          let response := validate policies schema
-          let json := Lean.toJson response
-          IO.println (toString json)
-        | _ => printUsage s!"Invalid command `{command}` (expected `authorize` or `validate`)"
+      let request ← readFile filename
+      match command with
+      | "authorize" =>
+        let response := isAuthorizedDRT request
+        IO.println response
+      | "validate" =>
+        let response := validateDRT request
+        IO.println response
+      | _ => printUsage s!"Invalid command `{command}` (expected `authorize` or `validate`)"
     | n => printUsage s!"Incorrect number of arguments (expected 2, but got {n})"

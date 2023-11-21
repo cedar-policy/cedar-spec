@@ -110,17 +110,10 @@ def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : B
 
 ----- Derivations -----
 
-deriving instance Repr for BoolType
-deriving instance Repr for ExtType
-deriving instance Repr for Qualified
-deriving instance Repr for CedarType
-deriving instance Repr for TypeError
-
-deriving instance Repr for EntityTypeStoreEntry
-deriving instance Repr for ActionStoreEntry
-
-deriving instance DecidableEq for BoolType
-deriving instance DecidableEq for ExtType
+deriving instance Repr, DecidableEq for BoolType
+deriving instance Repr, DecidableEq, Inhabited for ExtType
+deriving instance Repr, DecidableEq, Inhabited for Qualified
+deriving instance Repr, Inhabited for CedarType
 
 mutual
 
@@ -193,11 +186,8 @@ end
 
 instance : DecidableEq CedarType := decCedarType
 
-deriving instance DecidableEq for Qualified
-deriving instance DecidableEq for TypeError
-
-deriving instance Inhabited for Qualified
-deriving instance Inhabited for ExtType
-deriving instance Inhabited for CedarType
+deriving instance Repr, DecidableEq for TypeError
+deriving instance Repr for EntityTypeStoreEntry
+deriving instance Repr for ActionStoreEntry
 
 end Cedar.Validation
