@@ -76,8 +76,11 @@ struct ResponseDef {
 }
 
 #[derive(Serialize, Deserialize)]
-struct ValResponseDef {
-    errors: SetDef<String>,
+enum ValResponseDef {
+    #[serde(rename = "ok")]
+    Ok,
+    #[serde(rename = "error")]
+    Error(String),
 }
 
 #[derive(Debug)]
@@ -127,7 +130,7 @@ impl LeanDefinitionalEngine {
     fn deserialize_authorization_response(response: *mut lean_object) -> InterfaceResponse {
         let response_string = lean_obj_to_string(response);
         let resp: ResponseDef =
-            serde_json::from_str(&response_string).expect("could not convert string to json");
+            serde_json::from_str(&response_string).expect("could not deserialize json");
         let dec: authorizer::Decision = if resp.decision == "allow" {
             authorizer::Decision::Allow
         } else if resp.decision == "deny" {
@@ -177,12 +180,14 @@ impl LeanDefinitionalEngine {
 
     fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
         let response_string = lean_obj_to_string(response);
-        print!("{response_string}");
-        // let resp: ValResponseDef =
-        //     serde_json::from_str(&response_string).expect("could not convert string to json");
-        // let errors = resp.errors.mk.l.into_iter().collect();
+        let resp: ValResponseDef =
+            serde_json::from_str(&response_string).expect("could not deserialize json");
+        let validation_errors = match resp {
+            ValResponseDef::Ok => Vec::new(),
+            ValResponseDef::Error(err) => vec![err],
+        };
         ValidationInterfaceResponse {
-            validation_errors: Vec::new(),
+            validation_errors,
             parse_errors: Vec::new(),
         }
     }

@@ -200,20 +200,4 @@ deriving instance Inhabited for Qualified
 deriving instance Inhabited for ExtType
 deriving instance Inhabited for CedarType
 
-/-
-Lossy serialization of errors to Json. This serialization provides some extra
-information to DRT without having to derive `Lean.ToJson` for `Expr` and `CedarType`.
--/
-def typeErrorToJson : TypeError → Lean.Json
-  | .lubErr _ _ => "lubErr"
-  | .unexpectedType _ => "unexpectedType"
-  | .attrNotFound _ _ => "attrNotFound"
-  | .unknownEntity _ => "unknownEntity"
-  | .extensionErr _ => "extensionErr"
-  | .emptySetErr => "emptySetErr"
-  | .incompatibleSetTypes _ => "incompatibleSetTypes"
-
-instance : Lean.ToJson TypeError where
-  toJson := typeErrorToJson
-
 end Cedar.Validation
