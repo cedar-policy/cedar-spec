@@ -34,5 +34,5 @@ lean_lib DiffTest where
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
 
-lean_exe DiffTestStandAlone where
-  root := `DiffTestStandAlone.Main
+lean_exe Cli where
+  root := `Cli.Main

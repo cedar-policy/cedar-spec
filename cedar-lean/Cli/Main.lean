@@ -29,7 +29,6 @@ open Cedar.Validation
 open Cedar.Data
 open DiffTest
 
-
 def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
   let fileExists ← filename.pathExists
   if not fileExists then
@@ -43,24 +42,32 @@ def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
 def readFile (filename : String) : IO String :=
   IO.FS.readFile filename
 
+def printUsage (err : String) : IO Unit :=
+  IO.println s!"{err}\nUsage: Cli <command> <file>"
+
 def main (args : List String) : IO Unit :=
   match args.length with
-    | 1 => do
-      let filename := args.head!
+    | 2 => do
+      let command := args.get! 0
+      let filename := args.get! 1
       let req ← readFile filename
       let json := Lean.Json.parse req
       match json with
-      | .error e => panic! s!"isAuthorizedDRT: failed to parse input: {e}"
+      | .error e => panic! s!"Failed to parse input: {e}"
       | .ok json =>
-        -- let request := jsonToRequest (getJsonField json "request")
-        -- let entities := jsonToEntities (getJsonField json "entities")
-        -- let policies := jsonToPolicies (getJsonField json "policies")
-        -- let response := isAuthorized request entities policies
-        -- let json := Lean.toJson response
-        -- IO.println (toString json)
-        let policies := jsonToPolicies (getJsonField json "policies")
-        let schema := jsonToSchema (getJsonField json "schema")
-        let response := validate policies schema
-        let json := Lean.toJson response
-        IO.println (toString json)
-    | _ => IO.println s!"Incorrect number of arguments"
+        match command with
+        | "authorize" =>
+          let request := jsonToRequest (getJsonField json "request")
+          let entities := jsonToEntities (getJsonField json "entities")
+          let policies := jsonToPolicies (getJsonField json "policies")
+          let response := isAuthorized request entities policies
+          let json := Lean.toJson response
+          IO.println (toString json)
+        | "validate" =>
+          let policies := jsonToPolicies (getJsonField json "policies")
+          let schema := jsonToSchema (getJsonField json "schema")
+          let response := validate policies schema
+          let json := Lean.toJson response
+          IO.println (toString json)
+        | _ => printUsage s!"Invalid command `{command}` (expected `authorize` or `validate`)"
+    | n => printUsage s!"Incorrect number of arguments (expected 2, but got {n})"
