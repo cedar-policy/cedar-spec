@@ -26,7 +26,6 @@ use std::{collections::HashSet, env, ffi::CString};
 use crate::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
-use cedar_policy::Diagnostics;
 pub use cedar_policy::Response;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
@@ -204,16 +203,16 @@ impl LeanDefinitionalEngine {
 impl CedarTestImplementation for LeanDefinitionalEngine {
     fn is_authorized(
         &self,
-        request: &ast::Request,
+        request: ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        self.is_authorized(request, policies, entities)
+        self.is_authorized(&request, policies, entities)
     }
 
     fn interpret(
         &self,
-        _request: &ast::Request,
+        _request: ast::Request,
         _entities: &Entities,
         _expr: &Expr,
         _expected: Option<Value>,
