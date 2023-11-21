@@ -15,6 +15,7 @@
  */
 
 #![no_main]
+use cedar_drt::utils::expr_to_est;
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::{
@@ -43,6 +44,7 @@ struct FuzzTargetInput {
     #[serde(skip)]
     pub entities: Entities,
     /// generated expression
+    #[serde(serialize_with = "expr_to_est")]
     pub expression: Expr,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
@@ -142,7 +144,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Entities: {}\n", input.entities);
     run_eval_test(
         &lean_def_engine,
-        &input.request.into(),
+        input.request.into(),
         &input.expression,
         &input.entities,
         SETTINGS.enable_extensions,

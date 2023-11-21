@@ -3,10 +3,10 @@ use crate::err::Result;
 use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast;
 use cedar_policy_core::ast::{
-    Effect, EntityUID, Expr, Id, PolicyID, PolicySet, StaticPolicy, Template,
+    Effect, EntityUID, Expr, Id, Name, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
+use cedar_policy_core::{ast, est};
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::fmt::Display;
@@ -18,7 +18,7 @@ use std::fmt::Display;
 // `arbitrary_for_hierarchy()`. But as of this writing, it feels like renaming
 // `GeneratedPolicy` to something like `GeneratedTemplate` seems unduly
 // disruptive.
-#[serde(into = "String")]
+#[serde(into = "est::Policy")]
 pub struct GeneratedPolicy {
     id: PolicyID,
     // use String for the impl of Arbitrary
@@ -28,6 +28,14 @@ pub struct GeneratedPolicy {
     action_constraint: ActionConstraint,
     resource_constraint: PrincipalOrResourceConstraint,
     abac_constraints: Expr,
+}
+
+impl From<GeneratedPolicy> for est::Policy {
+    fn from(gp: GeneratedPolicy) -> est::Policy {
+        let sp: StaticPolicy = gp.into();
+        let p: Policy = sp.into();
+        p.into()
+    }
 }
 
 impl GeneratedPolicy {
@@ -181,6 +189,12 @@ pub enum PrincipalOrResourceConstraint {
     In(EntityUID),
     /// Eg `principal in ?principal`
     InSlot,
+    /// Eg `principal is User`
+    IsType(Name),
+    /// Eg `principal is User in Group::"123"`
+    IsTypeIn(Name, EntityUID),
+    /// Eg `principal is User in ?principal`
+    IsTypeInSlot(Name),
 }
 
 impl PrincipalOrResourceConstraint {
@@ -191,6 +205,9 @@ impl PrincipalOrResourceConstraint {
             PrincipalOrResourceConstraint::EqSlot => true,
             PrincipalOrResourceConstraint::In(_) => false,
             PrincipalOrResourceConstraint::InSlot => true,
+            PrincipalOrResourceConstraint::IsType(_) => false,
+            PrincipalOrResourceConstraint::IsTypeIn(_, _) => false,
+            PrincipalOrResourceConstraint::IsTypeInSlot(_) => true,
         }
     }
 }
@@ -203,6 +220,15 @@ impl From<PrincipalOrResourceConstraint> for ast::PrincipalConstraint {
             PrincipalOrResourceConstraint::EqSlot => ast::PrincipalConstraint::is_eq_slot(),
             PrincipalOrResourceConstraint::In(euid) => ast::PrincipalConstraint::is_in(euid),
             PrincipalOrResourceConstraint::InSlot => ast::PrincipalConstraint::is_in_slot(),
+            PrincipalOrResourceConstraint::IsType(ty) => {
+                ast::PrincipalConstraint::is_entity_type(ty)
+            }
+            PrincipalOrResourceConstraint::IsTypeIn(ty, euid) => {
+                ast::PrincipalConstraint::is_entity_type_in(ty, euid)
+            }
+            PrincipalOrResourceConstraint::IsTypeInSlot(ty) => {
+                ast::PrincipalConstraint::is_entity_type_in_slot(ty)
+            }
         }
     }
 }
@@ -215,6 +241,15 @@ impl From<PrincipalOrResourceConstraint> for ast::ResourceConstraint {
             PrincipalOrResourceConstraint::EqSlot => ast::ResourceConstraint::is_eq_slot(),
             PrincipalOrResourceConstraint::In(euid) => ast::ResourceConstraint::is_in(euid),
             PrincipalOrResourceConstraint::InSlot => ast::ResourceConstraint::is_in_slot(),
+            PrincipalOrResourceConstraint::IsType(ty) => {
+                ast::ResourceConstraint::is_entity_type(ty)
+            }
+            PrincipalOrResourceConstraint::IsTypeIn(ty, euid) => {
+                ast::ResourceConstraint::is_entity_type_in(ty, euid)
+            }
+            PrincipalOrResourceConstraint::IsTypeInSlot(ty) => {
+                ast::ResourceConstraint::is_entity_type_in_slot(ty)
+            }
         }
     }
 }
@@ -230,6 +265,9 @@ impl std::fmt::Display for PrincipalOrResourceConstraint {
             Self::EqSlot => write!(f, " == ?"),
             Self::In(uid) => write!(f, " in {uid}"),
             Self::InSlot => write!(f, " in ?"),
+            Self::IsType(ty) => write!(f, " is {ty}"),
+            Self::IsTypeIn(ty, euid) => write!(f, " is {ty} in {euid}"),
+            Self::IsTypeInSlot(ty) => write!(f, "is {ty} in ?"),
         }
     }
 }
@@ -240,26 +278,28 @@ impl PrincipalOrResourceConstraint {
         allow_slots: bool,
         u: &mut Unstructured<'_>,
     ) -> Result<Self> {
-        // 20% of the time, NoConstraint; 40%, Eq; 40%, In
+        // 20% of the time, NoConstraint
         if u.ratio(1, 5)? {
             Ok(Self::NoConstraint)
         } else {
-            // choose Eq or In
-            let use_eq = u.ratio(1, 2)?;
             // If slots are allowed, then generate a slot 50% of the time.
             if allow_slots && u.ratio(1, 2)? {
-                if use_eq {
-                    Ok(Self::EqSlot)
-                } else {
-                    Ok(Self::InSlot)
-                }
+                // 40% Eq, 40% In or IsIn.
+                // Don't generate `Is` on its own because it can't have a slot.
+                gen!(u,
+                    2 => Ok(Self::EqSlot),
+                    1 => Ok(Self::InSlot),
+                    1 => Ok(Self::IsTypeInSlot(hierarchy.arbitrary_entity_type(u)?))
+                )
             } else {
+                // 32% Eq, 16% In, 16% Is, 16% IsIn
                 let uid = hierarchy.arbitrary_uid(u)?;
-                if use_eq {
-                    Ok(Self::Eq(uid))
-                } else {
-                    Ok(Self::In(uid))
-                }
+                gen!(u,
+                    2 => Ok(Self::Eq(uid)),
+                    1 => Ok(Self::In(uid)),
+                    1 => Ok(Self::IsType(hierarchy.arbitrary_entity_type(u)?)),
+                    1 => Ok(Self::IsTypeIn(hierarchy.arbitrary_entity_type(u)?, uid))
+                )
             }
         }
     }

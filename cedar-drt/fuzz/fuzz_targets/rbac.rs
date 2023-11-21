@@ -19,6 +19,7 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::err::Result;
 use cedar_policy_generators::hierarchy::{
     AttributesMode, EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode,
@@ -140,6 +141,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                     0..=4,
                 ),
                 u,
+                extensions: Extensions::all_available(),
             }
             .generate()?,
         );

@@ -131,7 +131,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             .map(Into::into)
             .collect::<Vec<_>>();
         let mut responses = Vec::with_capacity(requests.len());
-        for request in &requests {
+        for request in requests.iter().cloned() {
             debug!("Request: {request}");
             let (ans, total_dur) =
                 time_function(|| run_auth_test(&lean_def_engine, request, &policyset, &entities));

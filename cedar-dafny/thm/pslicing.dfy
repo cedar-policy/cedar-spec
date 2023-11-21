@@ -134,8 +134,8 @@ module pslicing {
 
   function headBasedTarget(p: Policy): Target {
     Target(
-      if p.principalScope.scope.Any? then None else Some(p.principalScope.scope.entity),
-      if p.resourceScope.scope.Any? then None else Some(p.resourceScope.scope.entity))
+      if p.principalScope.scope.Any? || p.principalScope.scope.Is? then None else Some(p.principalScope.scope.entity),
+      if p.resourceScope.scope.Any? || p.resourceScope.scope.Is? then None else Some(p.resourceScope.scope.entity))
   }
 
   function headBasedPolicySlice(request: Request, store: Store): PolicyStore {

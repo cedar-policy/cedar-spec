@@ -30,6 +30,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Name, PolicyID};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
     TypeOfAttribute, ValidatorSchema,
@@ -334,7 +335,7 @@ pub(crate) fn build_qualified_entity_type_name(
     name: ast::Id,
 ) -> ast::Name {
     match build_qualified_entity_type(namespace, Some(name)) {
-        ast::EntityType::Concrete(type_name) => type_name,
+        ast::EntityType::Specified(type_name) => type_name,
         ast::EntityType::Unspecified => {
             panic!("Should not have built an unspecified type from `Some(name)`.")
         }
@@ -377,8 +378,8 @@ fn build_qualified_entity_type(
 ) -> ast::EntityType {
     match basename {
         Some(basename) => match namespace {
-            None => ast::EntityType::Concrete(ast::Name::unqualified_name(basename)),
-            Some(ns) => ast::EntityType::Concrete(ast::Name::type_in_namespace(basename, ns)),
+            None => ast::EntityType::Specified(ast::Name::unqualified_name(basename)),
+            Some(ns) => ast::EntityType::Specified(ast::Name::type_in_namespace(basename, ns)),
         },
         None => ast::EntityType::Unspecified,
     }
@@ -824,6 +825,7 @@ impl Schema {
             uid_gen_mode: EntityUIDGenMode::default(),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
+            extensions: Extensions::all_available(),
         }
         .generate()
     }
@@ -839,6 +841,7 @@ impl Schema {
             uid_gen_mode: EntityUIDGenMode::Nanoid(nanoid_len),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
+            extensions: Extensions::all_available(),
         }
         .generate()
     }
@@ -851,7 +854,7 @@ impl Schema {
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
         match ty {
-            ast::EntityType::Concrete(ty) => self
+            ast::EntityType::Specified(ty) => self
                 .exprgenerator(hierarchy)
                 .arbitrary_uid_with_type(&ty, u),
             ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
@@ -889,7 +892,7 @@ impl Schema {
                     ast::EntityType::Unspecified => {
                         panic!("should not be possible to generate an unspecified entity")
                     }
-                    ast::EntityType::Concrete(name) => {
+                    ast::EntityType::Specified(name) => {
                         Some(entity_type_name_to_schema_type_variant(&name))
                     }
                 }
@@ -1034,15 +1037,22 @@ impl Schema {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint; 40%, Eq; 40%, In
-        gen!(u,
-        2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
-        4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
-        )),
-        4 => Ok(PrincipalOrResourceConstraint::In(
-            self.exprgenerator(Some(hierarchy)).arbitrary_principal_uid(u)?,
-        )))
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_principal_uid(u)?;
+            let ety = u.choose(self.entity_types())?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
     }
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
@@ -1060,15 +1070,22 @@ impl Schema {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<PrincipalOrResourceConstraint> {
-        // 20% of the time, NoConstraint; 40%, Eq; 40%, In
-        gen!(u,
-        2 => Ok(PrincipalOrResourceConstraint::NoConstraint),
-        4 => Ok(PrincipalOrResourceConstraint::Eq(
-            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
-        )),
-        4 => Ok(PrincipalOrResourceConstraint::In(
-            self.exprgenerator(Some(hierarchy)).arbitrary_resource_uid(u)?,
-        )))
+        // 20% of the time, NoConstraint
+        if u.ratio(1, 5)? {
+            Ok(PrincipalOrResourceConstraint::NoConstraint)
+        } else {
+            // 32% Eq, 16% In, 16% Is, 16% IsIn
+            let uid = self
+                .exprgenerator(Some(hierarchy))
+                .arbitrary_resource_uid(u)?;
+            let ety = u.choose(self.entity_types())?.clone();
+            gen!(u,
+                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+            )
+        }
     }
     fn arbitrary_resource_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(

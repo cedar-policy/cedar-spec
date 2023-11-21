@@ -42,9 +42,6 @@ struct FuzzTargetInput {
     /// generated entity slice
     #[serde(skip)]
     pub entities: Entities,
-    /// Should we pre-evaluate entity attributes
-    #[serde(skip)]
-    pub should_cache_entities: bool,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -86,11 +83,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let entities = drop_some_entities(all_entities, u)?;
-        let should_cache_entities = bool::arbitrary(u)?;
         Ok(Self {
             schema,
             entities,
-            should_cache_entities,
             policy,
             requests,
         })
@@ -148,36 +143,10 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
-    let original_entities = input.entities.clone();
-    let cached_entities = if input.should_cache_entities {
-        Some(input.entities.evaluate())
-    } else {
-        None
-    };
     for request in input.requests.into_iter().map(Into::into) {
         debug!("Request : {request}");
-        let (rust_res, total_dur) = time_function(|| {
-            run_auth_test(&lean_def_engine, &request, &policyset, &original_entities)
-        });
-
-        if let Some(ref entities) = cached_entities {
-            match entities {
-                Ok(entities) => {
-                    let (cached_rust_res, _total_dur) = time_function(|| {
-                        run_auth_test(&lean_def_engine, &request, &policyset, entities)
-                    });
-                    assert_eq!(rust_res, cached_rust_res);
-                }
-                Err(eval_er) => match &rust_res.diagnostics.errors[0] {
-                    authorizer::AuthorizationError::AttributeEvaluationError(e) => {
-                        assert_eq!(eval_er, e)
-                    }
-                    authorizer::AuthorizationError::PolicyEvaluationError { id, error } => {
-                        panic!("Wrong error! Got policy eval error {id} {error}")
-                    }
-                },
-            }
-        }
+        let (rust_res, total_dur) =
+            time_function(|| run_auth_test(&lean_def_engine, request, &policyset, &input.entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 

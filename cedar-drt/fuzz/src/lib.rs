@@ -22,8 +22,7 @@ pub use prt::*;
 
 use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALIDATION_MSG};
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
-use cedar_policy_core::ast::PolicySet;
-use cedar_policy_core::ast::{self, Expr};
+use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
@@ -36,8 +35,8 @@ use log::info;
 /// evaluate and `request` and `entities` are used to populate the evaluator.
 pub fn run_eval_test(
     custom_impl: &impl CedarTestImplementation,
-    request: &ast::Request,
-    expr: &Expr,
+    request: ast::Request,
+    expr: &ast::Expr,
     entities: &Entities,
     enable_extensions: bool,
 ) {
@@ -46,10 +45,7 @@ pub fn run_eval_test(
     } else {
         Extensions::none()
     };
-    let eval = match Evaluator::new(request, entities, &exts) {
-        Ok(e) => e,
-        Err(_) => return, // FOR NOW just ignore errors in the restricted exprs
-    };
+    let eval = Evaluator::new(request.clone(), entities, &exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
         Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
@@ -68,13 +64,13 @@ pub fn run_eval_test(
 /// the two agree on.
 pub fn run_auth_test(
     custom_impl: &impl CedarTestImplementation,
-    request: &ast::Request,
-    policies: &PolicySet,
+    request: ast::Request,
+    policies: &ast::PolicySet,
     entities: &Entities,
 ) -> Response {
     let authorizer = Authorizer::new();
     let (rust_res, rust_auth_dur) =
-        time_function(|| authorizer.is_authorized(request, policies, entities));
+        time_function(|| authorizer.is_authorized(request.clone(), policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
     // For now, we ignore tests where cedar-policy returns an integer
@@ -92,14 +88,14 @@ pub fn run_auth_test(
     // in case the caller wants to expect those.
     let ret = rust_res.clone();
 
-    let definitional_res = custom_impl.is_authorized(request, policies, entities);
+    let definitional_res = custom_impl.is_authorized(request.clone(), policies, entities);
     // For now, we expect never to receive errors from the definitional engine,
     // and we otherwise ignore errors in the comparison.
     assert_eq!(
         definitional_res
             .diagnostics()
             .errors()
-            .map(|e| e.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
@@ -127,7 +123,7 @@ pub fn run_auth_test(
 pub fn run_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
-    policies: &PolicySet,
+    policies: &ast::PolicySet,
     mode: ValidationMode,
 ) {
     let validator = Validator::new(schema.clone());
@@ -177,7 +173,7 @@ pub fn run_val_test(
 #[test]
 fn test_run_auth_test() {
     use cedar_drt::LeanDefinitionalEngine;
-    use cedar_policy_core::ast::{Entity, EntityUID, RestrictedExpr};
+    use cedar_policy_core::ast::{Entity, EntityUID, RequestSchemaAllPass, RestrictedExpr};
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
@@ -186,10 +182,10 @@ fn test_run_auth_test() {
     let principal = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
     ));
-    let action = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+    let action = ast::EntityUIDEntry::Known(std::sync::Arc::new(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
     ));
-    let resource = ast::EntityUIDEntry::Concrete(std::sync::Arc::new(
+    let resource = ast::EntityUIDEntry::Known(std::sync::Arc::new(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
     ));
     let query = ast::Request::new_with_unknowns(
@@ -197,8 +193,11 @@ fn test_run_auth_test() {
         action,
         resource,
         Some(cedar_policy_core::ast::Context::empty()),
-    );
-    let mut policies = PolicySet::new();
+        None::<&RequestSchemaAllPass>,
+        Extensions::all_available(),
+    )
+    .unwrap();
+    let mut policies = ast::PolicySet::new();
 
     let policy_string = r#"
     permit(principal,action,resource) when
@@ -217,24 +216,24 @@ fn test_run_auth_test() {
         .add(static_policy)
         .expect("Adding static policy in Policy form should succeed");
 
-    let mut alice_attributes: std::collections::HashMap<SmolStr, RestrictedExpr> =
-        std::collections::HashMap::new();
-    alice_attributes.insert(
-        "foo".into(),
-        RestrictedExpr::val(cedar_policy_core::ast::Literal::Bool(true)),
-    );
+    let alice_attributes: std::collections::HashMap<SmolStr, RestrictedExpr> =
+        std::collections::HashMap::from_iter([(
+            "foo".into(),
+            RestrictedExpr::val(cedar_policy_core::ast::Literal::Bool(true)),
+        )]);
     let entity_alice = Entity::new(
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
         alice_attributes,
         std::collections::HashSet::new(),
-    );
-
-    let entity_view = Entity::new(
+        &Extensions::all_available(),
+    )
+    .unwrap();
+    let entity_view = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
         std::collections::HashMap::new(),
         std::collections::HashSet::new(),
     );
-    let entity_vacation = Entity::new(
+    let entity_vacation = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
         std::collections::HashMap::new(),
         std::collections::HashSet::new(),

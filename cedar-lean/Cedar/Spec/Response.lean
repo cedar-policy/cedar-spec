@@ -38,10 +38,8 @@ deriving Repr, DecidableEq
 
 ----- Derivations -----
 
--- deriving instance Repr for Decision, Response
-
--- deriving instance DecidableEq for Decision
--- deriving instance DecidableEq for Response
+deriving instance Repr, DecidableEq, Lean.ToJson for Decision
+deriving instance Repr, DecidableEq, Lean.ToJson for Response
 
 deriving instance Lean.ToJson for Decision
 deriving instance Lean.ToJson for Response
