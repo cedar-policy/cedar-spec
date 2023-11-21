@@ -110,6 +110,15 @@ def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : B
 
 ----- Derivations -----
 
+deriving instance Repr for BoolType
+deriving instance Repr for ExtType
+deriving instance Repr for Qualified
+deriving instance Repr for CedarType
+deriving instance Repr for TypeError
+
+deriving instance Repr for EntityTypeStoreEntry
+deriving instance Repr for ActionStoreEntry
+
 deriving instance DecidableEq for BoolType
 deriving instance DecidableEq for ExtType
 
