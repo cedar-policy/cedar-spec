@@ -171,8 +171,6 @@ impl LeanDefinitionalEngine {
             mode: cedar_policy_validator::ValidationMode::default(), // == Strict
         })
         .expect("Failed to serialize schema or policies");
-        println!("{request}");
-        assert!(false);
         let cstring = CString::new(request).expect("CString::new failed");
         let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         return s;
@@ -180,11 +178,12 @@ impl LeanDefinitionalEngine {
 
     fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
         let response_string = lean_obj_to_string(response);
-        let resp: ValResponseDef =
-            serde_json::from_str(&response_string).expect("could not convert string to json");
-        let errors = resp.errors.mk.l.into_iter().collect();
+        print!("{response_string}");
+        // let resp: ValResponseDef =
+        //     serde_json::from_str(&response_string).expect("could not convert string to json");
+        // let errors = resp.errors.mk.l.into_iter().collect();
         ValidationInterfaceResponse {
-            validation_errors: errors,
+            validation_errors: Vec::new(),
             parse_errors: Vec::new(),
         }
     }
