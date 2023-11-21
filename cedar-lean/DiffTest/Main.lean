@@ -50,11 +50,4 @@ open Cedar.Validation
     let response := validate policies schema
     toString (Lean.toJson response)
 
-def test : IO Unit := do
-  let input ← IO.FS.readFile "DiffTest/example.json"
-  IO.println (isAuthorizedDRT input)
-
--- result should be "allow" due to policy0
-#eval test
-
 end DiffTest

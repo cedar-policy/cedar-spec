@@ -350,7 +350,7 @@ structure JsonEntityTypeStoreEntry where
 abbrev JsonEntityTypeStore := Map EntityType JsonEntityTypeStoreEntry
 
 structure JsonSchemaActionEntry where
-  appliesToPricipal : Set EntityType
+  appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
   descendants : Set EntityUID
   context : RecordType
@@ -375,7 +375,7 @@ def invertJsonSchemaActionStore (acts : JsonSchemaActionStore) : SchemaActionSto
   Map.mk (List.map
     (λ (k,v) => (k,
       {
-        appliesToPricipal := v.appliesToPricipal,
+        appliesToPrincipal := v.appliesToPrincipal,
         appliesToResource := v.appliesToResource,
         ancestors := ancestorMap.find! k,
         context := v.context
@@ -436,7 +436,7 @@ partial def jsonToSchemaActionEntry (json : Lean.Json) : JsonSchemaActionEntry :
   let descendants := jsonToArray (getJsonField json "descendants")
   let context := getJsonField (getJsonField json "context") "attrs"
   {
-    appliesToPricipal := Set.mk (List.map jsonToEntityType appliesToPrincipal.toList),
+    appliesToPrincipal := Set.mk (List.map jsonToEntityType appliesToPrincipal.toList),
     appliesToResource := Set.mk (List.map jsonToEntityType appliesToResource.toList),
     descendants := Set.mk (List.map jsonToEuid descendants.toList),
     context := jsonToRecordType context

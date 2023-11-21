@@ -26,7 +26,7 @@ open Cedar.Data
 ----- Definitions -----
 
 structure SchemaActionEntry where
-  appliesToPricipal : Set EntityType
+  appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
   ancestors : Set EntityUID
   context : RecordType
@@ -42,7 +42,7 @@ For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
 def SchemaActionEntry.toRequestTypes (action : EntityUID) (entry : SchemaActionEntry) : List RequestType :=
-  entry.appliesToPricipal.toList.foldl (fun acc principal =>
+  entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
         {
