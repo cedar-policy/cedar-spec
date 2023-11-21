@@ -19,9 +19,7 @@ namespace Cedar.Spec
 inductive PatElem where
   | star
   | justChar (c : Char)
-deriving Repr
-deriving instance DecidableEq for PatElem
-deriving instance Inhabited for PatElem
+deriving Repr, DecidableEq, Inhabited
 
 abbrev Pattern := List PatElem
 

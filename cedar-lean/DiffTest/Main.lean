@@ -17,6 +17,8 @@
 import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
+import Cedar.Validation
+import DiffTest.Util
 import DiffTest.Parser
 
 /-! This file defines the public interfaces for the Lean implementation.
@@ -25,15 +27,28 @@ import DiffTest.Parser
 namespace DiffTest
 
 open Cedar.Spec
-open Cedar.Data
+open Cedar.Validation
 
 @[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
   let json := Lean.Json.parse req
-  let request := jsonToRequest json
-  let entities := jsonToEntities json
-  let policies := jsonToPolicies json
-  let json := Lean.toJson (isAuthorized request entities policies)
-  toString json
+  match json with
+  | .error e => panic! s!"isAuthorizedDRT: failed to parse input: {e}"
+  | .ok json =>
+    let request := jsonToRequest (getJsonField json "request")
+    let entities := jsonToEntities (getJsonField json "entities")
+    let policies := jsonToPolicies (getJsonField json "policies")
+    let response := isAuthorized request entities policies
+    toString (Lean.toJson response)
+
+@[export validateDRT] def validateDRT (req : String) : String :=
+  let json := Lean.Json.parse req
+  match json with
+  | .error e => panic! s!"validateDRT: failed to parse input: {e}"
+  | .ok json =>
+    let policies := jsonToPolicies (getJsonField json "policies")
+    let schema := jsonToSchema (getJsonField json "schema")
+    let response := validate policies schema
+    toString (Lean.toJson response)
 
 def test : IO Unit := do
   let input ← IO.FS.readFile "DiffTest/example.json"

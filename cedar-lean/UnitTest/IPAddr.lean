@@ -72,8 +72,6 @@ def testsForInvalidStrings :=
     testInvalid "F:AE::F:5:F:F:0/01" "no leading zeros"
   ]
 
-deriving instance Inhabited for IPNet
-
 private def parse! (str : String) : IPNet :=
   match parse str with
   | .some ip => ip

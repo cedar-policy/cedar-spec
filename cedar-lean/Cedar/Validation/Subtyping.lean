@@ -46,15 +46,18 @@ mutual
 
 
   def lub? (ty₁ ty₂ : CedarType) : Option CedarType :=
-    match ty₁, ty₂ with
-    | .bool b₁, .bool b₂ => .some (.bool (lubBool b₁ b₂))
-    | .set s₁, .set s₂ => do
-      let lub ← lub? s₁ s₂
-      .some (.set lub)
-    | .record (.mk r₁), .record (.mk r₂) => do
-      let lub ← lubRecordType r₁ r₂
-      .some (.record (Map.mk lub))
-    | _, _ => .none
+    if ty₁ == ty₂
+    then .some ty₁
+    else
+      match ty₁, ty₂ with
+      | .bool b₁, .bool b₂ => .some (.bool (lubBool b₁ b₂))
+      | .set s₁, .set s₂ => do
+        let lub ← lub? s₁ s₂
+        .some (.set lub)
+      | .record (.mk r₁), .record (.mk r₂) => do
+        let lub ← lubRecordType r₁ r₂
+        .some (.record (Map.mk lub))
+      | _, _ => .none
 end
 
 def subty (ty₁ ty₂ : CedarType) : Bool :=

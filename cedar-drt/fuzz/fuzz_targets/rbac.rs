@@ -19,6 +19,7 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::err::Result;
 use cedar_policy_generators::hierarchy::{
     AttributesMode, EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode,
@@ -140,6 +141,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                     0..=4,
                 ),
                 u,
+                extensions: Extensions::all_available(),
             }
             .generate()?,
         );
@@ -203,7 +205,7 @@ fuzz_target!(|input: FuzzTargetInput| {
         for rbac_request in input.requests.into_iter() {
             let request = ast::Request::from(rbac_request);
             let (_, dur) =
-                time_function(|| run_auth_test(&java_def_engine, &request, &policyset, &entities));
+                time_function(|| run_auth_test(&java_def_engine, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, dur.as_nanos());
         }
     }

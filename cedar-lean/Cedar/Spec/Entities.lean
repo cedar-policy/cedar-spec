@@ -53,8 +53,6 @@ def Entities.attrsOrEmpty (es : Entities) (uid : EntityUID) : Map Attr Value :=
 
 ----- Derivations -----
 
-deriving instance Repr for EntityData
-deriving instance DecidableEq for EntityData
-deriving instance Inhabited for EntityData
+deriving instance Repr, DecidableEq, Inhabited for EntityData
 
 end Cedar.Spec

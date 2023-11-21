@@ -24,9 +24,10 @@ To run the unit tests:
 $ lake exe CedarUnitTests
 ```
 
-To run integration test JSON file:
+To run on integration test JSON files:
 ```shell
-lake exe DiffTestStandAlone diff_test_jsons/5b.json
+lake exe Cli authorize Cli/json-inputs/authorize/example1a.json
+lake exe Cli validate Cli/json-inputs/validate/example1a.json
 ```
 
 ## Updating the Lean toolchain

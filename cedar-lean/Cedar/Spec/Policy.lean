@@ -116,26 +116,12 @@ def Scope.bound : Scope → Option EntityUID
 
 ----- Derivations -----
 
-deriving instance Repr for Effect
-deriving instance Repr for Scope
-deriving instance Repr for PrincipalScope
-deriving instance Repr for ResourceScope
-deriving instance Repr for ActionScope
-deriving instance Repr for Policy
-
-deriving instance DecidableEq for Effect
-deriving instance DecidableEq for Scope
-deriving instance DecidableEq for PrincipalScope
-deriving instance DecidableEq for ResourceScope
-deriving instance DecidableEq for ActionScope
-deriving instance DecidableEq for Policy
-
-deriving instance Inhabited for Effect
-deriving instance Inhabited for Scope
-deriving instance Inhabited for PrincipalScope
-deriving instance Inhabited for ResourceScope
-deriving instance Inhabited for ActionScope
-deriving instance Inhabited for Policy
+deriving instance Repr, DecidableEq, Inhabited for Effect
+deriving instance Repr, DecidableEq, Inhabited for Scope
+deriving instance Repr, DecidableEq, Inhabited for PrincipalScope
+deriving instance Repr, DecidableEq, Inhabited for ResourceScope
+deriving instance Repr, DecidableEq, Inhabited for ActionScope
+deriving instance Repr, DecidableEq, Inhabited for Policy
 
 deriving instance Lean.ToJson for PolicyID
 

@@ -206,6 +206,9 @@ module def.engine {
         case Like(p) =>
           var s :- Value.asString(x);
           Ok(Value.Bool(wildcardMatch(s, p)))
+        case Is(ety) =>
+          var e :- Value.asEntity(x);
+          Ok(Value.Bool(e.ty == ety))
       }
     }
 

@@ -698,7 +698,7 @@ impl From<AttrValue> for RestrictedExpr {
             // INVARIANT (MethodCallArgs), only Function Style so no worries here
             AttrValue::ExtFuncCall { fn_name, args } => RestrictedExpr::call_extension_fn(
                 fn_name,
-                args.into_iter().map(Into::into).collect(),
+                args.into_iter().map(Into::into),
             ),
             AttrValue::Set(l) => RestrictedExpr::set(l.into_iter().map(Into::into)),
             AttrValue::Record(r) => {

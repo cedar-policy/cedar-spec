@@ -74,22 +74,29 @@ inductive TypeError where
   | emptySetErr
   | incompatibleSetTypes (ty : List CedarType)
 
-abbrev EntityTypeStore := Map EntityType (RecordType × (Cedar.Data.Set EntityType))
+structure EntityTypeStoreEntry where
+  ancestors : Cedar.Data.Set EntityType
+  attrs : RecordType
+
+abbrev EntityTypeStore := Map EntityType EntityTypeStoreEntry
 
 def EntityTypeStore.contains (ets : EntityTypeStore) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
 def EntityTypeStore.attrs? (ets : EntityTypeStore) (ety : EntityType) : Option RecordType :=
-  (ets.find? ety).map Prod.fst
+  (ets.find? ety).map EntityTypeStoreEntry.attrs
 
 def EntityTypeStore.descendentOf (ets : EntityTypeStore) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match ets.find? ety₁ with
-    | .some (_, ancs) => ancs.contains ety₂
+    | .some entry => entry.ancestors.contains ety₂
     | .none => false
 
-abbrev ActionStore := Map EntityUID (Cedar.Data.Set EntityUID)
+structure ActionStoreEntry where
+  ancestors : Cedar.Data.Set EntityUID
+
+abbrev ActionStore := Map EntityUID ActionStoreEntry
 
 def ActionStore.contains (as : ActionStore) (uid : EntityUID) : Bool :=
   (as.find? uid).isSome
@@ -98,10 +105,19 @@ def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : B
   if uid₁ == uid₂
   then true
   else match as.find? uid₁ with
-    | .some ancs => ancs.contains uid₂
+    | .some entry => entry.ancestors.contains uid₂
     | .none => false
 
 ----- Derivations -----
+
+deriving instance Repr for BoolType
+deriving instance Repr for ExtType
+deriving instance Repr for Qualified
+deriving instance Repr for CedarType
+deriving instance Repr for TypeError
+
+deriving instance Repr for EntityTypeStoreEntry
+deriving instance Repr for ActionStoreEntry
 
 deriving instance DecidableEq for BoolType
 deriving instance DecidableEq for ExtType
@@ -180,6 +196,8 @@ instance : DecidableEq CedarType := decCedarType
 deriving instance DecidableEq for Qualified
 deriving instance DecidableEq for TypeError
 
+deriving instance Inhabited for Qualified
+deriving instance Inhabited for ExtType
 deriving instance Inhabited for CedarType
 
 end Cedar.Validation

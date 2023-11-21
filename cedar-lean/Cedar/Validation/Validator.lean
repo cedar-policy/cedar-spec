@@ -28,7 +28,7 @@ open Cedar.Data
 structure SchemaActionEntry where
   appliesToPricipal : Set EntityType
   appliesToResource : Set EntityType
-  descendants : Set EntityUID
+  ancestors : Set EntityUID
   context : RecordType
 
 abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
@@ -59,7 +59,7 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
-    acts := schema.acts.mapOnValues (fun entry => entry.descendants),
+    acts := schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }),
     reqty := ·
   })
 
@@ -69,9 +69,58 @@ inductive ValidationError where
 
 abbrev ValidationResult := Except ValidationError Unit
 
+-- TODO: prove termination and get rid of `partial`
+partial def mapOnVars (f : Var → Expr) : Expr → Expr
+  | .lit l => .lit l
+  | .var var => f var
+  | .ite x₁ x₂ x₃ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    let x₃ := mapOnVars f x₃
+    .ite x₁ x₂ x₃
+  | .and x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .and x₁ x₂
+  | .or x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .or x₁ x₂
+  | .unaryApp op₁ x₁ =>
+    let x₁ := mapOnVars f x₁
+    .unaryApp op₁ x₁
+  | .binaryApp op₂ x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .binaryApp op₂ x₁ x₂
+  | .hasAttr x₁ a =>
+    let x₁ := mapOnVars f x₁
+    .hasAttr x₁ a
+  | .getAttr x₁ a =>
+    let x₁ := mapOnVars f x₁
+    .getAttr x₁ a
+  | .set xs =>
+    let xs := xs.map (mapOnVars f)
+    .set xs
+  | .record axs =>
+    let axs := axs.map (λ (k,v) => (k, mapOnVars f v))
+    .record axs
+  | .call xfn xs =>
+    let xs := xs.map (mapOnVars f)
+    .call xfn xs
+
+/- Substitute `action` variable for a literal EUID to improve typechecking precision. -/
+def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
+  let f (var : Var) : Expr :=
+    match var with
+    | .action => .lit (.entityUID uid)
+    | _ => .var var
+  mapOnVars f expr
+
 /-- Check that a policy is Boolean-typed. -/
 def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
-  match typeOf policy.toExpr ∅ env with
+  let expr := substituteAction env.reqty.action policy.toExpr
+  match typeOf expr ∅ env with
   | .ok (ty, _) =>
     if ty ⊑ .bool .anyBool
     then .ok ty
@@ -93,5 +142,33 @@ none are guaranteed to be false under all possible environments.
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
   let envs := schema.toEnvironments
   policies.forM (typecheckPolicyWithEnvironments · envs)
+
+----- Derivations -----
+
+deriving instance Repr for SchemaActionEntry
+deriving instance Repr for Schema
+deriving instance Repr for ValidationError
+
+deriving instance Lean.ToJson for Except
+
+/-
+Lossy serialization of errors to Json. This serialization provides some extra
+information to DRT without having to derive `Lean.ToJson` for `Expr` and `CedarType`.
+-/
+def validationErrorToJson : ValidationError → Lean.Json
+  | .typeError _ (.lubErr _ _) => "lubErr"
+  | .typeError _ (.unexpectedType _) => "unexpectedType"
+  | .typeError _ (.attrNotFound _ _) => "attrNotFound"
+  | .typeError _ (.unknownEntity _) => "unknownEntity"
+  | .typeError _ (.extensionErr _) => "extensionErr"
+  | .typeError _ .emptySetErr => "emptySetErr"
+  | .typeError _ (.incompatibleSetTypes _) => "incompatibleSetTypes"
+  | .impossiblePolicy _ => "impossiblePolicy"
+
+instance : Lean.ToJson ValidationError where
+  toJson := validationErrorToJson
+
+instance : Lean.ToJson Unit where
+  toJson := λ _ => Lean.Json.null
 
 end Cedar.Validation
