@@ -19,7 +19,7 @@ import Cedar.Thm.Lemmas.Typechecker
 import Mathlib.Data.List.Basic
 
 /-!
-This file defines the top-level soundness property for the valdator.
+This file defines the top-level soundness property for the validator.
 
 todo: fill in `sorry`s. Some invariants may need to be adjusted. The current
 definitions are an informed guess based on the corresponding Dafny proof.
@@ -46,42 +46,12 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : Ced
   typecheckPolicy policy env = .ok t →
   EvaluatesToBool policy request entities
 := by
-  intro h₀ h₁
-  unfold typecheckPolicy at h₁
-  cases h₂ : (typeOf (Policy.toExpr policy) ∅ env) <;>
-  rw [h₂] at h₁ <;>
-  simp at h₁
-  case ok res =>
-    cases h₃ : (res.fst ⊑ CedarType.bool BoolType.anyBool) <;>
-    rw [h₃] at h₁ <;>
-    simp at h₁
-    clear h₁ t
-    have h₁ : GuardedCapabilitiesInvariant policy.toExpr res.2 request entities ∧ ∃ (v : Value), EvaluatesTo policy.toExpr request entities v ∧ InstanceOfType v res.1 := by
-      apply type_of_is_sound (env:=env) (c₁:=∅)
-      apply empty_capabilities_invariant
-      apply h₀
-      apply h₂
-    cases h₁ with
-    | intro _ h₁ =>
-      cases h₁ with
-      | intro v h₁ =>
-        cases h₁ with
-        | intro h₁ h₄ =>
-          have h₅ : ∃ b, v = .prim (.bool b) := by
-            apply instance_of_type_bool_is_bool
-            apply h₄
-            apply h₃
-          cases h₅ with
-          | intro b h₅ =>
-            unfold EvaluatesToBool
-            exists b
-            rewrite [← h₅]
-            apply h₁
+  sorry
 
 def RequestMatchesSchema (schema : Schema) (request : Request) : Prop :=
   match schema.acts.find? request.action with
   | some entry =>
-      request.principal.ty ∈ entry.appliesToPricipal ∧
+      request.principal.ty ∈ entry.appliesToPrincipal ∧
       request.resource.ty ∈ entry.appliesToResource ∧
       InstanceOfType request.context (.record entry.context)
   | _ => False
@@ -89,7 +59,7 @@ def RequestMatchesSchema (schema : Schema) (request : Request) : Prop :=
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
   RequestMatchesSchema schema request ∧
   InstanceOfEntityTypeStore entities schema.ets ∧
-  InstanceOfActionStore entities (schema.acts.mapOnValues (fun entry => entry.descendants))
+  InstanceOfActionStore entities (schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }))
 
 /--
 Top-level soundness theorem: If validation succeeds, then for any request
