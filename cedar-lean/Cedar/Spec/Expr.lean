@@ -66,11 +66,10 @@ inductive Expr where
 
 ----- Derivations -----
 
-deriving instance Repr, DecidableEq for Var
-deriving instance Repr, DecidableEq for UnaryOp
-deriving instance Repr, DecidableEq for BinaryOp
+deriving instance Repr, DecidableEq, Inhabited for Var
+deriving instance Repr, DecidableEq, Inhabited for UnaryOp
+deriving instance Repr, DecidableEq, Inhabited for BinaryOp
 deriving instance Repr, Inhabited for Expr
-
 
 mutual
 
