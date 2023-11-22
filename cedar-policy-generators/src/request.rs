@@ -1,4 +1,5 @@
 use crate::collections::HashMap;
+use crate::err::Error;
 use crate::hierarchy::Hierarchy;
 use arbitrary::Unstructured;
 use cedar_policy_core::ast::{self, EntityUID, RestrictedExpr};
@@ -15,7 +16,7 @@ pub struct Request {
     /// Resource
     pub resource: EntityUID,
     /// Context
-    pub context: HashMap<SmolStr, RestrictedExpr>,
+    pub context: ast::Context,
 }
 
 impl Request {
@@ -30,7 +31,8 @@ impl Request {
             principal: hierarchy.arbitrary_uid(u)?,
             action: hierarchy.arbitrary_uid(u)?,
             resource: hierarchy.arbitrary_uid(u)?,
-            context,
+            context: ast::Context::from_pairs(context, Extensions::all_available())
+                .map_err(Error::ContextError)?,
         })
     }
 }
@@ -41,8 +43,7 @@ impl From<Request> for ast::Request {
             req.principal,
             req.action,
             req.resource,
-            ast::Context::from_pairs(req.context, Extensions::all_available())
-                .expect("can't have duplicate keys because `req.context` was already a HashMap"),
+            req.context,
             None::<&ast::RequestSchemaAllPass>,
             Extensions::all_available(),
         )
@@ -57,9 +58,10 @@ impl std::fmt::Display for Request {
             "(principal : {}, action: {}, resource: {})",
             self.principal, self.action, self.resource
         )?;
-        if !self.context.is_empty() {
+        let mut context = self.context.iter().unwrap().peekable();
+        if context.peek().is_some() {
             writeln!(f, "\nWith context: {{")?;
-            for (attr, val) in self.context.iter() {
+            for (attr, val) in context {
                 writeln!(f, "{attr} : {val},")?;
             }
             write!(f, "}}")
