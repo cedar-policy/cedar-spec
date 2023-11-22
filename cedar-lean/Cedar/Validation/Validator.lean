@@ -26,9 +26,9 @@ open Cedar.Data
 ----- Definitions -----
 
 structure SchemaActionEntry where
-  appliesToPricipal : Set EntityType
+  appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
-  descendants : Set EntityUID
+  ancestors : Set EntityUID
   context : RecordType
 
 abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
@@ -42,7 +42,7 @@ For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
 def SchemaActionEntry.toRequestTypes (action : EntityUID) (entry : SchemaActionEntry) : List RequestType :=
-  entry.appliesToPricipal.toList.foldl (fun acc principal =>
+  entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
         {
@@ -59,7 +59,7 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
-    acts := schema.acts.mapOnValues (fun entry => entry.descendants),
+    acts := schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }),
     reqty := ·
   })
 
@@ -69,9 +69,58 @@ inductive ValidationError where
 
 abbrev ValidationResult := Except ValidationError Unit
 
+-- TODO: prove termination and get rid of `partial`
+partial def mapOnVars (f : Var → Expr) : Expr → Expr
+  | .lit l => .lit l
+  | .var var => f var
+  | .ite x₁ x₂ x₃ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    let x₃ := mapOnVars f x₃
+    .ite x₁ x₂ x₃
+  | .and x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .and x₁ x₂
+  | .or x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .or x₁ x₂
+  | .unaryApp op₁ x₁ =>
+    let x₁ := mapOnVars f x₁
+    .unaryApp op₁ x₁
+  | .binaryApp op₂ x₁ x₂ =>
+    let x₁ := mapOnVars f x₁
+    let x₂ := mapOnVars f x₂
+    .binaryApp op₂ x₁ x₂
+  | .hasAttr x₁ a =>
+    let x₁ := mapOnVars f x₁
+    .hasAttr x₁ a
+  | .getAttr x₁ a =>
+    let x₁ := mapOnVars f x₁
+    .getAttr x₁ a
+  | .set xs =>
+    let xs := xs.map (mapOnVars f)
+    .set xs
+  | .record axs =>
+    let axs := axs.map (λ (k,v) => (k, mapOnVars f v))
+    .record axs
+  | .call xfn xs =>
+    let xs := xs.map (mapOnVars f)
+    .call xfn xs
+
+/- Substitute `action` variable for a literal EUID to improve typechecking precision. -/
+def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
+  let f (var : Var) : Expr :=
+    match var with
+    | .action => .lit (.entityUID uid)
+    | _ => .var var
+  mapOnVars f expr
+
 /-- Check that a policy is Boolean-typed. -/
 def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
-  match typeOf policy.toExpr ∅ env with
+  let expr := substituteAction env.reqty.action policy.toExpr
+  match typeOf expr ∅ env with
   | .ok (ty, _) =>
     if ty ⊑ .bool .anyBool
     then .ok ty

@@ -54,7 +54,7 @@ mutual
     | .record (.mk r₁), .record (.mk r₂) => do
       let lub ← lubRecordType r₁ r₂
       .some (.record (Map.mk lub))
-    | _, _ => .none
+    | _, _ => if ty₁ = ty₂ then .some ty₁ else  .none
 end
 
 def subty (ty₁ ty₂ : CedarType) : Bool :=
