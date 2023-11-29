@@ -6,28 +6,30 @@ This folder contains the Lean formalization of, and proofs about, Cedar.
 
 Follow [these instructions](https://leanprover.github.io/lean4/doc/setup.html) to set up Lean and install the VS Code plugin.
 
-
 ## Usage
 
 To use VS Code, open the `cedar-lean` folder as the root directory.
 
 To build code and proofs from the command line:
-```
-$ cd cedar-lean
-$ lake build Cedar
+
+```shell
+cd cedar-lean
+lake build Cedar
 ```
 
 The the first build may take a while because it builds the `mathlib4` library that Cedar depends on. Subsequent builds will be fast.
 
 To run the unit tests:
-```
-$ lake exe CedarUnitTests
+
+```shell
+lake exe CedarUnitTests
 ```
 
-To run on integration test JSON files:
+To run the CLI, use `lake exe Cli`. We provide some example inputs in `Cli/json-inputs`. The authorization examples should all return "allow" and the validation examples should return "ok".
+
 ```shell
-lake exe Cli authorize Cli/json-inputs/authorize/example1a.json
-lake exe Cli validate Cli/json-inputs/validate/example1a.json
+lake exe Cli authorize Cli/json-inputs/authorize/example2a.json
+lake exe Cli validate Cli/json-inputs/validate/example2a.json
 ```
 
 ## Updating the Lean toolchain
@@ -36,18 +38,10 @@ Cedar depends on [`mathlib4`](https://github.com/leanprover-community/mathlib4),
 
 Follow [these instructions](https://github.com/leanprover-community/mathlib4/wiki/Using-mathlib4-as-a-dependency#updating-mathlib4) to update to the latest version of `mathlib4` and Lean:
 
-```
-$ curl https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain -o lean-toolchain
-$ lake update
-$ lake exe cache get
-```
-
-## Linking with Rust
-
-To link with Rust, compile as static libraries:
-
 ```shell
-lake build DiffTest:static Std:static Aesop:static ProofWidgets:static Qq:static Mathlib:static Cedar:static
+curl https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain -o lean-toolchain
+lake update
+lake exe cache get
 ```
 
 ## Contributing
@@ -78,4 +72,3 @@ Basic theorems ([`Cedar/Thm/Basic.lean`](Cedar/Thm/Basic.lean))
 Sound policy slicing ([`Cedar/Thm/Slicing.lean`](Cedar/Thm/Slicing.lean))
 
 * Given a _sound policy slice_, the result of authorization is the same with the slice as it is with the full policy store.
-

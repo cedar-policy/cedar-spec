@@ -25,10 +25,10 @@ package Cedar
 lean_lib Cedar where
   defaultFacets := #[LeanLib.staticFacet]
 
-lean_lib UnitTest where
+lean_lib DiffTest where
   defaultFacets := #[LeanLib.staticFacet]
 
-lean_lib DiffTest where
+lean_lib UnitTest where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_exe CedarUnitTests where

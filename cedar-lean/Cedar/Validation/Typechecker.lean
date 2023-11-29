@@ -64,7 +64,7 @@ def typeOfIf (r₁ : CedarType × Capabilities) (r₂ r₃ : ResultType) : Resul
   match r₁ with
   | (.bool .tt, c₁) => do
     let (ty₂, c₂) ← r₂
-    ok ty₂ (c₁.union c₂)
+    ok ty₂ (c₁ ∪ c₂)
   | (.bool .ff, _) => r₃
   | (.bool .anyBool, c₁) => do
     let (ty₂, c₂) ← r₂
@@ -89,12 +89,16 @@ def typeOfAnd (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultTyp
 def typeOfOr (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=
   match r₁ with
   | (.bool .tt, _)  => ok (.bool .tt)
-  | (.bool .ff, _)  => r₂
-  | (.bool ty₁, c₁) => do
+  | (.bool .ff, _)  => do
+    let (ty₂, c₂) ← r₂
+    match ty₂ with
+    | .bool _       => ok ty₂ c₂
+    | _             => err (.unexpectedType ty₂)
+  | (.bool _, c₁)   => do
     let (ty₂, c₂) ← r₂
     match ty₂ with
     | .bool .tt     => ok (.bool .tt)
-    | .bool .ff     => ok (.bool ty₁) c₁
+    | .bool .ff     => ok (.bool .anyBool) c₁
     | .bool _       => ok (.bool .anyBool) (c₁ ∩ c₂)
     | _             => err (.unexpectedType ty₂)
   | (ty₁, _)        => err (.unexpectedType ty₁)
@@ -174,21 +178,20 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Ex
   | .containsAny, .set ty₃, .set ty₄        => ifLubThenBool ty₃ ty₄
   | _, _, _                                 => err (.unexpectedType ty₁)
 
-def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
+def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) (knownToExist : Bool) : ResultType :=
   match rty.find? a with
-  | .some (.required _) => ok (.bool .tt)
-  | .some (.optional _) =>
-    if (x, a) ∈ c
+  | .some qty =>
+    if (x, a) ∈ c || (qty.isRequired && knownToExist)
     then ok (.bool .tt)
     else ok (.bool .anyBool) (Capabilities.singleton x a)
-  | .none               => ok (.bool .ff)
+  | .none     => ok (.bool .ff)
 
 def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   match ty with
-  | .record rty => hasAttrInRecord rty x a c
+  | .record rty => hasAttrInRecord rty x a c true
   | .entity ety =>
     match env.ets.attrs? ety with
-    | .some rty => hasAttrInRecord rty x a c
+    | .some rty => hasAttrInRecord rty x a c false
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty)
 

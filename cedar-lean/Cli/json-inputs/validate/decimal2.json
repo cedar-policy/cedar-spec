@@ -14,233 +14,8 @@
                     "descendants": [],
                     "attributes": {
                         "attrs": {}
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "UserGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "UserGroup",
-                        "path": []
                     },
-                    "descendants": [
-                        {
-                            "id": "User",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {}
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "Account",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Account",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Album",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "User",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "User",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {
-                            "department": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "String"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "jobLevel": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Long"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "Photo",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Photo",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {
-                            "account": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "Account",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "AccountGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "AccountGroup",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Album",
-                            "path": []
-                        },
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Account",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    }
+                    "open_attributes": "ClosedAttributes"
                 }
             ],
             [
@@ -308,7 +83,239 @@
                                 "isRequired": true
                             }
                         }
-                    }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Account",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Account",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Photo",
+                            "path": []
+                        },
+                        {
+                            "id": "Album",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "User",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "User",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "User",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "department": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "String"
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "jobLevel": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Long"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "UserGroup",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "UserGroup",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "User",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "AccountGroup",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "AccountGroup",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Album",
+                            "path": []
+                        },
+                        {
+                            "id": "Account",
+                            "path": []
+                        },
+                        {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "User",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Photo",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Photo",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "account": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "Account",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
                 }
             ]
         ],
@@ -321,7 +328,7 @@
                             "path": []
                         }
                     },
-                    "eid": "listPhotos"
+                    "eid": "listAlbums"
                 },
                 {
                     "name": {
@@ -331,7 +338,7 @@
                                 "path": []
                             }
                         },
-                        "eid": "listPhotos"
+                        "eid": "listAlbums"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
@@ -345,7 +352,7 @@
                         "resourceApplySpec": [
                             {
                                 "Specified": {
-                                    "id": "Album",
+                                    "id": "Account",
                                     "path": []
                                 }
                             }
@@ -353,101 +360,21 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "addPhoto"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "addPhoto"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "photo": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Record": {
-                                            "attrs": {
-                                                "attrs": {
-                                                    "filesize_mb": {
-                                                        "attrType": {
-                                                            "Primitive": {
-                                                                "primitiveType": "Long"
-                                                            }
-                                                        },
-                                                        "isRequired": true
-                                                    },
-                                                    "filetype": {
-                                                        "attrType": {
-                                                            "Primitive": {
-                                                                "primitiveType": "String"
-                                                            }
-                                                        },
-                                                        "isRequired": true
-                                                    }
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
                                                 }
                                             },
-                                            "open_attributes": "ClosedAttributes"
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -497,14 +424,21 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -522,7 +456,7 @@
                             "path": []
                         }
                     },
-                    "eid": "edit"
+                    "eid": "listPhotos"
                 },
                 {
                     "name": {
@@ -532,7 +466,7 @@
                                 "path": []
                             }
                         },
-                        "eid": "edit"
+                        "eid": "listPhotos"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
@@ -546,7 +480,7 @@
                         "resourceApplySpec": [
                             {
                                 "Specified": {
-                                    "id": "Photo",
+                                    "id": "Album",
                                     "path": []
                                 }
                             }
@@ -554,14 +488,21 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -611,36 +552,107 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "edit"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "edit"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -690,14 +702,21 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -715,7 +734,7 @@
                             "path": []
                         }
                     },
-                    "eid": "listAlbums"
+                    "eid": "addPhoto"
                 },
                 {
                     "name": {
@@ -725,7 +744,7 @@
                                 "path": []
                             }
                         },
-                        "eid": "listAlbums"
+                        "eid": "addPhoto"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
@@ -739,7 +758,7 @@
                         "resourceApplySpec": [
                             {
                                 "Specified": {
-                                    "id": "Account",
+                                    "id": "Album",
                                     "path": []
                                 }
                             }
@@ -747,14 +766,51 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "photo": {
+                                            "attrType": {
+                                                "EntityOrRecord": {
+                                                    "Record": {
+                                                        "attrs": {
+                                                            "attrs": {
+                                                                "filesize_mb": {
+                                                                    "attrType": {
+                                                                        "Primitive": {
+                                                                            "primitiveType": "Long"
+                                                                        }
+                                                                    },
+                                                                    "isRequired": true
+                                                                },
+                                                                "filetype": {
+                                                                    "attrType": {
+                                                                        "Primitive": {
+                                                                            "primitiveType": "String"
+                                                                        }
+                                                                    },
+                                                                    "isRequired": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "open_attributes": "ClosedAttributes"
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
