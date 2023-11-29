@@ -469,6 +469,290 @@
                 {
                     "ty": {
                         "Specified": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "view"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "view"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "vacation.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "vacation.jpg"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        },
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "Album",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_vacation"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "delete"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "comment"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "stacey"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "stacey"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "stacey"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
                             "id": "UserGroup",
                             "path": []
                         }
@@ -497,6 +781,122 @@
                             "path": []
                         }
                     },
+                    "eid": "edit"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "edit"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Account",
+                            "path": []
+                        }
+                    },
+                    "eid": "ahmad"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Account",
+                                "path": []
+                            }
+                        },
+                        "eid": "ahmad"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "ahmad"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "AccountGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "addPhoto"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "addPhoto"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
                     "eid": "listAlbums"
                 },
                 {
@@ -511,6 +911,254 @@
                     },
                     "attrs": {},
                     "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Album",
+                            "path": []
+                        }
+                    },
+                    "eid": "device_prototypes"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Album",
+                                "path": []
+                            }
+                        },
+                        "eid": "device_prototypes"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "alice"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "alice"
+                    },
+                    "attrs": {
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "HardwareEngineering"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 5
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_friends"
+                        },
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "AVTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "AccountGroup",
+                            "path": []
+                        }
+                    },
+                    "eid": "GeronimoTeam"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "AccountGroup",
+                                "path": []
+                            }
+                        },
+                        "eid": "GeronimoTeam"
+                    },
+                    "attrs": {
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "User",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    },
+                    "eid": "sales_projections.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Photo",
+                                "path": []
+                            }
+                        },
+                        "eid": "sales_projections.jpg"
+                    },
+                    "attrs": {
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": {
+                                                "id": "Account",
+                                                "path": []
+                                            }
+                                        },
+                                        "eid": "stacey"
+                                    }
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": [
+                                    {
+                                        "expr_kind": {
+                                            "Lit": {
+                                                "EntityUID": {
+                                                    "ty": {
+                                                        "Specified": {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    },
+                                                    "eid": "giuseppe"
+                                                }
+                                            }
+                                        },
+                                        "source_info": null,
+                                        "data": null
+                                    }
+                                ]
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            },
+                            "eid": "stacey"
+                        }
+                    ]
                 }
             ],
             [
@@ -570,11 +1218,64 @@
                 {
                     "ty": {
                         "Specified": {
+                            "id": "User",
+                            "path": []
+                        }
+                    },
+                    "eid": "stacey"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": {
+                                "id": "User",
+                                "path": []
+                            }
+                        },
+                        "eid": "stacey"
+                    },
+                    "attrs": {
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 6
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        },
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "Sales"
+                                }
+                            },
+                            "source_info": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": {
+                                    "id": "UserGroup",
+                                    "path": []
+                                }
+                            },
+                            "eid": "alice_friends"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
                             "id": "Photo",
                             "path": []
                         }
                     },
-                    "eid": "vacation.jpg"
+                    "eid": "prototype_v0.jpg"
                 },
                 {
                     "uid": {
@@ -584,12 +1285,14 @@
                                 "path": []
                             }
                         },
-                        "eid": "vacation.jpg"
+                        "eid": "prototype_v0.jpg"
                     },
                     "attrs": {
-                        "admins": {
+                        "private": {
                             "expr_kind": {
-                                "Set": []
+                                "Lit": {
+                                    "Bool": false
+                                }
                             },
                             "source_info": null,
                             "data": null
@@ -601,94 +1304,6 @@
                                         "ty": {
                                             "Specified": {
                                                 "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice_vacation"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
-                    },
-                    "eid": "ahmad"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
-                        },
-                        "eid": "ahmad"
-                    },
-                    "attrs": {
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
                                                 "path": []
                                             }
                                         },
@@ -711,11 +1326,11 @@
                         {
                             "ty": {
                                 "Specified": {
-                                    "id": "AccountGroup",
+                                    "id": "Album",
                                     "path": []
                                 }
                             },
-                            "eid": "GeronimoTeam"
+                            "eid": "device_prototypes"
                         }
                     ]
                 }
@@ -724,119 +1339,23 @@
                 {
                     "ty": {
                         "Specified": {
-                            "id": "User",
+                            "id": "Action",
                             "path": []
                         }
                     },
-                    "eid": "alice"
+                    "eid": "listPhotos"
                 },
                 {
                     "uid": {
                         "ty": {
                             "Specified": {
-                                "id": "User",
+                                "id": "Action",
                                 "path": []
                             }
                         },
-                        "eid": "alice"
+                        "eid": "listPhotos"
                     },
-                    "attrs": {
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 5
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "department": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "String": "HardwareEngineering"
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice_friends"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "AVTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
-                    },
-                    "eid": "stacey"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
-                        },
-                        "eid": "stacey"
-                    },
-                    "attrs": {
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "stacey"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
+                    "attrs": {},
                     "ancestors": []
                 }
             ],
@@ -945,255 +1464,6 @@
                 {
                     "ty": {
                         "Specified": {
-                            "id": "AccountGroup",
-                            "path": []
-                        }
-                    },
-                    "eid": "GeronimoTeam"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "AccountGroup",
-                                "path": []
-                            }
-                        },
-                        "eid": "GeronimoTeam"
-                    },
-                    "attrs": {
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "delete"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "delete"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "edit"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "edit"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "addPhoto"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "addPhoto"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Album",
-                            "path": []
-                        }
-                    },
-                    "eid": "device_prototypes"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Album",
-                                "path": []
-                            }
-                        },
-                        "eid": "device_prototypes"
-                    },
-                    "attrs": {
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "comment"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "comment"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
-                    },
-                    "eid": "stacey"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
-                        },
-                        "eid": "stacey"
-                    },
-                    "attrs": {
-                        "department": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "String": "Sales"
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 6
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice_friends"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
                             "id": "User",
                             "path": []
                         }
@@ -1211,15 +1481,6 @@
                         "eid": "ahmad"
                     },
                     "attrs": {
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 4
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
                         "department": {
                             "expr_kind": {
                                 "Lit": {
@@ -1228,254 +1489,17 @@
                             },
                             "source_info": null,
                             "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "prototype_v0.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
                         },
-                        "eid": "prototype_v0.jpg"
-                    },
-                    "attrs": {
-                        "private": {
+                        "jobLevel": {
                             "expr_kind": {
                                 "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "ahmad"
-                                    }
+                                    "Long": 4
                                 }
                             },
                             "source_info": null,
                             "data": null
                         }
                     },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            },
-                            "eid": "device_prototypes"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "sales_projections.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
-                        },
-                        "eid": "sales_projections.jpg"
-                    },
-                    "attrs": {
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": [
-                                    {
-                                        "expr_kind": {
-                                            "Lit": {
-                                                "EntityUID": {
-                                                    "ty": {
-                                                        "Specified": {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    },
-                                                    "eid": "giuseppe"
-                                                }
-                                            }
-                                        },
-                                        "source_info": null,
-                                        "data": null
-                                    }
-                                ]
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "stacey"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "stacey"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice"
-                    },
-                    "attrs": {
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "view"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "view"
-                    },
-                    "attrs": {},
                     "ancestors": []
                 }
             ],
@@ -1554,30 +1578,6 @@
                             "eid": "GeronimoTeam"
                         }
                     ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "listPhotos"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "listPhotos"
-                    },
-                    "attrs": {},
-                    "ancestors": []
                 }
             ]
         ]

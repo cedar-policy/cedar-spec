@@ -3,22 +3,6 @@
         "entityTypes": [
             [
                 {
-                    "id": "Video",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Video",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {}
-                    }
-                }
-            ],
-            [
-                {
                     "id": "Administrator",
                     "path": []
                 },
@@ -30,68 +14,25 @@
                     "descendants": [],
                     "attributes": {
                         "attrs": {}
-                    }
+                    },
+                    "open_attributes": "ClosedAttributes"
                 }
             ],
             [
                 {
-                    "id": "Photo",
+                    "id": "AccountGroup",
                     "path": []
                 },
                 {
                     "name": {
-                        "id": "Photo",
+                        "id": "AccountGroup",
                         "path": []
                     },
                     "descendants": [],
                     "attributes": {
                         "attrs": {}
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "User",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "User",
-                        "path": []
                     },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {}
-                    }
-                }
-            ],
-            [
-                {
-                    "id": "Album",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Album",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Video",
-                            "path": []
-                        },
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Album",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {}
-                    }
+                    "open_attributes": "ClosedAttributes"
                 }
             ],
             [
@@ -110,17 +51,52 @@
                             "path": []
                         },
                         {
-                            "id": "Photo",
+                            "id": "Album",
                             "path": []
                         },
                         {
-                            "id": "Album",
+                            "id": "Photo",
                             "path": []
                         }
                     ],
                     "attributes": {
                         "attrs": {}
-                    }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Video",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Video",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Photo",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Photo",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
                 }
             ],
             [
@@ -141,23 +117,55 @@
                     ],
                     "attributes": {
                         "attrs": {}
-                    }
+                    },
+                    "open_attributes": "ClosedAttributes"
                 }
             ],
             [
                 {
-                    "id": "AccountGroup",
+                    "id": "User",
                     "path": []
                 },
                 {
                     "name": {
-                        "id": "AccountGroup",
+                        "id": "User",
                         "path": []
                     },
                     "descendants": [],
                     "attributes": {
                         "attrs": {}
-                    }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Album",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Album",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Album",
+                            "path": []
+                        },
+                        {
+                            "id": "Photo",
+                            "path": []
+                        },
+                        {
+                            "id": "Video",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
                 }
             ]
         ],
@@ -170,7 +178,7 @@
                             "path": []
                         }
                     },
-                    "eid": "listPhotos"
+                    "eid": "view"
                 },
                 {
                     "name": {
@@ -180,7 +188,7 @@
                                 "path": []
                             }
                         },
-                        "eid": "listPhotos"
+                        "eid": "view"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
@@ -189,162 +197,10 @@
                                     "id": "User",
                                     "path": []
                                 }
-                            }
-                        ],
-                        "resourceApplySpec": [
+                            },
                             {
                                 "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "listAlbums"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "listAlbums"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "delete"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "delete"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
+                                    "id": "Administrator",
                                     "path": []
                                 }
                             }
@@ -355,41 +211,54 @@
                                     "id": "Photo",
                                     "path": []
                                 }
+                            },
+                            {
+                                "Specified": {
+                                    "id": "Video",
+                                    "path": []
+                                }
                             }
                         ]
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -439,36 +308,43 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -486,7 +362,7 @@
                             "path": []
                         }
                     },
-                    "eid": "comment"
+                    "eid": "listPhotos"
                 },
                 {
                     "name": {
@@ -496,7 +372,7 @@
                                 "path": []
                             }
                         },
-                        "eid": "comment"
+                        "eid": "listPhotos"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
@@ -510,7 +386,7 @@
                         "resourceApplySpec": [
                             {
                                 "Specified": {
-                                    "id": "Photo",
+                                    "id": "Album",
                                     "path": []
                                 }
                             }
@@ -518,127 +394,43 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "view"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "view"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            },
-                            {
-                                "Specified": {
-                                    "id": "Administrator",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Video",
-                                    "path": []
-                                }
-                            },
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
-                                        }
-                                    }
-                                },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },
@@ -688,36 +480,301 @@
                     },
                     "descendants": [],
                     "context": {
-                        "attrs": {
-                            "authenticated": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "confidence_score": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "decimal",
-                                            "path": []
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
-                            },
-                            "source_ip": {
-                                "attrType": {
-                                    "ExtensionType": {
-                                        "name": {
-                                            "id": "ipaddr",
-                                            "path": []
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
                                         }
                                     }
                                 },
-                                "isRequired": true
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "comment"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "delete"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "confidence_score": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "decimal",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "source_ip": {
+                                            "attrType": {
+                                                "ExtensionType": {
+                                                    "name": {
+                                                        "id": "ipaddr",
+                                                        "path": []
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
                             }
                         }
                     },

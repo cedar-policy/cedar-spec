@@ -434,12 +434,14 @@ partial def jsonToSchemaActionEntry (json : Lean.Json) : JsonSchemaActionEntry :
   let appliesToPrincipal := jsonToArray (getJsonField appliesTo "principalApplySpec")
   let appliesToResource := jsonToArray (getJsonField appliesTo "resourceApplySpec")
   let descendants := jsonToArray (getJsonField json "descendants")
-  let context := getJsonField (getJsonField json "context") "attrs"
+  let context := match jsonToCedarType (getJsonField json "context") with
+    | .record rty => rty
+    | _ => panic! "jsonToSchemaActionEntry: context should be record-typed"
   {
     appliesToPrincipal := Set.mk (List.map jsonToEntityType appliesToPrincipal.toList),
     appliesToResource := Set.mk (List.map jsonToEntityType appliesToResource.toList),
     descendants := Set.mk (List.map jsonToEuid descendants.toList),
-    context := jsonToRecordType context
+    context := context
   }
 
 partial def jsonToSchema (json : Lean.Json) : Schema :=
