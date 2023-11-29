@@ -25,8 +25,14 @@ package Cedar
 lean_lib Cedar where
   defaultFacets := #[LeanLib.staticFacet]
 
+lean_lib DiffTest where
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_lib UnitTest where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
+
+lean_exe Cli where
+  root := `Cli.Main

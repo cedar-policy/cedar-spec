@@ -287,4 +287,9 @@ def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
     let tys ← xs.mapM₁ (λ ⟨x₁, _⟩ => justType (typeOf x₁ c env))
     typeOfCall xfn tys xs
 
+---- Derivations -----
+
+deriving instance Repr for RequestType
+deriving instance Repr for Environment
+
 end Cedar.Validation

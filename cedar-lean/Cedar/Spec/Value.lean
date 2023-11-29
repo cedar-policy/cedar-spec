@@ -131,12 +131,11 @@ instance : Coe Value (Result (Data.Set Value)) where
 
 deriving instance Repr, DecidableEq, BEq for Except
 deriving instance Repr, DecidableEq for Error
-deriving instance Repr, DecidableEq, Inhabited for Name
+deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for Name
 deriving instance Repr, DecidableEq, Inhabited for EntityType
 deriving instance Repr, DecidableEq, Inhabited for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
-deriving instance Repr for Value
-
+deriving instance Repr, Inhabited for Value
 
 mutual
 
@@ -301,7 +300,5 @@ instance : LT Value where
 
 instance Value.decLt (n m : Value) : Decidable (n < m) :=
 if h : Value.lt n m then isTrue h else isFalse h
-
-deriving instance Inhabited for Value
 
 end Cedar.Spec

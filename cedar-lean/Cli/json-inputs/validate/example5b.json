@@ -1,0 +1,1190 @@
+{
+    "schema": {
+        "entityTypes": [
+            [
+                {
+                    "id": "UserGroup",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "UserGroup",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "User",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "User",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "User",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "department": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "String"
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "jobLevel": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Long"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "AccountGroup",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "AccountGroup",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Album",
+                            "path": []
+                        },
+                        {
+                            "id": "Account",
+                            "path": []
+                        },
+                        {
+                            "id": "Photo",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "User",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Account",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Account",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Photo",
+                            "path": []
+                        },
+                        {
+                            "id": "Album",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "User",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Album",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Album",
+                        "path": []
+                    },
+                    "descendants": [
+                        {
+                            "id": "Photo",
+                            "path": []
+                        },
+                        {
+                            "id": "Album",
+                            "path": []
+                        }
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "account": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "Account",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Photo",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Photo",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "account": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                {
+                                                    "id": "Account",
+                                                    "path": []
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        {
+                                                            "id": "User",
+                                                            "path": []
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                {
+                    "id": "Administrator",
+                    "path": []
+                },
+                {
+                    "name": {
+                        "id": "Administrator",
+                        "path": []
+                    },
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ]
+        ],
+        "actionIds": [
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "view"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "view"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Account",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "addPhoto"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "addPhoto"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Album",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        },
+                                        "photo": {
+                                            "attrType": {
+                                                "EntityOrRecord": {
+                                                    "Record": {
+                                                        "attrs": {
+                                                            "attrs": {
+                                                                "filesize_mb": {
+                                                                    "attrType": {
+                                                                        "Primitive": {
+                                                                            "primitiveType": "Long"
+                                                                        }
+                                                                    },
+                                                                    "isRequired": true
+                                                                },
+                                                                "filetype": {
+                                                                    "attrType": {
+                                                                        "Primitive": {
+                                                                            "primitiveType": "String"
+                                                                        }
+                                                                    },
+                                                                    "isRequired": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "open_attributes": "ClosedAttributes"
+                                                    }
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "listPhotos"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "listPhotos"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Album",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "edit"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "edit"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "delete"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": {
+                            "id": "Action",
+                            "path": []
+                        }
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "comment"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "User",
+                                    "path": []
+                                }
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": {
+                                    "id": "Photo",
+                                    "path": []
+                                }
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ]
+        ]
+    },
+    "policies": {
+        "templates": {
+            "policy0": {
+                "id": "policy0",
+                "annotations": {},
+                "effect": "permit",
+                "principal_constraint": {
+                    "constraint": "Any"
+                },
+                "action_constraint": {
+                    "Eq": {
+                        "ty": {
+                            "Specified": {
+                                "id": "Action",
+                                "path": []
+                            }
+                        },
+                        "eid": "addPhoto"
+                    }
+                },
+                "resource_constraint": {
+                    "constraint": {
+                        "In": {
+                            "EUID": {
+                                "ty": {
+                                    "Specified": {
+                                        "id": "Account",
+                                        "path": []
+                                    }
+                                },
+                                "eid": "alice"
+                            }
+                        }
+                    }
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "Or": {
+                            "left": {
+                                "expr_kind": {
+                                    "And": {
+                                        "left": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "Contains",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "Set": [
+                                                                {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "JPEG"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 322,
+                                                                        "end": 328
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "PNG"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 330,
+                                                                        "end": 335
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            ]
+                                                        },
+                                                        "source_info": {
+                                                            "start": 321,
+                                                            "end": 336
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "GetAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "Var": "context"
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 346,
+                                                                                    "end": 353
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "photo"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 346,
+                                                                        "end": 368
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "filetype"
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 346,
+                                                            "end": 368
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 321,
+                                                "end": 369
+                                            },
+                                            "data": null
+                                        },
+                                        "right": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "LessEq",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "GetAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "Var": "context"
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 376,
+                                                                                    "end": 383
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "photo"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 376,
+                                                                        "end": 401
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "filesize_mb"
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 376,
+                                                            "end": 401
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "Lit": {
+                                                                "Long": 1
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 405,
+                                                            "end": 406
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 376,
+                                                "end": 406
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_info": {
+                                    "start": 321,
+                                    "end": 406
+                                },
+                                "data": null
+                            },
+                            "right": {
+                                "expr_kind": {
+                                    "And": {
+                                        "left": {
+                                            "expr_kind": {
+                                                "And": {
+                                                    "left": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "Eq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "context"
+                                                                                            },
+                                                                                            "source_info": {
+                                                                                                "start": 414,
+                                                                                                "end": 421
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "photo"
+                                                                                    }
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 414,
+                                                                                    "end": 436
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "filetype"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 414,
+                                                                        "end": 436
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "String": "RAW"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 440,
+                                                                        "end": 445
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 414,
+                                                            "end": 445
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "right": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "LessEq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "context"
+                                                                                            },
+                                                                                            "source_info": {
+                                                                                                "start": 452,
+                                                                                                "end": 459
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "photo"
+                                                                                    }
+                                                                                },
+                                                                                "source_info": {
+                                                                                    "start": 452,
+                                                                                    "end": 477
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "filesize_mb"
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 452,
+                                                                        "end": 477
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Lit": {
+                                                                            "Long": 100
+                                                                        }
+                                                                    },
+                                                                    "source_info": {
+                                                                        "start": 481,
+                                                                        "end": 484
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 452,
+                                                            "end": 484
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 414,
+                                                "end": 523
+                                            },
+                                            "data": null
+                                        },
+                                        "right": {
+                                            "expr_kind": {
+                                                "BinaryApp": {
+                                                    "op": "In",
+                                                    "arg1": {
+                                                        "expr_kind": {
+                                                            "Var": "principal"
+                                                        },
+                                                        "source_info": {
+                                                            "start": 491,
+                                                            "end": 500
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "arg2": {
+                                                        "expr_kind": {
+                                                            "Lit": {
+                                                                "EntityUID": {
+                                                                    "ty": {
+                                                                        "Specified": {
+                                                                            "id": "UserGroup",
+                                                                            "path": []
+                                                                        }
+                                                                    },
+                                                                    "eid": "AVTeam"
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_info": {
+                                                            "start": 504,
+                                                            "end": 523
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_info": {
+                                                "start": 491,
+                                                "end": 523
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_info": {
+                                    "start": 414,
+                                    "end": 523
+                                },
+                                "data": null
+                            }
+                        }
+                    },
+                    "source_info": {
+                        "start": 320,
+                        "end": 524
+                    },
+                    "data": null
+                }
+            }
+        },
+        "links": {
+            "policy0": {
+                "template_id": "policy0",
+                "link_id": null,
+                "values": {}
+            }
+        }
+    },
+    "mode": "Strict"
+}
