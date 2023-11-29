@@ -1210,7 +1210,7 @@ impl Schema {
                     .collect();
                 attributes.sort();
                 let exprgenerator = self.exprgenerator(Some(hierarchy));
-                attributes
+                let attrs = attributes
                     .iter()
                     .map(|(attr_name, attr_type)| {
                         Ok((
@@ -1224,7 +1224,9 @@ impl Schema {
                                 .into(),
                         ))
                     })
-                    .collect::<Result<_>>()?
+                    .collect::<Result<HashMap<_, _>>>()?;
+                ast::Context::from_pairs(attrs, Extensions::all_available())
+                    .map_err(Error::ContextError)?
             },
         }))
     }
