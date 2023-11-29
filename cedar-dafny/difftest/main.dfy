@@ -549,9 +549,11 @@ module difftest.main {
       data => (
           var appliesTo :- deserializeField(data, "appliesTo", applySpecFromProdJson);
           var descendants :- deserializeField(data, "descendants", setDeserializer(entityUIDFromProdJson));
-          var context :- getJsonField(data, "context");
-          var context1 :- deserializeField(context, "attrs", attrTypesFromProdJsonObject);
-          Ok(TypecheckerActionId(appliesTo, descendants, context1))
+          var context :- deserializeField(data, "context", typeFromProdJson);
+          match context {
+            case Record(rty) => Ok(TypecheckerActionId(appliesTo, descendants, rty.attrs))
+            case _ => Err({UnexpectedFromProdErr("context should be record-typed")})
+          }
         ),
       (uid, act) => Ok((uid, act))
     )
