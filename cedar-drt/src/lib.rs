@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// #![forbid(unsafe_code)]
 mod cedar_test_impl;
 mod dafny_java_impl;
 mod definitional_request_types;

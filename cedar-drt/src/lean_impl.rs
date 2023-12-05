@@ -210,6 +210,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         _expr: &Expr,
         _expected: Option<Value>,
     ) -> bool {
+        // TODO
         unimplemented!("Unimplemented: interpret");
     }
 
@@ -217,9 +218,13 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         &self,
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
-        _mode: ValidationMode,
+        mode: ValidationMode,
     ) -> ValidationInterfaceResponse {
-        // Note: only strict mode is supported in Lean
+        assert_eq!(
+            mode,
+            ValidationMode::Strict,
+            "Lean definitional validator only supports `Strict` mode"
+        );
         self.validate(schema, policies)
     }
 }

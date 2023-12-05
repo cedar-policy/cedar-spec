@@ -30,15 +30,11 @@ If the fuzz targets are compiled with the `log` features, then they will log the
 The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
 
 
-## Linking Issues (Lean)
-If you get weird linking issues make sure:
-- `LD_PRELOAD` is set to the same lean version mathlib is using
-- You built all the lean code with static linking.
-- You cargo clean and rebuild (sometimes seemed necessary?)
+## Debugging build failures
 
-If you get SIG intercept issues make sure:
-- You initialize Lean before you start the JVM
-- You have Lean and the JVM in the same thread
+If you run into weird build issues,
+1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny & Lean definitional code.
+2. Try a `cargo clean` and rebuild.
+3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 
-If you get errors for initializing Lean more than once make sure:
-- You only initialize Lean once.
+If everything builds, but the integration tests are failing, then it may be helpful to set `RUST_BACKTRACE=1` and run `cargo test -- --nocapture` to print additional test information.

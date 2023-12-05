@@ -15,7 +15,6 @@ jobs:
       matrix:
         toolchain:
           - stable
-
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
@@ -44,72 +43,13 @@ jobs:
           dotnet tool restore
           dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 . || true
 
-  build_and_test_drt:
-    name: Build and Test DRT
+  build_and_test_lean:
+    name: Build and Test Lean
     runs-on: ubuntu-latest
     strategy:
       matrix:
         toolchain:
           - stable
-
-    steps:
-      - name: Checkout cedar-spec
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Get Java 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'corretto'
-          java-version: '17'
-          cache: 'gradle'
-      - name: Build Dafny def engine
-        working-directory: ./cedar-dafny
-        shell: bash
-        run: make compile-difftest
-      - name: Build cedar-dafny-java-wrapper
-        working-directory: ./cedar-dafny-java-wrapper
-        shell: bash
-        run: ./gradlew build dumpClasspath
-      - name: rustup
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - name: cargo fmt (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: cargo fmt --all --check
-      - name: cargo fmt (cedar-drt)
-        working-directory: ./cedar-drt
-        run: cargo fmt --all --check
-      - name: cargo fmt (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
-        run: cargo fmt --all --check
-      - name: cargo rustc (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo rustc (cedar-drt)
-        working-directory: ./cedar-drt
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo rustc (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo test (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: cargo test --verbose
-      - name: cargo test (cedar-drt)
-        working-directory: ./cedar-drt
-        shell: bash
-        run: |
-             source ./set_env_vars.sh
-             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$JAVA_HOME/lib/server
-             cargo test --verbose
-
-  build_cedar_lean:
-    name: Build cedar-lean
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        toolchain:
-          - stable
-
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v3
@@ -128,3 +68,42 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake exe CedarUnitTests
+
+  build_and_test_drt:
+    name: Build and Test DRT
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Get Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+          cache: 'gradle'
+      - name: rustup
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: cargo fmt (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo fmt --all --check
+      - name: cargo fmt (cedar-drt)
+        working-directory: ./cedar-drt
+        run: cargo fmt --all --check
+      - name: cargo fmt (cedar-drt/fuzz/)
+        working-directory: ./cedar-drt/fuzz
+        run: cargo fmt --all --check
+      - name: cargo rustc (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
+      - name: cargo test (cedar-policy-generators)
+        working-directory: ./cedar-policy-generators
+        run: cargo test --verbose
+      - name: ./build.sh
+        shell: bash
+        run: ./build.sh
