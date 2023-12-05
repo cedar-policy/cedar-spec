@@ -82,6 +82,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      - name: Install Lean
+        shell: bash
+        run: |
+              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+              bash elan-init.sh -y
       - name: Get Java 17
         uses: actions/setup-java@v3
         with:
@@ -105,8 +110,6 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
-      - name: upterm
-        uses: lhotari/action-upterm@v1
-      - name: ./build.sh
+      - name: build.sh
         shell: bash
-        run: ./build.sh
+        run: source ~/.profile && ./build.sh
