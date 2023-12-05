@@ -18,6 +18,7 @@
 //! implementation extracted from the Dafny specification.
 
 use crate::cedar_test_impl::*;
+use crate::definitional_request_types::*;
 use crate::logger::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
@@ -74,14 +75,6 @@ struct RequestForDefEngine<'a> {
     entities: &'a Entities,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DefinitionalAuthResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    auth_nanos: i64,
-    response: InterfaceResponse,
-}
-
 #[derive(Debug, Serialize)]
 struct EvalRequestForDefEngine<'a> {
     request: &'a ast::Request,
@@ -101,14 +94,6 @@ struct RequestForDefValidator<'a> {
     schema: &'a ValidatorSchema,
     policies: &'a ast::PolicySet,
     mode: ValidationMode,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DefinitionalValResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    validation_nanos: i64,
-    response: ValidationInterfaceResponse,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance

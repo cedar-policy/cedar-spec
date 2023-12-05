@@ -81,12 +81,7 @@ enum ValResponseDef {
     Error(String),
 }
 
-#[derive(Debug)]
-pub enum LeanDefEngineError {}
-
-pub struct LeanDefinitionalEngine {
-    initialized: bool,
-}
+pub struct LeanDefinitionalEngine {}
 
 fn lean_obj_to_string(o: *mut lean_object) -> String {
     let lean_obj_p = unsafe { lean_string_cstr(o) };
@@ -95,7 +90,7 @@ fn lean_obj_to_string(o: *mut lean_object) -> String {
 }
 
 impl LeanDefinitionalEngine {
-    pub fn new() -> Result<Self, LeanDefEngineError> {
+    pub fn new() -> Self {
         if env::var("RUST_LEAN_INTERFACE_INIT").is_err() {
             unsafe { lean_initialize_runtime_module() };
             unsafe { lean_initialize() };
@@ -103,7 +98,7 @@ impl LeanDefinitionalEngine {
             unsafe { lean_io_mark_end_initialization() };
             env::set_var("RUST_LEAN_INTERFACE_INIT", "1");
         }
-        Ok(Self { initialized: true })
+        Self {}
     }
 
     fn serialize_authorization_request(

@@ -10,4 +10,5 @@ test: all
 	DYLD_LIBRARY_PATH=`lean --print-libdir`:${DYLD_LIBRARY_PATH} \
 	LD_LIBRARY_PATH=`lean --print-libdir`:`lean --print-prefix`/lib/glibc/libm.so:${LD_LIBRARY_PATH} \
 	LEAN_LIB_DIR=`lean --print-libdir` \
-	cargo test
+	RUST_BACKTRACE=1 \
+	cargo test --verbose -- --nocapture
