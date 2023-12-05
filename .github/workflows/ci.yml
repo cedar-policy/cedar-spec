@@ -105,6 +105,8 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
+      - name: upterm
+        uses: lhotari/action-upterm@v1
       - name: ./build.sh
         shell: bash
         run: ./build.sh
