@@ -73,8 +73,7 @@ fn integration_tests_on_java_and_lean_def_impl() {
     //WARNING: We need to create lean def engine first so the JVM signal handlers are aware of it.
     //If this needs to change at some point in the future, you'll need to add libjsig.so to LD_PRELOAD
     //WARNING: Different tests run in new threads by default, so don't separate these.
-    let lean_def_impl =
-        LeanDefinitionalEngine::new().expect("failed to create Lean definitional engine");
+    let lean_def_impl = LeanDefinitionalEngine::new();
     run_integration_tests(&lean_def_impl);
 
     let java_def_impl =

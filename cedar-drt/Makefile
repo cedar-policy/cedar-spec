@@ -11,4 +11,4 @@ test: all
 	LD_LIBRARY_PATH=`lean --print-libdir`:`lean --print-prefix`/lib/glibc/libm.so:${LD_LIBRARY_PATH} \
 	LEAN_LIB_DIR=`lean --print-libdir` \
 	RUST_BACKTRACE=1 \
-	cargo test --verbose -- --nocapture
+	cargo test -- --nocapture
