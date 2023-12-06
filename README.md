@@ -28,6 +28,8 @@ To build the DRT framework:
 * Install Dafny and Lean, following the instructions above.
 * `./build.sh`
 
+Note that the build for DRT has only been tested on **Amazon Linux 2**.
+
 ## Run
 
 To run DRT:
