@@ -14,10 +14,9 @@ To build code and proofs from the command line:
 
 ```shell
 cd cedar-lean
+lake exe cache get # gets pre-built libraries for `mathlib4`
 lake build Cedar
 ```
-
-The the first build may take a while because it builds the `mathlib4` library that Cedar depends on. Subsequent builds will be fast.
 
 To run the unit tests:
 

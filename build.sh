@@ -9,9 +9,9 @@ source ./set_env_vars.sh
 cd ..
 
 # Build the Dafny formalization and extract to Java code
-# cd cedar-dafny
-# make compile-difftest
-# cd ..
+cd cedar-dafny
+make compile-difftest
+cd ..
 
 # Build the Dafny Java wrapper
 cd cedar-dafny-java-wrapper
