@@ -31,7 +31,6 @@ use jni::objects::{JObject, JString, JValue};
 use jni::{JNIVersion, JavaVM};
 use lazy_static::lazy_static;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// Times to (de)serialize JSON content sent to / received from the Dafny-Java
 /// implementation.
@@ -66,34 +65,6 @@ lazy_static! {
             .expect("failed to create JVM args");
         JavaVM::new(jvm_args).expect("failed to create JVM instance")
     };
-}
-
-#[derive(Debug, Serialize)]
-struct RequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    policies: &'a ast::PolicySet,
-    entities: &'a Entities,
-}
-
-#[derive(Debug, Serialize)]
-struct EvalRequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    entities: &'a Entities,
-    expr: &'a ast::Expr,
-    expected: Option<&'a ast::Expr>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-#[repr(transparent)]
-struct DefinitionalEvalResponse {
-    matches: bool,
-}
-
-#[derive(Debug, Serialize)]
-struct RequestForDefValidator<'a> {
-    schema: &'a ValidatorSchema,
-    policies: &'a ast::PolicySet,
-    mode: ValidationMode,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance
