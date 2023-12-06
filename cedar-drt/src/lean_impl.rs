@@ -46,11 +46,6 @@ use std::str::FromStr;
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Std", kind = "static")]
 #[link(name = "DiffTest", kind = "static")]
-#[link(name = "leanshared", kind = "dylib")]
-#[link(name = "Mathlib", kind = "static")]
-#[link(name = "Qq", kind = "static")]
-#[link(name = "ProofWidgets", kind = "static")]
-#[link(name = "Aesop", kind = "static")]
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateDRT(req: *mut lean_object) -> *mut lean_object;

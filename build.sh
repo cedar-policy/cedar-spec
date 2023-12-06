@@ -20,7 +20,7 @@ cd ..
 
 # Build the Lean formalization and extract to static C libraries
 cd cedar-lean
-lake build Cedar:static DiffTest:static Std:static Mathlib:static Qq:static Aesop:static ProofWidgets:static
+lake build Cedar:static DiffTest:static Std:static
 cd ..
 
 # Build DRT
