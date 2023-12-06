@@ -71,7 +71,6 @@ jobs:
 
   build_and_test_drt:
     name: Build and Test DRT
-    needs: [build_and_test_dafny, build_and_test_lean]
     runs-on: ubuntu-latest
     strategy:
       matrix:
