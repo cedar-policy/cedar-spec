@@ -33,7 +33,7 @@ deriving Repr, DecidableEq, Repr, Inhabited
 
 namespace Map
 
-private def kvs {α : Type u} {β : Type v} : Map α β -> List (Prod α β)
+def kvs {α : Type u} {β : Type v} : Map α β → List (Prod α β)
 | .mk kvs => kvs
 
 
@@ -58,15 +58,15 @@ def keys {α β} (m : Map α β) : Set α :=
 def values {α β} (m : Map α β) : Set β :=
   Set.mk (m.kvs.map Prod.snd)
 
-/-- Returns true if `m` contains a mapping for the key `k`. -/
-def contains {α β} [BEq α] (m : Map α β) (k : α) : Bool :=
-  (m.kvs.find? (fun ⟨k', _⟩ => k' == k)).isSome
-
 /-- Returns the binding for `k` in `m`, if any. -/
 def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
   match m.kvs.find? (fun ⟨k', _⟩ => k' == k) with
   | some (_, v) => some v
   | _           => none
+
+/-- Returns true if `m` contains a mapping for the key `k`. -/
+def contains {α β} [BEq α] (m : Map α β) (k : α) : Bool :=
+  (m.find? k).isSome
 
 /-- Returns the binding for `k` in `m` or `err` if none is found. -/
 def findOrErr {α β ε} [BEq α] (m : Map α β) (k : α) (err: ε) : Except ε β :=
@@ -88,17 +88,17 @@ def size {α β} (m : Map α β) : Nat :=
   m.kvs.length
 
 def mapOnValues {α β γ} [LT α] [DecidableLT α] (f : β → γ) (m : Map α β) : Map α γ :=
-  Map.make (m.kvs.map (λ (k,v) => (k, f v )))
+  Map.mk (m.kvs.map (λ (k,v) => (k, f v)))
 
 def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
-  Map.make (m.kvs.map (λ (k,v) => (f k, v) ))
+  Map.make (m.kvs.map (λ (k,v) => (f k, v)))
 
 ----- Props and Theorems -----
 
 instance [LT (Prod α β)] : LT (Map α β) where
 lt a b := a.kvs < b.kvs
 
-instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n m : Map α β) -> Decidable (n < m)
+instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n m : Map α β) → Decidable (n < m)
   | .mk nkvs, .mk mkvs => List.hasDecidableLt nkvs mkvs
 
 instance : Membership α (Map α β) where
@@ -113,6 +113,14 @@ theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
     apply Exists.intro (k, v)
     simp [h0]
   apply h1
+
+theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
+  m.contains k ↔ ∃ v, m.find? k = .some v
+:= by simp [contains, Option.isSome_iff_exists]
+
+theorem not_contains_of_empty {α β} [BEq α] (k : α) :
+  ¬ (Map.empty : Map α β).contains k
+:= by simp [contains, empty, find?, List.find?]
 
 end Map
 

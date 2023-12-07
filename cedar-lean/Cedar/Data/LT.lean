@@ -43,6 +43,15 @@ theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
   rcases (StrictLT.connected x y h₃) with h₄
   simp [h₁, h₂] at h₄
 
+theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
+  x < y → ¬ x = y
+:= by
+  intro h₁
+  by_contra h₂
+  subst h₂
+  rcases (StrictLT.irreflexive x) with h₃
+  contradiction
+
 abbrev DecidableLT (α) [LT α] := DecidableRel (α := α) (· < ·)
 
 end Cedar.Data
@@ -173,12 +182,48 @@ instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where
   transitive _ _ _ := List.lt_trans
   connected  _ _   := List.lt_conn
 
+def Bool.lt (a b : Bool) : Bool := match a,b with
+| false, true => true
+| _, _ => false
+
+instance : LT Bool where
+  lt a b := Bool.lt a b
+
+instance Bool.decLt (a b : Bool) : Decidable (a < b) :=
+  if h : Bool.lt a b then isTrue h else isFalse h
+
+instance Bool.strictLT : StrictLT Bool where
+  asymmetric a b   := by
+    simp [LT.lt, Bool.lt]
+    split <;> simp
+  transitive a b c := by
+    simp [LT.lt, Bool.lt]
+    split <;> simp
+  connected  a b   := by
+    simp [LT.lt, Bool.lt]
+    split <;> simp
+    split <;> simp
+    cases a <;> cases b <;> simp at *
+
 instance Nat.strictLT : StrictLT Nat where
   asymmetric a b   := Nat.lt_asymm
   transitive a b c := Nat.lt_trans
   connected  a b   := by
     intro h₁
     rcases (Nat.lt_trichotomy a b) with h₂
+    simp [h₁] at h₂
+    exact h₂
+
+instance Int.strictLT : StrictLT Int where
+  asymmetric a b   := by
+    intro h₁
+    rw [Int.not_lt]
+    rw [Int.lt_iff_le_not_le] at h₁
+    simp [h₁]
+  transitive a b c := Int.lt_trans
+  connected  a b   := by
+    intro h₁
+    rcases (Int.lt_trichotomy a b) with h₂
     simp [h₁] at h₂
     exact h₂
 
@@ -216,4 +261,3 @@ instance String.strictLT : StrictLT String where
     simp [String.lt_iff, String.ext_iff]
     have h : StrictLT (List Char) := by apply List.strictLT
     apply h.connected
-
