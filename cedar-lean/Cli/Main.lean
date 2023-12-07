@@ -45,6 +45,6 @@ def main (args : List String) : IO Unit :=
         IO.println response
       | "evaluate" =>
         let response := evaluate request
-        IO.println response
+        IO.println s!"{repr response}"
       | _ => printUsage s!"Invalid command `{command}` (expected `authorize`, `validate`, or `evaluate`)"
     | n => printUsage s!"Incorrect number of arguments (expected 2, but got {n})"

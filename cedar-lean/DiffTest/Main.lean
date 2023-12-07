@@ -53,16 +53,14 @@ open Cedar.Validation
 @[export evaluateDRT] def evaluateDRT (_req : String) : String :=
   panic! "TODO: implement evaluateDRT"
 
--- variant of `evaluateDRT` that returns the resulting value; used in the Cli
-def evaluate (req : String) : String :=
-  let result : ParseResult (Result Value) :=
-    match Lean.Json.parse req with
-    | .error e => .error s!"evaluate: failed to parse input: {e}"
-    | .ok json => do
-      let expr ← getJsonField json "expr" >>= jsonToExpr
-      let request ← getJsonField json "request" >>= jsonToRequest
-      let entities ← getJsonField json "entities" >>= jsonToEntities
-      .ok (Cedar.Spec.evaluate expr request entities)
-  s!"{repr result}" -- use repr to display the value as a string
+-- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
+def evaluate (req : String) : ParseResult (Result Value) :=
+  match Lean.Json.parse req with
+  | .error e => .error s!"evaluate: failed to parse input: {e}"
+  | .ok json => do
+    let expr ← getJsonField json "expr" >>= jsonToExpr
+    let request ← getJsonField json "request" >>= jsonToRequest
+    let entities ← getJsonField json "entities" >>= jsonToEntities
+    .ok (Cedar.Spec.evaluate expr request entities)
 
 end DiffTest

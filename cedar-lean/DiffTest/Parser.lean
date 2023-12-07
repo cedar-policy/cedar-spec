@@ -49,7 +49,7 @@ def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
   let (tag, body) ← unpackJsonSum json
   match tag with
   | "Specified" => jsonToName body
-  | "Unspecified" => 
+  | "Unspecified" =>
     -- "unspecified" entities are treated as normal entities with a unique name
     .ok { id := "<Unspecified>", path := [] }
   | tag => .error s!"jsonToEntityType: unknown tag {tag}"
@@ -138,6 +138,18 @@ def jsonToExtFun (json : Lean.Json) : ParseResult ExtFun := do
   | "isInRange" => .ok .isInRange
   | xfn => .error s!"jsonToExtFun: unknown extension function {xfn}"
 
+/- mapM functions for lists of key-value pairs -/
+def mapMValues [Monad m] (l : List (α × β)) (f : β → m γ) : m (List (α × γ)) :=
+  l.mapM (λ (k,v) => do
+    let v ← f v
+    pure (k,v))
+
+def mapMKeysAndValues [Monad m] (l : List (α × β)) (f : α → m γ) (g : β → m δ) : m (List (γ × δ)) :=
+  l.mapM (λ (k,v) => do
+    let k ← f k
+    let v ← g v
+    pure (k,v))
+
 /-
 Defined as partial to avoid writing the proof of termination, which isn't required
 since we don't prove correctness of the parser.
@@ -196,7 +208,7 @@ partial def jsonToExpr (json : Lean.Json) : ParseResult Expr := do
     .ok (.hasAttr e attr)
   | "Record" => do
     let kvs_json ← jsonObjToKVList body
-    let kvs ← List.mapM (λ (k,v) => jsonToExpr v >>= λ v => .ok (k,v)) kvs_json
+    let kvs ← mapMValues kvs_json jsonToExpr
     .ok (.record kvs)
   | "Set" => do
     let arr_json ← jsonToArray body
@@ -227,7 +239,7 @@ conversion is non-trivial.
 partial def exprToValue : Expr → ParseResult Value
   | Expr.lit p => .ok (Value.prim p)
   | Expr.record r => do
-    let kvs ← List.mapM (λ (k,v) => exprToValue v >>= λ v => .ok (k,v)) r
+    let kvs ← mapMValues r exprToValue
     .ok (Value.record (Map.mk kvs))
   | Expr.set s => do
     let arr ← List.mapM exprToValue s
@@ -265,7 +277,7 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
   let ancestorsArr ← getJsonField json "ancestors" >>= jsonToArray
   let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
-  let attrs ← List.mapM (λ (k,v) => jsonToValue v >>= λ v => .ok (k,v)) attrsKVs
+  let attrs ← mapMValues attrsKVs jsonToValue
   .ok {
     ancestors := Set.mk ancestors,
     attrs := Map.mk attrs
@@ -274,7 +286,7 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
 def jsonToEntities (json : Lean.Json) : ParseResult Entities := do
   let entities ← getJsonField json "entities"
   let kvs_json ← jsonArrayToKVList entities
-  let kvs ← List.mapM (λ (k,v) => jsonToEuid k >>= λ k => jsonToEntityData v >>= λ v => .ok (k, v)) kvs_json
+  let kvs ← mapMKeysAndValues kvs_json jsonToEuid jsonToEntityData
   .ok (Map.mk kvs)
 
 def jsonToEffect (json : Lean.Json) : ParseResult Effect := do
@@ -430,7 +442,7 @@ partial def jsonToQualifiedCedarType (json : Lean.Json) : ParseResult (Qualified
 
 partial def jsonToRecordType (json : Lean.Json) : ParseResult RecordType := do
   let kvs_json ← jsonObjToKVList json
-  let kvs ←  List.mapM (λ (k,v) => jsonToQualifiedCedarType v >>= λ v => .ok (k,v)) kvs_json
+  let kvs ←  mapMValues kvs_json jsonToQualifiedCedarType
   .ok (Map.mk kvs)
 
 partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType := do
@@ -490,9 +502,9 @@ partial def jsonToSchemaActionEntry (json : Lean.Json) : ParseResult JsonSchemaA
 
 partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
   let entityTypesKVs ← getJsonField json "entityTypes" >>= jsonArrayToKVList
-  let entityTypes ← List.mapM (λ (k,v) => jsonToName k >>= λ k => jsonToEntityTypeEntry v >>= λ v => .ok (k,v)) entityTypesKVs
+  let entityTypes ← mapMKeysAndValues entityTypesKVs jsonToName jsonToEntityTypeEntry
   let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
-  let actions ← List.mapM (λ (k,v) => jsonToEuid k >>= λ k => jsonToSchemaActionEntry v >>= λ v => .ok (k,v)) actionsKVs
+  let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToSchemaActionEntry
   .ok {
     ets := invertJsonEntityTypeStore (Map.mk entityTypes),
     acts := invertJsonSchemaActionStore (Map.mk actions)
