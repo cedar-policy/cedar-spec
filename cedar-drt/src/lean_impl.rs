@@ -102,7 +102,10 @@ pub struct LeanDefinitionalEngine {}
 fn lean_obj_to_string(o: *mut lean_object) -> String {
     let lean_obj_p = unsafe { lean_string_cstr(o) };
     let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
-    lean_obj_cstr.to_string_lossy().into_owned() // TODO: lossy
+    lean_obj_cstr
+        .to_str()
+        .expect("failed to convert Lean object to string")
+        .to_owned()
 }
 
 impl LeanDefinitionalEngine {
@@ -138,12 +141,10 @@ impl LeanDefinitionalEngine {
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
             AuthorizationResponse::Ok(resp) => {
-                let dec: authorizer::Decision = if resp.decision == "allow" {
-                    authorizer::Decision::Allow
-                } else if resp.decision == "deny" {
-                    authorizer::Decision::Deny
-                } else {
-                    panic!("Lean code returned unknown decision {}", resp.decision)
+                let dec: authorizer::Decision = match resp.decision.as_str() {
+                    "allow" => authorizer::Decision::Allow,
+                    "deny" => authorizer::Decision::Deny,
+                    _ => panic!("Lean code returned unknown decision {}", resp.decision),
                 };
 
                 let reason = resp

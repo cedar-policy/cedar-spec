@@ -42,6 +42,16 @@ Available targets are described in the README in the `cedar-drt` directory.
 
 Additional commands available with `cargo fuzz help`.
 
+## Checking Proof Stability
+
+You can measure the complexity of Dafny proofs using [dafny-reportgenerator](https://github.com/dafny-lang/dafny-reportgenerator/).
+For example, the commands below check that all proofs have a [resource count](https://dafny.org/dafny/VerificationOptimization/VerificationOptimization#identifying-difficult-assertions) under 10M, which is our informal threshold for when a proof is "too expensive" and likely to break with future changes to Dafny and/or Z3.
+
+```bash
+cd cedar-dafny && make verify GEN_STATS=1
+dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 .
+```
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
