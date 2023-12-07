@@ -74,7 +74,10 @@ def jsonToNum (json : Json) : ParseResult JsonNumber :=
 def jsonToInt64 (json : Json) : ParseResult Int64 := do
   let num ← jsonToNum json
   match num.exponent with
-  | 0 => .ok (Int64.mk! num.mantissa)
+  | 0 => 
+    match Int64.mk? num.mantissa with
+    | .some i64 => .ok i64
+    | .none => .error s!"jsonToInt64: not a signed 64-bit integer {num.mantissa}"
   | n => .error s!"jsonToInt64: number has exponent {n}"
 
 def jsonToChar (json : Json) : ParseResult Char := do

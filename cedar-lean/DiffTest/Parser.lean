@@ -45,8 +45,14 @@ def jsonToName (json : Lean.Json) : ParseResult Name := do
     path := path
   }
 
-def jsonToEntityType (json : Lean.Json) : ParseResult EntityType :=
-  getJsonField json "Specified" >>= jsonToName
+def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
+  let (tag, body) ← unpackJsonSum json
+  match tag with
+  | "Specified" => jsonToName body
+  | "Unspecified" => 
+    -- "unspecified" entities are treated as normal entities with a unique name
+    .ok { id := "<Unspecified>", path := [] }
+  | tag => .error s!"jsonToEntityType: unknown tag {tag}"
 
 def jsonToEuid (json : Lean.Json) : ParseResult EntityUID := do
   let eid ← getJsonField json "eid" >>= jsonToString

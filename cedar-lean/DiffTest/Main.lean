@@ -30,26 +30,39 @@ open Cedar.Spec
 open Cedar.Validation
 
 @[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
-  let result : ParseResult Lean.Json :=
+  let result : ParseResult Response :=
     match Lean.Json.parse req with
     | .error e => .error s!"isAuthorizedDRT: failed to parse input: {e}"
     | .ok json => do
       let request ← getJsonField json "request" >>= jsonToRequest
       let entities ← getJsonField json "entities" >>= jsonToEntities
       let policies ← getJsonField json "policies" >>= jsonToPolicies
-      let response := isAuthorized request entities policies
-      .ok (Lean.toJson response)
-  toString result
+      .ok (isAuthorized request entities policies)
+  toString (Lean.toJson result)
 
 @[export validateDRT] def validateDRT (req : String) : String :=
-  let result : ParseResult Lean.Json :=
+  let result : ParseResult ValidationResult :=
     match Lean.Json.parse req with
     | .error e => .error s!"validateDRT: failed to parse input: {e}"
     | .ok json => do
       let policies ← getJsonField json "policies" >>= jsonToPolicies
       let schema ← getJsonField json "schema" >>= jsonToSchema
-      let response := validate policies schema
-      .ok (Lean.toJson response)
-  toString result
+      .ok (validate policies schema)
+  toString (Lean.toJson result)
+
+@[export evaluateDRT] def evaluateDRT (_req : String) : String :=
+  panic! "TODO: implement evaluateDRT"
+
+-- variant of `evaluateDRT` that returns the resulting value; used in the Cli
+def evaluate (req : String) : String :=
+  let result : ParseResult (Result Value) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"evaluate: failed to parse input: {e}"
+    | .ok json => do
+      let expr ← getJsonField json "expr" >>= jsonToExpr
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      .ok (Cedar.Spec.evaluate expr request entities)
+  s!"{repr result}" -- use repr to display the value as a string
 
 end DiffTest
