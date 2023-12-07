@@ -17,8 +17,8 @@
 //! Implementation of the [`CedarTestImplementation`] trait for the Cedar Lean
 //! implementation.
 
-//NOTE: We use the env var RUST_LEAN_INTERFACE_INIT to save the fact that
-//we've already initialized
+// NOTE: We use the env var RUST_LEAN_INTERFACE_INIT to save the fact that
+// we've already initialized.
 
 use core::panic;
 use std::{collections::HashSet, env, ffi::CString};
@@ -27,10 +27,9 @@ use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
-pub use cedar_policy::Response;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
@@ -63,15 +62,37 @@ struct SetDef<String> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct ResponseDef {
+struct AuthorizationResponseInner {
     policies: SetDef<String>,
     decision: String,
 }
 
 #[derive(Serialize, Deserialize)]
-enum ValResponseDef {
+enum AuthorizationResponse {
+    /// Successful execution of the `isAuthorized` function
     #[serde(rename = "ok")]
-    Ok,
+    Ok(AuthorizationResponseInner),
+    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
+    #[serde(rename = "error")]
+    Error(String),
+}
+
+#[derive(Serialize, Deserialize)]
+enum ValidationResponseInner {
+    /// Successful validation
+    #[serde(rename = "ok")]
+    Ok(()),
+    /// Validation error case
+    #[serde(rename = "error")]
+    Error(String),
+}
+
+#[derive(Serialize, Deserialize)]
+enum ValidationResponse {
+    /// Successful execution of the `validate` function
+    #[serde(rename = "ok")]
+    Ok(ValidationResponseInner),
+    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
     #[serde(rename = "error")]
     Error(String),
 }
@@ -81,7 +102,7 @@ pub struct LeanDefinitionalEngine {}
 fn lean_obj_to_string(o: *mut lean_object) -> String {
     let lean_obj_p = unsafe { lean_string_cstr(o) };
     let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
-    lean_obj_cstr.to_string_lossy().into_owned() //TODO: lossy
+    lean_obj_cstr.to_string_lossy().into_owned() // TODO: lossy
 }
 
 impl LeanDefinitionalEngine {
@@ -106,32 +127,38 @@ impl LeanDefinitionalEngine {
             policies,
             entities,
         })
-        .expect("Failed to serialize request, policies, or entities");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
-        return s;
+        .expect("failed to serialize request, policies, or entities");
+        let cstring = CString::new(request).expect("`CString::new` failed");
+        unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
     fn deserialize_authorization_response(response: *mut lean_object) -> InterfaceResponse {
         let response_string = lean_obj_to_string(response);
-        let resp: ResponseDef =
+        let resp: AuthorizationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
-        let dec: authorizer::Decision = if resp.decision == "allow" {
-            authorizer::Decision::Allow
-        } else if resp.decision == "deny" {
-            authorizer::Decision::Deny
-        } else {
-            panic!("unknown decision")
-        };
+        match resp {
+            AuthorizationResponse::Ok(resp) => {
+                let dec: authorizer::Decision = if resp.decision == "allow" {
+                    authorizer::Decision::Allow
+                } else if resp.decision == "deny" {
+                    authorizer::Decision::Deny
+                } else {
+                    panic!("Lean code returned unknown decision {}", resp.decision)
+                };
 
-        let reason = resp
-            .policies
-            .mk
-            .l
-            .into_iter()
-            .map(|x| cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId"))
-            .collect();
-        InterfaceResponse::new(dec, reason, HashSet::new())
+                let reason = resp
+                    .policies
+                    .mk
+                    .l
+                    .into_iter()
+                    .map(|x| {
+                        cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId")
+                    })
+                    .collect();
+                InterfaceResponse::new(dec, reason, HashSet::new())
+            }
+            AuthorizationResponse::Error(err) => panic!("Error returned by Lean code: {err}"),
+        }
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -156,23 +183,27 @@ impl LeanDefinitionalEngine {
             policies,
             mode: cedar_policy_validator::ValidationMode::default(), // == Strict
         })
-        .expect("Failed to serialize schema or policies");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let s = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
-        return s;
+        .expect("failed to serialize schema or policies");
+        let cstring = CString::new(request).expect("`CString::new` failed");
+        unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
     fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
         let response_string = lean_obj_to_string(response);
-        let resp: ValResponseDef =
+        let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
-        let validation_errors = match resp {
-            ValResponseDef::Ok => Vec::new(),
-            ValResponseDef::Error(err) => vec![err],
-        };
-        ValidationInterfaceResponse {
-            validation_errors,
-            parse_errors: Vec::new(),
+        match resp {
+            ValidationResponse::Ok(resp) => {
+                let validation_errors = match resp {
+                    ValidationResponseInner::Ok(_) => Vec::new(),
+                    ValidationResponseInner::Error(err) => vec![err],
+                };
+                ValidationInterfaceResponse {
+                    validation_errors,
+                    parse_errors: Vec::new(),
+                }
+            }
+            ValidationResponse::Error(err) => panic!("Error returned by Lean code: {err}"),
         }
     }
 

@@ -16,9 +16,8 @@
 
 use crate::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
-pub use cedar_policy::Response;
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
 use serde::{Deserialize, Serialize};
 
