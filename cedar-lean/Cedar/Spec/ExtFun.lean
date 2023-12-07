@@ -39,7 +39,7 @@ inductive ExtFun where
   | isMulticast
   | isInRange
 
-private def res {α} [Coe α Ext] : Option α → Result Value
+def res {α} [Coe α Ext] : Option α → Result Value
   | some v => ok v
   | none   => error .extensionError
 

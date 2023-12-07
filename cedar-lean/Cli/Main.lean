@@ -20,7 +20,7 @@ import DiffTest.Main
 import DiffTest.Parser
 
 /-! This file provides a basic command line interface for authorization
-    and validation. It uses the interface functions defined in `Difftest`. -/
+    and validation. It uses the interface functions defined in `DiffTest`. -/
 
 open DiffTest
 
@@ -43,5 +43,8 @@ def main (args : List String) : IO Unit :=
       | "validate" =>
         let response := validateDRT request
         IO.println response
-      | _ => printUsage s!"Invalid command `{command}` (expected `authorize` or `validate`)"
+      | "evaluate" =>
+        let response := evaluate request
+        IO.println s!"{repr response}"
+      | _ => printUsage s!"Invalid command `{command}` (expected `authorize`, `validate` or `evaluate`)"
     | n => printUsage s!"Incorrect number of arguments (expected 2, but got {n})"

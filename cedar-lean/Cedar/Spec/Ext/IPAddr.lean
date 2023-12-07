@@ -251,8 +251,8 @@ def ip (str : String) : Option IPNet := parse str
 def IPNet.lt : IPNet → IPNet → Bool
   | .V4 _ _, .V6 _ _ => true
   | .V6 _ _, .V4 _ _ => false
-  | .V4 v₁ p₁, .V4 v₂ p₂ => v₁ < v₂ || (v₁ = v₂ && p₁ < p₂)
-  | .V6 v₁ p₁, .V6 v₂ p₂ => v₁ < v₂ || (v₁ = v₂ && p₁ < p₂)
+  | .V4 v₁ p₁, .V4 v₂ p₂ => v₁.val < v₂.val || (v₁.val = v₂.val && p₁.val < p₂.val)
+  | .V6 v₁ p₁, .V6 v₂ p₂ => v₁.val < v₂.val || (v₁.val = v₂.val && p₁.val < p₂.val)
 
 ----- IPNet deriviations -----
 
