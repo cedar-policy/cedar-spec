@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::parser::err::{ParseError, ToASTError};
+use cedar_policy_core::parser::err::{ParseError, ToASTErrorKind};
 use cedar_policy_core::parser::parse_policyset;
 
 fuzz_target!(|input: String| {
@@ -33,12 +33,11 @@ fuzz_target!(|input: String| {
             // should be possible, and, practically, it doesn't make this target fail.
             assert!(
                 !errs.0.iter().any(|e| matches!(
-                    e,
-                    ParseError::ToAST(
-                        ToASTError::AnnotationInvariantViolation
-                            | ToASTError::MembershipInvariantViolation
-                            | ToASTError::MissingNodeData
-                    )
+                e,
+                ParseError::ToAST(e) if matches!(e.kind(),
+                    ToASTErrorKind::AnnotationInvariantViolation
+                        | ToASTErrorKind::MembershipInvariantViolation
+                        | ToASTErrorKind::MissingNodeData)
                 )),
                 "{:?}",
                 errs
