@@ -138,14 +138,15 @@ fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let mut policyset = ast::PolicySet::new();
     policyset.add_static(input.policy.into()).unwrap();
-    let lean_def_engine = LeanDefinitionalEngine::new();
+    let java_def_engine =
+        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
     for request in input.requests.into_iter().map(Into::into) {
         debug!("Request : {request}");
         let (rust_res, total_dur) =
-            time_function(|| run_auth_test(&lean_def_engine, request, &policyset, &input.entities));
+            time_function(|| run_auth_test(&java_def_engine, request, &policyset, &input.entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 
