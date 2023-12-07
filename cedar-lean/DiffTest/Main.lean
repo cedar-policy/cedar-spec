@@ -30,26 +30,37 @@ open Cedar.Spec
 open Cedar.Validation
 
 @[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
-  let json := Lean.Json.parse req
-  match json with
-  | .error e => panic! s!"isAuthorizedDRT: failed to parse input: {e}"
-  | .ok json =>
-    let request := jsonToRequest (getJsonField json "request")
-    let entities := jsonToEntities (getJsonField json "entities")
-    let policies := jsonToPolicies (getJsonField json "policies")
-    let response := isAuthorized request entities policies
-    let json := Lean.toJson response
-    toString json
+  let result : ParseResult Response :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"isAuthorizedDRT: failed to parse input: {e}"
+    | .ok json => do
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      let policies ← getJsonField json "policies" >>= jsonToPolicies
+      .ok (isAuthorized request entities policies)
+  toString (Lean.toJson result)
 
 @[export validateDRT] def validateDRT (req : String) : String :=
-  let json := Lean.Json.parse req
-  match json with
-  | .error e => panic! s!"validateDRT: failed to parse input: {e}"
-  | .ok json =>
-    let policies := jsonToPolicies (getJsonField json "policies")
-    let schema := jsonToSchema (getJsonField json "schema")
-    let response := validate policies schema
-    let json := Lean.toJson response
-    toString json
+  let result : ParseResult ValidationResult :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateDRT: failed to parse input: {e}"
+    | .ok json => do
+      let policies ← getJsonField json "policies" >>= jsonToPolicies
+      let schema ← getJsonField json "schema" >>= jsonToSchema
+      .ok (validate policies schema)
+  toString (Lean.toJson result)
+
+@[export evaluateDRT] def evaluateDRT (_req : String) : String :=
+  panic! "TODO: implement evaluateDRT"
+
+-- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
+def evaluate (req : String) : ParseResult (Result Value) :=
+  match Lean.Json.parse req with
+  | .error e => .error s!"evaluate: failed to parse input: {e}"
+  | .ok json => do
+    let expr ← getJsonField json "expr" >>= jsonToExpr
+    let request ← getJsonField json "request" >>= jsonToRequest
+    let entities ← getJsonField json "entities" >>= jsonToEntities
+    .ok (Cedar.Spec.evaluate expr request entities)
 
 end DiffTest

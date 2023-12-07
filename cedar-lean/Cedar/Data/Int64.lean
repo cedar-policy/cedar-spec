@@ -44,11 +44,6 @@ def mk? (i : Int) : Option Int64 :=
   then .some (mk i h)
   else .none
 
-def mk! (i : Int) : Int64 :=
-  if h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX
-  then mk i h
-  else panic! s!"not a signed 64-bit integer {i}"
-
 def lt (i₁ i₂ : Int64) : Bool := i₁.1 < i₂.1
 
 def le (i₁ i₂ : Int64) : Bool := i₁.1 ≤ i₂.1

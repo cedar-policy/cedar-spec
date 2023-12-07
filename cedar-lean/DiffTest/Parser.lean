@@ -36,271 +36,321 @@ open Cedar.Spec
 open Cedar.Spec.Ext
 open Cedar.Validation
 
-def jsonToName (json : Lean.Json) : Name :=
-  let id := jsonToString (getJsonField json "id")
-  let path_json := jsonToArray (getJsonField json "path")
-  let path := List.map jsonToString path_json.toList
-  {
+def jsonToName (json : Lean.Json) : ParseResult Name := do
+  let id ← getJsonField json "id" >>= jsonToString
+  let path_json ← getJsonField json "path" >>= jsonToArray
+  let path ← List.mapM jsonToString path_json.toList
+  .ok {
     id := id,
     path := path
   }
 
-def jsonToEntityType (json : Lean.Json) : EntityType :=
-  jsonToName (getJsonField json "Specified")
+def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
+  let (tag, body) ← unpackJsonSum json
+  match tag with
+  | "Specified" => jsonToName body
+  | "Unspecified" =>
+    -- "Unspecified" entities are treated as normal entities with a unique name
+    .ok { id := "<Unspecified>", path := [] }
+  | tag => .error s!"jsonToEntityType: unknown tag {tag}"
 
-def jsonToEuid (json : Lean.Json) : EntityUID :=
-  let eid := jsonToString (getJsonField json "eid")
-  let ty := jsonToEntityType (getJsonField json "ty")
-  {
+def jsonToEuid (json : Lean.Json) : ParseResult EntityUID := do
+  let eid ← getJsonField json "eid" >>= jsonToString
+  let ty ← getJsonField json "ty" >>= jsonToEntityType
+  .ok {
     ty := ty,
     eid := eid
   }
 
-def jsonToPrim (json : Lean.Json) : Prim :=
-  let (tag, body) := unpackJsonSum json
+def jsonToPrim (json : Lean.Json) : ParseResult Prim := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
-  | "Bool" => .bool (jsonToBool body)
-  | "Long" => .int (jsonToInt64 body)
-  | "String" => .string (jsonToString body)
-  | "EntityUID" => .entityUID (jsonToEuid body)
-  | tag => panic! s!"jsonToPrim: unknown tag {tag}"
+  | "Bool" => do
+    let b ←  jsonToBool body
+    .ok (.bool b)
+  | "Long" => do
+    let i ← jsonToInt64 body
+    .ok (.int i)
+  | "String" =>
+    let s ← jsonToString body
+    .ok (.string s)
+  | "EntityUID" =>
+    let e ← jsonToEuid body
+    .ok (.entityUID e)
+  | tag => .error s!"jsonToPrim: unknown tag {tag}"
 
-def jsonToVar (json : Lean.Json) : Var :=
-  let var := jsonToString json
+def jsonToVar (json : Lean.Json) : ParseResult Var := do
+  let var ← jsonToString json
   match var with
-  | "principal" => .principal
-  | "action" => .action
-  | "resource" => .resource
-  | "context" => .context
-  | _ => panic! s!"jsonToVar: unknown variable {var}"
+  | "principal" => .ok .principal
+  | "action" => .ok .action
+  | "resource" => .ok .resource
+  | "context" => .ok .context
+  | _ => .error s!"jsonToVar: unknown variable {var}"
 
-def jsonToUnaryOp (json : Lean.Json) : UnaryOp :=
-  let op := jsonToString json
+def jsonToUnaryOp (json : Lean.Json) : ParseResult UnaryOp := do
+  let op ← jsonToString json
   match op with
-  | "Not" => .not
-  | "Neg" => .neg
-  | op => panic! s!"jsonToUnaryOp: unknown operator {op}"
+  | "Not" => .ok .not
+  | "Neg" => .ok .neg
+  | op => .error s!"jsonToUnaryOp: unknown operator {op}"
 
-def jsonToPatElem (json : Lean.Json) : PatElem :=
-  let (tag, body) := unpackJsonSum json
+def jsonToPatElem (json : Lean.Json) : ParseResult PatElem := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
-  | "Wildcard" => .star
-  | "Char" => .justChar (jsonToChar body)
-  | tag => panic! s!"jsonToPatElem: unsupported tag {tag}"
+  | "Wildcard" => .ok .star
+  | "Char" => do
+    let c ← jsonToChar body
+    .ok (.justChar c)
+  | tag => .error s!"jsonToPatElem: unsupported tag {tag}"
 
-def jsonToPattern (json : Lean.Json) : Pattern :=
-  let elems := jsonToArray json
-  List.map jsonToPatElem elems.toList
+def jsonToPattern (json : Lean.Json) : ParseResult Pattern := do
+  let elems ← jsonToArray json
+  List.mapM jsonToPatElem elems.toList
 
-def jsonToBinaryOp (json : Lean.Json) : BinaryOp :=
-  let op := jsonToString json
+def jsonToBinaryOp (json : Lean.Json) : ParseResult BinaryOp := do
+  let op ← jsonToString json
   match op with
-  | "Eq" => .eq
-  | "In" => .mem
-  | "Less" => .less
-  | "LessEq" => .lessEq
-  | "Add" => .add
-  | "Sub" => .sub
-  | "Contains" => .contains
-  | "ContainsAll" => .containsAll
-  | "ContainsAny" => .containsAny
-  | op => panic! s!"jsonToBinaryOp: unknown operator {op}"
+  | "Eq" => .ok .eq
+  | "In" => .ok .mem
+  | "Less" => .ok .less
+  | "LessEq" => .ok .lessEq
+  | "Add" => .ok .add
+  | "Sub" => .ok .sub
+  | "Contains" => .ok .contains
+  | "ContainsAll" => .ok .containsAll
+  | "ContainsAny" => .ok .containsAny
+  | op => .error s!"jsonToBinaryOp: unknown operator {op}"
 
-def jsonToExtFun (json : Lean.Json) : ExtFun :=
-  let xfn := jsonToName json
+def jsonToExtFun (json : Lean.Json) : ParseResult ExtFun := do
+  let xfn ← jsonToName json
   match xfn.id with
-  | "decimal" => .decimal
-  | "lessThan" => .lessThan
-  | "lessThanOrEqual" => .lessThanOrEqual
-  | "greaterThan" => .greaterThan
-  | "greaterThanOrEqual" => .greaterThanOrEqual
-  | "ip" => .ip
-  | "isIpv4" => .isIpv4
-  | "isIpv6" => .isIpv6
-  | "isLoopback" => .isLoopback
-  | "isMulticast" => .isMulticast
-  | "isInRange" => .isInRange
-  | xfn => panic! s!"jsonToExtFun: unknown extension function {xfn}"
+  | "decimal" => .ok .decimal
+  | "lessThan" => .ok .lessThan
+  | "lessThanOrEqual" => .ok .lessThanOrEqual
+  | "greaterThan" => .ok .greaterThan
+  | "greaterThanOrEqual" => .ok .greaterThanOrEqual
+  | "ip" => .ok .ip
+  | "isIpv4" => .ok .isIpv4
+  | "isIpv6" => .ok .isIpv6
+  | "isLoopback" => .ok .isLoopback
+  | "isMulticast" => .ok .isMulticast
+  | "isInRange" => .ok .isInRange
+  | xfn => .error s!"jsonToExtFun: unknown extension function {xfn}"
+
+/- mapM functions for lists of key-value pairs -/
+def mapMValues [Monad m] (l : List (α × β)) (f : β → m γ) : m (List (α × γ)) :=
+  l.mapM (λ (k,v) => do
+    let v ← f v
+    pure (k,v))
+
+def mapMKeysAndValues [Monad m] (l : List (α × β)) (f : α → m γ) (g : β → m δ) : m (List (γ × δ)) :=
+  l.mapM (λ (k,v) => do
+    let k ← f k
+    let v ← g v
+    pure (k,v))
 
 /-
 Defined as partial to avoid writing the proof of termination, which isn't required
 since we don't prove correctness of the parser.
 -/
-partial def jsonToExpr (json : Lean.Json) : Expr :=
-  let json := getJsonField json "expr_kind"
-  let (tag, body) := unpackJsonSum json
+partial def jsonToExpr (json : Lean.Json) : ParseResult Expr := do
+  let json ← getJsonField json "expr_kind"
+  let (tag, body) ← unpackJsonSum json
   match tag with
-  | "Lit" => .lit (jsonToPrim body)
-  | "Var" =>
-    let var := jsonToString body
-    .var (jsonToVar var)
-  | "And" =>
-    let lhs := getJsonField body "left"
-    let rhs := getJsonField body "right"
-    .and (jsonToExpr lhs) (jsonToExpr rhs)
-  | "Or" =>
-    let lhs := getJsonField body "left"
-    let rhs := getJsonField body "right"
-    .or (jsonToExpr lhs) (jsonToExpr rhs)
-  | "If" =>
-    let i := getJsonField body "test_expr"
-    let t := getJsonField body "then_expr"
-    let e := getJsonField body "else_expr"
-    .ite (jsonToExpr i) (jsonToExpr t) (jsonToExpr e)
-  | "UnaryApp" =>
-    let op := getJsonField body "op"
-    let arg := getJsonField body "arg"
-    .unaryApp (jsonToUnaryOp op) (jsonToExpr arg)
-  | "MulByConst" =>
-    let c := getJsonField body "constant"
-    let expr := getJsonField body "expr"
-    .unaryApp (.mulBy (jsonToInt64 c)) (jsonToExpr expr)
-  | "Like" =>
-    let pat := getJsonField body "pattern"
-    let expr := getJsonField body "expr"
-    .unaryApp (.like (jsonToPattern pat)) (jsonToExpr expr)
-  | "Is" =>
-    let ety := getJsonField body "entity_type"
-    let expr := getJsonField body "expr"
-    .unaryApp (.is (jsonToName ety)) (jsonToExpr expr)
-  | "BinaryApp" =>
-    let op := getJsonField body "op"
-    let arg1 := getJsonField body "arg1"
-    let arg2 := getJsonField body "arg2"
-    .binaryApp (jsonToBinaryOp op) (jsonToExpr arg1) (jsonToExpr arg2)
-  | "GetAttr" =>
-    let e :=  getJsonField body "expr"
-    let attr := getJsonField body "attr"
-    .getAttr (jsonToExpr e) (jsonToString attr)
-  | "HasAttr" =>
-    let e :=  getJsonField body "expr"
-    let attr := getJsonField body "attr"
-    .hasAttr (jsonToExpr e) (jsonToString attr)
-  | "Record" =>
-    let kvs := jsonObjToKVList body
-    .record (List.map (λ (k,v) => (k,jsonToExpr v)) kvs)
-  | "Set" =>
-    let arr := jsonToArray body
-    .set (List.map jsonToExpr arr.toList)
-  | "ExtensionFunctionApp" =>
-    let args := jsonToArray (getJsonField body "args")
-    let fn := getJsonField body "fn_name"
-    .call (jsonToExtFun fn) (List.map jsonToExpr args.toList)
-  | tag => panic! s!"jsonToExpr: unknown tag {tag}"
+  | "Lit" => do
+    let prim ← jsonToPrim body
+    .ok (.lit prim)
+  | "Var" => do
+    let var ← jsonToVar body
+    .ok (.var var)
+  | "And" => do
+    let lhs ← getJsonField body "left" >>= jsonToExpr
+    let rhs ← getJsonField body "right" >>= jsonToExpr
+    .ok (.and lhs rhs)
+  | "Or" => do
+    let lhs ← getJsonField body "left" >>= jsonToExpr
+    let rhs ← getJsonField body "right" >>= jsonToExpr
+    .ok (.or lhs rhs)
+  | "If" => do
+    let i ← getJsonField body "test_expr" >>= jsonToExpr
+    let t ← getJsonField body "then_expr" >>= jsonToExpr
+    let e ← getJsonField body "else_expr" >>= jsonToExpr
+    .ok (.ite i t e)
+  | "UnaryApp" => do
+    let op ← getJsonField body "op" >>= jsonToUnaryOp
+    let arg ← getJsonField body "arg" >>= jsonToExpr
+    .ok (.unaryApp op arg)
+  | "MulByConst" => do
+    let c ← getJsonField body "constant" >>= jsonToInt64
+    let arg ← getJsonField body "arg" >>= jsonToExpr
+    .ok (.unaryApp (.mulBy c) arg)
+  | "Like" => do
+    let pat ← getJsonField body "pattern" >>= jsonToPattern
+    let expr ← getJsonField body "expr" >>= jsonToExpr
+    .ok (.unaryApp (.like pat) expr)
+  | "Is" => do
+    let ety ← getJsonField body "entity_type" >>= jsonToName
+    let expr ← getJsonField body "expr" >>= jsonToExpr
+    .ok (.unaryApp (.is ety) expr)
+  | "BinaryApp" => do
+    let op ← getJsonField body "op" >>= jsonToBinaryOp
+    let arg1 ← getJsonField body "arg1" >>= jsonToExpr
+    let arg2 ← getJsonField body "arg2" >>= jsonToExpr
+    .ok (.binaryApp op arg1 arg2)
+  | "GetAttr" => do
+    let e ← getJsonField body "expr" >>= jsonToExpr
+    let attr ← getJsonField body "attr" >>= jsonToString
+    .ok (.getAttr e attr)
+  | "HasAttr" => do
+    let e ← getJsonField body "expr" >>= jsonToExpr
+    let attr ← getJsonField body "attr" >>= jsonToString
+    .ok (.hasAttr e attr)
+  | "Record" => do
+    let kvs_json ← jsonObjToKVList body
+    let kvs ← mapMValues kvs_json jsonToExpr
+    .ok (.record kvs)
+  | "Set" => do
+    let arr_json ← jsonToArray body
+    let arr ← List.mapM jsonToExpr arr_json.toList
+    .ok (.set arr)
+  | "ExtensionFunctionApp" => do
+    let fn ← getJsonField body "fn_name" >>= jsonToExtFun
+    let args_json ← getJsonField body "args" >>= jsonToArray
+    let args ← List.mapM jsonToExpr args_json.toList
+    .ok (.call fn args)
+  | tag => .error s!"jsonToExpr: unknown tag {tag}"
 
-def extExprToValue (xfn : ExtFun) (args : List Expr) : Value :=
+def extExprToValue (xfn : ExtFun) (args : List Expr) : ParseResult Value :=
   match xfn, args with
   | .decimal, [.lit (.string s)] => match Decimal.decimal s with
-    | .some v => .ext (.decimal v)
-    | .none => panic! s!"exprToValue: failed to parse decimal {s}"
+    | .some v => .ok (.ext (.decimal v))
+    | .none => .error s!"exprToValue: failed to parse decimal {s}"
   | .ip, [.lit (.string s)] => match IPAddr.ip s with
-    | .some v => .ext (.ipaddr v)
-    | .none => panic! s!"exprToValue: failed to parse ip {s}"
-  | _,_ => panic! "exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args))
+    | .some v => .ok (.ext (.ipaddr v))
+    | .none => .error s!"exprToValue: failed to parse ip {s}"
+  | _,_ => .error ("exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args)))
 
 /-
 Convert an expression to a value. This function is used to parse values
 that were serialized as expressions in the JSON, so it fails if the
 conversion is non-trivial.
 -/
-partial def exprToValue : Expr → Value
-  | Expr.lit p => Value.prim p
-  | Expr.record r => Value.record (Map.mk (List.map (λ (k,v) => (k,exprToValue v)) r))
-  | Expr.set s => Value.set (Set.mk (List.map exprToValue s))
+partial def exprToValue : Expr → ParseResult Value
+  | Expr.lit p => .ok (Value.prim p)
+  | Expr.record r => do
+    let kvs ← mapMValues r exprToValue
+    .ok (Value.record (Map.mk kvs))
+  | Expr.set s => do
+    let arr ← List.mapM exprToValue s
+    .ok (Value.set (Set.mk arr))
   | Expr.call xfn args => extExprToValue xfn args
-  | expr => panic! "exprToValue: invalid input expression\n" ++ toString (repr expr)
+  | expr => .error ("exprToValue: invalid input expression\n" ++ toString (repr expr))
 
-def jsonToValue : Lean.Json → Value := exprToValue ∘ jsonToExpr
+def jsonToValue (json : Lean.Json) : ParseResult Value :=
+  jsonToExpr json >>= exprToValue
 
-def jsonToContext (json : Lean.Json) : Map Attr Value :=
-  let value := jsonToValue json
+def jsonToContext (json : Lean.Json) : ParseResult (Map Attr Value) := do
+  let value ← jsonToValue json
   match value with
-  | .record kvs => kvs
-  | _ => panic! "jsonToContext: context must be a record\n" ++ toString (repr value)
+  | .record kvs => .ok kvs
+  | _ => .error ("jsonToContext: context must be a record\n" ++ toString (repr value))
 
 /-
 The "Known" in this function refers to "known" vs. "unknown" entities.
 We only need to support the known case here because the Lean does not
 support partial evaluation.
 -/
-def jsonToRequest (json : Lean.Json) : Request :=
-  let principal := getJsonField (getJsonField json "principal") "Known"
-  let action := getJsonField (getJsonField json "action") "Known"
-  let resource := getJsonField (getJsonField json "resource") "Known"
-  let context := getJsonField json "context"
-  {
-    principal := jsonToEuid principal,
-    action := jsonToEuid action,
-    resource := jsonToEuid resource,
-    context := jsonToContext context
+def jsonToRequest (json : Lean.Json) : ParseResult Request := do
+  let principal ← getJsonField json "principal" >>= (getJsonField · "Known") >>= jsonToEuid
+  let action ← getJsonField json "action" >>= (getJsonField · "Known") >>= jsonToEuid
+  let resource ← getJsonField json "resource" >>= (getJsonField · "Known") >>= jsonToEuid
+  let context ← getJsonField json "context" >>= jsonToContext
+  .ok {
+    principal := principal,
+    action := action,
+    resource := resource,
+    context := context
   }
 
-def jsonToEntityData (json : Lean.Json) : EntityData :=
-  let ancestorsArr := jsonToArray (getJsonField json "ancestors")
-  let ancestors := Set.mk (List.map jsonToEuid ancestorsArr.toList)
-  let attrsKVs := jsonObjToKVList (getJsonField json "attrs")
-  let attrs := Map.mk (List.map (λ (k,v) => (k,jsonToValue v)) attrsKVs)
-  {
-    ancestors := ancestors,
-    attrs := attrs
+def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
+  let ancestorsArr ← getJsonField json "ancestors" >>= jsonToArray
+  let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
+  let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
+  let attrs ← mapMValues attrsKVs jsonToValue
+  .ok {
+    ancestors := Set.mk ancestors,
+    attrs := Map.mk attrs
   }
 
-def jsonToEntities (json : Lean.Json) : Entities :=
-  let entities := getJsonField json "entities"
-  let kvs := jsonArrayToKVList entities
-  Map.mk (List.map (λ (k,v) => (jsonToEuid k, jsonToEntityData v)) kvs)
+def jsonToEntities (json : Lean.Json) : ParseResult Entities := do
+  let entities ← getJsonField json "entities"
+  let kvs_json ← jsonArrayToKVList entities
+  let kvs ← mapMKeysAndValues kvs_json jsonToEuid jsonToEntityData
+  .ok (Map.mk kvs)
 
-def jsonToEffect (json : Lean.Json) : Effect :=
-  let eff := jsonToString json
+def jsonToEffect (json : Lean.Json) : ParseResult Effect := do
+  let eff ← jsonToString json
   match eff with
-  | "permit" => .permit
-  | "forbid" => .forbid
-  | eff => panic! s!"jsonToEffect: unknown effect {eff}"
+  | "permit" => .ok .permit
+  | "forbid" => .ok .forbid
+  | eff => .error s!"jsonToEffect: unknown effect {eff}"
 
 /-
 Slots not currently supported, but will be added in the future.
 -/
-def jsonToEuidOrSlot (json : Lean.Json) : EntityUID :=
-  let (tag, body) := unpackJsonSum json
+def jsonToEuidOrSlot (json : Lean.Json) : ParseResult EntityUID := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
   | "EUID" => jsonToEuid body
-  | tag => panic! s!"jsonToEuidOrSlot: unknown tag {tag}"
+  | tag => .error s!"jsonToEuidOrSlot: unknown tag {tag}"
 
-def jsonToScope (json : Lean.Json) : Scope :=
-  let (tag, body) := unpackJsonSum json
+def jsonToScope (json : Lean.Json) : ParseResult Scope := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
-  | "Any" => .any
-  | "In" => .mem (jsonToEuidOrSlot body)
-  | "Eq" => .eq (jsonToEuidOrSlot body)
-  | "Is" => .is (jsonToName body)
-  | "IsIn" =>
-    let (ety,e) := jsonToTuple body
-    .isMem (jsonToName ety) (jsonToEuidOrSlot e)
-  | tag => panic! s!"jsonToScope: unknown tag {tag}"
+  | "Any" => .ok .any
+  | "In" => do
+    let euidOrSlot ← jsonToEuidOrSlot body
+    .ok (.mem euidOrSlot)
+  | "Eq" => do
+    let euidOrSlot ← jsonToEuidOrSlot body
+    .ok (.eq euidOrSlot)
+  | "Is" => do
+    let name ← jsonToName body
+    .ok (.is name)
+  | "IsIn" => do
+    let (ety,e) ← jsonToTuple body
+    let name ← jsonToName ety
+    let euidOrSlot ← jsonToEuidOrSlot e
+    .ok (.isMem name euidOrSlot)
+  | tag => .error s!"jsonToScope: unknown tag {tag}"
 
-def jsonToActionScope (json : Lean.Json) : ActionScope :=
-  let (tag, body) := unpackJsonSum json
+def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
-  | "Any" => .actionScope .any
-  | "In" =>
-    let arr := jsonToArray body
-    .actionInAny (List.map jsonToEuid arr.toList)
-  | "Eq" => .actionScope (.eq (jsonToEuid body))
-  | tag => panic! s!"jsonToActionScope: unknown tag {tag}"
+  | "Any" => .ok (.actionScope .any)
+  | "In" => do
+    let arr_json ← jsonToArray body
+    let arr ← List.mapM jsonToEuid arr_json.toList
+    .ok (.actionInAny arr)
+  | "Eq" =>
+    let euid ← jsonToEuid body
+    .ok (.actionScope (.eq euid))
+  | tag => .error s!"jsonToActionScope: unknown tag {tag}"
 
-def jsonToPolicy (json : Lean.Json) : Policy :=
-  let id := jsonToString (getJsonField json "id")
-  let effect := jsonToEffect (getJsonField json "effect")
-  let principalConstraint := getJsonField (getJsonField json "principal_constraint") "constraint"
-  let actionConstraint := getJsonField json "action_constraint"
-  let resourceConstraint := getJsonField (getJsonField json "resource_constraint") "constraint"
-  let condition := jsonToExpr (getJsonField json "non_head_constraints")
-  {
+def jsonToPolicy (json : Lean.Json) : ParseResult Policy := do
+  let id ← getJsonField json "id" >>= jsonToString
+  let effect ← getJsonField json "effect" >>= jsonToEffect
+  let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScope
+  let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
+  let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScope
+  let condition ← getJsonField json "non_head_constraints" >>= jsonToExpr
+  .ok {
     id := id
     effect := effect,
-    principalScope := .principalScope (jsonToScope principalConstraint),
-    resourceScope := .resourceScope (jsonToScope resourceConstraint),
-    actionScope := jsonToActionScope actionConstraint,
+    principalScope := .principalScope principalConstraint,
+    resourceScope := .resourceScope resourceConstraint,
+    actionScope := actionConstraint,
     condition := condition
   }
 
@@ -308,24 +358,24 @@ def jsonToPolicy (json : Lean.Json) : Policy :=
 For now, `jsonToPolicies` doesn't support policy templates.
 A static policy is just a policy template with no blanks.
 -/
-def jsonToPolicies (json : Lean.Json) : Policies :=
-  let templatesKVs := jsonObjToKVList (getJsonField json "templates")
-  List.map (λ (_,v) => jsonToPolicy v) templatesKVs
+def jsonToPolicies (json : Lean.Json) : ParseResult Policies := do
+  let templatesKVs ← getJsonField json "templates" >>= jsonObjToKVList
+  List.mapM (λ (_,v) => jsonToPolicy v) templatesKVs
 
-def jsonToPrimType (json : Lean.Json) : CedarType :=
-  let tag := jsonToString json
+def jsonToPrimType (json : Lean.Json) : ParseResult CedarType := do
+  let tag ← jsonToString json
   match tag with
-  | "Bool" => .bool .anyBool
-  | "Long" => .int
-  | "String" => .string
-  | tag => panic! s!"jsonToPrimType: unknown tag {tag}"
+  | "Bool" => .ok (.bool .anyBool)
+  | "Long" => .ok .int
+  | "String" => .ok .string
+  | tag => .error s!"jsonToPrimType: unknown tag {tag}"
 
-def jsonToExtType (json : Lean.Json) : ExtType :=
-  let xty := jsonToName json
+def jsonToExtType (json : Lean.Json) : ParseResult ExtType := do
+  let xty ← jsonToName json
   match xty.id with
-  | "ipaddr" => .ipAddr
-  | "decimal" => .decimal
-  | xty => panic! s!"jsonToExtType: unknown extension type {xty}"
+  | "ipaddr" => .ok .ipAddr
+  | "decimal" => .ok .decimal
+  | xty => .error s!"jsonToExtType: unknown extension type {xty}"
 
 /-
 The Rust data types store _descendant_ information for the entity type store
@@ -383,75 +433,81 @@ def invertJsonSchemaActionStore (acts : JsonSchemaActionStore) : SchemaActionSto
 
 mutual
 
-partial def jsonToQualifiedCedarType (json : Lean.Json) : Qualified CedarType :=
-  let attrType := jsonToCedarType (getJsonField json "attrType")
-  let isRequired := jsonToBool (getJsonField json "isRequired")
+partial def jsonToQualifiedCedarType (json : Lean.Json) : ParseResult (Qualified CedarType) := do
+  let attrType ← getJsonField json "attrType" >>= jsonToCedarType
+  let isRequired ← getJsonField json "isRequired" >>= jsonToBool
   if isRequired
-  then .required attrType
-  else .optional attrType
+  then .ok (.required attrType)
+  else .ok (.optional attrType)
 
-partial def jsonToRecordType (json : Lean.Json) : RecordType :=
-  let kvs := jsonObjToKVList json
-  Map.mk (List.map (λ (k,v) => (k,jsonToQualifiedCedarType v)) kvs)
+partial def jsonToRecordType (json : Lean.Json) : ParseResult RecordType := do
+  let kvs_json ← jsonObjToKVList json
+  let kvs ←  mapMValues kvs_json jsonToQualifiedCedarType
+  .ok (Map.mk kvs)
 
-partial def jsonToEntityOrRecordType (json : Lean.Json) : CedarType :=
-  let (tag,body) := unpackJsonSum json
+partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType := do
+  let (tag,body) ← unpackJsonSum json
   match tag with
-  | "Record" =>
-    let attrs := getJsonField (getJsonField body "attrs") "attrs"
-    .record (jsonToRecordType attrs)
-  | "Entity" =>
-    let lubArr := jsonToArray (getJsonField body "lub_elements")
-    let lub := Array.map jsonToName lubArr
+  | "Record" => do
+    let attrs ← getJsonField body "attrs" >>= (getJsonField · "attrs") >>= jsonToRecordType
+    .ok (.record attrs)
+  | "Entity" => do
+    let lubArr ← getJsonField body "lub_elements" >>= jsonToArray
+    let lub ← Array.mapM jsonToName lubArr
     if lub.size == 1
-    then .entity lub[0]!
-    else panic! "jsonToEntityOrRecordType: expected lub to have exactly one element" ++ json.pretty
-  | tag => panic! s!"jsonToEntityOrRecordType: unknown tag {tag}"
+    then .ok (.entity lub[0]!)
+    else .error s!"jsonToEntityOrRecordType: expected lub to have exactly one element¬{json.pretty}"
+  | tag => .error s!"jsonToEntityOrRecordType: unknown tag {tag}"
 
-partial def jsonToCedarType (json : Lean.Json) : CedarType :=
-  let (tag, body) := unpackJsonSum json
+partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
+  let (tag, body) ← unpackJsonSum json
   match tag with
-    | "Primitive" => jsonToPrimType (getJsonField body "primitiveType")
-    | "Set" =>
-      let elementType := getJsonField body "elementType"
-      .set (jsonToCedarType elementType)
+    | "Primitive" => getJsonField body "primitiveType" >>= jsonToPrimType
+    | "Set" => do
+      let elementType ← getJsonField body "elementType" >>= jsonToCedarType
+      .ok (.set elementType)
     | "EntityOrRecord" => jsonToEntityOrRecordType body
-    | "ExtensionType" =>
-      let name := getJsonField body "name"
-      .ext (jsonToExtType name)
-    | tag => panic! s!"jsonToCedarType: unknown tag {tag}"
+    | "ExtensionType" => do
+      let name ← getJsonField body "name" >>= jsonToExtType
+      .ok (.ext name)
+    | tag => .error s!"jsonToCedarType: unknown tag {tag}"
 
-partial def jsonToEntityTypeEntry (json : Lean.Json) : JsonEntityTypeStoreEntry :=
-  let descendants := jsonToArray (getJsonField json "descendants")
-  let attrs := getJsonField (getJsonField json "attributes") "attrs"
-  {
-    descendants := Set.mk (List.map jsonToName descendants.toList),
-    attrs := jsonToRecordType attrs
+partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntityTypeStoreEntry := do
+  let descendants_json ← getJsonField json "descendants" >>= jsonToArray
+  let descendants ← List.mapM jsonToName descendants_json.toList
+  let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
+  .ok {
+    descendants := Set.mk descendants,
+    attrs := attrs
   }
 
-partial def jsonToSchemaActionEntry (json : Lean.Json) : JsonSchemaActionEntry :=
-  let appliesTo := getJsonField json "appliesTo"
-  let appliesToPrincipal := jsonToArray (getJsonField appliesTo "principalApplySpec")
-  let appliesToResource := jsonToArray (getJsonField appliesTo "resourceApplySpec")
-  let descendants := jsonToArray (getJsonField json "descendants")
-  let context := match jsonToCedarType (getJsonField json "context") with
-    | .record rty => rty
-    | _ => panic! "jsonToSchemaActionEntry: context should be record-typed"
-  {
-    appliesToPrincipal := Set.mk (List.map jsonToEntityType appliesToPrincipal.toList),
-    appliesToResource := Set.mk (List.map jsonToEntityType appliesToResource.toList),
-    descendants := Set.mk (List.map jsonToEuid descendants.toList),
-    context := context
-  }
+partial def jsonToSchemaActionEntry (json : Lean.Json) : ParseResult JsonSchemaActionEntry := do
+  let appliesTo ← getJsonField json "appliesTo"
+  let appliesToPrincipal_json ← getJsonField appliesTo "principalApplySpec" >>= jsonToArray
+  let appliesToPrincipal ← List.mapM jsonToEntityType appliesToPrincipal_json.toList
+  let appliesToResource_json ← getJsonField appliesTo "resourceApplySpec" >>= jsonToArray
+  let appliesToResource ← List.mapM jsonToEntityType appliesToResource_json.toList
+  let descendants_json ← getJsonField json "descendants" >>= jsonToArray
+  let descendants ← List.mapM jsonToEuid descendants_json.toList
+  let context ← getJsonField json "context" >>= jsonToCedarType
+  match context with
+  | .record rty =>
+    .ok {
+      appliesToPrincipal := Set.mk appliesToPrincipal,
+      appliesToResource := Set.mk appliesToResource,
+      descendants := Set.mk descendants,
+      context := rty
+    }
+  | _ => .error "jsonToSchemaActionEntry: context should be record-typed"
 
-partial def jsonToSchema (json : Lean.Json) : Schema :=
-  let entityTypesKVs := jsonArrayToKVList (getJsonField json "entityTypes")
-  let entityTypes := Map.mk (List.map (λ (k,v) => (jsonToName k,jsonToEntityTypeEntry v)) entityTypesKVs)
-  let actionsKVs := jsonArrayToKVList (getJsonField json "actionIds")
-  let actions := Map.mk (List.map (λ (k,v) => (jsonToEuid k,jsonToSchemaActionEntry v)) actionsKVs)
-  {
-    ets := invertJsonEntityTypeStore entityTypes,
-    acts := invertJsonSchemaActionStore actions
+partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
+  let entityTypesKVs ← getJsonField json "entityTypes" >>= jsonArrayToKVList
+  let entityTypes ← mapMKeysAndValues entityTypesKVs jsonToName jsonToEntityTypeEntry
+  let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
+  let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToSchemaActionEntry
+  .ok {
+    ets := invertJsonEntityTypeStore (Map.mk entityTypes),
+    acts := invertJsonSchemaActionStore (Map.mk actions)
   }
 
 end -- end mutual block
