@@ -91,6 +91,26 @@ def mapM₂ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf 
 
 ----- Theorems -----
 
+theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
+  {p : α → Prop}
+  (f : α → m β)
+  (as : List α)
+  (h : ∀ a, a ∈ as → p a)
+  : List.mapM (fun x : { a : α // p a } => f x.val) (List.pmap Subtype.mk as h)
+    =
+    List.mapM f as
+:= by
+  rw [←List.mapM'_eq_mapM]
+  induction as <;> simp [*]
+
+theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
+  (f : α → m β)
+  (as : List α) :
+  List.mapM₁ as (fun x : { x // x ∈ as } => f x.val) =
+  List.mapM f as
+:= by
+  simp [mapM₁, attach, mapM_pmap_subtype]
+
 theorem Equiv.refl {a : List α} :
   a ≡ a
 := by unfold List.Equiv; simp

@@ -15,6 +15,7 @@
 -/
 
 import Std
+import Cedar.Data.LT
 
 /-!
 This file defines a signed 64-bit integer datatype similar to Rust's `i64`.
@@ -74,6 +75,23 @@ instance int64Le (i₁ i₂ : Int64) : Decidable (i₁ ≤ i₂) :=
 if h : Int64.le i₁ i₂ then isTrue h else isFalse h
 
 deriving instance Repr, DecidableEq for Int64
+
+instance strictLT : StrictLT Int64 where
+  asymmetric a b   := by
+    cases a ; cases b
+    simp [LT.lt, Int64.lt, Int.lt]
+    apply Int.strictLT.asymmetric
+  transitive a b c := by
+    simp [LT.lt, Int64.lt, Int.lt]
+    exact Int.strictLT.transitive a b c
+  connected  a b   := by
+    simp [LT.lt, Int64.lt, Int.lt]
+    intro h₁
+    apply Int.strictLT.connected a b
+    simp [h₁]
+    by_contra h₂
+    rcases (Subtype.eq h₂) with h₃
+    contradiction
 
 end Int64
 

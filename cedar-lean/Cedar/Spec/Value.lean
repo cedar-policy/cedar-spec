@@ -171,7 +171,7 @@ def decValueList (as bs : List Value) : Decidable (as = bs) :=
       | isFalse _ => isFalse (by intro h; injection h; contradiction)
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrValue (as bs : Prod Attr Value) : Decidable (as = bs) :=
+def decProdAttrValue (as bs : Attr × Value) : Decidable (as = bs) :=
   match as, bs with
   | (a1, a2), (b1, b2) => match decEq a1 b1 with
     | isTrue h₀ => match decValue a2 b2 with
@@ -179,7 +179,7 @@ def decProdAttrValue (as bs : Prod Attr Value) : Decidable (as = bs) :=
       | isFalse _ => isFalse (by intro h; injection h; contradiction)
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrValueList (as bs : List (Prod Attr Value)) : Decidable (as = bs) :=
+def decProdAttrValueList (as bs : List (Attr × Value)) : Decidable (as = bs) :=
   match as, bs with
   | [], [] => isTrue rfl
   | _::_, [] => isFalse (by intro; contradiction)
@@ -209,14 +209,13 @@ instance : DecidableEq Value :=
   decValue
 
 def Name.lt (a b : Name) : Bool :=
-  (a.id < b.id) ∨ (a.id = b.id ∧ a.path < b.path)
+  (a.id :: a.path) < (b.id :: b.path)
 
 instance : LT Name where
   lt a b := Name.lt a b
 
-instance Name.decLt (n m : Name) : Decidable (n < m) :=
-  if h : Name.lt n m then isTrue h else isFalse h
-
+instance Name.decLt (a b : Name) : Decidable (a < b) :=
+  if h : Name.lt a b then isTrue h else isFalse h
 
 def EntityUID.lt (a b : EntityUID) : Bool :=
   (a.ty < b.ty) ∨ (a.ty = b.ty ∧ a.eid < b.eid)
@@ -224,71 +223,62 @@ def EntityUID.lt (a b : EntityUID) : Bool :=
 instance : LT EntityUID where
   lt a b := EntityUID.lt a b
 
-instance EntityUID.decLt (n m : EntityUID) : Decidable (n < m) :=
-  if h : EntityUID.lt n m then isTrue h else isFalse h
+instance EntityUID.decLt (a b : EntityUID) : Decidable (a < b) :=
+  if h : EntityUID.lt a b then isTrue h else isFalse h
 
-instance : Ord EntityUID where
-  compare a b := compareOfLessAndEq a b
-
-def Bool.lt (a b : Bool) : Bool := match a,b with
-| false, true => true
-| _, _ => false
-
-instance : LT Bool where
-  lt a b := Bool.lt a b
-
-instance Bool.decLt (n m : Bool) : Decidable (n < m) :=
-  if h : Bool.lt n m then isTrue h else isFalse h
-
-def Prim.lt (n m : Prim) : Bool := match n,m with
+def Prim.lt : Prim → Prim → Bool
   | .bool nb, .bool mb => nb < mb
   | .int ni, .int mi => ni < mi
   | .string ns, .string ms => ns < ms
   | .entityUID nuid, .entityUID muid => nuid < muid
-  | .bool _, .int _ => True
-  | .bool _, .string _ => True
-  | .bool _, .entityUID _ => True
-  | .int _, .string _ => True
-  | .int _, .entityUID _ => True
-  | .string _, .entityUID _ => True
-  | _,_ => False
+  | .bool _, .int _ => true
+  | .bool _, .string _ => true
+  | .bool _, .entityUID _ => true
+  | .int _, .string _ => true
+  | .int _, .entityUID _ => true
+  | .string _, .entityUID _ => true
+  | _,_ => false
 
 instance : LT Prim where
 lt := fun x y => Prim.lt x y
 
-instance Prim.decLt (n m : Prim) : Decidable (n < m) :=
-if  h : Prim.lt n m then isTrue h else isFalse h
+instance Prim.decLt (a b : Prim) : Decidable (a < b) :=
+if  h : Prim.lt a b then isTrue h else isFalse h
 
 mutual
-def Value.lt (n m : Value) : Bool := match n,m with
+def Value.lt : Value → Value → Bool
   | .prim x, .prim y => x < y
   | .set (.mk lx), .set (.mk ly) => Values.lt lx ly lx.length
   | .record (.mk lx), .record (.mk ly) => ValueAttrs.lt lx ly lx.length
   | .ext x, .ext y => x < y
-  | .prim _, .set _ => True
-  | .prim _, .record _ => True
-  | .prim _, .ext _ => True
-  | .set _, .record _ => True
-  | .set _, .ext _ => True
-  | .set _, .prim _ => False
-  | .record _, .ext _ => True
-  | .record _, .prim _ => False
-  | .record _, .set _ => False
-  | .ext _, .prim _ => False
-  | .ext _, .set _ => False
-  | .ext _, .record _ => False
+  | .prim _, .set _ => true
+  | .prim _, .record _ => true
+  | .prim _, .ext _ => true
+  | .set _, .record _ => true
+  | .set _, .ext _ => true
+  | .set _, .prim _ => false
+  | .record _, .ext _ => true
+  | .record _, .prim _ => false
+  | .record _, .set _ => false
+  | .ext _, .prim _ => false
+  | .ext _, .set _ => false
+  | .ext _, .record _ => false
 
-def Values.lt (n m : List Value) (i : Nat): Bool := match n, m with
-  | [], [] => False
-  | [], _ => True
-  | _, [] => False
-  | n::ns, m::ms => Value.lt n m && Values.lt ns ms (i-1)
+def Values.lt (n m : List Value) (i : Nat): Bool :=
+  match n, m with
+  | [], [] => false
+  | [], _ => true
+  | _, [] => false
+  | n::ns, m::ms => Value.lt n m || (n = m && Values.lt ns ms (i-1))
 
-def ValueAttrs.lt (n m : List (Prod String Value)) (i : Nat) : _root_.Bool := match n, m with
-  | [], [] => False
-  | [], _ => True
-  | _, [] => False
-  | (na, nv)::ns, (ma, mv)::ms => Value.lt nv mv && na < ma && ValueAttrs.lt ns ms (i-1)
+def ValueAttrs.lt (n m : List (Attr × Value)) (i : Nat) : Bool :=
+  match n, m with
+  | [], [] => false
+  | [], _ => true
+  | _, [] => false
+  | (na, nv)::ns, (ma, mv)::ms =>
+    na < ma || (na = ma && Value.lt nv mv) ||
+    (na = ma && nv = mv && ValueAttrs.lt ns ms (i-1))
 end
 termination_by
 Value.lt as₁ as₂ => (sizeOf as₁, 0)
