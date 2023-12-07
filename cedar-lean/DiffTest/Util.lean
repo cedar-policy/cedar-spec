@@ -29,60 +29,63 @@ namespace DiffTest
 open Cedar.Data
 open Lean
 
-def getJsonField (json : Json) (field : String) : Json :=
+abbrev ParseError := String
+abbrev ParseResult (α) := Except ParseError α
+
+def getJsonField (json : Json) (field : String) : ParseResult Json :=
   match json.getObjVal? field with
-  | .ok v => v
-  | .error e => panic! s!"getJsonField {field}: {e}\n" ++ json.pretty
+  | .ok v => .ok v
+  | .error e => .error s!"getJsonField {field}: {e}\n{json.pretty}"
 
-def jsonToString (json : Json) : String :=
+def jsonToString (json : Json) : ParseResult String :=
   match json.getStr? with
-  | .ok s => s
-  | .error e => panic! s!"jsonToString: {e}\n" ++ json.pretty
+  | .ok s => .ok s
+  | .error e => .error s!"jsonToString: {e}\n{json.pretty}"
 
-def jsonToArray (json : Json) : Array Json :=
+def jsonToArray (json : Json) : ParseResult (Array Json) :=
   match json.getArr? with
-  | .ok a => a
-  | .error e => panic! s!"jsonToArray: {e}\n" ++ json.pretty
+  | .ok a => .ok a
+  | .error e => .error s!"jsonToArray: {e}\n{json.pretty}"
 
-def jsonToTuple (json : Json) : (Json × Json) :=
-  let kv := jsonToArray json
-  if kv.size == 2 then (kv[0]!, kv[1]!)
-  else panic! "jsonToTuple: expected exactly two elements\n" ++ json.pretty
+def jsonToTuple (json : Json) : ParseResult (Json × Json) := do
+  let kv ← jsonToArray json
+  if kv.size == 2 then .ok (kv[0]!, kv[1]!)
+  else .error s!"jsonToTuple: expected exactly two elements\n{json.pretty}"
 
-def jsonArrayToKVList (json : Json) : List (Json × Json) :=
-  let arr := jsonToArray json
-  List.map jsonToTuple arr.toList
+def jsonArrayToKVList (json : Json) : ParseResult (List (Json × Json)) := do
+  let arr ← jsonToArray json
+  List.mapM jsonToTuple arr.toList
 
-def jsonObjToKVList (json : Json) : List (String × Json) :=
+def jsonObjToKVList (json : Json) : ParseResult (List (String × Json)) :=
   match json.getObj? with
-  | .ok kvs => kvs.fold (λ acc k v => (k,v) :: acc) []
-  | .error e => panic! s!"jsonToKVList: {e}\n" ++ json.pretty
+  | .ok kvs => .ok (kvs.fold (λ acc k v => (k,v) :: acc) [])
+  | .error e => .error s!"jsonToKVList: {e}\n{json.pretty}"
 
-def jsonToBool (json : Json) : Bool :=
+def jsonToBool (json : Json) : ParseResult Bool :=
   match json.getBool? with
-  | .ok b => b
-  | .error e => panic! s!"jsonToBool: {e}\n" ++ json.pretty
+  | .ok b => .ok b
+  | .error e => .error s!"jsonToBool: {e}\n{json.pretty}"
 
-def jsonToNum (json : Json) : JsonNumber :=
+def jsonToNum (json : Json) : ParseResult JsonNumber :=
   match json.getNum? with
-  | .ok n => n
-  | .error e => panic! s!"jsonToNum: {e}\n" ++ json.pretty
+  | .ok n => .ok n
+  | .error e => .error s!"jsonToNum: {e}\n{json.pretty}"
 
-def jsonToInt64 (json : Json) : Int64 :=
-  let num := jsonToNum json
+def jsonToInt64 (json : Json) : ParseResult Int64 := do
+  let num ← jsonToNum json
   match num.exponent with
-  | 0 => Int64.mk! num.mantissa
-  | n => panic! s!"jsonToInt64: number has exponent {n}"
+  | 0 => .ok (Int64.mk! num.mantissa)
+  | n => .error s!"jsonToInt64: number has exponent {n}"
 
-def jsonToChar (json : Json) : Char :=
-  let num := jsonToNum json
+def jsonToChar (json : Json) : ParseResult Char := do
+  let num ← jsonToNum json
   match num.exponent with
   | 0 =>
     let nat := num.mantissa.toNat
     if nat.isValidChar
-    then Char.ofNat nat
-    else panic! s!"jsonToChar: cannot convert to character {nat}"
-  | n => panic! s!"jsonToChar: cannot convert to character {n}"
+    then .ok (Char.ofNat nat)
+    else .error s!"jsonToChar: cannot convert to character {nat}"
+  | n => .error s!"jsonToChar: cannot convert to character {n}"
 
 def getSingleElement (kvs : RBNode String (λ _ => Json)) : String × Json :=
   kvs.fold (init := ("",Json.null)) (λ _ k v => (k,v))
@@ -98,11 +101,11 @@ object containing the original fields. unpackJsonSum accepts both formats,
 and in the first case, it returns jsonEmptyObject as the body for
 consistency.
 -/
-def unpackJsonSum (json : Json) : String × Json := match json with
-  | .str tag => (tag, .obj ∅)
+def unpackJsonSum (json : Json) : ParseResult (String × Json) := match json with
+  | .str tag => .ok (tag, .obj ∅)
   | .obj kvs =>
-      if kvs.size == 1 then getSingleElement kvs
-      else panic! "unpackJsonSum: expected exactly one key, got either zero or multiple\n" ++ json.pretty
-  | _ => panic! "unpackJsonSum: expected an object or a string\n" ++ json.pretty
+      if kvs.size == 1 then .ok (getSingleElement kvs)
+      else .error s!"unpackJsonSum: expected exactly one key, got either zero or multiple\n{json.pretty}"
+  | _ => .error s!"unpackJsonSum: expected an object or a string\n{json.pretty}"
 
 end DiffTest

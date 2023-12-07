@@ -30,26 +30,26 @@ open Cedar.Spec
 open Cedar.Validation
 
 @[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
-  let json := Lean.Json.parse req
-  match json with
-  | .error e => panic! s!"isAuthorizedDRT: failed to parse input: {e}"
-  | .ok json =>
-    let request := jsonToRequest (getJsonField json "request")
-    let entities := jsonToEntities (getJsonField json "entities")
-    let policies := jsonToPolicies (getJsonField json "policies")
-    let response := isAuthorized request entities policies
-    let json := Lean.toJson response
-    toString json
+  let result : ParseResult Lean.Json :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"isAuthorizedDRT: failed to parse input: {e}"
+    | .ok json => do
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      let policies ← getJsonField json "policies" >>= jsonToPolicies
+      let response := isAuthorized request entities policies
+      .ok (Lean.toJson response)
+  toString result
 
 @[export validateDRT] def validateDRT (req : String) : String :=
-  let json := Lean.Json.parse req
-  match json with
-  | .error e => panic! s!"validateDRT: failed to parse input: {e}"
-  | .ok json =>
-    let policies := jsonToPolicies (getJsonField json "policies")
-    let schema := jsonToSchema (getJsonField json "schema")
-    let response := validate policies schema
-    let json := Lean.toJson response
-    toString json
+  let result : ParseResult Lean.Json :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateDRT: failed to parse input: {e}"
+    | .ok json => do
+      let policies ← getJsonField json "policies" >>= jsonToPolicies
+      let schema ← getJsonField json "schema" >>= jsonToSchema
+      let response := validate policies schema
+      .ok (Lean.toJson response)
+  toString result
 
 end DiffTest
