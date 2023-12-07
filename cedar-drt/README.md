@@ -33,7 +33,7 @@ The sampling rate can be controlled by the `RATE` environment variable, which de
 ## Debugging build failures
 
 If you run into weird build issues,
-1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny & Lean definitional code.
+1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny and Lean definitional code.
 2. Try a `cargo clean` and rebuild.
 3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 
