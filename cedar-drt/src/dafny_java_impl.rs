@@ -18,19 +18,18 @@
 //! implementation extracted from the Dafny specification.
 
 use crate::cedar_test_impl::*;
+use crate::definitional_request_types::*;
 use crate::logger::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
-pub use cedar_policy::Response;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
 use jni::objects::{JObject, JString, JValue};
 use jni::{JNIVersion, JavaVM};
 use lazy_static::lazy_static;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// Times to (de)serialize JSON content sent to / received from the Dafny-Java
 /// implementation.
@@ -65,50 +64,6 @@ lazy_static! {
             .expect("failed to create JVM args");
         JavaVM::new(jvm_args).expect("failed to create JVM instance")
     };
-}
-
-#[derive(Debug, Serialize)]
-struct RequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    policies: &'a ast::PolicySet,
-    entities: &'a Entities,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DefinitionalAuthResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    auth_nanos: i64,
-    response: InterfaceResponse,
-}
-
-#[derive(Debug, Serialize)]
-struct EvalRequestForDefEngine<'a> {
-    request: &'a ast::Request,
-    entities: &'a Entities,
-    expr: &'a ast::Expr,
-    expected: Option<&'a ast::Expr>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-#[repr(transparent)]
-struct DefinitionalEvalResponse {
-    matches: bool,
-}
-
-#[derive(Debug, Serialize)]
-struct RequestForDefValidator<'a> {
-    schema: &'a ValidatorSchema,
-    policies: &'a ast::PolicySet,
-    mode: ValidationMode,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DefinitionalValResponse {
-    serialization_nanos: i64,
-    deserialization_nanos: i64,
-    validation_nanos: i64,
-    response: ValidationInterfaceResponse,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance

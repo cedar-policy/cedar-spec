@@ -15,13 +15,20 @@ This repository contains the Dafny formalization of Cedar and infrastructure for
 
 To build the Dafny formalization and proofs:
 
-* Install Dafny 4.0, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL). Our proofs expect Z3 version 4.12.1, so if you have another copy of Z3 installed locally, you may need to adjust your PATH.
+* Install Dafny, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL). Our proofs expect Z3 version 4.12.1, so if you have another copy of Z3 installed locally, you may need to adjust your PATH.
 * `cd cedar-dafny && make verify test`
+
+To build the Lean formalization and proofs:
+
+* Install Lean, following the instructions [here](https://leanprover.github.io/lean4/doc/setup.html).
+* `cd cedar-lean && lake build Cedar`
 
 To build the DRT framework:
 
-* Install Dafny, following the instructions above
+* Install Dafny and Lean, following the instructions above.
 * `./build.sh`
+
+Note that the build for DRT has only been tested on **Amazon Linux 2**.
 
 ## Run
 

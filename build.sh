@@ -4,19 +4,33 @@
 git submodule update --init
 
 # Set environment variables
-cd cedar-drt && source ./set_env_vars.sh
+cd cedar-drt
+source set_env_vars.sh
 cd ..
 
-# Build the formalization and extract Java code
-cd cedar-dafny && make compile-difftest
+# Build the Dafny formalization and extract to Java code
+cd cedar-dafny
+make compile-difftest
 cd ..
 
-# Build the Java wrapper for DRT
-cd cedar-dafny-java-wrapper && ./gradlew build dumpClasspath
+# Build the Dafny Java wrapper
+cd cedar-dafny-java-wrapper
+./gradlew build dumpClasspath
+cd ..
+
+# Build the Lean formalization and extract to static C libraries
+cd cedar-lean
+lake build Cedar:static DiffTest:static Std:static
 cd ..
 
 # Build DRT
 cd cedar-drt
 cargo build
-cargo test
+
+# Run integration tests
+source set_env_vars.sh
+cargo test -- --nocapture
+
+# Build inner fuzz crate
 cd fuzz && RUSTFLAGS="--cfg=fuzzing" cargo build
+cargo test

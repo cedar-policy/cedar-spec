@@ -26,5 +26,15 @@ The table below lists all available fuzz targets, including which component of t
 
 ## Logging
 
-If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable. 
+If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable.
 The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
+
+
+## Debugging build failures
+
+If you run into weird build issues,
+1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny and Lean definitional code.
+2. Try a `cargo clean` and rebuild.
+3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
+
+If everything builds, but the integration tests are failing, then it may be helpful to set `RUST_BACKTRACE=1` and run `cargo test -- --nocapture` to print additional test information.
