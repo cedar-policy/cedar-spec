@@ -34,7 +34,7 @@ deriving Repr, DecidableEq, Inhabited, Lean.ToJson
 
 namespace Set
 
-private def elts {α : Type u} : (Set α) -> (List α)
+def elts {α : Type u} : (Set α) -> (List α)
 | .mk elts => elts
 
 open Except
@@ -154,6 +154,17 @@ theorem make_eq_if_eqv [LT α] [DecidableLT α] [StrictLT α] (xs ys : List α) 
 := by
   intro h; unfold make; simp
   apply List.if_equiv_strictLT_then_canonical _ _ h
+
+theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
+  x ∈ xs ↔ x ∈ Set.make xs
+:= by
+  simp [make, Membership.mem, elts]
+  rcases (List.canonicalize_equiv xs) with h₁
+  simp [List.Equiv, List.subset_def] at h₁
+  rcases h₁ with ⟨h₁, h₂⟩
+  constructor <;> intro h₃
+  case mp => apply h₁ h₃
+  case mpr => apply h₂ h₃
 
 end Set
 
