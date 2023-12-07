@@ -50,7 +50,7 @@ def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
   match tag with
   | "Specified" => jsonToName body
   | "Unspecified" =>
-    -- "unspecified" entities are treated as normal entities with a unique name
+    -- "Unspecified" entities are treated as normal entities with a unique name
     .ok { id := "<Unspecified>", path := [] }
   | tag => .error s!"jsonToEntityType: unknown tag {tag}"
 
