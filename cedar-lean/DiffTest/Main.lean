@@ -50,8 +50,21 @@ open Cedar.Validation
       .ok (validate policies schema)
   toString (Lean.toJson result)
 
-@[export evaluateDRT] def evaluateDRT (_req : String) : String :=
-  panic! "TODO: implement evaluateDRT"
+@[export evaluateDRT] def evaluateDRT (req : String) : String :=
+  let result : ParseResult Bool :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateDRT: failed to parse input: {e}"
+    | .ok json => do
+      let expr ← getJsonField json "expr" >>= jsonToExpr
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      let expected ← getJsonField json "expected" >>= jsonToOptionalValue
+      let result := Cedar.Spec.evaluate expr request entities
+      match result, expected with
+      | .error _, .none => .ok true
+      | .ok v₁, .some v₂ => .ok (v₁ == v₂)
+      | _, _ => .ok false
+  toString (Lean.toJson result)
 
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
 def evaluate (req : String) : ParseResult (Result Value) :=

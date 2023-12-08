@@ -44,8 +44,20 @@ test = false
 doc = false
 
 [[bin]]
+name = "rbac-lean"
+path = "fuzz_targets/rbac-lean.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "rbac-authorizer"
 path = "fuzz_targets/rbac-authorizer.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "rbac-authorizer-lean"
+path = "fuzz_targets/rbac-authorizer-lean.rs"
 test = false
 doc = false
 
@@ -56,8 +68,20 @@ test = false
 doc = false
 
 [[bin]]
+name = "abac-lean"
+path = "fuzz_targets/abac-lean.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "abac-type-directed"
 path = "fuzz_targets/abac-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "abac-type-directed-lean"
+path = "fuzz_targets/abac-type-directed-lean.rs"
 test = false
 doc = false
 
@@ -110,6 +134,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "strict-validation-drt-type-directed-lean"
+path = "fuzz_targets/strict-validation-drt-type-directed-lean.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "wildcard-matching"
 path = "fuzz_targets/wildcard-matching.rs"
 test = false
@@ -118,5 +148,11 @@ doc = false
 [[bin]]
 name = "eval-type-directed"
 path = "fuzz_targets/eval-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "eval-type-directed-lean"
+path = "fuzz_targets/eval-type-directed-lean.rs"
 test = false
 doc = false

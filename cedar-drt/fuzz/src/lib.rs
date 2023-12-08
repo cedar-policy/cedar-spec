@@ -56,7 +56,11 @@ pub fn run_eval_test(
     };
     // custom_impl.interpret() returns true when the result of evaluating expr
     // matches the expected value v
-    assert!(custom_impl.interpret(request, entities, expr, expected))
+    assert!(
+        custom_impl.interpret(request.clone(), entities, expr, expected.clone()),
+        "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
+        expected
+    )
 }
 
 /// Compare the behavior of the authorizer in cedar-policy against a custom Cedar
