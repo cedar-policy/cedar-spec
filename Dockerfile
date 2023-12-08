@@ -21,7 +21,7 @@ RUN . ~/.profile; cargo install cargo-fuzz
 RUN mkdir /opt/dotnet \
   && wget -q https://dot.net/v1/dotnet-install.sh -O /opt/dotnet/dotnet-install.sh \
   && chmod +x /opt/dotnet/dotnet-install.sh \
-  && /opt/dotnet/dotnet-install.sh
+  && /opt/dotnet/dotnet-install.sh --channel 6.0
 ENV PATH="/root/.dotnet/:$PATH"
 
 # Setup Java/Gradle toolchain
@@ -30,23 +30,17 @@ RUN mkdir /opt/gradle \
   && unzip /opt/gradle/gradle.zip -d /opt/gradle/
 ENV PATH="/opt/gradle/gradle-8.1.1/bin/:$PATH"
 
+# Install Lean
+RUN wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh && sh elan-init.sh -y
+
 FROM prepare AS build
 
 ENV CEDAR_SPEC_ROOT=/opt/src/cedar-spec
 COPY . $CEDAR_SPEC_ROOT
 
-# Get cedar
+# Build DRT
 WORKDIR $CEDAR_SPEC_ROOT
-RUN git submodule init && git submodule update --recursive
-
-# Build cedar-dafny
-WORKDIR $CEDAR_SPEC_ROOT/cedar-dafny
-RUN make compile-difftest
-
-# Build cedar-dafny-java-wrapper
-WORKDIR $CEDAR_SPEC_ROOT/cedar-dafny-java-wrapper
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN export JAVA_HOME="$(java -XshowSettings:properties -version 2>&1 | sed -ne 's,^ *java\.home = ,,p')" && ./gradlew build dumpClasspath
+RUN source /root/.profile && ./build.sh
 
 # Prepare DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
