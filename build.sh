@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Check out the cedar submodule
 git submodule update --init
 
