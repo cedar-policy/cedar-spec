@@ -48,6 +48,7 @@ use std::str::FromStr;
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateDRT(req: *mut lean_object) -> *mut lean_object;
+    fn evaluateDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
@@ -72,6 +73,16 @@ enum AuthorizationResponse {
     /// Successful execution of the `isAuthorized` function
     #[serde(rename = "ok")]
     Ok(AuthorizationResponseInner),
+    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
+    #[serde(rename = "error")]
+    Error(String),
+}
+
+#[derive(Serialize, Deserialize)]
+enum EvaluationResponse {
+    /// Successful execution of the `evaluate` function
+    #[serde(rename = "ok")]
+    Ok(bool),
     /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
     #[serde(rename = "error")]
     Error(String),
@@ -177,6 +188,49 @@ impl LeanDefinitionalEngine {
         Self::deserialize_authorization_response(response)
     }
 
+    fn serialize_evaluation_request(
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<&Expr>,
+    ) -> *mut lean_object {
+        let request: String = serde_json::to_string(&EvalRequestForDefEngine {
+            request,
+            entities,
+            expr,
+            expected,
+        })
+        .expect("failed to serialize request, expression, or entities");
+        let cstring = CString::new(request).expect("`CString::new` failed");
+        unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
+    }
+
+    fn deserialize_evaluation_response(response: *mut lean_object) -> InterfaceResult<bool> {
+        let response_string = lean_obj_to_string(response);
+        let resp: EvaluationResponse =
+            serde_json::from_str(&response_string).expect("could not deserialize json");
+        match resp {
+            EvaluationResponse::Ok(matches) => Ok(matches),
+            EvaluationResponse::Error(err) => Err(err),
+        }
+    }
+
+    /// Ask the definitional engine whether the input expression evaluates to the
+    /// expected result. If `expected` is none, then evaluation should produce an error.
+    pub fn evaluate(
+        &self,
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<Value>,
+    ) -> InterfaceResult<bool> {
+        let expected_as_expr = expected.map(|v| v.into());
+        let req =
+            Self::serialize_evaluation_request(request, entities, expr, expected_as_expr.as_ref());
+        let response = unsafe { evaluateDRT(req) };
+        Self::deserialize_evaluation_response(response)
+    }
+
     fn serialize_validation_request(
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
@@ -236,13 +290,12 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
 
     fn interpret(
         &self,
-        _request: ast::Request,
-        _entities: &Entities,
-        _expr: &Expr,
-        _expected: Option<Value>,
+        request: ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<Value>,
     ) -> InterfaceResult<bool> {
-        // TODO
-        unimplemented!("Unimplemented: interpret");
+        self.evaluate(&request, entities, expr, expected)
     }
 
     fn validate(

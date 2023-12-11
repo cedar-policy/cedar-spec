@@ -24,10 +24,11 @@ use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALI
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
-use cedar_policy_core::entities::Entities;
+use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
 use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
+use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 
 /// Compare the behavior of the evaluator in cedar-policy against a custom Cedar
@@ -56,7 +57,11 @@ pub fn run_eval_test(
     };
     // custom_impl.interpret() returns true when the result of evaluating expr
     // matches the expected value v
-    assert!(custom_impl.interpret(request, entities, expr, expected))
+    assert!(
+        custom_impl.interpret(request.clone(), entities, expr, expected.clone()),
+        "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
+        expected
+    )
 }
 
 /// Compare the behavior of the authorizer in cedar-policy against a custom Cedar
@@ -246,4 +251,33 @@ fn test_run_auth_test() {
     )
     .unwrap();
     run_auth_test(&java_def_engine, query, &policies, &entities);
+}
+
+/// Randomly drop some of the entities from the list so the generator can produce
+/// some invalid references.
+pub fn drop_some_entities(
+    entities: Entities,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<Entities> {
+    let should_drop: bool = u.arbitrary()?;
+    if should_drop {
+        let mut set: Vec<_> = vec![];
+        for entity in entities.iter() {
+            match u.int_in_range(0..=9)? {
+                0 => (),
+                _ => {
+                    set.push(entity.clone());
+                }
+            }
+        }
+        Ok(Entities::from_entities(
+            set,
+            None::<&NoEntitiesSchema>,
+            TCComputation::AssumeAlreadyComputed,
+            Extensions::all_available(),
+        )
+        .expect("Should be valid"))
+    } else {
+        Ok(entities)
+    }
 }

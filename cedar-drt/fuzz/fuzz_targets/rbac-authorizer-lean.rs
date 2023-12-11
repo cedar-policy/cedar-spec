@@ -15,12 +15,14 @@
  */
 
 #![no_main]
-mod abac_type_directed_shared;
+mod rbac_authorizer_shared;
 
 use cedar_drt::*;
 use libfuzzer_sys::fuzz_target;
 
-fuzz_target!(|input: abac_type_directed_shared::FuzzTargetInput| {
-    let def_engine = JavaDefinitionalEngine::new().expect("failed to create definitional engine");
-    abac_type_directed_shared::fuzz(input, &def_engine);
-});
+fuzz_target!(
+    |input: rbac_authorizer_shared::AuthorizerInputAbstractEvaluator| {
+        let def_engine = LeanDefinitionalEngine::new();
+        rbac_authorizer_shared::fuzz(input, &def_engine);
+    }
+);

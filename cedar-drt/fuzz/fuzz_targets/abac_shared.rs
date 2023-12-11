@@ -14,38 +14,32 @@
  * limitations under the License.
  */
 
-#![no_main]
-use crate::authorizer::{Response, ResponseKind};
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_core::ast::Policy;
-use cedar_policy_core::ast::PolicySet;
-use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
-    err::Error,
-    hierarchy::HierarchyGenerator,
+    hierarchy::{Hierarchy, HierarchyGenerator},
     schema::Schema,
     settings::ABACSettings,
 };
+use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use log::debug;
+use log::{debug, info};
 use serde::Serialize;
-use smol_str::SmolStr;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, policy, and 8 associated requests
 #[derive(Debug, Clone, Serialize)]
-struct FuzzTargetInput {
+pub struct FuzzTargetInput {
     /// generated schema
     #[serde(skip)]
     pub schema: Schema,
-    /// generated entity slice
+    /// generated hierarchy
     #[serde(skip)]
-    pub entities: Entities,
+    pub hierarchy: Hierarchy,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -56,15 +50,18 @@ struct FuzzTargetInput {
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: true,
+    match_types: false,
     enable_extensions: true,
     max_depth: 3,
-    max_width: 3,
+    max_width: 7,
     enable_additional_attributes: false,
     enable_like: true,
-    enable_action_groups_and_attrs: true,
+    // ABAC fuzzing restricts the use of action because it is used to generate
+    // the corpus tests which will be run on Cedar and CedarCLI.
+    // These packages only expose the restricted action behavior.
+    enable_action_groups_and_attrs: false,
     enable_arbitrary_func_call: true,
-    enable_unknowns: true,
+    enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
 };
@@ -74,7 +71,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
-
         let requests = [
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
@@ -85,11 +81,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
         ];
-        let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
-        let entities = drop_some_entities(all_entities, u)?;
         Ok(Self {
             schema,
-            entities,
+            hierarchy,
             policy,
             requests,
         })
@@ -112,66 +106,55 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-/// Check if two `Response`s are equivalent.
-/// They are equivalent iff:
-///   1) They decision is the same
-///   2) If one decision has any errors, the other decision
-///      must have at least one error.
-///      (The error contents and number of errors do not need to be equal)
-fn responses_equiv(a1: Response, a2: Response) -> bool {
-    (a1.decision == a2.decision)
-        && (a1.diagnostics.errors.is_empty() == a2.diagnostics.errors.is_empty())
+/// helper function that just tells us whether a policyset passes validation
+fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
+    validator
+        .validate(policyset, ValidationMode::default())
+        .validation_passed()
 }
 
-// The main fuzz target. This is for type-directed fuzzing of ABAC
-// hierarchy/policy/requests
-fuzz_target!(|input: FuzzTargetInput| {
+// Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
+// `def_impl` is a custom implementation to test against `cedar-policy`.
+pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
     initialize_log();
-    let mut policyset = ast::PolicySet::new();
-    policyset.add_static(input.policy.into()).unwrap();
-    debug!("Schema: {}\n", input.schema.schemafile_string());
-    debug!("Policies: {policyset}\n");
-    let mapping = input
-        .schema
-        .unknown_pool
-        .mapping()
-        .map(|(k, v)| (SmolStr::from(k), v))
-        .collect();
-
-    if policyset.policies().all(|p| !p.condition().is_unknown()) {
-        return; // Don't waste time testing a policy w/ no unknowns
-    }
-
-    for q in input.requests.into_iter().map(ast::Request::from) {
-        let auth = Authorizer::new();
-        let ans = auth.is_authorized_core(q.clone(), &policyset, &input.entities);
-
-        match ans {
-            ResponseKind::FullyEvaluated(ans) => {
-                // Concrete evaluation should also succeed w/out any substitutions
-                let concrete_res = auth.is_authorized(q, &policyset, &input.entities);
-                assert!(responses_equiv(ans, concrete_res));
-            }
-            ResponseKind::Partial(residual_set) => {
-                let mut subst_set = PolicySet::new();
-                for policy in residual_set.residuals.policies().map(|p: &Policy| {
-                    let subst = p.condition().substitute(&mapping).unwrap();
-                    Policy::from_when_clause(p.effect(), subst, p.id().clone())
-                }) {
-                    subst_set.add(policy).unwrap();
+    if let Ok(entities) = Entities::try_from(input.hierarchy) {
+        let mut policyset = ast::PolicySet::new();
+        policyset.add_static(input.policy.into()).unwrap();
+        debug!("Policies: {policyset}");
+        debug!("Entities: {entities}");
+        let requests = input
+            .requests
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<_>>();
+        let mut responses = Vec::with_capacity(requests.len());
+        for request in requests.iter().cloned() {
+            debug!("Request: {request}");
+            let (ans, total_dur) =
+                time_function(|| run_auth_test(def_impl, request, &policyset, &entities));
+            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+            responses.push(ans);
+        }
+        if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+            let passes_validation = {
+                if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
+                    let validator = Validator::new(schema);
+                    passes_validation(&validator, &policyset)
+                } else {
+                    false
                 }
-                let final_res = auth.is_authorized(q.clone(), &subst_set, &input.entities);
-
-                let mut concrete_set = PolicySet::new();
-                for policy in policyset.policies().map(|p: &Policy| {
-                    let subst = p.condition().substitute(&mapping).unwrap();
-                    Policy::from_when_clause(p.effect(), subst, p.id().clone())
-                }) {
-                    concrete_set.add(policy).unwrap();
-                }
-                let concrete_res = auth.is_authorized(q, &concrete_set, &input.entities);
-                assert!(responses_equiv(concrete_res, final_res));
-            }
-        };
+            };
+            let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
+            dump(
+                dump_dir,
+                &test_name,
+                &input.schema.into(),
+                passes_validation,
+                &policyset,
+                &entities,
+                std::iter::zip(requests.iter(), responses.iter()),
+            )
+            .expect("failed to dump test case");
+        }
     }
-});
+}
