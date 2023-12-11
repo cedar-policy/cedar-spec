@@ -21,8 +21,6 @@ import Cedar.Thm.Validation.Typechecker.LUB
 
 /-!
 This file contains useful definitions and lemmas about Cedar types.
-
-todo: fill in `sorry`s.
 -/
 
 namespace Cedar.Thm
