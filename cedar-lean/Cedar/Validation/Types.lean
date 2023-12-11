@@ -57,10 +57,6 @@ inductive CedarType where
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
 
-def CedarType.isPrimType : CedarType → Bool
-| bool _ | int | string | entity _ => true
-| _ => false
-
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType

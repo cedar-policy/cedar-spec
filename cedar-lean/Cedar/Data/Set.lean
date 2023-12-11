@@ -115,7 +115,7 @@ instance decLt [LT α] [DecidableLT α] : (n m : Set α) -> Decidable (n < m)
   | .mk nelts, .mk melts => List.hasDecidableLt nelts melts
 
 instance : Membership α (Set α) where -- enables ∈ notation
-  mem v s := s.elts.Mem v
+  mem v s := v ∈ s.elts
 
 theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   s.contains v = true ↔ v ∈ s
@@ -133,6 +133,25 @@ theorem in_list_in_set {α : Type u} (v : α) (s : Set α) :
 := by
   intro h0
   apply h0
+
+theorem in_set_in_list {α : Type u} (v : α) (s : Set α) :
+  v ∈ s → v ∈ s.elts
+:= by
+  simp [elts, Membership.mem]
+
+
+theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
+  hd ∈ Set.mk (hd :: tl)
+:= by
+  simp [Membership.mem, elts]
+  apply List.mem_cons_self hd tl
+
+theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
+  a ∈ Set.mk tl → a ∈ Set.mk (hd :: tl)
+:= by
+  simp [Membership.mem, elts] ; intro h₁
+  apply List.mem_cons_of_mem hd h₁
+
 
 theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts → ¬(s.elts = [])
@@ -155,6 +174,14 @@ theorem make_eq_if_eqv [LT α] [DecidableLT α] [StrictLT α] (xs ys : List α) 
   intro h; unfold make; simp
   apply List.if_equiv_strictLT_then_canonical _ _ h
 
+theorem make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+  Set.make xs = Set.mk ys → xs ≡ ys
+:= by
+  simp [make] ; intro h₁
+  rcases (List.canonicalize_equiv xs) with h₂
+  subst h₁
+  exact h₂
+
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs
 := by
@@ -165,6 +192,26 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
   constructor <;> intro h₃
   case mp => apply h₁ h₃
   case mpr => apply h₂ h₃
+
+theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
+  (Set.make xs).any f = xs.any f
+:= by
+  simp [make, any, elts]
+  rcases (List.canonicalize_equiv xs) with h₁
+  simp [List.Equiv, List.subset_def] at h₁
+  rcases h₁ with ⟨hl₁, hr₁⟩
+  cases h₃ : List.any xs f
+  case false =>
+    by_contra h₄
+    simp only [Bool.not_eq_false, List.any_eq_true] at h₄
+    rcases h₄ with ⟨x, h₄, h₅⟩
+    specialize hr₁ h₄
+    simp [List.any_of_mem hr₁ h₅] at h₃
+  case true =>
+    simp [List.any_eq_true] at *
+    rcases h₃ with ⟨x, h₃, h₄⟩
+    exists x ; simp [h₄]
+    apply hl₁ h₃
 
 end Set
 

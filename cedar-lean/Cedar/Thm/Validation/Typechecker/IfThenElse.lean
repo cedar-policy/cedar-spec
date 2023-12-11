@@ -1,0 +1,160 @@
+/-
+ Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Cedar.Thm.Validation.Typechecker.Basic
+
+/-!
+This file proves that typechecking of `.ite` expressions is sound.
+-/
+
+namespace Cedar.Thm
+
+open Cedar.Spec
+open Cedar.Validation
+
+theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.ite x₁ x₂ x₃) c env = Except.ok (ty, c')) :
+  ∃ bty₁ c₁ ty₂ c₂ ty₃ c₃,
+    typeOf x₁ c env = .ok (.bool bty₁, c₁) ∧
+    match bty₁ with
+    | .ff      =>
+      typeOf x₃ c env = .ok (ty₃, c₃) ∧ ty = ty₃ ∧ c' = c₃
+    | .tt      =>
+      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
+      ty = ty₂ ∧ c' = c₁ ∪ c₂
+    | .anyBool =>
+      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
+      typeOf x₃ c env = .ok (ty₃, c₃) ∧
+      (ty₂ ⊔ ty₃) = (.some ty) ∧ c' = (c₁ ∪ c₂) ∩ c₃
+:= by
+  simp [typeOf] at h₁
+  cases h₂ : typeOf x₁ c env <;> simp [h₂, typeOfIf] at *
+  rename_i res₁
+  split at h₁ <;> try { simp [ok, err] at h₁ } <;>
+  rename_i c₁ hr₁ <;> simp at hr₁ <;> rcases hr₁ with ⟨ht₁, hc₁⟩
+  case ok.h_1 =>
+    exists BoolType.tt, res₁.snd ; simp [←ht₁]
+    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
+    rename_i res₂ ; simp [ok] at h₁
+    rcases h₁ with ⟨ht₂, hc₂⟩
+    exists res₂.fst, res₂.snd
+    subst ht₂ hc₂ hc₁
+    simp only [and_self]
+  case ok.h_2 =>
+    exists BoolType.ff, res₁.snd ; simp [←ht₁]
+    exists ty
+  case ok.h_3 =>
+    exists BoolType.anyBool, res₁.snd ; simp [←ht₁]
+    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
+    cases h₄ : typeOf x₃ c env <;> simp [h₄] at h₁
+    split at h₁ <;> simp [ok, err] at h₁
+    rename_i ty' res₂ res₃ _ ty' hty
+    rcases h₁ with ⟨ht, hc⟩ ; subst ht hc hc₁
+    exists res₂.fst, res₂.snd
+    simp only [Except.ok.injEq, true_and]
+    exists res₃.fst, res₃.snd
+
+theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.ite x₁ x₂ x₃) c₁ env = Except.ok (ty, c₂))
+  (ih₁ : TypeOfIsSound x₁)
+  (ih₂ : TypeOfIsSound x₂)
+  (ih₃ : TypeOfIsSound x₃) :
+  GuardedCapabilitiesInvariant (Expr.ite x₁ x₂ x₃) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.ite x₁ x₂ x₃) request entities v ∧ InstanceOfType v ty
+:= by
+  rcases (type_of_ite_inversion h₃) with ⟨bty₁, rc₁, ty₂, rc₂, ty₃, rc₃, h₄, h₅⟩
+  specialize ih₁ h₁ h₂ h₄
+  rcases ih₁ with ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩
+  rcases (instance_of_bool_is_bool ih₁₃) with ⟨b₁, hb₁⟩ ; subst hb₁
+  cases bty₁ <;> simp at h₅
+  case anyBool =>
+    rcases h₅ with ⟨h₅, h₆, ht, hc⟩
+    cases b₁
+    case false =>
+      rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+      simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
+      try exact type_is_inhabited ty
+      specialize ih₃ h₁ h₂ h₆
+      rcases ih₃ with ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩
+      rcases ih₃₂ with ih₃₂ | ih₃₂ | ih₃₂ | ih₃₂ <;> simp [ih₃₂] <;>
+      try exact type_is_inhabited ty
+      apply And.intro
+      case left =>
+        intro h₇ ; subst h₇ hc
+        simp [GuardedCapabilitiesInvariant, ih₃₂] at ih₃₁
+        apply capability_intersection_invariant
+        simp [ih₃₁]
+      case right =>
+        apply instance_of_lub ht
+        simp [ih₃₃]
+    case true =>
+      rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+      simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
+      try exact type_is_inhabited ty
+      simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
+      rcases (capability_union_invariant h₁ ih₁₁) with h₇
+      specialize ih₂ h₇ h₂ h₅
+      rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
+      apply And.intro
+      case left =>
+        intro h₈
+        simp [GuardedCapabilitiesInvariant, h₈] at ih₂₁
+        subst hc
+        apply capability_intersection_invariant
+        apply Or.inl
+        exact capability_union_invariant ih₁₁ ih₂₁
+      case right =>
+        rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;> simp [ih₂₂] <;>
+        try exact type_is_inhabited ty
+        apply instance_of_lub ht
+        simp [ih₂₃]
+  case tt =>
+    rcases h₅ with ⟨h₅, ht, hc⟩
+    rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
+    try exact type_is_inhabited ty
+    rcases (instance_of_tt_is_true ih₁₃) with hb₁
+    simp at hb₁ ; subst hb₁ ; simp only [ite_true]
+    simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
+    rcases (capability_union_invariant h₁ ih₁₁) with h₆
+    specialize ih₂ h₆ h₂ h₅
+    rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
+    rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;> simp [ih₂₂] <;>
+    try exact type_is_inhabited ty
+    subst ht hc ; simp [ih₂₃]
+    intro h₇ ; subst h₇
+    simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
+    exact capability_union_invariant ih₁₁ ih₂₁
+  case ff =>
+    rcases h₅ with ⟨h₅, ht, hc⟩
+    rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
+    try exact type_is_inhabited ty
+    rcases (instance_of_ff_is_false ih₁₃) with hb₁
+    simp at hb₁ ; simp [hb₁]
+    specialize ih₃ h₁ h₂ h₅
+    rcases ih₃ with ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩
+    subst ht hc
+    apply And.intro
+    case left =>
+      simp [GuardedCapabilitiesInvariant] at ih₃₁
+      exact ih₃₁
+    case right =>
+      exists v₃
+
+end Cedar.Thm
