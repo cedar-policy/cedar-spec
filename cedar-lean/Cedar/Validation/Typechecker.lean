@@ -119,9 +119,9 @@ def typeOfEq (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) : ResultType :=
     match ty₁ ⊔ ty₂ with
     | .some _ => ok (.bool .anyBool)
     | .none   =>
-    if ty₁.isPrimType || ty₂.isPrimType
-    then ok (.bool .ff)
-    else err (.lubErr ty₁ ty₂)
+    match ty₁, ty₂ with
+    | .entity _, .entity _ => ok (.bool .ff)
+    | _, _                 => err (.lubErr ty₁ ty₂)
 
 def entityUID? : Expr → Option EntityUID
   | .lit (.entityUID uid) => .some uid
@@ -136,28 +136,28 @@ def actionUID? (x : Expr) (acts: ActionStore) : Option EntityUID := do
   if acts.contains uid then .some uid else .none
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
-def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : ResultType :=
+def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
   match actionUID? x₁ env.acts, entityUID? x₂ with
   | .some uid₁, .some uid₂ =>
     if env.acts.descendentOf uid₁ uid₂
-    then ok (.bool .tt)
-    else ok (.bool .ff)
+    then .tt
+    else .ff
   | _, _ =>
     if env.ets.descendentOf ety₁ ety₂
-    then ok (.bool .anyBool)
-    else ok (.bool .ff)
+    then .anyBool
+    else .ff
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type (.set ety₂)
-def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : ResultType :=
+def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
   match actionUID? x₁ env.acts, entityUIDs? x₂ with
   | .some uid₁, .some uids =>
     if uids.any (env.acts.descendentOf uid₁ ·)
-    then ok (.bool .tt)
-    else ok (.bool .ff)
+    then .tt
+    else .ff
   | _, _ =>
     if env.ets.descendentOf ety₁ ety₂
-    then ok (.bool .anyBool)
-    else ok (.bool .ff)
+    then .anyBool
+    else .ff
 
 def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
   match ty₁ ⊔ ty₂ with
@@ -167,8 +167,8 @@ def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
 def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) (env : Environment) : ResultType :=
   match op₂, ty₁, ty₂ with
   | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
-  | .mem, .entity ety₁, .entity ety₂        => typeOfInₑ ety₁ ety₂ x₁ x₂ env
-  | .mem, .entity ety₁, .set (.entity ety₂) => typeOfInₛ ety₁ ety₂ x₁ x₂ env
+  | .mem, .entity ety₁, .entity ety₂        => ok (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
+  | .mem, .entity ety₁, .set (.entity ety₂) => ok (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
   | .less,   .int, .int                     => ok (.bool .anyBool)
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
   | .add,    .int, .int                     => ok .int
@@ -214,7 +214,7 @@ def typeOfSet (tys : List CedarType) : ResultType :=
   match tys with
   | []       => err .emptySetErr
   | hd :: tl =>
-    match tl.foldrM lub? hd with
+    match tl.foldlM lub? hd with
     | .some ty => ok (.set ty)
     | .none    => err (.incompatibleSetTypes tys)
 

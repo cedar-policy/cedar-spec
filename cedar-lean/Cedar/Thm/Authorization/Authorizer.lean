@@ -15,7 +15,7 @@
 -/
 
 import Cedar.Spec
-import Cedar.Thm.Lemmas.Evaluator
+import Cedar.Thm.Authorization.Evaluator
 
 /-!
 This file contains useful lemmas about the `Authorizer` functions.
