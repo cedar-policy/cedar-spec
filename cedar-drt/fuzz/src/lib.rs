@@ -31,7 +31,7 @@ pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator,
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 
-/// Compare the behavior of the evaluator in cedar-policy against a custom Cedar
+/// Compare the behavior of the evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
 /// evaluate and `request` and `entities` are used to populate the evaluator.
 pub fn run_eval_test(
@@ -50,21 +50,35 @@ pub fn run_eval_test(
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
         Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
-            // ignore the input if it results in an integer overflow error
+            // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
+            // overflow error. Once we migrate to Lean this should be unnecessary.
             return;
         }
         Err(_) => None,
     };
-    // custom_impl.interpret() returns true when the result of evaluating expr
-    // matches the expected value v
-    assert!(
-        custom_impl.interpret(request.clone(), entities, expr, expected.clone()),
+
+    // `custom_impl.interpret()` returns true when the result of evaluating `expr`
+    // matches `expected`
+    let definitional_res = custom_impl.interpret(request.clone(), entities, expr, expected.clone());
+
+    // In the case of an evaluation error, it's ok for the call to `interpret` to fail.
+    // This will happen in cases where an evaluation error in one implementation is a parse
+    // error in the other (e.g., an unknown extension function is a parse error in our Lean
+    // spec, but an evaluation error in `cedar-policy`).
+    if expected.is_none() && definitional_res.is_err() {
+        return;
+    }
+
+    // Otherwise, `definitional_res` should be `Ok(true)`
+    assert_eq!(
+        definitional_res,
+        Ok(true),
         "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
         expected
     )
 }
 
-/// Compare the behavior of the authorizer in cedar-policy against a custom Cedar
+/// Compare the behavior of the authorizer in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. Returns the response that
 /// the two agree on.
 pub fn run_auth_test(
@@ -78,8 +92,8 @@ pub fn run_auth_test(
         time_function(|| authorizer.is_authorized(request.clone(), policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
 
-    // For now, we ignore tests where cedar-policy returns an integer
-    // overflow error.
+    // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
+    // overflow error. Once we migrate to Lean this should be unnecessary.
     if rust_res
         .diagnostics
         .errors
@@ -89,41 +103,38 @@ pub fn run_auth_test(
         return rust_res;
     }
 
-    // Important that we return the cedar-policy response, with its rich errors,
-    // in case the caller wants to expect those.
-    let ret = rust_res.clone();
-
     let definitional_res = custom_impl.is_authorized(request.clone(), policies, entities);
-    // For now, we expect never to receive errors from the definitional engine,
-    // and we otherwise ignore errors in the comparison.
-    assert_eq!(
-        definitional_res
-            .diagnostics()
-            .errors()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
 
+    // In the case of an authorization error, it's ok for the call to `is_authorized` to fail
+    // (see comment on `run_eval_test` above).
+    if !rust_res.diagnostics.errors.is_empty() && definitional_res.is_err() {
+        return rust_res;
+    }
+
+    // Otherwise, the definitional engine should not error, and should return a
+    // result that matches `rust_res`.
     let rust_res_for_comparison: cedar_policy::Response = Response {
         diagnostics: Diagnostics {
             errors: Vec::new(),
-            ..rust_res.diagnostics
+            ..rust_res.clone().diagnostics
         },
         ..rust_res
     }
     .into();
     assert_eq!(
-        InterfaceResponse::from(rust_res_for_comparison),
+        Ok(InterfaceResponse::from(rust_res_for_comparison)),
         definitional_res,
         "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
         &policies,
         &entities
     );
-    ret
+    rust_res
+
+    // TODO(#69): Our current definitional engine does not return authorization
+    // errors, so those are not checked for equality.
 }
 
-/// Compare the behavior of the validator in cedar-policy against a custom Cedar
+/// Compare the behavior of the validator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree.
 pub fn run_val_test(
     custom_impl: &impl CedarTestImplementation,
@@ -137,6 +148,15 @@ pub fn run_val_test(
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
+    // In the case of a validation error, it's ok for the call to `validate` to fail.
+    // This will happen in cases where a validation error in one implementation is a parse
+    // error in the other (e.g., an unknown extension function is a parse error in our Lean
+    // spec, but a validation error in `cedar-policy`).
+    if !rust_res.validation_passed() && !definitional_res.parsing_succeeded() {
+        return;
+    }
+
+    // Otherwise, there should be no parsing errors.
     assert!(
         definitional_res.parsing_succeeded(),
         "JSON parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
@@ -146,8 +166,8 @@ pub fn run_val_test(
         definitional_res
     );
 
-    // Temporary fix to ignore a known mismatch between the Dafny and Rust.
-    // The issue is that the Rust code will always return an error for an
+    // TODO:(#126) Temporary fix to ignore a known mismatch between the spec and `cedar-policy`.
+    // The issue is that the `cedar-policy` will always return an error for an
     // unrecognized entity or action, even if that part of the expression
     // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
     // should be well typed due to short-circuiting).
@@ -170,7 +190,8 @@ pub fn run_val_test(
         rust_res,
         definitional_res,
     );
-    // NOTE: We currently don't check for a relationship between validation errors.
+
+    // TODO(#69): We currently don't check for a relationship between validation errors.
     // E.g., the error reported by the definitional validator should be in the list
     // of errors reported by the production validator, but we don't check this.
 }

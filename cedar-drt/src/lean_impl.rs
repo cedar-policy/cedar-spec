@@ -245,9 +245,7 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_validation_response(
-        response: *mut lean_object,
-    ) -> InterfaceResult<ValidationInterfaceResponse> {
+    fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
         let response_string = lean_obj_to_string(response);
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
@@ -257,12 +255,15 @@ impl LeanDefinitionalEngine {
                     ValidationResponseInner::Ok(_) => Vec::new(),
                     ValidationResponseInner::Error(err) => vec![err],
                 };
-                Ok(ValidationInterfaceResponse {
+                ValidationInterfaceResponse {
                     validation_errors,
                     parse_errors: Vec::new(),
-                })
+                }
             }
-            ValidationResponse::Error(err) => Err(err),
+            ValidationResponse::Error(err) => ValidationInterfaceResponse {
+                validation_errors: Vec::new(),
+                parse_errors: vec![err],
+            },
         }
     }
 
@@ -271,7 +272,7 @@ impl LeanDefinitionalEngine {
         &self,
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
-    ) -> InterfaceResult<ValidationInterfaceResponse> {
+    ) -> ValidationInterfaceResponse {
         let req = Self::serialize_validation_request(schema, policies);
         let response = unsafe { validateDRT(req) };
         Self::deserialize_validation_response(response)
@@ -303,7 +304,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceResult<ValidationInterfaceResponse> {
+    ) -> ValidationInterfaceResponse {
         assert_eq!(
             mode,
             ValidationMode::Strict,
@@ -325,7 +326,7 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         self.is_authorized(request, policies, entities)
             .unwrap_or_else(|e| {
                 panic!("Unexpected error from the Lean implementation of `is_authorized`: {e}")
-            });
+            })
     }
 
     fn validate(
@@ -333,9 +334,12 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        let result = self.validate(&schema, policies).unwrap_or_else(|e| {
-            panic!("Unexpected error from the Lean implementation of `validate`: {e}")
-        });
+        let result = self.validate(&schema, policies);
+        assert!(
+            result.parsing_succeeded(),
+            "Unexpected error from the Lean implementation of `validate`: {:?}",
+            result.parse_errors
+        );
         IntegrationTestValidationResult {
             validation_passed: result.validation_passed(),
             validation_errors_debug: format!("{:?}", result.validation_errors),

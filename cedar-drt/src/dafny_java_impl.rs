@@ -373,8 +373,8 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceResult<ValidationInterfaceResponse> {
-        Ok(self.validate(schema, policies, mode))
+    ) -> ValidationInterfaceResponse {
+        self.validate(schema, policies, mode)
     }
 }
 

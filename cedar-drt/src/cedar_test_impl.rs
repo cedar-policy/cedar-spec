@@ -59,7 +59,7 @@ pub trait CedarTestImplementation {
         schema: &ValidatorSchema,
         policies: &PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceResult<ValidationInterfaceResponse>;
+    ) -> ValidationInterfaceResponse;
 }
 
 #[derive(Deserialize, Debug)]
@@ -77,9 +77,5 @@ impl ValidationInterfaceResponse {
 
     pub fn parsing_succeeded(&self) -> bool {
         self.parse_errors.is_empty()
-    }
-
-    pub fn contains_error(&self, s: &String) -> bool {
-        self.validation_errors.contains(s)
     }
 }
