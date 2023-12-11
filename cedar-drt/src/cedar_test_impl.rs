@@ -25,6 +25,12 @@ pub use cedar_policy_validator::{ValidationMode, ValidationResult, ValidatorSche
 pub use entities::Entities;
 use serde::Deserialize;
 
+/// Type alias for convenience. Errors are represented as strings to make
+/// (de)serialization as simple as possible. For an `InterfaceResult`, an
+/// error represents a case where the external Cedar implementation failed
+/// to execute the request (e.g., due to a parse error).
+pub type InterfaceResult<T> = std::result::Result<T, String>;
+
 /// A custom implementation of the Cedar authorizer and validator used for testing.
 pub trait CedarTestImplementation {
     /// Custom authorizer entry point.
@@ -33,7 +39,7 @@ pub trait CedarTestImplementation {
         request: Request,
         policies: &PolicySet,
         entities: &Entities,
-    ) -> InterfaceResponse;
+    ) -> InterfaceResult<InterfaceResponse>;
 
     /// Custom evaluator entry point. The bool return value indicates the whether
     /// evaluating the provided expression produces the expected value.
@@ -45,7 +51,7 @@ pub trait CedarTestImplementation {
         entities: &Entities,
         expr: &Expr,
         expected: Option<Value>,
-    ) -> bool;
+    ) -> InterfaceResult<bool>;
 
     /// Custom validator entry point.
     fn validate(
@@ -53,7 +59,7 @@ pub trait CedarTestImplementation {
         schema: &ValidatorSchema,
         policies: &PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse;
+    ) -> InterfaceResult<ValidationInterfaceResponse>;
 }
 
 #[derive(Deserialize, Debug)]

@@ -354,8 +354,8 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         request: ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResponse {
-        self.is_authorized(&request, policies, entities)
+    ) -> InterfaceResult<InterfaceResponse> {
+        Ok(self.is_authorized(&request, policies, entities))
     }
 
     fn interpret(
@@ -364,8 +364,8 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         entities: &Entities,
         expr: &Expr,
         expected: Option<Value>,
-    ) -> bool {
-        self.eval(&request, entities, expr, expected)
+    ) -> InterfaceResult<bool> {
+        Ok(self.eval(&request, entities, expr, expected))
     }
 
     fn validate(
@@ -373,8 +373,8 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse {
-        self.validate(schema, policies, mode)
+    ) -> InterfaceResult<ValidationInterfaceResponse> {
+        Ok(self.validate(schema, policies, mode))
     }
 }
 

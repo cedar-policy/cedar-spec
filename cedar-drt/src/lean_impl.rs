@@ -135,7 +135,9 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_authorization_response(response: *mut lean_object) -> InterfaceResponse {
+    fn deserialize_authorization_response(
+        response: *mut lean_object,
+    ) -> InterfaceResult<InterfaceResponse> {
         let response_string = lean_obj_to_string(response);
         let resp: AuthorizationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
@@ -156,9 +158,9 @@ impl LeanDefinitionalEngine {
                         cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId")
                     })
                     .collect();
-                InterfaceResponse::new(dec, reason, HashSet::new())
+                Ok(InterfaceResponse::new(dec, reason, HashSet::new()))
             }
-            AuthorizationResponse::Error(err) => panic!("Error returned by Lean code: {err}"),
+            AuthorizationResponse::Error(err) => Err(err),
         }
     }
 
@@ -169,7 +171,7 @@ impl LeanDefinitionalEngine {
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResponse {
+    ) -> InterfaceResult<InterfaceResponse> {
         let req = Self::serialize_authorization_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
         Self::deserialize_authorization_response(response)
@@ -189,7 +191,9 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
+    fn deserialize_validation_response(
+        response: *mut lean_object,
+    ) -> InterfaceResult<ValidationInterfaceResponse> {
         let response_string = lean_obj_to_string(response);
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
@@ -199,12 +203,12 @@ impl LeanDefinitionalEngine {
                     ValidationResponseInner::Ok(_) => Vec::new(),
                     ValidationResponseInner::Error(err) => vec![err],
                 };
-                ValidationInterfaceResponse {
+                Ok(ValidationInterfaceResponse {
                     validation_errors,
                     parse_errors: Vec::new(),
-                }
+                })
             }
-            ValidationResponse::Error(err) => panic!("Error returned by Lean code: {err}"),
+            ValidationResponse::Error(err) => Err(err),
         }
     }
 
@@ -213,7 +217,7 @@ impl LeanDefinitionalEngine {
         &self,
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
-    ) -> ValidationInterfaceResponse {
+    ) -> InterfaceResult<ValidationInterfaceResponse> {
         let req = Self::serialize_validation_request(schema, policies);
         let response = unsafe { validateDRT(req) };
         Self::deserialize_validation_response(response)
@@ -226,7 +230,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         request: ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResponse {
+    ) -> InterfaceResult<InterfaceResponse> {
         self.is_authorized(&request, policies, entities)
     }
 
@@ -236,7 +240,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         _entities: &Entities,
         _expr: &Expr,
         _expected: Option<Value>,
-    ) -> bool {
+    ) -> InterfaceResult<bool> {
         // TODO
         unimplemented!("Unimplemented: interpret");
     }
@@ -246,7 +250,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse {
+    ) -> InterfaceResult<ValidationInterfaceResponse> {
         assert_eq!(
             mode,
             ValidationMode::Strict,
@@ -256,7 +260,8 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
     }
 }
 
-/// Implementation of the trait used for integration testing.
+/// Implementation of the trait used for integration testing. The integration
+/// tests expect the calls to `is_authorized` and `validate` to succeed.
 impl CustomCedarImpl for LeanDefinitionalEngine {
     fn is_authorized(
         &self,
@@ -265,6 +270,9 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         entities: &Entities,
     ) -> InterfaceResponse {
         self.is_authorized(request, policies, entities)
+            .unwrap_or_else(|e| {
+                panic!("Unexpected error from the Lean implementation of `is_authorized`: {e}")
+            });
     }
 
     fn validate(
@@ -272,7 +280,9 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        let result = self.validate(&schema, policies);
+        let result = self.validate(&schema, policies).unwrap_or_else(|e| {
+            panic!("Unexpected error from the Lean implementation of `validate`: {e}")
+        });
         IntegrationTestValidationResult {
             validation_passed: result.validation_passed(),
             validation_errors_debug: format!("{:?}", result.validation_errors),
