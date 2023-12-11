@@ -1,7 +1,23 @@
+/*
+ * Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 use cedar_drt::*;
+use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_core::entities::{Entities, TCComputation};
+use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::Error,
@@ -11,22 +27,19 @@ use cedar_policy_generators::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
-use std::convert::TryFrom;
 use serde::Serialize;
+use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, policy, and 8 associated requests
 #[derive(Debug, Clone, Serialize)]
 pub struct FuzzTargetInput {
-    #[serde(skip)]
     /// generated schema
+    #[serde(skip)]
     pub schema: Schema,
     /// generated entity slice
     #[serde(skip)]
     pub entities: Entities,
-    /// Should we pre-evaluate entity attributes
-    #[serde(skip)]
-    pub should_cache_entities: bool,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
@@ -49,6 +62,7 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
 };
+
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
@@ -67,11 +81,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         ];
         let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let entities = drop_some_entities(all_entities, u)?;
-        let should_cache_entities = bool::arbitrary(u)?;
         Ok(Self {
             schema,
             entities,
-            should_cache_entities,
             policy,
             requests,
         })
@@ -94,23 +106,33 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-fn drop_some_entities(entities: Entities, u: &mut Unstructured<'_>) -> arbitrary::Result<Entities> {
-    let should_drop: bool = u.arbitrary()?;
-    if should_drop {
-        let mut set: Vec<_> = vec![];
-        for entity in entities.iter() {
-            match u.int_in_range(0..=9)? {
-                0 => (),
-                _ => {
-                    set.push(entity.clone());
-                }
-            }
-        }
-        Ok(
-            Entities::from_entities(set.into_iter(), TCComputation::AssumeAlreadyComputed)
-                .expect("Should be valid"),
-        )
-    } else {
-        Ok(entities)
+// Type-directed fuzzing of ABAC hierarchy/policy/requests.
+// `def_impl` is a custom implementation to test against `cedar-policy`.
+pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
+    initialize_log();
+    let mut policyset = ast::PolicySet::new();
+    policyset.add_static(input.policy.into()).unwrap();
+    debug!("Schema: {}\n", input.schema.schemafile_string());
+    debug!("Policies: {policyset}\n");
+    debug!("Entities: {}\n", input.entities);
+    for request in input.requests.into_iter().map(Into::into) {
+        debug!("Request : {request}");
+        let (rust_res, total_dur) =
+            time_function(|| run_auth_test(def_impl, request, &policyset, &input.entities));
+
+        info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+
+        // additional invariant:
+        // type-directed fuzzing should never produce wrong-number-of-arguments errors
+        assert_eq!(
+            rust_res
+                .diagnostics
+                .errors
+                .iter()
+                .map(ToString::to_string)
+                .filter(|err| err.contains("wrong number of arguments"))
+                .collect::<Vec<String>>(),
+            Vec::<String>::new()
+        );
     }
 }

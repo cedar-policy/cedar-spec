@@ -250,6 +250,13 @@ partial def exprToValue : Expr → ParseResult Value
 def jsonToValue (json : Lean.Json) : ParseResult Value :=
   jsonToExpr json >>= exprToValue
 
+def jsonToOptionalValue (json : Lean.Json) : ParseResult (Option Value) :=
+  match json with
+  | Lean.Json.null => .ok .none
+  | _ => do
+    let v ← jsonToValue json
+    .ok (.some v)
+
 def jsonToContext (json : Lean.Json) : ParseResult (Map Attr Value) := do
   let value ← jsonToValue json
   match value with

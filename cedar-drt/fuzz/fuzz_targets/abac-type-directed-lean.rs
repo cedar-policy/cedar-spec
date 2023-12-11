@@ -21,6 +21,6 @@ use cedar_drt::*;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|input: abac_type_directed_shared::FuzzTargetInput| {
-    let def_engine = JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+    let def_engine = LeanDefinitionalEngine::new();
     abac_type_directed_shared::fuzz(input, &def_engine);
 });
