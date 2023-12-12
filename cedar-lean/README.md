@@ -40,7 +40,6 @@ Follow these instructions to update to the latest version of `std4` and Lean:
 ```shell
 curl https://raw.githubusercontent.com/leanprover/std4/main/lean-toolchain -o lean-toolchain
 lake update
-lake exe cache get
 ```
 
 ## Contributing

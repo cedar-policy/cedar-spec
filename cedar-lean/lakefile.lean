@@ -17,8 +17,8 @@
 import Lake
 open Lake DSL
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4"
+require std from git
+  "https://github.com/leanprover/std4"@"main"
 
 package Cedar
 
