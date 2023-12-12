@@ -95,7 +95,7 @@ theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : E
 := by
   by_contra h₄ ; subst h₄
   simp [lub?] at h₃
-  split at h₃ <;> try contradiction
+  apply h₃
   cases h₁ ; cases h₂
   rename_i h₄ h₅
   simp [InstanceOfEntityType] at h₄ h₅
@@ -618,7 +618,8 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     rcases (Set.in_set_in_list euid'.ty entry.ancestors h₇) with h₉
     simp [Set.contains, Set.elts] at h₂ h₉
     rw [←List.elem_iff] at h₉
-    simp [h₂] at h₉
+    rw [h₂] at h₉
+    contradiction
 
 
 theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : Request} {entities : Entities}
@@ -629,7 +630,7 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
   case nil =>
     simp [List.mapM', pure, Except.pure] at h₁
     subst h₁
-    simp only
+    simp only [List.map_nil]
   case cons hd tl =>
     simp [List.mapM'] at h₁
     cases h₂ : evaluate (Expr.lit hd) request entities <;> simp [h₂] at h₁
@@ -649,7 +650,7 @@ theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
   case nil =>
     simp [List.mapM', pure, Except.pure] at h₁
     subst h₁
-    simp only
+    simp only [List.map_nil]
   case cons hd tl =>
     simp [List.mapM'] at h₁
     cases h₂ : Value.asEntityUID hd <;> simp [h₂] at h₁
@@ -718,7 +719,7 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
       subst h₅ ; simp [ActionStore.descendentOf]
     case inr =>
       simp [ActionStore.descendentOf, hfnd]
-      split <;> try simp
+      intro _
       simp [Entities.ancestorsOrEmpty, hl₁, hr₁] at h₅
       exact h₅
   case some.mpr =>
@@ -729,10 +730,10 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
     simp [List.subset_def] at h₃
     specialize h₃ h₄ ; simp [h₃]
     simp [ActionStore.descendentOf, hfnd] at h₅
-    split at h₅
-    case inl h₆ =>
+    by_cases h₆ : auid = euid <;> simp [h₆] at h₅
+    case pos =>
       subst h₆ ; simp [inₑ]
-    case inr =>
+    case neg =>
       simp [inₑ, Entities.ancestorsOrEmpty, hl₁, hr₁, h₅]
 
 theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
@@ -790,12 +791,16 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       cases h₁₃ : Set.any (fun x => inₑ euid x entities) (Set.make euids) <;>
       simp [h₁₃] at h₉ h₁₀ h₁₂
       case false =>
-        split at h₁₀ <;> simp at h₁₀
-        rename_i hneg ; rcases hneg with ⟨euid', hneg⟩
+        apply h₁₀
+        intro euid' hneg h₁₃
         specialize h₁₂ euid'
-        simp [hneg] at h₁₂
+        simp [hneg, h₁₃] at h₁₂
       case true =>
-        split at h₉ <;> simp at h₉
+        apply h₉
+        intro h₁₃
+        rcases h₁₂ with ⟨euid', hl₁₂, hr₁₂⟩
+        specialize h₁₃ euid' hl₁₂
+        simp [hr₁₂] at h₁₃
 
 theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -830,12 +835,12 @@ theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   match op₂ with
   | .eq          => exact type_of_eq_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .less
-  | .lessEq      => exact type_of_int_cmp_is_sound (by simp only) h₁ h₂ h₃ ih₁ ih₂
+  | .lessEq      => exact type_of_int_cmp_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .add
-  | .sub         => exact type_of_int_arith_is_sound (by simp only) h₁ h₂ h₃ ih₁ ih₂
+  | .sub         => exact type_of_int_arith_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .contains    => exact type_of_contains_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .containsAll
-  | .containsAny => exact type_of_containsA_is_sound (by simp only) h₁ h₂ h₃ ih₁ ih₂
+  | .containsAny => exact type_of_containsA_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .mem         => exact type_of_mem_is_sound h₁ h₂ h₃ ih₁ ih₂
 
 end Cedar.Thm
