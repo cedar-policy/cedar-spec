@@ -61,12 +61,12 @@ pub fn run_eval_test(
     // matches `expected`
     let definitional_res = custom_impl.interpret(request.clone(), entities, expr, expected.clone());
 
-    // In the case of an evaluation error, it's ok for the call to `interpret` to fail.
-    // This will happen in cases where an evaluation error in one implementation is a parse
-    // error in the other (e.g., an unknown extension function is a parse error in our Lean
-    // spec, but an evaluation error in `cedar-policy`).
-    if expected.is_none() && definitional_res.is_err() {
-        return;
+    // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+    // an unknown extension function.
+    if let Err(err) = definitional_res.clone() {
+        if err.contains("jsonToExtFun: unknown extension function") {
+            return;
+        }
     }
 
     // Otherwise, `definitional_res` should be `Ok(true)`
@@ -105,33 +105,39 @@ pub fn run_auth_test(
 
     let definitional_res = custom_impl.is_authorized(request.clone(), policies, entities);
 
-    // In the case of an authorization error, it's ok for the call to `is_authorized` to fail
-    // (see comment on `run_eval_test` above).
-    if !rust_res.diagnostics.errors.is_empty() && definitional_res.is_err() {
-        return rust_res;
-    }
+    if let Err(err) = definitional_res {
+        // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+        // an unknown extension function.
+        if err.contains("jsonToExtFun: unknown extension function") {
+            rust_res
+        } else {
+            panic!(
+                "Unexpected parse error for {request}\nPolicies:\n{}\nEntities:\n{}\nError: {err}",
+                &policies, &entities
+            );
+        }
+    } else {
+        // Otherwise, the definitional engine should return a result that matches `rust_res`.
+        let rust_res_for_comparison: cedar_policy::Response = Response {
+            diagnostics: Diagnostics {
+                errors: Vec::new(),
+                ..rust_res.clone().diagnostics
+            },
+            ..rust_res
+        }
+        .into();
+        assert_eq!(
+            Ok(InterfaceResponse::from(rust_res_for_comparison)),
+            definitional_res,
+            "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
+            &policies,
+            &entities
+        );
+        rust_res
 
-    // Otherwise, the definitional engine should not error, and should return a
-    // result that matches `rust_res`.
-    let rust_res_for_comparison: cedar_policy::Response = Response {
-        diagnostics: Diagnostics {
-            errors: Vec::new(),
-            ..rust_res.clone().diagnostics
-        },
-        ..rust_res
+        // TODO(#69): Our current definitional engine does not return authorization
+        // errors, so those are not checked for equality.
     }
-    .into();
-    assert_eq!(
-        Ok(InterfaceResponse::from(rust_res_for_comparison)),
-        definitional_res,
-        "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
-        &policies,
-        &entities
-    );
-    rust_res
-
-    // TODO(#69): Our current definitional engine does not return authorization
-    // errors, so those are not checked for equality.
 }
 
 /// Compare the behavior of the validator in `cedar-policy` against a custom Cedar
@@ -148,11 +154,13 @@ pub fn run_val_test(
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
-    // In the case of a validation error, it's ok for the call to `validate` to fail.
-    // This will happen in cases where a validation error in one implementation is a parse
-    // error in the other (e.g., an unknown extension function is a parse error in our Lean
-    // spec, but a validation error in `cedar-policy`).
-    if !rust_res.validation_passed() && !definitional_res.parsing_succeeded() {
+    // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+    // an unknown extension function.
+    if definitional_res
+        .parse_errors
+        .iter()
+        .any(|err| err.contains("jsonToExtFun: unknown extension function"))
+    {
         return;
     }
 
