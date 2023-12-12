@@ -287,7 +287,7 @@ theorem Prim.lt_asymm {a b : Prim} :
   a < b → ¬ b < a
 := by
   cases a <;> cases b <;> simp [LT.lt] <;>
-  simp only [Prim.lt, decide_eq_true_eq, decide_eq_false_iff_not]
+  simp [Prim.lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
   case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
@@ -297,7 +297,7 @@ theorem Prim.lt_trans {a b c : Prim} :
   a < b → b < c → a < c
 := by
   cases a <;> cases b <;> cases c <;> simp [LT.lt] <;>
-  simp only [Prim.lt, decide_eq_true_eq, imp_self, implies_true, false_implies]
+  simp [Prim.lt]
   case bool b₁ b₂ b₃            => exact (Bool.strictLT.transitive b₁ b₂ b₃)
   case int i₁ i₂ i₃             => exact (Int64.strictLT.transitive i₁ i₂ i₃)
   case string s₁ s₂ s₃          => exact (String.strictLT.transitive s₁ s₂ s₃)
@@ -307,7 +307,7 @@ theorem Prim.lt_conn {a b : Prim} :
   a ≠ b → (a < b ∨ b < a)
 := by
   cases a <;> cases b <;> simp [LT.lt] <;>
-  simp only [Prim.lt, decide_eq_true_eq, decide_eq_false_iff_not]
+  simp [Prim.lt]
   case bool b₁ b₂          => exact (Bool.strictLT.connected b₁ b₂)
   case int i₁ i₂           => exact (Int64.strictLT.connected i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.connected s₁ s₂)
