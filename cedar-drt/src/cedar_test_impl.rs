@@ -31,6 +31,20 @@ use serde::Deserialize;
 /// to execute the request (e.g., due to a parse error).
 pub type InterfaceResult<T> = std::result::Result<T, String>;
 
+/// "Interface" type for `ValidationResult` which represents validation
+/// errors as strings.
+#[derive(Debug, Deserialize)]
+pub struct InterfaceValidationResult {
+    #[serde(rename = "validationErrors")]
+    pub validation_errors: Vec<String>,
+}
+
+impl InterfaceValidationResult {
+    pub fn validation_passed(&self) -> bool {
+        self.validation_errors.is_empty()
+    }
+}
+
 /// A custom implementation of the Cedar authorizer and validator used for testing.
 pub trait CedarTestImplementation {
     /// Custom authorizer entry point.
@@ -59,23 +73,5 @@ pub trait CedarTestImplementation {
         schema: &ValidatorSchema,
         policies: &PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse;
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ValidationInterfaceResponse {
-    #[serde(rename = "validationErrors")]
-    pub validation_errors: Vec<String>,
-    #[serde(rename = "parseErrors")]
-    pub parse_errors: Vec<String>,
-}
-
-impl ValidationInterfaceResponse {
-    pub fn validation_passed(&self) -> bool {
-        self.validation_errors.is_empty()
-    }
-
-    pub fn parsing_succeeded(&self) -> bool {
-        self.parse_errors.is_empty()
-    }
+    ) -> InterfaceResult<InterfaceValidationResult>;
 }

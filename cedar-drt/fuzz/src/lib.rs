@@ -105,38 +105,41 @@ pub fn run_auth_test(
 
     let definitional_res = custom_impl.is_authorized(request.clone(), policies, entities);
 
-    if let Err(err) = definitional_res {
-        // TODO(#175): For now, ignore cases where the Lean code returned an error due to
-        // an unknown extension function.
-        if err.contains("jsonToExtFun: unknown extension function") {
-            rust_res
-        } else {
-            panic!(
+    match definitional_res {
+        Err(err) => {
+            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+            // an unknown extension function.
+            if err.contains("jsonToExtFun: unknown extension function") {
+                rust_res
+            } else {
+                panic!(
                 "Unexpected parse error for {request}\nPolicies:\n{}\nEntities:\n{}\nError: {err}",
                 &policies, &entities
             );
+            }
         }
-    } else {
-        // Otherwise, the definitional engine should return a result that matches `rust_res`.
-        let rust_res_for_comparison: cedar_policy::Response = Response {
-            diagnostics: Diagnostics {
-                errors: Vec::new(),
-                ..rust_res.clone().diagnostics
-            },
-            ..rust_res
-        }
-        .into();
-        assert_eq!(
-            Ok(InterfaceResponse::from(rust_res_for_comparison)),
-            definitional_res,
-            "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
-            &policies,
-            &entities
-        );
-        rust_res
+        Ok(definitional_res) => {
+            // Otherwise, the definitional engine should return a result that matches `rust_res`.
+            let rust_res_for_comparison: cedar_policy::Response = Response {
+                diagnostics: Diagnostics {
+                    errors: Vec::new(),
+                    ..rust_res.clone().diagnostics
+                },
+                ..rust_res
+            }
+            .into();
+            assert_eq!(
+                InterfaceResponse::from(rust_res_for_comparison),
+                definitional_res,
+                "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
+                &policies,
+                &entities
+            );
+            rust_res
 
-        // TODO(#69): Our current definitional engine does not return authorization
-        // errors, so those are not checked for equality.
+            // TODO(#69): Our current definitional engine does not return authorization
+            // errors, so those are not checked for equality.
+        }
     }
 }
 
@@ -154,54 +157,49 @@ pub fn run_val_test(
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
-    // TODO(#175): For now, ignore cases where the Lean code returned an error due to
-    // an unknown extension function.
-    if definitional_res
-        .parse_errors
-        .iter()
-        .any(|err| err.contains("jsonToExtFun: unknown extension function"))
-    {
-        return;
+    match definitional_res {
+        Err(err) => {
+            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+            // an unknown extension function.
+            if !err.contains("jsonToExtFun: unknown extension function") {
+                panic!(
+                    "Unexpected parse error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
+                    &policies, schema
+                );
+            }
+        }
+        Ok(definitional_res) => {
+            // TODO:(#126) Temporary fix to ignore a known mismatch between the spec and `cedar-policy`.
+            // The issue is that the `cedar-policy` will always return an error for an
+            // unrecognized entity or action, even if that part of the expression
+            // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
+            // should be well typed due to short-circuiting).
+            if rust_res.validation_errors().any(|e| {
+                matches!(
+                    e.error_kind(),
+                    ValidationErrorKind::UnrecognizedEntityType(_)
+                        | ValidationErrorKind::UnrecognizedActionId(_)
+                )
+            }) {
+                return;
+            }
+
+            // The `validation_passed` decisions should match.
+            assert_eq!(
+                rust_res.validation_passed(),
+                definitional_res.validation_passed(),
+                "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                &policies,
+                schema,
+                rust_res,
+                definitional_res,
+            );
+
+            // TODO(#69): We currently don't check for a relationship between validation errors.
+            // E.g., the error reported by the definitional validator should be in the list
+            // of errors reported by the production validator, but we don't check this.
+        }
     }
-
-    // Otherwise, there should be no parsing errors.
-    assert!(
-        definitional_res.parsing_succeeded(),
-        "JSON parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-        &policies,
-        schema,
-        rust_res,
-        definitional_res
-    );
-
-    // TODO:(#126) Temporary fix to ignore a known mismatch between the spec and `cedar-policy`.
-    // The issue is that the `cedar-policy` will always return an error for an
-    // unrecognized entity or action, even if that part of the expression
-    // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
-    // should be well typed due to short-circuiting).
-    if rust_res.validation_errors().any(|e| {
-        matches!(
-            e.error_kind(),
-            ValidationErrorKind::UnrecognizedEntityType(_)
-                | ValidationErrorKind::UnrecognizedActionId(_)
-        )
-    }) {
-        return;
-    }
-
-    assert_eq!(
-        rust_res.validation_passed(),
-        definitional_res.validation_passed(),
-        "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-        &policies,
-        schema,
-        rust_res,
-        definitional_res,
-    );
-
-    // TODO(#69): We currently don't check for a relationship between validation errors.
-    // E.g., the error reported by the definitional validator should be in the list
-    // of errors reported by the production validator, but we don't check this.
 }
 
 #[test]

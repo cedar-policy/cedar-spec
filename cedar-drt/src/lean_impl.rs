@@ -38,7 +38,7 @@ use lean_sys::{
     lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world,
     lean_string_cstr,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::ffi::CStr;
 use std::str::FromStr;
 
@@ -52,23 +52,23 @@ extern "C" {
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct ListDef<String> {
     l: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct SetDef<String> {
     mk: ListDef<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct AuthorizationResponseInner {
     policies: SetDef<String>,
     decision: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 enum AuthorizationResponse {
     /// Successful execution of the `isAuthorized` function
     #[serde(rename = "ok")]
@@ -78,7 +78,7 @@ enum AuthorizationResponse {
     Error(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 enum EvaluationResponse {
     /// Successful execution of the `evaluate` function
     #[serde(rename = "ok")]
@@ -88,7 +88,7 @@ enum EvaluationResponse {
     Error(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 enum ValidationResponseInner {
     /// Successful validation
     #[serde(rename = "ok")]
@@ -98,7 +98,7 @@ enum ValidationResponseInner {
     Error(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 enum ValidationResponse {
     /// Successful execution of the `validate` function
     #[serde(rename = "ok")]
@@ -136,7 +136,7 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> *mut lean_object {
-        let request: String = serde_json::to_string(&RequestForDefEngine {
+        let request: String = serde_json::to_string(&AuthorizationRequest {
             request,
             policies,
             entities,
@@ -194,7 +194,7 @@ impl LeanDefinitionalEngine {
         expr: &Expr,
         expected: Option<&Expr>,
     ) -> *mut lean_object {
-        let request: String = serde_json::to_string(&EvalRequestForDefEngine {
+        let request: String = serde_json::to_string(&EvaluationRequest {
             request,
             entities,
             expr,
@@ -235,7 +235,7 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> *mut lean_object {
-        let request: String = serde_json::to_string(&RequestForDefValidator {
+        let request: String = serde_json::to_string(&ValidationRequest {
             schema,
             policies,
             mode: cedar_policy_validator::ValidationMode::default(), // == Strict
@@ -245,7 +245,9 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_validation_response(response: *mut lean_object) -> ValidationInterfaceResponse {
+    fn deserialize_validation_response(
+        response: *mut lean_object,
+    ) -> InterfaceResult<InterfaceValidationResult> {
         let response_string = lean_obj_to_string(response);
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
@@ -255,15 +257,9 @@ impl LeanDefinitionalEngine {
                     ValidationResponseInner::Ok(_) => Vec::new(),
                     ValidationResponseInner::Error(err) => vec![err],
                 };
-                ValidationInterfaceResponse {
-                    validation_errors,
-                    parse_errors: Vec::new(),
-                }
+                Ok(InterfaceValidationResult { validation_errors })
             }
-            ValidationResponse::Error(err) => ValidationInterfaceResponse {
-                validation_errors: Vec::new(),
-                parse_errors: vec![err],
-            },
+            ValidationResponse::Error(err) => Err(err),
         }
     }
 
@@ -272,7 +268,7 @@ impl LeanDefinitionalEngine {
         &self,
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
-    ) -> ValidationInterfaceResponse {
+    ) -> InterfaceResult<InterfaceValidationResult> {
         let req = Self::serialize_validation_request(schema, policies);
         let response = unsafe { validateDRT(req) };
         Self::deserialize_validation_response(response)
@@ -304,7 +300,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse {
+    ) -> InterfaceResult<InterfaceValidationResult> {
         assert_eq!(
             mode,
             ValidationMode::Strict,
@@ -334,12 +330,9 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        let result = self.validate(&schema, policies);
-        assert!(
-            result.parsing_succeeded(),
-            "Unexpected error from the Lean implementation of `validate`: {:?}",
-            result.parse_errors
-        );
+        let result = self.validate(&schema, policies).unwrap_or_else(|e| {
+            panic!("Unexpected error from the Lean implementation of `validate`: {e}")
+        });
         IntegrationTestValidationResult {
             validation_passed: result.validation_passed(),
             validation_errors_debug: format!("{:?}", result.validation_errors),

@@ -30,6 +30,7 @@ use jni::objects::{JObject, JString, JValue};
 use jni::{JNIVersion, JavaVM};
 use lazy_static::lazy_static;
 use log::info;
+use serde::Deserialize;
 
 /// Times to (de)serialize JSON content sent to / received from the Dafny-Java
 /// implementation.
@@ -64,6 +65,36 @@ lazy_static! {
             .expect("failed to create JVM args");
         JavaVM::new(jvm_args).expect("failed to create JVM instance")
     };
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuthorizationResponse {
+    pub serialization_nanos: i64,
+    pub deserialization_nanos: i64,
+    pub auth_nanos: i64,
+    pub response: InterfaceResponse,
+}
+
+#[derive(Debug, Deserialize)]
+#[repr(transparent)]
+pub struct EvaluationResponse {
+    pub matches: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ValidationResponseInner {
+    #[serde(rename = "validationErrors")]
+    pub validation_errors: Vec<String>,
+    #[serde(rename = "parseErrors")]
+    pub parse_errors: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ValidationResponse {
+    pub serialization_nanos: i64,
+    pub deserialization_nanos: i64,
+    pub validation_nanos: i64,
+    pub response: ValidationResponseInner,
 }
 
 /// The lifetime parameter 'j is the lifetime of the JVM instance
@@ -110,7 +141,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         expr: &Expr,
         expected: Option<&Expr>,
     ) -> JString {
-        let request: String = serde_json::to_string(&EvalRequestForDefEngine {
+        let request: String = serde_json::to_string(&EvaluationRequest {
             request,
             entities,
             expr,
@@ -140,7 +171,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         self.thread
             .delete_local_ref(*jstr)
             .expect("Deletion failed");
-        let r: DefinitionalEvalResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
+        let r: EvaluationResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
             panic!(
                 "JSON response received from the definitional engine was malformed: \n{response}"
             )
@@ -180,7 +211,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> JString {
-        let request: String = serde_json::to_string(&RequestForDefEngine {
+        let request: String = serde_json::to_string(&AuthorizationRequest {
             request,
             policies,
             entities,
@@ -209,7 +240,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         self.thread
             .delete_local_ref(*jresponse)
             .expect("Deletion failed");
-        let d_response: DefinitionalAuthResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
+        let d_response: AuthorizationResponse = serde_json::from_str(&response).unwrap_or_else(|_| {
             panic!(
                 "JSON response received from the definitional engine was the wrong format:\n{response}",
             )
@@ -267,7 +298,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         policies: &ast::PolicySet,
         mode: ValidationMode,
     ) -> JString {
-        let request: String = serde_json::to_string(&RequestForDefValidator {
+        let request: String = serde_json::to_string(&ValidationRequest {
             schema,
             policies,
             mode,
@@ -278,7 +309,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
             .expect("failed to create Java object for validation request string")
     }
 
-    fn deserialize_val_response(&self, response: JValue) -> ValidationInterfaceResponse {
+    fn deserialize_val_response(&self, response: JValue) -> InterfaceValidationResult {
         let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
@@ -296,7 +327,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         self.thread
             .delete_local_ref(*jresponse)
             .expect("Deletion failed");
-        let d_response: DefinitionalValResponse =
+        let d_response: ValidationResponse =
             serde_json::from_str(&response).unwrap_or_else(|_| {
                 panic!(
                 "JSON response received from the definitional validator was the wrong format:\n{response}",
@@ -313,7 +344,14 @@ impl<'j> JavaDefinitionalEngine<'j> {
         );
         info!("{}{}", JAVA_VALIDATION_MSG, d_response.validation_nanos);
 
-        d_response.response
+        assert_eq!(
+            d_response.response.parse_errors,
+            Vec::<String>::new(),
+            "Dafny json parsing failed",
+        );
+        InterfaceValidationResult {
+            validation_errors: d_response.response.validation_errors,
+        }
     }
 
     /// Use the definitional validator to validate the given `policies` given a `schema`
@@ -322,7 +360,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse {
+    ) -> InterfaceValidationResult {
         let (jstring, dur) = time_function(|| self.serialize_val_request(schema, policies, mode));
         info!("{}{}", RUST_SERIALIZATION_MSG, dur.as_nanos());
         let response = self.thread.call_method(
@@ -373,8 +411,8 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> ValidationInterfaceResponse {
-        self.validate(schema, policies, mode)
+    ) -> InterfaceResult<InterfaceValidationResult> {
+        Ok(self.validate(schema, policies, mode))
     }
 }
 
@@ -398,13 +436,6 @@ impl<'j> CustomCedarImpl for JavaDefinitionalEngine<'j> {
             &schema,
             policies,
             cedar_policy_validator::ValidationMode::default(),
-        );
-        assert!(
-            definitional_res.parsing_succeeded(),
-            "Dafny json parsing failed for:\nPolicies:\n{}\nSchema:\n{:?}Errors:\n{:?}",
-            &policies,
-            schema,
-            definitional_res.parse_errors
         );
         IntegrationTestValidationResult {
             validation_passed: definitional_res.validation_passed(),
