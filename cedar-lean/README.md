@@ -33,12 +33,12 @@ lake exe Cli validate Cli/json-inputs/validate/example2a.json
 
 ## Updating the Lean toolchain
 
-Cedar depends on [`mathlib4`](https://github.com/leanprover-community/mathlib4), and it is configured to use the same version of Lean as `mathlib4`.
+Cedar depends on [`std4`](https://github.com/leanprover/std4), and it is configured to use the same version of Lean as `std4`.
 
-Follow [these instructions](https://github.com/leanprover-community/mathlib4/wiki/Using-mathlib4-as-a-dependency#updating-mathlib4) to update to the latest version of `mathlib4` and Lean:
+Follow these instructions to update to the latest version of `std4` and Lean:
 
 ```shell
-curl https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain -o lean-toolchain
+curl https://raw.githubusercontent.com/leanprover/std4/main/lean-toolchain -o lean-toolchain
 lake update
 lake exe cache get
 ```
@@ -71,3 +71,8 @@ Basic theorems ([`Cedar/Thm/Basic.lean`](Cedar/Thm/Basic.lean))
 Sound policy slicing ([`Cedar/Thm/Slicing.lean`](Cedar/Thm/Slicing.lean))
 
 * Given a _sound policy slice_, the result of authorization is the same with the slice as it is with the full policy store.
+
+Sound type checking ([`Cedar/Thm/Typechecking.lean`](Cedar/Thm/Typechecking.lean))
+
+* If an expression is well-typed according to the typechecker, then either evaluation returns a value of that type, or it returns an error of type
+`entityDoesNotExist`, `extensionError`, or `arithBoundsError`. All other errors are impossible.
