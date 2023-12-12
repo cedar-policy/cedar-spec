@@ -14,7 +14,6 @@ To build code and proofs from the command line:
 
 ```shell
 cd cedar-lean
-lake exe cache get # gets pre-built libraries for `mathlib4`
 lake build Cedar
 ```
 
