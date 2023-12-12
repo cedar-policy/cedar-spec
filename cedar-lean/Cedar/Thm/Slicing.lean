@@ -125,7 +125,7 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
   apply And.intro
   case left =>
     simp [List.subset_def]
-    intro p h₂
+    intro _ h₂
     rw [List.mem_filter] at h₂
     simp [h₂]
   case right =>
