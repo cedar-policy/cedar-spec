@@ -16,7 +16,6 @@
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.Authorizer
-import Mathlib.Data.List.Basic
 
 /-!
 This file defines what it means for a policy slice to be sound.
@@ -125,7 +124,10 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
   unfold BoundAnalysis.slice
   apply And.intro
   case left =>
-    apply List.filter_subset
+    simp [List.subset_def]
+    intro p h₂
+    rw [List.mem_filter] at h₂
+    simp [h₂]
   case right =>
     intro policy
     specialize h₁ policy
@@ -158,7 +160,7 @@ theorem scope_bound_is_sound (policy : Policy) :
   unfold satisfiedBound
   unfold Scope.bound
   unfold inSomeOrNone
-  simp only [Bool.decide_and, Bool.decide_coe, Bool.and_eq_true]
+  simp only [decide_eq_true_eq]
   apply And.intro
   case left =>
     generalize h₂ : policy.principalScope.scope = s
