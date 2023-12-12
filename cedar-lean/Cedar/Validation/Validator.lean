@@ -69,8 +69,7 @@ inductive ValidationError where
 
 abbrev ValidationResult := Except ValidationError Unit
 
--- TODO: prove termination and get rid of `partial`
-partial def mapOnVars (f : Var → Expr) : Expr → Expr
+def mapOnVars (f : Var → Expr) : Expr → Expr
   | .lit l => .lit l
   | .var var => f var
   | .ite x₁ x₂ x₃ =>
@@ -100,13 +99,13 @@ partial def mapOnVars (f : Var → Expr) : Expr → Expr
     let x₁ := mapOnVars f x₁
     .getAttr x₁ a
   | .set xs =>
-    let xs := xs.map (mapOnVars f)
+    let xs := xs.attach.map (λ ⟨x, _⟩ => mapOnVars f x)
     .set xs
   | .record axs =>
-    let axs := axs.map (λ (k,v) => (k, mapOnVars f v))
+    let axs := axs.attach₂.map (λ ⟨(a, x), _⟩ => (a, mapOnVars f x))
     .record axs
   | .call xfn xs =>
-    let xs := xs.map (mapOnVars f)
+    let xs := xs.attach.map (λ ⟨x, _⟩ => mapOnVars f x)
     .call xfn xs
 
 /- Substitute `action` variable for a literal EUID to improve typechecking precision. -/

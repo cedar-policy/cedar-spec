@@ -64,22 +64,27 @@ inductive Sorted [LT α] : List α → Prop where
       Sorted (y :: ys) →
       Sorted (x :: y :: ys)
 
+
+theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x : α × β} {xs : List (α × β)} :
+  x ∈ xs → sizeOf x.snd < 1 + sizeOf xs
+:= by
+  intro h
+  rw [Nat.add_comm]
+  apply Nat.lt_add_right
+  apply @Nat.lt_trans (sizeOf x.snd) (sizeOf x) (sizeOf xs)
+  {
+    simp [Prod._sizeOf_inst, Prod._sizeOf_1]
+    rw [Nat.add_comm]
+    apply Nat.lt_add_of_pos_right
+    apply Nat.add_pos_left
+    apply Nat.one_pos
+  }
+  { apply List.sizeOf_lt_of_mem; exact h }
+
 def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=
   xs.pmap Subtype.mk
-  (λ x => by
-    intro h
-    rw [Nat.add_comm]
-    apply Nat.lt_add_right
-    apply @Nat.lt_trans (sizeOf x.snd) (sizeOf x) (sizeOf xs)
-    {
-      simp [Prod._sizeOf_inst, Prod._sizeOf_1]
-      rw [Nat.add_comm]
-      apply Nat.lt_add_of_pos_right
-      apply Nat.add_pos_left
-      apply Nat.one_pos
-    }
-    { apply List.sizeOf_lt_of_mem; exact h })
+  (λ x => by exact sizeOf_snd_lt_sizeOf_list)
 
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
@@ -465,5 +470,68 @@ theorem if_equiv_strictLT_then_canonical [LT α] [StrictLT α] [DecidableLT α] 
   apply Equiv.trans h₃
   apply Equiv.symm
   exact h₁
+
+def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
+  List.Forall₂ (fun kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
+
+theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [DecidableLT α] {p : β → γ → Prop}
+  {kv₁ : α × β} {kv₂ : α × γ} {kvs₁ : List (α × β)} {kvs₂ : List (α × γ)}
+  (h₁ : kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd)
+  (h₂ : Forallᵥ p kvs₁ kvs₂) :
+  Forallᵥ p (insertCanonical Prod.fst kv₁ kvs₁) (insertCanonical Prod.fst kv₂ kvs₂)
+:= by
+  simp [Forallᵥ] at *
+  cases h₂
+  case nil =>
+    simp [insertCanonical_singleton]
+    apply Forall₂.cons (by exact h₁) (by simp only [Forall₂.nil])
+  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄ =>
+    simp [insertCanonical]
+    split <;> split
+    case inl.inl =>
+      apply Forall₂.cons (by exact h₁)
+      apply Forall₂.cons (by exact h₃) (by exact h₄)
+    case inl.inr h₅ h₆ =>
+      simp [h₁, h₃] at h₅
+      rcases (StrictLT.asymmetric kv₂.fst hd₂.fst h₅) with _
+      split <;> contradiction
+    case inr.inl h₅ h₆ =>
+      simp [h₁, h₃] at h₅ h₆
+      split
+      case inl => contradiction
+      case inr =>
+        apply Forall₂.cons (by exact h₃)
+        apply insertCanonical_preserves_forallᵥ h₁ h₄
+    case inr.inr h₅ h₆ =>
+      simp [h₁, h₃] at h₅ h₆
+      split
+      case inl => contradiction
+      case inr => apply Forall₂.cons (by exact h₁) (by exact h₄)
+
+theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [DecidableLT α] (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) :
+  List.Forallᵥ p kvs₁ kvs₂ →
+  List.Forallᵥ p (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
+:= by
+  simp [Forallᵥ]
+  intro h₁
+  cases h₁
+  case nil =>
+    simp [canonicalize_nil]
+  case cons hd₁ hd₂ tl₁ tl₂ h₂ h₃ =>
+    simp [canonicalize]
+    rcases (canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃) with h₄
+    apply insertCanonical_preserves_forallᵥ h₂ h₄
+
+theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
+  (h₁ : x ∈ xs)
+  (h₂ : f x) :
+  any xs f = true
+:= by
+  cases xs <;> simp at h₁
+  case cons hd tl =>
+    simp [List.any_cons]
+    rcases h₁ with h₁ | h₁
+    case inl => subst h₁ ; simp [h₂]
+    case inr => apply Or.inr ; exists x
 
 end List

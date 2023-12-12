@@ -15,7 +15,7 @@
 -/
 
 import Cedar.Spec
-import Cedar.Thm.Lemmas.Authorizer
+import Cedar.Thm.Authorization.Authorizer
 import Mathlib.Data.List.Basic
 
 /-!

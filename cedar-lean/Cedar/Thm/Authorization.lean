@@ -15,7 +15,7 @@
 -/
 
 import Cedar.Spec
-import Cedar.Thm.Lemmas.Authorizer
+import Cedar.Thm.Authorization.Authorizer
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
 
