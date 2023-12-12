@@ -393,7 +393,7 @@ theorem type_is_inhabited (ty : CedarType) :
     apply InstanceOfType.instance_of_set
     intro v₁ h₁
     rcases (Set.in_set_means_list_non_empty v₁ Set.empty h₁) with h₂
-    simp [Set.empty] at h₂
+    simp [Set.empty, Set.elts] at h₂
   | .ext xty =>
     rcases (ext_type_is_inhabited xty) with ⟨x, h₁⟩
     exists (.ext x)
