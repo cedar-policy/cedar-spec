@@ -61,7 +61,7 @@ pub fn run_eval_test(
     // matches `expected`
     let definitional_res = custom_impl.interpret(request.clone(), entities, expr, expected.clone());
 
-    // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+    // TODO(#175): For now, ignore cases where the definitional code returned an error due to
     // an unknown extension function.
     if let Err(err) = definitional_res.clone() {
         if err.contains("jsonToExtFun: unknown extension function") {
