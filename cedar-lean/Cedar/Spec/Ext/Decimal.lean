@@ -78,7 +78,7 @@ instance decLe (d₁ d₂ : Decimal) : Decidable (d₁ ≤ d₂) :=
 if h : Decimal.le d₁ d₂ then isTrue h else isFalse h
 
 instance : Inhabited Decimal where
-  default := Subtype.mk 0 (by simp)
+  default := Subtype.mk 0 (by decide)
 
 end Decimal
 
