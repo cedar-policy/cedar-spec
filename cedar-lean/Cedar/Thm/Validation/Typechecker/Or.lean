@@ -119,12 +119,12 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     cases b₁ <;>
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-    simp [evaluate, Result.as, Coe.coe, Value.asBool, ih₁₂, ih₂₂, GuardedCapabilitiesInvariant] <;>
-    try exact type_is_inhabited ty
+    simp [evaluate, Result.as, Coe.coe, Value.asBool, ih₁₂, ih₂₂, GuardedCapabilitiesInvariant, Lean.Internal.coeM, pure, Except.pure] <;>
+    try apply type_is_inhabited
     case false.inr.inr.inr.inr.inr.inr =>
-      cases b₂ <;> simp
+      cases b₂ <;>
+      simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
       case false h₆ =>
-        exists false ; simp only [true_and]
         cases bty₁ <;> simp at h₆ h₇
         case anyBool =>
           cases bty₂ <;> simp at h₇ <;>
@@ -140,18 +140,20 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
         case anyBool.tt.intro =>
           apply And.intro
           case left => apply empty_capabilities_invariant
-          case right => exists true
+          case right => apply true_is_instance_of_tt
         case anyBool.anyBool.intro =>
           apply And.intro
           case left =>
             simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
             apply capability_intersection_invariant
             simp [ih₂₁]
-          case right => exists true
+          case right => apply bool_is_instance_of_anyBool
         all_goals {
           simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
           simp [ih₂₁]
-          exists true
+          first
+            | apply true_is_instance_of_tt
+            | apply bool_is_instance_of_anyBool
         }
     all_goals {
       simp [GuardedCapabilitiesInvariant] at ih₁₁ ih₂₁
