@@ -29,7 +29,7 @@ def INT64_MAX : Int :=  9223372036854775807
 abbrev Int64 := { i : Int // INT64_MIN ≤ i ∧ i ≤ INT64_MAX }
 
 instance : Inhabited Int64 where
-  default := Subtype.mk 0 (by simp)
+  default := Subtype.mk 0 (by decide)
 
 
 namespace Int64
