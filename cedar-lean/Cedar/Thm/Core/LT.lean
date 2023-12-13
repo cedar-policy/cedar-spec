@@ -35,24 +35,6 @@ namespace Decide
 @[simp] theorem not_decide_eq_true {h : Decidable p} : ((!decide p) = true) = ¬ p := by cases h <;> simp [decide, *]
 end Decide
 
------ `<` is strict on `Decimal` -----
-
-instance Decimal.strictLT : StrictLT Ext.Decimal where
-  asymmetric a b   := by
-    cases a ; cases b
-    simp [LT.lt, Ext.Decimal.lt, Int.lt]
-    apply Int.strictLT.asymmetric
-  transitive a b c := by
-    simp [LT.lt, Ext.Decimal.lt, Int.lt]
-    exact Int.strictLT.transitive a b c
-  connected  a b   := by
-    simp [LT.lt, Ext.Decimal.lt, Int.lt]
-    intro h₁
-    apply Int.strictLT.connected a b
-    simp [h₁]
-    by_contra h₂
-    rcases (Subtype.eq h₂) with h₃
-    contradiction
 
 ----- `<` is strict on `IPNet` -----
 
@@ -154,9 +136,9 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      rcases (Decimal.strictLT.asymmetric x₁ x₂) with h₂
+      rcases (Int64.strictLT.asymmetric x₁ x₂) with h₂
       simp [LT.lt] at h₂
-      cases h₃ : Ext.Decimal.lt x₁ x₂ <;>
+      cases h₃ : Int64.lt x₁ x₂ <;>
       simp [h₃] at h₁ h₂ ; simp [h₂]
     case ipaddr =>
       rcases (IPNet.strictLT.asymmetric x₁ x₂) with h₂
@@ -167,10 +149,10 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
     case decimal =>
-      rcases (Decimal.strictLT.transitive x₁ x₂ x₃) with h₃
+      rcases (Int64.strictLT.transitive x₁ x₂ x₃) with h₃
       simp [LT.lt] at h₃
-      cases h₄ : Ext.Decimal.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Ext.Decimal.lt x₂ x₃ <;> simp [h₅] at *
+      cases h₄ : Int64.lt x₁ x₂ <;> simp [h₄] at *
+      cases h₅ : Int64.lt x₂ x₃ <;> simp [h₅] at *
       simp [h₃]
     case ipaddr =>
       rcases (IPNet.strictLT.transitive x₁ x₂ x₃) with h₃
@@ -182,7 +164,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      rcases (Decimal.strictLT.connected x₁ x₂) with h₂
+      rcases (Int64.strictLT.connected x₁ x₂) with h₂
       simp [LT.lt, h₁] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case ipaddr =>
