@@ -14,53 +14,29 @@
  * limitations under the License.
  */
 
-use crate::cedar_test_impl::*;
-use cedar_policy::frontend::is_authorized::InterfaceResponse;
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-pub struct RequestForDefEngine<'a> {
+pub struct AuthorizationRequest<'a> {
     pub request: &'a ast::Request,
     pub policies: &'a ast::PolicySet,
     pub entities: &'a Entities,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DefinitionalAuthResponse {
-    pub serialization_nanos: i64,
-    pub deserialization_nanos: i64,
-    pub auth_nanos: i64,
-    pub response: InterfaceResponse,
-}
-
 #[derive(Debug, Serialize)]
-pub struct EvalRequestForDefEngine<'a> {
+pub struct EvaluationRequest<'a> {
     pub request: &'a ast::Request,
     pub entities: &'a Entities,
     pub expr: &'a ast::Expr,
     pub expected: Option<&'a ast::Expr>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-#[repr(transparent)]
-pub struct DefinitionalEvalResponse {
-    pub matches: bool,
-}
-
 #[derive(Debug, Serialize)]
-pub struct RequestForDefValidator<'a> {
+pub struct ValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
     pub policies: &'a ast::PolicySet,
     pub mode: ValidationMode,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DefinitionalValResponse {
-    pub serialization_nanos: i64,
-    pub deserialization_nanos: i64,
-    pub validation_nanos: i64,
-    pub response: ValidationInterfaceResponse,
 }
