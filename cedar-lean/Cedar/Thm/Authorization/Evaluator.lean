@@ -63,7 +63,10 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
     case _ p₂ =>
       cases p₂ <;> simp at h₁
       case _ b =>
-        cases b <;> simp at h₁
-        rfl
+        cases b
+        case false =>
+          simp only [pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe,
+            CoeTC.coe, Coe.coe, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at h₁
+        case true => rfl
 
 end Cedar.Thm

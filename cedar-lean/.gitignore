@@ -1,6 +1,5 @@
 .DS_Store
-/build
-/lake-packages/*
+/.lake/*
 *.json
 !lake-manifest.json
 *.olean

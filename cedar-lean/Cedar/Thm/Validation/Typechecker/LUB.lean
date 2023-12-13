@@ -409,7 +409,6 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     case inr h₂ =>
       subst h₁
       simp [lub?, lubBool]
-      split ; assumption ; rfl
   case h_2 sty₁ sty₂ =>
     cases h₂ : sty₁ ⊔ sty₂ <;> simp [h₂] at h₁
     rename_i sty₃
@@ -566,8 +565,9 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
       simp [lubRecordType]
     case cons hd tl =>
       simp [hrty₁] at h₁
-      split at h₁
-      case inl h₆ =>
+      by_cases h₆ : hd.fst = a₂
+      case pos =>
+        simp [h₆] at h₁
         unfold lubRecordType
         simp [h₆]
         cases h₇ : lubQualifiedType hd.snd qty₂ <;> simp [h₇] at h₁
@@ -582,7 +582,7 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
           rcases (lubRecordType_assoc_none_some h₈ h₅) with h₉
           simp [h₉]
           cases h₁₀ : lubQualifiedType hd.snd qty₁ <;> simp [h₁₀]
-      case inr h₆ =>
+      case neg =>
         unfold lubRecordType
         simp [h₆]
 
@@ -607,10 +607,7 @@ theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : Qualifie
   }
 
 end
-termination_by
-lub_assoc_none_some ty₁ ty₂ ty₃ _ _ _ => (sizeOf ty₁)
-lubRecordType_assoc_none_some rty₁ rty₂ rty₃ _ _ _ => (sizeOf rty₁)
-lubQualifiedType_assoc_none_some qty₁ qty₂ qty₃ _ _ _ => (sizeOf qty₁)
+
 
 theorem lubBool_assoc_some_some {ty₄ ty₅ : CedarType } { bty₁ bty₂ bty₃ : BoolType }
   (h₁ : CedarType.bool (lubBool bty₁ bty₂) = ty₄)
@@ -620,7 +617,7 @@ theorem lubBool_assoc_some_some {ty₄ ty₅ : CedarType } { bty₁ bty₂ bty�
   simp [lubBool] at h₁ h₂
   subst h₁ h₂
   simp [lub?, lubBool]
-  cases bty₁ <;> cases bty₂ <;> cases bty₃ <;> simp only
+  cases bty₁ <;> cases bty₂ <;> cases bty₃ <;> simp
 
 mutual
 

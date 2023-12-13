@@ -128,8 +128,8 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   split at h₁ <;> simp at h₁
   rename_i ty h₃
   rcases h₁ with ⟨hl₁, hr₁⟩
-  subst hl₁ hr₁ ; simp only [true_and]
-  exists ty ; simp only [exists_and_right, true_and]
+  subst hl₁ hr₁
+  simp only [List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and]
   intro x h₄
   cases h₄
   case head xtl =>

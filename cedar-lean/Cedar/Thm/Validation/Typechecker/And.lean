@@ -120,16 +120,18 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
           rcases ih₂ with ⟨_, v₂, ih₂₂, ih₂₃⟩
           simp [EvaluatesTo] at ih₂₂
           rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-          simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool]
+          simp [Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure]
           rcases (instance_of_ff_is_false ih₂₃) with h₈
-          subst h₈ ; simp only
+          subst h₈
+          simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
     case inr.intro h₈ =>
       cases b₁
       case false =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
         try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
-        apply instance_of_lubBool ; simp [ih₁₃]
+        apply instance_of_lubBool
+        simp [ih₁₃]
       case true =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
@@ -141,12 +143,11 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-        simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool] <;>
+        simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] <;>
         try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
         rcases (instance_of_bool_is_bool ih₂₃) with ⟨b₂, hb₂⟩ ; subst hb₂
-        cases b₂ <;> simp
+        cases b₂ <;> simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
         case false =>
-          exists false ; simp only [true_and]
           apply instance_of_lubBool ; simp [ih₂₃]
         case true =>
           apply And.intro
@@ -155,7 +156,6 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
             specialize ih₂₁ ih₂₂
             exact capability_union_invariant ih₁₁ ih₂₁
           case right =>
-            exists true ; simp only [true_and]
             apply instance_of_lubBool ; simp [ih₁₃]
 
 end Cedar.Thm
