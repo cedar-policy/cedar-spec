@@ -14,9 +14,13 @@
  limitations under the License.
 -/
 
+import Cedar.Data.Int64
+
 /-! This file defines Cedar decimal values and functions. -/
 
 namespace Cedar.Spec.Ext
+
+open Cedar.Data
 
 /--
 A decimal number consists of an integer part and a fractional part.
@@ -27,19 +31,15 @@ We restrict the number of the digits after the decimal point to 4.
 -/
 
 def DECIMAL_DIGITS : Nat := 4
-def DECIMAL_MIN : Int := -9223372036854775808
-def DECIMAL_MAX : Int :=  9223372036854775807
 
-abbrev Decimal := { i : Int // DECIMAL_MIN ≤ i ∧ i ≤ DECIMAL_MAX }
+abbrev Decimal := Int64
 
 namespace Decimal
 
 ----- Definitions -----
 
 def decimal? (i : Int) : Option Decimal :=
-  if h : DECIMAL_MIN ≤ i ∧ i ≤ DECIMAL_MAX
-  then .some (Subtype.mk i h)
-  else .none
+  Int64.mk? i
 
 def parse (str : String) : Option Decimal :=
   match str.split (· = '.') with
@@ -58,27 +58,6 @@ def parse (str : String) : Option Decimal :=
   | _ => .none
 
 abbrev decimal := parse
-
-def lt (d₁ d₂ : Decimal) : Bool := d₁.1 < d₂.1
-
-def le (d₁ d₂ : Decimal) : Bool := d₁.1 ≤ d₂.1
-
------ Derivations -----
-
-instance : LT Decimal where
-  lt := fun d₁ d₂ => Decimal.lt d₁ d₂
-
-instance : LE Decimal where
-  le := fun d₁ d₂ => Decimal.le d₁ d₂
-
-instance decLt (d₁ d₂ : Decimal) : Decidable (d₁ < d₂) :=
-if h : Decimal.lt d₁ d₂ then isTrue h else isFalse h
-
-instance decLe (d₁ d₂ : Decimal) : Decidable (d₁ ≤ d₂) :=
-if h : Decimal.le d₁ d₂ then isTrue h else isFalse h
-
-instance : Inhabited Decimal where
-  default := Subtype.mk 0 (by decide)
 
 end Decimal
 
