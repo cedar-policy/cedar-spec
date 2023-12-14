@@ -16,14 +16,16 @@
 
 import Cedar.Spec.Policy
 
-/-! 
+/-!
   This file defines abstract syntax for Cedar policy templates. In general,
-  Cedar operations (e.g., authorization, validation) are defined over policies 
-  rather than templates. We generate policies from templates by using link?. 
+  Cedar operations (e.g., authorization, validation) are defined over policies
+  rather than templates. We generate policies from templates by using link?.
   During differential testing, templates are only used during parsing
 -/
 
 namespace Cedar.Spec
+
+open Cedar.Data
 
 ----- Definitions -----
 
@@ -49,58 +51,67 @@ inductive ResourceScopeTemplate where
 abbrev TemplateID := String
 
 structure Template where
-  id : TemplateID
   effect : Effect
   principalScope : PrincipalScopeTemplate
   actionScope : ActionScope
   resourceScope : ResourceScopeTemplate
   condition : Expr
 
-abbrev Templates := List Template
+abbrev Templates := Map TemplateID Template
 
 abbrev SlotEnv := Map SlotID EntityUID
 
 structure TemplateLinkedPolicy where
-  id : TemplateID
+  id : PolicyID
+  templateId : TemplateID
   slotEnv : SlotEnv
 
 abbrev TemplateLinkedPolicies := List TemplateLinkedPolicy
 
-def EntityUIDOrSlot.link? (entityOrSlot : EntityUIDOrSlot) (slotEnv : SlotEnv) : Option EntityUID :=
-  match entityOrSlot with
+def EntityUIDOrSlot.link? (slotEnv : SlotEnv) : EntityUIDOrSlot → Option EntityUID
   | entityUID entity => .some entity
-  | slot id => slotEnv.find? id 
+  | slot id => slotEnv.find? id
 
-def ScopeTemplate.link? (scope : ScopeTemplate) (slotEnv : SlotEnv) : Option Scope :=
-  match scope with
+def ScopeTemplate.link? (slotEnv : SlotEnv) : ScopeTemplate → Option Scope
   | .any => .some .any
   | .eq entityOrSlot => do
-    let entity <- entityOrSlot.link? slotEnv
+    let entity ← entityOrSlot.link? slotEnv
     .some (.eq entity)
   | .mem entityOrSlot => do
-    let entity <- entityOrSlot.link? slotEnv
+    let entity ← entityOrSlot.link? slotEnv
     .some (.mem entity)
   | .is ety => .some (.is ety)
   | .isMem ety entityOrSlot => do
-    let entity <- entityOrSlot.link? slotEnv
+    let entity ← entityOrSlot.link? slotEnv
     .some (.isMem ety entity)
 
-def linkPolicy? (template : Template) (slotEnv : SlotEnv) : Option Policy :=
-  -- lookup template, and call linkScope
+def PrincipalScopeTemplate.link? (slotEnv : SlotEnv) : PrincipalScopeTemplate → Option PrincipalScope
+  | .principalScope s => do
+    let s ← s.link? slotEnv
+    .some (.principalScope s)
+
+def ResourceScopeTemplate.link? (slotEnv : SlotEnv) : ResourceScopeTemplate → Option ResourceScope
+  | .resourceScope s => do
+    let s ← s.link? slotEnv
+    .some (.resourceScope s)
+
+def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : Option Policy := do
+  let principalScope ← template.principalScope.link? slotEnv
+  let resourceScope ← template.resourceScope.link? slotEnv
+  .some {
+    id := id,
+    effect := template.effect,
+    principalScope := principalScope,
+    actionScope := template.actionScope,
+    resourceScope := resourceScope,
+    condition := template.condition
+  }
+
+def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Option Policy := do
+  let template ← templates.find? link.templateId
+  template.link? link.id link.slotEnv
 
 def link? (templates : Templates) (links : TemplateLinkedPolicies) : Option Policies :=
   links.mapM (linkPolicy? templates)
-  
-
------ Derivations -----
-
-deriving instance Repr, DecidableEq, Inhabited for Effect
-deriving instance Repr, DecidableEq, Inhabited for Scope
-deriving instance Repr, DecidableEq, Inhabited for PrincipalScope
-deriving instance Repr, DecidableEq, Inhabited for ResourceScope
-deriving instance Repr, DecidableEq, Inhabited for ActionScope
-deriving instance Repr, DecidableEq, Inhabited for Policy
-
-deriving instance Lean.ToJson for PolicyID
 
 end Cedar.Spec
