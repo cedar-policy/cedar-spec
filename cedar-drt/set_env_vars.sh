@@ -31,4 +31,9 @@ fi
 export LEAN_LIB_DIR=$(lean --print-libdir)
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$(lean --print-libdir)
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH+$DYLD_LIBRARY_PATH:}$(lean --print-libdir)
-export LD_PRELOAD=${LD_PRELOAD+$LD_PRELOAD:}$(lean --print-prefix)/lib/glibc/libm.so
+
+# if the version of GLIBC is too old (< 2.27), then use the verison of libm.so packaged with Lean
+GLIBC_VERSION=`ldd --version | awk '/ldd/{print $NF}'`
+if (($GLIBC_VERSION < 2.27)); then
+    export LD_PRELOAD=${LD_PRELOAD+$LD_PRELOAD:}$(lean --print-prefix)/lib/glibc/libm.so
+fi
