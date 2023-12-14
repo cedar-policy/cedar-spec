@@ -303,24 +303,24 @@ def jsonToEffect (json : Lean.Json) : ParseResult Effect := do
   | "forbid" => .ok .forbid
   | eff => .error s!"jsonToEffect: unknown effect {eff}"
 
-/-
-Slots not currently supported, but will be added in the future.
--/
-def jsonToEuidOrSlot (json : Lean.Json) : ParseResult EntityUID := do
+def jsonToEuidOrSlot (slotID : SlotID) (json : Lean.Json) : ParseResult EntityUIDOrSlot := do
   let (tag, body) ← unpackJsonSum json
   match tag with
-  | "EUID" => jsonToEuid body
+  | "EUID" => do
+    let euid ← jsonToEuid body
+    .ok (.entityUID euid)
+  | "Slot" => .ok (.slot slotID)
   | tag => .error s!"jsonToEuidOrSlot: unknown tag {tag}"
 
-def jsonToScope (json : Lean.Json) : ParseResult Scope := do
+def jsonToScopeTemplate (slotID : SlotID) (json : Lean.Json) : ParseResult ScopeTemplate := do
   let (tag, body) ← unpackJsonSum json
   match tag with
   | "Any" => .ok .any
   | "In" => do
-    let euidOrSlot ← jsonToEuidOrSlot body
+    let euidOrSlot ← jsonToEuidOrSlot slotID body
     .ok (.mem euidOrSlot)
   | "Eq" => do
-    let euidOrSlot ← jsonToEuidOrSlot body
+    let euidOrSlot ← jsonToEuidOrSlot slotID body
     .ok (.eq euidOrSlot)
   | "Is" => do
     let name ← jsonToName body
@@ -328,7 +328,7 @@ def jsonToScope (json : Lean.Json) : ParseResult Scope := do
   | "IsIn" => do
     let (ety,e) ← jsonToTuple body
     let name ← jsonToName ety
-    let euidOrSlot ← jsonToEuidOrSlot e
+    let euidOrSlot ← jsonToEuidOrSlot slotID e
     .ok (.isMem name euidOrSlot)
   | tag => .error s!"jsonToScope: unknown tag {tag}"
 
@@ -345,15 +345,13 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
     .ok (.actionScope (.eq euid))
   | tag => .error s!"jsonToActionScope: unknown tag {tag}"
 
-def jsonToPolicy (json : Lean.Json) : ParseResult Policy := do
-  let id ← getJsonField json "id" >>= jsonToString
+def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect
-  let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScope
+  let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?principal"
   let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
-  let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScope
+  let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?resource"
   let condition ← getJsonField json "non_head_constraints" >>= jsonToExpr
   .ok {
-    id := id
     effect := effect,
     principalScope := .principalScope principalConstraint,
     resourceScope := .resourceScope resourceConstraint,
@@ -361,13 +359,27 @@ def jsonToPolicy (json : Lean.Json) : ParseResult Policy := do
     condition := condition
   }
 
-/-
-For now, `jsonToPolicies` doesn't support policy templates.
-A static policy is just a policy template with no blanks.
--/
+def jsonToTemplateLinkedPolicy (id : PolicyID) (json : Lean.Json) : ParseResult TemplateLinkedPolicy := do
+  let templateId ← getJsonField json "template_id" >>= jsonToString
+  let slotEnvKVs ← getJsonField json "values" >>= jsonObjToKVList
+  let slotEnv ← mapMValues slotEnvKVs jsonToEuid
+  .ok {
+    id := id,
+    templateId := templateId,
+    slotEnv := Map.mk slotEnv
+  }
+
+def jsonToTemplateLinkedPolicies (json : Lean.Json) : ParseResult TemplateLinkedPolicies := do
+  let linksKVs ← jsonObjToKVList json
+  List.mapM (λ (k,v) => jsonToTemplateLinkedPolicy k v) linksKVs
+
 def jsonToPolicies (json : Lean.Json) : ParseResult Policies := do
   let templatesKVs ← getJsonField json "templates" >>= jsonObjToKVList
-  List.mapM (λ (_,v) => jsonToPolicy v) templatesKVs
+  let templates ← mapMValues templatesKVs jsonToTemplate
+  let links ← getJsonField json "links" >>= jsonToTemplateLinkedPolicies
+  match link? (Map.mk templates) links with
+  | .some policies => .ok policies
+  | .none => .error s!"jsonToPolicies: failed to link templates\n{json.pretty}"
 
 def jsonToPrimType (json : Lean.Json) : ParseResult CedarType := do
   let tag ← jsonToString json
@@ -463,7 +475,7 @@ partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType 
     let lub ← Array.mapM jsonToName lubArr
     if lub.size == 1
     then .ok (.entity lub[0]!)
-    else .error s!"jsonToEntityOrRecordType: expected lub to have exactly one element¬{json.pretty}"
+    else .error s!"jsonToEntityOrRecordType: expected lub to have exactly one element\n{json.pretty}"
   | tag => .error s!"jsonToEntityOrRecordType: unknown tag {tag}"
 
 partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
