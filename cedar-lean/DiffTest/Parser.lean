@@ -240,10 +240,10 @@ partial def exprToValue : Expr → ParseResult Value
   | Expr.lit p => .ok (Value.prim p)
   | Expr.record r => do
     let kvs ← mapMValues r exprToValue
-    .ok (Value.record (Map.mk kvs))
+    .ok (Value.record (Map.make kvs))
   | Expr.set s => do
     let arr ← List.mapM exprToValue s
-    .ok (Value.set (Set.mk arr))
+    .ok (Value.set (Set.make arr))
   | Expr.call xfn args => extExprToValue xfn args
   | expr => .error ("exprToValue: invalid input expression\n" ++ toString (repr expr))
 
@@ -286,15 +286,15 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
   let attrs ← mapMValues attrsKVs jsonToValue
   .ok {
-    ancestors := Set.mk ancestors,
-    attrs := Map.mk attrs
+    ancestors := Set.make ancestors,
+    attrs := Map.make attrs
   }
 
 def jsonToEntities (json : Lean.Json) : ParseResult Entities := do
   let entities ← getJsonField json "entities"
   let kvs_json ← jsonArrayToKVList entities
   let kvs ← mapMKeysAndValues kvs_json jsonToEuid jsonToEntityData
-  .ok (Map.mk kvs)
+  .ok (Map.make kvs)
 
 def jsonToEffect (json : Lean.Json) : ParseResult Effect := do
   let eff ← jsonToString json
@@ -366,7 +366,7 @@ def jsonToTemplateLinkedPolicy (id : PolicyID) (json : Lean.Json) : ParseResult 
   .ok {
     id := id,
     templateId := templateId,
-    slotEnv := Map.mk slotEnv
+    slotEnv := Map.make slotEnv
   }
 
 def jsonToTemplateLinkedPolicies (json : Lean.Json) : ParseResult TemplateLinkedPolicies := do
@@ -377,7 +377,7 @@ def jsonToPolicies (json : Lean.Json) : ParseResult Policies := do
   let templatesKVs ← getJsonField json "templates" >>= jsonObjToKVList
   let templates ← mapMValues templatesKVs jsonToTemplate
   let links ← getJsonField json "links" >>= jsonToTemplateLinkedPolicies
-  match link? (Map.mk templates) links with
+  match link? (Map.make templates) links with
   | .some policies => .ok policies
   | .none => .error s!"jsonToPolicies: failed to link templates\n{json.pretty}"
 
@@ -409,7 +409,7 @@ def findInMapValues [LT α] [BEq α] [DecidableLT α] (m : Map α (Set α)) (k�
   setOfSets.foldl (λ acc v => acc.union v) Set.empty
 
 def descendantsToAncestors [LT α] [BEq α] [DecidableLT α] (descendants : Map α (Set α)) : Map α (Set α) :=
-  Map.mk (List.map
+  Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
 structure JsonEntityTypeStoreEntry where
@@ -428,9 +428,9 @@ abbrev JsonSchemaActionStore := Map EntityUID JsonSchemaActionEntry
 
 def invertJsonEntityTypeStore (ets : JsonEntityTypeStore) : EntityTypeStore :=
   let ets := ets.toList
-  let descendantMap := Map.mk (List.map (λ (k,v) => (k,v.descendants)) ets)
+  let descendantMap := Map.make (List.map (λ (k,v) => (k,v.descendants)) ets)
   let ancestorMap := descendantsToAncestors descendantMap
-  Map.mk (List.map
+  Map.make (List.map
     (λ (k,v) => (k,
       {
         ancestors := ancestorMap.find! k,
@@ -439,9 +439,9 @@ def invertJsonEntityTypeStore (ets : JsonEntityTypeStore) : EntityTypeStore :=
 
 def invertJsonSchemaActionStore (acts : JsonSchemaActionStore) : SchemaActionStore :=
   let acts := acts.toList
-  let descendantMap := Map.mk (List.map (λ (k,v) => (k,v.descendants)) acts)
+  let descendantMap := Map.make (List.map (λ (k,v) => (k,v.descendants)) acts)
   let ancestorMap := descendantsToAncestors descendantMap
-  Map.mk (List.map
+  Map.make (List.map
     (λ (k,v) => (k,
       {
         appliesToPrincipal := v.appliesToPrincipal,
@@ -462,7 +462,7 @@ partial def jsonToQualifiedCedarType (json : Lean.Json) : ParseResult (Qualified
 partial def jsonToRecordType (json : Lean.Json) : ParseResult RecordType := do
   let kvs_json ← jsonObjToKVList json
   let kvs ←  mapMValues kvs_json jsonToQualifiedCedarType
-  .ok (Map.mk kvs)
+  .ok (Map.make kvs)
 
 partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType := do
   let (tag,body) ← unpackJsonSum json
@@ -496,7 +496,7 @@ partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntityTyp
   let descendants ← List.mapM jsonToName descendants_json.toList
   let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
   .ok {
-    descendants := Set.mk descendants,
+    descendants := Set.make descendants,
     attrs := attrs
   }
 
@@ -512,9 +512,9 @@ partial def jsonToSchemaActionEntry (json : Lean.Json) : ParseResult JsonSchemaA
   match context with
   | .record rty =>
     .ok {
-      appliesToPrincipal := Set.mk appliesToPrincipal,
-      appliesToResource := Set.mk appliesToResource,
-      descendants := Set.mk descendants,
+      appliesToPrincipal := Set.make appliesToPrincipal,
+      appliesToResource := Set.make appliesToResource,
+      descendants := Set.make descendants,
       context := rty
     }
   | _ => .error "jsonToSchemaActionEntry: context should be record-typed"
@@ -525,8 +525,8 @@ partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
   let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
   let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToSchemaActionEntry
   .ok {
-    ets := invertJsonEntityTypeStore (Map.mk entityTypes),
-    acts := invertJsonSchemaActionStore (Map.mk actions)
+    ets := invertJsonEntityTypeStore (Map.make entityTypes),
+    acts := invertJsonSchemaActionStore (Map.make actions)
   }
 
 end -- end mutual block
