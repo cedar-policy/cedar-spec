@@ -18,7 +18,7 @@
 mod eval_type_directed_shared;
 
 use cedar_drt::*;
-use libfuzzer_sys::fuzz_target;
+use cedar_drt_inner::fuzz_target;
 
 fuzz_target!(|input: eval_type_directed_shared::FuzzTargetInput| {
     let def_engine = JavaDefinitionalEngine::new().expect("failed to create definitional engine");
