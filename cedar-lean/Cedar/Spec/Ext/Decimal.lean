@@ -43,6 +43,7 @@ def decimal? (i : Int) : Option Decimal :=
 
 def parse (str : String) : Option Decimal :=
   match str.split (· = '.') with
+  | ["-", _] => .none -- String.toInt? "-" == some 0
   | [left, right] =>
     let rlen := right.length
     if 0 < rlen ∧ rlen ≤ DECIMAL_DIGITS

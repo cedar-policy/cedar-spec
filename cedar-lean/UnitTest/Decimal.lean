@@ -50,6 +50,7 @@ def testsForInvalidStrings :=
     testInvalid "1.-2" "invalid use of -",
     testInvalid "12" "no decimal point",
     testInvalid ".12" "no integer part",
+    testInvalid "-.12" "no integer part",
     testInvalid "12." "no fractional part",
     testInvalid "1.23456" "too many fractional digits",
     testInvalid "922337203685477.5808" "overflow",
