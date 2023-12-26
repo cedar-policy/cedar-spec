@@ -46,10 +46,9 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
         simp [h₁]
       }
     case mk.h_2 _ _ =>
-      split at h₁
-      split at h₁ <;> try split at h₁
+      split at h₁ <;> split at h₁ <;> try split at h₁
       all_goals {
-        simp [ok] at h₁
+        try simp [ok] at h₁
         try simp [h₁]
       }
 
@@ -147,6 +146,14 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     case intro.h₁.true.h_2 =>
       rcases (Map.not_contains_of_empty a) with _
       contradiction
+  case intro.intro.h_2 =>
+    simp [ok] at h₃
+    split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
+    rcases h₃ with ⟨h₃, _⟩
+    simp [←h₃]
+    apply InstanceOfType.instance_of_bool
+    simp [InstanceOfBoolType]
+
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

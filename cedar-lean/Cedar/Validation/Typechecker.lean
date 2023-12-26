@@ -192,7 +192,10 @@ def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
   | .entity ety =>
     match env.ets.attrs? ety with
     | .some rty => hasAttrInRecord rty x a c false
-    | .none     => err (.unknownEntity ety)
+    | .none     =>
+      match actionUID? x env.acts with
+      | .some _ => ok (.bool .anyBool)
+      | .none   => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty)
 
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
