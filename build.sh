@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Check out the cedar submodule
-# git submodule update --init
+git submodule update --init
 
 # Set environment variables
 cd cedar-drt
