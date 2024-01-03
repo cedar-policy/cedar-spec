@@ -49,13 +49,13 @@ To [contribute](../CONTRIBUTING.md) Lean code or proofs, follow these [style gui
 
 Definitional engine ([`Cedar/Spec/`](Cedar/Spec/))
 
-* [`evaluate`](Cedar/Spec/Evaluator.lean#L80) returns the result of evaluating an expression.
-* [`satisfied`](Cedar/Spec/Authorizer.lean#L27) checks if a policy is satisfied for a given request and entities.
-* [`isAuthorized`](Cedar/Spec/Authorizer.lean#L38) checks if a request is allowed or denied for a given policy store and entities.
+* `evaluate` returns the result of evaluating an expression.
+* `satisfied` checks if a policy is satisfied for a given request and entities.
+* `isAuthorized` checks if a request is allowed or denied for a given policy store and entities.
 
 Definitional validator ([`Cedar/Validation/`](Cedar/Validation/))
 
-* [`typeOf`](Cedar/Validation/Typechecker.lean#L254) returns the result of type checking an expression against a schema.
+* `typeOf` returns the result of type checking an expression against a schema.
 
 ## Verified properties
 
