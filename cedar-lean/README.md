@@ -49,17 +49,17 @@ To [contribute](../CONTRIBUTING.md) Lean code or proofs, follow these [style gui
 
 Definitional engine ([`Cedar/Spec/`](Cedar/Spec/))
 
-* [`evaluate`](Cedar/Spec/Evaluator.lean#L76) returns the result of evaluating an expression.
+* [`evaluate`](Cedar/Spec/Evaluator.lean#L80) returns the result of evaluating an expression.
 * [`satisfied`](Cedar/Spec/Authorizer.lean#L27) checks if a policy is satisfied for a given request and entities.
 * [`isAuthorized`](Cedar/Spec/Authorizer.lean#L38) checks if a request is allowed or denied for a given policy store and entities.
 
 Definitional validator ([`Cedar/Validation/`](Cedar/Validation/))
 
-* [`typeOf`](Cedar/Validation/Typechecker.lean#L235) returns the result of type checking an expression against a schema.
+* [`typeOf`](Cedar/Validation/Typechecker.lean#L254) returns the result of type checking an expression against a schema.
 
 ## Verified properties
 
-Basic theorems ([`Cedar/Thm/Basic.lean`](Cedar/Thm/Basic.lean))
+Basic authorization theorems ([`Cedar/Thm/Authorization.lean`](Cedar/Thm/Authorization.lean))
 
 * If some forbid policy is satisfied, then the request is denied.
 * A request is allowed only if it is explicitly permitted (i.e., there is at least one permit policy that is satisfied).
