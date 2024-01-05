@@ -25,6 +25,7 @@ rayon = { version = "1.5", optional = true }
 rand = { version = "0.8", optional = true }
 clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
+anyhow = "1.0.79"
 
 [dependencies.uuid]
 version = "1.3.1"
@@ -154,5 +155,11 @@ doc = false
 [[bin]]
 name = "eval-type-directed-lean"
 path = "fuzz_targets/eval-type-directed-lean.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "custom-schema-round-trip"
+path = "fuzz_targets/custom-schema-round-trip.rs"
 test = false
 doc = false
