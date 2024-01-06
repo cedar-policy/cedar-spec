@@ -76,96 +76,64 @@ mutual
 -- We should be able to get rid of this manual deriviation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
-def decExpr (a b : Expr) : Decidable (a = b) := by
-  cases a <;> cases b
-  case lit.lit pa pb => exact match decEq pa pb with
+def decExpr (x y : Expr) : Decidable (x = y) := by
+  cases x <;> cases y <;>
+  try { apply isFalse ; intro h ; injection h }
+  case lit.lit x₁ y₁ | var.var x₁ y₁ =>
+    exact match decEq x₁ y₁ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case ite.ite x₁ x₂ x₃ y₁ y₂ y₃ =>
+    exact match decExpr x₁ y₁, decExpr x₂ y₂, decExpr x₃ y₃ with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case and.and x₁ x₂ y₁ y₂ | or.or x₁ x₂ y₁ y₂ =>
+    exact match decExpr x₁ y₁, decExpr x₂ y₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case unaryApp.unaryApp o x₁ o' y₁ =>
+    exact match decEq o o', decExpr x₁ y₁ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case binaryApp.binaryApp o x₁ x₂ o' y₁ y₂ =>
+    exact match decEq o o', decExpr x₁ y₁, decExpr x₂ y₂ with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case getAttr.getAttr x₁ a y₁ a' | hasAttr.hasAttr x₁ a y₁ a' =>
+    exact match decExpr x₁ y₁, decEq a a' with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case set.set xs ys =>
+    exact match decExprList xs ys with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case var.var va vb => exact match decEq va vb with
+  case record.record axs ays =>
+    exact match decProdAttrExprList axs ays with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case ite.ite c1 t1 e1 c2 t2 e2 => exact match decExpr c1 c2 with
-    | isTrue h₁ => match decExpr t1 t2 with
-      | isTrue h₂ => match decExpr e1 e2 with
-        | isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
-        | isFalse _ => isFalse (by intro h; injection h; contradiction)
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ =>  isFalse (by intro h; injection h; contradiction)
-  case and.and a1 a2 b1 b2 => exact match decExpr a1 b1 with
-    | isTrue h₁ => match decExpr a2 b2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case or.or a1 a2 b1 b2 => exact match decExpr a1 b1 with
-    | isTrue h₁ => match decExpr a2 b2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case unaryApp.unaryApp op1 e1 op2 e2 => exact match decEq op1 op2 with
-    | isTrue h₁ => match decExpr e1 e2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case binaryApp.binaryApp op1 a1 b1 op2 a2 b2 => exact match decEq op1 op2 with
-    | isTrue h₁ => match decExpr a1 a2 with
-      | isTrue h₂ => match decExpr b1 b2 with
-        | isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
-        | isFalse _ => isFalse (by intro h; injection h; contradiction)
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case getAttr.getAttr e1 a1 e2 a2 => exact match decExpr e1 e2 with
-    | isTrue h₁ => match decEq a1 a2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case hasAttr.hasAttr e1 a1 e2 a2 => exact match decExpr e1 e2 with
-    | isTrue h₁ => match decEq a1 a2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case set.set l1 l2 => exact match decExprList l1 l2 with
-    | isTrue h₁ => isTrue (by rw [h₁])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case record.record r1 r2 => exact match decProdAttrExprList r1 r2 with
-    | isTrue h₁ => isTrue (by rw [h₁])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case call.call n1 a1 n2 a2 => exact match decEq n1 n2 with
-    | isTrue h₁ => match decExprList a1 a2 with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  all_goals apply isFalse; intro h; injection h
+  case call.call f xs f' ys =>
+    exact match decEq f f', decExprList xs ys with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrExpr (a b : Prod Attr Expr) : Decidable (a = b) :=
-  match a, b with
-  | (aa, ae), (ba,be) => match decEq aa ba with
-    | isTrue h₁ => match decExpr ae be with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-
-def decProdAttrExprList (as bs : List (Prod Attr Expr)) : Decidable (as = bs) :=
-  match as, bs with
+def decProdAttrExprList (axs ays : List (Prod Attr Expr)) : Decidable (axs = ays) :=
+  match axs, ays with
   | [], [] => isTrue rfl
-  | _::_, [] => isFalse (by intro; contradiction)
-  | [], _::_ => isFalse (by intro; contradiction)
-  | a::as, b::bs => match decProdAttrExpr a b with
-    | isTrue h₁ => match decProdAttrExprList as bs with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | (a, x)::axs, (a', y)::ays =>
+    match decEq a a', decExpr x y, decProdAttrExprList axs ays with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
+      isFalse (by simp; intros; first | contradiction | assumption)
 
-def decExprList (as bs : List Expr) : Decidable (as = bs) :=
-  match as, bs with
+def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
+  match xs, ys with
   | [], [] => isTrue rfl
-  | _::_, [] => isFalse (by intro; contradiction)
-  | [], _::_ => isFalse (by intro; contradiction)
-  | a::as, b::bs =>
-    match decExpr a b with
-    | isTrue h₁ => match decExprList as bs with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | x::xs, y::ys =>
+    match decExpr x y, decExprList xs ys with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
 instance : DecidableEq Expr := decExpr

@@ -319,7 +319,7 @@ theorem Value.lt_irrefl (v : Value) :
   case ext => exact StrictLT.irreflexive w
 
 theorem Values.lt_irrefl (vs : List Value) :
-  ¬ Values.lt vs vs vs.length
+  ¬ Values.lt vs vs
 := by
   cases vs ; simp [Values.lt] ; rename_i hd tl ; simp [Values.lt]
   by_contra h₁
@@ -332,7 +332,7 @@ theorem Values.lt_irrefl (vs : List Value) :
     simp [h₁] at h₂
 
 theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
-  ¬ ValueAttrs.lt vs vs vs.length
+  ¬ ValueAttrs.lt vs vs
 := by
   cases vs ; simp [ValueAttrs.lt] ; rename_i hd tl
   cases hd ; rename_i a v ; simp [ValueAttrs.lt]
@@ -382,7 +382,7 @@ theorem Value.lt_asymm {a b : Value} :
   case ext x₁ x₂ => apply Ext.strictLT.asymmetric x₁ x₂
 
 theorem Values.lt_asym {vs₁ vs₂: List Value} :
-  Values.lt vs₁ vs₂ vs₁.length → ¬ Values.lt vs₂ vs₁ vs₂.length
+  Values.lt vs₁ vs₂ → ¬ Values.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [Values.lt]
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -399,7 +399,7 @@ theorem Values.lt_asym {vs₁ vs₂: List Value} :
     simp [h₂, Value.lt_irrefl hd₁]
 
 theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
-  ValueAttrs.lt vs₁ vs₂ vs₁.length → ¬ ValueAttrs.lt vs₂ vs₁ vs₂.length
+  ValueAttrs.lt vs₁ vs₂ → ¬ ValueAttrs.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [ValueAttrs.lt]
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -453,9 +453,9 @@ theorem Value.lt_trans {a b c : Value} :
 
 
 theorem Values.lt_trans {vs₁ vs₂ vs₃: List Value}
-  (h₁ : Values.lt vs₁ vs₂ vs₁.length)
-  (h₂ : Values.lt vs₂ vs₃ vs₂.length ) :
-  Values.lt vs₁ vs₃ vs₁.length
+  (h₁ : Values.lt vs₁ vs₂)
+  (h₂ : Values.lt vs₂ vs₃) :
+  Values.lt vs₁ vs₃
 := by
   cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> simp [Values.lt] at *
   rename_i hd₁ tl₁ hd₂ tl₂ hd₃ tl₃
@@ -474,11 +474,11 @@ theorem Values.lt_trans {vs₁ vs₂ vs₃: List Value}
     simp [h₃]
 
 theorem ValueAttrs.lt_trans {vs₁ vs₂ vs₃: List (Attr × Value)}
-  (h₁ : ValueAttrs.lt vs₁ vs₂ vs₁.length)
-  (h₂ : ValueAttrs.lt vs₂ vs₃ vs₂.length) :
-  ValueAttrs.lt vs₁ vs₃ vs₁.length
+  (h₁ : ValueAttrs.lt vs₁ vs₂)
+  (h₂ : ValueAttrs.lt vs₂ vs₃) :
+  ValueAttrs.lt vs₁ vs₃
 := by
-  cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> simp [ValueAttrs.lt] at *
+  cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> try { simp [ValueAttrs.lt] at * }
   rename_i hd₁ tl₁ hd₂ tl₂ hd₃ tl₃
   cases hd₁ ; cases hd₂ ; cases hd₃ ; simp [ValueAttrs.lt] at *
   rename_i a₁ v₁ a₂ v₂ a₃ v₃
@@ -535,7 +535,7 @@ theorem Value.lt_conn {a b : Value} :
 
 theorem Values.lt_conn {vs₁ vs₂ : List Value}
   (h₁ : ¬vs₁ = vs₂) :
-  Values.lt vs₁ vs₂ vs₁.length ∨ Values.lt vs₂ vs₁ vs₂.length
+  Values.lt vs₁ vs₂ ∨ Values.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [Values.lt] <;> try contradiction
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -552,9 +552,9 @@ theorem Values.lt_conn {vs₁ vs₂ : List Value}
 
 theorem ValueAttrs.lt_conn {vs₁ vs₂ : List (Attr × Value)}
   (h₁ : ¬vs₁ = vs₂) :
-  ValueAttrs.lt vs₁ vs₂ vs₁.length ∨ ValueAttrs.lt vs₂ vs₁ vs₂.length
+  ValueAttrs.lt vs₁ vs₂ ∨ ValueAttrs.lt vs₂ vs₁
 := by
-  cases vs₁ <;> cases vs₂ <;> simp [ValueAttrs.lt] <;> try contradiction
+  cases vs₁ <;> cases vs₂ <;> try { simp [ValueAttrs.lt] } <;> try contradiction
   rename_i hd₁ tl₁ hd₂ tl₂
   cases hd₁ ; cases hd₂ ; simp [ValueAttrs.lt]
   rename_i a₁ v₁ a₂ v₂

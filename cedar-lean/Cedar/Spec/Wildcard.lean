@@ -46,4 +46,16 @@ def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
   termination_by
     wildcardMatch text pattern => sizeOf text + sizeOf pattern
 
+def PatElem.lt : PatElem → PatElem → Bool
+  | .justChar c₁, .justChar c₂ => c₁ < c₂
+  | .star, .justChar _         => true
+  | _, _                       => false
+
+instance : LT PatElem where
+  lt := fun x y => PatElem.lt x y
+
+instance PatElem.decLt (x y : PatElem) : Decidable (x < y) :=
+  if  h : PatElem.lt x y then isTrue h else isFalse h
+
+
 end Cedar.Spec
