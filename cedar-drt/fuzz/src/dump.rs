@@ -18,7 +18,7 @@ use cedar_policy_core::ast::{EntityUIDEntry, PolicyID, PolicySet, Request, Restr
 use cedar_policy_core::authorizer::{Decision, Response};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::collections::HashMap;
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::io::Write;
@@ -31,14 +31,10 @@ use std::path::Path;
 ///
 /// `testcasename`: a name to use for the testcase. Will be used in various
 /// filenames etc.
-///
-/// `passes_validation`: whether the given policy passes validation with the
-/// given schema
 pub fn dump<'a>(
     dirname: impl AsRef<Path>,
     testcasename: &str,
     schema: &SchemaFragment,
-    passes_validation: bool,
     policies: &PolicySet,
     entities: &Entities,
     requests: impl IntoIterator<Item = (&'a Request, &'a Response)>,
@@ -46,9 +42,9 @@ pub fn dump<'a>(
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;
 
-    let schema_filename = dirname.join(format!("schema_{testcasename}.json"));
-    let policies_filename = dirname.join(format!("policies_{testcasename}.txt"));
-    let entities_filename = dirname.join(format!("entities_{testcasename}.txt"));
+    let schema_filename = dirname.join(format!("{testcasename}.cedarschema.json"));
+    let policies_filename = dirname.join(format!("{testcasename}.cedar"));
+    let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
     let testcase_filename = dirname.join(format!("{testcasename}.json"));
 
     let schema_file = std::fs::OpenOptions::new()
@@ -91,7 +87,7 @@ pub fn dump<'a>(
             schema: &schema_filename,
             policies: &policies_filename,
             entities: &entities_filename,
-            should_validate: passes_validation,
+            should_validate: passes_validation(schema, policies),
             queries: requests
                 .into_iter()
                 .enumerate()
@@ -133,6 +129,18 @@ pub fn dump<'a>(
     )?;
 
     Ok(())
+}
+
+/// Check whether a policyset passes validation
+fn passes_validation(schema: &SchemaFragment, policies: &PolicySet) -> bool {
+    if let Ok(schema) = ValidatorSchema::try_from(schema.clone()) {
+        let validator = Validator::new(schema);
+        validator
+            .validate(policies, ValidationMode::default())
+            .validation_passed()
+    } else {
+        false
+    }
 }
 
 /// Dump the entity uid to a string if it is specified, otherwise return `None`,

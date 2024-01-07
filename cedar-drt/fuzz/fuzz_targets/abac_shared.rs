@@ -24,7 +24,6 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use serde::Serialize;
@@ -106,13 +105,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-/// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
-    validator
-        .validate(policyset, ValidationMode::default())
-        .validation_passed()
-}
-
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
 // `def_impl` is a custom implementation to test against `cedar-policy`.
 pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
@@ -136,20 +128,11 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
             responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-            let passes_validation = {
-                if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
-                    let validator = Validator::new(schema);
-                    passes_validation(&validator, &policyset)
-                } else {
-                    false
-                }
-            };
             let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
             dump(
                 dump_dir,
                 &test_name,
                 &input.schema.into(),
-                passes_validation,
                 &policyset,
                 &entities,
                 std::iter::zip(requests.iter(), responses.iter()),

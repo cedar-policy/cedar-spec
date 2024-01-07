@@ -29,6 +29,11 @@ The table below lists all available fuzz targets, including which component of t
 If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable.
 The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
 
+## Generating corpus tests
+
+When using the `abac` or `abac-type-directed` targets, you can set `DUMP_TEST_DIR` and `DUMP_TEST_NAME` to have the fuzzer write out inputs in the format used by our [integration tests](https://github.com/cedar-policy/cedar/tree/main/cedar-integration-tests).
+The `create_corpus.sh` script will run the fuzzer for a set amount of time (currently 15min), and then write the (minimized) corpus inputs into the `corpus_tests/` folder using the integration test format.
+You can control parameters (timeout and target) using the variables at the top of the script. 
 
 ## Debugging build failures
 

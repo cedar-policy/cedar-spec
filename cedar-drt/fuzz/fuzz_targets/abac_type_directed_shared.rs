@@ -115,7 +115,15 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
-    for request in input.requests.into_iter().map(Into::into) {
+
+    let requests = input
+        .requests
+        .into_iter()
+        .map(Into::into)
+        .collect::<Vec<_>>();
+    let mut responses = Vec::with_capacity(requests.len());
+
+    for request in requests.iter().cloned() {
         debug!("Request : {request}");
         let (rust_res, total_dur) =
             time_function(|| run_auth_test(def_impl, request, &policyset, &input.entities));
@@ -134,5 +142,20 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
                 .collect::<Vec<String>>(),
             Vec::<String>::new()
         );
+
+        responses.push(rust_res);
+    }
+
+    if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+        let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
+        dump(
+            dump_dir,
+            &test_name,
+            &input.schema.into(),
+            &policyset,
+            &input.entities,
+            std::iter::zip(requests.iter(), responses.iter()),
+        )
+        .expect("failed to dump test case");
     }
 }
