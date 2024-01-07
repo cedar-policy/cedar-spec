@@ -38,10 +38,10 @@ use lean_sys::{
     lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world,
     lean_string_cstr,
 };
+use log::info;
 use serde::Deserialize;
 use std::ffi::CStr;
 use std::str::FromStr;
-use log::info;
 
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Std", kind = "static")]
