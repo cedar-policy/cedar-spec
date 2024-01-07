@@ -55,9 +55,6 @@ def empty {α β} : Map α β := .mk []
 def keys {α β} (m : Map α β) : Set α :=
   Set.mk (m.kvs.map Prod.fst) -- well-formed by construction
 
-def values {α β} (m : Map α β) : Set β :=
-  Set.mk (m.kvs.map Prod.snd)
-
 /-- Returns the binding for `k` in `m`, if any. -/
 def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
   match m.kvs.find? (fun ⟨k', _⟩ => k' == k) with
