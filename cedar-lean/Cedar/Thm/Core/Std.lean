@@ -103,7 +103,6 @@ theorem List.foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ 
     simp [h₂, h₄] at h₅
     cases h₆ : f x₁ hd <;> simp [h₆] at h₅
     rename_i x₅
-    simp only [Option.bind_some_fun]
     rcases (List.foldlM_of_assoc_some f x₂ hd x₄ x₃ tl h₁ h₄ h₃) with h₇
     cases h₈ : List.foldlM f hd tl <;> simp [h₈] at h₇
     rename_i x₆

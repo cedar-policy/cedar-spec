@@ -318,11 +318,7 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
         apply h₅ rty₁' rty₃' <;> rfl
       all_goals {
         rename_i ety₁ ety₂ ety₃
-        split at h₁ <;> try contradiction
-        split at h₂ <;> try contradiction
-        simp at h₂
-        subst h₂
-        contradiction
+        rw [h₁] at h₆ ; contradiction
       }
 
 theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)} :
@@ -581,7 +577,6 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
           cases h₈ : lubRecordType tl rty₂' <;> simp [h₈] at h₁
           rcases (lubRecordType_assoc_none_some h₈ h₅) with h₉
           simp [h₉]
-          cases h₁₀ : lubQualifiedType hd.snd qty₁ <;> simp [h₁₀]
       case neg =>
         unfold lubRecordType
         simp [h₆]
@@ -634,10 +629,10 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
     subst h₁ h₂
     simp [lub?]
   case entity | ext =>
-    split at h₁ <;> simp at h₁
-    split at h₂ <;> simp at h₂
-    subst h₁ h₂ ; rename_i h₁ h₂
-    simp [lub?, h₁, h₂]
+    rcases h₁ with ⟨h₀, h₁⟩
+    rcases h₂ with ⟨h₂, h₃⟩
+    subst h₀ h₁ h₂ h₃
+    simp [lub?]
   case set sty₁ sty₂ sty₃ =>
     cases h₃ : sty₁ ⊔ sty₂ <;> simp [h₃] at h₁
     cases h₄ : sty₂ ⊔ sty₃ <;> simp [h₄] at h₂

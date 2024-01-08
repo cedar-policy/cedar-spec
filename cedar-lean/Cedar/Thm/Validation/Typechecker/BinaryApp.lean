@@ -440,10 +440,9 @@ theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts :
   cases h₂ : entityUID? x <;> simp [h₂] at h₁
   replace h₂ := entityUID?_some_implies_entity_lit h₂
   rename_i euid'
-  split at h₁ <;> simp at h₁
-  subst h₁
-  rename_i h₃
-  simp [h₂, h₃]
+  rcases h₁ with ⟨h₀, h₁⟩
+  subst h₀
+  simp [h₁, h₂]
 
 theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
   (h₁ : entityUIDs? x = some euids) :
@@ -455,9 +454,6 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
   cases euids
   case nil =>
     cases hxs : xs <;> subst xs <;> simp at *
-    rename_i hd' tl'
-    cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
-    cases h₃ : List.mapM' entityUID? tl' <;> simp [h₃, pure, Except.pure] at h₁
   case cons hd tl =>
     cases hxs : xs <;> subst xs <;> simp [pure, Except.pure] at *
     rename_i hd' tl'
