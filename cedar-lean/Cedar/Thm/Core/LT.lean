@@ -123,7 +123,10 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
       simp at *
       rename_i a₁ _ a₂ _ p₁ _ p₂ _
       apply IPNet.lt_conn
-      intro h₂ ; simp [h₂] at h₁ ; exact h₁
+      intro h₂
+      simp [UInt32.toNat] at h₂
+      simp [h₂] at h₁
+      exact h₁
     case V6 a₁ p₁ a₂ p₂ =>
       cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
       simp at *
