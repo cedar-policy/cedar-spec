@@ -1846,14 +1846,12 @@ impl<'a> ExprGenerator<'a> {
             }
             Type::Long => {
                 // the only valid long-typed attribute value is an int literal
-                Ok(Value::from(
-                    self.constant_pool.arbitrary_int_constant(u)?
-                ))
+                Ok(Value::from(self.constant_pool.arbitrary_int_constant(u)?))
             }
             Type::String => {
                 // the only valid string-typed attribute value is a string literal
                 Ok(Value::from(
-                    self.constant_pool.arbitrary_string_constant(u)?
+                    self.constant_pool.arbitrary_string_constant(u)?,
                 ))
             }
             Type::Entity => {
