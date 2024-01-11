@@ -208,35 +208,24 @@ instance Bool.strictLT : StrictLT Bool where
 instance Nat.strictLT : StrictLT Nat where
   asymmetric a b   := Nat.lt_asymm
   transitive a b c := Nat.lt_trans
-  connected  a b   := by
-    intro h₁
-    rcases (Nat.lt_trichotomy a b) with h₂
-    simp [h₁] at h₂
-    exact h₂
+  connected  a b   := by omega
 
 instance Int.strictLT : StrictLT Int where
-  asymmetric a b   := by
-    intro h₁
-    rw [Int.not_lt]
-    rw [Int.lt_iff_le_not_le] at h₁
-    simp [h₁]
+  asymmetric a b   := by omega
   transitive a b c := Int.lt_trans
-  connected  a b   := by
-    intro h₁
-    rcases (Int.lt_trichotomy a b) with h₂
-    simp [h₁] at h₂
-    exact h₂
+  connected  a b   := by omega
+
+theorem UInt32.lt_iff {x y : UInt32} : x < y ↔ x.1.1 < y.1.1 := by
+  cases x; cases y; simp [LT.lt]
+theorem UInt32.ext_iff {x y : UInt32} : x = y ↔ x.1.1 = y.1.1 :=
+  ⟨by simp_all, UInt32.ext⟩
 
 instance UInt32.strictLT : StrictLT UInt32 where
   asymmetric a b   := by apply Nat.strictLT.asymmetric
   transitive a b c := by apply Nat.strictLT.transitive
   connected  a b   := by
-    intro h₁
-    apply Nat.strictLT.connected
-    by_contra h₂
-    have h₃ : a.val = b.val := by apply Fin.eq_of_val_eq; exact h₂
-    have h₄ : a = b := by apply congrArg mk h₃
-    contradiction
+    simp [UInt32.lt_iff, UInt32.ext_iff]
+    omega
 
 instance Char.strictLT : StrictLT Char where
   asymmetric a b   := by apply UInt32.strictLT.asymmetric

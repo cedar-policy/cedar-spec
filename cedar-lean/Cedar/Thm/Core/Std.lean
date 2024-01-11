@@ -52,11 +52,7 @@ functions.
 
 theorem Nat.lt_add_of_one_and_other (n m : Nat) :
   n < 1 + m + n
-:= by
-  rw [Nat.add_comm]
-  apply Nat.lt_add_of_pos_right
-  apply Nat.add_pos_left
-  apply Nat.one_pos
+:= by omega
 
 -- List.mapM lemmas
 

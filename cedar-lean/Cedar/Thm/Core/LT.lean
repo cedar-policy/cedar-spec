@@ -40,49 +40,18 @@ end Decide
 
 theorem IPNet.lt_asymm {a₁ a₂ p₁ p₂ : Nat} :
   a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂ → ¬(a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁)
-:= by
-  intro h₁
-  rcases h₁ with h₁ | h₁ <;> by_contra h₂
-  case inl =>
-    rcases h₂ with h₂ | h₂
-    case inl =>
-      rcases (Nat.lt_asymm h₁) with h₂
-      contradiction
-    case inr =>
-      rcases (StrictLT.not_eq a₁ a₂ h₁) with h₃
-      rw [eq_comm] at h₃
-      simp [h₃] at h₂
-  case inr =>
-    simp [h₁] at h₂
-    rcases h₁ with ⟨_, h₁⟩
-    rcases (Nat.lt_asymm h₁) with h₃
-    contradiction
+:= by omega
 
 theorem IPNet.lt_trans {a₁ a₂ a₃ p₁ p₂ p₃ : Nat}
   (h₁ : a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂)
   (h₂ : a₂ < a₃ ∨ a₂ = a₃ ∧ p₂ < p₃) :
   a₁ < a₃ ∨ a₁ = a₃ ∧ p₁ < p₃
-:= by
-  rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  case inl.inl =>
-    rcases (Nat.lt_trans h₁ h₂) with h₃ ; simp [h₃]
-  case inl.inr =>
-    rcases h₂ with ⟨h₂, _⟩ ; subst h₂ ; simp [h₁]
-  case inr.inl =>
-    rcases h₁ with ⟨h₁, _⟩ ; subst h₁ ; simp [h₂]
-  case inr.inr =>
-    rcases h₁ with ⟨hl₁, h₁⟩ ; subst hl₁
-    rcases h₂ with ⟨hl₂, h₂⟩ ; subst hl₂
-    rcases (Nat.lt_trans h₁ h₂) with h₃ ; simp [h₃]
+:= by omega
 
 theorem IPNet.lt_conn {a₁ a₂ p₁ p₂ : Nat}
   (h₁ : a₁ = a₂ → ¬p₁ = p₂) :
   (a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂) ∨ a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁
-:= by
-  rcases (Nat.lt_trichotomy a₁ a₂) with h₂
-  rcases h₂ with h₂ | h₂ | h₂ <;> simp [h₂]
-  simp [h₂] at h₁
-  apply Nat.strictLT.connected ; simp [h₁]
+:= by omega
 
 instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
   asymmetric a b   := by
