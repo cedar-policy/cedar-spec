@@ -14,7 +14,6 @@ use cedar_policy_core::ast;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 /// Struct for generating expressions
 #[derive(Debug)]
@@ -1843,29 +1842,27 @@ impl<'a> ExprGenerator<'a> {
             Type::Bool => {
                 // the only valid bool-typed attribute value is a bool literal
                 let b: bool = u.arbitrary()?;
-                Ok(Value::Lit(b.into()))
+                Ok(Value::from(b))
             }
             Type::Long => {
                 // the only valid long-typed attribute value is an int literal
-                Ok(Value::Lit(
-                    self.constant_pool.arbitrary_int_constant(u)?.into(),
-                ))
+                Ok(Value::from(self.constant_pool.arbitrary_int_constant(u)?))
             }
             Type::String => {
                 // the only valid string-typed attribute value is a string literal
-                Ok(Value::Lit(
-                    self.constant_pool.arbitrary_string_constant(u)?.into(),
+                Ok(Value::from(
+                    self.constant_pool.arbitrary_string_constant(u)?,
                 ))
             }
             Type::Entity => {
                 // the only valid entity-typed attribute value is a UID literal
-                Ok(Value::Lit(self.generate_uid(u)?.into()))
+                Ok(Value::from(self.generate_uid(u)?))
             }
             Type::Set(target_element_ty) => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
-                    Ok(Value::empty_set())
+                    Ok(Value::empty_set(None))
                 } else {
                     let mut l = Vec::new();
                     let target_element_ty = match target_element_ty {
@@ -1886,14 +1883,14 @@ impl<'a> ExprGenerator<'a> {
                         )?);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
-                    Ok(Value::set(l))
+                    Ok(Value::set(l, None))
                 }
             }
             Type::Record => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty record
-                    Ok(Value::empty_record())
+                    Ok(Value::empty_record(None))
                 } else {
                     let mut r = HashMap::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
@@ -1903,8 +1900,7 @@ impl<'a> ExprGenerator<'a> {
                         r.insert(attr_name, attr_val);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
-                    let map: BTreeMap<_, _> = r.into_iter().collect();
-                    Ok(Value::Record(Arc::new(map)))
+                    Ok(Value::record(r, None))
                 }
             }
             _ => Err(Error::ExtensionsDisabled),
@@ -1946,14 +1942,14 @@ impl<'a> ExprGenerator<'a> {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
-                    Ok(Value::empty_set())
+                    Ok(Value::empty_set(None))
                 } else {
                     let mut l = Vec::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         l.push(self.generate_value_for_schematype(element_ty, max_depth - 1, u)?);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
-                    Ok(Value::set(l))
+                    Ok(Value::set(l, None))
                 }
             }
             SchemaType::Type(SchemaTypeVariant::Record {
@@ -2000,8 +1996,7 @@ impl<'a> ExprGenerator<'a> {
                             );
                         }
                     }
-                    let m: BTreeMap<_, _> = r.into_iter().collect();
-                    Ok(Value::Record(Arc::new(m)))
+                    Ok(Value::record(r, None))
                 }
             }
             SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
@@ -2014,7 +2009,7 @@ impl<'a> ExprGenerator<'a> {
                 let entity_type_name =
                     parse_name_with_default_namespace(self.schema.namespace(), name);
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
-                Ok(Value::Lit(euid.into()))
+                Ok(Value::from(euid))
             }
             _ => Err(Error::ExtensionsDisabled),
         }
