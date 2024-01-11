@@ -87,7 +87,7 @@ pub fn dump<'a>(
             schema: &schema_filename,
             policies: &policies_filename,
             entities: &entities_filename,
-            should_validate: passes_validation(schema, policies),
+            should_validate: passes_validation(schema.clone(), policies),
             queries: requests
                 .into_iter()
                 .enumerate()
@@ -121,7 +121,7 @@ pub fn dump<'a>(
                         .diagnostics
                         .errors
                         .iter()
-                        .map(ToString::to_string)
+                        .map(|e| e.id)
                         .collect(),
                 })
                 .collect(),
@@ -132,8 +132,8 @@ pub fn dump<'a>(
 }
 
 /// Check whether a policyset passes validation
-fn passes_validation(schema: &SchemaFragment, policies: &PolicySet) -> bool {
-    if let Ok(schema) = ValidatorSchema::try_from(schema.clone()) {
+fn passes_validation(schema: SchemaFragment, policies: &PolicySet) -> bool {
+    if let Ok(schema) = ValidatorSchema::try_from(schema) {
         let validator = Validator::new(schema);
         validator
             .validate(policies, ValidationMode::default())
@@ -156,6 +156,7 @@ fn dump_request_var(var: &EntityUIDEntry) -> Option<String> {
 }
 
 /// Serde format for an integration test case
+// TODO (#191): Unify with `JsonTest` type from `cedar-policy::integration_testing`
 #[derive(Debug, Clone, Serialize)]
 struct IntegrationTestCase<'a> {
     /// Schema filename
@@ -172,6 +173,7 @@ struct IntegrationTestCase<'a> {
 }
 
 /// Serde format for an integration request
+// TODO (#191): Unify with `JsonRequest` type from `cedar-policy::integration_testing`
 #[derive(Debug, Clone, Serialize)]
 struct IntegrationRequest<'a> {
     /// Description of the behavior that we're testing/expecting.
@@ -190,6 +192,6 @@ struct IntegrationRequest<'a> {
     decision: Decision,
     /// Reasons
     reasons: &'a std::collections::HashSet<PolicyID>,
-    /// Errors
-    errors: Vec<String>,
+    /// List of policies that are expected to return errors
+    errors: &'a std::collections::HashSet<PolicyID>,
 }
