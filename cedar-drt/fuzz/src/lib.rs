@@ -211,15 +211,18 @@ fn test_run_auth_test() {
 
     let java_def_engine =
         JavaDefinitionalEngine::new().expect("failed to create definitional engine");
-    let principal = ast::EntityUIDEntry::Known(std::sync::Arc::new(
-        EntityUID::with_eid_and_type("User", "alice").unwrap(),
-    ));
-    let action = ast::EntityUIDEntry::Known(std::sync::Arc::new(
-        EntityUID::with_eid_and_type("Action", "view").unwrap(),
-    ));
-    let resource = ast::EntityUIDEntry::Known(std::sync::Arc::new(
-        EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
-    ));
+    let principal = ast::EntityUIDEntry::Known {
+        euid: std::sync::Arc::new(EntityUID::with_eid_and_type("User", "alice").unwrap()),
+        loc: None,
+    };
+    let action = ast::EntityUIDEntry::Known {
+        euid: std::sync::Arc::new(EntityUID::with_eid_and_type("Action", "view").unwrap()),
+        loc: None,
+    };
+    let resource = ast::EntityUIDEntry::Known {
+        euid: std::sync::Arc::new(EntityUID::with_eid_and_type("Photo", "vacation").unwrap()),
+        loc: None,
+    };
     let query = ast::Request::new_with_unknowns(
         principal,
         action,
