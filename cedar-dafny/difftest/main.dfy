@@ -296,11 +296,11 @@ module difftest.main {
   // field that is either a "known" EntityUID or "unknown" (for partial
   // evaluation). We currently don't support partial evaluation, so we just
   // translate the "known" variant to an EntityUID.
-  const entityUIDEntryFromProdJson :=
-    sumDeserializer(map["Known" := entityUIDFromProdJson])
-
   function getEntityUIDEntryField(request: Json, f: string): FromProdResult<EntityUID> {
-    deserializeField(request, f, entityUIDEntryFromProdJson)
+    var json :- getJsonField(request, f);
+    var known :- getJsonField(json, "Known");
+    var euid :- getJsonField(known, "euid");
+    entityUIDFromProdJson(euid)
   }
 
   const entityEntryFromProdJson :=

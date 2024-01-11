@@ -139,70 +139,43 @@ deriving instance Repr, Inhabited for Value
 
 mutual
 
-def decValue (a b : Value) : Decidable (a = b) := by
-  cases a <;> cases b
-  case prim.prim pa pb => exact match decEq pa pb with
+def decValue (v₁ v₂ : Value) : Decidable (v₁ = v₂) := by
+  cases v₁ <;> cases v₂ <;>
+  try { apply isFalse ; intro h ; injection h }
+  case prim.prim w₁ w₂ | ext.ext w₁ w₂ =>
+    exact match decEq w₁ w₂ with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case set.set sa sb => exact match decValueSet sa sb with
+  case set.set s₁ s₂ =>
+    cases s₁ ; cases s₂ ; rename_i s₁ s₂
+    exact match decValueList s₁ s₂ with
     | isTrue h => isTrue (by rw [h])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case record.record ra rb => exact match decValueRecord ra rb with
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
+  case record.record r₁ r₂ =>
+    cases r₁ ; cases r₂ ; rename_i r₁ r₂
+    exact match decProdAttrValueList r₁ r₂ with
     | isTrue h => isTrue (by rw [h])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case ext.ext xa xb => exact match decEq xa xb with
-    | isTrue h => isTrue (by rw [h])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  all_goals {
-    apply isFalse
-    intro h
-    injection h
-  }
+    | isFalse h₁ => isFalse (by intro h₂; simp [h₁] at h₂)
 
-def decValueList (as bs : List Value) : Decidable (as = bs) :=
-  match as, bs with
+def decValueList (vs₁ vs₂ : List Value) : Decidable (vs₁ = vs₂) :=
+  match vs₁, vs₂ with
   | [], [] => isTrue rfl
-  | _::_, [] => isFalse (by intro; contradiction)
-  | [], _::_ => isFalse (by intro; contradiction)
-  | a::as, b::bs =>
-    match decValue a b with
-    | isTrue h₁ => match decValueList as bs with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | v₁ :: vs₁, v₂ :: vs₂ =>
+    match decValue v₁ v₂, decValueList vs₁ vs₂ with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _ , _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrValue (as bs : Attr × Value) : Decidable (as = bs) :=
-  match as, bs with
-  | (a1, a2), (b1, b2) => match decEq a1 b1 with
-    | isTrue h₀ => match decValue a2 b2 with
-      | isTrue h₁ => isTrue (by rw [h₀, h₁])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-
-def decProdAttrValueList (as bs : List (Attr × Value)) : Decidable (as = bs) :=
-  match as, bs with
+def decProdAttrValueList (avs₁ avs₂ : List (Attr × Value)) : Decidable (avs₁ = avs₂):=
+  match avs₁, avs₂ with
   | [], [] => isTrue rfl
-  | _::_, [] => isFalse (by intro; contradiction)
-  | [], _::_ => isFalse (by intro; contradiction)
-  | a::as, b::bs =>
-    match decProdAttrValue a b with
-    | isTrue h₁ => match decProdAttrValueList as bs with
-      | isTrue h₂ => isTrue (by rw [h₁, h₂])
-      | isFalse _ => isFalse (by intro h; injection h; contradiction)
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | (a₁, v₁) :: vs₁, (a₂, v₂) :: vs₂ =>
+    match decEq a₁ a₂, decValue v₁ v₂, decProdAttrValueList vs₁ vs₂ with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
+      isFalse (by simp; intros; first | contradiction | assumption)
 
-def decValueSet (a b : Set Value) : Decidable (a = b) := by
-  match a, b with
-  | .mk la, .mk lb => exact match decValueList la lb with
-    | isTrue h => isTrue (by rw [h])
-    | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  done
-
-def decValueRecord (as bs : Map Attr Value) : Decidable (as = bs) := by
-  match as, bs with
-  | .mk ma, .mk mb => exact match decProdAttrValueList ma mb with
-  | isTrue h => isTrue (by rw [h])
-  | isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
 instance : DecidableEq Value :=
@@ -227,29 +200,29 @@ instance EntityUID.decLt (a b : EntityUID) : Decidable (a < b) :=
   if h : EntityUID.lt a b then isTrue h else isFalse h
 
 def Prim.lt : Prim → Prim → Bool
-  | .bool nb, .bool mb => nb < mb
-  | .int ni, .int mi => ni < mi
-  | .string ns, .string ms => ns < ms
-  | .entityUID nuid, .entityUID muid => nuid < muid
+  | .bool b₁, .bool b₂ => b₁ < b₂
+  | .int i₁, .int i₂ => i₁ < i₂
+  | .string s₁, .string s₂ => s₁ < s₂
+  | .entityUID uid₁, .entityUID uid₂ => uid₁ < uid₂
   | .bool _, .int _ => true
   | .bool _, .string _ => true
   | .bool _, .entityUID _ => true
   | .int _, .string _ => true
   | .int _, .entityUID _ => true
   | .string _, .entityUID _ => true
-  | _,_ => false
+  | _, _ => false
 
 instance : LT Prim where
-lt := fun x y => Prim.lt x y
+  lt := fun x y => Prim.lt x y
 
 instance Prim.decLt (a b : Prim) : Decidable (a < b) :=
-if  h : Prim.lt a b then isTrue h else isFalse h
+  if h : Prim.lt a b then isTrue h else isFalse h
 
 mutual
 def Value.lt : Value → Value → Bool
-  | .prim x, .prim y => x < y
-  | .set (.mk lx), .set (.mk ly) => Values.lt lx ly lx.length
-  | .record (.mk lx), .record (.mk ly) => ValueAttrs.lt lx ly lx.length
+  | .prim p₁, .prim p₂ => p₁ < p₂
+  | .set (.mk vs₁), .set (.mk vs₂) => Values.lt vs₁ vs₂
+  | .record (.mk avs₁), .record (.mk avs₂) => ValueAttrs.lt avs₁ avs₂
   | .ext x, .ext y => x < y
   | .prim _, .set _ => true
   | .prim _, .record _ => true
@@ -264,31 +237,25 @@ def Value.lt : Value → Value → Bool
   | .ext _, .set _ => false
   | .ext _, .record _ => false
 
-def Values.lt (n m : List Value) (i : Nat): Bool :=
-  match n, m with
+def Values.lt : List Value → List Value → Bool
   | [], [] => false
   | [], _ => true
   | _, [] => false
-  | n::ns, m::ms => Value.lt n m || (n = m && Values.lt ns ms (i-1))
+  | v₁ :: vs₁, v₂ :: vs₂ => Value.lt v₁ v₂ || (v₁ = v₂ && Values.lt vs₁ vs₂)
 
-def ValueAttrs.lt (n m : List (Attr × Value)) (i : Nat) : Bool :=
-  match n, m with
+def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
   | [], [] => false
   | [], _ => true
   | _, [] => false
-  | (na, nv)::ns, (ma, mv)::ms =>
-    na < ma || (na = ma && Value.lt nv mv) ||
-    (na = ma && nv = mv && ValueAttrs.lt ns ms (i-1))
+  | (a₁, v₁) :: avs₁, (a₂, v₂) :: avs₂ =>
+    a₁ < a₂ || (a₁ = a₂ && Value.lt v₁ v₂) ||
+    (a₁ = a₂ && v₁ = v₂ && ValueAttrs.lt avs₁ avs₂)
 end
-termination_by
-Value.lt as₁ as₂ => (sizeOf as₁, 0)
-Values.lt as₁ as₂ i => (sizeOf as₁, as₁.length - i)
-ValueAttrs.lt as₁ as₂ i => (sizeOf as₁, as₁.length - i)
 
 instance : LT Value where
   lt := fun x y => Value.lt x y
 
-instance Value.decLt (n m : Value) : Decidable (n < m) :=
-if h : Value.lt n m then isTrue h else isFalse h
+instance Value.decLt (a b : Value) : Decidable (a < b) :=
+  if h : Value.lt a b then isTrue h else isFalse h
 
 end Cedar.Spec

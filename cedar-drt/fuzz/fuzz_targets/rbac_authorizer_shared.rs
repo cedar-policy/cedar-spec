@@ -101,9 +101,9 @@ pub fn fuzz(input: AuthorizerInputAbstractEvaluator, def_impl: &impl CedarTestIm
     assert_eq!(policyset.policies().count(), input.policies.len());
     let entities = Entities::new();
     let request = ast::Request::new(
-        "User::\"alice\"".parse().expect("should be valid"),
-        "Action::\"read\"".parse().expect("should be valid"),
-        "Resource::\"foo\"".parse().expect("should be valid"),
+        ("User::\"alice\"".parse().expect("should be valid"), None),
+        ("Action::\"read\"".parse().expect("should be valid"), None),
+        ("Resource::\"foo\"".parse().expect("should be valid"), None),
         ast::Context::empty(),
         None::<&ast::RequestSchemaAllPass>,
         Extensions::none(),

@@ -64,8 +64,7 @@ theorem isAuthorized_eq_for_sound_policy_slice (req : Request) (entities : Entit
     satisfiedPolicies_eq_for_sound_policy_slice .forbid req entities slice policies h₀.left h₀.right
   have hp : satisfiedPolicies .permit slice req entities = satisfiedPolicies .permit policies req entities :=
     satisfiedPolicies_eq_for_sound_policy_slice .permit req entities slice policies h₀.left h₀.right
-  unfold isAuthorized
-  simp [hf, hp]
+  simp [isAuthorized, hf, hp]
 
 /--
 A policy bound consists of optional `principal` and `resource` entities.
@@ -124,10 +123,8 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
   unfold BoundAnalysis.slice
   apply And.intro
   case left =>
-    simp [List.subset_def]
-    intro _ h₂
-    rw [List.mem_filter] at h₂
-    simp [h₂]
+    intro p _
+    simp_all only [List.mem_filter]
   case right =>
     intro policy
     specialize h₁ policy
@@ -166,12 +163,12 @@ theorem scope_bound_is_sound (policy : Policy) :
     generalize h₂ : policy.principalScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_principal_scope h₁ <;>
-    unfold Scope.bound <;> simp [h₂]
+    simp [Scope.bound, h₂]
   case right =>
     generalize h₂ : policy.resourceScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_resource_scope h₁ <;>
-    unfold Scope.bound <;> simp [h₂]
+    simp [Scope.bound, h₂]
 
 /--
 Scope-based bound analysis is sound.
@@ -179,8 +176,7 @@ Scope-based bound analysis is sound.
 theorem scope_analysis_is_sound :
   IsSoundBoundAnalysis scopeAnalysis
 := by
-  unfold IsSoundBoundAnalysis
-  apply scope_bound_is_sound
+  simp [IsSoundBoundAnalysis, scope_bound_is_sound]
 
 /--
 Scope-based slicing is sound: `isAuthorized` produces the same result for a

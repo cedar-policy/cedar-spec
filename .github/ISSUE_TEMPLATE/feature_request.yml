@@ -15,6 +15,7 @@ body:
       multiple: true
       options:
         - Dafny formalization
+        - Lean formalization
         - DRT target(s)
         - DRT generator(s)
         - DRT infrastructure
