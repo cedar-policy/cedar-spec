@@ -22,7 +22,7 @@ use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast::{self, PolicySet};
 use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::custom_schema::to_json_schema::custom_schema_to_json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 
@@ -79,7 +79,7 @@ fn round_trip(s: &Schema, ps: &PolicySet) -> Result<()> {
     let custom_schema_ast =
         cedar_policy_validator::custom_schema::parser::parse_schema(&custom_schema_string)
             .context("parsing")?;
-    let new_json_schema: SchemaFragment = custom_schema_ast.try_into().context("translation")?;
+    let (new_json_schema, _) = custom_schema_to_json_schema(custom_schema_ast).context("translation")?;
     let old_validator = s.try_into().map(Validator::new);
     let new_validator = new_json_schema.try_into().map(Validator::new);
     assert_eq!(
