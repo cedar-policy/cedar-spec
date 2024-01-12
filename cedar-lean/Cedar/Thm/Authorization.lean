@@ -95,7 +95,8 @@ theorem order_and_dup_independent (request : Request) (entities : Entities) (pol
   intro h
   have hf := satisfiedPolicies_order_and_dup_independent forbid request entities policies₁ policies₂ h
   have hp := satisfiedPolicies_order_and_dup_independent permit request entities policies₁ policies₂ h
+  have he := errorPolicies_order_and_dup_independent request entities policies₁ policies₂ h
   unfold isAuthorized
-  simp [hf, hp]
+  simp [hf, hp, he]
 
 end Cedar.Thm

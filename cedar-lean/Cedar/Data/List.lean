@@ -76,7 +76,7 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
 def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=
   xs.pmap Subtype.mk
-  (λ x => by exact sizeOf_snd_lt_sizeOf_list)
+  (λ _ => sizeOf_snd_lt_sizeOf_list)
 
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
@@ -123,8 +123,8 @@ theorem Equiv.trans {a b c : List α} :
   simp
   intro h₁ h₂ h₃ h₄
   apply And.intro
-  case _ => apply List.Subset.trans h₁ h₃
-  case _ => apply List.Subset.trans h₄ h₂
+  case _ => exact List.Subset.trans h₁ h₃
+  case _ => exact List.Subset.trans h₄ h₂
 
 theorem cons_equiv_cons (x : α) (xs ys : List α) :
   xs ≡ ys → x :: xs ≡ x :: ys
@@ -149,6 +149,36 @@ theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
   apply And.intro
   all_goals { intro a h₁; simp [h₁] }
 
+theorem filter_equiv (f : α -> Bool) (xs ys : List α) :
+  xs ≡ ys → xs.filter f ≡ ys.filter f
+:= by
+  simp [List.Equiv, List.subset_def]
+  intros h₁ h₂
+  apply And.intro <;>
+  intro a h₃ <;>
+  simp [List.mem_filter] <;>
+  rw [List.mem_filter] at h₃
+  constructor
+  case _ => exact h₁ h₃.left
+  case _ => exact h₃.right
+  case _ =>
+    constructor
+    case _ => exact h₂ h₃.left
+    case _ => exact h₃.right
+
+theorem map_equiv (f : α → β) (xs ys : List α) :
+  xs ≡ ys → xs.map f ≡ ys.map f
+:= by
+  intro h
+  have ⟨a, b⟩ := h
+  apply And.intro <;> simp [List.subset_def] <;>
+  intro p h <;>
+  apply Exists.intro p <;>
+  rw [List.subset_def] at a b <;>
+  simp
+  case _ => exact a h
+  case _ => exact b h
+
 theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   xs ≡ ys → xs.filterMap f ≡ ys.filterMap f
 := by
@@ -158,8 +188,8 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   intro b a h₃ h₄ <;>
   apply Exists.intro a <;>
   simp [h₄]
-  apply h₁ h₃
-  apply h₂ h₃
+  case left => exact h₁ h₃
+  case right => exact h₂ h₃
 
 theorem tail_of_sorted_is_sorted {x : α} {xs : List α} [LT α] :
   Sorted (x :: xs) → Sorted xs
@@ -239,8 +269,8 @@ theorem if_strictly_sorted_equiv_then_tail_equiv [LT α] [StrictLT α] (x : α) 
   intro h₁ h₂ h₃
   rcases h₃ with ⟨h₃, h₄⟩
   apply And.intro
-  exact if_strictly_sorted_equiv_then_tail_subset x xs ys h₁ h₂ h₃
-  exact if_strictly_sorted_equiv_then_tail_subset x ys xs h₂ h₁ h₄
+  case _ => exact if_strictly_sorted_equiv_then_tail_subset x xs ys h₁ h₂ h₃
+  case _ => exact if_strictly_sorted_equiv_then_tail_subset x ys xs h₂ h₁ h₄
 
 theorem if_strictly_sorted_equiv_then_eq [LT α] [StrictLT α] (xs ys : List α) :
   Sorted xs → Sorted ys → xs ≡ ys → xs = ys
@@ -462,6 +492,13 @@ theorem if_equiv_strictLT_then_canonical [LT α] [StrictLT α] [DecidableLT α] 
   apply Equiv.trans h₃
   apply Equiv.symm
   exact h₁
+
+theorem canonicalize_id_idempotent [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
+  canonicalize id (canonicalize id xs) = canonicalize id xs
+:= by
+  apply if_equiv_strictLT_then_canonical
+  apply List.Equiv.symm
+  apply canonicalize_equiv
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
   List.Forall₂ (fun kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
