@@ -48,17 +48,18 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   simp [typeOfOr] at h₁
   split at h₁ <;> simp [ok, err] at h₁ <;>
   rename_i hr₁ <;> simp at hr₁ <;>
-  rcases hr₁ with ⟨ht₁, hc₁⟩
+  have ⟨ht₁, hc₁⟩ := hr₁
   case ok.h_1 c₁  =>
     exists BoolType.tt, c₁
-    rcases h₁ with ⟨ht, hc⟩
+    have ⟨ht, hc⟩ := h₁
     simp [←ht₁, ←hc₁, hc, ←ht]
   case ok.h_2 c₁ =>
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁
     rename_i bty₂ hr₂
-    rcases h₁ with ⟨ht, hc⟩ ; subst ht hc
+    have ⟨ht, hc⟩ := h₁
+    subst ht hc
     exists BoolType.ff, c₁
     simp [←ht₁, ←hc₁]
     exists bty₂
@@ -71,14 +72,14 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁ <;>
     rename_i hr₂ <;>
-    rcases h₁ with ⟨ht, hc⟩ <;> subst ht hc <;> simp
-    case h_1.intro =>
+    have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp
+    case anyBool.ok.h_1 =>
       exists BoolType.tt, res₂.snd
       simp [←hr₂]
-    case h_2.intro =>
+    case anyBool.ok.h_2 =>
       exists BoolType.ff, res₂.snd
       simp [←hr₂, ht₁, hc₁]
-    case h_3.intro bty₂ hneq₁ hneq₂ =>
+    case anyBool.ok.h_3 bty₂ hneq₁ hneq₂ =>
       exists bty₂, res₂.snd
       simp [←hr₂, ←ht₁, ←hc₁]
       cases bty₂ <;> simp at *
@@ -92,18 +93,18 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   GuardedCapabilitiesInvariant (Expr.or x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.or x₁ x₂) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_or_inversion h₃) with ⟨bty₁, rc₁, h₄, h₅⟩
+  have ⟨bty₁, rc₁, h₄, h₅⟩ := type_of_or_inversion h₃
   specialize ih₁ h₁ h₂ h₄
-  rcases ih₁ with ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩
-  rcases (instance_of_bool_is_bool ih₁₃) with ⟨b₁, hb₁⟩ ; subst hb₁
+  have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
+  have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃ ; subst hb₁
   split at h₅
   case inl h₆ =>
     subst h₆
-    rcases h₅ with ⟨hty, hc⟩ ; subst hty hc
+    have ⟨hty, hc⟩ := h₅ ; subst hty hc
     apply And.intro
     case left => exact empty_guarded_capabilities_invariant
     case right =>
-      rcases (instance_of_tt_is_true ih₁₃) with h₇
+      have h₇ := instance_of_tt_is_true ih₁₃
       simp at h₇ ; subst h₇
       simp [EvaluatesTo] at ih₁₂
       rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
@@ -111,10 +112,11 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       try exact type_is_inhabited (CedarType.bool BoolType.tt)
       exact true_is_instance_of_tt
   case inr =>
-    rcases h₅ with ⟨bty₂, rc₂, h₅, h₇⟩
-    specialize ih₂ h₁ h₂ h₅
-    rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
-    rcases (instance_of_bool_is_bool ih₂₃) with ⟨b₂, hb₂⟩ ; subst hb₂
+    have ⟨bty₂, rc₂, h₅', h₇⟩ := h₅
+    specialize ih₂ h₁ h₂ h₅'
+    have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
+    have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
+    subst hb₂
     simp [EvaluatesTo]
     cases b₁ <;>
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
@@ -128,20 +130,26 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
         cases bty₁ <;> simp at h₆ h₇
         case anyBool =>
           cases bty₂ <;> simp at h₇ <;>
-          rcases h₇ with ⟨h₇, _⟩ <;> subst h₇ <;>
+          have ⟨h₇, _⟩ := h₇ <;> subst h₇ <;>
           try exact bool_is_instance_of_anyBool false
           exact ih₂₃
-        case ff => rcases h₇ with ⟨h₇, _⟩ ; subst h₇ ; exact ih₂₃
+        case ff =>
+          rw [h₇.left]
+          exact ih₂₃
       case true h₆ =>
         cases bty₁ <;> cases bty₂ <;> simp at h₆ h₇ <;>
-        rcases h₇ with ⟨hty, hc⟩ <;> simp [hty, hc] at *
-        case ff.ff.intro => rcases ih₂₃ with ⟨_, _, ih₂₃⟩ ; simp [InstanceOfBoolType] at ih₂₃
-        case anyBool.ff.intro => rcases ih₂₃ with ⟨_, _, ih₂₃⟩ ; simp [InstanceOfBoolType] at ih₂₃
-        case anyBool.tt.intro =>
+        have ⟨hty, hc⟩ := h₇ <;> simp [hty, hc] at *
+        case ff.ff =>
+          rcases ih₂₃ with ⟨_, _, ih₂₃⟩
+          simp [InstanceOfBoolType] at ih₂₃
+        case anyBool.ff =>
+          rcases ih₂₃ with ⟨_, _, ih₂₃⟩
+          simp [InstanceOfBoolType] at ih₂₃
+        case anyBool.tt =>
           apply And.intro
           case left => apply empty_capabilities_invariant
           case right => apply true_is_instance_of_tt
-        case anyBool.anyBool.intro =>
+        case anyBool.anyBool =>
           apply And.intro
           case left =>
             simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
@@ -159,10 +167,11 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       simp [GuardedCapabilitiesInvariant] at ih₁₁ ih₂₁
       simp [ih₁₂] at ih₁₁ ; simp [ih₂₂] at ih₂₁
       rename_i h₆
-      rcases ih₁₃ with ⟨_, _, ih₁₃⟩ ; simp [InstanceOfBoolType] at ih₁₃
+      rcases ih₁₃ with ⟨_, _, ih₁₃⟩
+      simp [InstanceOfBoolType] at ih₁₃
       cases bty₁ <;> simp at h₆ ih₁₃ h₇
       cases bty₂ <;> simp at h₇ <;>
-      rcases h₇ with ⟨ht, hc⟩ <;> simp [ht, hc] at * <;>
+      have ⟨ht, hc⟩ := h₇ <;> simp [ht, hc] at * <;>
       simp [true_is_instance_of_tt, bool_is_instance_of_anyBool] <;>
       try { apply empty_capabilities_invariant } <;>
       try { assumption }

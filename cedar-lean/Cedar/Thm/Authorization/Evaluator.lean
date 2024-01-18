@@ -53,7 +53,7 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
   evaluate e₂ request entities = .ok true
 := by
   intro h₁
-  rcases (and_true_implies_left_true h₁) with h₂
+  have h₂ := and_true_implies_left_true h₁
   simp [evaluate, h₂, Result.as, Coe.coe, Value.asBool] at h₁
   generalize h₃ : (evaluate e₂ request entities) = r₂
   simp [h₃] at h₁

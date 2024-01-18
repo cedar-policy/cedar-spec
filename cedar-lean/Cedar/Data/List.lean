@@ -131,7 +131,7 @@ theorem cons_equiv_cons (x : α) (xs ys : List α) :
 := by
   unfold List.Equiv
   intro h₁
-  rcases h₁ with ⟨h₁, h₂⟩
+  have ⟨h₁, h₂⟩ := h₁
   apply And.intro
   all_goals {
     apply List.cons_subset_cons; assumption
@@ -197,16 +197,16 @@ theorem if_strictly_sorted_equiv_then_head_eq [LT α] [StrictLT α] (x y : α) (
 := by
   intro h₁ h₂
   unfold List.Equiv; intro h₃
-  rcases h₃ with ⟨h₃, h₄⟩
+  have ⟨h₃, h₄⟩ := h₃
   simp at h₃; simp at h₄
-  rcases h₃ with ⟨h₃, _⟩
-  rcases h₄ with ⟨h₄, _⟩
+  have ⟨h₃, _⟩ := h₃
+  have ⟨h₄, _⟩ := h₄
   cases h₃ <;> cases h₄ <;> try { assumption }
-  case intro _ h₅ => simp [h₅]
-  case intro h₅ h₆ =>
-    rcases (if_strictly_sorted_then_head_lt_tail x xs h₁ y h₆) with hc₁
-    rcases (if_strictly_sorted_then_head_lt_tail y ys h₂ x h₅) with hc₂
-    rcases (StrictLT.asymmetric x y hc₁) with hc₃
+  case _ _ h₅ => simp [h₅]
+  case _ h₅ h₆ =>
+    have hc₁ := if_strictly_sorted_then_head_lt_tail x xs h₁ y h₆
+    have hc₂ := if_strictly_sorted_then_head_lt_tail y ys h₂ x h₅
+    have hc₃ := StrictLT.asymmetric x y hc₁
     contradiction
 
 theorem if_strictly_sorted_equiv_then_tail_subset [LT α] [StrictLT α] (x : α) (xs ys : List α) :
@@ -225,8 +225,8 @@ theorem if_strictly_sorted_equiv_then_tail_subset [LT α] [StrictLT α] (x : α)
   case inr => assumption
   case inl _ h₅ =>
     subst h₅
-    rcases (if_strictly_sorted_then_head_lt_tail y xs h₁ y h₄) with h₆
-    rcases (StrictLT.irreflexive y) with h₇
+    have h₆ := if_strictly_sorted_then_head_lt_tail y xs h₁ y h₄
+    have h₇ := StrictLT.irreflexive y
     contradiction
 
 theorem if_strictly_sorted_equiv_then_tail_equiv [LT α] [StrictLT α] (x : α) (xs ys : List α) :
@@ -314,19 +314,19 @@ theorem insertCanonical_sorted [LT α] [StrictLT α] [DecidableLT α] (x : α) (
       case neg _ _ h₃ =>
         simp [h₃]
         unfold GT.gt at h₃
-        rcases (StrictLT.if_not_lt_gt_then_eq x hd h₂ h₃) with h₄
+        have h₄ := StrictLT.if_not_lt_gt_then_eq x hd h₂ h₃
         subst h₄
         exact h₁
       case pos _ _ h₃ =>
         simp [h₃]
         cases tl
         case nil =>
-          rcases (insertCanonical_singleton id x) with h₄
+          have h₄ := insertCanonical_singleton id x
           simp [h₄]
           apply Sorted.cons_cons (by apply h₃) Sorted.cons_nil
         case cons _ _ hd' tl' =>
           simp at ih
-          rcases (insertCanonical_cases x hd' tl') with h₄
+          have h₄ := insertCanonical_cases x hd' tl'
           cases h₄
           case inl _ _ _ h₄ =>
             rcases h₄ with ⟨h₄, h₅⟩
@@ -346,7 +346,7 @@ theorem insertCanonical_sorted [LT α] [StrictLT α] [DecidableLT α] (x : α) (
               rcases h₄ with ⟨h₄, h₅, h₆⟩
               simp [h₆]
               unfold GT.gt at h₅
-              rcases (StrictLT.if_not_lt_gt_then_eq x hd' h₄ h₅) with h₇
+              have h₇ := StrictLT.if_not_lt_gt_then_eq x hd' h₄ h₅
               subst h₇
               exact h₁
 
@@ -363,18 +363,18 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
     case inr _ _ h₁ =>
       split
       case inr _ _ h₂ =>
-        rcases (StrictLT.if_not_lt_gt_then_eq x hd h₁ h₂) with h₃
+        have h₃ := StrictLT.if_not_lt_gt_then_eq x hd h₁ h₂
         subst h₃
         exact dup_head_equiv x tl
       case inl _ _ h₂ =>
         cases tl
         case nil =>
-          rcases (insertCanonical_singleton id x) with h₃
+          have h₃ := insertCanonical_singleton id x
           simp [h₃]
           apply swap_cons_cons_equiv
         case cons _ _ _ hd' tl' =>
           simp at ih
-          rcases (insertCanonical_cases x hd' tl') with h₃
+          have h₃ := insertCanonical_cases x hd' tl'
           cases h₃
           case inl _ _ _ h₃ =>
             simp [h₃]
@@ -391,7 +391,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               rcases h₃ with ⟨h₃, h₄, h₅⟩
               simp [h₅]
               unfold GT.gt at h₄
-              rcases (StrictLT.if_not_lt_gt_then_eq x hd' h₃ h₄) with h₆
+              have h₆ := StrictLT.if_not_lt_gt_then_eq x hd' h₃ h₄
               subst h₆
               unfold List.Equiv
               simp only [cons_subset, mem_cons, true_or, or_true, Subset.refl, and_self, subset_cons]
@@ -399,7 +399,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               rcases h₃ with ⟨h₃, h₄, h₅⟩
               simp [h₅]
               simp [h₃, h₄] at ih
-              rcases (swap_cons_cons_equiv x hd (hd' :: tl')) with h₆
+              have h₆ := swap_cons_cons_equiv x hd (hd' :: tl')
               apply Equiv.trans h₆
               apply cons_equiv_cons
               exact ih
@@ -433,7 +433,7 @@ theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α)
     unfold canonicalize
     generalize h₁ : canonicalize id tl = ys
     simp [h₁] at ih
-    rcases (insertCanonical_equiv hd ys) with h₂
+    have h₂ := insertCanonical_equiv hd ys
     apply Equiv.trans _ h₂
     apply cons_equiv_cons
     exact ih
@@ -455,8 +455,8 @@ theorem if_equiv_strictLT_then_canonical [LT α] [StrictLT α] [DecidableLT α] 
   apply if_strictly_sorted_equiv_then_eq
   exact (canonicalize_sorted xs)
   exact (canonicalize_sorted ys)
-  rcases (Equiv.symm (canonicalize_equiv xs)) with h₂
-  rcases (Equiv.symm (canonicalize_equiv ys)) with h₃
+  have h₂ := Equiv.symm (canonicalize_equiv xs)
+  have h₃ := Equiv.symm (canonicalize_equiv ys)
   apply Equiv.trans h₂
   apply Equiv.symm
   apply Equiv.trans h₃
@@ -485,7 +485,7 @@ theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [De
       apply Forall₂.cons (by exact h₃) (by exact h₄)
     case inl.inr h₅ h₆ =>
       simp [h₁, h₃] at h₅
-      rcases (StrictLT.asymmetric kv₂.fst hd₂.fst h₅) with _
+      have _ := StrictLT.asymmetric kv₂.fst hd₂.fst h₅
       split <;> contradiction
     case inr.inl h₅ h₆ =>
       simp [h₁, h₃] at h₅ h₆
@@ -511,7 +511,7 @@ theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [Decid
     simp [canonicalize_nil]
   case cons hd₁ hd₂ tl₁ tl₂ h₂ h₃ =>
     simp [canonicalize]
-    rcases (canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃) with h₄
+    have h₄ := canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃
     apply insertCanonical_preserves_forallᵥ h₂ h₄
 
 theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
