@@ -32,7 +32,7 @@ theorem StrictLT.irreflexive [LT α] [StrictLT α] (x : α) :
   ¬ x < x
 := by
   by_contra h₁
-  rcases (StrictLT.asymmetric x x h₁) with h₂
+  have h₂ := StrictLT.asymmetric x x h₁
   contradiction
 
 theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
@@ -40,7 +40,7 @@ theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
 := by
   intro h₁ h₂
   by_contra h₃
-  rcases (StrictLT.connected x y h₃) with h₄
+  have h₄ := StrictLT.connected x y h₃
   simp [h₁, h₂] at h₄
 
 theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
@@ -49,7 +49,7 @@ theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
   intro h₁
   by_contra h₂
   subst h₂
-  rcases (StrictLT.irreflexive x) with h₃
+  have h₃ := StrictLT.irreflexive x
   contradiction
 
 abbrev DecidableLT (α) [LT α] := DecidableRel (α := α) (· < ·)
@@ -82,14 +82,14 @@ theorem List.lt_irrefl [LT α] [StrictLT α] (xs : List α) :
   case nil => by_contra; contradiction
   case cons _ _ hd tl ih =>
     by_contra h₁
-    rcases (StrictLT.irreflexive hd) with h₂
+    have h₂ := StrictLT.irreflexive hd
     cases tl
     case nil =>
-      rcases (List.lt_cons_cases h₁) with h₃
+      have h₃ := List.lt_cons_cases h₁
       simp [h₂] at h₃
       contradiction
     case cons _ _ hd' tl' =>
-      rcases (List.lt_cons_cases h₁) with h₃
+      have h₃ := List.lt_cons_cases h₁
       simp [h₂] at h₃
       contradiction
 
@@ -105,19 +105,19 @@ theorem List.lt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
       apply List.lt.head
       apply StrictLT.transitive _ _ _ h₃ h₄
     case tail _ _ zhd ztl h₄ h₅ h₆ =>
-      rcases (StrictLT.if_not_lt_gt_then_eq yhd zhd h₄ h₅) with h₇
+      have h₇ := StrictLT.if_not_lt_gt_then_eq yhd zhd h₄ h₅
       subst h₇
       apply List.lt.head
       exact h₃
   case tail _ _ xhd xtl yhd ytl h₃ h₄ h₅ =>
     cases h₂
     case head _ _ zhd ztl h₆ =>
-      rcases (StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄) with h₇
+      have h₇ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄
       subst h₇
       apply List.lt.head
       exact h₆
     case tail _ _ zhd ztl h₆ h₇ h₈ =>
-      rcases (StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄) with h₉
+      have h₉ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄
       subst h₉
       apply List.lt.tail h₆ h₇
       apply List.lt_trans h₅ h₈
@@ -135,8 +135,8 @@ theorem List.lt_asymm [LT α] [StrictLT α] {xs ys : List α} :
     case nil => contradiction
     case cons _ _ hd' tl' =>
       by_contra h₂
-      rcases (List.lt_trans h₁ h₂) with h₃
-      rcases (List.lt_irrefl (hd :: tl)) with h₄
+      have h₃ := List.lt_trans h₁ h₂
+      have h₄ := List.lt_irrefl (hd :: tl)
       contradiction
 
 theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
@@ -145,36 +145,36 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
   intro h₁
   by_contra h₂
   simp [not_or] at h₂
-  rcases h₂ with ⟨h₂, h₃⟩
+  have ⟨h₂, h₃⟩ := h₂
   cases xs <;> cases ys
-  case intro.nil.nil => contradiction
-  case intro.nil.cons _ _ xhd xtl =>
-    rcases (List.lt.nil xhd xtl) with h₄
+  case nil.nil => contradiction
+  case nil.cons _ _ xhd xtl _ =>
+    have h₄ := List.lt.nil xhd xtl
     contradiction
-  case intro.cons.nil _ _ yhd ytl =>
-    rcases (List.lt.nil yhd ytl) with h₄
+  case cons.nil _ _ yhd ytl _ =>
+    have h₄ := List.lt.nil yhd ytl
     contradiction
-  case intro.cons.cons _ _ xhd xtl yhd ytl =>
+  case cons.cons _ _ xhd xtl yhd ytl _ =>
     by_cases (xhd < yhd)
     case pos h₄ =>
-      rcases (List.lt.head xtl ytl h₄) with h₅
+      have h₅ := List.lt.head xtl ytl h₄
       contradiction
     case neg h₄ =>
       by_cases (yhd < xhd)
       case pos h₅ =>
-        rcases (List.lt.head ytl xtl h₅) with h₆
+        have h₆ := List.lt.head ytl xtl h₅
         contradiction
       case neg h₅ =>
-        rcases (StrictLT.if_not_lt_gt_then_eq xhd yhd h₄ h₅) with h₆
+        have h₆ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₄ h₅
         subst h₆
         simp at h₁
-        rcases (List.lt_conn h₁) with h₆
+        have h₆ := List.lt_conn h₁
         cases h₆
         case inl _ _ h₆ =>
-          rcases (List.cons_lt_cons xhd xtl ytl h₆) with h₇
+          have h₇ := List.cons_lt_cons xhd xtl ytl h₆
           contradiction
         case inr _ _ h₆ =>
-          rcases (List.cons_lt_cons xhd ytl xtl h₆) with h₇
+          have h₇ := List.cons_lt_cons xhd ytl xtl h₆
           contradiction
 
 instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where

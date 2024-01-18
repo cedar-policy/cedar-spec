@@ -80,7 +80,7 @@ theorem default_deny (request : Request) (entities : Entities) (policies : Polic
   by_contra h2
   cases dec
   case allow =>
-    rcases (allowed_if_explicitly_permitted request entities policies h1) with h3
+    have h3 := allowed_if_explicitly_permitted request entities policies h1
     contradiction
   case deny => contradiction
 
@@ -93,8 +93,8 @@ theorem order_and_dup_independent (request : Request) (entities : Entities) (pol
   isAuthorized request entities policies₁ = isAuthorized request entities policies₂
 := by
   intro h
-  rcases (satisfiedPolicies_order_and_dup_independent forbid request entities policies₁ policies₂ h) with hf
-  rcases (satisfiedPolicies_order_and_dup_independent permit request entities policies₁ policies₂ h) with hp
+  have hf := satisfiedPolicies_order_and_dup_independent forbid request entities policies₁ policies₂ h
+  have hp := satisfiedPolicies_order_and_dup_independent permit request entities policies₁ policies₂ h
   unfold isAuthorized
   simp [hf, hp]
 

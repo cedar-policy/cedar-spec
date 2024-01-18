@@ -44,12 +44,12 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
   cases h₂ : typeOf x₁ c env <;> simp [h₂, typeOfIf] at *
   rename_i res₁
   split at h₁ <;> try { simp [ok, err] at h₁ } <;>
-  rename_i c₁ hr₁ <;> simp at hr₁ <;> rcases hr₁ with ⟨ht₁, hc₁⟩
+  rename_i c₁ hr₁ <;> simp at hr₁ <;> have ⟨ht₁, hc₁⟩ := hr₁
   case ok.h_1 =>
     exists BoolType.tt, res₁.snd ; simp [←ht₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
     rename_i res₂ ; simp [ok] at h₁
-    rcases h₁ with ⟨ht₂, hc₂⟩
+    have ⟨ht₂, hc₂⟩ := h₁
     exists res₂.fst, res₂.snd
     subst ht₂ hc₂ hc₁
     simp only [and_self]
@@ -62,7 +62,8 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     cases h₄ : typeOf x₃ c env <;> simp [h₄] at h₁
     split at h₁ <;> simp [ok, err] at h₁
     rename_i ty' res₂ res₃ _ ty' hty
-    rcases h₁ with ⟨ht, hc⟩ ; subst ht hc hc₁
+    have ⟨ht, hc⟩ := h₁
+    subst ht hc hc₁
     exists res₂.fst, res₂.snd
     simp only [Except.ok.injEq, true_and]
     exists res₃.fst, res₃.snd
@@ -77,20 +78,21 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
   GuardedCapabilitiesInvariant (Expr.ite x₁ x₂ x₃) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.ite x₁ x₂ x₃) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_ite_inversion h₃) with ⟨bty₁, rc₁, ty₂, rc₂, ty₃, rc₃, h₄, h₅⟩
+  have ⟨bty₁, rc₁, ty₂, rc₂, ty₃, rc₃, h₄, h₅⟩ := type_of_ite_inversion h₃
   specialize ih₁ h₁ h₂ h₄
-  rcases ih₁ with ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩
-  rcases (instance_of_bool_is_bool ih₁₃) with ⟨b₁, hb₁⟩ ; subst hb₁
+  have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
+  have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃
+  subst hb₁
   cases bty₁ <;> simp at h₅
   case anyBool =>
-    rcases h₅ with ⟨h₅, h₆, ht, hc⟩
+    have ⟨h₅, h₆, ht, hc⟩ := h₅
     cases b₁
     case false =>
       rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
       simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
       try exact type_is_inhabited ty
       specialize ih₃ h₁ h₂ h₆
-      rcases ih₃ with ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩
+      have ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩ := ih₃
       rcases ih₃₂ with ih₃₂ | ih₃₂ | ih₃₂ | ih₃₂ <;> simp [ih₃₂] <;>
       try exact type_is_inhabited ty
       apply And.intro
@@ -107,9 +109,9 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
       simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
       try exact type_is_inhabited ty
       simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
-      rcases (capability_union_invariant h₁ ih₁₁) with h₇
+      have h₇ := capability_union_invariant h₁ ih₁₁
       specialize ih₂ h₇ h₂ h₅
-      rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
+      have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
       apply And.intro
       case left =>
         intro h₈
@@ -124,16 +126,16 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
         apply instance_of_lub ht
         simp [ih₂₃]
   case tt =>
-    rcases h₅ with ⟨h₅, ht, hc⟩
+    have ⟨h₅, ht, hc⟩ := h₅
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
     try exact type_is_inhabited ty
-    rcases (instance_of_tt_is_true ih₁₃) with hb₁
+    have hb₁ := instance_of_tt_is_true ih₁₃
     simp at hb₁ ; subst hb₁ ; simp only [ite_true]
     simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
-    rcases (capability_union_invariant h₁ ih₁₁) with h₆
+    have h₆ := capability_union_invariant h₁ ih₁₁
     specialize ih₂ h₆ h₂ h₅
-    rcases ih₂ with ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩
+    have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
     rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;> simp [ih₂₂] <;>
     try exact type_is_inhabited ty
     subst ht hc ; simp [ih₂₃]
@@ -141,14 +143,14 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
     exact capability_union_invariant ih₁₁ ih₂₁
   case ff =>
-    rcases h₅ with ⟨h₅, ht, hc⟩
+    have ⟨h₅, ht, hc⟩ := h₅
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
     try exact type_is_inhabited ty
-    rcases (instance_of_ff_is_false ih₁₃) with hb₁
+    have hb₁ := instance_of_ff_is_false ih₁₃
     simp at hb₁ ; simp [hb₁]
     specialize ih₃ h₁ h₂ h₅
-    rcases ih₃ with ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩
+    have ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩ := ih₃
     subst ht hc
     apply And.intro
     case left =>

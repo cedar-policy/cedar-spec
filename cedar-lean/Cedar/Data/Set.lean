@@ -178,7 +178,7 @@ theorem make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
 := by
   simp [make] ; intro h₁
-  rcases (List.canonicalize_equiv xs) with h₂
+  have h₂ := List.canonicalize_equiv xs
   subst h₁
   exact h₂
 
@@ -186,9 +186,9 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
   x ∈ xs ↔ x ∈ Set.make xs
 := by
   simp [make, Membership.mem, elts]
-  rcases (List.canonicalize_equiv xs) with h₁
+  have h₁ := List.canonicalize_equiv xs
   simp [List.Equiv, List.subset_def] at h₁
-  rcases h₁ with ⟨h₁, h₂⟩
+  have ⟨h₁, h₂⟩ := h₁
   constructor <;> intro h₃
   case mp => apply h₁ h₃
   case mpr => apply h₂ h₃
@@ -197,19 +197,19 @@ theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool
   (Set.make xs).any f = xs.any f
 := by
   simp [make, any, elts]
-  rcases (List.canonicalize_equiv xs) with h₁
+  have h₁ := List.canonicalize_equiv xs
   simp [List.Equiv, List.subset_def] at h₁
-  rcases h₁ with ⟨hl₁, hr₁⟩
+  have ⟨hl₁, hr₁⟩ := h₁
   cases h₃ : List.any xs f
   case false =>
     by_contra h₄
     simp only [Bool.not_eq_false, List.any_eq_true] at h₄
-    rcases h₄ with ⟨x, h₄, h₅⟩
+    have ⟨x, h₄, h₅⟩ := h₄
     specialize hr₁ h₄
     simp [List.any_of_mem hr₁ h₅] at h₃
   case true =>
     simp [List.any_eq_true] at *
-    rcases h₃ with ⟨x, h₃, h₄⟩
+    have ⟨x, h₃, h₄⟩ := h₃
     exists x ; simp [h₄]
     apply hl₁ h₃
 

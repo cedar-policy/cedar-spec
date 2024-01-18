@@ -36,7 +36,7 @@ theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policie
   intro h0
   cases h0
   case intro policy h1 =>
-    rcases h1 with ⟨ha, hb, hc⟩
+    have ⟨ha, hb, hc⟩ := h1
     unfold satisfiedPolicies
     rw [←Set.make_non_empty]
     apply @List.ne_nil_of_mem _ policy.id
@@ -56,9 +56,9 @@ theorem if_satisfiedPolicies_non_empty_then_satisfied (effect : Effect) (policie
   unfold satisfiedPolicies
   intro h0
   rw [←Set.make_non_empty] at h0
-  rcases List.exists_mem_of_ne_nil _ h0 with ⟨pid, h1⟩
+  have ⟨pid, h1⟩ := List.exists_mem_of_ne_nil _ h0
   rw [List.mem_filterMap] at h1
-  rcases h1 with ⟨policy, h1, h2⟩
+  have ⟨policy, h1, h2⟩ := h1
   unfold satisfiedWithEffect at h2
   apply Exists.intro policy
   simp [h1]
@@ -118,7 +118,7 @@ theorem satisfied_implies_principal_scope {policy : Policy} {request : Request} 
   intro h₁ h₂
   simp [satisfied] at h₁
   unfold Policy.toExpr at h₁
-  rcases (and_true_implies_left_true h₁) with h₃
+  have h₃ := and_true_implies_left_true h₁
   clear h₁
   simp [PrincipalScope.toExpr, Scope.toExpr] at h₃
   simp [Scope.bound, PrincipalScope.scope] at h₂
@@ -133,7 +133,7 @@ theorem satisfied_implies_principal_scope {policy : Policy} {request : Request} 
     simp [evaluate, Var.inEntityUID, apply₂] at h₃
     exact h₃
   case isMem =>
-    rcases (and_true_implies_right_true h₃) with h₅
+    have h₅ := and_true_implies_right_true h₃
     simp [evaluate, Var.inEntityUID, apply₂] at h₅
     exact h₅
 
@@ -163,7 +163,7 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
     simp [evaluate, Var.inEntityUID, apply₂] at h₃
     exact h₃
   case isMem =>
-    rcases (and_true_implies_right_true h₃) with h₅
+    have h₅ := and_true_implies_right_true h₃
     simp [evaluate, Var.inEntityUID, apply₂] at h₅
     exact h₅
 

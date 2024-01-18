@@ -56,7 +56,8 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         cases h₂ : requiredAttr hd.fst (typeOf hd.snd c env) <;> simp [h₂] at h₁
         cases h₃ : List.mapM' (fun x => requiredAttr x.fst (typeOf x.snd c env)) tl <;> simp [h₃] at h₁
         simp [pure, Except.pure] at h₁
-        rcases h₁ with ⟨hl₁, hr₁⟩ ; rw [eq_comm] at hl₁ hr₁ ; subst hl₁ hr₁
+        have ⟨hl₁, hr₁⟩ := h₁
+        rw [eq_comm] at hl₁ hr₁ ; subst hl₁ hr₁
         simp [requiredAttr, Except.map] at h₂
         split at h₂ <;> simp at h₂
         subst h₂
@@ -100,10 +101,10 @@ theorem mk_vals_instance_of_mk_types₁ {a : Attr} {avs : List (Attr × Value)} 
   case cons ahd atl rhd rtl h₃ h₄ =>
     simp [Map.contains, Map.find?, List.find?] at *
     simp [AttrValueHasAttrType] at h₃
-    rcases h₃ with ⟨h₃, _⟩ ; simp [h₃] at *
+    have ⟨h₃, _⟩ := h₃ ; simp [h₃] at *
     cases h₅ : rhd.fst == a <;> simp [h₅] at *
     cases h₆ : List.find? (fun x => x.fst == a) atl <;> simp [h₆] at h₂
-    rcases (@mk_vals_instance_of_mk_types₁ a atl rtl h₄) with h₇
+    have h₇ := @mk_vals_instance_of_mk_types₁ a atl rtl h₄
     simp [Map.contains, Map.find?, Map.kvs, h₆] at h₇
     exact h₇
 
@@ -119,7 +120,7 @@ theorem mk_vals_instance_of_mk_types₂ {a : Attr} {v : Value} {qty : QualifiedT
   case cons ahd atl rhd rtl h₄ h₅ =>
     simp [Map.find?, List.find?] at h₂ h₃
     simp [AttrValueHasAttrType] at h₄
-    rcases h₄ with ⟨hl₄, hr₄⟩ ; simp [hl₄] at *
+    have ⟨hl₄, hr₄⟩ := h₄ ; simp [hl₄] at *
     cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ h₃
     case true =>
       subst h₂ h₃
@@ -140,10 +141,10 @@ theorem mk_vals_instance_of_mk_types₃ {a : Attr} {qty : QualifiedType} {avs : 
     simp [Map.contains, Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂
     simp [AttrValueHasAttrType] at h₄
-    rcases h₄ with ⟨h₄, _⟩ ; simp [h₄] at *
+    have ⟨h₄, _⟩ := h₄ ; simp [h₄] at *
     cases h₆ : rhd.fst == a <;> simp [h₆] at *
     cases h₇ : List.find? (fun x => x.fst == a) rtl <;> simp [h₇] at h₂
-    rcases (@mk_vals_instance_of_mk_types₃ a qty atl rtl h₅) with h₈
+    have h₈ := @mk_vals_instance_of_mk_types₃ a qty atl rtl h₅
     simp [Map.find?, List.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
     exact h₈
 
@@ -171,9 +172,9 @@ theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capa
   AttrValueHasAttrType vhd rhd
 := by
   simp [TypeOfIsSound] at h₁
-  rcases h₄ with ⟨ty', c', h₄, h₆⟩ ; subst h₄
+  have ⟨ty', c', h₄, h₆⟩ := h₄ ; subst h₄
   specialize h₁ h₂ h₃ h₆
-  rcases h₁ with ⟨_, v, h₁, h₇⟩
+  have ⟨_, v, h₁, h₇⟩ := h₁
   simp [bindAttr] at h₅
   cases h₈ : evaluate xhd.snd request entities <;> simp [h₈] at h₅
   simp [EvaluatesTo, h₈] at h₁ ; subst h₁ h₅
@@ -218,8 +219,8 @@ theorem type_of_record_is_sound_ok {axs : List (Attr × Expr)} {c₁ : Capabilit
 := by
   apply mk_vals_instance_of_mk_types
   let p := fun (v : Value) (qty : QualifiedType) => InstanceOfType v qty.getType
-  rcases (vals_instance_of_types ih h₁ h₂ h₃ h₄) with h₅
-  rcases (List.canonicalize_preserves_forallᵥ p avs rty) with h₆
+  have h₅ := vals_instance_of_types ih h₁ h₂ h₃ h₄
+  have h₆ := List.canonicalize_preserves_forallᵥ p avs rty
   simp [List.Forallᵥ] at h₆
   exact h₆ h₅
 
@@ -244,9 +245,9 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       subst h₄ h₅
       specialize ih hd
       simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih
-      rcases hh₃ with ⟨ty', c', _, hh₃⟩
+      have ⟨ty', c', _, hh₃⟩ := hh₃
       specialize ih h₁ h₂ hh₃
-      rcases ih with ⟨_, v, ih, _⟩
+      have ⟨_, v, ih, _⟩ := ih
       simp [EvaluatesTo, h₆] at ih
       exact ih
     case ok vhd =>
@@ -268,7 +269,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   GuardedCapabilitiesInvariant (Expr.record axs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.record axs) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_record_inversion h₃) with ⟨h₆, rty, h₅, h₄⟩
+  have ⟨h₆, rty, h₅, h₄⟩ := type_of_record_inversion h₃
   subst h₅ h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
