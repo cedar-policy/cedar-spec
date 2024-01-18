@@ -38,6 +38,7 @@ use lean_sys::{
     lean_initialize_runtime_module, lean_io_mark_end_initialization, lean_io_mk_world,
     lean_string_cstr,
 };
+use log::info;
 use serde::Deserialize;
 use std::ffi::CStr;
 use std::str::FromStr;
@@ -52,40 +53,40 @@ extern "C" {
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
+pub const LEAN_AUTH_MSG: &str = "Lean authorization time (ns) : ";
+pub const LEAN_EVAL_MSG: &str = "Lean evaluation time (ns) : ";
+pub const LEAN_VAL_MSG: &str = "Lean validation time (ns) : ";
+
 #[derive(Debug, Deserialize)]
-struct ListDef<String> {
-    l: Vec<String>,
+struct ListDef<T> {
+    l: Vec<T>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SetDef<String> {
-    mk: ListDef<String>,
+struct SetDef<T> {
+    mk: ListDef<T>,
+}
+
+#[derive(Debug, Deserialize)]
+enum ResultDef<T> {
+    /// Successful execution
+    #[serde(rename = "ok")]
+    Ok(T),
+    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
+    #[serde(rename = "error")]
+    Error(String),
+}
+
+#[derive(Debug, Deserialize)]
+struct TimedDef<T> {
+    data: T,
+    duration: i64,
 }
 
 #[derive(Debug, Deserialize)]
 struct AuthorizationResponseInner {
     policies: SetDef<String>,
     decision: String,
-}
-
-#[derive(Debug, Deserialize)]
-enum AuthorizationResponse {
-    /// Successful execution of the `isAuthorized` function
-    #[serde(rename = "ok")]
-    Ok(AuthorizationResponseInner),
-    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
-    #[serde(rename = "error")]
-    Error(String),
-}
-
-#[derive(Debug, Deserialize)]
-enum EvaluationResponse {
-    /// Successful execution of the `evaluate` function
-    #[serde(rename = "ok")]
-    Ok(bool),
-    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
-    #[serde(rename = "error")]
-    Error(String),
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,15 +99,9 @@ enum ValidationResponseInner {
     Error(String),
 }
 
-#[derive(Debug, Deserialize)]
-enum ValidationResponse {
-    /// Successful execution of the `validate` function
-    #[serde(rename = "ok")]
-    Ok(ValidationResponseInner),
-    /// Failure due to an error in the testing harness (e.g., a parse error on the Lean side)
-    #[serde(rename = "error")]
-    Error(String),
-}
+type AuthorizationResponse = ResultDef<TimedDef<AuthorizationResponseInner>>;
+type EvaluationResponse = ResultDef<TimedDef<bool>>;
+type ValidationResponse = ResultDef<TimedDef<ValidationResponseInner>>;
 
 pub struct LeanDefinitionalEngine {}
 
@@ -154,6 +149,9 @@ impl LeanDefinitionalEngine {
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
             AuthorizationResponse::Ok(resp) => {
+                info!("{}{}", LEAN_AUTH_MSG, resp.duration);
+
+                let resp = resp.data;
                 let dec: authorizer::Decision = match resp.decision.as_str() {
                     "allow" => authorizer::Decision::Allow,
                     "deny" => authorizer::Decision::Deny,
@@ -166,7 +164,7 @@ impl LeanDefinitionalEngine {
                     .l
                     .into_iter()
                     .map(|x| {
-                        cedar_policy::PolicyId::from_str(&x).expect("could not coerce policyId")
+                        cedar_policy::PolicyId::from_str(&x).expect("could not coerce policy id")
                     })
                     .collect();
                 Ok(InterfaceResponse::new(dec, reason, HashSet::new()))
@@ -210,7 +208,10 @@ impl LeanDefinitionalEngine {
         let resp: EvaluationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
-            EvaluationResponse::Ok(matches) => Ok(matches),
+            EvaluationResponse::Ok(resp) => {
+                info!("{}{}", LEAN_EVAL_MSG, resp.duration);
+                Ok(resp.data)
+            }
             EvaluationResponse::Error(err) => Err(err),
         }
     }
@@ -253,7 +254,8 @@ impl LeanDefinitionalEngine {
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
             ValidationResponse::Ok(resp) => {
-                let validation_errors = match resp {
+                info!("{}{}", LEAN_VAL_MSG, resp.duration);
+                let validation_errors = match resp.data {
                     ValidationResponseInner::Ok(_) => Vec::new(),
                     ValidationResponseInner::Error(err) => vec![err],
                 };

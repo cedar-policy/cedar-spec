@@ -40,49 +40,18 @@ end Decide
 
 theorem IPNet.lt_asymm {a₁ a₂ p₁ p₂ : Nat} :
   a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂ → ¬(a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁)
-:= by
-  intro h₁
-  rcases h₁ with h₁ | h₁ <;> by_contra h₂
-  case inl =>
-    rcases h₂ with h₂ | h₂
-    case inl =>
-      rcases (Nat.lt_asymm h₁) with h₂
-      contradiction
-    case inr =>
-      rcases (StrictLT.not_eq a₁ a₂ h₁) with h₃
-      rw [eq_comm] at h₃
-      simp [h₃] at h₂
-  case inr =>
-    simp [h₁] at h₂
-    rcases h₁ with ⟨_, h₁⟩
-    rcases (Nat.lt_asymm h₁) with h₃
-    contradiction
+:= by omega
 
 theorem IPNet.lt_trans {a₁ a₂ a₃ p₁ p₂ p₃ : Nat}
   (h₁ : a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂)
   (h₂ : a₂ < a₃ ∨ a₂ = a₃ ∧ p₂ < p₃) :
   a₁ < a₃ ∨ a₁ = a₃ ∧ p₁ < p₃
-:= by
-  rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  case inl.inl =>
-    rcases (Nat.lt_trans h₁ h₂) with h₃ ; simp [h₃]
-  case inl.inr =>
-    rcases h₂ with ⟨h₂, _⟩ ; subst h₂ ; simp [h₁]
-  case inr.inl =>
-    rcases h₁ with ⟨h₁, _⟩ ; subst h₁ ; simp [h₂]
-  case inr.inr =>
-    rcases h₁ with ⟨hl₁, h₁⟩ ; subst hl₁
-    rcases h₂ with ⟨hl₂, h₂⟩ ; subst hl₂
-    rcases (Nat.lt_trans h₁ h₂) with h₃ ; simp [h₃]
+:= by omega
 
 theorem IPNet.lt_conn {a₁ a₂ p₁ p₂ : Nat}
   (h₁ : a₁ = a₂ → ¬p₁ = p₂) :
   (a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂) ∨ a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁
-:= by
-  rcases (Nat.lt_trichotomy a₁ a₂) with h₂
-  rcases h₂ with h₂ | h₂ | h₂ <;> simp [h₂]
-  simp [h₂] at h₁
-  apply Nat.strictLT.connected ; simp [h₁]
+:= by omega
 
 instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
   asymmetric a b   := by
@@ -123,7 +92,10 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
       simp at *
       rename_i a₁ _ a₂ _ p₁ _ p₂ _
       apply IPNet.lt_conn
-      intro h₂ ; simp [h₂] at h₁ ; exact h₁
+      intro h₂
+      simp [UInt32.toNat] at h₂
+      simp [h₂] at h₁
+      exact h₁
     case V6 a₁ p₁ a₂ p₂ =>
       cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
       simp at *
@@ -319,7 +291,7 @@ theorem Value.lt_irrefl (v : Value) :
   case ext => exact StrictLT.irreflexive w
 
 theorem Values.lt_irrefl (vs : List Value) :
-  ¬ Values.lt vs vs vs.length
+  ¬ Values.lt vs vs
 := by
   cases vs ; simp [Values.lt] ; rename_i hd tl ; simp [Values.lt]
   by_contra h₁
@@ -332,7 +304,7 @@ theorem Values.lt_irrefl (vs : List Value) :
     simp [h₁] at h₂
 
 theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
-  ¬ ValueAttrs.lt vs vs vs.length
+  ¬ ValueAttrs.lt vs vs
 := by
   cases vs ; simp [ValueAttrs.lt] ; rename_i hd tl
   cases hd ; rename_i a v ; simp [ValueAttrs.lt]
@@ -382,7 +354,7 @@ theorem Value.lt_asymm {a b : Value} :
   case ext x₁ x₂ => apply Ext.strictLT.asymmetric x₁ x₂
 
 theorem Values.lt_asym {vs₁ vs₂: List Value} :
-  Values.lt vs₁ vs₂ vs₁.length → ¬ Values.lt vs₂ vs₁ vs₂.length
+  Values.lt vs₁ vs₂ → ¬ Values.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [Values.lt]
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -399,7 +371,7 @@ theorem Values.lt_asym {vs₁ vs₂: List Value} :
     simp [h₂, Value.lt_irrefl hd₁]
 
 theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
-  ValueAttrs.lt vs₁ vs₂ vs₁.length → ¬ ValueAttrs.lt vs₂ vs₁ vs₂.length
+  ValueAttrs.lt vs₁ vs₂ → ¬ ValueAttrs.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [ValueAttrs.lt]
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -453,9 +425,9 @@ theorem Value.lt_trans {a b c : Value} :
 
 
 theorem Values.lt_trans {vs₁ vs₂ vs₃: List Value}
-  (h₁ : Values.lt vs₁ vs₂ vs₁.length)
-  (h₂ : Values.lt vs₂ vs₃ vs₂.length ) :
-  Values.lt vs₁ vs₃ vs₁.length
+  (h₁ : Values.lt vs₁ vs₂)
+  (h₂ : Values.lt vs₂ vs₃) :
+  Values.lt vs₁ vs₃
 := by
   cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> simp [Values.lt] at *
   rename_i hd₁ tl₁ hd₂ tl₂ hd₃ tl₃
@@ -474,11 +446,11 @@ theorem Values.lt_trans {vs₁ vs₂ vs₃: List Value}
     simp [h₃]
 
 theorem ValueAttrs.lt_trans {vs₁ vs₂ vs₃: List (Attr × Value)}
-  (h₁ : ValueAttrs.lt vs₁ vs₂ vs₁.length)
-  (h₂ : ValueAttrs.lt vs₂ vs₃ vs₂.length) :
-  ValueAttrs.lt vs₁ vs₃ vs₁.length
+  (h₁ : ValueAttrs.lt vs₁ vs₂)
+  (h₂ : ValueAttrs.lt vs₂ vs₃) :
+  ValueAttrs.lt vs₁ vs₃
 := by
-  cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> simp [ValueAttrs.lt] at *
+  cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> try { simp [ValueAttrs.lt] at * }
   rename_i hd₁ tl₁ hd₂ tl₂ hd₃ tl₃
   cases hd₁ ; cases hd₂ ; cases hd₃ ; simp [ValueAttrs.lt] at *
   rename_i a₁ v₁ a₂ v₂ a₃ v₃
@@ -535,7 +507,7 @@ theorem Value.lt_conn {a b : Value} :
 
 theorem Values.lt_conn {vs₁ vs₂ : List Value}
   (h₁ : ¬vs₁ = vs₂) :
-  Values.lt vs₁ vs₂ vs₁.length ∨ Values.lt vs₂ vs₁ vs₂.length
+  Values.lt vs₁ vs₂ ∨ Values.lt vs₂ vs₁
 := by
   cases vs₁ <;> cases vs₂ <;> simp [Values.lt] <;> try contradiction
   rename_i hd₁ tl₁ hd₂ tl₂
@@ -552,9 +524,9 @@ theorem Values.lt_conn {vs₁ vs₂ : List Value}
 
 theorem ValueAttrs.lt_conn {vs₁ vs₂ : List (Attr × Value)}
   (h₁ : ¬vs₁ = vs₂) :
-  ValueAttrs.lt vs₁ vs₂ vs₁.length ∨ ValueAttrs.lt vs₂ vs₁ vs₂.length
+  ValueAttrs.lt vs₁ vs₂ ∨ ValueAttrs.lt vs₂ vs₁
 := by
-  cases vs₁ <;> cases vs₂ <;> simp [ValueAttrs.lt] <;> try contradiction
+  cases vs₁ <;> cases vs₂ <;> try { simp [ValueAttrs.lt] } <;> try contradiction
   rename_i hd₁ tl₁ hd₂ tl₂
   cases hd₁ ; cases hd₂ ; simp [ValueAttrs.lt]
   rename_i a₁ v₁ a₂ v₂

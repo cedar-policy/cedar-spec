@@ -31,20 +31,17 @@ open Option
 /--
 Forbid trumps permit: if a `forbid` policy is satisfied, the request is denied.
 -/
-theorem forbid_trumps_permit (request : Request) (entities : Entities) (policies : Policies) :
+theorem forbid_trumps_permit
+  (request : Request) (entities : Entities) (policies : Policies) :
   (∃ (policy : Policy),
     policy ∈ policies ∧
     policy.effect = forbid ∧
     satisfied policy request entities) →
   (isAuthorized request entities policies).decision = deny
 := by
-  intro h0
+  intro h
   unfold isAuthorized
-  generalize hf : (satisfiedPolicies forbid policies request entities) = forbids
-  generalize (satisfiedPolicies permit policies request entities) = permits
-  rcases (if_satisfied_then_satisfiedPolicies_non_empty forbid policies request entities h0) with h1
-  rw [hf] at h1
-  simp [h1]
+  simp [if_satisfied_then_satisfiedPolicies_non_empty forbid policies request entities h]
 
 /--
 A request is explicitly permitted when there is at least one satisfied permit policy.

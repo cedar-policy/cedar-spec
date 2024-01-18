@@ -69,24 +69,27 @@ if h : Int64.lt i₁ i₂ then isTrue h else isFalse h
 instance int64Le (i₁ i₂ : Int64) : Decidable (i₁ ≤ i₂) :=
 if h : Int64.le i₁ i₂ then isTrue h else isFalse h
 
+theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.1 = i₂.1 := by
+  cases i₁; cases i₂; simp
+
+theorem lt_def {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.1 < i₂.1 := by
+  simp [LT.lt, Int64.lt]
+
+theorem le_def {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.1 ≤ i₂.1 := by
+  simp [LE.le, Int64.le]
+
 deriving instance Repr, DecidableEq for Int64
 
 instance strictLT : StrictLT Int64 where
   asymmetric a b   := by
-    cases a ; cases b
-    simp [LT.lt, Int64.lt, Int.lt]
-    apply Int.strictLT.asymmetric
+    simp [Int64.lt_def]
+    omega
   transitive a b c := by
-    simp [LT.lt, Int64.lt, Int.lt]
-    exact Int.strictLT.transitive a b c
+    simp [Int64.lt_def]
+    omega
   connected  a b   := by
-    simp [LT.lt, Int64.lt, Int.lt]
-    intro h₁
-    apply Int.strictLT.connected a b
-    simp [h₁]
-    by_contra h₂
-    rcases (Subtype.eq h₂) with h₃
-    contradiction
+    simp [Int64.lt_def, Int64.ext_iff]
+    omega
 
 end Int64
 

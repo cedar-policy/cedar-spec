@@ -269,9 +269,9 @@ We only need to support the known case here because the Lean does not
 support partial evaluation.
 -/
 def jsonToRequest (json : Lean.Json) : ParseResult Request := do
-  let principal ← getJsonField json "principal" >>= (getJsonField · "Known") >>= jsonToEuid
-  let action ← getJsonField json "action" >>= (getJsonField · "Known") >>= jsonToEuid
-  let resource ← getJsonField json "resource" >>= (getJsonField · "Known") >>= jsonToEuid
+  let principal ← getJsonField json "principal" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
+  let action ← getJsonField json "action" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
+  let resource ← getJsonField json "resource" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
   let context ← getJsonField json "context" >>= jsonToContext
   .ok {
     principal := principal,
