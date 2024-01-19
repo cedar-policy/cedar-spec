@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-DUMP_DIR="./corpus_tests"
-
 CURDIR=$(realpath .)
 
 mkdir -p $DUMP_DIR
@@ -14,7 +12,7 @@ set -u
 cargo fuzz cmin "$FUZZ_TARGET" -s none
 
 run_single_test () {
-    # We could use `cargo fuzz run "$FUZZ_TARGET" -s none "$1"``
+    # We could use `cargo fuzz run "$FUZZ_TARGET" -s none "$1"`
     # but this adds extra overhead to every test. We accept that overhead
     # the first time (see below), but subsequent times we just directly invoke
     # the executable.

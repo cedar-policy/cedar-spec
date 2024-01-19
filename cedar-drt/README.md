@@ -32,8 +32,12 @@ The sampling rate can be controlled by the `RATE` environment variable, which de
 ## Generating corpus tests
 
 When using the `abac` or `abac-type-directed` targets, you can set `DUMP_TEST_DIR` and `DUMP_TEST_NAME` to have the fuzzer write out inputs in the format used by our [integration tests](https://github.com/cedar-policy/cedar/tree/main/cedar-integration-tests).
-The `create_corpus.sh` script will run the fuzzer for a set amount of time (currently 15min), and then write the (minimized) corpus inputs into the `corpus_tests/` folder using the integration test format.
-You can control parameters (timeout and target) using the variables at the top of the script. 
+The `create_corpus.sh` script will run the fuzzer for a set amount of time and then write the (minimized) corpus inputs into a folder using the integration test format.
+You can adjust the script's behavior using the following environment variables:
+* `FUZZ_TARGET`: `abac` or `abac-type-directed` (default = `abac`)
+* `TIMEOUT`: how long to run (default = 15m)
+* `JOBS`: number of jobs (default = 4)
+* `DUMP_DIR`: where to write the results (default = `./corpus_tests`)
 
 ## Debugging build failures
 
