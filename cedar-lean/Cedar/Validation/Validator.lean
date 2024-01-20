@@ -25,14 +25,6 @@ open Cedar.Data
 
 ----- Definitions -----
 
-structure SchemaActionEntry where
-  appliesToPrincipal : Set EntityType
-  appliesToResource : Set EntityType
-  ancestors : Set EntityUID
-  context : RecordType
-
-abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
-
 structure Schema where
   ets : EntityTypeStore
   acts : SchemaActionStore

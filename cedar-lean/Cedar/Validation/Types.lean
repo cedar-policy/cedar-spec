@@ -89,6 +89,14 @@ def EntityTypeStore.descendentOf (ets : EntityTypeStore) (ety₁ ety₂ : Entity
     | .some entry => entry.ancestors.contains ety₂
     | .none => false
 
+structure SchemaActionEntry where
+  appliesToPrincipal : Set EntityType
+  appliesToResource : Set EntityType
+  ancestors : Set EntityUID
+  context : RecordType
+
+abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
+
 structure ActionStoreEntry where
   ancestors : Cedar.Data.Set EntityUID
 
