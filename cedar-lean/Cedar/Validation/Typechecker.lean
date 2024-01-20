@@ -120,7 +120,7 @@ def entityUIDs? : Expr → Option (List EntityUID)
   | .set xs => xs.mapM entityUID?
   | _       => .none
 
-def actionUID? (x : Expr) (acts: ActionStore) : Option EntityUID := do
+def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
   let uid ← entityUID? x
   if acts.contains uid then .some uid else .none
 

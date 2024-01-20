@@ -97,15 +97,10 @@ structure ActionSchemaEntry where
 
 abbrev ActionSchema := Map EntityUID ActionSchemaEntry
 
-structure ActionStoreEntry where
-  ancestors : Cedar.Data.Set EntityUID
-
-abbrev ActionStore := Map EntityUID ActionStoreEntry
-
-def ActionStore.contains (as : ActionStore) (uid : EntityUID) : Bool :=
+def ActionSchema.contains (as : ActionSchema) (uid : EntityUID) : Bool :=
   (as.find? uid).isSome
 
-def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : Bool :=
+def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) : Bool :=
   if uid₁ == uid₂
   then true
   else match as.find? uid₁ with
@@ -120,7 +115,7 @@ structure RequestType where
 
 structure Environment where
   ets : EntitySchema
-  acts : ActionStore
+  acts : ActionSchema
   reqty : RequestType
 
 ----- Derivations -----
@@ -131,7 +126,7 @@ deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
 deriving instance Repr for TypeError
 deriving instance Repr for EntitySchemaEntry
-deriving instance Repr for ActionStoreEntry
+deriving instance Repr for ActionSchemaEntry
 
 mutual
 

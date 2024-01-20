@@ -95,8 +95,8 @@ def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
 For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
-def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ (uid : EntityUID) (entry : ActionStoreEntry),
+def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
+  ∀ (uid : EntityUID) (entry : ActionSchemaEntry),
   Map.find? as uid = some entry →
   ∃ data,
     Map.find? entities uid = some data ∧
@@ -105,7 +105,7 @@ def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
   InstanceOfEntitySchema entities env.ets ∧
-  InstanceOfActionStore entities env.acts
+  InstanceOfActionSchema entities env.acts
 
 ----- Theorems -----
 

@@ -51,7 +51,7 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
-    acts := schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }),
+    acts := schema.acts,
     reqty := ·
   })
 
