@@ -27,13 +27,13 @@ open Cedar.Data
 
 structure Schema where
   ets : EntitySchema
-  acts : SchemaActionStore
+  acts : ActionSchema
 
 /--
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def SchemaActionEntry.toRequestTypes (action : EntityUID) (entry : SchemaActionEntry) : List RequestType :=
+def ActionSchemaEntry.toRequestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
   entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
@@ -136,7 +136,7 @@ def validate (policies : Policies) (schema : Schema) : ValidationResult :=
 
 ----- Derivations -----
 
-deriving instance Repr for SchemaActionEntry
+deriving instance Repr for ActionSchemaEntry
 deriving instance Repr for Schema
 deriving instance Repr for ValidationError
 
