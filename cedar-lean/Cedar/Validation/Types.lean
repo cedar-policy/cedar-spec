@@ -104,6 +104,17 @@ def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : B
     | .some entry => entry.ancestors.contains uid₂
     | .none => false
 
+structure RequestType where
+  principal : EntityType
+  action : EntityUID
+  resource : EntityType
+  context : RecordType
+
+structure Environment where
+  ets : EntityTypeStore
+  acts : ActionStore
+  reqty : RequestType
+
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq for BoolType

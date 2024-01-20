@@ -31,17 +31,6 @@ abbrev ResultType := Except TypeError (CedarType × Capabilities)
 def ok (ty : CedarType) (c : Capabilities := ∅) : ResultType := .ok (ty, c)
 def err (e : TypeError) : ResultType := .error e
 
-structure RequestType where
-  principal : EntityType
-  action : EntityUID
-  resource : EntityType
-  context : RecordType
-
-structure Environment where
-  ets : EntityTypeStore
-  acts : ActionStore
-  reqty : RequestType
-
 def typeOfLit (p : Prim) (env : Environment) : ResultType :=
   match p with
   | .bool true     => ok (.bool .tt)
