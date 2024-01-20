@@ -61,15 +61,6 @@ abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
 
-inductive TypeError where
-  | lubErr (ty₁ : CedarType) (ty₂ : CedarType)
-  | unexpectedType (ty : CedarType)
-  | attrNotFound (ty : CedarType) (attr : Attr)
-  | unknownEntity (ety : EntityType)
-  | extensionErr (xs : List Expr)
-  | emptySetErr
-  | incompatibleSetTypes (ty : List CedarType)
-
 structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
@@ -124,7 +115,6 @@ deriving instance Repr, DecidableEq for BoolType
 deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
-deriving instance Repr for TypeError
 deriving instance Repr for EntitySchemaEntry
 deriving instance Repr for ActionSchemaEntry
 
@@ -198,7 +188,5 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 end
 
 instance : DecidableEq CedarType := decCedarType
-
-deriving instance DecidableEq for TypeError
 
 end Cedar.Validation

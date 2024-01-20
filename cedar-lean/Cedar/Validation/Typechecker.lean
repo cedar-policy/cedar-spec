@@ -22,6 +22,16 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
+inductive TypeError where
+  | lubErr (ty₁ : CedarType) (ty₂ : CedarType)
+  | unexpectedType (ty : CedarType)
+  | attrNotFound (ty : CedarType) (attr : Attr)
+  | unknownEntity (ety : EntityType)
+  | extensionErr (xs : List Expr)
+  | emptySetErr
+  | incompatibleSetTypes (ty : List CedarType)
+deriving Repr, DecidableEq
+
 abbrev Capabilities := List (Expr × Attr)
 
 def Capabilities.singleton (e : Expr) (a : Attr) : Capabilities := [(e, a)]
