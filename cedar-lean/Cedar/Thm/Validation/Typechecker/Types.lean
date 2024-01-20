@@ -85,7 +85,7 @@ For every entity in the store,
 3. The entity's ancestors' types are consistent with the ancestor information
    in the type store.
 -/
-def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Prop :=
+def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, ets.find? uid.ty = some entry ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
@@ -104,7 +104,7 @@ def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
-  InstanceOfEntityTypeStore entities env.ets ∧
+  InstanceOfEntitySchema entities env.ets ∧
   InstanceOfActionStore entities env.acts
 
 ----- Theorems -----
@@ -271,14 +271,14 @@ theorem required_attribute_is_present {r : Map Attr Value} {rty : RecordType} {a
 theorem well_typed_entity_attributes {env : Environment} {request : Request} {entities : Entities} {uid: EntityUID} {d: EntityData} {rty : RecordType}
   (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₂ : Map.find? entities uid = some d)
-  (h₃ : EntityTypeStore.attrs? env.ets uid.ty = some rty) :
+  (h₃ : EntitySchema.attrs? env.ets uid.ty = some rty) :
   InstanceOfType d.attrs (.record rty)
 := by
   have ⟨_, h₁, _⟩ := h₁
-  simp [InstanceOfEntityTypeStore] at h₁
+  simp [InstanceOfEntitySchema] at h₁
   specialize h₁ uid d h₂
   have ⟨entry, h₁₂, h₁, _⟩ := h₁
-  unfold EntityTypeStore.attrs? at h₃
+  unfold EntitySchema.attrs? at h₃
   simp [h₁₂] at h₃
   subst h₃
   exact h₁

@@ -70,19 +70,19 @@ inductive TypeError where
   | emptySetErr
   | incompatibleSetTypes (ty : List CedarType)
 
-structure EntityTypeStoreEntry where
+structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
 
-abbrev EntityTypeStore := Map EntityType EntityTypeStoreEntry
+abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
-def EntityTypeStore.contains (ets : EntityTypeStore) (ety : EntityType) : Bool :=
+def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
-def EntityTypeStore.attrs? (ets : EntityTypeStore) (ety : EntityType) : Option RecordType :=
-  (ets.find? ety).map EntityTypeStoreEntry.attrs
+def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
+  (ets.find? ety).map EntitySchemaEntry.attrs
 
-def EntityTypeStore.descendentOf (ets : EntityTypeStore) (ety₁ ety₂ : EntityType) : Bool :=
+def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match ets.find? ety₁ with
@@ -119,7 +119,7 @@ structure RequestType where
   context : RecordType
 
 structure Environment where
-  ets : EntityTypeStore
+  ets : EntitySchema
   acts : ActionStore
   reqty : RequestType
 
@@ -130,7 +130,7 @@ deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
 deriving instance Repr for TypeError
-deriving instance Repr for EntityTypeStoreEntry
+deriving instance Repr for EntitySchemaEntry
 deriving instance Repr for ActionStoreEntry
 
 mutual

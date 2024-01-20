@@ -26,7 +26,7 @@ open Cedar.Data
 ----- Definitions -----
 
 structure Schema where
-  ets : EntityTypeStore
+  ets : EntitySchema
   acts : SchemaActionStore
 
 /--
