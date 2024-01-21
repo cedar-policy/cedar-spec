@@ -98,6 +98,10 @@ def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) :
     | .some entry => entry.ancestors.contains uid₂
     | .none => false
 
+structure Schema where
+  ets : EntitySchema
+  acts : ActionSchema
+
 structure RequestType where
   principal : EntityType
   action : EntityUID
@@ -115,8 +119,9 @@ deriving instance Repr, DecidableEq for BoolType
 deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
-deriving instance Repr for EntitySchemaEntry
 deriving instance Repr for ActionSchemaEntry
+deriving instance Repr for EntitySchemaEntry
+deriving instance Repr for Schema
 
 mutual
 

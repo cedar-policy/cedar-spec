@@ -25,10 +25,6 @@ open Cedar.Data
 
 ----- Definitions -----
 
-structure Schema where
-  ets : EntitySchema
-  acts : ActionSchema
-
 /--
 For a given action, compute the cross-product of the applicable principal and
 resource types.
@@ -136,8 +132,6 @@ def validate (policies : Policies) (schema : Schema) : ValidationResult :=
 
 ----- Derivations -----
 
-deriving instance Repr for ActionSchemaEntry
-deriving instance Repr for Schema
 deriving instance Repr for ValidationError
 
 /-
