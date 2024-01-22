@@ -431,7 +431,7 @@ theorem entityUID?_some_implies_entity_lit {x : Expr} {euid : EntityUID}
   split at h₁ <;> simp at h₁ ; subst h₁ ; rfl
 
 
-theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts : ActionStore}
+theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts : ActionSchema}
   (h₁ : actionUID? x acts = some euid) :
   x = Expr.lit (.entityUID euid) ∧
   acts.contains euid = true
@@ -468,11 +468,11 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
     exact h₄
 
 theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntityTypeStore entities env.ets)
-  (h₂ : EntityTypeStore.descendentOf env.ets euid₁.ty euid₂.ty = false) :
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty = false) :
   inₑ euid₁ euid₂ entities = false
 := by
-  simp [EntityTypeStore.descendentOf] at h₂
+  simp [EntitySchema.descendentOf] at h₂
   simp [inₑ] ; by_contra h₃ ; simp at h₃
   rcases h₃ with h₃ | h₃
   case inl => subst h₃ ; simp at h₂
@@ -488,16 +488,16 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   case h_2 => simp [Set.contains, Set.elts, Set.empty] at h₃
 
 theorem action_type_in_eq_action_inₑ (euid₁ euid₂ : EntityUID) {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfActionStore entities env.acts)
+  (h₁ : InstanceOfActionSchema entities env.acts)
   (h₂ : env.acts.contains euid₁) :
-  inₑ euid₁ euid₂ entities = ActionStore.descendentOf env.acts euid₁ euid₂
+  inₑ euid₁ euid₂ entities = ActionSchema.descendentOf env.acts euid₁ euid₂
 := by
-  simp [InstanceOfActionStore] at h₁
-  simp [ActionStore.contains] at h₂
+  simp [InstanceOfActionSchema] at h₁
+  simp [ActionSchema.contains] at h₂
   cases h₃ : Map.find? env.acts euid₁ <;> simp [h₃] at h₂
   rename_i entry
   have ⟨data, h₁₁, h₁₂⟩ := h₁ euid₁ entry h₃
-  simp [inₑ, ActionStore.descendentOf, h₃, Entities.ancestorsOrEmpty, h₁₁]
+  simp [inₑ, ActionSchema.descendentOf, h₃, Entities.ancestorsOrEmpty, h₁₁]
   rcases h₄ : euid₁ == euid₂ <;> simp at h₄ <;> simp [h₄, h₁₂]
 
 theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
@@ -536,13 +536,13 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   have ⟨_, hents, hacts⟩ := h₂
   cases ha : actionUID? x₁ env.acts <;> simp [ha] at h₇ h₈ h₉
   case none =>
-    cases hin : EntityTypeStore.descendentOf env.ets euid₁.ty euid₂.ty <;>
+    cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
     simp [hin] at h₇ h₈ h₉
     simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
   case some =>
     cases he : entityUID? x₂ <;> simp [he] at h₇ h₈ h₉
     case none =>
-      cases hin : EntityTypeStore.descendentOf env.ets euid₁.ty euid₂.ty <;>
+      cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
       simp [hin] at h₇ h₈ h₉
       simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
     case some =>
@@ -554,7 +554,7 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [evaluate] at h₅ h₆ ; subst h₅ h₆
       have h₁₀ := action_type_in_eq_action_inₑ auid euid hacts ha''
       simp [h₁₀] at h₈ h₉
-      cases heq : ActionStore.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
+      cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
 theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityType}
   (h₁ : InstanceOfType (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety))) :
@@ -588,13 +588,13 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     apply h₅ euid heuid
 
 theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : List EntityUID} {ety : EntityType} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntityTypeStore entities env.ets)
-  (h₂ : EntityTypeStore.descendentOf env.ets euid.ty ety = false)
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : EntitySchema.descendentOf env.ets euid.ty ety = false)
   (h₃ : ∀ euid, euid ∈ euids → euid.ty = ety) :
   Set.any (fun x => inₑ euid x entities) (Set.make euids) = false
 := by
-  simp [InstanceOfEntityTypeStore] at h₁
-  simp [EntityTypeStore.descendentOf] at h₂
+  simp [InstanceOfEntitySchema] at h₁
+  simp [EntitySchema.descendentOf] at h₂
   rw [Set.make_any_iff_any]
   by_contra h₄ ; simp at h₄
   have ⟨euid', h₄, h₅⟩ := h₄
@@ -691,17 +691,17 @@ theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID
   case right => apply hl₁
 
 theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfActionStore entities env.acts)
+  (h₁ : InstanceOfActionSchema entities env.acts)
   (h₂ : env.acts.contains auid)
   (h₃ : euids ≡ euids') :
   Set.any (fun x => inₑ auid x entities) (Set.make euids) ↔
-  ∃ euid, euid ∈ euids' ∧ ActionStore.descendentOf env.acts auid euid
+  ∃ euid, euid ∈ euids' ∧ ActionSchema.descendentOf env.acts auid euid
 := by
   rw [Set.make_any_iff_any]
-  simp [ActionStore.contains] at h₂
+  simp [ActionSchema.contains] at h₂
   cases h₄ : Map.find? env.acts auid <;> simp [h₄] at h₂
   rename_i entry
-  simp [InstanceOfActionStore] at h₁
+  simp [InstanceOfActionSchema] at h₁
   specialize h₁ auid entry
   constructor <;> intro h₄ <;> rename_i hfnd <;>
   simp [hfnd] at h₁ <;>
@@ -716,9 +716,9 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
     simp [inₑ] at h₅
     rcases h₅ with h₅ | h₅
     case inl =>
-      subst h₅ ; simp [ActionStore.descendentOf]
+      subst h₅ ; simp [ActionSchema.descendentOf]
     case inr =>
-      simp [ActionStore.descendentOf, hfnd]
+      simp [ActionSchema.descendentOf, hfnd]
       intro _
       simp [Entities.ancestorsOrEmpty, hl₁, hr₁] at h₅
       exact h₅
@@ -729,7 +729,7 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
     have ⟨_, h₃⟩ := h₃
     simp [List.subset_def] at h₃
     specialize h₃ h₄ ; simp [h₃]
-    simp [ActionStore.descendentOf, hfnd] at h₅
+    simp [ActionSchema.descendentOf, hfnd] at h₅
     by_cases h₆ : auid = euid <;> simp [h₆] at h₅
     case pos =>
       subst h₆ ; simp [inₑ]
@@ -774,13 +774,13 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp [typeOfInₛ] at *
   cases ha : actionUID? x₁ env.acts <;> simp [ha] at h₈ h₉ h₁₀
   case none =>
-    cases hin : EntityTypeStore.descendentOf env.ets euid.ty ety₂ <;>
+    cases hin : EntitySchema.descendentOf env.ets euid.ty ety₂ <;>
     simp [hin] at h₈ h₉ h₁₀
     simp [entity_type_in_false_implies_inₛ_false hents hin hty₇] at h₁₀
   case some =>
     cases he : entityUIDs? x₂ <;> simp [he] at h₈ h₉ h₁₀
     case none =>
-      cases hin : EntityTypeStore.descendentOf env.ets euid.ty ety₂ <;>
+      cases hin : EntitySchema.descendentOf env.ets euid.ty ety₂ <;>
       simp [hin] at h₈ h₉ h₁₀
       simp [entity_type_in_false_implies_inₛ_false hents hin hty₇] at h₁₀
     case some =>

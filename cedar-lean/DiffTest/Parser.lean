@@ -412,21 +412,21 @@ def descendantsToAncestors [LT α] [BEq α] [DecidableLT α] (descendants : Map 
   Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
-structure JsonEntityTypeStoreEntry where
+structure JsonEntitySchemaEntry where
   descendants : Cedar.Data.Set EntityType
   attrs : RecordType
 
-abbrev JsonEntityTypeStore := Map EntityType JsonEntityTypeStoreEntry
+abbrev JsonEntitySchema := Map EntityType JsonEntitySchemaEntry
 
-structure JsonSchemaActionEntry where
+structure JsonActionSchemaEntry where
   appliesToPrincipal : Set EntityType
   appliesToResource : Set EntityType
   descendants : Set EntityUID
   context : RecordType
 
-abbrev JsonSchemaActionStore := Map EntityUID JsonSchemaActionEntry
+abbrev JsonActionSchema := Map EntityUID JsonActionSchemaEntry
 
-def invertJsonEntityTypeStore (ets : JsonEntityTypeStore) : EntityTypeStore :=
+def invertJsonEntitySchema (ets : JsonEntitySchema) : EntitySchema :=
   let ets := ets.toList
   let descendantMap := Map.make (List.map (λ (k,v) => (k,v.descendants)) ets)
   let ancestorMap := descendantsToAncestors descendantMap
@@ -437,7 +437,7 @@ def invertJsonEntityTypeStore (ets : JsonEntityTypeStore) : EntityTypeStore :=
         attrs := v.attrs
       })) ets)
 
-def invertJsonSchemaActionStore (acts : JsonSchemaActionStore) : SchemaActionStore :=
+def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
   let acts := acts.toList
   let descendantMap := Map.make (List.map (λ (k,v) => (k,v.descendants)) acts)
   let ancestorMap := descendantsToAncestors descendantMap
@@ -491,7 +491,7 @@ partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
       .ok (.ext name)
     | tag => .error s!"jsonToCedarType: unknown tag {tag}"
 
-partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntityTypeStoreEntry := do
+partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySchemaEntry := do
   let descendants_json ← getJsonField json "descendants" >>= jsonToArray
   let descendants ← List.mapM jsonToName descendants_json.toList
   let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
@@ -500,7 +500,7 @@ partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntityTyp
     attrs := attrs
   }
 
-partial def jsonToSchemaActionEntry (json : Lean.Json) : ParseResult JsonSchemaActionEntry := do
+partial def jsonToActionSchemaEntry (json : Lean.Json) : ParseResult JsonActionSchemaEntry := do
   let appliesTo ← getJsonField json "appliesTo"
   let appliesToPrincipal_json ← getJsonField appliesTo "principalApplySpec" >>= jsonToArray
   let appliesToPrincipal ← List.mapM jsonToEntityType appliesToPrincipal_json.toList
@@ -517,16 +517,16 @@ partial def jsonToSchemaActionEntry (json : Lean.Json) : ParseResult JsonSchemaA
       descendants := Set.make descendants,
       context := rty
     }
-  | _ => .error "jsonToSchemaActionEntry: context should be record-typed"
+  | _ => .error "jsonToActionSchemaEntry: context should be record-typed"
 
 partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
   let entityTypesKVs ← getJsonField json "entityTypes" >>= jsonArrayToKVList
   let entityTypes ← mapMKeysAndValues entityTypesKVs jsonToName jsonToEntityTypeEntry
   let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
-  let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToSchemaActionEntry
+  let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToActionSchemaEntry
   .ok {
-    ets := invertJsonEntityTypeStore (Map.make entityTypes),
-    acts := invertJsonSchemaActionStore (Map.make actions)
+    ets := invertJsonEntitySchema (Map.make entityTypes),
+    acts := invertJsonActionSchema (Map.make actions)
   }
 
 end -- end mutual block

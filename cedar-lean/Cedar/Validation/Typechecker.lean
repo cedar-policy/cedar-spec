@@ -22,6 +22,16 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
+inductive TypeError where
+  | lubErr (ty₁ : CedarType) (ty₂ : CedarType)
+  | unexpectedType (ty : CedarType)
+  | attrNotFound (ty : CedarType) (attr : Attr)
+  | unknownEntity (ety : EntityType)
+  | extensionErr (xs : List Expr)
+  | emptySetErr
+  | incompatibleSetTypes (ty : List CedarType)
+deriving Repr, DecidableEq
+
 abbrev Capabilities := List (Expr × Attr)
 
 def Capabilities.singleton (e : Expr) (a : Attr) : Capabilities := [(e, a)]
@@ -30,17 +40,6 @@ abbrev ResultType := Except TypeError (CedarType × Capabilities)
 
 def ok (ty : CedarType) (c : Capabilities := ∅) : ResultType := .ok (ty, c)
 def err (e : TypeError) : ResultType := .error e
-
-structure RequestType where
-  principal : EntityType
-  action : EntityUID
-  resource : EntityType
-  context : RecordType
-
-structure Environment where
-  ets : EntityTypeStore
-  acts : ActionStore
-  reqty : RequestType
 
 def typeOfLit (p : Prim) (env : Environment) : ResultType :=
   match p with
@@ -131,7 +130,7 @@ def entityUIDs? : Expr → Option (List EntityUID)
   | .set xs => xs.mapM entityUID?
   | _       => .none
 
-def actionUID? (x : Expr) (acts: ActionStore) : Option EntityUID := do
+def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
   let uid ← entityUID? x
   if acts.contains uid then .some uid else .none
 
