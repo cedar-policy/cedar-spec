@@ -14,6 +14,7 @@ This repository contains the Dafny formalization of Cedar and infrastructure for
 To build the Dafny formalization and proofs:
 
 * Install Dafny 4.0, following the instructions [here](https://github.com/dafny-lang/dafny/wiki/INSTALL). Our proofs expect Z3 version 4.12.1, so if you have another copy of Z3 installed locally, you may need to adjust your PATH.
+* Note that our Makefile also expects the .NET SDK and `dotnet` executable, version 6.0.x, available on your PATH. You can download the .NET SDK 6.0 from [here](https://dotnet.microsoft.com/en-us/download/dotnet/6.0).
 * `cd cedar-dafny && make verify test`
 
 To build the DRT framework:
