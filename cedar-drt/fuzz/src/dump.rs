@@ -15,6 +15,7 @@
  */
 
 use cedar_policy::integration_testing::{JsonRequest, JsonTest};
+use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{
     Context, EntityType, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
 };
@@ -25,6 +26,7 @@ use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
 use std::io::Write;
 use std::path::Path;
+use std::str::FromStr;
 
 /// Dump testcase to a directory.
 ///
@@ -41,6 +43,14 @@ pub fn dump<'a>(
     entities: &Entities,
     requests: impl IntoIterator<Item = (&'a Request, &'a Response)>,
 ) -> std::io::Result<()> {
+    // If the policy cannot be re-parsed, or cannot be converted to json
+    // (both possible with our current generators), then ignore it. The
+    // corpus test format currently has no way to convey that a policy
+    // should fail to parse.
+    if !well_formed(policies) {
+        return Ok(());
+    }
+
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;
 
@@ -104,14 +114,15 @@ pub fn dump<'a>(
                     ),
                     enable_request_validation: true,
                     decision: a.decision,
-                    reasons: cedar_policy::Response::from(a.clone())
+                    reason: cedar_policy::Response::from(a.clone())
                         .diagnostics()
                         .reason()
                         .cloned()
                         .collect(),
                     errors: cedar_policy::Response::from(a.clone())
                         .diagnostics()
-                        .error_policy_ids()
+                        .errors()
+                        .map(AuthorizationError::id)
                         .cloned()
                         .collect(),
                 })
@@ -120,6 +131,21 @@ pub fn dump<'a>(
     )?;
 
     Ok(())
+}
+
+/// Check whether a policy set can be successfully parsed and converted to json
+fn well_formed(policies: &PolicySet) -> bool {
+    let valid_json = policies
+        .policies()
+        .cloned()
+        .all(|p| serde_json::to_value(cedar_policy_core::est::Policy::from(p)).is_ok());
+
+    let parsable = policies
+        .static_policies()
+        .map(ToString::to_string)
+        .all(|p| Policy::from_str(&p).is_ok());
+
+    valid_json && parsable
 }
 
 /// Check whether a policy set passes validation

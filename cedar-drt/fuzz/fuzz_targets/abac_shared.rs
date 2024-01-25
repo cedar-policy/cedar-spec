@@ -17,6 +17,7 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
+use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -111,7 +112,8 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
     initialize_log();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
         let mut policyset = ast::PolicySet::new();
-        policyset.add_static(input.policy.into()).unwrap();
+        let policy: ast::StaticPolicy = input.policy.into();
+        policyset.add_static(policy.clone()).unwrap();
         debug!("Policies: {policyset}");
         debug!("Entities: {entities}");
         let requests = input
@@ -119,15 +121,25 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
             .into_iter()
             .map(Into::into)
             .collect::<Vec<_>>();
-        let mut responses = Vec::with_capacity(requests.len());
+
         for request in requests.iter().cloned() {
             debug!("Request: {request}");
-            let (ans, total_dur) =
+            let (_, total_dur) =
                 time_function(|| run_auth_test(def_impl, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-            responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+            // When the corpus is re-parsed, the policy will be given id "policy0".
+            // Recreate the policy set and compute responses here to account for this.
+            let mut policyset = ast::PolicySet::new();
+            let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
+            policyset.add_static(policy).unwrap();
+            let mut responses = Vec::with_capacity(requests.len());
+            for request in requests.iter() {
+                let authorizer = Authorizer::new();
+                let response = authorizer.is_authorized(request.clone(), &policyset, &entities);
+                responses.push(response);
+            }
             let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
             dump(
                 dump_dir,
