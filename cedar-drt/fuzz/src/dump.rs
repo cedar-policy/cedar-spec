@@ -43,10 +43,9 @@ pub fn dump<'a>(
     entities: &Entities,
     requests: impl IntoIterator<Item = (&'a Request, &'a Response)>,
 ) -> std::io::Result<()> {
-    // If the policy cannot be re-parsed, or cannot be converted to json
-    // (both possible with our current generators), then ignore it. The
-    // corpus test format currently has no way to convey that a policy
-    // should fail to parse.
+    // If the policy cannot be re-parsed (which is possible with our current
+    // generators), then ignore it. The corpus test format currently has no way
+    // to convey that a policy should fail to parse.
     if !well_formed(policies) {
         return Ok(());
     }
@@ -133,19 +132,12 @@ pub fn dump<'a>(
     Ok(())
 }
 
-/// Check whether a policy set can be successfully parsed and converted to json
+/// Check whether a policy set can be successfully parsed
 fn well_formed(policies: &PolicySet) -> bool {
-    let valid_json = policies
-        .policies()
-        .cloned()
-        .all(|p| serde_json::to_value(cedar_policy_core::est::Policy::from(p)).is_ok());
-
-    let parsable = policies
+    policies
         .static_policies()
         .map(ToString::to_string)
-        .all(|p| Policy::from_str(&p).is_ok());
-
-    valid_json && parsable
+        .all(|p| Policy::from_str(&p).is_ok())
 }
 
 /// Check whether a policy set passes validation
