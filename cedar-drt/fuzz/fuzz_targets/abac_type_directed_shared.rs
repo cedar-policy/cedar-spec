@@ -151,12 +151,13 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
         let mut policyset = ast::PolicySet::new();
         let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
         policyset.add_static(policy).unwrap();
-        let mut responses = Vec::with_capacity(requests.len());
-        for request in requests.iter() {
-            let authorizer = Authorizer::new();
-            let response = authorizer.is_authorized(request.clone(), &policyset, &input.entities);
-            responses.push(response);
-        }
+        let responses = requests
+            .iter()
+            .map(|request| {
+                let authorizer = Authorizer::new();
+                authorizer.is_authorized(request.clone(), &policyset, &input.entities)
+            })
+            .collect::<Vec<_>>();
         let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
         dump(
             dump_dir,
@@ -164,7 +165,7 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
             &input.schema.into(),
             &policyset,
             &input.entities,
-            std::iter::zip(requests.iter(), responses.iter()),
+            std::iter::zip(requests, responses),
         )
         .expect("failed to dump test case");
     }

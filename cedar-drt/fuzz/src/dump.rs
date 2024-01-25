@@ -35,17 +35,17 @@ use std::str::FromStr;
 ///
 /// `testcasename`: a name to use for the testcase. Will be used in various
 /// filenames etc.
-pub fn dump<'a>(
+pub fn dump(
     dirname: impl AsRef<Path>,
     testcasename: &str,
     schema: &SchemaFragment,
     policies: &PolicySet,
     entities: &Entities,
-    requests: impl IntoIterator<Item = (&'a Request, &'a Response)>,
+    requests: impl IntoIterator<Item = (Request, Response)>,
 ) -> std::io::Result<()> {
-    // If the policy cannot be re-parsed (which is possible with our current
+    // If the policy set cannot be re-parsed (which is possible with our current
     // generators), then ignore it. The corpus test format currently has no way
-    // to convey that a policy should fail to parse.
+    // to convey that the input should fail to parse.
     if !well_formed(policies) {
         return Ok(());
     }
@@ -118,7 +118,7 @@ pub fn dump<'a>(
                         .reason()
                         .cloned()
                         .collect(),
-                    errors: cedar_policy::Response::from(a.clone())
+                    errors: cedar_policy::Response::from(a)
                         .diagnostics()
                         .errors()
                         .map(AuthorizationError::id)
