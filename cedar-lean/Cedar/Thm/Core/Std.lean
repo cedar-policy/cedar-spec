@@ -95,20 +95,20 @@ theorem List.foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ 
     simp [List.foldlM] at *
     cases h₄ : f x₂ hd <;> simp [h₄] at h₃
     rename_i x₄
-    rcases (h₁ x₀ x₁ hd) with h₅
+    have h₅ := h₁ x₀ x₁ hd
     simp [h₂, h₄] at h₅
     cases h₆ : f x₁ hd <;> simp [h₆] at h₅
     rename_i x₅
-    rcases (List.foldlM_of_assoc_some f x₂ hd x₄ x₃ tl h₁ h₄ h₃) with h₇
+    have h₇ := List.foldlM_of_assoc_some f x₂ hd x₄ x₃ tl h₁ h₄ h₃
     cases h₈ : List.foldlM f hd tl <;> simp [h₈] at h₇
     rename_i x₆
     rw [eq_comm] at h₅
     cases h₉ : List.foldlM f x₅ tl <;> simp [h₉]
     case none =>
-      rcases (List.foldlM_of_assoc_some f x₀ x₅ x₄ x₃ tl h₁ h₅ h₃) with h₁₀
+      have h₁₀ := List.foldlM_of_assoc_some f x₀ x₅ x₄ x₃ tl h₁ h₅ h₃
       simp [h₉] at h₁₀
     case some x₇ =>
-      rcases (List.foldlM_of_assoc_some f x₁ hd x₅ x₇ tl h₁ h₆ h₉) with h₁₀
+      have h₁₀ := List.foldlM_of_assoc_some f x₁ hd x₅ x₇ tl h₁ h₆ h₉
       simp [h₈] at h₁₀
       specialize h₁ x₀ x₁ x₆
       simp [h₂, h₁₀] at h₁
@@ -129,7 +129,7 @@ theorem List.foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂
     simp [List.foldlM] at h₃
     cases h₄ : f x₁ hd <;> simp [h₄] at h₃
     rename_i x₃
-    rcases (List.foldlM_of_assoc_some f x₁ hd x₃ x₂ tl h₁ h₄ h₃) with h₅
+    have h₅ := List.foldlM_of_assoc_some f x₁ hd x₃ x₂ tl h₁ h₄ h₃
     cases h₆ : List.foldlM f hd tl <;> simp [h₆] at h₅
     rename_i x₄
     specialize h₁ x₀ x₁ x₄
@@ -153,20 +153,20 @@ theorem List.foldlM_of_assoc_none (f : α → α → Option α) (x₀ x₁ x₂ 
     rename_i x₃
     cases h₅ : List.foldlM f x₃ tl <;> simp [h₅]
     rename_i x₄
-    rcases (List.foldlM_of_assoc_some f x₁ hd x₃ x₄ tl h₁ h₄ h₅) with h₆
+    have h₆ := List.foldlM_of_assoc_some f x₁ hd x₃ x₄ tl h₁ h₄ h₅
     cases h₇ : List.foldlM f hd tl <;> simp [h₇] at h₆
     rename_i x₅
     simp [List.foldlM] at h₃
     cases h₈ : f x₂ hd <;> simp [h₈] at h₃
     case none =>
-      rcases (List.foldlM_of_assoc_none' f x₂ hd x₅ tl h₁ h₈ h₇) with h₉
-      rcases (h₁ x₀ x₁ x₅) with h₁₀
+      have h₉ := List.foldlM_of_assoc_none' f x₂ hd x₅ tl h₁ h₈ h₇
+      have h₁₀ := h₁ x₀ x₁ x₅
       simp [h₂, h₆] at h₁₀
       simp [←h₁₀, h₉]
     case some x₆ =>
-      rcases (List.foldlM_of_assoc_none f x₂ hd x₆ tl h₁ h₈ h₃) with h₉
+      have h₉ := List.foldlM_of_assoc_none f x₂ hd x₆ tl h₁ h₈ h₃
       simp [h₇] at h₉
-      rcases (h₁ x₀ x₁ x₅) with h₁₀
+      have h₁₀ := h₁ x₀ x₁ x₅
       simp [h₂, h₆] at h₁₀
       simp [←h₁₀, h₉]
 

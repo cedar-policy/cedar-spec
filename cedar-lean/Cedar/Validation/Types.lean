@@ -61,48 +61,57 @@ abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
 
-inductive TypeError where
-  | lubErr (ty₁ : CedarType) (ty₂ : CedarType)
-  | unexpectedType (ty : CedarType)
-  | attrNotFound (ty : CedarType) (attr : Attr)
-  | unknownEntity (ety : EntityType)
-  | extensionErr (xs : List Expr)
-  | emptySetErr
-  | incompatibleSetTypes (ty : List CedarType)
-
-structure EntityTypeStoreEntry where
+structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
 
-abbrev EntityTypeStore := Map EntityType EntityTypeStoreEntry
+abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
-def EntityTypeStore.contains (ets : EntityTypeStore) (ety : EntityType) : Bool :=
+def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
-def EntityTypeStore.attrs? (ets : EntityTypeStore) (ety : EntityType) : Option RecordType :=
-  (ets.find? ety).map EntityTypeStoreEntry.attrs
+def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
+  (ets.find? ety).map EntitySchemaEntry.attrs
 
-def EntityTypeStore.descendentOf (ets : EntityTypeStore) (ety₁ ety₂ : EntityType) : Bool :=
+def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match ets.find? ety₁ with
     | .some entry => entry.ancestors.contains ety₂
     | .none => false
 
-structure ActionStoreEntry where
-  ancestors : Cedar.Data.Set EntityUID
+structure ActionSchemaEntry where
+  appliesToPrincipal : Set EntityType
+  appliesToResource : Set EntityType
+  ancestors : Set EntityUID
+  context : RecordType
 
-abbrev ActionStore := Map EntityUID ActionStoreEntry
+abbrev ActionSchema := Map EntityUID ActionSchemaEntry
 
-def ActionStore.contains (as : ActionStore) (uid : EntityUID) : Bool :=
+def ActionSchema.contains (as : ActionSchema) (uid : EntityUID) : Bool :=
   (as.find? uid).isSome
 
-def ActionStore.descendentOf (as : ActionStore)  (uid₁ uid₂ : EntityUID) : Bool :=
+def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) : Bool :=
   if uid₁ == uid₂
   then true
   else match as.find? uid₁ with
     | .some entry => entry.ancestors.contains uid₂
     | .none => false
+
+structure Schema where
+  ets : EntitySchema
+  acts : ActionSchema
+
+structure RequestType where
+  principal : EntityType
+  action : EntityUID
+  resource : EntityType
+  context : RecordType
+
+structure Environment where
+  ets : EntitySchema
+  acts : ActionSchema
+  reqty : RequestType
 
 ----- Derivations -----
 
@@ -110,9 +119,9 @@ deriving instance Repr, DecidableEq for BoolType
 deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
-deriving instance Repr for TypeError
-deriving instance Repr for EntityTypeStoreEntry
-deriving instance Repr for ActionStoreEntry
+deriving instance Repr for ActionSchemaEntry
+deriving instance Repr for EntitySchemaEntry
+deriving instance Repr for Schema
 
 mutual
 
@@ -184,7 +193,5 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 end
 
 instance : DecidableEq CedarType := decCedarType
-
-deriving instance DecidableEq for TypeError
 
 end Cedar.Validation
