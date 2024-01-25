@@ -18,8 +18,9 @@
 use cedar_drt::initialize_log;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::Authorizer;
+use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::evaluator::EvaluationErrorKind;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::{Error, Result},
@@ -356,30 +357,39 @@ fuzz_target!(|input: FuzzTargetInput| {
                     debug!("Request: {q}");
                     let ans = authorizer.is_authorized(q.clone(), &policyset, &entities);
 
-                    let unexpected_errs = ans.diagnostics.errors.iter().filter_map(|error|
-                        match error {
-                            cedar_policy::AuthorizationError::PolicyEvaluationError { error, .. } => match error.error_kind() {
-                                // Evaluation errors the validator should prevent.
-                                cedar_policy::EvaluationErrorKind::UnspecifiedEntityAccess(_) |
-                                cedar_policy::EvaluationErrorKind::RecordAttrDoesNotExist(_, _) |
-                                cedar_policy::EvaluationErrorKind::EntityAttrDoesNotExist { .. } |
-                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionLookup(_) |
-                                cedar_policy::EvaluationErrorKind::TypeError { .. } |
-                                cedar_policy::EvaluationErrorKind::WrongNumArguments { .. } => Some(error.to_string()),
-                                // Evaluation errors it shouldn't prevent. Not
-                                // written with a catch all so that we must
-                                // consider if a new error type should cause
-                                // this target to fail.
-                                cedar_policy::EvaluationErrorKind::EntityDoesNotExist(_) |
-                                cedar_policy::EvaluationErrorKind::IntegerOverflow(_) |
-                                cedar_policy::EvaluationErrorKind::InvalidRestrictedExpression(_) |
-                                cedar_policy::EvaluationErrorKind::UnlinkedSlot(_) |
-                                cedar_policy::EvaluationErrorKind::FailedExtensionFunctionApplication { .. } |
-                                cedar_policy::EvaluationErrorKind::NonValue(_) |
-                                cedar_policy::EvaluationErrorKind::RecursionLimit => None,
+                    let unexpected_errs = ans
+                        .diagnostics
+                        .errors
+                        .iter()
+                        .filter_map(|error| match error {
+                            AuthorizationError::PolicyEvaluationError { error, .. } => {
+                                match error.error_kind() {
+                                    // Evaluation errors the validator should prevent.
+                                    EvaluationErrorKind::UnspecifiedEntityAccess(_)
+                                    | EvaluationErrorKind::RecordAttrDoesNotExist(_, _)
+                                    | EvaluationErrorKind::EntityAttrDoesNotExist { .. }
+                                    | EvaluationErrorKind::FailedExtensionFunctionLookup(_)
+                                    | EvaluationErrorKind::TypeError { .. }
+                                    | EvaluationErrorKind::WrongNumArguments { .. } => {
+                                        Some(error.to_string())
+                                    }
+                                    // Evaluation errors it shouldn't prevent. Not
+                                    // written with a catch all so that we must
+                                    // consider if a new error type should cause
+                                    // this target to fail.
+                                    EvaluationErrorKind::EntityDoesNotExist(_)
+                                    | EvaluationErrorKind::IntegerOverflow(_)
+                                    | EvaluationErrorKind::InvalidRestrictedExpression(_)
+                                    | EvaluationErrorKind::UnlinkedSlot(_)
+                                    | EvaluationErrorKind::FailedExtensionFunctionApplication {
+                                        ..
+                                    }
+                                    | EvaluationErrorKind::NonValue(_)
+                                    | EvaluationErrorKind::RecursionLimit => None,
+                                }
                             }
-                        }
-                    ).collect::<Vec<_>>();
+                        })
+                        .collect::<Vec<_>>();
 
                     assert_eq!(
                         unexpected_errs,
