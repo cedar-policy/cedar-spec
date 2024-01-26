@@ -48,6 +48,9 @@ pub const JAVA_DESERIALIZATION_MSG: &str = "java_deserialization (ns) : ";
 pub const JAVA_AUTH_MSG: &str = "java_auth (ns) : ";
 pub const JAVA_VALIDATION_MSG: &str = "java_validation (ns) : ";
 
+/// If evaluation errors or not.
+pub const EVAL_RESULT_MSG: &str = "rust_eval: ";
+
 lazy_static! {
     /// The JVM instance
     static ref JVM: JavaVM = {

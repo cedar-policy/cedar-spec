@@ -20,7 +20,9 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALIDATION_MSG};
+use cedar_drt::{
+    time_function, CedarTestImplementation, EVAL_RESULT_MSG, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
+};
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
@@ -48,13 +50,19 @@ pub fn run_eval_test(
     };
     let eval = Evaluator::new(request.clone(), entities, &exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
-        Ok(v) => Some(v),
-        Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
-            // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
-            // overflow error. Once we migrate to Lean this should be unnecessary.
-            return;
+        Ok(v) => {
+            info!("{}{}", EVAL_RESULT_MSG, true);
+            Some(v)
         }
-        Err(_) => None,
+        Err(e) => {
+            info!("{}{}", EVAL_RESULT_MSG, false);
+            if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) {
+                // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
+                // overflow error. Once we migrate to Lean this should be unnecessary.
+                return;
+            }
+            None
+        }
     };
 
     // `custom_impl.interpret()` returns true when the result of evaluating `expr`
@@ -91,6 +99,12 @@ pub fn run_auth_test(
     let (rust_res, rust_auth_dur) =
         time_function(|| authorizer.is_authorized(request.clone(), policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+
+    info!(
+        "{}{}",
+        EVAL_RESULT_MSG,
+        rust_res.diagnostics.errors.is_empty()
+    );
 
     // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
     // overflow error. Once we migrate to Lean this should be unnecessary.
