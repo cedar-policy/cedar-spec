@@ -50,6 +50,8 @@ pub const JAVA_VALIDATION_MSG: &str = "java_validation (ns) : ";
 
 /// If evaluation errors or not.
 pub const EVAL_RESULT_MSG: &str = "rust_eval: ";
+/// If typechecks or not
+pub const TC_RESULT_MSG: &str = "rust_tc: ";
 
 lazy_static! {
     /// The JVM instance

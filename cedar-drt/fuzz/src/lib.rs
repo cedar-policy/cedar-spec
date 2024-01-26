@@ -22,6 +22,7 @@ pub use prt::*;
 
 use cedar_drt::{
     time_function, CedarTestImplementation, EVAL_RESULT_MSG, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
+    TC_RESULT_MSG,
 };
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
@@ -168,6 +169,7 @@ pub fn run_val_test(
     let validator = Validator::new(schema.clone());
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
+    info!("{}{}", TC_RESULT_MSG, rust_res.validation_passed());
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
