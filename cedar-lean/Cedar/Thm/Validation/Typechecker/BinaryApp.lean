@@ -130,15 +130,15 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
         case false => exact false_is_instance_of_ff
         case true  => contradiction
     case h_2 =>
-      have ⟨ty₁, c₁', ty₂, c₂', ht₁, ht₂, hty⟩ := hty
-      specialize ih₁ h₁ h₂ ht₁ ; have ⟨_, v₁, ih₁⟩ := ih₁
-      specialize ih₂ h₁ h₂ ht₂ ; have ⟨_, v₂, ih₂⟩ := ih₂
+      replace ⟨ty₁, c₁', ty₂, c₂', ht₁, ht₂, hty⟩ := hty
+      specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+      specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
       simp [EvaluatesTo, evaluate] at *
       cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
       cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
       try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-      have ⟨ihl₁, ih₃⟩ := ih₁ ; clear ih₁
-      have ⟨ihl₂, ih₄⟩ := ih₂ ; clear ih₂
+      replace ⟨ihl₁, ih₃⟩ := ih₁
+      replace ⟨ihl₂, ih₄⟩ := ih₂
       rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
       simp [apply₂]
       split at hty
@@ -146,7 +146,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
         rw [hty]
         apply bool_is_instance_of_anyBool
       case h_2 heq =>
-        have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty
+        have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
         subst hty₀ hty₁ hty₂
         have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
         cases h₇ : v₁ == v₂ <;>
@@ -192,16 +192,16 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
   constructor
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    have ⟨c₁', ht₁⟩ := ht₁
-    have ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; have ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; have ⟨_, v₂, ih₂⟩ := ih₂
+    replace ⟨c₁', ht₁⟩ := ht₁
+    replace ⟨c₂', ht₂⟩ := ht₂
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
     try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
-    have ⟨ihl₁, ih₃⟩ := ih₁ ; clear ih₁
-    have ⟨ihl₂, ih₄⟩ := ih₂ ; clear ih₂
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
     have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
@@ -231,7 +231,7 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     split at h₂ <;> try contradiction
     simp at h₂ ; simp [h₂]
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
-    have ⟨h₂, _⟩ := h₂
+    replace ⟨h₂, _⟩ := h₂
     constructor
     case left  => exists tc₁.snd ; simp [←h₂, ←h₅]
     case right => exists tc₂.snd ; simp [←h₂, ←h₆]
@@ -252,16 +252,16 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   constructor
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    have ⟨c₁', ht₁⟩ := ht₁
-    have ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; have ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; have ⟨_, v₂, ih₂⟩ := ih₂
+    replace ⟨c₁', ht₁⟩ := ht₁
+    replace ⟨c₂', ht₂⟩ := ht₂
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
     try { simp [ih₁, ih₂] ; exact type_is_inhabited .int }
-    have ⟨ihl₁, ih₃⟩ := ih₁ ; clear ih₁
-    have ⟨ihl₂, ih₄⟩ := ih₂ ; clear ih₂
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
     have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
@@ -315,16 +315,16 @@ theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} 
   constructor
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    have ⟨c₁', ht₁⟩ := ht₁
-    have ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; have ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; have ⟨_, v₂, ih₂⟩ := ih₂
+    replace ⟨c₁', ht₁⟩ := ht₁
+    replace ⟨c₂', ht₂⟩ := ht₂
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
     try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-    have ⟨ihl₁, ih₃⟩ := ih₁ ; clear ih₁
-    have ⟨ihl₂, ih₄⟩ := ih₂ ; clear ih₂
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
     subst ih₁
@@ -376,16 +376,16 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   constructor
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    have ⟨c₁', ht₁⟩ := ht₁
-    have ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; have ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; have ⟨_, v₂, ih₂⟩ := ih₂
+    replace ⟨c₁', ht₁⟩ := ht₁
+    replace ⟨c₂', ht₂⟩ := ht₂
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
     try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-    have ⟨ihl₁, ih₃⟩ := ih₁ ; clear ih₁
-    have ⟨ihl₂, ih₄⟩ := ih₂ ; clear ih₂
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
     have ⟨s₂, ih₂⟩ := instance_of_set_type_is_set ih₄
@@ -440,7 +440,7 @@ theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts :
   cases h₂ : entityUID? x <;> simp [h₂] at h₁
   replace h₂ := entityUID?_some_implies_entity_lit h₂
   rename_i euid'
-  have ⟨h₀, h₁⟩ := h₁
+  replace ⟨h₀, h₁⟩ := h₁
   subst h₀
   simp [h₁, h₂]
 
@@ -459,7 +459,7 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
     rename_i hd' tl'
     cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
     cases h₃ : List.mapM' entityUID? tl' <;> simp [h₃] at h₁
-    have ⟨hhd, htl⟩ := h₁ ; rw [eq_comm] at hhd htl ; subst hhd htl
+    have ⟨hhd, htl⟩ := h₁ ; clear h₁ ; rw [eq_comm] at hhd htl ; subst hhd htl
     replace h₂ := entityUID?_some_implies_entity_lit h₂
     simp [h₂]
     rw [List.mapM'_eq_mapM] at h₃
@@ -522,10 +522,10 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   try { apply type_is_inhabited }
   rw [eq_comm] at hev₂ ; subst hev₂
   replace hty₁ := instance_of_entity_type_is_entity hty₁
-  have ⟨euid₁, hty₁, hty₁'⟩ := hty₁
+  replace ⟨euid₁, hty₁, hty₁'⟩ := hty₁
   subst hty₁ hty₁'
   replace hty₂ := instance_of_entity_type_is_entity hty₂
-  have ⟨euid₂, hty₂, hty₂'⟩ := hty₂
+  replace ⟨euid₂, hty₂, hty₂'⟩ := hty₂
   subst hty₂ hty₂'
   simp [apply₂]
   apply InstanceOfType.instance_of_bool
@@ -533,8 +533,8 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   split <;> try simp only
   rename_i b bty  h₇ h₈ h₉
   simp [typeOfInₑ] at *
-  have ⟨_, hents, hacts⟩ := h₂
-  cases ha : actionUID? x₁ env.acts <;> simp [ha] at h₇ h₈ h₉
+  have ⟨_, hents, hacts⟩ := h₂ ; clear h₂
+  cases hₐ : actionUID? x₁ env.acts <;> simp [hₐ] at h₇ h₈ h₉
   case none =>
     cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
     simp [hin] at h₇ h₈ h₉
@@ -546,13 +546,12 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [hin] at h₇ h₈ h₉
       simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
     case some =>
-      replace ha := actionUID?_some_implies_action_lit ha
-      have ⟨ha', ha''⟩ := ha ; clear ha
-      subst ha'
+      replace ⟨hₐ, hₐ'⟩ := actionUID?_some_implies_action_lit hₐ
+      subst hₐ
       replace he := entityUID?_some_implies_entity_lit he ; subst he
       rename_i auid euid _ _
       simp [evaluate] at h₅ h₆ ; subst h₅ h₆
-      have h₁₀ := action_type_in_eq_action_inₑ auid euid hacts ha''
+      have h₁₀ := action_type_in_eq_action_inₑ auid euid hacts hₐ'
       simp [h₁₀] at h₈ h₉
       cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
@@ -571,8 +570,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     cases h₁ ; rename_i h₁
     have h₂ := h₁ hd
     simp [Set.mem_cons_self] at h₂
-    replace h₂ := instance_of_entity_type_is_entity h₂
-    have ⟨heuid, hdty, h₂⟩ := h₂
+    replace ⟨heuid, hdty, h₂⟩ := instance_of_entity_type_is_entity h₂
     subst h₂
     rw [Value.asEntityUID] ; simp
     rw [List.mapM'_eq_mapM]
@@ -597,7 +595,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
   simp [EntitySchema.descendentOf] at h₂
   rw [Set.make_any_iff_any]
   by_contra h₄ ; simp at h₄
-  have ⟨euid', h₄, h₅⟩ := h₄
+  replace ⟨euid', h₄, h₅⟩ := h₄
   simp [inₑ] at h₅
   rcases h₅ with h₅ | h₅
   case inl =>
@@ -608,7 +606,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     simp [Entities.ancestorsOrEmpty, Set.contains, Set.elts, Set.empty] at h₅
     cases h₆ : Map.find? entities euid <;> simp [h₆] at h₅
     rename_i data
-    have ⟨entry, h₁, _, h₇⟩ := h₁ euid data h₆
+    replace ⟨entry, h₁, _, h₇⟩ := h₁ euid data h₆
     specialize h₇ euid' h₅
     split at h₂ <;> try contradiction
     rename_i h₈
@@ -705,12 +703,12 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
   specialize h₁ auid entry
   constructor <;> intro h₄ <;> rename_i hfnd <;>
   simp [hfnd] at h₁ <;>
-  have ⟨data, hl₁, hr₁⟩ := h₁
+  have ⟨data, hl₁, hr₁⟩ := h₁ <;> clear h₁
   case some.mp =>
     rw [List.any_eq_true] at h₄
-    have ⟨euid, h₄, h₅⟩ := h₄
+    replace ⟨euid, h₄, h₅⟩ := h₄
     exists euid
-    have ⟨h₃, _⟩ := h₃
+    replace ⟨h₃, _⟩ := h₃
     simp [List.subset_def] at h₃
     specialize h₃ h₄ ; simp [h₃]
     simp [inₑ] at h₅
@@ -724,9 +722,9 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
       exact h₅
   case some.mpr =>
     rw [List.any_eq_true]
-    have ⟨euid, h₄, h₅⟩ := h₄
+    replace ⟨euid, h₄, h₅⟩ := h₄
     exists euid
-    have ⟨_, h₃⟩ := h₃
+    replace ⟨_, h₃⟩ := h₃
     simp [List.subset_def] at h₃
     specialize h₃ h₄ ; simp [h₃]
     simp [ActionSchema.descendentOf, hfnd] at h₅
@@ -757,7 +755,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [h₆, hev₂] <;>
   try { apply type_is_inhabited }
   rw [eq_comm] at hev₂ ; subst hev₂
-  have ⟨euid, hty₁, hty₁'⟩ := instance_of_entity_type_is_entity hty₁
+  replace ⟨euid, hty₁, hty₁'⟩ := instance_of_entity_type_is_entity hty₁
   subst hty₁ hty₁'
   have ⟨vs, hset⟩ := instance_of_set_type_is_set hty₂
   subst hset
@@ -770,7 +768,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp [InstanceOfBoolType]
   split <;> try simp
   rename_i h₈ h₉ h₁₀
-  have ⟨_, hents, hacts⟩ := h₂
+  have ⟨_, hents, hacts⟩ := h₂ ; clear h₂
   simp [typeOfInₛ] at *
   cases ha : actionUID? x₁ env.acts <;> simp [ha] at h₈ h₉ h₁₀
   case none =>
@@ -784,8 +782,8 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [hin] at h₈ h₉ h₁₀
       simp [entity_type_in_false_implies_inₛ_false hents hin hty₇] at h₁₀
     case some =>
-      have ⟨ha', hac⟩ := actionUID?_some_implies_action_lit ha
-      subst ha'
+      replace ⟨ha, hac⟩ := actionUID?_some_implies_action_lit ha
+      subst ha
       have he := entityUIDs?_some_implies_entity_lits he
       subst he
       simp [evaluate] at h₅ ; rw [eq_comm] at h₅ ; subst h₅

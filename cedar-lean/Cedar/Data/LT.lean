@@ -168,8 +168,7 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
         have h₆ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₄ h₅
         subst h₆
         simp at h₁
-        have h₆ := List.lt_conn h₁
-        cases h₆
+        cases (List.lt_conn h₁)
         case inl _ _ h₆ =>
           have h₇ := List.cons_lt_cons xhd xtl ytl h₆
           contradiction
