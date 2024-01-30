@@ -21,7 +21,7 @@
 // we've already initialized.
 
 use core::panic;
-use std::{collections::HashSet, env, ffi::CString};
+use std::{env, ffi::CString};
 
 use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
@@ -85,8 +85,11 @@ struct TimedDef<T> {
 
 #[derive(Debug, Deserialize)]
 struct AuthorizationResponseInner {
-    policies: SetDef<String>,
     decision: String,
+    #[serde(rename = "determiningPolicies")]
+    determining_policies: SetDef<String>,
+    #[serde(rename = "erroredPolicies")]
+    errored_policies: SetDef<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,14 +155,13 @@ impl LeanDefinitionalEngine {
                 info!("{}{}", LEAN_AUTH_MSG, resp.duration);
 
                 let resp = resp.data;
-                let dec: authorizer::Decision = match resp.decision.as_str() {
+                let decision: authorizer::Decision = match resp.decision.as_str() {
                     "allow" => authorizer::Decision::Allow,
                     "deny" => authorizer::Decision::Deny,
                     _ => panic!("Lean code returned unknown decision {}", resp.decision),
                 };
-
                 let reason = resp
-                    .policies
+                    .determining_policies
                     .mk
                     .l
                     .into_iter()
@@ -167,7 +169,18 @@ impl LeanDefinitionalEngine {
                         cedar_policy::PolicyId::from_str(&x).expect("could not coerce policy id")
                     })
                     .collect();
-                Ok(InterfaceResponse::new(dec, reason, HashSet::new()))
+                let errors = resp
+                    .errored_policies
+                    .mk
+                    .l
+                    .into_iter()
+                    .map(|x| {
+                        // coerce to PolicyId just to ensure it's valid
+                        let pid = cedar_policy::PolicyId::from_str(&x).expect("could not coerce policy id");
+                        format!("error in policy {pid}")
+                    })
+                    .collect();
+                Ok(InterfaceResponse::new(decision, reason, errors))
             }
             AuthorizationResponse::Error(err) => Err(err),
         }
