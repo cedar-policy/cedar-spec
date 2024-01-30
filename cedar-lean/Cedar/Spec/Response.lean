@@ -32,8 +32,8 @@ inductive Decision where
 
 structure Response where
   decision : Decision
-  determining_policies : Set PolicyID
-  error_policies : Set PolicyID
+  determiningPolicies : Set PolicyID
+  erroredPolicies : Set PolicyID
 
 ----- Derivations -----
 

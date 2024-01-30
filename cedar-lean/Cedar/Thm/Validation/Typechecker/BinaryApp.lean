@@ -682,7 +682,7 @@ theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID
   rw [List.map_map] at h₃
   rw [←List.mapM'_eq_mapM] at h₂
   replace h₂ := mapM'_asEntityUID_eq_entities h₂
-  replace h₁ := Set.make_eqv h₁
+  replace h₁ := Set.make_mk_eqv h₁
   subst h₂ h₃
   simp [List.Equiv, List.subset_def] at *
   have ⟨hl₁, hr₁⟩ := h₁

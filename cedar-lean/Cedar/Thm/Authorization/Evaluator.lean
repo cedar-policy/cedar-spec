@@ -73,14 +73,14 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
 /--
   `producesBool` means the expression evaluates to a bool (and not an error)
 -/
-def producesBool (e : Expr) (request : Request) (entities : Entities) : Bool :=
+def producesBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
   match (evaluate e request entities) with
   | .ok (.prim (.bool _)) => true
   | _ => false
 /--
   `producesNonBool` means the expression evaluates to a non-bool (and not an error)
 -/
-def producesNonBool (e : Expr) (request : Request) (entities : Entities) : Bool :=
+def producesNonBool (e : Expr) (request : Request) (entities : Entities) : Prop :=
   match (evaluate e request entities) with
   | .ok (.prim (.bool _)) => false
   | .error _ => false
@@ -136,7 +136,10 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
   Every `and` expression produces either .ok bool or .error
 -/
 theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
-  match (evaluate (Expr.and e₁ e₂) request entities) with | .ok (.prim (.bool _)) => true | .error _ => true | _ => false
+  match (evaluate (Expr.and e₁ e₂) request entities) with
+  | .ok (.prim (.bool _)) => true
+  | .error _ => true
+  | _ => false
 := by
   cases h : evaluate (Expr.and e₁ e₂) request entities <;> simp
   case ok val =>

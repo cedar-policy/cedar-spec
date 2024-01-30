@@ -167,17 +167,7 @@ theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) 
   simp only [beq_eq_false_iff_ne, ne_eq, mk.injEq]
   apply List.canonicalize_not_nil
 
-theorem make_eq_if_eqv [LT α] [DecidableLT α] [StrictLT α] (xs ys : List α) :
-  xs ≡ ys → Set.make xs = Set.make ys
-:= by
-  intro h; unfold make; simp
-  apply List.if_equiv_strictLT_then_canonical _ _ h
-
-/--
-  careful: this is not exactly the converse of the theorem above.
-  For the converse of the theorem above, use `make_make_eqv`
--/
-theorem make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
 := by
   simp [make] ; intro h₁
@@ -189,7 +179,7 @@ theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.make ys ↔ xs ≡ ys
 := by
   constructor
-  case _ =>
+  case mp =>
     intro h; unfold make at h; simp at h
     have h₁ := List.canonicalize_equiv xs
     have h₂ := List.canonicalize_equiv ys
@@ -197,7 +187,9 @@ theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
     rw [← h] at h₂
     have h₃ := List.Equiv.symm h₂; clear h₂
     exact List.Equiv.trans (a := xs) (b := List.canonicalize (fun x => x) xs) (c := ys) h₁ h₃
-  case _ => exact Set.make_eq_if_eqv (α := α) (xs := xs) (ys := ys)
+  case mpr =>
+    intro h; unfold make; simp
+    apply List.if_equiv_strictLT_then_canonical _ _ h
 
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs

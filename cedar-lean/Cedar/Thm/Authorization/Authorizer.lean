@@ -87,7 +87,7 @@ theorem satisfiedPolicies_order_and_dup_independent (effect : Effect) (request :
 := by
   intro h₁
   unfold satisfiedPolicies
-  apply Set.make_eq_if_eqv
+  rw [Set.make_make_eqv]
   exact List.filterMap_equiv (satisfiedWithEffect effect · request entities) policies₁ policies₂ h₁
 
 theorem errorPolicies_order_and_dup_independent (request : Request) (entities : Entities) (policies₁ policies₂ : Policies) :
@@ -96,8 +96,8 @@ theorem errorPolicies_order_and_dup_independent (request : Request) (entities : 
 := by
   intro h₁
   unfold errorPolicies
-  apply Set.make_eq_if_eqv
-  exact List.filterMap_equiv (idIfHasError · request entities) policies₁ policies₂ h₁
+  rw [Set.make_make_eqv]
+  exact List.filterMap_equiv (errored · request entities) policies₁ policies₂ h₁
 
 theorem sound_policy_slice_is_equisatisfied (effect : Effect) (request : Request) (entities : Entities) (slice policies : Policies) :
   IsSoundPolicySlice request entities slice policies →
@@ -128,7 +128,7 @@ theorem satisfiedPolicies_eq_for_sound_policy_slice (effect : Effect) (request :
 := by
   intro h
   unfold satisfiedPolicies
-  apply Set.make_eq_if_eqv
+  rw [Set.make_make_eqv]
   exact sound_policy_slice_is_equisatisfied effect request entities slice policies h
 
 theorem sound_policy_slice_is_equierror (request : Request) (entities : Entities) (slice policies : Policies) :
@@ -163,13 +163,13 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
   errorPolicies policies request entities = alternateErrorPolicies policies request entities
 := by
   unfold errorPolicies alternateErrorPolicies
-  apply Set.make_eq_if_eqv
+  rw [Set.make_make_eqv]
   simp [List.Equiv, List.subset_def]
   apply And.intro
-  case a.left =>
+  case left =>
     intro pid p h₁ h₂
     apply Exists.intro p
-    unfold idIfHasError hasError at h₂
+    unfold errored hasError at h₂
     split at h₂
     case inl h₃ =>
       unfold hasError
@@ -177,14 +177,14 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
       case left => simp [h₃, h₁, List.mem_filter]
       case right => simp at h₂; exact h₂
     case inr => contradiction
-  case a.right =>
+  case right =>
     intro p h₁
     apply Exists.intro p
     simp [List.mem_filter] at h₁
     apply And.intro
     case left => exact h₁.left
     case right =>
-      unfold idIfHasError
+      unfold errored
       split
       case inl => rfl
       case inr h₃ => simp [h₃] at h₁
@@ -196,7 +196,7 @@ theorem errorPolicies_eq_for_sound_policy_slice (request : Request) (entities : 
   intro h
   repeat rw [alternate_errorPolicies_equiv_errorPolicies]
   unfold alternateErrorPolicies
-  apply Set.make_eq_if_eqv
+  rw [Set.make_make_eqv]
   apply List.map_equiv
   exact sound_policy_slice_is_equierror request entities slice policies h
 
@@ -385,16 +385,16 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} 
     -- in this case, mapping Value.asEntityUID over the set returns .ok
     replace h := mapM'_asEntityUID_eq_entities h
     have ⟨h₁, h₂⟩ := Set.elts_make_is_id_then_equiv h; clear h
-    apply Set.make_eq_if_eqv
+    rw [Set.make_make_eqv]
     unfold List.Equiv at *
     repeat rw [List.subset_def] at *
     constructor <;> intro a h₃ <;>
     replace h₃ := List.mem_map_of_mem (Value.prim ∘ Prim.entityUID) h₃
-    case a.left =>
+    case left =>
       specialize h₁ h₃
       simp at h₁
       exact h₁
-    case a.right =>
+    case right =>
       specialize h₂ h₃
       simp at h₂
       exact h₂
@@ -427,7 +427,8 @@ theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {
     simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
     generalize (inₑ request.principal uid entities) = b₁
     generalize (ety == request.principal.ty) = b₂
-    split <;> simp
+    split
+    case h_1 => trivial
     case h_2 h => split at h <;> simp at h
 
 /--
@@ -439,7 +440,8 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
   simp [producesBool, evaluate, ActionScope.toExpr, Scope.toExpr]
   cases policy.actionScope
   case actionInAny list =>
-    split <;> simp
+    split
+    case h_1 => trivial
     case h_2 res h =>
       simp at h
       have h₁ := @action_in_set_of_euids_produces_boolean list request entities
@@ -454,7 +456,8 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
       simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
       generalize (inₑ request.action uid entities) = b₁
       generalize (ety == request.action.ty) = b₂
-      split <;> simp
+      split
+      case h_1 => trivial
       case h_2 h => split at h <;> simp at h
 
 /--
@@ -470,7 +473,8 @@ theorem resource_scope_produces_boolean {policy : Policy} {request : Request} {e
     simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
     generalize (inₑ request.resource uid entities) = b₁
     generalize (ety == request.resource.ty) = b₂
-    split <;> simp
+    split
+    case h_1 => trivial
     case h_2 h => split at h <;> simp at h
 
 /--
