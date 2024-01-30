@@ -168,7 +168,7 @@ theorem map_equiv (f : α → β) (xs ys : List α) :
   have ⟨a, b⟩ := h
   apply And.intro <;> simp [List.subset_def] <;>
   intro p h <;>
-  apply Exists.intro p <;>
+  exists p <;>
   rw [List.subset_def] at a b <;>
   simp
   exact a h
@@ -181,7 +181,7 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   intros h₁ h₂
   apply And.intro <;>
   intro b a h₃ h₄ <;>
-  apply Exists.intro a <;>
+  exists a <;>
   simp [h₄]
   exact h₁ h₃
   exact h₂ h₃

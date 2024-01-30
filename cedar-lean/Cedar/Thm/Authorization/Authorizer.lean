@@ -53,7 +53,7 @@ theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policie
   rw [←Set.make_non_empty]
   apply @List.ne_nil_of_mem _ policy.id
   rw [List.mem_filterMap]
-  apply Exists.intro policy
+  exists policy
   unfold satisfiedWithEffect
   simp [h₀]
 
@@ -71,7 +71,7 @@ theorem if_satisfiedPolicies_non_empty_then_satisfied (effect : Effect) (policie
   rw [List.mem_filterMap] at h₁
   replace ⟨policy, h₁, h₂⟩ := h₁
   unfold satisfiedWithEffect at h₂
-  apply Exists.intro policy
+  exists policy
   simp [h₁]
   cases h₃ : (policy.effect == effect) <;> simp at h₃
   case false => simp [h₃] at h₂
@@ -111,7 +111,7 @@ theorem sound_policy_slice_is_equisatisfied (effect : Effect) (request : Request
   simp [List.subset_def]
   apply And.intro <;>
   intros pid policy h₃ h₄ <;>
-  apply Exists.intro policy <;>
+  exists policy <;>
   simp [h₄]
   case left =>
     simp [List.subset_def] at h₁
@@ -168,7 +168,7 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
   apply And.intro
   case left =>
     intro pid p h₁ h₂
-    apply Exists.intro p
+    exists p
     unfold errored hasError at h₂
     split at h₂
     case inl h₃ =>
@@ -179,7 +179,7 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
     case inr => contradiction
   case right =>
     intro p h₁
-    apply Exists.intro p
+    exists p
     simp [List.mem_filter] at h₁
     apply And.intro
     case left => exact h₁.left
