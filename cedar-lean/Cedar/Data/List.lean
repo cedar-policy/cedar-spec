@@ -222,10 +222,10 @@ theorem if_strictly_sorted_equiv_then_head_eq [LT α] [StrictLT α] (x y : α) (
 := by
   intro h₁ h₂
   unfold List.Equiv; intro h₃
-  have ⟨h₃, h₄⟩ := h₃
+  replace ⟨h₃, h₄⟩ := h₃
   simp at h₃; simp at h₄
-  have ⟨h₃, _⟩ := h₃
-  have ⟨h₄, _⟩ := h₄
+  replace ⟨h₃, _⟩ := h₃
+  replace ⟨h₄, _⟩ := h₄
   cases h₃ <;> cases h₄ <;> try { assumption }
   case _ _ h₅ => simp [h₅]
   case _ h₅ h₆ =>
@@ -354,21 +354,21 @@ theorem insertCanonical_sorted [LT α] [StrictLT α] [DecidableLT α] (x : α) (
           have h₄ := insertCanonical_cases x hd' tl'
           cases h₄
           case inl _ _ _ h₄ =>
-            rcases h₄ with ⟨h₄, h₅⟩
+            replace ⟨h₄, h₅⟩ := h₄
             simp [h₅]
             apply Sorted.cons_cons (by apply h₃)
             apply Sorted.cons_cons h₄ (tail_of_sorted_is_sorted h₁)
           case inr _ _ _ h₄ =>
             cases h₄
             case inl _ _ _ h₄ =>
-              rcases h₄ with ⟨h₄, h₅, h₆⟩
+              replace ⟨h₄, h₅, h₆⟩ := h₄
               simp [h₆]
               simp [h₄, h₅] at ih
               apply Sorted.cons_cons _ ih
               apply if_strictly_sorted_then_head_lt_tail hd (hd' :: tl') h₁
               simp only [find?, mem_cons, true_or]
             case inr _ _ _ h₄ =>
-              rcases h₄ with ⟨h₄, h₅, h₆⟩
+              replace ⟨h₄, h₅, h₆⟩ := h₄
               simp [h₆]
               unfold GT.gt at h₅
               have h₇ := StrictLT.if_not_lt_gt_then_eq x hd' h₄ h₅
