@@ -50,33 +50,51 @@ inductive BinaryOp where
   | containsAll
   | containsAny
 
-inductive Expr where
+/-
+/- the α here represents the type of subexpressions -/
+inductive Expr α where
   | lit (p : Prim)
   | var (v : Var)
-  | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
-  | and (a : Expr) (b : Expr)
-  | or (a : Expr) (b : Expr)
-  | unaryApp (op : UnaryOp) (expr : Expr)
-  | binaryApp (op : BinaryOp) (a : Expr) (b : Expr)
-  | getAttr (expr : Expr) (attr : Attr)
-  | hasAttr (expr : Expr) (attr : Attr)
-  | set (ls : List Expr)
-  | record (map : List (Prod Attr Expr))
-  | call (xfn : ExtFun) (args : List Expr)
+  | ite (cond: α) (thenExpr : α) (elseExpr : α)
+  | and (a : α) (b : α)
+  | or (a : α) (b : α)
+  | unaryApp (op : UnaryOp) (expr: α)
+  | binaryApp (op : BinaryOp) (a : α) (b : α)
+  | getAttr (expr : α) (attr : Attr)
+  | hasAttr (expr : α) (attr : Attr)
+  | set (ls : List α)
+  | record (map : List (Attr × α))
+  | call (xfn : ExtFun) (args : List α)
+-/
+
+/- the α here represents the type of subexpressions -/
+inductive Expr : (α : Type) -> Type where
+  | lit (p : Prim) : Expr α
+  | var (v : Var) : Expr α
+  | ite (cond: Expr α) (thenExpr : Expr α) (elseExpr : Expr α) : Expr α
+  | and (a : Expr α) (b : Expr α) : Expr α
+  | or (a : Expr α) (b : Expr α) : Expr α
+  | unaryApp (op : UnaryOp) (expr: Expr α) : Expr α
+  | binaryApp (op : BinaryOp) (a : Expr α) (b : Expr α) : Expr α
+  | getAttr (expr : Expr α) (attr : Attr) : Expr α
+  | hasAttr (expr : Expr α) (attr : Attr) : Expr α
+  | set (ls : List (Expr α)) : Expr α
+  | record (map : List (Attr × Expr α)) : Expr α
+  | call (xfn : ExtFun) (args : List (Expr α)) : Expr α
 
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, Inhabited for Var
 deriving instance Repr, DecidableEq, Inhabited for UnaryOp
 deriving instance Repr, DecidableEq, Inhabited for BinaryOp
-deriving instance Repr, Inhabited for Expr
+-- deriving instance Repr, Inhabited for Expr
 
 mutual
 
 -- We should be able to get rid of this manual deriviation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
-def decExpr (x y : Expr) : Decidable (x = y) := by
+def decExpr [DecidableEq α] (x y : Expr α) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ y₁ | var.var x₁ y₁ =>
@@ -116,7 +134,7 @@ def decExpr (x y : Expr) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrExprList (axs ays : List (Prod Attr Expr)) : Decidable (axs = ays) :=
+def decProdAttrExprList [DecidableEq α] (axs ays : List (Attr × (Expr α))) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -126,7 +144,7 @@ def decProdAttrExprList (axs ays : List (Prod Attr Expr)) : Decidable (axs = ays
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
       isFalse (by simp; intros; first | contradiction | assumption)
 
-def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
+def decExprList [DecidableEq α] (xs ys : List (Expr α)) : Decidable (xs = ys) :=
   match xs, ys with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -134,8 +152,9 @@ def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
     match decExpr x y, decExprList xs ys with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+
 end
 
-instance : DecidableEq Expr := decExpr
+instance [DecidableEq α] : DecidableEq (Expr α) := decExpr
 
 end Cedar.Spec

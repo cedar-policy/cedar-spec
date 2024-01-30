@@ -77,7 +77,7 @@ def bindAttr (a : Attr) (res : Result Value) : Result (Attr × Value) := do
   let v ← res
   ok (a, v)
 
-def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
+def evaluate (x : Expr α) (req : Request) (es : Entities) : Result Value :=
   match x with
   | .lit l       => ok l
   | .var var     =>
