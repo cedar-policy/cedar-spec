@@ -176,7 +176,8 @@ impl LeanDefinitionalEngine {
                     .into_iter()
                     .map(|x| {
                         // coerce to PolicyId just to ensure it's valid
-                        let pid = cedar_policy::PolicyId::from_str(&x).expect("could not coerce policy id");
+                        let pid = cedar_policy::PolicyId::from_str(&x)
+                            .expect("could not coerce policy id");
                         format!("error in policy {pid}")
                     })
                     .collect();
