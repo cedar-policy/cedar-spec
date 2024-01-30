@@ -166,24 +166,24 @@ theorem scope_bound_is_sound (policy : Policy) :
     generalize h₂ : policy.principalScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_principal_scope h₁ <;>
-    simp [Scope.bound, h₂]
+    simp only [Scope.bound, h₂]
   case left.right =>
     generalize h₂ : policy.resourceScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_resource_scope h₁ <;>
-    simp [Scope.bound, h₂]
+    simp only [Scope.bound, h₂]
   case right.left =>
     generalize h₂ : policy.principalScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
     cases s <;> simp <;>
     apply error_implies_principal_scope_in h₁ <;>
-    simp [Scope.bound, h₂]
+    simp only [Scope.bound, h₂]
   case right.right =>
     generalize h₂ : policy.resourceScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
     cases s <;> simp <;>
     apply error_implies_resource_scope_in h₁ <;>
-    simp [Scope.bound, h₂]
+    simp only [Scope.bound, h₂]
 
 /--
 Scope-based bound analysis is sound.
