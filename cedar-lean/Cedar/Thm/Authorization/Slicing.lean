@@ -1,5 +1,6 @@
-
 import Cedar.Spec
+
+/-! This file contains definitions relevant to slicing. -/
 
 namespace Cedar.Thm
 

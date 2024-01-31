@@ -16,7 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Authorization.Basic
+import Cedar.Thm.Authorization.Slicing
 
 /-!
 This file defines what it means for a policy slice to be sound.
