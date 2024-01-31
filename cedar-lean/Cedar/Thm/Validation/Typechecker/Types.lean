@@ -160,7 +160,7 @@ theorem instance_of_tt_is_true {v₁ : Value} :
 theorem instance_of_anyBool_is_bool {v₁ : Value} :
   InstanceOfType v₁ (CedarType.bool BoolType.anyBool) →
   ∃ b, v₁ = .prim (.bool b)
-:= by exact instance_of_bool_is_bool
+:= instance_of_bool_is_bool
 
 theorem instance_of_int_is_int {v₁ : Value} :
   InstanceOfType v₁ CedarType.int →

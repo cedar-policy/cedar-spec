@@ -76,7 +76,7 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
 def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=
   xs.pmap Subtype.mk
-  (λ x => by exact sizeOf_snd_lt_sizeOf_list)
+  (λ _ => sizeOf_snd_lt_sizeOf_list)
 
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
@@ -123,8 +123,8 @@ theorem Equiv.trans {a b c : List α} :
   simp
   intro h₁ h₂ h₃ h₄
   apply And.intro
-  case _ => apply List.Subset.trans h₁ h₃
-  case _ => apply List.Subset.trans h₄ h₂
+  exact List.Subset.trans h₁ h₃
+  exact List.Subset.trans h₄ h₂
 
 theorem cons_equiv_cons (x : α) (xs ys : List α) :
   xs ≡ ys → x :: xs ≡ x :: ys
@@ -149,6 +149,31 @@ theorem swap_cons_cons_equiv (x₁ x₂ : α) (xs : List α) :
   apply And.intro
   all_goals { intro a h₁; simp [h₁] }
 
+theorem filter_equiv (f : α -> Bool) (xs ys : List α) :
+  xs ≡ ys → xs.filter f ≡ ys.filter f
+:= by
+  simp [List.Equiv, List.subset_def]
+  intros h₁ h₂
+  apply And.intro <;>
+  intro a h₃ <;>
+  simp [List.mem_filter] <;>
+  rw [List.mem_filter] at h₃
+  exact And.intro (h₁ h₃.left) h₃.right
+  exact And.intro (h₂ h₃.left) h₃.right
+
+theorem map_equiv (f : α → β) (xs ys : List α) :
+  xs ≡ ys → xs.map f ≡ ys.map f
+:= by
+  intro h
+  have ⟨a, b⟩ := h
+  apply And.intro <;> simp [List.subset_def] <;>
+  intro p h <;>
+  exists p <;>
+  rw [List.subset_def] at a b <;>
+  simp
+  exact a h
+  exact b h
+
 theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   xs ≡ ys → xs.filterMap f ≡ ys.filterMap f
 := by
@@ -156,17 +181,17 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   intros h₁ h₂
   apply And.intro <;>
   intro b a h₃ h₄ <;>
-  apply Exists.intro a <;>
+  exists a <;>
   simp [h₄]
-  apply h₁ h₃
-  apply h₂ h₃
+  exact h₁ h₃
+  exact h₂ h₃
 
 theorem tail_of_sorted_is_sorted {x : α} {xs : List α} [LT α] :
   Sorted (x :: xs) → Sorted xs
 := by
   intro h₁; cases h₁
-  case cons_nil => exact Sorted.nil
-  case cons_cons => assumption
+  exact Sorted.nil
+  assumption
 
 theorem if_strictly_sorted_then_head_lt_tail [LT α] [StrictLT α] (x : α) (xs : List α) :
   Sorted (x :: xs) → ∀ y, y ∈ xs → x < y
@@ -197,10 +222,10 @@ theorem if_strictly_sorted_equiv_then_head_eq [LT α] [StrictLT α] (x y : α) (
 := by
   intro h₁ h₂
   unfold List.Equiv; intro h₃
-  have ⟨h₃, h₄⟩ := h₃
+  replace ⟨h₃, h₄⟩ := h₃
   simp at h₃; simp at h₄
-  have ⟨h₃, _⟩ := h₃
-  have ⟨h₄, _⟩ := h₄
+  replace ⟨h₃, _⟩ := h₃
+  replace ⟨h₄, _⟩ := h₄
   cases h₃ <;> cases h₄ <;> try { assumption }
   case _ _ h₅ => simp [h₅]
   case _ h₅ h₆ =>
@@ -237,7 +262,7 @@ theorem if_strictly_sorted_equiv_then_tail_equiv [LT α] [StrictLT α] (x : α) 
 := by
   unfold List.Equiv
   intro h₁ h₂ h₃
-  rcases h₃ with ⟨h₃, h₄⟩
+  replace ⟨h₃, h₄⟩ := h₃
   apply And.intro
   exact if_strictly_sorted_equiv_then_tail_subset x xs ys h₁ h₂ h₃
   exact if_strictly_sorted_equiv_then_tail_subset x ys xs h₂ h₁ h₄
@@ -329,21 +354,21 @@ theorem insertCanonical_sorted [LT α] [StrictLT α] [DecidableLT α] (x : α) (
           have h₄ := insertCanonical_cases x hd' tl'
           cases h₄
           case inl _ _ _ h₄ =>
-            rcases h₄ with ⟨h₄, h₅⟩
+            replace ⟨h₄, h₅⟩ := h₄
             simp [h₅]
             apply Sorted.cons_cons (by apply h₃)
             apply Sorted.cons_cons h₄ (tail_of_sorted_is_sorted h₁)
           case inr _ _ _ h₄ =>
             cases h₄
             case inl _ _ _ h₄ =>
-              rcases h₄ with ⟨h₄, h₅, h₆⟩
+              replace ⟨h₄, h₅, h₆⟩ := h₄
               simp [h₆]
               simp [h₄, h₅] at ih
               apply Sorted.cons_cons _ ih
               apply if_strictly_sorted_then_head_lt_tail hd (hd' :: tl') h₁
               simp only [find?, mem_cons, true_or]
             case inr _ _ _ h₄ =>
-              rcases h₄ with ⟨h₄, h₅, h₆⟩
+              replace ⟨h₄, h₅, h₆⟩ := h₄
               simp [h₆]
               unfold GT.gt at h₅
               have h₇ := StrictLT.if_not_lt_gt_then_eq x hd' h₄ h₅
@@ -388,7 +413,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
           case inr _ _ _ h₃ =>
             cases h₃
             case inr _ _ _ h₃ =>
-              rcases h₃ with ⟨h₃, h₄, h₅⟩
+              replace ⟨h₃, h₄, h₅⟩ := h₃
               simp [h₅]
               unfold GT.gt at h₄
               have h₆ := StrictLT.if_not_lt_gt_then_eq x hd' h₃ h₄
@@ -396,7 +421,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               unfold List.Equiv
               simp only [cons_subset, mem_cons, true_or, or_true, Subset.refl, and_self, subset_cons]
             case inl _ _ _ h₃ =>
-              rcases h₃ with ⟨h₃, h₄, h₅⟩
+              replace ⟨h₃, h₄, h₅⟩ := h₃
               simp [h₅]
               simp [h₃, h₄] at ih
               have h₆ := swap_cons_cons_equiv x hd (hd' :: tl')
@@ -413,7 +438,7 @@ theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α �
 := by
   apply Iff.intro
   case _ =>
-    intro h0
+    intro h₀
     cases xs with
     | nil => contradiction
     | cons hd tl =>
@@ -421,8 +446,8 @@ theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α �
       apply insertCanonical_not_nil
   case _ =>
     unfold canonicalize
-    intro h0
-    cases xs <;> simp at h0; simp
+    intro h₀
+    cases xs <;> simp at h₀; simp
 
 theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
   xs ≡ canonicalize id xs
@@ -462,6 +487,13 @@ theorem if_equiv_strictLT_then_canonical [LT α] [StrictLT α] [DecidableLT α] 
   apply Equiv.trans h₃
   apply Equiv.symm
   exact h₁
+
+theorem canonicalize_id_idempotent [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
+  canonicalize id (canonicalize id xs) = canonicalize id xs
+:= by
+  apply if_equiv_strictLT_then_canonical
+  apply List.Equiv.symm
+  apply canonicalize_equiv
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
   List.Forall₂ (fun kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
@@ -507,8 +539,7 @@ theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [Decid
   simp [Forallᵥ]
   intro h₁
   cases h₁
-  case nil =>
-    simp [canonicalize_nil]
+  case nil => simp [canonicalize_nil]
   case cons hd₁ hd₂ tl₁ tl₂ h₂ h₃ =>
     simp [canonicalize]
     have h₄ := canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃
@@ -523,7 +554,7 @@ theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
   case cons hd tl =>
     simp [List.any_cons]
     rcases h₁ with h₁ | h₁
-    case inl => subst h₁ ; simp [h₂]
-    case inr => apply Or.inr ; exists x
+    subst h₁ ; simp [h₂]
+    apply Or.inr ; exists x
 
 end List

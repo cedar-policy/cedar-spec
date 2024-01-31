@@ -83,11 +83,11 @@ def filter {α} (f : α → Bool) (s : Set α) : Set α :=
 def map {α β} [LT β] [DecidableLT β] (f : α → β) (s : Set α) : Set β :=
   make (s.elts.map f)                 -- enforce well-formedness
 
-/-- Maps `f` to `s` and returns the result of `err` if any error is encounterd. -/
+/-- Maps `f` to `s` and returns the result of `err` if any error is encountered. -/
 def mapOrErr {α β ε} [DecidableEq β] [LT β] [DecidableRel (α := β) (· < ·)] (f : α → Except ε β) (s : Set α) (err : ε) : Except ε (Set β) :=
   match s.elts.mapM f with
   | .ok elts => ok (make elts)    -- enforce well-formedness
-  | _        => error err         -- return fixed error to be order-independent
+  | .error _ => error err         -- return fixed error to be order-independent
 
 /-- Returns true if all elements of `s` satisfy `f`. -/
 def all {α} (f : α → Bool) (s : Set α) : Bool :=
@@ -139,7 +139,6 @@ theorem in_set_in_list {α : Type u} (v : α) (s : Set α) :
 := by
   simp [elts, Membership.mem]
 
-
 theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
   hd ∈ Set.mk (hd :: tl)
 := by
@@ -168,19 +167,29 @@ theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) 
   simp only [beq_eq_false_iff_ne, ne_eq, mk.injEq]
   apply List.canonicalize_not_nil
 
-theorem make_eq_if_eqv [LT α] [DecidableLT α] [StrictLT α] (xs ys : List α) :
-  xs ≡ ys → Set.make xs = Set.make ys
-:= by
-  intro h; unfold make; simp
-  apply List.if_equiv_strictLT_then_canonical _ _ h
-
-theorem make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
 := by
   simp [make] ; intro h₁
   have h₂ := List.canonicalize_equiv xs
   subst h₁
   exact h₂
+
+theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+  Set.make xs = Set.make ys ↔ xs ≡ ys
+:= by
+  constructor
+  case mp =>
+    intro h; unfold make at h; simp at h
+    have h₁ := List.canonicalize_equiv xs
+    have h₂ := List.canonicalize_equiv ys
+    unfold id at h₁ h₂
+    rw [← h] at h₂
+    have h₃ := List.Equiv.symm h₂; clear h₂
+    exact List.Equiv.trans (a := xs) (b := List.canonicalize (fun x => x) xs) (c := ys) h₁ h₃
+  case mpr =>
+    intro h; unfold make; simp
+    apply List.if_equiv_strictLT_then_canonical _ _ h
 
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs
@@ -192,6 +201,27 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
   constructor <;> intro h₃
   case mp => apply h₁ h₃
   case mpr => apply h₂ h₃
+
+theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
+  Set.elts (Set.make xs) ≡ xs
+:= by
+  simp [List.Equiv, List.subset_def]
+  constructor
+  case left =>
+    intro a h₁
+    rw [make_mem]
+    exact in_list_in_set a (make xs) h₁
+  case right =>
+    intro a h₁
+    apply in_set_in_list
+    rw [← make_mem]
+    exact h₁
+
+theorem in_set_in_list' [LT α] [DecidableLT α] [StrictLT α] (v : α) (xs : List α) :
+  v ∈ (Set.make xs) → v ∈ xs
+:= by
+  rw [make_mem]
+  simp
 
 theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
   (Set.make xs).any f = xs.any f
@@ -212,6 +242,22 @@ theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool
     have ⟨x, h₃, h₄⟩ := h₃
     exists x ; simp [h₄]
     apply hl₁ h₃
+
+theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
+  Set.make (Set.elts (Set.make xs)) = Set.make xs
+:= by
+  simp [make, elts]
+  have h₁ := List.canonicalize_id_idempotent xs
+  unfold id at h₁
+  exact h₁
+
+theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+  Set.elts (Set.make xs) = ys → ys ≡ xs
+:= by
+  intro h
+  rw [← h]; clear h
+  rw [← make_make_eqv]
+  exact make_of_make_is_id xs
 
 end Set
 

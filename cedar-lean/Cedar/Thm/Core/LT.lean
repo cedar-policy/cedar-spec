@@ -231,9 +231,9 @@ theorem EntityUID.lt_conn {a b : EntityUID} :
     rcases h₃ with h₃ | h₃ <;> simp [h₃]
 
 instance EntityUID.strictLT : StrictLT EntityUID where
-  asymmetric a b   := by exact EntityUID.lt_asymm
-  transitive a b c := by exact EntityUID.lt_trans
-  connected a b    := by exact EntityUID.lt_conn
+  asymmetric _ _   := EntityUID.lt_asymm
+  transitive _ _ _ := EntityUID.lt_trans
+  connected _ _    := EntityUID.lt_conn
 
 ----- `<` is strict on `Prim` -----
 

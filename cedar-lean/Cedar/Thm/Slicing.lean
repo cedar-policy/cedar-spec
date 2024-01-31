@@ -16,6 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Thm.Authorization.Authorizer
+import Cedar.Thm.Authorization.Slicing
 
 /-!
 This file defines what it means for a policy slice to be sound.
@@ -40,18 +41,6 @@ namespace Cedar.Thm
 open Cedar.Spec
 
 /--
-A policy slice is a subset of a collection of policies.  This slice is sound for
-a given request and entities if every policy in the collection that is not in the slice is also
-not satisfied with respect to the request and entities.
--/
-def IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : Policies) : Prop :=
-  slice ⊆ policies ∧
-  ∀ policy,
-    policy ∈ policies →
-    policy ∉ slice →
-    ¬ satisfied policy req entities
-
-/--
 Policy slicing soundness: `isAuthorized` produces the same result for a sound
 slice (subset) of a collection of policies as it does for the original policies.
 -/
@@ -60,55 +49,13 @@ theorem isAuthorized_eq_for_sound_policy_slice (req : Request) (entities : Entit
   isAuthorized req entities slice = isAuthorized req entities policies
 := by
   intro h₀
-  have hf : satisfiedPolicies .forbid slice req entities = satisfiedPolicies .forbid policies req entities :=
-    satisfiedPolicies_eq_for_sound_policy_slice .forbid req entities slice policies h₀.left h₀.right
-  have hp : satisfiedPolicies .permit slice req entities = satisfiedPolicies .permit policies req entities :=
-    satisfiedPolicies_eq_for_sound_policy_slice .permit req entities slice policies h₀.left h₀.right
-  simp [isAuthorized, hf, hp]
-
-/--
-A policy bound consists of optional `principal` and `resource` entities.
--/
-structure PolicyBound where
-  principalBound : Option EntityUID
-  resourceBound  : Option EntityUID
-
-def inSomeOrNone (uid : EntityUID) (opt : Option EntityUID) (entities : Entities) : Bool :=
-  match opt with
-  | .some uid' => inₑ uid uid' entities
-  | .none      => true
-
-/--
-A bound is satisfied by a request and store if the request principal and
-resource fields are descendents of the corresponding bound fields (or if those
-bound fields are `none`).
--/
-def satisfiedBound (bound : PolicyBound) (request : Request) (entities : Entities) : Bool :=
-  inSomeOrNone request.principal bound.principalBound entities ∧
-  inSomeOrNone request.resource bound.resourceBound entities
-
-/--
-A bound is sound for a given policy if the bound is satisfied for every
-request and entities for which the policy is satisfied.
--/
-def IsSoundPolicyBound (bound : PolicyBound) (policy : Policy) : Prop :=
-  ∀ (request : Request) (entities : Entities),
-  satisfied policy request entities →
-  satisfiedBound bound request entities
-
-/--
-A bound analysis takes as input a policy and returns a PolicyBound.
--/
-abbrev BoundAnalysis := Policy → PolicyBound
-
-def BoundAnalysis.slice (ba : BoundAnalysis) (request : Request) (entities : Entities) (policies : Policies) : Policies :=
-  policies.filter (fun policy => satisfiedBound (ba policy) request entities)
-
-/--
-A bound analysis is sound if it produces sound bounds for all policies.
--/
-def IsSoundBoundAnalysis (ba : BoundAnalysis) : Prop :=
-  ∀ (policy : Policy), IsSoundPolicyBound (ba policy) policy
+  have hf :=
+    satisfiedPolicies_eq_for_sound_policy_slice .forbid req entities slice policies h₀
+  have hp :=
+    satisfiedPolicies_eq_for_sound_policy_slice .permit req entities slice policies h₀
+  have he :=
+    errorPolicies_eq_for_sound_policy_slice req entities slice policies h₀
+  simp [isAuthorized, hf, hp, he]
 
 /--
 A sound bound analysis produces sound policy slices.
@@ -132,9 +79,16 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
     rw [List.mem_filter] at h₃
     simp [h₂] at h₃
     by_contra h₄
+    simp at h₄
     unfold IsSoundPolicyBound at h₁
-    specialize h₁ request entities h₄
-    simp [h₃] at h₁
+    specialize h₁ request entities
+    have ⟨h₅, h₆⟩ := h₁; clear h₁
+    simp [h₃] at h₅ h₆
+    cases h : (satisfied policy request entities)
+    case false =>
+      simp [h] at h₄
+      simp [h₄] at h₆
+    case true => exact h₅ h
 
 /--
 Scope-based bound analysis extracts the bound from the policy scope.
@@ -152,23 +106,37 @@ theorem scope_bound_is_sound (policy : Policy) :
   IsSoundPolicyBound (scopeAnalysis policy) policy
 := by
   unfold IsSoundPolicyBound
-  intro request entities h₁
+  intro request entities
   unfold scopeAnalysis
   unfold satisfiedBound
   unfold Scope.bound
   unfold inSomeOrNone
   simp only [decide_eq_true_eq]
+  apply And.intro <;>
+  intro h₁ <;>
   apply And.intro
-  case left =>
+  case left.left =>
     generalize h₂ : policy.principalScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_principal_scope h₁ <;>
-    simp [Scope.bound, h₂]
-  case right =>
+    simp only [Scope.bound, h₂]
+  case left.right =>
     generalize h₂ : policy.resourceScope.scope = s
     cases s <;> simp <;>
     apply satisfied_implies_resource_scope h₁ <;>
-    simp [Scope.bound, h₂]
+    simp only [Scope.bound, h₂]
+  case right.left =>
+    generalize h₂ : policy.principalScope.scope = s
+    replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
+    cases s <;> simp <;>
+    apply error_implies_principal_scope_in h₁ <;>
+    simp only [Scope.bound, h₂]
+  case right.right =>
+    generalize h₂ : policy.resourceScope.scope = s
+    replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
+    cases s <;> simp <;>
+    apply error_implies_resource_scope_in h₁ <;>
+    simp only [Scope.bound, h₂]
 
 /--
 Scope-based bound analysis is sound.
