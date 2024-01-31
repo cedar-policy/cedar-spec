@@ -88,8 +88,8 @@ struct AuthorizationResponseInner {
     decision: String,
     #[serde(rename = "determiningPolicies")]
     determining_policies: SetDef<String>,
-    #[serde(rename = "erroredPolicies")]
-    errored_policies: SetDef<String>,
+    #[serde(rename = "erroringPolicies")]
+    erroring_policies: SetDef<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,7 +170,7 @@ impl LeanDefinitionalEngine {
                     })
                     .collect();
                 let errors = resp
-                    .errored_policies
+                    .erroring_policies
                     .mk
                     .l
                     .into_iter()

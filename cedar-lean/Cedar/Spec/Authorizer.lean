@@ -54,9 +54,9 @@ def errorPolicies (policies : Policies) (req : Request) (entities : Entities) : 
 def isAuthorized (req : Request) (entities : Entities) (policies : Policies) : Response :=
   let forbids := satisfiedPolicies .forbid policies req entities
   let permits := satisfiedPolicies .permit policies req entities
-  let erroredPolicies := errorPolicies policies req entities
+  let erroringPolicies := errorPolicies policies req entities
   if forbids.isEmpty && !permits.isEmpty
-  then { decision := .allow, determiningPolicies := permits, erroredPolicies }
-  else { decision := .deny,  determiningPolicies := forbids, erroredPolicies }
+  then { decision := .allow, determiningPolicies := permits, erroringPolicies }
+  else { decision := .deny,  determiningPolicies := forbids, erroringPolicies }
 
 end Cedar.Spec

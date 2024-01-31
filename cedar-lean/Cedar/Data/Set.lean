@@ -202,7 +202,7 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
   case mp => apply h₁ h₃
   case mpr => apply h₂ h₃
 
-theorem elts_mk_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
+theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   Set.elts (Set.make xs) ≡ xs
 := by
   simp [List.Equiv, List.subset_def]
