@@ -50,7 +50,6 @@ inductive BinaryOp where
   | containsAll
   | containsAny
 
-/-
 /- the α here represents the type of subexpressions -/
 inductive Expr α where
   | lit (p : Prim)
@@ -65,8 +64,8 @@ inductive Expr α where
   | set (ls : List α)
   | record (map : List (Attr × α))
   | call (xfn : ExtFun) (args : List α)
--/
 
+/- the problem with this one is that `Expr α` still never has an `unknown` case
 /- the α here represents the type of subexpressions -/
 inductive Expr : (α : Type) -> Type where
   | lit (p : Prim) : Expr α
@@ -81,6 +80,7 @@ inductive Expr : (α : Type) -> Type where
   | set (ls : List (Expr α)) : Expr α
   | record (map : List (Attr × Expr α)) : Expr α
   | call (xfn : ExtFun) (args : List (Expr α)) : Expr α
+-/
 
 ----- Derivations -----
 
@@ -102,35 +102,35 @@ def decExpr [DecidableEq α] (x y : Expr α) : Decidable (x = y) := by
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case ite.ite x₁ x₂ x₃ y₁ y₂ y₃ =>
-    exact match decExpr x₁ y₁, decExpr x₂ y₂, decExpr x₃ y₃ with
+    exact match decEq x₁ y₁, decEq x₂ y₂, decEq x₃ y₃ with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case and.and x₁ x₂ y₁ y₂ | or.or x₁ x₂ y₁ y₂ =>
-    exact match decExpr x₁ y₁, decExpr x₂ y₂ with
+    exact match decEq x₁ y₁, decEq x₂ y₂ with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case unaryApp.unaryApp o x₁ o' y₁ =>
-    exact match decEq o o', decExpr x₁ y₁ with
+    exact match decEq o o', decEq x₁ y₁ with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case binaryApp.binaryApp o x₁ x₂ o' y₁ y₂ =>
-    exact match decEq o o', decExpr x₁ y₁, decExpr x₂ y₂ with
+    exact match decEq o o', decEq x₁ y₁, decEq x₂ y₂ with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case getAttr.getAttr x₁ a y₁ a' | hasAttr.hasAttr x₁ a y₁ a' =>
-    exact match decExpr x₁ y₁, decEq a a' with
+    exact match decEq x₁ y₁, decEq a a' with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case set.set xs ys =>
-    exact match decExprList xs ys with
+    exact match decEq xs ys with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record axs ays =>
-    exact match decProdAttrExprList axs ays with
+    exact match decEq axs ays with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case call.call f xs f' ys =>
-    exact match decEq f f', decExprList xs ys with
+    exact match decEq f f', decEq xs ys with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
