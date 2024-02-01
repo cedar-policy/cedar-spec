@@ -65,7 +65,7 @@ inductive Expr α where
   | record (map : List (Attr × α))
   | call (xfn : ExtFun) (args : List α)
 
-/- the problem with this one is that `Expr α` still never has an `unknown` case
+/- the problem with this one is that `Expr α` still never has an `unknown` case, for any α
 /- the α here represents the type of subexpressions -/
 inductive Expr : (α : Type) -> Type where
   | lit (p : Prim) : Expr α
