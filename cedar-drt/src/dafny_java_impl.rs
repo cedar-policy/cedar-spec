@@ -414,6 +414,10 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
     ) -> InterfaceResult<InterfaceValidationResult> {
         Ok(self.validate(schema, policies, mode))
     }
+
+    fn error_comparison_mode(&self) -> ErrorComparisonMode {
+        ErrorComparisonMode::Ignore
+    }
 }
 
 /// Implementation of the trait used for integration testing.

@@ -20,10 +20,12 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALIDATION_MSG};
+use cedar_drt::{
+    time_function, CedarTestImplementation, ErrorComparisonMode, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
+};
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
+use cedar_policy_core::authorizer::{Authorizer, AuthorizationError, Diagnostics, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
 use cedar_policy_core::extensions::Extensions;
@@ -119,15 +121,28 @@ pub fn run_auth_test(
             }
         }
         Ok(definitional_res) => {
-            // Otherwise, the definitional engine should return a result that matches `rust_res`.
-            let rust_res_for_comparison: cedar_policy::Response = Response {
-                diagnostics: Diagnostics {
-                    errors: Vec::new(),
-                    ..rust_res.clone().diagnostics
+            let rust_res_for_comparison: cedar_policy::Response = match custom_impl
+                .error_comparison_mode()
+            {
+                ErrorComparisonMode::Ignore => Response {
+                    diagnostics: Diagnostics {
+                        errors: Vec::new(),
+                        reason: rust_res.diagnostics.reason.clone(),
+                    },
+                    ..rust_res
+                }
+                .into(),
+                ErrorComparisonMode::PolicyIds => Response {
+                    diagnostics: Diagnostics {
+                        errors: rust_res.diagnostics.errors.map(|err| match err {
+                            AuthorizationError::PolicyEvaluationError { id, .. } => format!("{id}"),
+                        }),
+                        reason: rust_res.diagnostics.reason.clone(),
+                    },
+                    ..rust_res
                 },
-                ..rust_res
-            }
-            .into();
+                ErrorComparisonMode::Full => rust_res.clone(),
+            }.into();
             assert_eq!(
                 InterfaceResponse::from(rust_res_for_comparison),
                 definitional_res,
@@ -136,9 +151,6 @@ pub fn run_auth_test(
                 &entities
             );
             rust_res
-
-            // TODO(#69): Our current definitional engine does not return authorization
-            // errors, so those are not checked for equality.
         }
     }
 }

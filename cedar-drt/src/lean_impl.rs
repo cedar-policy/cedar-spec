@@ -324,6 +324,10 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         );
         self.validate(schema, policies)
     }
+
+    fn error_comparison_mode(&self) -> ErrorComparisonMode {
+        ErrorComparisonMode::PolicyIds
+    }
 }
 
 /// Implementation of the trait used for integration testing. The integration
