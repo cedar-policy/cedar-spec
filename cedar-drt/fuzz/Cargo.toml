@@ -156,3 +156,9 @@ name = "eval-type-directed-lean"
 path = "fuzz_targets/eval-type-directed-lean.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "cst-est-ast-pbt"
+path = "fuzz_targets/cst-est-ast-pbt.rs"
+test = false
+doc = false
