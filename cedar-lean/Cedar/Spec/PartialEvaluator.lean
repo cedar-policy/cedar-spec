@@ -44,9 +44,13 @@ inductive PartialEntities where
   | known (entities : Entities)
 
 class PartialEvaluatable (α : Type) where
-  partialEvaluate :
+  partialEval : (a : α) -> (req : PartialRequest) -> (es : PartialEntities) -> Result PartialValue
 
-def evaluate (x : PartialExpr) (req : PartialRequest) (es : PartialEntities) : Result PartialValue :=
+instance [PartialEvaluatable α] : PartialEvaluatable (Expr α) where
+  partialEval (x : Expr α) req es :=
+
+instance PartialEvaluatable PartialExpr where
+  partialEval (x : PartialExpr) req es :=
   match x with
-  | .known expr => Cedar.Spec.Evaluator.evaluate expr req.r es.entities
+  | .known expr => PartialEvaluatable.partialEval expr req es
   | .unknown => .error
