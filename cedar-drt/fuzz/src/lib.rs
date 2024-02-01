@@ -20,16 +20,19 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{time_function, CedarTestImplementation, RUST_AUTH_MSG, RUST_VALIDATION_MSG};
-use cedar_policy::frontend::is_authorized::InterfaceResponse;
+use cedar_drt::{
+    time_function, CedarTestImplementation, ErrorComparisonMode, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
+};
+use cedar_policy::{frontend::is_authorized::InterfaceResponse, PolicyId};
 use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::{Authorizer, Diagnostics, Response};
+use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
 use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
+use std::collections::HashSet;
 
 /// Compare the behavior of the evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
@@ -119,26 +122,43 @@ pub fn run_auth_test(
             }
         }
         Ok(definitional_res) => {
-            // Otherwise, the definitional engine should return a result that matches `rust_res`.
-            let rust_res_for_comparison: cedar_policy::Response = Response {
-                diagnostics: Diagnostics {
-                    errors: Vec::new(),
-                    ..rust_res.clone().diagnostics
-                },
-                ..rust_res
-            }
-            .into();
+            let rust_res_for_comparison: InterfaceResponse = {
+                let errors = match custom_impl.error_comparison_mode() {
+                    ErrorComparisonMode::Ignore => HashSet::new(),
+                    ErrorComparisonMode::PolicyIds => rust_res
+                        .diagnostics
+                        .errors
+                        .iter()
+                        .map(|err| match err {
+                            AuthorizationError::PolicyEvaluationError { id, .. } => {
+                                format!("{id}")
+                            }
+                        })
+                        .collect(),
+                    ErrorComparisonMode::Full => rust_res
+                        .diagnostics
+                        .errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                };
+                InterfaceResponse::new(
+                    rust_res.decision,
+                    rust_res
+                        .diagnostics
+                        .reason
+                        .iter()
+                        .map(|id| PolicyId::new(id.clone()))
+                        .collect(),
+                    errors,
+                )
+            };
             assert_eq!(
-                InterfaceResponse::from(rust_res_for_comparison),
-                definitional_res,
+                rust_res_for_comparison, definitional_res,
                 "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
-                &policies,
-                &entities
+                &policies, &entities
             );
             rust_res
-
-            // TODO(#69): Our current definitional engine does not return authorization
-            // errors, so those are not checked for equality.
         }
     }
 }

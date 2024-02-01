@@ -74,4 +74,27 @@ pub trait CedarTestImplementation {
         policies: &PolicySet,
         mode: ValidationMode,
     ) -> InterfaceResult<InterfaceValidationResult>;
+
+    /// `ErrorComparisonMode` that should be used for this `CedarTestImplementation`
+    fn error_comparison_mode(&self) -> ErrorComparisonMode;
+}
+
+/// Specifies how errors coming from a `CedarTestImplementation` should be
+/// compared against errors coming from the Rust implementation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ErrorComparisonMode {
+    /// Don't compare errors at all; the `CedarTestImplementation` is not
+    /// expected to produce errors matching the Rust implementation's errors in
+    /// any way.
+    /// In fact, the `CedarTestImplementation` will be expected to never report
+    /// errors.
+    Ignore,
+    /// The `CedarTestImplementation` is expected to produce "error messages" that
+    /// are actually just the id of the erroring policy. This will be compared to
+    /// ensure that the `CedarTestImplementation` agrees with the Rust
+    /// implementation on which policies produce errors.
+    PolicyIds,
+    /// The `CedarTestImplementation` is expected to produce error messages that
+    /// exactly match the Rust implementation's error messages' `Display` text.
+    Full,
 }
