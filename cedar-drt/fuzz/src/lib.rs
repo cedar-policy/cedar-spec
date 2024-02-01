@@ -25,7 +25,7 @@ use cedar_drt::{
 };
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::{Authorizer, AuthorizationError, Diagnostics, Response};
+use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Diagnostics, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
 use cedar_policy_core::extensions::Extensions;
@@ -142,7 +142,8 @@ pub fn run_auth_test(
                     ..rust_res
                 },
                 ErrorComparisonMode::Full => rust_res.clone(),
-            }.into();
+            }
+            .into();
             assert_eq!(
                 InterfaceResponse::from(rust_res_for_comparison),
                 definitional_res,
