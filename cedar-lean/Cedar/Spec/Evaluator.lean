@@ -81,7 +81,7 @@ class ConcreteEvaluatable (α : Type) where
   eval : (a : α) -> (req : Request) -> (es : Entities) -> Result Value
 
 instance [ConcreteEvaluatable α] : ConcreteEvaluatable (Expr α) where
-  evaluate (x : Expr α) req es :=
+  eval (x : Expr α) req es :=
   match x with
   | .lit l       => ok l
   | .var var     =>
@@ -91,35 +91,35 @@ instance [ConcreteEvaluatable α] : ConcreteEvaluatable (Expr α) where
     | .resource  => ok req.resource
     | .context   => ok req.context
   | .ite x₁ x₂ x₃ => do
-    let b ← (ConcreteEvaluatable.evaluate x₁ req es).as Bool
-    if b then ConcreteEvaluatable.evaluate x₂ req es else ConcreteEvaluatable.evaluate x₃ req es
+    let b ← (ConcreteEvaluatable.eval x₁ req es).as Bool
+    if b then ConcreteEvaluatable.eval x₂ req es else ConcreteEvaluatable.eval x₃ req es
   | .and x₁ x₂   => do
-    let b ← (ConcreteEvaluatable.evaluate x₁ req es).as Bool
-    if !b then ok b else (ConcreteEvaluatable.evaluate x₂ req es).as Bool
+    let b ← (ConcreteEvaluatable.eval x₁ req es).as Bool
+    if !b then ok b else (ConcreteEvaluatable.eval x₂ req es).as Bool
   | .or x₁ x₂    => do
-    let b ← (ConcreteEvaluatable.evaluate x₁ req es).as Bool
-    if b then ok b else (ConcreteEvaluatable.evaluate x₂ req es).as Bool
+    let b ← (ConcreteEvaluatable.eval x₁ req es).as Bool
+    if b then ok b else (ConcreteEvaluatable.eval x₂ req es).as Bool
   | .unaryApp op₁ x₁     => do
-    let v₁ ← ConcreteEvaluatable.evaluate x₁ req es
+    let v₁ ← ConcreteEvaluatable.eval x₁ req es
     apply₁ op₁ v₁
   | .binaryApp op₂ x₁ x₂ => do
-    let v₁ ← ConcreteEvaluatable.evaluate x₁ req es
-    let v₂ ← ConcreteEvaluatable.evaluate x₂ req es
+    let v₁ ← ConcreteEvaluatable.eval x₁ req es
+    let v₂ ← ConcreteEvaluatable.eval x₂ req es
     apply₂ op₂ v₁ v₂ es
   | .hasAttr x₁ a        => do
-    let v₁ ← ConcreteEvaluatable.evaluate x₁ req es
+    let v₁ ← ConcreteEvaluatable.eval x₁ req es
     hasAttr v₁ a es
   | .getAttr x₁ a        => do
-    let v₁ ← ConcreteEvaluatable.evaluate x₁ req es
+    let v₁ ← ConcreteEvaluatable.eval x₁ req es
     getAttr v₁ a es
   | .set xs              => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => ConcreteEvaluatable.evaluate x₁ req es)
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => ConcreteEvaluatable.eval x₁ req es)
     ok (Set.make vs)
   | .record axs          => do
-    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (ConcreteEvaluatable.evaluate x₁ req es))
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (ConcreteEvaluatable.eval x₁ req es))
     ok (Map.make avs)
   | .call xfn xs         => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => ConcreteEvaluatable.evaluate x₁ req es)
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => ConcreteEvaluatable.eval x₁ req es)
     call xfn vs
 
 end Cedar.Spec

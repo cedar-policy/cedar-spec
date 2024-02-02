@@ -30,7 +30,7 @@ open Cedar.Data
   elements are also all `PartialExpr` instead of `Expr`
 -/
 inductive PartialExpr where
-  | known (expr : Expr PartialExpr)
+  | expr (expr : Expr PartialExpr)
   | unknown
 
 inductive PartialValue where
@@ -38,7 +38,7 @@ inductive PartialValue where
   | residual (r : PartialExpr)
 
 inductive PartialRequest where
-  | known (r : Request)
+  | known (req : Request)
 
 inductive PartialEntities where
   | known (entities : Entities)
@@ -46,11 +46,45 @@ inductive PartialEntities where
 class PartialEvaluatable (α : Type) where
   partialEval : (a : α) -> (req : PartialRequest) -> (es : PartialEntities) -> Result PartialValue
 
+def liftConcrete (res : Result Value) : Result PartialValue :=
+  match res with
+  | .ok val => .ok (.value val)
+  | .error e => .error e
+
+instance [ConcreteEvaluatable α] : PartialEvaluatable α where
+  partialEval (x : α) req es :=
+  match (req, es) with
+  | (.known req, .known es) => liftConcrete (ConcreteEvaluatable.eval x req es)
+
+mutual
+
 instance [PartialEvaluatable α] : PartialEvaluatable (Expr α) where
   partialEval (x : Expr α) req es :=
+  match (req, es) with
+  | (.known known_req, .known known_es) =>
+    match x with
+    | .lit l => liftConcrete (ConcreteEvaluatable.eval (Expr.lit l) known_req known_es)
+    | .var v => liftConcrete (ConcreteEvaluatable.eval (Expr.var v) known_req known_es)
+    /-
+    | .ite x₁ x₂ x₃ => do
+      let b ← (PartialEvaluatable.partialEval x₁ req es)
+      match b with
+      | .value v => do
+        let b ← b.as Bool
+        if b then PartialEvaluatable.partialEval x₂ req es else PartialEvaluatable.partialEval x₃ req es
+    -/
+    | .unaryApp op₁ x₁ => do
+      let pval ← PartialEvaluatable.partialEval x₁ req es
+      match pval with
+        | .value val => do
+          let val ← apply₁ op₁ val -- TODO: reuse the concrete evaluator code somehow
+          .ok (.value val)
+        | .residual r => .ok (.residual (PartialExpr.expr (Expr.unaryApp op₁ r)))
 
-instance PartialEvaluatable PartialExpr where
+instance : PartialEvaluatable PartialExpr where
   partialEval (x : PartialExpr) req es :=
   match x with
-  | .known expr => PartialEvaluatable.partialEval expr req es
-  | .unknown => .error
+  | .expr expr => PartialEvaluatable.partialEval expr req es
+  | .unknown => .ok (.residual x)
+
+end

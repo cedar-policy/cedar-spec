@@ -54,7 +54,7 @@ inductive BinaryOp where
 inductive Expr α where
   | lit (p : Prim)
   | var (v : Var)
-  | ite (cond: α) (thenExpr : α) (elseExpr : α)
+  | ite (cond : α) (thenExpr : α) (elseExpr : α)
   | and (a : α) (b : α)
   | or (a : α) (b : α)
   | unaryApp (op : UnaryOp) (expr: α)
