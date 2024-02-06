@@ -203,7 +203,10 @@ pub fn run_val_test(
                 // return "impossiblePolicy" due to greater precision. In this case, the
                 // input policy is well-typed, although it is guaranteed to always evaluate
                 // to false.
-                if definitional_res.validation_errors.contains(&"impossiblePolicy".to_string()) {
+                if definitional_res
+                    .validation_errors
+                    .contains(&"impossiblePolicy".to_string())
+                {
                     return;
                 }
 
