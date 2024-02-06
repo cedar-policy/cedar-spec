@@ -149,10 +149,18 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   case h_2 =>
     simp [ok] at h₃
     split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
-    rcases h₃ with ⟨h₃, _⟩
+    replace ⟨h₃, _⟩ := h₃
     simp [←h₃]
     apply InstanceOfType.instance_of_bool
-    simp [InstanceOfBoolType]
+    unfold Entities.attrsOrEmpty
+    rename_i _ h₇ _ _
+    simp [EntitySchema.attrs?] at h₇
+    replace ⟨_, h₂, _⟩ := h₂
+    cases h₈ : Map.find? entities uid <;> simp
+    simp [Map.not_contains_of_empty, InstanceOfBoolType]
+    replace ⟨_, h₈, _⟩ := h₂ uid _ h₈
+    rw [h₇] at h₈
+    contradiction
 
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}

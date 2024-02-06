@@ -196,7 +196,7 @@ def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
     | .some rty => hasAttrInRecord rty x a c false
     | .none     =>
       if actionType? ety env.acts
-      then ok (.bool .anyBool)
+      then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty)
 
