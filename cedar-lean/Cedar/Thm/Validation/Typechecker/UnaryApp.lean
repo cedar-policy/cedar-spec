@@ -36,10 +36,10 @@ theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
-    case mk.h_1 _ ty₁ bty _ =>
+    case h_1 _ ty₁ bty _ =>
       simp [ok] at h₁
       apply And.intro
       case left => simp [h₁]
@@ -55,30 +55,30 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_not_inversion h₃) with ⟨h₅, bty, c₁', h₆, h₄⟩
+  have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
   subst h₅; subst h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ -- IH
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
     simp [EvaluatesTo] at h₆
     simp [EvaluatesTo, evaluate]
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case intro.intro.intro.inr.inr.inr =>
+    case inr.inr.inr =>
       cases bty
       case anyBool =>
-        rcases (instance_of_anyBool_is_bool h₇) with ⟨b, h₈⟩
+        have ⟨b, h₈⟩ := instance_of_anyBool_is_bool h₇
         cases b <;>
         subst h₈ <;>
         simp [apply₁] <;>
         apply bool_is_instance_of_anyBool
       case tt =>
-        rcases (instance_of_tt_is_true h₇) with h₈
+        have h₈ := instance_of_tt_is_true h₇
         subst h₈
         simp [apply₁, BoolType.not]
         exact false_is_instance_of_ff
       case ff =>
-        rcases (instance_of_ff_is_false h₇) with h₈
+        have h₈ := instance_of_ff_is_false h₇
         subst h₈
         simp [apply₁, BoolType.not]
         exact true_is_instance_of_tt
@@ -95,7 +95,7 @@ theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
     simp [ok] at h₁
@@ -109,24 +109,24 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   GuardedCapabilitiesInvariant (Expr.unaryApp .neg x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .neg x₁) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_neg_inversion h₃) with ⟨h₅, h₆, c₁', h₄⟩
+  have ⟨h₅, h₆, c₁', h₄⟩ := type_of_neg_inversion h₃
   subst h₅; subst h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ -- IH
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
     simp [EvaluatesTo] at h₆
     simp [EvaluatesTo, evaluate]
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case intro.intro.intro.inr.inr.inr =>
-      rcases (instance_of_int_is_int h₇) with ⟨i, h₈⟩
+    case inr.inr.inr =>
+      have ⟨i, h₈⟩ := instance_of_int_is_int h₇
       subst h₈
       simp [apply₁, intOrErr]
       cases h₉ : i.neg?
-      case intro.none =>
+      case none =>
         simp only [or_false, or_true, true_and]
         exact type_is_inhabited CedarType.int
-      case intro.some i' =>
+      case some i' =>
         simp only [Except.ok.injEq, false_or, exists_eq_left']
         apply InstanceOfType.instance_of_int
     all_goals {
@@ -142,7 +142,7 @@ theorem type_of_mulBy_inversion {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabilit
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
     simp [ok] at h₁
@@ -156,24 +156,24 @@ theorem type_of_mulBy_is_sound {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabiliti
   GuardedCapabilitiesInvariant (Expr.unaryApp (.mulBy k) x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp (.mulBy k) x₁) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_mulBy_inversion h₃) with ⟨h₅, h₆, c₁', h₄⟩
+  have ⟨h₅, h₆, c₁', h₄⟩ := type_of_mulBy_inversion h₃
   subst h₅; subst h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ -- IH
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
     simp [EvaluatesTo] at h₆
     simp [EvaluatesTo, evaluate]
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case intro.intro.intro.inr.inr.inr =>
-      rcases (instance_of_int_is_int h₇) with ⟨i, h₈⟩
+    case inr.inr.inr =>
+      have ⟨i, h₈⟩ := instance_of_int_is_int h₇
       subst h₈
       simp [apply₁, intOrErr]
       cases h₉ : k.mul? i
-      case intro.none =>
+      case none =>
         simp only [or_false, or_true, true_and]
         exact type_is_inhabited CedarType.int
-      case intro.some i' =>
+      case some i' =>
         simp only [Except.ok.injEq, false_or, exists_eq_left']
         apply InstanceOfType.instance_of_int
     all_goals {
@@ -189,7 +189,7 @@ theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabili
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
     simp [ok] at h₁
@@ -203,17 +203,17 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
   GuardedCapabilitiesInvariant (Expr.unaryApp (.like p) x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp (.like p) x₁) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_like_inversion h₃) with ⟨h₅, h₆, c₁', h₄⟩
+  have ⟨h₅, h₆, c₁', h₄⟩ := type_of_like_inversion h₃
   subst h₅; subst h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ -- IH
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
     simp [EvaluatesTo] at h₆
     simp [EvaluatesTo, evaluate]
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case intro.intro.intro.inr.inr.inr =>
-      rcases (instance_of_string_is_string h₇) with ⟨s, h₈⟩
+    case inr.inr.inr =>
+      have ⟨s, h₈⟩ := instance_of_string_is_string h₇
       subst h₈
       simp [apply₁]
       exact bool_is_instance_of_anyBool (wildcardMatch s p)
@@ -231,10 +231,10 @@ theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capab
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
-    case mk.h_5 _ _ ety' h₃ =>
+    case h_5 _ _ ety' h₃ =>
       simp only [UnaryOp.is.injEq] at h₃
       subst h₃
       simp [ok] at h₁
@@ -252,23 +252,23 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
   GuardedCapabilitiesInvariant (Expr.unaryApp (.is ety) x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp (.is ety) x₁) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_is_inversion h₃) with ⟨h₅, ety', c₁', h₆, h₄⟩
+  have ⟨h₅, ety', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
   subst h₅; subst h₆
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ -- IH
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
     simp [EvaluatesTo] at h₆
     simp [EvaluatesTo, evaluate]
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case intro.intro.intro.inr.inr.inr =>
-      rcases (instance_of_entity_type_is_entity h₇) with ⟨uid, h₈, h₉⟩
+    case inr.inr.inr =>
+      have ⟨uid, h₈, h₉⟩ := instance_of_entity_type_is_entity h₇
       simp [apply₁, h₉, h₈]
       cases h₁₀ : ety == ety' <;>
       simp at h₁₀ <;>
       simp [h₁₀]
-      case intro.intro.false => exact false_is_instance_of_ff
-      case intro.intro.true => exact true_is_instance_of_tt
+      case false => exact false_is_instance_of_ff
+      case true => exact true_is_instance_of_tt
     all_goals {
       apply type_is_inhabited
     }

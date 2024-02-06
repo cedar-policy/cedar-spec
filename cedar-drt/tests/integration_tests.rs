@@ -23,6 +23,7 @@ use cedar_policy::integration_testing::{
 
 use cedar_drt::*;
 use std::path::Path;
+use walkdir::WalkDir;
 
 /// Path of the folder containing the integration tests
 fn folder() -> &'static Path {
@@ -31,33 +32,16 @@ fn folder() -> &'static Path {
 
 fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
     let integration_tests_folder = resolve_integration_test_path(folder());
-    // Hard-code the list of tests that the cedar-policy package
-    // currently runs (last updated 2023-09-25).
-    let test_jsons = vec![
-        "decimal/1.json",
-        "decimal/2.json",
-        "example_use_cases_doc/1a.json",
-        "example_use_cases_doc/2a.json",
-        "example_use_cases_doc/2b.json",
-        "example_use_cases_doc/2c.json",
-        "example_use_cases_doc/3a.json",
-        "example_use_cases_doc/3b.json",
-        "example_use_cases_doc/3c.json",
-        "example_use_cases_doc/4a.json",
-        "example_use_cases_doc/4d.json",
-        "example_use_cases_doc/4e.json",
-        "example_use_cases_doc/4f.json",
-        "example_use_cases_doc/5b.json",
-        "ip/1.json",
-        "ip/2.json",
-        "ip/3.json",
-        "multi/1.json",
-        "multi/2.json",
-        "multi/3.json",
-        "multi/4.json",
-    ]
-    .into_iter()
-    .map(|p| integration_tests_folder.join(p));
+    // find all `*.json` files in the integration tests folder
+    let test_jsons = WalkDir::new(&integration_tests_folder)
+        .into_iter()
+        .map(|e| e.expect("failed to access file in tests").into_path())
+        // ignore non-JSON files (and directories, which don't have an extension)
+        .filter(|p| {
+            p.extension()
+                .map(|ext| ext.eq_ignore_ascii_case("json"))
+                .unwrap_or(false)
+        });
     for test_json in test_jsons {
         // These messages are for progress reporting and so that if the
         // `#[test]` fails, the user can know which test case failed by looking

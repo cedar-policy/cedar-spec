@@ -32,9 +32,9 @@ theorem lub_lub_fixed {ty₁ ty₂ ty₃ ty₄ : CedarType}
   (h₂ : (ty₃ ⊔ ty₄) = some ty₄) :
   (ty₁ ⊔ ty₄) = some ty₄
 := by
-  rcases (lub_left_subty h₁) with h₃
-  rcases (lub_left_subty h₂) with h₄
-  rcases (subty_trans h₃ h₄) with h₅
+  have h₃ := lub_left_subty h₁
+  have h₄ := lub_left_subty h₂
+  have h₅ := subty_trans h₃ h₄
   simp [subty] at h₅
   split at h₅ <;> simp at h₅ ; subst h₅
   assumption
@@ -75,7 +75,7 @@ theorem type_of_set_tail
 := by
   cases xtl
   case nil =>
-    rcases (List.not_mem_nil x) with _
+    have _ := List.not_mem_nil x
     contradiction
   case cons xhd' xtl' =>
     simp [typeOf]
@@ -90,20 +90,20 @@ theorem type_of_set_tail
     case cons hd' tl' =>
       simp [List.mapM₁] at h₁ ; unfold List.attach at h₁
       rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
-      rcases (List.mapM_head_tail h₁) with h₁
+      have h₁ := List.mapM_head_tail h₁
       rw [←List.mapM₁_eq_mapM] at h₁
       simp [h₁, typeOfSet]
       cases h₄ : List.foldlM lub? hd' tl' <;>
       simp [h₄, err, ok]
       case none =>
-        rcases (foldlM_of_lub_assoc hd hd' tl') with h₅
+        have h₅ := foldlM_of_lub_assoc hd hd' tl'
         rw [h₂, h₄] at h₅
         simp at h₅
       case some ty' =>
-        rcases (foldlM_of_lub_assoc hd hd' tl') with h₅
+        have h₅ := foldlM_of_lub_assoc hd hd' tl'
         rw [h₂, h₄] at h₅
         simp at h₅ ; rw [eq_comm, lub_comm] at h₅
-        rcases (lub_left_subty h₅) with h₆
+        have h₆ := lub_left_subty h₅
         simp [subty] at h₆
         split at h₆ <;> simp at h₆
         subst h₆
@@ -127,7 +127,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   rename_i hd tl
   split at h₁ <;> simp at h₁
   rename_i ty h₃
-  rcases h₁ with ⟨hl₁, hr₁⟩
+  have ⟨hl₁, hr₁⟩ := h₁
   subst hl₁ hr₁
   simp only [List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and]
   intro x h₄
@@ -139,7 +139,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     simp [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₂
     rcases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl <;>
     simp [h₆, pure, Except.pure] at h₂
-    rcases h₂ with ⟨hl₂, hr₂⟩ ; subst hl₂ hr₂
+    have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
     simp [justType, Except.map] at h₅
     split at h₅ <;> simp at h₅
@@ -152,13 +152,13 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     case right =>
       exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
-    rcases (type_of_set_tail h₂ h₃ h₄) with ⟨ty', h₅, h₆⟩
-    rcases (@type_of_set_inversion xtl c ∅ env (.set ty')) with h₇
+    have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
+    have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
     simp [h₅] at h₇
     specialize h₇ x h₄
-    rcases h₇ with ⟨tyᵢ, h₇, h₈⟩
+    have ⟨tyᵢ, h₇, h₈⟩ := h₇
     exists tyᵢ
-    rcases h₇ with ⟨cᵢ, h₇⟩
+    have ⟨cᵢ, h₇⟩ := h₇
     apply And.intro
     case left  => exists cᵢ
     case right => apply lub_lub_fixed h₈ h₆
@@ -195,13 +195,13 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
     simp [List.mapM₁, List.attach, pure, Except.pure] at h₅
   case cons hd tl =>
     simp [List.mapM₁, List.attach, h₆] at h₅
-    rcases (h₄ hd) with h₄
+    have h₄ := h₄ hd
     simp only [h₆, List.mem_cons, true_or, forall_const] at h₄
-    rcases h₄ with ⟨tyᵢ, cᵢ, h₇, _⟩
-    rcases (ih hd) with h₉ ; simp [h₆, TypeOfIsSound] at h₉
-    specialize (h₉ h₁ h₂ h₇) ; rcases h₉ with ⟨_, v, h₉⟩
+    have ⟨tyᵢ, cᵢ, h₇, _⟩ := h₄
+    have h₉ := ih hd ; simp [h₆, TypeOfIsSound] at h₉
+    specialize (h₉ h₁ h₂ h₇) ; have ⟨_, v, h₉⟩ := h₉
     simp [EvaluatesTo] at h₉
-    rcases h₉ with ⟨h₉, _⟩
+    have ⟨h₉, _⟩ := h₉
     rcases h₉ with h₉ | h₉ | h₉ | h₉ <;>
     simp [h₉] at h₅ <;>
     try { simp [h₅] }
@@ -243,11 +243,11 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
     case head =>
       specialize h₃ hd
       simp only [List.mem_cons, true_or, forall_const] at h₃
-      rcases h₃ with ⟨tyᵢ, cᵢ, h₃, h₆⟩
+      have ⟨tyᵢ, cᵢ, h₃, h₆⟩ := h₃
       specialize ih hd
       simp [TypeOfIsSound] at ih
       specialize ih h₁ h₂ h₃
-      rcases ih with ⟨_, v', ihl, ihr⟩
+      have ⟨_, v', ihl, ihr⟩ := ih
       simp [EvaluatesTo] at ihl
       rcases ihl with ihl | ihl | ihl | ihl <;>
       simp [ihl] at h₇
@@ -270,7 +270,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   GuardedCapabilitiesInvariant (Expr.set xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType v sty
 := by
-  rcases (type_of_set_inversion h₃) with ⟨h₆, ty, h₄, h₅⟩
+  have ⟨h₆, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ h₄
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant

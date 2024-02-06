@@ -31,20 +31,17 @@ open Option
 /--
 Forbid trumps permit: if a `forbid` policy is satisfied, the request is denied.
 -/
-theorem forbid_trumps_permit (request : Request) (entities : Entities) (policies : Policies) :
+theorem forbid_trumps_permit
+  (request : Request) (entities : Entities) (policies : Policies) :
   (∃ (policy : Policy),
     policy ∈ policies ∧
     policy.effect = forbid ∧
     satisfied policy request entities) →
   (isAuthorized request entities policies).decision = deny
 := by
-  intro h0
+  intro h
   unfold isAuthorized
-  generalize hf : (satisfiedPolicies forbid policies request entities) = forbids
-  generalize (satisfiedPolicies permit policies request entities) = permits
-  rcases (if_satisfied_then_satisfiedPolicies_non_empty forbid policies request entities h0) with h1
-  rw [hf] at h1
-  simp [h1]
+  simp [if_satisfied_then_satisfiedPolicies_non_empty forbid policies request entities h]
 
 /--
 A request is explicitly permitted when there is at least one satisfied permit policy.
@@ -83,7 +80,7 @@ theorem default_deny (request : Request) (entities : Entities) (policies : Polic
   by_contra h2
   cases dec
   case allow =>
-    rcases (allowed_if_explicitly_permitted request entities policies h1) with h3
+    have h3 := allowed_if_explicitly_permitted request entities policies h1
     contradiction
   case deny => contradiction
 
@@ -96,9 +93,10 @@ theorem order_and_dup_independent (request : Request) (entities : Entities) (pol
   isAuthorized request entities policies₁ = isAuthorized request entities policies₂
 := by
   intro h
-  rcases (satisfiedPolicies_order_and_dup_independent forbid request entities policies₁ policies₂ h) with hf
-  rcases (satisfiedPolicies_order_and_dup_independent permit request entities policies₁ policies₂ h) with hp
+  have hf := satisfiedPolicies_order_and_dup_independent forbid request entities policies₁ policies₂ h
+  have hp := satisfiedPolicies_order_and_dup_independent permit request entities policies₁ policies₂ h
+  have he := errorPolicies_order_and_dup_independent request entities policies₁ policies₂ h
   unfold isAuthorized
-  simp [hf, hp]
+  simp [hf, hp, he]
 
 end Cedar.Thm

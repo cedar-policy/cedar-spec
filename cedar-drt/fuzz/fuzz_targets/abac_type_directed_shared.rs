@@ -17,6 +17,7 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
+use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -111,11 +112,19 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
     initialize_log();
     let mut policyset = ast::PolicySet::new();
-    policyset.add_static(input.policy.into()).unwrap();
+    let policy: ast::StaticPolicy = input.policy.into();
+    policyset.add_static(policy.clone()).unwrap();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("Policies: {policyset}\n");
     debug!("Entities: {}\n", input.entities);
-    for request in input.requests.into_iter().map(Into::into) {
+
+    let requests = input
+        .requests
+        .into_iter()
+        .map(Into::into)
+        .collect::<Vec<_>>();
+
+    for request in requests.iter().cloned() {
         debug!("Request : {request}");
         let (rust_res, total_dur) =
             time_function(|| run_auth_test(def_impl, request, &policyset, &input.entities));
@@ -134,5 +143,30 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
                 .collect::<Vec<String>>(),
             Vec::<String>::new()
         );
+    }
+
+    if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+        // When the corpus is re-parsed, the policy will be given id "policy0".
+        // Recreate the policy set and compute responses here to account for this.
+        let mut policyset = ast::PolicySet::new();
+        let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
+        policyset.add_static(policy).unwrap();
+        let responses = requests
+            .iter()
+            .map(|request| {
+                let authorizer = Authorizer::new();
+                authorizer.is_authorized(request.clone(), &policyset, &input.entities)
+            })
+            .collect::<Vec<_>>();
+        let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
+        dump(
+            dump_dir,
+            &test_name,
+            &input.schema.into(),
+            &policyset,
+            &input.entities,
+            std::iter::zip(requests, responses),
+        )
+        .expect("failed to dump test case");
     }
 }

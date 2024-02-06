@@ -37,7 +37,9 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   split at h₃ <;> try { simp [err] at h₃ }
   simp at h₃
   all_goals {
-    rcases h₃ with ⟨h₃, h₄⟩; rw [←h₃, ←h₄]; constructor
+    have ⟨h₃, h₄⟩ := h₃
+    rw [←h₃, ←h₄]
+    constructor
     case left => exact empty_guarded_capabilities_invariant
     case right => first |
       exact true_is_instance_of_tt |
@@ -55,19 +57,19 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfVar] at h₃
-  rcases h₂ with ⟨h₂, _⟩
+  have ⟨h₂, _⟩ := h₂
   simp [InstanceOfRequestType] at h₂
   split at h₃ <;> simp <;> simp [ok] at h₃ <;>
-  rcases h₃ with ⟨h₃, h₄⟩ <;> rw [←h₃, ←h₄] <;> constructor <;>
-  try { exact empty_guarded_capabilities_invariant }
-  case intro.h_1.intro.right =>
+  have ⟨h₃, h₄⟩ := h₃ <;> rw [←h₃, ←h₄] <;>
+  constructor <;> try { exact empty_guarded_capabilities_invariant }
+  case h_1.right =>
     apply InstanceOfType.instance_of_entity; simp [h₂]
-  case intro.h_2.intro.right =>
+  case h_2.right =>
     apply InstanceOfType.instance_of_entity
     simp [h₂, InstanceOfEntityType]
-  case intro.h_3.intro.right =>
+  case h_3.right =>
     apply InstanceOfType.instance_of_entity; simp [h₂]
-  case intro.h_4.intro.right =>
+  case h_4.right =>
     simp [h₂]
 
 end Cedar.Thm

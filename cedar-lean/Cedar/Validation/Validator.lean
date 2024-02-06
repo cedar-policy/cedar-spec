@@ -25,23 +25,11 @@ open Cedar.Data
 
 ----- Definitions -----
 
-structure SchemaActionEntry where
-  appliesToPrincipal : Set EntityType
-  appliesToResource : Set EntityType
-  ancestors : Set EntityUID
-  context : RecordType
-
-abbrev SchemaActionStore := Map EntityUID SchemaActionEntry
-
-structure Schema where
-  ets : EntityTypeStore
-  acts : SchemaActionStore
-
 /--
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def SchemaActionEntry.toRequestTypes (action : EntityUID) (entry : SchemaActionEntry) : List RequestType :=
+def ActionSchemaEntry.toRequestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
   entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
@@ -59,7 +47,7 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
-    acts := schema.acts.mapOnValues (fun entry => { ancestors := entry.ancestors }),
+    acts := schema.acts,
     reqty := ·
   })
 
@@ -144,8 +132,6 @@ def validate (policies : Policies) (schema : Schema) : ValidationResult :=
 
 ----- Derivations -----
 
-deriving instance Repr for SchemaActionEntry
-deriving instance Repr for Schema
 deriving instance Repr for ValidationError
 
 /-

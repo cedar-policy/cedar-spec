@@ -50,10 +50,10 @@ theorem typecheck_is_sound (policy : Policy) (env : Environment) (t : CedarType)
   cases h₃ : typeOf (Policy.toExpr policy) [] env <;> simp [h₃] at h₂
   split at h₂ <;> simp at h₂
   rename_i ht
-  rcases (empty_capabilities_invariant request entities) with hc
-  rcases (type_of_is_sound hc h₁ h₃) with ⟨_, v, h₄, h₅⟩
+  have hc := empty_capabilities_invariant request entities
+  have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
   rw [h₂] at ht h₅
-  rcases (instance_of_type_bool_is_bool v t h₅ ht) with ⟨b, h₆⟩
+  have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v t h₅ ht
   subst h₆
   exists b
 

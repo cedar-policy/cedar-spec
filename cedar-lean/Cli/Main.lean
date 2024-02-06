@@ -30,7 +30,7 @@ def readFile (filename : String) : IO String :=
 def printUsage (err : String) : IO Unit :=
   IO.println s!"{err}\nUsage: Cli <command> <file>"
 
-def main (args : List String) : IO Unit :=
+unsafe def main (args : List String) : IO Unit :=
   match args.length with
     | 2 => do
       let command := args.get! 0

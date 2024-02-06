@@ -55,9 +55,6 @@ def empty {α β} : Map α β := .mk []
 def keys {α β} (m : Map α β) : Set α :=
   Set.mk (m.kvs.map Prod.fst) -- well-formed by construction
 
-def values {α β} (m : Map α β) : Set β :=
-  Set.mk (m.kvs.map Prod.snd)
-
 /-- Returns the binding for `k` in `m`, if any. -/
 def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
   match m.kvs.find? (fun ⟨k', _⟩ => k' == k) with
@@ -107,12 +104,9 @@ instance : Membership α (Map α β) where
 theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
-  intro h0
-  have h1 : k ∈ (List.map Prod.fst m.kvs) := by
-    simp
-    apply Exists.intro (k, v)
-    simp [h0]
-  apply h1
+  intro h₀
+  have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp ; exists (k, v)
+  apply h₁
 
 theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v

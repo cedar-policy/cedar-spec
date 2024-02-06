@@ -47,13 +47,13 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
-    rcases res with ⟨ty₁, c₁'⟩
+    have ⟨ty₁, c₁'⟩ := res
     simp [typeOfGetAttr] at h₁
     split at h₁ <;> try contradiction
-    case mk.h_1 =>
+    case h_1 =>
       simp
       apply getAttrInRecord_has_empty_capabilities h₁
-    case mk.h_2 =>
+    case h_2 =>
       simp
       split at h₁ <;> try simp [err] at h₁
       apply getAttrInRecord_has_empty_capabilities h₁
@@ -71,24 +71,24 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
    getAttr v₁ a entities = Except.ok v) ∧
    InstanceOfType v ty
 := by
-  rcases (instance_of_record_type_is_record h₅) with ⟨r, h₆⟩
+  have ⟨r, h₆⟩ := instance_of_record_type_is_record h₅
   subst h₆
   simp [getAttr, attrsOf, Map.findOrErr]
   cases h₈ : Map.find? r a
-  case intro.none =>
+  case none =>
     simp only [or_self, false_and, exists_const]
     simp [typeOf, h₃, typeOfGetAttr, getAttrInRecord] at h₂
     split at h₂ <;> simp [ok, err] at h₂
     case h_1 _ _ h₉ =>
       subst h₂
-      rcases (required_attribute_is_present h₅ h₉) with ⟨_, h₁₀⟩
+      have ⟨_, h₁₀⟩ := required_attribute_is_present h₅ h₉
       simp [h₈] at h₁₀
     case h_2 =>
       split at h₂ <;> simp at h₂
       subst h₂ ; rename_i h₁₀
-      rcases (capability_implies_record_attribute h₁ h₄ h₁₀) with ⟨_, h₁₁⟩
+      have ⟨_, h₁₁⟩ := capability_implies_record_attribute h₁ h₄ h₁₀
       simp [h₈] at h₁₁
-  case intro.some vₐ =>
+  case some vₐ =>
     simp only [Except.ok.injEq, false_or, exists_eq_left']
     simp [typeOf, h₃, typeOfGetAttr, getAttrInRecord] at h₂
     split at h₂ <;> simp [ok, err] at h₂
@@ -114,14 +114,14 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
    getAttr v₁ a entities = Except.ok v) ∧
    InstanceOfType v ty
 := by
-  rcases (instance_of_entity_type_is_entity h₆) with ⟨uid, h₇, h₈⟩
+  have ⟨uid, h₇, h₈⟩ := instance_of_entity_type_is_entity h₆
   subst h₈
   simp [getAttr, attrsOf, Entities.attrs, Map.findOrErr]
   cases h₈ : Map.find? entities uid
-  case intro.intro.none =>
+  case none =>
     simp only [Except.bind_err, Except.error.injEq, or_self, or_false, true_and]
     exact type_is_inhabited ty
-  case intro.intro.some d =>
+  case some d =>
     subst h₇
     simp only [Except.bind_ok]
     cases h₉ : Map.find? d.attrs a
@@ -132,13 +132,13 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
       split at h₃ <;> try simp at h₃
       case h_1.h_1 _ _ h₁₀ _ _ h₁₁ =>
         subst h₃
-        rcases (well_typed_entity_attributes h₂ h₈ h₁₀) with h₁₂
-        rcases (required_attribute_is_present h₁₂ h₁₁) with ⟨aᵥ, h₁₃⟩
+        have h₁₂ := well_typed_entity_attributes h₂ h₈ h₁₀
+        have ⟨aᵥ, h₁₃⟩ := required_attribute_is_present h₁₂ h₁₁
         simp [h₉] at h₁₃
       case h_1.h_2 =>
         split at h₃ <;> simp at h₃
         subst h₃ ; rename_i h₁₃
-        rcases (capability_implies_entity_attribute h₁ h₅ h₈ h₁₃) with ⟨_, h₁₄⟩
+        have ⟨_, h₁₄⟩ := capability_implies_entity_attribute h₁ h₅ h₈ h₁₃
         simp [h₉] at h₁₄
     case some vₐ =>
       simp only [Except.ok.injEq, false_or, exists_eq_left']
@@ -163,19 +163,19 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   GuardedCapabilitiesInvariant (Expr.getAttr x₁ a) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.getAttr x₁ a) request entities v ∧ InstanceOfType v ty
 := by
-  rcases (type_of_getAttr_inversion h₃) with ⟨h₅, c₁', h₄⟩
+  have ⟨h₅, c₁', h₄⟩ := type_of_getAttr_inversion h₃
   subst h₅
   apply And.intro
   case left => exact empty_guarded_capabilities_invariant
   case right =>
     rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
-    rcases (ih h₁ h₂ h₄) with ⟨_, v₁, h₆, h₇⟩ <;>
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ <;>
     simp [EvaluatesTo] at h₆ <;>
     simp [EvaluatesTo, evaluate] <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inl.intro.intro.intro.intro.inr.inr.inr =>
+    case inl.intro.inr.inr.inr =>
       exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
-    case inr.intro.intro.intro.intro.inr.inr.inr =>
+    case inr.intro.inr.inr.inr =>
       exact type_of_getAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
     all_goals {
       exact type_is_inhabited ty

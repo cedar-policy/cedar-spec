@@ -85,7 +85,7 @@ For every entity in the store,
 3. The entity's ancestors' types are consistent with the ancestor information
    in the type store.
 -/
-def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Prop :=
+def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, ets.find? uid.ty = some entry ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
@@ -95,8 +95,8 @@ def InstanceOfEntityTypeStore (entities : Entities) (ets: EntityTypeStore) : Pro
 For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
-def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
-  ∀ (uid : EntityUID) (entry : ActionStoreEntry),
+def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
+  ∀ (uid : EntityUID) (entry : ActionSchemaEntry),
   Map.find? as uid = some entry →
   ∃ data,
     Map.find? entities uid = some data ∧
@@ -104,8 +104,8 @@ def InstanceOfActionStore (entities : Entities) (as: ActionStore) : Prop :=
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
-  InstanceOfEntityTypeStore entities env.ets ∧
-  InstanceOfActionStore entities env.acts
+  InstanceOfEntitySchema entities env.ets ∧
+  InstanceOfActionSchema entities env.acts
 
 ----- Theorems -----
 
@@ -160,7 +160,7 @@ theorem instance_of_tt_is_true {v₁ : Value} :
 theorem instance_of_anyBool_is_bool {v₁ : Value} :
   InstanceOfType v₁ (CedarType.bool BoolType.anyBool) →
   ∃ b, v₁ = .prim (.bool b)
-:= by exact instance_of_bool_is_bool
+:= instance_of_bool_is_bool
 
 theorem instance_of_int_is_int {v₁ : Value} :
   InstanceOfType v₁ CedarType.int →
@@ -271,14 +271,14 @@ theorem required_attribute_is_present {r : Map Attr Value} {rty : RecordType} {a
 theorem well_typed_entity_attributes {env : Environment} {request : Request} {entities : Entities} {uid: EntityUID} {d: EntityData} {rty : RecordType}
   (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₂ : Map.find? entities uid = some d)
-  (h₃ : EntityTypeStore.attrs? env.ets uid.ty = some rty) :
+  (h₃ : EntitySchema.attrs? env.ets uid.ty = some rty) :
   InstanceOfType d.attrs (.record rty)
 := by
-  rcases h₁ with ⟨_, h₁, _⟩
-  simp [InstanceOfEntityTypeStore] at h₁
+  have ⟨_, h₁, _⟩ := h₁
+  simp [InstanceOfEntitySchema] at h₁
   specialize h₁ uid d h₂
-  rcases h₁ with ⟨entry, h₁₂, h₁, _⟩
-  unfold EntityTypeStore.attrs? at h₃
+  have ⟨entry, h₁₂, h₁, _⟩ := h₁
+  unfold EntitySchema.attrs? at h₃
   simp [h₁₂] at h₃
   subst h₃
   exact h₁
@@ -375,7 +375,7 @@ theorem type_is_inhabited (ty : CedarType) :
 := by
   match ty with
   | .bool bty =>
-    rcases (bool_type_is_inhabited bty) with ⟨b, h₁⟩
+    have ⟨b, h₁⟩ := bool_type_is_inhabited bty
     exists (.prim (.bool b))
     apply InstanceOfType.instance_of_bool _ _ h₁
   | .int =>
@@ -385,17 +385,17 @@ theorem type_is_inhabited (ty : CedarType) :
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
   | .entity ety =>
-    rcases (entity_type_is_inhabited ety) with ⟨euid, h₁⟩
+    have ⟨euid, h₁⟩ := entity_type_is_inhabited ety
     exists (.prim (.entityUID euid))
     apply InstanceOfType.instance_of_entity _ _ h₁
   | .set ty₁ =>
     exists (.set Set.empty)
     apply InstanceOfType.instance_of_set
     intro v₁ h₁
-    rcases (Set.in_set_means_list_non_empty v₁ Set.empty h₁) with h₂
+    have h₂ := Set.in_set_means_list_non_empty v₁ Set.empty h₁
     simp [Set.empty, Set.elts] at h₂
   | .ext xty =>
-    rcases (ext_type_is_inhabited xty) with ⟨x, h₁⟩
+    have ⟨x, h₁⟩ := ext_type_is_inhabited xty
     exists (.ext x)
     apply InstanceOfType.instance_of_ext _ _ h₁
   | .record (Map.mk rty) =>
@@ -416,9 +416,9 @@ theorem type_is_inhabited (ty : CedarType) :
         case a =>
           simp [Nat.add_assoc]
           simp [←Nat.succ_eq_one_add]
-      rcases (type_is_inhabited hd.snd.getType) with ⟨rhd, h₂⟩
-      rcases (type_is_inhabited (.record (Map.mk tl))) with ⟨vtl, h₃⟩
-      rcases (instance_of_record_type_is_record h₃) with ⟨mtl, h₄⟩
+      have ⟨rhd, h₂⟩ := type_is_inhabited hd.snd.getType
+      have ⟨vtl, h₃⟩ := type_is_inhabited (.record (Map.mk tl))
+      have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃
       subst h₄ ; cases mtl ; rename_i rtl
       exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
       exact instance_of_record_cons h₂ h₃
@@ -464,7 +464,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
         simp [Map.find?, Map.kvs] at h₂
         split at h₂ <;> simp at h₂
         rename_i a' qty' h₃ ; rw [eq_comm] at h₂ ; subst h₂
-        rcases (List.mem_of_find?_eq_some h₃) with h₄
+        have h₄ := List.mem_of_find?_eq_some h₃
         apply @Nat.lt_trans _ (sizeOf (a', qty))
         case h₁ =>
           simp only [Prod.mk.sizeOf_spec]
@@ -501,7 +501,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
   case h_3 _ _ rty₁ rty₂ =>
     cases h₃ : lubRecordType rty₁ rty₂ <;> simp [h₃] at h₁
     rename_i rty
-    rcases (lubRecordType_is_lub_of_record_types h₃) with hl
+    have hl := lubRecordType_is_lub_of_record_types h₃
     subst h₁ ; simp [←hty₁] at h₂
     cases h₂ ; rename_i r h₄ h₅ h₆
     apply InstanceOfType.instance_of_record
@@ -511,15 +511,15 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
       exact lubRecord_contains_left hl h₄
     case h₂ =>
       intro a v qty h₇ h₈
-      rcases (lubRecord_find_implies_find hl h₈) with ⟨qty₁, qty₂, h₉, _, h₁₁⟩
+      have ⟨qty₁, qty₂, h₉, _, h₁₁⟩ := lubRecord_find_implies_find hl h₈
       specialize h₅ a v qty₁ h₇ h₉
-      rcases (lubQualified_is_lub_of_getType h₁₁) with h₁₂
+      have h₁₂ := lubQualified_is_lub_of_getType h₁₁
       have _ : sizeOf qty₁.getType < sizeOf ty₁' :=  -- termination
         sizeOf_attr_type_lt_sizeOf_record_type hty₁ h₉
       apply instance_of_lub_left h₁₂ h₅
     case h₃ =>
       intro a qty h₇ h₈
-      rcases (lubRecord_find_implies_find_left hl h₇) with ⟨qty₁, h₉, h₁₀⟩
+      have ⟨qty₁, h₉, h₁₀⟩ := lubRecord_find_implies_find_left hl h₇
       apply h₆ a qty₁ h₉
       simp [h₁₀, h₈]
   case h_4 =>

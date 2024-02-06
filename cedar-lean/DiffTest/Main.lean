@@ -29,41 +29,59 @@ namespace DiffTest
 open Cedar.Spec
 open Cedar.Validation
 
-@[export isAuthorizedDRT] def isAuthorizedDRT (req : String) : String :=
-  let result : ParseResult Response :=
+structure Timed (α : Type) where
+  data : α
+  duration : Nat
+deriving Lean.ToJson
+
+def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
+  let start ← IO.monoNanosNow
+  let result := f ()
+  let stop ← IO.monoNanosNow
+  .ok {
+    data := result,
+    duration := stop - start
+  }
+
+@[export isAuthorizedDRT] unsafe def isAuthorizedDRT (req : String) : String :=
+  let result : ParseResult (Timed Response) :=
     match Lean.Json.parse req with
     | .error e => .error s!"isAuthorizedDRT: failed to parse input: {e}"
     | .ok json => do
       let request ← getJsonField json "request" >>= jsonToRequest
       let entities ← getJsonField json "entities" >>= jsonToEntities
       let policies ← getJsonField json "policies" >>= jsonToPolicies
-      .ok (isAuthorized request entities policies)
+      let result := runAndTime (λ () => isAuthorized request entities policies)
+      .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
-@[export validateDRT] def validateDRT (req : String) : String :=
-  let result : ParseResult ValidationResult :=
+@[export validateDRT] unsafe def validateDRT (req : String) : String :=
+  let result : ParseResult (Timed ValidationResult) :=
     match Lean.Json.parse req with
     | .error e => .error s!"validateDRT: failed to parse input: {e}"
     | .ok json => do
       let policies ← getJsonField json "policies" >>= jsonToPolicies
       let schema ← getJsonField json "schema" >>= jsonToSchema
-      .ok (validate policies schema)
+      let result := runAndTime (λ () => validate policies schema)
+      .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
-@[export evaluateDRT] def evaluateDRT (req : String) : String :=
-  let result : ParseResult Bool :=
+@[export evaluateDRT] unsafe def evaluateDRT (req : String) : String :=
+  let result : ParseResult (Timed Bool) :=
     match Lean.Json.parse req with
-    | .error e => .error s!"validateDRT: failed to parse input: {e}"
+    | .error e => .error s!"evaluateDRT: failed to parse input: {e}"
     | .ok json => do
       let expr ← getJsonField json "expr" >>= jsonToExpr
       let request ← getJsonField json "request" >>= jsonToRequest
       let entities ← getJsonField json "entities" >>= jsonToEntities
       let expected ← getJsonField json "expected" >>= jsonToOptionalValue
-      let result := Cedar.Spec.evaluate expr request entities
-      match result, expected with
-      | .error _, .none => .ok true
-      | .ok v₁, .some v₂ => .ok (v₁ == v₂)
-      | _, _ => .ok false
+      let result := runAndTime (λ () => evaluate expr request entities)
+      let { data, duration } := unsafeBaseIO result
+      let data := match data, expected with
+        | .error _, .none => true
+        | .ok v₁, .some v₂ => v₁ == v₂
+        | _, _ => false
+      .ok { data, duration }
   toString (Lean.toJson result)
 
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli

@@ -55,30 +55,30 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
   | .lit l => exact type_of_lit_is_sound h₃
   | .var var => exact type_of_var_is_sound h₂ h₃
   | .ite x₁ x₂ x₃ =>
-    rcases (@type_of_is_sound x₁) with ih₁
-    rcases (@type_of_is_sound x₂) with ih₂
-    rcases (@type_of_is_sound x₃) with ih₃
+    have ih₁ := @type_of_is_sound x₁
+    have ih₂ := @type_of_is_sound x₂
+    have ih₃ := @type_of_is_sound x₃
     exact type_of_ite_is_sound h₁ h₂ h₃ ih₁ ih₂ ih₃
   | .and x₁ x₂ =>
-    rcases (@type_of_is_sound x₁) with ih₁
-    rcases (@type_of_is_sound x₂) with ih₂
+    have ih₁ := @type_of_is_sound x₁
+    have ih₂ := @type_of_is_sound x₂
     exact type_of_and_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .or x₁ x₂ =>
-    rcases (@type_of_is_sound x₁) with ih₁
-    rcases (@type_of_is_sound x₂) with ih₂
+    have ih₁ := @type_of_is_sound x₁
+    have ih₂ := @type_of_is_sound x₂
     exact type_of_or_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .unaryApp op₁ x₁ =>
-    rcases (@type_of_is_sound x₁) with ih
+    have ih := @type_of_is_sound x₁
     exact type_of_unaryApp_is_sound h₁ h₂ h₃ ih
   | .binaryApp op₂ x₁ x₂ =>
-    rcases (@type_of_is_sound x₁) with ih₁
-    rcases (@type_of_is_sound x₂) with ih₂
+    have ih₁ := @type_of_is_sound x₁
+    have ih₂ := @type_of_is_sound x₂
     exact type_of_binaryApp_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .hasAttr x₁ a =>
-    rcases (@type_of_is_sound x₁) with ih
+    have ih := @type_of_is_sound x₁
     exact type_of_hasAttr_is_sound h₁ h₂ h₃ ih
   | .getAttr x₁ a =>
-    rcases (@type_of_is_sound x₁) with ih
+    have ih := @type_of_is_sound x₁
     exact type_of_getAttr_is_sound h₁ h₂ h₃ ih
   | .set xs =>
     have ih : ∀ xᵢ, xᵢ ∈ xs → TypeOfIsSound xᵢ := by

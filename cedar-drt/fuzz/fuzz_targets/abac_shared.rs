@@ -17,6 +17,7 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
+use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -24,7 +25,6 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{ValidationMode, Validator};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use serde::Serialize;
@@ -106,20 +106,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-/// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
-    validator
-        .validate(policyset, ValidationMode::default())
-        .validation_passed()
-}
-
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
 // `def_impl` is a custom implementation to test against `cedar-policy`.
 pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
     initialize_log();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
         let mut policyset = ast::PolicySet::new();
-        policyset.add_static(input.policy.into()).unwrap();
+        let policy: ast::StaticPolicy = input.policy.into();
+        policyset.add_static(policy.clone()).unwrap();
         debug!("Policies: {policyset}");
         debug!("Entities: {entities}");
         let requests = input
@@ -127,32 +121,34 @@ pub fn fuzz(input: FuzzTargetInput, def_impl: &impl CedarTestImplementation) {
             .into_iter()
             .map(Into::into)
             .collect::<Vec<_>>();
-        let mut responses = Vec::with_capacity(requests.len());
+
         for request in requests.iter().cloned() {
             debug!("Request: {request}");
-            let (ans, total_dur) =
+            let (_, total_dur) =
                 time_function(|| run_auth_test(def_impl, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-            responses.push(ans);
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
-            let passes_validation = {
-                if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
-                    let validator = Validator::new(schema);
-                    passes_validation(&validator, &policyset)
-                } else {
-                    false
-                }
-            };
+            // When the corpus is re-parsed, the policy will be given id "policy0".
+            // Recreate the policy set and compute responses here to account for this.
+            let mut policyset = ast::PolicySet::new();
+            let policy = policy.new_id(ast::PolicyID::from_string("policy0"));
+            policyset.add_static(policy).unwrap();
+            let responses = requests
+                .iter()
+                .map(|request| {
+                    let authorizer = Authorizer::new();
+                    authorizer.is_authorized(request.clone(), &policyset, &entities)
+                })
+                .collect::<Vec<_>>();
             let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
             dump(
                 dump_dir,
                 &test_name,
                 &input.schema.into(),
-                passes_validation,
                 &policyset,
                 &entities,
-                std::iter::zip(requests.iter(), responses.iter()),
+                std::iter::zip(requests, responses),
             )
             .expect("failed to dump test case");
         }

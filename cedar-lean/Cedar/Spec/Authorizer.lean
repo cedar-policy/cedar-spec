@@ -35,11 +35,28 @@ def satisfiedWithEffect (effect : Effect) (policy : Policy) (req : Request) (ent
 def satisfiedPolicies (effect : Effect) (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
   Set.make (policies.filterMap (satisfiedWithEffect effect · req entities))
 
+def hasError (policy : Policy) (req : Request) (entities : Entities) : Bool :=
+  match (evaluate policy.toExpr req entities) with
+  | .ok _ => false
+  | .error _ => true
+
+/--
+  This function is analogous to `satisfiedWithEffect` in that it returns
+  `Option PolicyID`, but not analogous to `satisfiedWithEffect` in that it does
+  not consider the policy's effect.
+-/
+def errored (policy : Policy) (req : Request) (entities : Entities) : Option PolicyID :=
+  if hasError policy req entities then some policy.id else none
+
+def errorPolicies (policies : Policies) (req : Request) (entities : Entities) : Set PolicyID :=
+  Set.make (policies.filterMap (errored · req entities))
+
 def isAuthorized (req : Request) (entities : Entities) (policies : Policies) : Response :=
   let forbids := satisfiedPolicies .forbid policies req entities
   let permits := satisfiedPolicies .permit policies req entities
+  let erroringPolicies := errorPolicies policies req entities
   if forbids.isEmpty && !permits.isEmpty
-  then { decision := .allow, policies := permits }
-  else { decision := .deny,  policies := forbids }
+  then { decision := .allow, determiningPolicies := permits, erroringPolicies }
+  else { decision := .deny,  determiningPolicies := forbids, erroringPolicies }
 
 end Cedar.Spec

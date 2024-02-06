@@ -40,9 +40,9 @@ impl Request {
 impl From<Request> for ast::Request {
     fn from(req: Request) -> ast::Request {
         ast::Request::new(
-            req.principal,
-            req.action,
-            req.resource,
+            (req.principal, None),
+            (req.action, None),
+            (req.resource, None),
             req.context,
             None::<&ast::RequestSchemaAllPass>,
             Extensions::all_available(),
