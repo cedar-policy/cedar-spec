@@ -451,8 +451,8 @@ def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
       })) acts)
 
 -- Add special "unspecified" entity type with no attributes or ancestors
-def addUnspecifiedEntityType (ets : EntityTypeStore) : EntityTypeStore :=
-  let unspecifiedEntry : EntityTypeStoreEntry :=
+def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
+  let unspecifiedEntry : EntitySchemaEntry :=
   {
     ancestors := Set.empty
     attrs := Map.empty
