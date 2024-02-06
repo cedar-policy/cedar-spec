@@ -199,9 +199,10 @@ pub fn run_val_test(
                 }
             }
             Ok(definitional_res) => {
-                // The definitional validator may return "impossiblePolicy" due to greater precision.
-                // If the definitional validator returns "impossiblePolicy" then the input expression is
-                // well-typed, although it is guaranteed to always evaluate to false.
+                // Even if the Rust validator succeeds, the definitional validator may
+                // return "impossiblePolicy" due to greater precision. In this case, the
+                // input policy is well-typed, although it is guaranteed to always evaluate
+                // to false.
                 if definitional_res.validation_errors.contains(&"impossiblePolicy".to_string()) {
                     return;
                 }
