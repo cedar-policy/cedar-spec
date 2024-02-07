@@ -43,8 +43,7 @@ def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
     | .mk (c::cs) => match wildcard p with
       | true => wildcardMatch (.mk (c::cs)) ps || wildcardMatch (.mk cs) (p::ps)
       | false => charMatch c p && wildcardMatch (.mk cs) ps
-  termination_by
-    wildcardMatch text pattern => sizeOf text + sizeOf pattern
+  termination_by sizeOf text + sizeOf pattern
 
 def PatElem.lt : PatElem → PatElem → Bool
   | .justChar c₁, .justChar c₂ => c₁ < c₂

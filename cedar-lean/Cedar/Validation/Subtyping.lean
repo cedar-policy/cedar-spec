@@ -16,6 +16,7 @@
 
 import Cedar.Validation.Types
 import Cedar.Spec
+import WfInduct.Basic
 
 namespace Cedar.Validation
 
@@ -56,6 +57,9 @@ mutual
       .some (.record (Map.mk lub))
     | _, _ => if ty₁ = ty₂ then .some ty₁ else  .none
 end
+
+#derive_induction lubQualifiedType
+#check lubQualifiedType.induct
 
 def subty (ty₁ ty₂ : CedarType) : Bool :=
   match lub? ty₁ ty₂ with
