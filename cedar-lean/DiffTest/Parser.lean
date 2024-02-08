@@ -450,6 +450,15 @@ def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
         context := v.context
       })) acts)
 
+-- Add special "unspecified" entity type with no attributes or ancestors
+def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
+  let unspecifiedEntry : EntitySchemaEntry :=
+  {
+    ancestors := Set.empty
+    attrs := Map.empty
+  }
+  Map.make (ets.toList ++ [({id := "<Unspecified>", path := []}, unspecifiedEntry)])
+
 mutual
 
 partial def jsonToQualifiedCedarType (json : Lean.Json) : ParseResult (Qualified CedarType) := do
@@ -525,7 +534,7 @@ partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
   let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
   let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToActionSchemaEntry
   .ok {
-    ets := invertJsonEntitySchema (Map.make entityTypes),
+    ets := addUnspecifiedEntityType (invertJsonEntitySchema (Map.make entityTypes))
     acts := invertJsonActionSchema (Map.make actions)
   }
 

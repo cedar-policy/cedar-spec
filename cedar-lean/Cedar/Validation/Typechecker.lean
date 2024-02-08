@@ -185,13 +185,19 @@ def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) 
     else ok (.bool .anyBool) (Capabilities.singleton x a)
   | .none     => ok (.bool .ff)
 
+def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
+  acts.keys.any (EntityUID.ty · == ety)
+
 def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   match ty with
   | .record rty => hasAttrInRecord rty x a c true
   | .entity ety =>
     match env.ets.attrs? ety with
     | .some rty => hasAttrInRecord rty x a c false
-    | .none     => err (.unknownEntity ety)
+    | .none     =>
+      if actionType? ety env.acts
+      then ok (.bool .ff) -- action attributes not allowed
+      else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty)
 
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=

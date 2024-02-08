@@ -177,47 +177,50 @@ pub fn run_val_test(
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
-    match definitional_res {
-        Err(err) => {
-            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
-            // an unknown extension function.
-            if !err.contains("jsonToExtFun: unknown extension function") {
-                panic!(
-                    "Unexpected parse error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
-                    &policies, schema
+    // If `cedar-policy` does not return an error, then the spec should not return an error.
+    // This implies type soundness of the `cedar-policy` validator since type soundness of the
+    // spec is formally proven.
+    //
+    // In particular, we have proven that if the spec validator does not return an error (B),
+    // then there are no authorization-time errors modulo some restrictions (C). So (B) ==> (C).
+    // DRT checks that if the `cedar-policy` validator does not return an error (A), then neither
+    // does the spec validator (B). So (A) ==> (B). By transitivity then, (A) ==> (C).
+
+    if rust_res.validation_passed() {
+        match definitional_res {
+            Err(err) => {
+                // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+                // an unknown extension function.
+                if !err.contains("jsonToExtFun: unknown extension function") {
+                    panic!(
+                        "Unexpected parse error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
+                        &policies, schema
+                    );
+                }
+            }
+            Ok(definitional_res) => {
+                // Even if the Rust validator succeeds, the definitional validator may
+                // return "impossiblePolicy" due to greater precision. In this case, the
+                // input policy is well-typed, although it is guaranteed to always evaluate
+                // to false.
+                if definitional_res.validation_errors == vec!["impossiblePolicy".to_string()] {
+                    return;
+                }
+
+                // But the definitional validator should not return any other error.
+                assert!(
+                    definitional_res.validation_passed(),
+                    "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                    &policies,
+                    schema,
+                    rust_res,
+                    definitional_res,
                 );
-            }
-        }
-        Ok(definitional_res) => {
-            // TODO:(#126) Temporary fix to ignore a known mismatch between the spec and `cedar-policy`.
-            // The issue is that the `cedar-policy` will always return an error for an
-            // unrecognized entity or action, even if that part of the expression
-            // should be excluded from typechecking (e.g., `true || Undefined::"foo"`
-            // should be well typed due to short-circuiting).
-            if rust_res.validation_errors().any(|e| {
-                matches!(
-                    e.error_kind(),
-                    ValidationErrorKind::UnrecognizedEntityType(_)
-                        | ValidationErrorKind::UnrecognizedActionId(_)
-                )
-            }) {
-                return;
-            }
 
-            // The `validation_passed` decisions should match.
-            assert_eq!(
-                rust_res.validation_passed(),
-                definitional_res.validation_passed(),
-                "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                &policies,
-                schema,
-                rust_res,
-                definitional_res,
-            );
-
-            // TODO(#69): We currently don't check for a relationship between validation errors.
-            // E.g., the error reported by the definitional validator should be in the list
-            // of errors reported by the production validator, but we don't check this.
+                // TODO(#69): We currently don't check for a relationship between validation errors.
+                // E.g., the error reported by the definitional validator should be in the list
+                // of errors reported by the production validator, but we don't check this.
+            }
         }
     }
 }
