@@ -17,11 +17,9 @@
 //! Implementation of the [`CedarTestImplementation`] trait for the Cedar Java
 //! implementation extracted from the Dafny specification.
 
-use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
-use crate::logger::*;
+use cedar_policy::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
-use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
@@ -31,20 +29,9 @@ use jni::{JNIVersion, JavaVM};
 use lazy_static::lazy_static;
 use log::info;
 use serde::Deserialize;
+use std::collections::HashMap;
 
-/// Times to (de)serialize JSON content sent to / received from the Dafny-Java
-/// implementation.
-pub const RUST_SERIALIZATION_MSG: &str = "rust_serialization (ns) : ";
-pub const RUST_DESERIALIZATION_MSG: &str = "rust_deserialization (ns) : ";
-
-/// Times for cedar-policy authorization and validation.
-pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
-pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
-
-/// Times for JSON (de)serialization, authorization, and validation as reported
-/// by the Dafny-Java implementation.
-pub const JAVA_SERIALIZATION_MSG: &str = "java_serialization (ns) : ";
-pub const JAVA_DESERIALIZATION_MSG: &str = "java_deserialization (ns) : ";
+/// Times for JSON authorization and validation as reported by the Dafny-Java implementation
 pub const JAVA_AUTH_MSG: &str = "java_auth (ns) : ";
 pub const JAVA_VALIDATION_MSG: &str = "java_validation (ns) : ";
 
@@ -69,9 +56,9 @@ lazy_static! {
 
 #[derive(Debug, Deserialize)]
 pub struct AuthorizationResponse {
-    pub serialization_nanos: i64,
-    pub deserialization_nanos: i64,
-    pub auth_nanos: i64,
+    pub serialization_nanos: u128,
+    pub deserialization_nanos: u128,
+    pub auth_nanos: u128,
     pub response: InterfaceResponse,
 }
 
@@ -91,9 +78,9 @@ pub struct ValidationResponseInner {
 
 #[derive(Debug, Deserialize)]
 pub struct ValidationResponse {
-    pub serialization_nanos: i64,
-    pub deserialization_nanos: i64,
-    pub validation_nanos: i64,
+    pub serialization_nanos: u128,
+    pub deserialization_nanos: u128,
+    pub validation_nanos: u128,
     pub response: ValidationResponseInner,
 }
 
@@ -222,7 +209,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
             .expect("failed to create Java object for authorization request string")
     }
 
-    fn deserialize_auth_response(&self, response: JValue) -> InterfaceResponse {
+    fn deserialize_auth_response(&self, response: JValue) -> TestResponse {
         let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
@@ -246,17 +233,16 @@ impl<'j> JavaDefinitionalEngine<'j> {
             )
         });
 
-        info!(
-            "{}{}",
-            JAVA_SERIALIZATION_MSG, d_response.serialization_nanos
-        );
-        info!(
-            "{}{}",
-            JAVA_DESERIALIZATION_MSG, d_response.deserialization_nanos
-        );
         info!("{}{}", JAVA_AUTH_MSG, d_response.auth_nanos);
 
-        d_response.response
+        let response = TestResponse {
+            response: d_response.response,
+            timing_info: HashMap::from([(
+                "authorize_and_parse".into(),
+                d_response.auth_nanos / 1000,
+            )]),
+        };
+        response
     }
 
     /// Ask the definitional engine whether `isAuthorized` for the given `request`,
@@ -266,10 +252,8 @@ impl<'j> JavaDefinitionalEngine<'j> {
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResponse {
-        let (jstring, dur) =
-            time_function(|| self.serialize_auth_request(request, policies, entities));
-        info!("{}{}", RUST_SERIALIZATION_MSG, dur.as_nanos());
+    ) -> TestResponse {
+        let jstring: JString<'_> = self.serialize_auth_request(request, policies, entities);
         let response = self.thread.call_method(
             self.def_authorizer,
             "isAuthorized_str",
@@ -284,8 +268,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
             panic!("JVM Exception Occurred!");
         }
         let response: JValue = response.expect("failed to call Java isAuthorized_str");
-        let (response, dur) = time_function(|| self.deserialize_auth_response(response));
-        info!("{}{}", RUST_DESERIALIZATION_MSG, dur.as_nanos());
+        let response = self.deserialize_auth_response(response);
         self.thread
             .delete_local_ref(*jstring)
             .expect("Deletion failed");
@@ -309,7 +292,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
             .expect("failed to create Java object for validation request string")
     }
 
-    fn deserialize_val_response(&self, response: JValue) -> InterfaceValidationResult {
+    fn deserialize_val_response(&self, response: JValue) -> TestValidationResult {
         let jresponse: JString = response
             .l()
             .unwrap_or_else(|_| {
@@ -334,14 +317,6 @@ impl<'j> JavaDefinitionalEngine<'j> {
             )
             });
 
-        info!(
-            "{}{}",
-            JAVA_SERIALIZATION_MSG, d_response.serialization_nanos
-        );
-        info!(
-            "{}{}",
-            JAVA_DESERIALIZATION_MSG, d_response.deserialization_nanos
-        );
         info!("{}{}", JAVA_VALIDATION_MSG, d_response.validation_nanos);
 
         assert_eq!(
@@ -349,8 +324,12 @@ impl<'j> JavaDefinitionalEngine<'j> {
             Vec::<String>::new(),
             "Dafny json parsing failed",
         );
-        InterfaceValidationResult {
-            validation_errors: d_response.response.validation_errors,
+        TestValidationResult {
+            errors: d_response.response.validation_errors,
+            timing_info: HashMap::from([(
+                "validation_and_parse".into(),
+                d_response.validation_nanos / 1000,
+            )]),
         }
     }
 
@@ -360,9 +339,8 @@ impl<'j> JavaDefinitionalEngine<'j> {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceValidationResult {
-        let (jstring, dur) = time_function(|| self.serialize_val_request(schema, policies, mode));
-        info!("{}{}", RUST_SERIALIZATION_MSG, dur.as_nanos());
+    ) -> TestValidationResult {
+        let jstring = self.serialize_val_request(schema, policies, mode);
         let response = self.thread.call_method(
             self.def_validator,
             "validate_str",
@@ -377,8 +355,7 @@ impl<'j> JavaDefinitionalEngine<'j> {
             panic!("JVM Exception Occurred!");
         }
         let response: JValue = response.expect("failed to call Java validate_str");
-        let (response, dur) = time_function(|| self.deserialize_val_response(response));
-        info!("{}{}", RUST_DESERIALIZATION_MSG, dur.as_nanos());
+        let response = self.deserialize_val_response(response);
         self.thread
             .delete_local_ref(*jstring)
             .expect("Deletion failed");
@@ -389,21 +366,26 @@ impl<'j> JavaDefinitionalEngine<'j> {
 impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
     fn is_authorized(
         &self,
-        request: ast::Request,
+        request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResult<InterfaceResponse> {
-        Ok(self.is_authorized(&request, policies, entities))
+    ) -> TestResult<TestResponse> {
+        TestResult::Success(self.is_authorized(request, policies, entities))
     }
 
     fn interpret(
         &self,
-        request: ast::Request,
+        request: &ast::Request,
         entities: &Entities,
         expr: &Expr,
+        enable_extensions: bool,
         expected: Option<Value>,
-    ) -> InterfaceResult<bool> {
-        Ok(self.eval(&request, entities, expr, expected))
+    ) -> TestResult<bool> {
+        assert!(
+            enable_extensions,
+            "Dafny definitional interpreter expects extensions to be enabled"
+        );
+        TestResult::Success(self.eval(request, entities, expr, expected))
     }
 
     fn validate(
@@ -411,39 +393,11 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceResult<InterfaceValidationResult> {
-        Ok(self.validate(schema, policies, mode))
+    ) -> TestResult<TestValidationResult> {
+        TestResult::Success(self.validate(schema, policies, mode))
     }
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::Ignore
-    }
-}
-
-/// Implementation of the trait used for integration testing.
-impl<'j> CustomCedarImpl for JavaDefinitionalEngine<'j> {
-    fn is_authorized(
-        &self,
-        request: &ast::Request,
-        policies: &ast::PolicySet,
-        entities: &Entities,
-    ) -> InterfaceResponse {
-        self.is_authorized(request, policies, entities)
-    }
-
-    fn validate(
-        &self,
-        schema: cedar_policy_validator::ValidatorSchema,
-        policies: &ast::PolicySet,
-    ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
-        let definitional_res = self.validate(
-            &schema,
-            policies,
-            cedar_policy_validator::ValidationMode::default(),
-        );
-        IntegrationTestValidationResult {
-            validation_passed: definitional_res.validation_passed(),
-            validation_errors_debug: format!("{:?}", definitional_res.validation_errors),
-        }
     }
 }

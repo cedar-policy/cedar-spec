@@ -20,9 +20,7 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{
-    time_function, CedarTestImplementation, ErrorComparisonMode, RUST_AUTH_MSG, RUST_VALIDATION_MSG,
-};
+use cedar_drt::{time_function, CedarTestImplementation, ErrorComparisonMode};
 use cedar_policy::{frontend::is_authorized::InterfaceResponse, PolicyId};
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
@@ -33,6 +31,10 @@ pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator,
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 use std::collections::HashSet;
+
+/// Times for cedar-policy authorization and validation.
+pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
+pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
 
 /// Compare the behavior of the evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
