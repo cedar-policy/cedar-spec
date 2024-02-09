@@ -14,37 +14,16 @@
  limitations under the License.
 -/
 
+import Std
+
 namespace Cedar.Spec
+
+open Std
 
 inductive PatElem where
   | star
   | justChar (c : Char)
 deriving Repr, DecidableEq, Inhabited
-
-abbrev Pattern := List PatElem
-
-def charMatch (textChar : Char) (patternChar : PatElem) : Bool :=
-  match patternChar with
-  | .justChar c => textChar == c
-  | _ => false
-
-def wildcard (patternChar : PatElem) : Bool :=
-  match patternChar with
-  | .star => true
-  | _ => false
-
-def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
-  match pattern with
-  | [] => match text with
-    | .mk [] => true
-    | _ => false
-  | p::ps => match text with
-    | .mk [] => wildcard p && wildcardMatch (.mk []) ps
-    | .mk (c::cs) => match wildcard p with
-      | true => wildcardMatch (.mk (c::cs)) ps || wildcardMatch (.mk cs) (p::ps)
-      | false => charMatch c p && wildcardMatch (.mk cs) ps
-  termination_by
-    wildcardMatch text pattern => sizeOf text + sizeOf pattern
 
 def PatElem.lt : PatElem → PatElem → Bool
   | .justChar c₁, .justChar c₂ => c₁ < c₂
@@ -57,5 +36,45 @@ instance : LT PatElem where
 instance PatElem.decLt (x y : PatElem) : Decidable (x < y) :=
   if  h : PatElem.lt x y then isTrue h else isFalse h
 
+abbrev Pattern := List PatElem
+
+def charMatch (textChar : Char) : PatElem → Bool
+  | .justChar c => textChar == c
+  | _           => false
+
+def wildcard : PatElem → Bool
+  | .star => true
+  | _     => false
+
+abbrev Cache := HashMap (Nat × Nat) Bool
+
+abbrev CacheM (α) := StateM Cache α
+
+def wildcardMatchIdx (text : List Char) (pattern : Pattern) (i j : Nat)
+  (h₁ : i ≤ text.length)
+  (h₂ : j ≤ pattern.length) : CacheM Bool
+:= do
+  if let .some b := (← get).find? (i, j) then
+    return b
+  let mut r := false
+  if h₃ : j = pattern.length then
+    r := i = text.length
+  else if h₄ : i = text.length then
+    r := wildcard (pattern.get ⟨j, (by omega)⟩) &&
+         (← wildcardMatchIdx text pattern i (j + 1) h₁ (by omega))
+  else if wildcard (pattern.get ⟨j, (by omega)⟩) then
+    r := (← wildcardMatchIdx text pattern i (j + 1) h₁ (by omega)) ||
+         (← wildcardMatchIdx text pattern (i + 1) j (by omega) h₂)
+  else
+    r := charMatch (text.get ⟨i, (by omega)⟩) (pattern.get ⟨j, (by omega)⟩) &&
+         (← wildcardMatchIdx text pattern (i + 1) (j + 1) (by omega) (by omega))
+  modifyGet λ cache => (r, cache.insert (i, j) r)
+termination_by
+  wildcardMatchIdx text pattern i j _ _=> (text.length - i) + (pattern.length - j)
+decreasing_by
+  all_goals { simp_wf ; omega }
+
+def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
+  wildcardMatchIdx text.toList pattern 0 0 (by simp) (by simp) |>.run' HashMap.empty
 
 end Cedar.Spec
