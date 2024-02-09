@@ -265,117 +265,79 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
     simp [Qualified.getType, ←h₁]
   }
 
-mutual
 theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
   (ty₁ ⊔ ty₂) = some ty₂ →
   (ty₂ ⊔ ty₃) = some ty₃ →
-  (ty₁ ⊔ ty₃) = some ty₃
-:= by
-  intro h₁ h₂
-  unfold lub? ; split
-  case h_1 bty₁ bty₃ =>
-    unfold lub? at h₁ h₂
-    cases ty₂ <;> simp at h₁ h₂
-    simp [lubBool] at *
-    rename_i bty₄
-    split ; assumption
-    split at h₁ <;> subst h₁ <;>
-    split at h₂ <;> try assumption
-    subst h₂ ; contradiction
-  case h_2 sty₁ sty₃ =>
-    unfold lub? at h₁ h₂
-    cases ty₂ <;> simp at h₁ h₂
-    rename_i sty₂
-    cases h₃ : sty₁ ⊔ sty₂ <;> simp [h₃] at h₁
-    cases h₄ : sty₂ ⊔ sty₃ <;> simp [h₄] at h₂
-    rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
-    have h₅ := lub_trans h₃ h₄
-    simp [h₅]
-  case h_3 rty₁ rty₃ =>
-    unfold lub? at h₁ h₂
-    cases ty₂ <;> simp at h₁ h₂
-    rename_i mty₂ ; cases mty₂ ; rename_i rty₂
-    simp at h₁ h₂
-    cases h₃ : lubRecordType rty₁ rty₂ <;> simp [h₃] at h₁
-    cases h₄ : lubRecordType rty₂ rty₃ <;> simp [h₄] at h₂
-    rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
-    have h₅ := lubRecordType_trans h₃ h₄
-    simp [h₅]
-  case h_4 =>
-    split
-    case inl h₃ => simp [h₃]
-    case inr h₃ h₄ h₅ h₆ =>
-      unfold lub? at h₁ h₂
-      cases ty₁ <;> cases ty₂ <;> simp at h₁ <;>
-      cases ty₃ <;> simp at h₂ <;> simp at h₆
-      case bool bty₁ _ bty₃ =>
-        apply h₃ bty₁ bty₃ <;> rfl
-      case set sty₁ _ sty₃ =>
-        apply h₄ sty₁ sty₃ <;> rfl
-      case record rty₁ _ rty₃ =>
-        cases rty₁ ; cases rty₃
-        rename_i rty₁' rty₃'
-        apply h₅ rty₁' rty₃' <;> rfl
-      all_goals {
-        rename_i ety₁ ety₂ ety₃
-        rw [h₁] at h₆ ; contradiction
-      }
+  (ty₁ ⊔ ty₃) = some ty₃ := by
+  induction ty₁, ty₂
+    using lub?.induct
+      (motive1 := fun qty₁ qty₂ => ∀ qty₃,
+          (lubQualifiedType qty₁ qty₂) = some qty₂ →
+          (lubQualifiedType qty₂ qty₃) = some qty₃ →
+          (lubQualifiedType qty₁ qty₃) = some qty₃
+      )
+      (motive3 := fun rty₁ rty₂ => ∀ rty₃,
+          (lubRecordType rty₁ rty₂) = some rty₂ →
+          (lubRecordType rty₂ rty₃) = some rty₃ →
+          (lubRecordType rty₁ rty₃) = some rty₃
+      )
+    generalizing ty₃
+  -- First 7 cases for lub?
+  case case1 ty₁ ty₂ IH qty₃ h1 h2 =>
+    cases qty₃ <;> simp [lubQualifiedType] at *
+    apply IH h1 h2
+  case case2 ty₁ ty₂ IH qty₃ h1 h2 =>
+    cases qty₃ <;> simp [lubQualifiedType] at *
+    apply IH h1 h2
+  case case3 qty₁ qty₂ IH1 IH2 qty₃ h1 h2 =>
+    cases qty₃ <;> simp [lubQualifiedType] at *
+  case case4 bt₁ bt₂ =>
+    intro h1 h2
+    cases ty₃ <;> simp [lub?, lubBool] at *
+    split <;> split at h1 <;> split at h2 <;> try simp [*] at *
+  case case5 ty₁ ty₂ IH =>
+    intro h1 h2
+    cases ty₃ <;> simp [lub?] at *
+    apply IH h1 h2
+  case case6 rty₁ rty₂ IH =>
+    intro h1 h2
+    cases ty₃ <;> simp [lub?] at *
+    rename_i rty₃ -- slight code smell
+    cases rty₃; simp [lub?] at *
+    apply IH _ h1 h2
+  case case7 ty₁ ty₂ overlap1 overlap2 overlap3 =>
+    intros h1 h2
+    -- now we have to deal with the catch-all of lub
+    simp [lub?, overlap1, overlap2, overlap3] at h1
+    rwa [h1]
+  case case8 ty₁ ty₂ overlap1 overlap2 overlap3 =>
+    -- Bug in wfinduct; this case is dupliated somehow
+    intros h1 h2
+    simp [lub?, overlap1, overlap2, overlap3] at h1
+    rwa [h1]
+  case case9 _rty h1 h2 =>
+    simp [lubRecordType] at *
+    assumption
+  case case10 k₁ v₁ r₁ k₂ v₂ r₂ hne rty₃ h1 _h2 =>
+    simp [lubRecordType, hne] at h1
+  case case11 k₁ v₁ r₁ k₂ v₂ r₂ heq IH1 IH2 rty₃ h1 h2 =>
+    match rty₃ with
+    | [] => simp [lubRecordType] at h2
+    | (k₃, v₃) :: r₃ =>
+      simp [lubRecordType, heq] at heq h1; clear heq
+      let ⟨v₄, hv1, hr1, heq1, heq2⟩ := h1; clear h1
+      subst k₂ v₂
+      simp [lubRecordType] at h2
+      split at h2 <;> try contradiction
+      subst k₃
+      simp at h2
+      simp [lubRecordType]
+      constructor
+      · apply IH1 _ hv1 h2.1
+      · apply IH2 _ hr1 h2.2
+  case case12 rt₁ rt₂ overlap1 overlap2 rt₃ h1 _h2 =>
+    simp [lubRecordType, overlap1, overlap2] at h1
 
-theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)} :
-  (lubRecordType rty₁ rty₂) = some rty₂ →
-  (lubRecordType rty₂ rty₃) = some rty₃ →
-  (lubRecordType rty₁ rty₃) = some rty₃
-:= by
-  unfold lubRecordType
-  intro h₁ h₂
-  cases rty₁ <;> cases rty₃ <;>
-  simp
-  case cons.cons hd₁ tl₁ hd₃ tl₃ =>
-    cases rty₂ <;> simp at h₁ h₂
-    rename_i hd₂ tl₂
-    split at h₁ <;> try contradiction
-    split at h₂ <;> try contradiction
-    rename_i h₃ h₄ ; rw [eq_comm] at h₃ h₄
-    simp [h₃] at * ; simp [h₄] at *
-    cases h₅ : lubQualifiedType hd₁.snd hd₂.snd <;> simp [h₅] at h₁
-    cases h₆ : lubRecordType tl₁ tl₂ <;> simp [h₆] at h₁
-    rename_i qty₁ rty₁'
-    cases h₇ : lubQualifiedType hd₂.snd hd₃.snd <;> simp [h₇] at h₂
-    cases h₈ : lubRecordType tl₂ tl₃ <;> simp [h₈] at h₂
-    rename_i qty₂ rty₂'
-    have ⟨hl₁, hr₁⟩ := h₁
-    have ⟨hl₂, hr₂⟩ := h₂
-    rw [eq_comm] at hl₁ hl₂ hr₁ hr₂
-    subst hl₁ hl₂ hr₁ hr₂
-    simp [Prod.snd] at *
-    have h₉ := lubQualifiedType_trans h₅ h₇
-    have h₁₀ := lubRecordType_trans h₆ h₈
-    simp [h₉, h₁₀]
-  all_goals {
-    cases rty₂ <;> simp at h₁ h₂
-  }
-
-theorem lubQualifiedType_trans {qty₁ qty₂ qty₃ : QualifiedType} :
-  (lubQualifiedType qty₁ qty₂) = some qty₂ →
-  (lubQualifiedType qty₂ qty₃) = some qty₃ →
-  (lubQualifiedType qty₁ qty₃) = some qty₃
-:= by
-  unfold lubQualifiedType
-  intro h₁ h₂
-  cases qty₁ <;> cases qty₃ <;> simp
-  case optional.optional ty₁' ty₃' | required.required ty₁' ty₃' =>
-    cases qty₂ <;> simp at h₁ h₂
-    rename_i ty₂'
-    cases h₃ : ty₁' ⊔ ty₂' <;> simp [h₃] at h₁
-    cases h₄ : ty₂' ⊔ ty₃' <;> simp [h₄] at h₂
-    rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
-    have h₅ := lub_trans h₃ h₄
-    simp [h₅]
-  all_goals {
-    cases qty₂ <;> simp at h₁ h₂
-  }
-
-end
 
 theorem subty_trans {ty₁ ty₂ ty₃ : CedarType} :
   ty₁ ⊑ ty₂ → ty₂ ⊑ ty₃ → ty₁ ⊑ ty₃
@@ -650,6 +612,7 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
     simp [lub?]
     have h₅ := lubRecordType_assoc_some_some h₃ h₄
     simp [h₅]
+termination_by sizeOf ty₁
 
 theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List (Attr × QualifiedType)}
   (h₁ : (lubRecordType rty₁ rty₂) = some rty₄)
@@ -701,6 +664,7 @@ theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List
         have h₇ := lubQualifiedType_assoc_some_some h₃ h₅
         have h₈ := lubRecordType_assoc_some_some h₄ h₆
         simp [h₇, h₈]
+termination_by sizeOf rty₁
 
 theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : QualifiedType}
   (h₁ : (lubQualifiedType qty₁ qty₂) = some qty₄)
@@ -717,12 +681,9 @@ theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : Q
     subst h₁ h₂
     simp [h₄, h₅]
   }
+termination_by sizeOf qty₁
 
 end
-termination_by
-lub_assoc_some_some ty₁ ty₂ ty₃ _ _ _ => (sizeOf ty₁)
-lubRecordType_assoc_some_some rty₁ rty₂ rty₃ _ _ _ => (sizeOf rty₁)
-lubQualifiedType_assoc_some_some qty₁ qty₂ qty₃ _ _ _ => (sizeOf qty₁)
 
 theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
   (do let ty₄ ← (ty₁ ⊔ ty₂) ; (ty₄ ⊔ ty₃)) =
@@ -739,5 +700,6 @@ theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
     apply lub_assoc_none_some h₂ h₁
   case some.some ty₄ ty₅ =>
     exact lub_assoc_some_some h₁ h₂
+
 
 end Cedar.Thm

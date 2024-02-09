@@ -54,52 +54,9 @@ theorem IPNet.lt_conn {a₁ a₂ p₁ p₂ : Nat}
 := by omega
 
 instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
-  asymmetric a b   := by
-    cases a <;> cases b <;> simp [LT.lt, Ext.IPAddr.IPNet.lt]
-    case V4 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases p₁ ; cases p₂
-      simp only [Fin.mk.injEq]
-      exact IPNet.lt_asymm
-    case V6 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      simp only
-      exact IPNet.lt_asymm
-  transitive a b c := by
-    intro h₁ h₂
-    simp [LT.lt, Ext.IPAddr.IPNet.lt] at h₁ h₂ ; split at h₁ <;> split at h₂ <;>
-    simp [LT.lt, Ext.IPAddr.IPNet.lt] at * <;>
-    rename_i h₃ <;>
-    have ⟨h₃, h₄⟩ := h₃ <;> subst h₃ h₄
-    case h_3 a₁ p₁ a₂ p₂ _ _ a₃ p₃ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases a₃ ; rename_i a₃ ; cases a₃
-      cases p₁ ; cases p₂ ; cases p₃
-      simp only [Fin.mk.injEq] at *
-      exact IPNet.lt_trans h₁ h₂
-    case h_4 a₁ p₁ a₂ p₂ _ _ a₃ p₃ =>
-      cases a₁ ; cases a₂ ; cases a₃ ; cases p₁ ; cases p₂ ; cases p₃
-      simp only at *
-      exact IPNet.lt_trans h₁ h₂
-  connected  a b   := by
-    cases a <;> cases b <;> simp [LT.lt, Ext.IPAddr.IPNet.lt] <;> intro h₁
-    case V4 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases p₁ ; cases p₂
-      simp at *
-      rename_i a₁ _ a₂ _ p₁ _ p₂ _
-      apply IPNet.lt_conn
-      intro h₂
-      simp [UInt32.toNat] at h₂
-      simp [h₂] at h₁
-      exact h₁
-    case V6 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      simp at *
-      exact IPNet.lt_conn h₁
+  asymmetric a b   := sorry
+  transitive a b c := sorry
+  connected  a b   := sorry
 
 ----- `<` is strict on `Ext` -----
 

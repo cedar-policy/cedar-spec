@@ -17,8 +17,11 @@
 import Lake
 open Lake DSL
 
-require std from git
-  "https://github.com/leanprover/std4"@"main"
+--require std from git
+--  "https://github.com/leanprover/std4"@"main"
+
+require wfinduct from git
+  "https://github.com/nomeata/lean-wf-induct"
 
 package Cedar
 
