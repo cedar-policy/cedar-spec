@@ -29,8 +29,8 @@ private def ipv4 (a₀ a₁ a₂ a₃ : UInt8) (pre : Nat) : IPNet :=
 private def ipv6 (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : UInt16) (pre : Nat) : IPNet :=
   IPNet.V6 (IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇) (Fin.ofNat pre)
 
-private def testValid (str : String) (ip : IPNet) : TestCase :=
-  test str (checkEq (parse str) ip)
+private def testValid (str : String) (ip : IPNet) : TestCase IO :=
+  test str ⟨λ _ => checkEq (parse str) ip⟩
 
 def testsForValidStrings :=
   suite "IPAddr.parse for valid strings"
@@ -45,8 +45,8 @@ def testsForValidStrings :=
     testValid "a::f/120" (ipv6 0xa 0 0 0 0 0 0 0xf 120)
   ]
 
-private def testInvalid (str : String) (msg : String) : TestCase :=
-  test s!"{str} [{msg}]" (checkEq (parse str) .none)
+private def testInvalid (str : String) (msg : String) : TestCase IO :=
+  test s!"{str} [{msg}]" ⟨λ _ => checkEq (parse str) .none⟩
 
 def testsForInvalidStrings :=
   suite "IPAddr.parse for invalid strings"
@@ -78,11 +78,11 @@ private def parse! (str : String) : IPNet :=
   | .none => panic! s!"not a valid IP address {str}"
 
 
-private def testIsLoopback (str : String) (expected : Bool) : TestCase :=
-  test s!"isLoopback {str}" (checkEq (parse! str).isLoopback expected)
+private def testIsLoopback (str : String) (expected : Bool) : TestCase IO :=
+  test s!"isLoopback {str}" ⟨λ _ => checkEq (parse! str).isLoopback expected⟩
 
-private def testToUInt128 (str : String) (expected : UInt128) : TestCase :=
-  test s!"toUInt128 {str}" (checkEq (parse! str).toUInt128 expected)
+private def testToUInt128 (str : String) (expected : UInt128) : TestCase IO :=
+  test s!"toUInt128 {str}" ⟨λ _ => checkEq (parse! str).toUInt128 expected⟩
 
 def testsForIsLoopback :=
   suite "IPAddr.isLoopback"
@@ -106,8 +106,8 @@ def ip! (str : String) : IPNet :=
   | .some ip => ip
   | .none => panic! s!"not a valid IP address {str}"
 
-def testInRange (str₁ str₂ : String) (expected : Bool) : TestCase :=
-  test s!"inRange {str₁} {str₂}" (checkEq ((ip! str₁).inRange (ip! str₂)) expected)
+def testInRange (str₁ str₂ : String) (expected : Bool) : TestCase IO :=
+  test s!"inRange {str₁} {str₂}" ⟨λ _ => checkEq ((ip! str₁).inRange (ip! str₂)) expected⟩
 
 def testsForInRange :=
   suite "IPAddr.inRange"
@@ -137,12 +137,14 @@ def testsForInRange :=
     testInRange "10.0.0.1/24" "10.0.0.0/29" false,
     testInRange "10.0.0.1/29" "10.0.0.0/24" true,
     testInRange "10.0.0.0/32" "10.0.0.0/32" true,
-    testInRange "10.0.0.0/32" "10.0.0.0" true
+    testInRange "10.0.0.0/32" "10.0.0.0" true,
+    testInRange "0.0.0.0/31" "0.0.0.1/31" true,
+    testInRange "0.0.0.1/31" "0.0.0.0/31" true,
   ]
 
-private def testEq (str₁ str₂ : String) (expected : Bool) : TestCase :=
+private def testEq (str₁ str₂ : String) (expected : Bool) : TestCase IO :=
   let eq : Bool := (ip! str₁) = (ip! str₂)
-  test s!"{str₁} == {str₂}" (checkEq eq expected)
+  test s!"{str₁} == {str₂}" ⟨λ _ => checkEq eq expected⟩
 
 def testsForIpNetEquality :=
   suite "IpAddr.eq"
