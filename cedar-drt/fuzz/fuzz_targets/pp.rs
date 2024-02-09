@@ -18,7 +18,9 @@
 
 use cedar_drt::initialize_log;
 use cedar_drt_inner::fuzz_target;
+use cedar_policy_core::ast;
 use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::est;
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
@@ -71,10 +73,79 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
     p.condition().subexpressions().any(|e| matches!(e.expr_kind(), ExprKind::Lit(Literal::EntityUID(euid)) if matches!(*euid.entity_type(), EntityType::Unspecified)))
 }
 
-// round-tripping of a policy
-// i.e., print a policy to string and parse it back
+// Round-tripping using the display trait: print a policy to string and parse it back.
 fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors> {
     parse_policy(None, &p.to_string())
+}
+
+// Round-tripping using the JSON (EST) format: print a policy to a JSON string
+// and parse it back. Panics if any step fails.
+fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
+    // convert to json
+    let est = est::Policy::from(ast::Policy::from(p));
+    let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
+    // read back
+    let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
+    let template = est
+        .try_into_ast_template(None)
+        .expect("failed to convert EST to AST");
+    template
+        .try_into()
+        .expect("failed to convert `Template` to `StaticPolicy`")
+}
+
+// Check that round-tripping preserves syntactic equivalence.
+// Panic if the two policies are not the same, ignoring ids.
+fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
+    let (t, _) = Template::link_static_policy(p1.clone());
+    assert!(
+        t.slots().collect::<Vec<_>>().is_empty(),
+        "\nold template slots should be empty\n"
+    );
+    // just dump to standard hashmaps to check equality without order
+    let old_anno = p2
+        .annotations()
+        .collect::<std::collections::HashMap<_, _>>();
+    let new_anno = t.annotations().collect::<std::collections::HashMap<_, _>>();
+    assert_eq!(
+        old_anno, new_anno,
+        "\nannotations should be the same, found:\nold: {:?}\nnew: {:?}\n",
+        old_anno, new_anno,
+    );
+    assert_eq!(
+        p2.effect(),
+        t.effect(),
+        "\nnew effect: {:?}\nold effect: {:?}\n",
+        p2.effect(),
+        t.effect()
+    );
+    assert_eq!(
+        p2.principal_constraint(),
+        t.principal_constraint(),
+        "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
+        p2.principal_constraint(),
+        t.principal_constraint()
+    );
+    assert_eq!(
+        p2.action_constraint(),
+        t.action_constraint(),
+        "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
+        p2.action_constraint(),
+        t.action_constraint()
+    );
+    assert_eq!(
+        p2.resource_constraint(),
+        t.resource_constraint(),
+        "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
+        p2.resource_constraint(),
+        t.resource_constraint()
+    );
+    assert!(
+        p2.non_head_constraints().eq_shape(t.non_head_constraints()),
+        "\nnew policy condition: {:?}\nold policy condition: {:?}\n",
+        p2.non_head_constraints(),
+        t.non_head_constraints()
+    );
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
@@ -88,66 +159,17 @@ fuzz_target!(|input: FuzzTargetInput| {
     if contains_unspecified_entities(&p) {
         return;
     }
-    let (t, _) = Template::link_static_policy(p.clone());
 
     debug!("Starting policy: {:?}", p);
-    // round-tripping over it should preserve syntactical equivalence.
-    // Note that we are ignoring IDs, because Cedar does not
-    // get ids from policy text
     match round_trip(&p) {
         Ok(np) => {
-            assert!(
-                t.slots().collect::<Vec<_>>().is_empty(),
-                "\nold template slots should be empty\n"
-            );
-            // just dump to standard hashmaps to check equality without order
-            let old_anno = np
-                .annotations()
-                .collect::<std::collections::HashMap<_, _>>();
-            let new_anno = t.annotations().collect::<std::collections::HashMap<_, _>>();
-            assert_eq!(
-                old_anno, new_anno,
-                "\nannotations should be the same, found:\nold: {:?}\nnew: {:?}\n",
-                old_anno, new_anno,
-            );
-            assert_eq!(
-                np.effect(),
-                t.effect(),
-                "\nnew effect: {:?}\nold effect: {:?}\n",
-                np.effect(),
-                t.effect()
-            );
-            assert_eq!(
-                np.principal_constraint(),
-                t.principal_constraint(),
-                "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
-                np.principal_constraint(),
-                t.principal_constraint()
-            );
-            assert_eq!(
-                np.action_constraint(),
-                t.action_constraint(),
-                "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
-                np.action_constraint(),
-                t.action_constraint()
-            );
-            assert_eq!(
-                np.resource_constraint(),
-                t.resource_constraint(),
-                "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
-                np.resource_constraint(),
-                t.resource_constraint()
-            );
-            assert!(
-                np.non_head_constraints().eq_shape(t.non_head_constraints()),
-                "\nnew policy condition: {:?}\nold policy condition: {:?}\n",
-                np.non_head_constraints(),
-                t.non_head_constraints()
-            );
+            check_policy_equivalence(&p, &np);
         }
         Err(err) => panic!(
             "\nInvalid AST captured: {:?}\n pp form: {}\n, parsing error: {:?}\n",
             p, p, err
         ),
     }
+    let np = round_trip_json(p.clone());
+    check_policy_equivalence(&p, &np);
 });
