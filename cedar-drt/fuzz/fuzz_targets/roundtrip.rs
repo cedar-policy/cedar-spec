@@ -97,16 +97,16 @@ fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
 // Check that round-tripping preserves syntactic equivalence.
 // Panic if the two policies are not the same, ignoring ids.
 fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
-    let (t, _) = Template::link_static_policy(p1.clone());
+    let (t1, _) = Template::link_static_policy(p1.clone());
     assert!(
-        t.slots().collect::<Vec<_>>().is_empty(),
+        t1.slots().collect::<Vec<_>>().is_empty(),
         "\nold template slots should be empty\n"
     );
     // just dump to standard hashmaps to check equality without order
     let old_anno = p2
         .annotations()
         .collect::<std::collections::HashMap<_, _>>();
-    let new_anno = t.annotations().collect::<std::collections::HashMap<_, _>>();
+    let new_anno = t1.annotations().collect::<std::collections::HashMap<_, _>>();
     assert_eq!(
         old_anno, new_anno,
         "\nannotations should be the same, found:\nold: {:?}\nnew: {:?}\n",
@@ -114,37 +114,37 @@ fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
     );
     assert_eq!(
         p2.effect(),
-        t.effect(),
+        t1.effect(),
         "\nnew effect: {:?}\nold effect: {:?}\n",
         p2.effect(),
-        t.effect()
+        t1.effect()
     );
     assert_eq!(
         p2.principal_constraint(),
-        t.principal_constraint(),
+        t1.principal_constraint(),
         "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
         p2.principal_constraint(),
-        t.principal_constraint()
+        t1.principal_constraint()
     );
     assert_eq!(
         p2.action_constraint(),
-        t.action_constraint(),
+        t1.action_constraint(),
         "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
         p2.action_constraint(),
-        t.action_constraint()
+        t1.action_constraint()
     );
     assert_eq!(
         p2.resource_constraint(),
-        t.resource_constraint(),
+        t1.resource_constraint(),
         "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
         p2.resource_constraint(),
-        t.resource_constraint()
+        t1.resource_constraint()
     );
     assert!(
-        p2.non_head_constraints().eq_shape(t.non_head_constraints()),
+        p2.non_head_constraints().eq_shape(t1.non_head_constraints()),
         "\nnew policy condition: {:?}\nold policy condition: {:?}\n",
         p2.non_head_constraints(),
-        t.non_head_constraints()
+        t1.non_head_constraints()
     );
 }
 
@@ -166,7 +166,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             check_policy_equivalence(&p, &np);
         }
         Err(err) => panic!(
-            "\nInvalid AST captured: {:?}\n pp form: {}\n, parsing error: {:?}\n",
+            "\nFailed to round-trip AST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
             p, p, err
         ),
     }

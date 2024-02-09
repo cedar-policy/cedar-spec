@@ -13,9 +13,9 @@ The table below lists all available fuzz targets, including which component of t
 | [`abac`](fuzz/fuzz_targets/abac.rs) | Evaluator | DRT | Diff test evaluator on ABAC policies |
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
 | [`partial-eval`](fuzz/fuzz_targets/partial-eval.rs) | Partial evaluator | PBT | Test that residual policies with unknowns substituted are equivalent to original policies with unknowns replaced |
-| [`pp`](fuzz/fuzz_targets/pp.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == id for ASTs |
 | [`rbac-authorizer`](fuzz/fuzz_targets/rbac-authorizer.rs) | Authorizer | PBT + DRT | Test for correct authorization responses over a set of simple policies |
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |
+| [`roundtrip`](fuzz/fuzz_targets/roundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for ASTs |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`strict-validation-drt-type-directed`](fuzz/fuzz_targets/strict-validation-drt-type-directed.rs) | Validator | DRT | Diff test strict validation using (mostly) well-typed inputs |
 | [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test permissive validation using (mostly) well-typed inputs |
