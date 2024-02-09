@@ -166,6 +166,6 @@ def tests := [
   testsForIpNetEquality]
 
 -- Uncomment for interactive debugging
-#eval TestSuite.runAll tests
+-- #eval TestSuite.runAll tests
 
 end UnitTest.IPAddr
