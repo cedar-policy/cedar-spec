@@ -23,8 +23,8 @@ namespace UnitTest.Decimal
 
 open Cedar.Spec.Ext.Decimal
 
-private def testValid (str : String) (rep : Int) : TestCase :=
-  test str (checkEq (parse str) (decimal? rep))
+private def testValid (str : String) (rep : Int) : TestCase IO :=
+  test str ⟨λ _ => checkEq (parse str) (decimal? rep)⟩
 
 def testsForValidStrings :=
   suite "Decimal.parse for valid strings"
@@ -40,8 +40,8 @@ def testsForValidStrings :=
     testValid "922337203685477.5807" 9223372036854775807
   ]
 
-private def testInvalid (str : String) (msg : String) : TestCase :=
-  test s!"{str} [{msg}]" (checkEq (parse str) .none)
+private def testInvalid (str : String) (msg : String) : TestCase IO :=
+  test s!"{str} [{msg}]" ⟨λ _ => checkEq (parse str) .none⟩
 
 def testsForInvalidStrings :=
   suite "Decimal.parse for invalid strings"
