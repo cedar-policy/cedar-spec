@@ -20,8 +20,11 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_drt::{time_function, CedarTestImplementation, ErrorComparisonMode};
-use cedar_policy::{frontend::is_authorized::InterfaceResponse, PolicyId};
+use cedar_policy::cedar_test_impl::{
+    time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
+};
+use cedar_policy::frontend::is_authorized::InterfaceResponse;
+use cedar_policy::PolicyId;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
@@ -64,11 +67,17 @@ pub fn run_eval_test(
 
     // `custom_impl.interpret()` returns true when the result of evaluating `expr`
     // matches `expected`
-    let definitional_res = custom_impl.interpret(request.clone(), entities, expr, expected.clone());
+    let definitional_res = custom_impl.interpret(
+        &request,
+        entities,
+        expr,
+        enable_extensions,
+        expected.clone(),
+    );
 
     // TODO(#175): For now, ignore cases where the definitional code returned an error due to
     // an unknown extension function.
-    if let Err(err) = definitional_res.clone() {
+    if let TestResult::Failure(err) = definitional_res {
         if err.contains("jsonToExtFun: unknown extension function") {
             return;
         }
@@ -77,7 +86,7 @@ pub fn run_eval_test(
     // Otherwise, `definitional_res` should be `Ok(true)`
     assert_eq!(
         definitional_res,
-        Ok(true),
+        TestResult::Success(true),
         "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
         expected
     )
@@ -108,10 +117,10 @@ pub fn run_auth_test(
         return rust_res;
     }
 
-    let definitional_res = custom_impl.is_authorized(request.clone(), policies, entities);
+    let definitional_res = custom_impl.is_authorized(&request, policies, entities);
 
     match definitional_res {
-        Err(err) => {
+        TestResult::Failure(err) => {
             // TODO(#175): For now, ignore cases where the Lean code returned an error due to
             // an unknown extension function.
             if err.contains("jsonToExtFun: unknown extension function") {
@@ -123,7 +132,7 @@ pub fn run_auth_test(
             );
             }
         }
-        Ok(definitional_res) => {
+        TestResult::Success(definitional_res) => {
             let rust_res_for_comparison: InterfaceResponse = {
                 let errors = match custom_impl.error_comparison_mode() {
                     ErrorComparisonMode::Ignore => HashSet::new(),
@@ -190,7 +199,7 @@ pub fn run_val_test(
 
     if rust_res.validation_passed() {
         match definitional_res {
-            Err(err) => {
+            TestResult::Failure(err) => {
                 // TODO(#175): For now, ignore cases where the Lean code returned an error due to
                 // an unknown extension function.
                 if !err.contains("jsonToExtFun: unknown extension function") {
@@ -200,12 +209,12 @@ pub fn run_val_test(
                     );
                 }
             }
-            Ok(definitional_res) => {
+            TestResult::Success(definitional_res) => {
                 // Even if the Rust validator succeeds, the definitional validator may
                 // return "impossiblePolicy" due to greater precision. In this case, the
                 // input policy is well-typed, although it is guaranteed to always evaluate
                 // to false.
-                if definitional_res.validation_errors == vec!["impossiblePolicy".to_string()] {
+                if definitional_res.errors == vec!["impossiblePolicy".to_string()] {
                     return;
                 }
 
