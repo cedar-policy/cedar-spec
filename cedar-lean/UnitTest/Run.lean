@@ -20,45 +20,48 @@ import Std
 
 namespace UnitTest
 
-def pass : IO Bool := pure true
+variable [Monad m] [MonadLiftT IO m]
 
-def fail (name : String) (message : String) : IO Bool := do
-  IO.println "--------------------"
-  IO.println s!"FAILED: {name}"
-  IO.println message
-  IO.println "--------------------"
-  pure false
+abbrev TestResult := Except String Unit
 
-def checkEq {α} [DecidableEq α] [Repr α] (actual expected : α) (name : String) : IO Bool :=
+def checkEq {α} [DecidableEq α] [Repr α] (actual expected : α) : m TestResult :=
   if actual = expected
-  then pass
-  else fail name s!"actual: {reprArg actual}\nexpected: {reprArg expected}"
+  then return .ok ()
+  else return .error s!"actual: {reprArg actual}\nexpected: {reprArg expected}"
 
-structure TestCase where
+structure TestCase (m) [Monad m] [MonadLiftT IO m] extends Thunk (m TestResult) where
   name : String
-  exec : String → IO Bool
 
-structure TestSuite where
+structure TestSuite (m) [Monad m] [MonadLiftT IO m] where
   name  : String
-  tests : List TestCase
+  tests : List (TestCase m)
 
-def test (name : String) (exec : String → IO Bool) : TestCase :=
-  TestCase.mk name exec
+def test (name : String) (exec : Thunk (m TestResult)) : TestCase m :=
+  TestCase.mk exec name
 
-def suite (name : String) (tests : List TestCase) : TestSuite :=
+def suite (name : String) (tests : List (TestCase m)) : TestSuite m :=
   TestSuite.mk name tests
 
 /--
 Runs the test case and returns true if the tests passes.
 Otherwise prints the error message and returns false.
 -/
-def TestCase.run (case : TestCase) : IO Bool := case.exec case.name
+def TestCase.run (case : TestCase m) : m Bool := do
+  match (← case.get) with
+  | .ok _      =>
+    return true
+  | .error msg =>
+    IO.println "--------------------"
+    IO.println s!"FAILED: {case.name}"
+    IO.println msg
+    IO.println "--------------------"
+    return false
 
 /--
 Runs the test suite, prints the stats, and returns the number of
 failed test cases.
 -/
-def TestSuite.run (suite : TestSuite) : IO Nat := do
+def TestSuite.run (suite : TestSuite m) : m Nat := do
   IO.println "===================="
   IO.println s!"Running {suite.name}"
   let outcomes ← suite.tests.mapM TestCase.run
@@ -71,7 +74,7 @@ def TestSuite.run (suite : TestSuite) : IO Nat := do
 /--
 Runs all the given test suites and prints the stats.
 -/
-def TestSuite.runAll (suites : List TestSuite) : IO UInt32 := do
+def TestSuite.runAll (suites : List (TestSuite m)) : m UInt32 := do
   let outcomes ← suites.mapM TestSuite.run
   let total := suites.foldl (fun n ts => n + ts.tests.length) 0
   let failures := outcomes.foldl (· + ·) 0
