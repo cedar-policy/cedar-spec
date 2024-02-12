@@ -72,6 +72,7 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
     p.condition().subexpressions().any(|e| matches!(e.expr_kind(), ExprKind::Lit(Literal::EntityUID(euid)) if matches!(*euid.entity_type(), EntityType::Unspecified)))
 }
 
+// AST --> text --> CST --> AST
 // Print a policy to a string and parse it back using the standard AST parser.
 // Panics if parsing fails.
 fn round_trip_ast(p: &StaticPolicy) -> StaticPolicy {
@@ -83,31 +84,38 @@ fn round_trip_ast(p: &StaticPolicy) -> StaticPolicy {
     })
 }
 
-// Print a policy to a string, parse it back using the EST parser, and convert to JSON.
-// Panics if any step fails. The resulting policy may be different from the input
-// (since the roundtrip is lossy), so this function only checks that the round-trip
-// succeeds without error.
-fn round_trip_est(p: &StaticPolicy) {
-    let est = parser::parse_policy_or_template_to_est(&p.to_string()).unwrap_or_else(|err| {
-        panic!(
-            "Failed to round-trip EST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
-            p, p, err
-        )
-    });
-    serde_json::to_value(est).unwrap_or_else(|err| {
-        panic!(
-            "Failed to convert EST to JSON: {:?}\nParse error: {:?}\n",
-            p, err
-        )
-    });
-}
-
+// AST --> EST --> json --> EST --> AST
 // Print a policy to a JSON string and parse it back. Panics if any step fails.
 fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
     // convert to json
     let est = est::Policy::from(ast::Policy::from(p));
     let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
     // read back
+    let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
+    let template = est
+        .try_into_ast_template(None)
+        .expect("failed to convert EST to AST");
+    template
+        .try_into()
+        .expect("failed to convert `Template` to `StaticPolicy`")
+}
+
+// AST --> text --> CST --> EST --> json --> EST --> AST
+// Print a policy to a string, parse it back using the EST parser, convert to JSON,
+// and then parse back to an AST. Panics if any step fails.
+fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
+    let est = parser::parse_policy_or_template_to_est(&p.to_string()).unwrap_or_else(|err| {
+        panic!(
+            "Failed to round-trip EST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
+            p, p, err
+        )
+    });
+    let json = serde_json::to_value(est).unwrap_or_else(|err| {
+        panic!(
+            "Failed to convert EST to JSON: {:?}\nParse error: {:?}\n",
+            p, err
+        )
+    });
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
     let template = est
         .try_into_ast_template(None)
@@ -140,35 +148,35 @@ fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
     assert_eq!(
         p2.effect(),
         t1.effect(),
-        "\nnew effect: {:?}\nold effect: {:?}\n",
+        "\nnew effect: {}\nold effect: {}\n",
         p2.effect(),
         t1.effect()
     );
     assert_eq!(
         p2.principal_constraint(),
         t1.principal_constraint(),
-        "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
+        "\nnew principal constraint: {}\nold principal constraint: {}\n",
         p2.principal_constraint(),
         t1.principal_constraint()
     );
     assert_eq!(
         p2.action_constraint(),
         t1.action_constraint(),
-        "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
+        "\nnew action constraint: {}\nold action constraint: {}\n",
         p2.action_constraint(),
         t1.action_constraint()
     );
     assert_eq!(
         p2.resource_constraint(),
         t1.resource_constraint(),
-        "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
+        "\nnew resource constraint: {}\nold resource constraint: {}\n",
         p2.resource_constraint(),
         t1.resource_constraint()
     );
     assert!(
         p2.non_head_constraints()
             .eq_shape(t1.non_head_constraints()),
-        "\nnew policy condition: {:?}\nold policy condition: {:?}\n",
+        "\nnew policy condition: {}\nold policy condition: {}\n",
         p2.non_head_constraints(),
         t1.non_head_constraints()
     );
@@ -188,14 +196,15 @@ fuzz_target!(|input: FuzzTargetInput| {
 
     debug!("Running on policy: {:?}", p);
 
-    // round-trip AST & check the returned policy
+    // AST --> text --> CST --> AST
     let np = round_trip_ast(&p);
     check_policy_equivalence(&p, &np);
 
-    // round-trip EST & check for failures
-    round_trip_est(&p);
-
-    // round-trip EST (via JSON) & check the returned policy
+    // AST --> EST --> json --> EST --> AST
     let np = round_trip_json(p.clone());
+    check_policy_equivalence(&p, &np);
+
+    // AST --> text --> CST --> EST --> json --> EST --> AST
+    let np = round_trip_est(&p);
     check_policy_equivalence(&p, &np);
 });
