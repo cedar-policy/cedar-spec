@@ -20,7 +20,7 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-use cedar_policy::cedar_test_impl::{
+pub use cedar_policy::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
 };
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
@@ -75,21 +75,25 @@ pub fn run_eval_test(
         expected.clone(),
     );
 
-    // TODO(#175): For now, ignore cases where the definitional code returned an error due to
-    // an unknown extension function.
-    if let TestResult::Failure(err) = definitional_res {
-        if err.contains("jsonToExtFun: unknown extension function") {
-            return;
+    match definitional_res {
+        TestResult::Failure(err) => {
+            // TODO(#175): Ignore cases where the definitional code returned an error due to
+            // an unknown extension function.
+            if err.contains("jsonToExtFun: unknown extension function") {
+                return;
+            }
+            // No other errors are expected
+            panic!("Unexpected error for {request}\nError: {err}");
+        }
+        TestResult::Success(response) => {
+            // The definitional interpreter response should be `true`
+            assert!(
+                response,
+                "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
+                expected
+            )
         }
     }
-
-    // Otherwise, `definitional_res` should be `Ok(true)`
-    assert_eq!(
-        definitional_res,
-        TestResult::Success(true),
-        "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
-        expected
-    )
 }
 
 /// Compare the behavior of the authorizer in `cedar-policy` against a custom Cedar
@@ -127,9 +131,9 @@ pub fn run_auth_test(
                 rust_res
             } else {
                 panic!(
-                "Unexpected parse error for {request}\nPolicies:\n{}\nEntities:\n{}\nError: {err}",
-                &policies, &entities
-            );
+                    "Unexpected error for {request}\nPolicies:\n{}\nEntities:\n{}\nError: {err}",
+                    &policies, &entities
+                );
             }
         }
         TestResult::Success(definitional_res) => {
@@ -165,7 +169,7 @@ pub fn run_auth_test(
                 )
             };
             assert_eq!(
-                rust_res_for_comparison, definitional_res,
+                rust_res_for_comparison, definitional_res.response,
                 "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
                 &policies, &entities
             );
@@ -204,7 +208,7 @@ pub fn run_val_test(
                 // an unknown extension function.
                 if !err.contains("jsonToExtFun: unknown extension function") {
                     panic!(
-                        "Unexpected parse error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
+                        "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
                         &policies, schema
                     );
                 }
