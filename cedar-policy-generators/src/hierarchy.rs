@@ -257,7 +257,7 @@ impl TryFrom<Hierarchy> for Entities {
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
         let mut uids = Vec::new();
-        let mut uids_by_type: HashMap<ast::Name, HashSet<ast::EntityUID>> = HashMap::new();
+        let mut uids_by_type: HashMap<ast::Name, HashSet<&ast::EntityUID>> = HashMap::new();
         for e in entities.iter() {
             let etype = match e.uid().entity_type() {
                 ast::EntityType::Specified(name) => name.clone(),
@@ -266,16 +266,16 @@ impl From<Entities> for Hierarchy {
                 }
             };
             uids_by_type.entry(etype).or_default().insert(e.uid());
-            uids.push(e.uid());
+            uids.push(e.uid().clone());
         }
         let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
         Hierarchy {
             uids,
             uids_by_type: uids_by_type
                 .into_iter()
-                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter())))
+                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter().cloned())))
                 .collect(),
-            entities: entities.into_iter().map(|e| (e.uid(), e)).collect(),
+            entities: entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
             entity_types,
         }
     }
@@ -542,7 +542,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let this_idx = hierarchy_no_attrs
                             .uids()
                             .iter()
-                            .position(|x| x == &uid)
+                            .position(|x| x == uid)
                             .expect("uid should be in the pool");
                         for pool_uid in &hierarchy_no_attrs.uids()[(this_idx + 1)..] {
                             if self.u.ratio(1, 3)? {
@@ -633,7 +633,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     &self.extensions,
                 )
                 .map_err(|e| Error::EntitiesError(e.to_string()))?;
-                Ok((uid, entity))
+                Ok((uid.clone(), entity))
             })
             .collect::<Result<_>>()?;
         Ok(hierarchy_no_attrs.replace_entities(entities))
