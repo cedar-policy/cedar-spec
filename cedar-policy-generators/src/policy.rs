@@ -4,7 +4,7 @@ use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{
-    Effect, EntityUID, Expr, Id, Name, Policy, PolicyID, PolicySet, StaticPolicy, Template,
+    AnyId, Effect, EntityUID, Expr, Name, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
 use cedar_policy_core::{ast, est};
 use serde::Serialize;
@@ -21,8 +21,7 @@ use std::fmt::Display;
 #[serde(into = "est::Policy")]
 pub struct GeneratedPolicy {
     id: PolicyID,
-    // use String for the impl of Arbitrary
-    annotations: HashMap<Id, String>,
+    annotations: HashMap<AnyId, SmolStr>,
     effect: Effect,
     principal_constraint: PrincipalOrResourceConstraint,
     action_constraint: ActionConstraint,
@@ -42,7 +41,7 @@ impl GeneratedPolicy {
     /// Create a new `GeneratedPolicy` with these fields
     pub fn new(
         id: PolicyID,
-        annotations: impl IntoIterator<Item = (Id, String)>,
+        annotations: impl IntoIterator<Item = (AnyId, SmolStr)>,
         effect: Effect,
         principal_constraint: PrincipalOrResourceConstraint,
         action_constraint: ActionConstraint,
@@ -125,8 +124,8 @@ impl GeneratedPolicy {
 }
 
 fn convert_annotations(
-    annotations: HashMap<Id, String>,
-) -> std::collections::BTreeMap<Id, SmolStr> {
+    annotations: HashMap<AnyId, SmolStr>,
+) -> std::collections::BTreeMap<AnyId, SmolStr> {
     annotations
         .into_iter()
         .map(|(k, v)| (k, v.into()))
