@@ -109,9 +109,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 // Type-directed fuzzing of ABAC hierarchy/policy/requests.
-fuzz_target!(|input: abac_type_directed_shared::FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_engine = LeanDefinitionalEngine::new();
+    let def_impl = LeanDefinitionalEngine::new();
     let mut policyset = ast::PolicySet::new();
     let policy: ast::StaticPolicy = input.policy.into();
     policyset.add_static(policy.clone()).unwrap();
@@ -128,7 +128,7 @@ fuzz_target!(|input: abac_type_directed_shared::FuzzTargetInput| {
     for request in requests.iter().cloned() {
         debug!("Request : {request}");
         let (rust_res, total_dur) =
-            time_function(|| run_auth_test(def_impl, request, &policyset, &input.entities));
+            time_function(|| run_auth_test(&def_impl, request, &policyset, &input.entities));
 
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
 

@@ -47,12 +47,6 @@ jobs:
         run: |
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
-      - name: Get Java 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'corretto'
-          java-version: '17'
-          cache: 'gradle'
       - name: rustup
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt (cedar-policy-generators)

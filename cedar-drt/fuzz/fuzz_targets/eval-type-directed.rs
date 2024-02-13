@@ -106,14 +106,14 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 // Type-directed fuzzing of expression evaluation.
-fuzz_target!(|input: eval_type_directed_shared::FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_engine = LeanDefinitionalEngine::new();
+    let def_impl = LeanDefinitionalEngine::new();
     debug!("Schema: {}\n", input.schema.schemafile_string());
     debug!("expr: {}\n", input.expression);
     debug!("Entities: {}\n", input.entities);
     run_eval_test(
-        def_impl,
+        &def_impl,
         input.request.into(),
         &input.expression,
         &input.entities,

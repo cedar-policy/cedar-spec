@@ -65,9 +65,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 // Type-directed fuzzing of (strict) validation.
-fuzz_target!(|input: strict_validation_drt_shared::FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_engine = LeanDefinitionalEngine::new();
+    let def_impl = LeanDefinitionalEngine::new();
 
     // generate a schema
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
@@ -81,7 +81,7 @@ fuzz_target!(|input: strict_validation_drt_shared::FuzzTargetInput| {
 
         // run the policy through both validators and compare the result
         let (_, total_dur) =
-            time_function(|| run_val_test(def_impl, schema, &policyset, ValidationMode::Strict));
+            time_function(|| run_val_test(&def_impl, schema, &policyset, ValidationMode::Strict));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
     }
 });

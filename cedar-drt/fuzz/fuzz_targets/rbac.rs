@@ -183,9 +183,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 
 // Fuzzing a single, pure-RBAC policy, with associated pure-RBAC hierarchy and
 // pure-RBAC requests.
-fuzz_target!(|input: rbac_shared::FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_engine = LeanDefinitionalEngine::new();
+    let def_impl = LeanDefinitionalEngine::new();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
         let mut policyset = ast::PolicySet::new();
         for pg in input.policy_groups {
@@ -204,7 +204,7 @@ fuzz_target!(|input: rbac_shared::FuzzTargetInput| {
         for rbac_request in input.requests.into_iter() {
             let request = ast::Request::from(rbac_request);
             let (_, dur) =
-                time_function(|| run_auth_test(def_impl, request, &policyset, &entities));
+                time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, dur.as_nanos());
         }
     }

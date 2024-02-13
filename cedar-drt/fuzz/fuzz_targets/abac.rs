@@ -108,9 +108,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 // Simple fuzzing of ABAC hierarchy/policy/requests without respect to types.
-fuzz_target!(|input: abac_shared::FuzzTargetInput| {
+fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let def_engine = LeanDefinitionalEngine::new();
+    let def_impl = LeanDefinitionalEngine::new();
     if let Ok(entities) = Entities::try_from(input.hierarchy) {
         let mut policyset = ast::PolicySet::new();
         let policy: ast::StaticPolicy = input.policy.into();
@@ -126,7 +126,7 @@ fuzz_target!(|input: abac_shared::FuzzTargetInput| {
         for request in requests.iter().cloned() {
             debug!("Request: {request}");
             let (_, total_dur) =
-                time_function(|| run_auth_test(def_impl, request, &policyset, &entities));
+                time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
             info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
         }
         if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
