@@ -14,7 +14,6 @@ body:
       description: What component of the Cedar specification does this feature relate to?
       multiple: true
       options:
-        - Dafny formalization
         - Lean formalization
         - DRT target(s)
         - DRT generator(s)

@@ -15,14 +15,12 @@
  */
 
 mod cedar_test_impl;
-mod dafny_java_impl;
 mod definitional_request_types;
 mod lean_impl;
 mod logger;
 pub mod utils;
 
 pub use cedar_test_impl::*;
-pub use dafny_java_impl::*;
 pub use definitional_request_types::*;
 pub use lean_impl::*;
 pub use logger::*;

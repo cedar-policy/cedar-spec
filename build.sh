@@ -10,16 +10,6 @@ cd cedar-drt
 source set_env_vars.sh
 cd ..
 
-# Build the Dafny formalization and extract to Java code
-cd cedar-dafny
-make compile-difftest
-cd ..
-
-# Build the Dafny Java wrapper
-cd cedar-dafny-java-wrapper
-./gradlew build dumpClasspath
-cd ..
-
 # Build the Lean formalization and extract to static C libraries
 cd cedar-lean
 lake build Cedar:static DiffTest:static Std:static

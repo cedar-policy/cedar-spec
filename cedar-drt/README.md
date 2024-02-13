@@ -5,7 +5,7 @@ See the README in the toplevel directory `..` for instructions on how to run.
 
 ## Available fuzz targets
 
-The table below lists all available fuzz targets, including which component of the code they test and whether they perform property-based testing of the Rust code (PBT) or differential testing of the Rust code against the Dafny spec (DRT).
+The table below lists all available fuzz targets, including which component of the code they test and whether they perform property-based testing of the Rust code (PBT) or differential testing of the Rust code against the Lean spec (DRT).
 
 | Name | Component(s) tested | Type | Description |
 | ----------- | ----------- | ----------- | ----------- |
@@ -42,7 +42,7 @@ You can adjust the script's behavior using the following environment variables:
 ## Debugging build failures
 
 If you run into weird build issues,
-1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny and Lean definitional code.
+1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Lean definitional code.
 2. Try a `cargo clean` and rebuild.
 3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 

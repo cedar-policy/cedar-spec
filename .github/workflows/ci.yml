@@ -3,46 +3,7 @@ name: Build cedar-spec
 on:
   pull_request:
 
-env:
-  dotnet-version: 6.0.x # SDK Version for building Dafny
-
 jobs:
-  build_and_test_dafny:
-    name: Build and Test Dafny
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        toolchain:
-          - stable
-    steps:
-      - name: Checkout cedar-spec
-        uses: actions/checkout@v3
-      - name: Install Z3
-        shell: bash
-        run: |
-          wget -q --show-progress https://github.com/Z3Prover/z3/releases/download/z3-4.12.1/z3-4.12.1-x64-glibc-2.35.zip
-          unzip z3-4.12.1-x64-glibc-2.35.zip
-          echo "$(pwd)/z3-4.12.1-x64-glibc-2.35/bin" >> $GITHUB_PATH
-      - name: Audit Dafny files
-        shell: bash
-        working-directory: ./cedar-dafny
-        run : |
-          dotnet tool restore
-          sudo apt-get install ack
-          find . -path test -prune -o -name '*.dfy' | xargs -I {} sh -c "printf '%s: ' {} && (dotnet tool run dafny audit {} | ack --passthru --nocolor '0 findings')"
-      - name: verify dafny
-        working-directory: ./cedar-dafny
-        run: make GEN_STATS=1 verify
-      - name: test dafny
-        working-directory: ./cedar-dafny
-        run: make test
-      - name: log resource usage
-        working-directory: ./cedar-dafny
-        run: |
-          dotnet tool restore
-          dotnet tool run dafny-reportgenerator summarize-csv-results --max-resource-count 10000000 . || true
-
   build_and_test_lean:
     name: Build and Test Lean
     runs-on: ubuntu-latest
