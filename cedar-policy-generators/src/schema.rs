@@ -983,7 +983,7 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
         let id = u.arbitrary()?;
-        let annotations: HashMap<ast::Id, String> = u.arbitrary()?;
+        let annotations: HashMap<ast::AnyId, SmolStr> = u.arbitrary()?;
         let effect = u.arbitrary()?;
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
