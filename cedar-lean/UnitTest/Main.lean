@@ -16,8 +16,14 @@
 
 import UnitTest.Decimal
 import UnitTest.IPAddr
+import UnitTest.Wildcard
 
 open UnitTest
 
+def tests :=
+  Decimal.tests ++
+  IPAddr.tests ++
+  Wildcard.tests
+
 def main : IO UInt32 := do
-  TestSuite.runAll (Decimal.tests ++ IPAddr.tests)
+  TestSuite.runAll tests
