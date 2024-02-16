@@ -4,7 +4,7 @@ use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{
-    AnyId, Effect, EntityUID, Expr, Name, Policy, PolicyID, PolicySet, StaticPolicy, Template,
+    Annotation, Annotations, AnyId, Effect, EntityUID, Expr, Name, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
 use cedar_policy_core::{ast, est};
 use serde::Serialize;
@@ -125,10 +125,10 @@ impl GeneratedPolicy {
 
 fn convert_annotations(
     annotations: HashMap<AnyId, SmolStr>,
-) -> std::collections::BTreeMap<AnyId, SmolStr> {
+) -> Annotations {
     annotations
         .into_iter()
-        .map(|(k, v)| (k, v.into()))
+        .map(|(k, v)| (k, Annotation { val: v.into(), loc: None }))
         .collect()
 }
 
