@@ -68,8 +68,8 @@ test = false
 doc = false
 
 [[bin]]
-name = "pp"
-path = "fuzz_targets/pp.rs"
+name = "roundtrip"
+path = "fuzz_targets/roundtrip.rs"
 test = false
 doc = false
 
