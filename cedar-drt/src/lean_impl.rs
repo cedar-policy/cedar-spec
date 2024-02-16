@@ -24,8 +24,9 @@ use core::panic;
 use std::collections::HashMap;
 use std::{env, ffi::CString};
 
+use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
-use cedar_policy::cedar_test_impl::*;
+use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
@@ -337,5 +338,35 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::PolicyIds
+    }
+}
+
+/// Implementation of the trait used for integration testing. The integration
+/// tests expect the calls to `is_authorized` and `validate` to succeed.
+impl CustomCedarImpl for LeanDefinitionalEngine {
+    fn is_authorized(
+        &self,
+        request: &ast::Request,
+        policies: &ast::PolicySet,
+        entities: &Entities,
+    ) -> InterfaceResponse {
+        let response = self
+            .is_authorized(request, policies, entities)
+            .expect("Unexpected error from the Lean implementation of `is_authorized`");
+        response.response
+    }
+
+    fn validate(
+        &self,
+        schema: cedar_policy_validator::ValidatorSchema,
+        policies: &ast::PolicySet,
+    ) -> IntegrationTestValidationResult {
+        let response = self
+            .validate(&schema, policies)
+            .expect("Unexpected error from the Lean implementation of `validate`");
+        IntegrationTestValidationResult {
+            validation_passed: response.validation_passed(),
+            validation_errors_debug: format!("{:?}", response.errors),
+        }
     }
 }

@@ -17,9 +17,8 @@
 //! Integration test that runs the handwritten test cases from
 //! `cedar-integration-tests` on the definitional implementation.
 
-use cedar_policy::cedar_test_impl::CedarTestImplementation;
 use cedar_policy::integration_testing::{
-    perform_integration_test_from_json_custom, resolve_integration_test_path,
+    perform_integration_test_from_json_custom, resolve_integration_test_path, CustomCedarImpl,
 };
 
 use cedar_drt::*;
@@ -31,7 +30,7 @@ fn folder() -> &'static Path {
     Path::new("tests")
 }
 
-fn run_integration_tests(test_impl: &impl CedarTestImplementation) {
+fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
     let integration_tests_folder = resolve_integration_test_path(folder());
     // find all `*.json` files in the integration tests folder
     let test_jsons = WalkDir::new(&integration_tests_folder)
@@ -48,7 +47,7 @@ fn run_integration_tests(test_impl: &impl CedarTestImplementation) {
         // `#[test]` fails, the user can know which test case failed by looking
         // for the last "Running integration test" message before the failure.
         println!("Running integration test: {:?}", test_json);
-        perform_integration_test_from_json_custom(&test_json, test_impl);
+        perform_integration_test_from_json_custom(&test_json, Some(custom_impl));
         println!("Integration test succeeded: {:?}", test_json);
     }
 }

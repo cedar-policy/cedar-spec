@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+pub mod cedar_test_impl;
 mod dafny_java_impl;
 mod definitional_request_types;
 mod lean_impl;

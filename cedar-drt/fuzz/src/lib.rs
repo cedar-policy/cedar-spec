@@ -20,7 +20,7 @@ mod prt;
 pub use dump::*;
 pub use prt::*;
 
-pub use cedar_policy::cedar_test_impl::{
+pub use cedar_drt::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
 };
 use cedar_policy::frontend::is_authorized::InterfaceResponse;

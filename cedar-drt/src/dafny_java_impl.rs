@@ -17,9 +17,10 @@
 //! Implementation of the [`CedarTestImplementation`] trait for the Cedar Java
 //! implementation extracted from the Dafny specification.
 
+use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
-use cedar_policy::cedar_test_impl::*;
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
+use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
@@ -399,5 +400,33 @@ impl<'j> CedarTestImplementation for JavaDefinitionalEngine<'j> {
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::Ignore
+    }
+}
+
+/// Implementation of the trait used for integration testing.
+impl<'j> CustomCedarImpl for JavaDefinitionalEngine<'j> {
+    fn is_authorized(
+        &self,
+        request: &ast::Request,
+        policies: &ast::PolicySet,
+        entities: &Entities,
+    ) -> InterfaceResponse {
+        self.is_authorized(request, policies, entities).response
+    }
+
+    fn validate(
+        &self,
+        schema: cedar_policy_validator::ValidatorSchema,
+        policies: &ast::PolicySet,
+    ) -> cedar_policy::integration_testing::IntegrationTestValidationResult {
+        let response = self.validate(
+            &schema,
+            policies,
+            cedar_policy_validator::ValidationMode::default(),
+        );
+        IntegrationTestValidationResult {
+            validation_passed: response.validation_passed(),
+            validation_errors_debug: format!("{:?}", response.errors),
+        }
     }
 }
