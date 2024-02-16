@@ -86,6 +86,18 @@ test = false
 doc = false
 
 [[bin]]
+name = "validation-pbt-type-directed"
+path = "fuzz_targets/validation-pbt-type-directed.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validation-drt"
+path = "fuzz_targets/validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "validation-drt-type-directed"
 path = "fuzz_targets/validation-drt-type-directed.rs"
 test = false
