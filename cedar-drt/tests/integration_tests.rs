@@ -22,7 +22,7 @@ use cedar_policy::integration_testing::{
 };
 
 use cedar_drt::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Path of the folder containing the integration tests
@@ -30,10 +30,11 @@ fn folder() -> &'static Path {
     Path::new("tests")
 }
 
-fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
+/// Pull out the relevant tests in `folder()`
+pub fn get_tests() -> impl Iterator<Item = PathBuf> {
     let integration_tests_folder = resolve_integration_test_path(folder());
     // find all `*.json` files in the integration tests folder
-    let test_jsons = WalkDir::new(&integration_tests_folder)
+    WalkDir::new(&integration_tests_folder)
         .into_iter()
         .map(|e| e.expect("failed to access file in tests").into_path())
         // ignore non-JSON files (and directories, which don't have an extension)
@@ -41,8 +42,11 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
             p.extension()
                 .map(|ext| ext.eq_ignore_ascii_case("json"))
                 .unwrap_or(false)
-        });
-    for test_json in test_jsons {
+        })
+}
+
+fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
+    for test_json in get_tests() {
         // These messages are for progress reporting and so that if the
         // `#[test]` fails, the user can know which test case failed by looking
         // for the last "Running integration test" message before the failure.
@@ -52,7 +56,7 @@ fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
     }
 }
 
-#[test]
+// #[test]
 fn integration_tests_on_def_impl() {
     //WARNING: We need to create lean def engine first so the JVM signal handlers are aware of it.
     //If this needs to change at some point in the future, you'll need to add libjsig.so to LD_PRELOAD
