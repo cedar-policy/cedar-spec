@@ -40,6 +40,7 @@ To run DRT:
 
 List the available fuzz targets with `cargo fuzz list`.
 Available targets are described in the README in the `cedar-drt` directory.
+That README also explains how to debug build failures, and how to save DRT-generated tests.
 
 Additional commands available with `cargo fuzz help`.
 
