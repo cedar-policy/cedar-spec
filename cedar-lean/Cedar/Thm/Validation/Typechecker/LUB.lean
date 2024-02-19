@@ -545,8 +545,7 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
 := by
   unfold lubRecordType at h₂
   split at h₂ <;> try contradiction
-  case h_1 =>
-    simp at h₂ ; subst h₂ ; exact h₁
+  case h_1 => simp at h₂ ; subst h₂ ; exact h₁
   case h_2 a₂ qty₂ rty₂' a₃ qty₃ rty₃'  =>
     simp at h₂
     split at h₂ <;> try contradiction
@@ -561,11 +560,10 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
       simp [lubRecordType]
     case cons hd tl =>
       simp [hrty₁] at h₁
-      by_cases h₆ : hd.fst = a₂
+      unfold lubRecordType
+      by_cases h₆ : hd.fst = a₂ <;> simp [h₆]
       case pos =>
         simp [h₆] at h₁
-        unfold lubRecordType
-        simp [h₆]
         cases h₇ : lubQualifiedType hd.snd qty₂ <;> simp [h₇] at h₁
         case none =>
           have _ : sizeOf hd.snd < sizeOf rty₁ := by -- termination
@@ -577,9 +575,6 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
           cases h₈ : lubRecordType tl rty₂' <;> simp [h₈] at h₁
           have h₉ := lubRecordType_assoc_none_some h₈ h₅
           simp [h₉]
-      case neg =>
-        unfold lubRecordType
-        simp [h₆]
 
 theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : QualifiedType}
   (h₁ : (lubQualifiedType qty₁ qty₂) = none)

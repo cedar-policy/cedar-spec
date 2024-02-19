@@ -305,8 +305,9 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableRel (α := β
   | nil => simp
   | cons hd tl =>
     simp
-    by_cases h₁ : (f x) < (f hd) <;> simp [h₁]
-    by_cases h₂ : (f x) > (f hd) <;> simp [h₂]
+    intro h
+    split at h <;> try trivial
+    split at h <;> trivial
 
 theorem insertCanonical_cases [LT α] [DecidableLT α] (x y : α) (ys : List α) :
   (x < y ∧ insertCanonical id x (y :: ys) = x :: y :: ys) ∨
