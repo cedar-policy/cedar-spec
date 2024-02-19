@@ -18,7 +18,7 @@
 
 use cedar_drt::initialize_log;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast::{EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::ast::{AnyId, EntityType, ExprKind, Literal, StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
 use cedar_policy_generators::{
@@ -27,6 +27,8 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
+use smol_str::SmolStr;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 // A thin wrapper for policy
@@ -130,58 +132,62 @@ fuzz_target!(|input: FuzzTargetInput| {
     // Note that we are ignoring IDs, because Cedar does not
     // get ids from policy text
     match round_trip(&p) {
-        Ok(np) => {
+        Ok(roundtripped) => {
             assert!(
                 t.slots().collect::<Vec<_>>().is_empty(),
                 "\nold template slots should be empty\n"
             );
-            // just dump to standard hashmaps to check equality without order
-            let old_anno = np
+            // just dump to standard hashmaps to check equality without order.
+            // also ignore source locations, which are not preserved in this roundtrip
+            let roundtripped_anno: HashMap<&AnyId, &SmolStr> = roundtripped
                 .annotations()
-                .collect::<std::collections::HashMap<_, _>>();
-            let new_anno = t.annotations().collect::<std::collections::HashMap<_, _>>();
+                .map(|(k, v)| (k, &v.val))
+                .collect();
+            let original_anno: HashMap<&AnyId, &SmolStr> =
+                t.annotations().map(|(k, v)| (k, &v.val)).collect();
             assert_eq!(
-                old_anno, new_anno,
-                "\nannotations should be the same, found:\nold: {:?}\nnew: {:?}\n",
-                old_anno, new_anno,
+                original_anno, roundtripped_anno,
+                "\nannotations should be the same, found:\noriginal: {original_anno:?}\nroundtripped: {roundtripped_anno:?}\n",
             );
             assert_eq!(
-                np.effect(),
+                roundtripped.effect(),
                 t.effect(),
                 "\nnew effect: {:?}\nold effect: {:?}\n",
-                np.effect(),
+                roundtripped.effect(),
                 t.effect()
             );
             assert_eq!(
-                np.principal_constraint(),
+                roundtripped.principal_constraint(),
                 t.principal_constraint(),
                 "\nnew principal constraint: {:?}\nold principal constraint: {:?}\n",
-                np.principal_constraint(),
+                roundtripped.principal_constraint(),
                 t.principal_constraint()
             );
             assert_eq!(
-                np.action_constraint(),
+                roundtripped.action_constraint(),
                 t.action_constraint(),
                 "\nnew action constraint: {:?}\nold action constraint: {:?}\n",
-                np.action_constraint(),
+                roundtripped.action_constraint(),
                 t.action_constraint()
             );
             assert_eq!(
-                np.resource_constraint(),
+                roundtripped.resource_constraint(),
                 t.resource_constraint(),
                 "\nnew resource constraint: {:?}\nold resource constraint: {:?}\n",
-                np.resource_constraint(),
+                roundtripped.resource_constraint(),
                 t.resource_constraint()
             );
             assert!(
-                np.non_head_constraints().eq_shape(t.non_head_constraints()),
+                roundtripped
+                    .non_head_constraints()
+                    .eq_shape(t.non_head_constraints()),
                 "\nnew policy condition: {}\nold policy condition: {}\n",
-                np.non_head_constraints(),
+                roundtripped.non_head_constraints(),
                 t.non_head_constraints(),
             );
         }
         Err(err) => panic!(
-            "\nInvalid AST captured: {:?}\n pp form: {}\n, parsing error: {:?}\n",
+            "\nInvalid AST captured: {:?}\n pp form: {}\n parsing error: {:?}\n",
             p, p, err
         ),
     }
