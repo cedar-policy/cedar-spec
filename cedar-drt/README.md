@@ -5,21 +5,22 @@ See the README in the toplevel directory `..` for instructions on how to run.
 
 ## Available fuzz targets
 
-The table below lists all available fuzz targets, including which component of the code they test and whether they perform property-based testing of the Rust code (PBT) or differential testing of the Rust code against the Dafny spec (DRT).
+The table below lists all available fuzz targets, including which component of the code they test and whether they perform property-based testing of the Rust code (PBT) or differential testing of the Rust code against the Lean spec (DRT).
 
 | Name | Component(s) tested | Type | Description |
 | ----------- | ----------- | ----------- | ----------- |
-| [`abac-type-directed`](fuzz/fuzz_targets/abac-type-directed.rs) | Evaluator | DRT | Diff test evaluator on ABAC policies using (mostly) well-typed inputs |
-| [`abac`](fuzz/fuzz_targets/abac.rs) | Evaluator | DRT | Diff test evaluator on ABAC policies |
+| [`abac-type-directed`](fuzz/fuzz_targets/abac-type-directed.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies using (mostly) well-typed inputs |
+| [`abac`](fuzz/fuzz_targets/abac.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies |
+| [`eval-type-directed`](fuzz/fuzz_targets/eval-type-directed.rs) | Evaluator | DRT | Diff test evaluator on (mostly) well-typed expressions |
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
 | [`partial-eval`](fuzz/fuzz_targets/partial-eval.rs) | Partial evaluator | PBT | Test that residual policies with unknowns substituted are equivalent to original policies with unknowns replaced |
 | [`rbac-authorizer`](fuzz/fuzz_targets/rbac-authorizer.rs) | Authorizer | PBT + DRT | Test for correct authorization responses over a set of simple policies |
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |
 | [`roundtrip`](fuzz/fuzz_targets/roundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for ASTs |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
-| [`strict-validation-drt-type-directed`](fuzz/fuzz_targets/strict-validation-drt-type-directed.rs) | Validator | DRT | Diff test strict validation using (mostly) well-typed inputs |
-| [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test permissive validation using (mostly) well-typed inputs |
-| [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test permissive validation |
+| [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test validation using (mostly) well-typed inputs |
+| [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test validation |
+| [`validation-pbt-type-directed`](fuzz/fuzz_targets/validation-pbt-type-directed.rs) | Validator | PBT | Test that validated policies do not result in type errors using (mostly) well-typed inputs |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |
 | [`wildcard-matching`](fuzz/fuzz_targets/wildcard-matching.rs) | String matching algorithm used for the `like` operator | DRT | Diff test wildcard matching using a regex-based implementation |
 
@@ -42,8 +43,7 @@ You can adjust the script's behavior using the following environment variables:
 ## Debugging build failures
 
 If you run into weird build issues,
-
-1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Dafny and Lean definitional code.
+1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Lean definitional code.
 2. Try a `cargo clean` and rebuild.
 3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 
