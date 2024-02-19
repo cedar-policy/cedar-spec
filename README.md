@@ -21,6 +21,7 @@ To build the Dafny formalization and proofs:
 To build the Lean formalization and proofs:
 
 * Install Lean, following the instructions [here](https://leanprover.github.io/lean4/doc/setup.html).
+* `source cedar-drt/set_env_vars.sh`
 * `cd cedar-lean && lake build Cedar`
 
 To build the DRT framework:
