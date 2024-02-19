@@ -14,6 +14,7 @@ This repository contains the formalization of Cedar and infrastructure for perfo
 To build the Lean formalization and proofs:
 
 * Install Lean, following the instructions [here](https://leanprover.github.io/lean4/doc/setup.html).
+* `source cedar-drt/set_env_vars.sh`
 * `cd cedar-lean && lake build Cedar`
 
 To build the DRT framework:
@@ -21,7 +22,7 @@ To build the DRT framework:
 * Install Lean, following the instructions above.
 * `./build.sh`
 
-Note that the build for DRT has only been tested on **Amazon Linux 2**.
+This **build script is Linux (and x86)-specific**, and DRT has only been tested on **Amazon Linux 2**.
 
 ## Run
 
@@ -32,6 +33,7 @@ To run DRT:
 
 List the available fuzz targets with `cargo fuzz list`.
 Available targets are described in the README in the `cedar-drt` directory.
+That README also explains how to debug build failures, and how to save DRT-generated tests.
 
 Additional commands available with `cargo fuzz help`.
 
