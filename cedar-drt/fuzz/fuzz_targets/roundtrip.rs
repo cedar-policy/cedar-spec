@@ -18,7 +18,7 @@
 
 use cedar_drt::initialize_log;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast::{self, EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::ast::{self, AnyId, EntityType, ExprKind, Literal, StaticPolicy, Template};
 use cedar_policy_core::est;
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_generators::{
@@ -27,6 +27,8 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
+use smol_str::SmolStr;
+use std::collections::HashMap;
 
 // A thin wrapper for policy
 #[derive(Debug, Clone, Serialize)]
@@ -133,17 +135,15 @@ fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
         t1.slots().collect::<Vec<_>>().is_empty(),
         "\nold template slots should be empty\n"
     );
-    // just dump to standard hashmaps to check equality without order
-    let old_anno = p2
-        .annotations()
-        .collect::<std::collections::HashMap<_, _>>();
-    let new_anno = t1
-        .annotations()
-        .collect::<std::collections::HashMap<_, _>>();
+    // just dump to standard hashmaps to check equality without order.
+    // also ignore source locations, which are not preserved in this roundtrip
+    let roundtripped_anno: HashMap<&AnyId, &SmolStr> =
+        p2.annotations().map(|(k, v)| (k, &v.val)).collect();
+    let original_anno: HashMap<&AnyId, &SmolStr> =
+        t1.annotations().map(|(k, v)| (k, &v.val)).collect();
     assert_eq!(
-        old_anno, new_anno,
-        "\nannotations should be the same, found:\nold: {:?}\nnew: {:?}\n",
-        old_anno, new_anno,
+        original_anno, roundtripped_anno,
+        "\nannotations should be the same, found:\noriginal: {original_anno:?}\nroundtripped: {roundtripped_anno:?}\n",
     );
     assert_eq!(
         p2.effect(),
