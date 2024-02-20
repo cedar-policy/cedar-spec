@@ -242,13 +242,12 @@ pub fn run_val_test(
 
 #[test]
 fn test_run_auth_test() {
-    use cedar_drt::JavaDefinitionalEngine;
+    use cedar_drt::LeanDefinitionalEngine;
     use cedar_policy_core::ast::{Entity, EntityUID, RequestSchemaAllPass, RestrictedExpr};
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
-    let java_def_engine =
-        JavaDefinitionalEngine::new().expect("failed to create definitional engine");
+    let def_engine = LeanDefinitionalEngine::new();
     let principal = ast::EntityUIDEntry::Known {
         euid: std::sync::Arc::new(EntityUID::with_eid_and_type("User", "alice").unwrap()),
         loc: None,
@@ -318,7 +317,7 @@ fn test_run_auth_test() {
         Extensions::all_available(),
     )
     .unwrap();
-    run_auth_test(&java_def_engine, query, &policies, &entities);
+    run_auth_test(&def_engine, query, &policies, &entities);
 }
 
 /// Randomly drop some of the entities from the list so the generator can produce

@@ -219,7 +219,7 @@ theorem EntityUID.lt_conn {a b : EntityUID} :
   cases a ; cases b ; rename_i ty₁ eid₁ ty₂ eid₂
   simp [LT.lt]
   intro h₁
-  simp [EntityUID.lt]
+  unfold EntityUID.lt
   by_cases (ty₁ = ty₂)
   case pos h₂ =>
     subst h₂ ; simp only [forall_const, true_and] at *
