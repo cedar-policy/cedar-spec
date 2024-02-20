@@ -22,7 +22,7 @@ mod integration_tests;
 use cedar_drt::ast::{PolicySet, Request};
 use cedar_drt::cedar_test_impl::*;
 use cedar_drt::{ValidatorSchema, ValidationMode};
-use cedar_drt::{Entities, JavaDefinitionalEngine, LeanDefinitionalEngine};
+use cedar_drt::{Entities, LeanDefinitionalEngine};
 use cedar_policy::integration_testing::*;
 use integration_tests::get_tests;
 use statrs::statistics::{Data, OrderStatistics};
@@ -169,19 +169,15 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 #[test]
 fn run_all_tests() {
     let rust_impl = RustEngine::new();
-    let lean_def_impl = LeanDefinitionalEngine::new();
-    let java_def_impl =
-        JavaDefinitionalEngine::new().expect("failed to create Dafny definitional engine");
+    let lean_impl = LeanDefinitionalEngine::new();
 
+    println!("Running Rust implementation...");
     let auth_times = get_authorization_timing_results(&rust_impl);
     let val_times = get_validation_timing_results(&rust_impl);
     print_summary(auth_times, val_times);
 
-    let auth_times = get_authorization_timing_results(&rust_impl);
-    let val_times = get_validation_timing_results(&rust_impl);
-    print_summary(auth_times, val_times);
-
-    let auth_times = get_authorization_timing_results(&rust_impl);
-    let val_times = get_validation_timing_results(&rust_impl);
+    println!("Running Lean implementation...");
+    let auth_times = get_authorization_timing_results(&lean_impl);
+    let val_times = get_validation_timing_results(&lean_impl);
     print_summary(auth_times, val_times);
 }

@@ -277,7 +277,7 @@ impl LeanDefinitionalEngine {
                 };
                 let response = TestValidationResult {
                     errors: validation_errors,
-                    timing_info: HashMap::from([("validation".into(), resp.duration / 1000)]),
+                    timing_info: HashMap::from([("validate".into(), resp.duration / 1000)]),
                 };
                 TestResult::Success(response)
             }
