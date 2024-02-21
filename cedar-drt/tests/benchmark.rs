@@ -21,10 +21,10 @@ mod integration_tests;
 
 use cedar_drt::ast::{PolicySet, Request};
 use cedar_drt::cedar_test_impl::*;
-use cedar_drt::{ValidatorSchema, ValidationMode};
 use cedar_drt::{Entities, LeanDefinitionalEngine};
+use cedar_drt::{ValidationMode, ValidatorSchema};
 use cedar_policy::integration_testing::*;
-use integration_tests::get_tests;
+use integration_tests::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
 use std::{collections::HashMap, path::Path};
 
@@ -66,7 +66,7 @@ fn p99(data: Vec<f64>) -> f64 {
     data.percentile(99)
 }
 
-/// Run every input in `folder()` through the provided Cedar test implementation,
+/// Run every input in the corpus tests through the provided Cedar test implementation,
 /// recording the time(s) required for authorization over NUM_TRIALS trials. The
 /// output reports the median trial value for each input.
 ///
@@ -76,13 +76,11 @@ fn p99(data: Vec<f64>) -> f64 {
 fn get_authorization_timing_results(
     custom_impl: &dyn CedarTestImplementation,
 ) -> HashMap<&str, Vec<f64>> {
-    let tests = get_tests();
+    let tests = get_corpus_tests();
     let mut results = HashMap::new();
     results.insert("total", Vec::new());
     results.insert("authorize", Vec::new());
     for test in tests {
-        let test_name = String::from(test.file_name().unwrap().to_str().unwrap());
-        println!("Running test: {:?}", test_name);
         let (policies, entities, _schema, requests) = parse_test(test);
         for request in requests {
             let mut total_results = Vec::new();
@@ -109,7 +107,7 @@ fn get_authorization_timing_results(
     results
 }
 
-/// Run every input in `folder()` through the provided Cedar test implementation,
+/// Run every input in the corpus tests through the provided Cedar test implementation,
 /// recording the time(s) required for validation over NUM_TRIALS trials. The
 /// output reports the median trial value for each input.
 ///
@@ -119,13 +117,11 @@ fn get_authorization_timing_results(
 fn get_validation_timing_results(
     custom_impl: &dyn CedarTestImplementation,
 ) -> HashMap<&str, Vec<f64>> {
-    let tests = get_tests();
+    let tests = get_corpus_tests();
     let mut results = HashMap::new();
     results.insert("total", Vec::new());
     results.insert("validate", Vec::new());
     for test in tests {
-        let test_name = String::from(test.file_name().unwrap().to_str().unwrap());
-        println!("Running test: {:?}", test_name);
         let (policies, _entities, schema, _requests) = parse_test(test);
         let mut total_results = Vec::new();
         let mut val_results = Vec::new();
@@ -167,6 +163,9 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 }
 
 #[test]
+// Currently, running this in conjunction with existing tests will cause an error (#227).
+// In order see the printed output from this test, run `cargo test -- --ignored --nocapture`.
+// #[ignore]
 fn run_all_tests() {
     let rust_impl = RustEngine::new();
     let lean_impl = LeanDefinitionalEngine::new();
