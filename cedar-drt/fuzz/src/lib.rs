@@ -83,13 +83,13 @@ pub fn run_eval_test(
                 return;
             }
             // No other errors are expected
-            panic!("Unexpected error for {request}\nError: {err}");
+            panic!("Unexpected error for {request}\nExpression: {expr}\nError: {err}");
         }
         TestResult::Success(response) => {
             // The definitional interpreter response should be `true`
             assert!(
                 response,
-                "Incorrect evaluation result for {request}\nExpression:\n{expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
+                "Incorrect evaluation result for {request}\nExpression: {expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
                 expected
             )
         }

@@ -182,7 +182,7 @@ impl LeanDefinitionalEngine {
                     .collect();
                 TestResult::Success(TestResponse {
                     response: InterfaceResponse::new(decision, reason, errors),
-                    timing_info: HashMap::from([("authorize".into(), auth_time)]),
+                    timing_info: HashMap::from([("authorize".into(), Micros(auth_time))]),
                 })
             }
             AuthorizationResponse::Error(err) => TestResult::Failure(err),
@@ -277,7 +277,7 @@ impl LeanDefinitionalEngine {
                 };
                 let response = TestValidationResult {
                     errors: validation_errors,
-                    timing_info: HashMap::from([("validate".into(), resp.duration / 1000)]),
+                    timing_info: HashMap::from([("validate".into(), Micros(resp.duration / 1000))]),
                 };
                 TestResult::Success(response)
             }

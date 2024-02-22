@@ -51,6 +51,10 @@ impl<T> TestResult<T> {
     }
 }
 
+/// Simple wrapper around u128 to remind ourselves that timing info is in microseconds.
+#[derive(Debug, Deserialize)]
+pub struct Micros(pub u128);
+
 /// Version of `Response` used for testing. Includes an `InterfaceResponse` and
 /// a map with timing information.
 #[derive(Debug, Deserialize)]
@@ -59,7 +63,7 @@ pub struct TestResponse {
     pub response: InterfaceResponse,
     /// Timing info in microseconds. This field is a `HashMap` to allow timing
     /// multiple components (or none at all).
-    pub timing_info: HashMap<String, u128>,
+    pub timing_info: HashMap<String, Micros>,
 }
 
 /// Version of `ValidationResult` used for testing.
@@ -69,7 +73,7 @@ pub struct TestValidationResult {
     pub errors: Vec<String>,
     /// Timing info in microseconds. This field is a `HashMap` to allow timing
     /// multiple components (or none at all).
-    pub timing_info: HashMap<String, u128>,
+    pub timing_info: HashMap<String, Micros>,
 }
 
 impl TestValidationResult {
@@ -182,7 +186,7 @@ impl CedarTestImplementation for RustEngine {
         );
         let response = TestResponse {
             response,
-            timing_info: HashMap::from([("authorize".into(), duration.as_micros())]),
+            timing_info: HashMap::from([("authorize".into(), Micros(duration.as_micros()))]),
         };
         TestResult::Success(response)
     }
@@ -219,7 +223,7 @@ impl CedarTestImplementation for RustEngine {
                 .validation_errors()
                 .map(|err| format!("{err:?}"))
                 .collect(),
-            timing_info: HashMap::from([("validate".into(), duration.as_micros())]),
+            timing_info: HashMap::from([("validate".into(), Micros(duration.as_micros()))]),
         };
         TestResult::Success(response)
     }

@@ -91,7 +91,7 @@ fn get_authorization_timing_results(
                 let response = response.expect("Unexpected test failure");
                 total_results.push(duration.as_micros() as f64);
                 if response.timing_info.contains_key("authorize") {
-                    auth_results.push(response.timing_info["authorize"] as f64);
+                    auth_results.push(response.timing_info["authorize"].0 as f64);
                 }
             }
             results
@@ -131,7 +131,7 @@ fn get_validation_timing_results(
             let response = response.expect("Unexpected test failure");
             total_results.push(duration.as_micros() as f64);
             if response.timing_info.contains_key("validate") {
-                val_results.push(response.timing_info["validate"] as f64);
+                val_results.push(response.timing_info["validate"].0 as f64);
             }
         }
         results
@@ -165,7 +165,7 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 #[test]
 // Currently, running this in conjunction with existing tests will cause an error (#227).
 // In order see the printed output from this test, run `cargo test -- --ignored --nocapture`.
-// #[ignore]
+#[ignore]
 fn run_all_tests() {
     let rust_impl = RustEngine::new();
     let lean_impl = LeanDefinitionalEngine::new();
