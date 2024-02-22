@@ -122,7 +122,13 @@ test = false
 doc = false
 
 [[bin]]
-name = "human-schemas-roundtrip"
-path = "fuzz_targets/human-schemas-roundtrip.rs"
+name = "human-schema-roundtrip"
+path = "fuzz_targets/human-schema-roundtrip.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "json-then-human-schema-roundtrip"
+path = "fuzz_targets/json-then-human-schema-roundtrip.rs"
 test = false
 doc = false

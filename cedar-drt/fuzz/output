@@ -1,0 +1,22 @@
+warning: unused manifest key: dependencies.serde.feature
+    Finished release [optimized] target(s) in 0.09s
+warning: unused manifest key: dependencies.serde.feature
+    Finished release [optimized] target(s) in 0.09s
+     Running `target/x86_64-unknown-linux-gnu/release/abac-type-directed -artifact_prefix=/local/home/aeline/cedar-github/cedar-spec/cedar-drt/fuzz/artifacts/abac-type-directed/ /local/home/aeline/cedar-github/cedar-spec/cedar-drt/fuzz/corpus/abac-type-directed`
+WARNING: Failed to find function "__sanitizer_acquire_crash_state".
+WARNING: Failed to find function "__sanitizer_print_stack_trace".
+WARNING: Failed to find function "__sanitizer_set_death_callback".
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1190236330
+INFO: Loaded 1 modules   (373994 inline 8-bit counters): 373994 [0x556268f724d8, 0x556268fcd9c2), 
+INFO: Loaded 1 PC tables (373994 PCs): 373994 [0x556268fcd9c8,0x556269582868), 
+INFO:     8462 files found in /local/home/aeline/cedar-github/cedar-spec/cedar-drt/fuzz/corpus/abac-type-directed
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 8462 min: 35b max: 2195b total: 1448539b rss: 50Mb
+==29668== ERROR: libFuzzer: fuzz target exited
+SUMMARY: libFuzzer: fuzz target exited
+MS: 0 ; base unit: 0000000000000000000000000000000000000000
+0xa,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x7a,0x21,0xfa,0x7a,0x6,0x0,0xff,0xff,0xff,0xff,0xff,0x2,0x0,0x0,0x0,0xc2,0x5,0x0,0x6,0x41,0xc8,0x5,0x0,0x81,
+\012zzzzzzzzzzz!\372z\006\000\377\377\377\377\377\002\000\000\000\302\005\000\006A\310\005\000\201
+artifact_prefix='/local/home/aeline/cedar-github/cedar-spec/cedar-drt/fuzz/artifacts/abac-type-directed/'; Test unit written to /local/home/aeline/cedar-github/cedar-spec/cedar-drt/fuzz/artifacts/abac-type-directed/crash-5aa3b0169c775a12e2e69870515fcf07c4ba883a
+Base64: Cnp6enp6enp6enp6Ifp6BgD//////wIAAADCBQAGQcgFAIE=
