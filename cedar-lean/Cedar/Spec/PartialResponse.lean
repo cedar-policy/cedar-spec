@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
+import Cedar.Data.Set
 import Cedar.Spec.PartialExpr
 import Cedar.Spec.Policy
-import Cedar.Spec.Response
 
 /-!
 This file defines Cedar partial responses.
@@ -26,26 +26,110 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
------ Definitions -----
+inductive Residual where
+  | residual (id : PolicyID) (effect : Effect) (condition : PartialExpr)
+  | error (id : PolicyID) (error : Error) -- definitely results in this error, for any substitution of the unknowns
 
-structure Residual where
-  id : PolicyID
-  effect : Effect
-  condition : PartialExpr
-
-structure ResidualResponse where
+structure PartialResponse where
+  /--
+    All residuals for policies that are, or may be, satisfied.
+    Does not include policies that are definitely not satisfied.
+    Does include policies that are definitely satisfied (they will have residual `true`).
+  -/
   residuals : List Residual
-  determiningPolicies : Set PolicyID -- all policies that could possibly be determining, for any assignment of the unknowns
-  erroringPolicies : Set PolicyID -- all policies that could possibly be erroring, for any assignment of the unknowns
 
-inductive PartialResponse where
-  | known (resp : Response)
-  | residual (resp : ResidualResponse)
+/--
+  All `permit` policies which are definitely satisfied (for all possible
+  substitutions of the unknowns)
+-/
+def PartialResponse.knownPermits (resp : PartialResponse) : Set PolicyID :=
+  let permits := resp.residuals.filterMap fun residual => match residual with
+    | .residual id .permit (.lit (.bool true)) => some id
+    | _ => none
+  Set.make permits
 
------ Derivations -----
+/--
+  All `forbid` policies which are definitely satisfied (for all possible
+  substitutions of the unknowns)
+-/
+def PartialResponse.knownForbids (resp : PartialResponse) : Set PolicyID :=
+  let forbids := resp.residuals.filterMap fun residual => match residual with
+    | .residual id .forbid (.lit (.bool true)) => some id
+    | _ => none
+  Set.make forbids
+
+/--
+  All `permit` policies which are, or may be, satisfied
+-/
+def PartialResponse.permits (resp : PartialResponse) : Set PolicyID :=
+  let permits := resp.residuals.filterMap fun residual => match residual with
+    | .residual id .permit _ => some id
+    | _ => none
+  Set.make permits
+
+/--
+  All `forbid` policies which are, or may be, satisfied
+-/
+def PartialResponse.forbids (resp : PartialResponse) : Set PolicyID :=
+  let forbids := resp.residuals.filterMap fun residual => match residual with
+    | .residual id .forbid _ => some id
+    | _ => none
+  Set.make forbids
+
+/--
+  All policies which definitely produce errors (for all possible substitutions
+  of the unknowns)
+-/
+def PartialResponse.errors (resp : PartialResponse) : List (PolicyID × Error) :=
+  resp.residuals.filterMap fun residual => match residual with
+    | .error id error => some (id, error)
+    | _ => none
+
+inductive PartialDecision where
+  | allow -- definitely Allow, for any substitution of the unknowns
+  | deny -- definitely Deny, for any substitution of the unknowns
+  | unknown -- Allow and Deny are both possible, depending on substitution of the unknowns
+
+deriving instance Repr, DecidableEq for PartialDecision
+
+def PartialResponse.decision (resp : PartialResponse) : PartialDecision :=
+  if ¬ resp.knownForbids.isEmpty
+  then .deny -- there is a known forbid, we'll always get explicit deny
+  else if resp.permits.isEmpty
+  then .deny -- there are no permits that are even possibly satisfied
+  else if ¬ resp.forbids.isEmpty
+  then .unknown -- there's at least one forbid that may be satisfied, and at least one permit that may be (or is) satisfied
+  else if ¬ resp.knownPermits.isEmpty
+  then .allow -- there are no forbids that are even possibly satisfied, and at least one permit that is definitely satisfied
+  else .unknown -- there are no forbids that are even possibly satisfied, and at least one permit that may be satisfied
+
+/--
+  All policies which could possibly be determining, given some substitution of
+  the unknowns
+-/
+def PartialResponse.overapproximateDeterminingPolicies (resp : PartialResponse) : Set PolicyID :=
+  if ¬ resp.knownForbids.isEmpty
+  then resp.forbids -- there is a known forbid so the decision will always be Deny, but any of resp.forbids could be determining
+  else if resp.permits.isEmpty
+  then resp.forbids -- there are no permits that are even possibly satisfied, so forbids will be determining, or if no forbids, then nothing will be determining
+  else if ¬ resp.forbids.isEmpty
+  then resp.permits ++ resp.forbids -- we don't know the decision in this case, so any permits or forbids could be determining
+  else resp.permits -- there are no forbids that are even possibly satisfied, so permits will be determining, or if no permits, then nothing will be determining
+
+/--
+  All policies that must be determining (for all possible substitutions of the
+  unknowns)
+-/
+def PartialResponse.underapproximateDeterminingPolicies (resp : PartialResponse) : Set PolicyID :=
+  if ¬ resp.knownForbids.isEmpty
+  then resp.knownForbids -- there is a known forbid, so we know at least the known forbids will be determining
+  else if resp.permits.isEmpty
+  then Set.empty -- there are no permits that are even possibly satisfied. The determining policies will be forbids, if any, but there aren't any known forbids so there are no policies we know will be determining
+  else if ¬ resp.forbids.isEmpty
+  then Set.empty -- we don't know the decision in this case, so we can't say any policy is for sure determining
+  else resp.knownPermits -- there are no forbids that are even possibly satisfied, so if there are known permits, we know they will be determining
 
 deriving instance Repr, DecidableEq for Residual
-deriving instance Repr, DecidableEq for ResidualResponse
 deriving instance Repr, DecidableEq for PartialResponse
 
 end Cedar.Spec

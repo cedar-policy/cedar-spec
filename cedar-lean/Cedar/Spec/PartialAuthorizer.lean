@@ -16,6 +16,7 @@
 
 import Cedar.Spec.PartialEvaluator
 import Cedar.Spec.PartialResponse
+import Cedar.Spec.PartialValue
 
 /-! This file defines the Cedar partial authorizer. -/
 
@@ -30,70 +31,27 @@ def knownSatisfied (policy : Policy) (req : PartialRequest) (entities : PartialE
 def knownUnsatisfied (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Bool :=
   partialEvaluate policy.toExpr req entities = .ok (.value false)
 
-def knownSatisfiedWithEffect (effect : Effect) (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Option PolicyID :=
-  if policy.effect == effect && knownSatisfied policy req entities
-  then some policy.id
-  else none
-
 def knownErroring (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Bool :=
   match (partialEvaluate policy.toExpr req entities) with
   | .ok _ => false
   | .error _ => true
 
-def knownSatisfiedPolicies (effect : Effect) (policies : Policies) (req : PartialRequest) (entities : PartialEntities) : Set PolicyID :=
-  Set.make (policies.filterMap (knownSatisfiedWithEffect effect · req entities))
-
-/--
-  This function is analogous to `knownSatisfiedWithEffect` in that it returns
-  `Option PolicyID`, but not analogous to `knownSatisfiedWithEffect` in that it does
-  not consider the policy's effect.
--/
-def knownErroring' (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Option PolicyID :=
-  if knownErroring policy req entities
-  then some policy.id
-  else none
-
-def knownErroringPolicies (policies : Policies) (req : PartialRequest) (entities : PartialEntities) : Set PolicyID :=
-  Set.make (policies.filterMap (knownErroring' · req entities))
-
-/--
-  If evaluating the policy with these partial inputs results in a residual, return
-  that residual, otherwise None.
-  Returns None for any policies that fully evaluate or that definitely result in
-  an error.
--/
-def residual (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Option Residual :=
-  match partialEvaluate policy.toExpr req entities with
-  | .ok (.residual r) => some {
-      id := policy.id,
-      effect := policy.effect,
-      condition := r,
-    }
-  | _ => none
-
-/--
-  Given a set of policies and partial inputs, partial-evaluate and return the
-  set of residual policies.
-  Ignores any policies that fully evaluate or that definitely result in an error.
--/
-def residualPolicies (policies : Policies) (req : PartialRequest) (entities : PartialEntities) : List Residual :=
-  policies.filterMap (residual · req entities)
-
 def isAuthorizedPartial (req : PartialRequest) (entities : PartialEntities) (policies : Policies) : PartialResponse :=
-  let knownForbids := knownSatisfiedPolicies .forbid policies req entities
-  let knownPermits := knownSatisfiedPolicies .permit policies req entities
-  let residuals := residualPolicies policies req entities
-  let knownErroringPolicies := knownErroringPolicies policies req entities
-  if !knownForbids.isEmpty
-  then .known { decision := .deny, determiningPolicies := knownForbids, erroringPolicies := knownErroringPolicies } -- TODO this is not correct for determiningPolicies
-  else if !residuals.isEmpty
-  then .residual {
-    residuals,
-    determiningPolicies := Set.make (residuals.map Residual.id ++ knownPermits.elts),
-    erroringPolicies := knownErroringPolicies,
+  {
+    residuals := policies.filterMap fun policy => match partialEvaluate policy.toExpr req entities with
+      | .ok (.value (.prim (.bool false))) => none
+      | .ok (.value v) => some (.residual policy.id policy.effect v.asPartialExpr)
+      | .ok (.residual r) => some (.residual policy.id policy.effect r)
+      | .error e => some (.error policy.id e)
   }
-  else if !knownPermits.isEmpty
-  then .known { decision := .allow, determiningPolicies := knownPermits, erroringPolicies := knownErroringPolicies }
-  else .known { decision := .deny, determiningPolicies := Set.empty, erroringPolicies := knownErroringPolicies }
+
+/-
+/--
+  Re-evaluate the partial response given a map of unknown-name to value.
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `PartialResponse` will still contain some (nontrivial) residuals.
+-/
+def PartialResponse.reEvaluate (resp : PartialResponse) (subsmap : Map String PartialValue) : PartialResponse :=
+-/
 
 end Cedar.Spec
