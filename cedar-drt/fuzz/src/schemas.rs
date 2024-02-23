@@ -1,7 +1,7 @@
 use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaFragment};
 
-/// Check if two schema fragments are equivalent, modulo empty apply specs
-/// We do this becuse there are schemas that are representable in the JSON that are not
+/// Check if two schema fragments are equivalent, modulo empty apply specs.
+/// We do this because there are schemas that are representable in the JSON that are not
 /// representable in the human-readable syntax. All of these non-representable schemas
 /// are equivalent to one that is representable.
 ///
