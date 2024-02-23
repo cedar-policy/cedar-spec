@@ -58,6 +58,9 @@ def parse (str : String) : Option Decimal :=
     else .none
   | _ => .none
 
+def unParse (d : Decimal) : String :=
+  "todo"
+
 abbrev decimal := parse
 
 end Decimal

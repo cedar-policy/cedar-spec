@@ -15,5 +15,6 @@
 -/
 
 import Cedar.Thm.Authorization
+import Cedar.Thm.PartialEval
 import Cedar.Thm.Slicing
 import Cedar.Thm.Typechecking

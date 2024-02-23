@@ -246,6 +246,11 @@ def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
 
+def unParse (ip : IPNet) : String :=
+  "todo"
+
+#check unParse
+
 def ip (str : String) : Option IPNet := parse str
 
 def IPNet.lt : IPNet → IPNet → Bool

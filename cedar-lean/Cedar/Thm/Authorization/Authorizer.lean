@@ -19,6 +19,7 @@ import Cedar.Spec.Authorizer
 import Cedar.Thm.Authorization.Slicing
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Data.LT
+import Cedar.Thm.Utils
 import Cedar.Thm.Validation.Typechecker.BinaryApp -- mapM'_asEntityUID_eq_entities
 
 /-!
@@ -268,26 +269,6 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
       (and_true_implies_right_true
         (and_true_implies_right_true h₁))
   exact resource_eval_ok_means_resource_in_uid h₁ h₂
-
-/--
-  A generic lemma that relates List.mapM to List.map. Not in Std AFAICT.
--/
-theorem if_f_produces_pure_then_mapM_f_is_pure_map {α β} [Monad m] [LawfulMonad m] {f : α → β} {list : List α} :
-  list.mapM ((fun a => pure (f a)) : α → m β) = pure (list.map f)
-:= by
-  induction list
-  case nil => simp
-  case cons x xs h => simp [h]
-
-/--
-  A generic lemma about composing List.mapM with List.map. Not in Std AFAICT.
--/
-theorem mapM_over_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {list : List α} :
-  List.mapM g (list.map f) = list.mapM fun x => g (f x)
-:= by
-  induction list
-  case nil => simp
-  case cons x xs h => simp [h]
 
 theorem mapM_evaluate_uids_produces_uids {list : List EntityUID} {request : Request} {entities : Entities} :
   List.mapM (evaluate · request entities) (list.map fun uid => Expr.lit (.entityUID uid)) = .ok (list.map (Value.prim ∘ Prim.entityUID))

@@ -14,17 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Authorizer
-import Cedar.Spec.Entities
-import Cedar.Spec.Evaluator
-import Cedar.Spec.Expr
-import Cedar.Spec.Ext
-import Cedar.Spec.PartialAuthorizer
+import Cedar.Spec.PartialEntities
 import Cedar.Spec.PartialEvaluator
-import Cedar.Spec.PartialExpr
-import Cedar.Spec.Policy
-import Cedar.Spec.Request
-import Cedar.Spec.Response
-import Cedar.Spec.Template
-import Cedar.Spec.Value
-import Cedar.Spec.Wildcard
+import Cedar.Spec.PartialRequest
+
+namespace Cedar.Thm
+
+open Cedar.Spec
+open Except
+
+def ResidualsContainUnknowns (x₁ : PartialExpr) : Prop :=
+  ∀ {request : PartialRequest} {entities : PartialEntities} {r : PartialExpr},
+    partialEvaluate x₁ request entities = ok (.residual r) →
+    r.containsUnknown

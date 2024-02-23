@@ -22,7 +22,6 @@ This file defines Cedar requests.
 
 namespace Cedar.Spec
 
-open Except
 open Cedar.Data
 
 structure Request where
