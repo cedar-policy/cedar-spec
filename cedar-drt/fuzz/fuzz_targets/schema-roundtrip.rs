@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt_inner::schemas::semantic_equality_check;
+use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
@@ -26,7 +26,6 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    #[serde(skip)]
     pub schema: SchemaFragment,
 }
 
@@ -70,12 +69,10 @@ impl<'a> Arbitrary<'a> for Input {
 fuzz_target!(|i: Input| {
     let src = i.schema.as_natural_schema().unwrap();
     let (parsed, _) = SchemaFragment::from_str_natural(&src).unwrap();
-    if i.schema != parsed {
-        if let Err(msg) = semantic_equality_check(i.schema.clone(), parsed) {
-            println!("Schema: {src}");
-            println!("LHS:\n{:?}", i.schema);
-            println!("RHS:\n{:?}", i.schema);
-            panic!("{msg}");
-        }
+    if let Err(msg) = equivalence_check(i.schema.clone(), parsed) {
+        println!("Schema: {src}");
+        println!("LHS:\n{:?}", i.schema);
+        println!("RHS:\n{:?}", i.schema);
+        panic!("{msg}");
     }
 });

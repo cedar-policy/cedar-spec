@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt_inner::schemas::semantic_equality_check;
+use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
@@ -26,7 +26,6 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    #[serde(skip)]
     pub schema: SchemaFragment,
 }
 
@@ -70,9 +69,10 @@ impl<'a> Arbitrary<'a> for Input {
 fuzz_target!(|i: Input| {
     let json = serde_json::to_value(i.schema.clone()).unwrap();
     let json_ast = SchemaFragment::from_json_value(json).unwrap();
+    assert_eq!(json_ast, i.schema, "JSON rountrip failed");
     let src = json_ast.as_natural_schema().unwrap();
     let (final_ast, _) = SchemaFragment::from_str_natural(&src).unwrap();
-    if let Err(e) = semantic_equality_check(i.schema, final_ast) {
+    if let Err(e) = equivalence_check(i.schema, final_ast) {
         panic!("Roundtrip Mismatch: {}\nSrc:\n```\n{}\n```", e, src);
     }
 });

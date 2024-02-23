@@ -1,7 +1,24 @@
 use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaFragment};
 
-/// Check if two schema fragments are equivalent
-pub fn semantic_equality_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(), String> {
+/// Check if two schema fragments are equivalent, modulo empty apply specs
+/// We do this becuse there are schemas that are representable in the JSON that are not
+/// representable in the human-readable syntax. All of these non-representable schemas
+/// are equivalent to one that is representable.
+///
+/// Example:
+/// You can have a JSON schema with an action that has no applicable principals and some applicable
+/// resources.
+/// In the human-readable syntax, you can't. The only way to write an action with no applicable
+/// principals is:
+/// ```
+/// action a;
+/// ```
+/// Specifying an action with no applicable principals and no applicable resources.
+///
+/// However, this is _equivalent_. An action that can't be applied to any principals can't ever be
+/// used. Whether or not there are applicable resources is useless.
+///
+pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(), String> {
     if lhs.0.len() == rhs.0.len() {
         lhs.0
             .into_iter()
@@ -10,18 +27,15 @@ pub fn semantic_equality_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Resu
                     .0
                     .get(&name)
                     .ok_or_else(|| format!("`{name}` does not exist in RHS schema"))?;
-                semantic_namespace_equality(lhs_namespace, rhs_namespace.clone())
+                namespace_equivalence(lhs_namespace, rhs_namespace.clone())
             })
-            .fold(Ok(()), result_combiner)
+            .fold(Ok(()), Result::and)
     } else {
         Err("schema differ in number of namespaces".to_string())
     }
 }
 
-fn semantic_namespace_equality(
-    lhs: NamespaceDefinition,
-    rhs: NamespaceDefinition,
-) -> Result<(), String> {
+fn namespace_equivalence(lhs: NamespaceDefinition, rhs: NamespaceDefinition) -> Result<(), String> {
     if lhs.common_types != rhs.common_types {
         Err("Common types differ".to_string())
     } else if lhs.entity_types != rhs.entity_types {
@@ -36,17 +50,13 @@ fn semantic_namespace_equality(
                     .actions
                     .get(&name)
                     .ok_or_else(|| format!("Action `{name}` not present on rhs"))?;
-                semantic_action_type_equality(name.as_ref(), lhs_action, rhs_action.clone())
+                action_type_equivalence(name.as_ref(), lhs_action, rhs_action.clone())
             })
-            .fold(Ok(()), result_combiner)
+            .fold(Ok(()), Result::and)
     }
 }
 
-fn semantic_action_type_equality(
-    name: &str,
-    lhs: ActionType,
-    rhs: ActionType,
-) -> Result<(), String> {
+fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Result<(), String> {
     if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
     } else if lhs.member_of != rhs.member_of {
@@ -85,11 +95,4 @@ fn empty_target(spec: &ApplySpec) -> bool {
             .as_ref()
             .map(|v| v.is_empty())
             .unwrap_or(false)
-}
-
-fn result_combiner<E>(lhs: Result<(), E>, rhs: Result<(), E>) -> Result<(), E> {
-    match (lhs, rhs) {
-        (Err(e), _) | (_, Err(e)) => Err(e),
-        _ => Ok(()),
-    }
 }
