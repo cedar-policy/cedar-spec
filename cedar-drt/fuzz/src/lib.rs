@@ -19,6 +19,7 @@ mod prt;
 
 pub use dump::*;
 pub use prt::*;
+pub mod schemas;
 
 pub use cedar_drt::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
