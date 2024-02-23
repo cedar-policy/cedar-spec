@@ -10,7 +10,7 @@ use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaF
 /// resources.
 /// In the human-readable syntax, you can't. The only way to write an action with no applicable
 /// principals is:
-/// ```
+/// ```cedarschema
 /// action a;
 /// ```
 /// Specifying an action with no applicable principals and no applicable resources.
