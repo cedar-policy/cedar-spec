@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 use log::warn;
-use std::time::{Duration, Instant};
 
 pub const TOTAL_MSG: &str = "total (ns) : ";
 
@@ -31,13 +30,4 @@ pub fn initialize_log() {
             }
         }
     };
-}
-
-pub fn time_function<X, F>(f: F) -> (X, Duration)
-where
-    F: FnOnce() -> X,
-{
-    let start = Instant::now();
-    let result = f();
-    (result, start.elapsed())
 }
