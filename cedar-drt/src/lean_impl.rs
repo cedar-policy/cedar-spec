@@ -21,11 +21,11 @@
 // we've already initialized.
 
 use core::panic;
+use std::collections::HashMap;
 use std::{env, ffi::CString};
 
 use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
-use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
@@ -80,7 +80,7 @@ enum ResultDef<T> {
 #[derive(Debug, Deserialize)]
 struct TimedDef<T> {
     data: T,
-    duration: i64,
+    duration: u128,
 }
 
 #[derive(Debug, Deserialize)]
@@ -144,15 +144,14 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_authorization_response(
-        response: *mut lean_object,
-    ) -> InterfaceResult<InterfaceResponse> {
+    fn deserialize_authorization_response(response: *mut lean_object) -> TestResult<TestResponse> {
         let response_string = lean_obj_to_string(response);
         let resp: AuthorizationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
             AuthorizationResponse::Ok(resp) => {
-                info!("{}{}", LEAN_AUTH_MSG, resp.duration);
+                let auth_time = resp.duration / 1000; // nanoseconds -> microseconds
+                info!("{LEAN_AUTH_MSG}{auth_time}");
 
                 let resp = resp.data;
                 let decision: authorizer::Decision = match resp.decision.as_str() {
@@ -181,9 +180,12 @@ impl LeanDefinitionalEngine {
                         pid.to_string()
                     })
                     .collect();
-                Ok(InterfaceResponse::new(decision, reason, errors))
+                TestResult::Success(TestResponse {
+                    response: InterfaceResponse::new(decision, reason, errors),
+                    timing_info: HashMap::from([("authorize".into(), Micros(auth_time))]),
+                })
             }
-            AuthorizationResponse::Error(err) => Err(err),
+            AuthorizationResponse::Error(err) => TestResult::Failure(err),
         }
     }
 
@@ -194,7 +196,7 @@ impl LeanDefinitionalEngine {
         request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResult<InterfaceResponse> {
+    ) -> TestResult<TestResponse> {
         let req = Self::serialize_authorization_request(request, policies, entities);
         let response = unsafe { isAuthorizedDRT(req) };
         Self::deserialize_authorization_response(response)
@@ -217,16 +219,16 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
-    fn deserialize_evaluation_response(response: *mut lean_object) -> InterfaceResult<bool> {
+    fn deserialize_evaluation_response(response: *mut lean_object) -> TestResult<bool> {
         let response_string = lean_obj_to_string(response);
         let resp: EvaluationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
             EvaluationResponse::Ok(resp) => {
                 info!("{}{}", LEAN_EVAL_MSG, resp.duration);
-                Ok(resp.data)
+                TestResult::Success(resp.data)
             }
-            EvaluationResponse::Error(err) => Err(err),
+            EvaluationResponse::Error(err) => TestResult::Failure(err),
         }
     }
 
@@ -238,7 +240,7 @@ impl LeanDefinitionalEngine {
         entities: &Entities,
         expr: &Expr,
         expected: Option<Value>,
-    ) -> InterfaceResult<bool> {
+    ) -> TestResult<bool> {
         let expected_as_expr = expected.map(|v| v.into());
         let req =
             Self::serialize_evaluation_request(request, entities, expr, expected_as_expr.as_ref());
@@ -262,7 +264,7 @@ impl LeanDefinitionalEngine {
 
     fn deserialize_validation_response(
         response: *mut lean_object,
-    ) -> InterfaceResult<InterfaceValidationResult> {
+    ) -> TestResult<TestValidationResult> {
         let response_string = lean_obj_to_string(response);
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
@@ -273,9 +275,13 @@ impl LeanDefinitionalEngine {
                     ValidationResponseInner::Ok(_) => Vec::new(),
                     ValidationResponseInner::Error(err) => vec![err],
                 };
-                Ok(InterfaceValidationResult { validation_errors })
+                let response = TestValidationResult {
+                    errors: validation_errors,
+                    timing_info: HashMap::from([("validate".into(), Micros(resp.duration / 1000))]),
+                };
+                TestResult::Success(response)
             }
-            ValidationResponse::Error(err) => Err(err),
+            ValidationResponse::Error(err) => TestResult::Failure(err),
         }
     }
 
@@ -284,7 +290,7 @@ impl LeanDefinitionalEngine {
         &self,
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
-    ) -> InterfaceResult<InterfaceValidationResult> {
+    ) -> TestResult<TestValidationResult> {
         let req = Self::serialize_validation_request(schema, policies);
         let response = unsafe { validateDRT(req) };
         Self::deserialize_validation_response(response)
@@ -294,21 +300,26 @@ impl LeanDefinitionalEngine {
 impl CedarTestImplementation for LeanDefinitionalEngine {
     fn is_authorized(
         &self,
-        request: ast::Request,
+        request: &ast::Request,
         policies: &ast::PolicySet,
         entities: &Entities,
-    ) -> InterfaceResult<InterfaceResponse> {
-        self.is_authorized(&request, policies, entities)
+    ) -> TestResult<TestResponse> {
+        self.is_authorized(request, policies, entities)
     }
 
     fn interpret(
         &self,
-        request: ast::Request,
+        request: &ast::Request,
         entities: &Entities,
         expr: &Expr,
+        enable_extensions: bool,
         expected: Option<Value>,
-    ) -> InterfaceResult<bool> {
-        self.evaluate(&request, entities, expr, expected)
+    ) -> TestResult<bool> {
+        assert!(
+            enable_extensions,
+            "Lean definitional interpreter expects extensions to be enabled"
+        );
+        self.evaluate(request, entities, expr, expected)
     }
 
     fn validate(
@@ -316,7 +327,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         schema: &cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
-    ) -> InterfaceResult<InterfaceValidationResult> {
+    ) -> TestResult<TestValidationResult> {
         assert_eq!(
             mode,
             ValidationMode::Strict,
@@ -339,10 +350,10 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> InterfaceResponse {
-        self.is_authorized(request, policies, entities)
-            .unwrap_or_else(|e| {
-                panic!("Unexpected error from the Lean implementation of `is_authorized`: {e}")
-            })
+        let response = self
+            .is_authorized(request, policies, entities)
+            .expect("Unexpected error from the Lean implementation of `is_authorized`");
+        response.response
     }
 
     fn validate(
@@ -350,12 +361,12 @@ impl CustomCedarImpl for LeanDefinitionalEngine {
         schema: cedar_policy_validator::ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> IntegrationTestValidationResult {
-        let result = self.validate(&schema, policies).unwrap_or_else(|e| {
-            panic!("Unexpected error from the Lean implementation of `validate`: {e}")
-        });
+        let response = self
+            .validate(&schema, policies)
+            .expect("Unexpected error from the Lean implementation of `validate`");
         IntegrationTestValidationResult {
-            validation_passed: result.validation_passed(),
-            validation_errors_debug: format!("{:?}", result.validation_errors),
+            validation_passed: response.validation_passed(),
+            validation_errors_debug: format!("{:?}", response.errors),
         }
     }
 }

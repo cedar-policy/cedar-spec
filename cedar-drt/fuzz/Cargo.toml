@@ -120,3 +120,15 @@ name = "eval-type-directed"
 path = "fuzz_targets/eval-type-directed.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "schema-roundtrip"
+path = "fuzz_targets/schema-roundtrip.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "json-schema-roundtrip"
+path = "fuzz_targets/json-schema-roundtrip.rs"
+test = false
+doc = false
