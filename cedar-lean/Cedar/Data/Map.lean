@@ -52,6 +52,10 @@ def toList {α : Type u} {β : Type v} (m : Map α β) : List (Prod α β) := m.
 def keys {α β} (m : Map α β) : Set α :=
   Set.mk (m.kvs.map Prod.fst) -- well-formed by construction
 
+/-- Returns the values of `m` as a list. -/
+def values {α β} (m : Map α β) : List β :=
+  m.kvs.map Prod.snd
+
 /-- Returns the binding for `k` in `m`, if any. -/
 def find? {α β} [BEq α] (m : Map α β) (k : α) : Option β :=
   match m.kvs.find? (λ ⟨k', _⟩ => k' == k) with

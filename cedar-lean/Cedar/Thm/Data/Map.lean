@@ -49,6 +49,10 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
+theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
+  (Map.make [] : Map α β) = Map.empty
+:= by simp [make, empty, List.canonicalize_nil]
+
 /-! ### find? and mapOnValues -/
 
 theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :

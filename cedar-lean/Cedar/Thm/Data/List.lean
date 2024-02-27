@@ -476,18 +476,35 @@ theorem canonicalize_nil [LT β] [DecidableLT β] (f : α → β) :
   canonicalize f [] = []
 := by unfold canonicalize; rfl
 
+theorem canonicalize_nil' [DecidableEq β] [LT β] [DecidableLT β] (f : α → β) (xs : List α) :
+  xs = [] ↔ (canonicalize f xs) = []
+:= by
+  constructor
+  case mp =>
+    intro h₁ ; subst h₁
+    exact canonicalize_nil f
+  case mpr =>
+    intro h₁
+    cases xs with
+    | nil => trivial
+    | cons x xs =>
+      simp
+      unfold canonicalize at h₁
+      apply insertCanonical_not_nil f x (canonicalize f xs)
+      exact h₁
+
 theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α → β) (xs : List α) :
   xs ≠ [] ↔ (canonicalize f xs) ≠ []
 := by
-  apply Iff.intro
-  case _ =>
+  constructor
+  case mp =>
     intro h₀
     cases xs with
     | nil => contradiction
     | cons hd tl =>
       unfold canonicalize
       apply insertCanonical_not_nil
-  case _ =>
+  case mpr =>
     unfold canonicalize
     intro h₀
     cases xs <;> simp at h₀; simp

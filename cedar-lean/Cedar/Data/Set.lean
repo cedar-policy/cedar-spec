@@ -41,9 +41,9 @@ abbrev elts {α : Type u} (s : Set α) := s.1
 
 ----- Definitions -----
 
-/-- 
+/--
   Creates an ordered/duplicate free list from a set provided the underlying
-  set is well formed. 
+  set is well formed.
 -/
 def toList {α : Type u} (s : Set α) : List α := s.elts
 
@@ -77,6 +77,9 @@ def intersect {α} [DecidableEq α] (s₁ s₂ : Set α) : Set α :=
 /-- s₁ ∪ s₂ -/
 def union {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) : Set α :=
   make (s₁.elts ++ s₂.elts)           -- enforce well-formedness
+
+instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
+  hAppend := Set.union
 
 /-- Filters `s` using `f`. -/
 def filter {α} (f : α → Bool) (s : Set α) : Set α :=

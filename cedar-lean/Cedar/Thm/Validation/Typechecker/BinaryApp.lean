@@ -613,12 +613,11 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     specialize h₃ euid' h₄ ; subst h₃
     split at h₂ <;> rename_i h₉ <;> simp [h₁] at h₉
     subst h₉
-    have h₉ := Set.in_set_in_list euid'.ty entry.ancestors h₇
-    simp [Set.contains, Set.elts] at h₂ h₉
-    rw [←List.elem_iff] at h₉
-    rw [h₂] at h₉
+    rw [← Set.in_list_iff_in_set] at h₇
+    simp only [Set.contains, Set.elts] at h₂ h₇
+    rw [← List.elem_iff] at h₇
+    rw [h₂] at h₇
     contradiction
-
 
 theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : Request} {entities : Entities}
   (h₁ : List.mapM' (evaluate · request entities) (List.map Expr.lit ps) = Except.ok vs) :
