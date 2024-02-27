@@ -182,8 +182,8 @@ instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where
   connected  _ _   := List.lt_conn
 
 def Bool.lt (a b : Bool) : Bool := match a,b with
-| false, true => true
-| _, _ => false
+  | false, true => true
+  | _, _ => false
 
 instance : LT Bool where
   lt a b := Bool.lt a b
@@ -216,6 +216,7 @@ instance Int.strictLT : StrictLT Int where
 
 theorem UInt32.lt_iff {x y : UInt32} : x < y ↔ x.1.1 < y.1.1 := by
   cases x; cases y; simp [LT.lt]
+
 theorem UInt32.ext_iff {x y : UInt32} : x = y ↔ x.1.1 = y.1.1 :=
   ⟨by simp_all, UInt32.ext⟩
 

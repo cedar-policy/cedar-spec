@@ -18,7 +18,7 @@ import Cedar.Spec
 import Cedar.Spec.Authorizer
 import Cedar.Thm.Authorization.Slicing
 import Cedar.Thm.Authorization.Evaluator
-import Cedar.Thm.Core.LT
+import Cedar.Thm.Data.LT
 import Cedar.Thm.Validation.Typechecker.BinaryApp -- mapM'_asEntityUID_eq_entities
 
 /-!
