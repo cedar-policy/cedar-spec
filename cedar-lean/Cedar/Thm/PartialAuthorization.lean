@@ -66,6 +66,29 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Re
   sorry
 
 /--
+  helper lemma:
+  If partial authorization returns a concrete decision, there must be either
+  at least one knownForbid, or at least one knownPermit, or no possible permits
+-/
+theorem partial_authz_decision_concrete_then_kf_or_kp {resp : PartialResponse} :
+  resp.decision ≠ .unknown →
+  ¬ resp.knownForbids.isEmpty ∨ ¬ resp.knownPermits.isEmpty ∨ resp.permits.isEmpty
+:= by
+  unfold PartialResponse.decision
+  intro h₁
+  cases h₂ : resp.knownForbids.isEmpty
+  case false => left ; simp
+  case true =>
+    right
+    simp [h₂] at h₁
+    cases h₃ : resp.permits.isEmpty
+    case true => right ; simp
+    case false =>
+      left
+      simp [h₃] at h₁
+      simp [h₁]
+
+/--
   helper lemma
 -/
 theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {r : Residual} :
@@ -101,108 +124,21 @@ theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialReq
 
 /--
   helper lemma
-  NOTE: SUSPECT NOT TRUE IN THIS FORMULATION
-  substitutions can create new knownPermits or knownForbids, even if the decision was already known
 -/
-theorem partial_authz_decision_concrete_then_true_residuals_agnostic' {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} {effect : Effect} :
-  (isAuthorizedPartial req entities policies).decision ≠ .unknown →
-  req.subst subsmap = some req' →
-  Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
-  Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req entities policies).residuals
+theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
+  id ∈ resp.knownPermits → id ∈ resp.permits
 := by
-  sorry
-
-/--
-  helper lemma
--/
-theorem partial_authz_decision_concrete_then_knownPermits_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
-  (isAuthorizedPartial req entities policies).decision ≠ .unknown →
-  req.subst subsmap = some req' →
-  (isAuthorizedPartial req entities policies).knownPermits.isEmpty = (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits.isEmpty
-:= by
-  intro h₁ h₂
-  cases h₃ : (isAuthorizedPartial req entities policies).knownPermits.isEmpty
-  case true =>
-    unfold PartialResponse.knownPermits at *
-    simp at *
-    apply Eq.symm
-    apply (Set.make_empty _).mp
-    rw [← Set.make_empty] at h₃
-    simp [List.filterMap_empty_iff_f_returns_none] at *
-    intro r
-    specialize h₃ r
-    intro h₄
-    split <;> simp
-    rename_i r pid
-    replace h₄ := partial_authz_decision_concrete_then_true_residuals_agnostic' h₁ h₂ h₄
-    specialize h₃ h₄
-    simp at h₃
-  case false =>
-    unfold PartialResponse.knownPermits at *
-    simp at *
-    apply Eq.symm
-    rw [← Set.make_non_empty] at *
-    intro h₄
-    simp [List.filterMap_empty_iff_f_returns_none] at h₄
-    simp [List.filterMap_nonempty_iff_exists_f_returns_some] at h₃
-    replace ⟨r, ⟨h₃, h₅⟩⟩ := h₃
-    specialize h₄ r
-    simp [Option.isSome] at h₅
-    split at h₅ <;> simp at h₅
-    clear h₅
-    rename_i optid pid h₅
-    split at h₅ <;> simp at h₅
-    subst h₅
-    rename_i r pid
-    simp at h₄
-    apply h₄ ; clear h₄
-    apply subs_preserves_true_residuals h₂ h₃
-
-/--
-  helper lemma
--/
-theorem partial_authz_decision_concrete_then_knownForbids_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
-  (isAuthorizedPartial req entities policies).decision ≠ .unknown →
-  req.subst subsmap = some req' →
-  (isAuthorizedPartial req entities policies).knownForbids.isEmpty = (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
-:= by
-  intro h₁ h₂
-  cases h₃ : (isAuthorizedPartial req entities policies).knownForbids.isEmpty
-  case true =>
-    unfold PartialResponse.knownForbids at *
-    simp at *
-    apply Eq.symm
-    apply (Set.make_empty _).mp
-    rw [← Set.make_empty] at h₃
-    simp [List.filterMap_empty_iff_f_returns_none] at *
-    intro r
-    specialize h₃ r
-    intro h₄
-    split <;> simp
-    rename_i r pid
-    replace h₄ := partial_authz_decision_concrete_then_true_residuals_agnostic' h₁ h₂ h₄
-    specialize h₃ h₄
-    simp at h₃
-  case false =>
-    unfold PartialResponse.knownForbids at *
-    simp at *
-    apply Eq.symm
-    rw [← Set.make_non_empty] at *
-    intro h₄
-    simp [List.filterMap_empty_iff_f_returns_none] at h₄
-    simp [List.filterMap_nonempty_iff_exists_f_returns_some] at h₃
-    replace ⟨r, ⟨h₃, h₅⟩⟩ := h₃
-    specialize h₄ r
-    simp [Option.isSome] at h₅
-    split at h₅ <;> simp at h₅
-    clear h₅
-    rename_i optid pid h₅
-    split at h₅ <;> simp at h₅
-    subst h₅
-    rename_i r pid
-    simp at h₄
-    apply h₄ ; clear h₄
-    apply subs_preserves_true_residuals h₂ h₃
+  unfold PartialResponse.knownPermits PartialResponse.permits
+  simp
+  repeat rw [← Set.make_mem]
+  repeat rw [List.mem_filterMap]
+  intro h₁
+  replace ⟨r, h₁⟩ := h₁
+  exists r
+  apply And.intro h₁.left
+  replace h₁ := h₁.right
+  split at h₁ <;> simp at h₁
+  case h_1 => subst h₁ ; simp
 
 /--
   helper lemma
@@ -215,8 +151,7 @@ theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRe
   intro h₁ h₂
   unfold PartialResponse.permits at *
   simp at *
-  apply (Set.make_empty _).mp
-  rw [← Set.make_empty] at h₂
+  rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
   intro r
   specialize h₂ r
@@ -239,8 +174,7 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
   intro h₁ h₂
   unfold PartialResponse.forbids at *
   simp at *
-  apply (Set.make_empty _).mp
-  rw [← Set.make_empty] at h₂
+  rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
   intro r
   specialize h₂ r
@@ -254,43 +188,91 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
 
 /--
   helper lemma
-  If partial authorization returns a concrete decision, there must be either
-  at least one knownForbid, or at least one knownPermit
 -/
-theorem partial_authz_decision_concrete_then_kf_or_kp {resp : PartialResponse} :
-  resp.decision ≠ .unknown →
-  ¬ resp.knownForbids.isEmpty ∨ ¬ resp.knownPermits.isEmpty
-:= by
-  sorry
-
-/--
-  helper lemma
--/
-theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
-  id ∈ resp.knownPermits → id ∈ resp.permits
-:= by
-  sorry
-
-/--
-  helper lemma
-  nearly the inverse of its namesake, but requires an extra condition
--/
-theorem partial_authz_decision_concrete_no_known_forbids_then_must_be_permits_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
-  ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
+  (isAuthorizedPartial req entities policies).knownPermits.isEmpty = (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits.isEmpty
 := by
   intro h₁ h₂ h₃
-  cases partial_authz_decision_concrete_then_kf_or_kp h₁
-  case inl h₄ => contradiction
-  case inr h₄ =>
-    replace ⟨kp, h₄⟩ := (Set.non_empty_iff_exists _).mp h₄
-    apply (Set.non_empty_iff_exists _).mpr
+  cases h₄ : (isAuthorizedPartial req entities policies).knownPermits.isEmpty
+  case true =>
+    rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | h₅ | h₅
+    case _ => contradiction
+    case _ => contradiction
+    case _ =>
+      have h₆ := subs_preserves_empty_permits h₂ h₅
+      apply Eq.symm
+      by_contra h₇
+      replace ⟨pid, h₇⟩ := (Set.non_empty_iff_exists _).mp h₇
+      replace h₇ := in_knownPermits_in_permits h₇
+      rw [Set.empty_iff_not_exists] at h₆
+      apply h₆ ; clear h₆
+      exists pid
+  case false =>
+    unfold PartialResponse.knownPermits at *
+    simp at *
+    apply Eq.symm
+    rw [← Set.make_non_empty] at *
+    intro h₅
+    simp [List.filterMap_empty_iff_f_returns_none] at h₅
+    simp [List.filterMap_nonempty_iff_exists_f_returns_some] at h₄
+    replace ⟨r, ⟨h₄, h₆⟩⟩ := h₄
+    specialize h₅ r
+    simp [Option.isSome] at h₆
+    split at h₆ <;> simp at h₆
+    clear h₆
+    rename_i optid pid h₆
+    split at h₆ <;> simp at h₆
+    subst h₆
+    rename_i r pid
+    simp at h₅
+    apply h₅ ; clear h₅
+    apply subs_preserves_true_residuals h₂ h₄
+
+/--
+  helper lemma
+-/
+theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+  ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
+  req.subst subsmap = some req' →
+  (isAuthorizedPartial req' (entities.subst subsmap) policies).decision = .deny
+:= by
+  sorry
+
+/--
+  helper lemma
+-/
+theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+  (isAuthorizedPartial req entities policies).decision ≠ .unknown →
+  req.subst subsmap = some req' →
+  (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
+  ¬ (isAuthorizedPartial req entities policies).permits.isEmpty →
+  ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
+:= by
+  intro h₁ h₂ h₃ h₄
+  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | h₅ | h₅
+  case _ => contradiction
+  case _ =>
+    replace ⟨kp, h₅⟩ := (Set.non_empty_iff_exists _).mp h₅
+    rw [Set.non_empty_iff_exists]
     exists kp
     apply in_knownPermits_in_permits
     apply subs_preserves_knownPermits h₂
     assumption
+  case _ => contradiction
+/--
+  helper lemma
+-/
+theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+  (isAuthorizedPartial req entities policies).decision ≠ .unknown →
+  req.subst subsmap = some req' →
+  (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
+  ¬ (isAuthorizedPartial req entities policies).permits.isEmpty →
+  (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
+:= by
+  sorry
 
 /--
   If partial authorization returns a concrete decision, then that decision is
@@ -303,21 +285,22 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
   (isAuthorizedPartial req entities policies).decision = (isAuthorizedPartial req' (entities.subst subsmap) policies).decision
 := by
   intro h₁ h₂
-  have h₃ := partial_authz_decision_concrete_then_knownPermits_unknown_agnostic h₁ h₂
-  have h₄ := partial_authz_decision_concrete_then_knownForbids_unknown_agnostic h₁ h₂
-  unfold PartialResponse.decision
-  rw [← h₃, ← h₄] ; clear h₃ h₄
-  simp
   cases h₃ : (isAuthorizedPartial req entities policies).knownForbids.isEmpty
-  case false => simp
+  case false =>
+    rw [if_knownForbids_then_deny_after_any_sub (by simp [h₃]) h₂]
+    unfold PartialResponse.decision
+    simp [h₃]
   case true =>
-    simp
+    unfold PartialResponse.decision
+    simp [h₃]
+    have h₄ := partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic h₁ h₂ h₃
+    rw [← h₄] ; clear h₄
     cases h₄ : (isAuthorizedPartial req entities policies).permits.isEmpty
     case true =>
       have h₅ := subs_preserves_empty_permits h₂ h₄
       simp [h₅]
     case false =>
-      simp
+      simp [h₄]
       cases h₅ : (isAuthorizedPartial req entities policies).forbids.isEmpty
       case false =>
         exfalso
@@ -326,5 +309,8 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
         simp [*]
       case true =>
         have h₇ := subs_preserves_empty_forbids h₂ h₅
-        have h₈ := partial_authz_decision_concrete_no_known_forbids_then_must_be_permits_after_any_sub h₁ h₂ h₃
-        simp [h₇, h₈]
+        simp [h₇]
+        have h₈ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub h₁ h₂ h₃ (by simp [h₄])
+        simp [h₈]
+        have h₉ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub h₁ h₂ h₃ (by simp [h₄])
+        simp [h₉]
