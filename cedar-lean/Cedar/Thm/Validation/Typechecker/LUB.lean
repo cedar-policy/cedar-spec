@@ -330,7 +330,7 @@ theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)
   unfold lubRecordType
   intro h₁ h₂
   cases rty₁ <;> cases rty₃ <;>
-  simp
+  simp only
   case cons.cons hd₁ tl₁ hd₃ tl₃ =>
     cases rty₂ <;> simp at h₁ h₂
     rename_i hd₂ tl₂
@@ -727,7 +727,7 @@ theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
 := by
   cases h₁ : (ty₁ ⊔ ty₂) <;>
   cases h₂ : (ty₂ ⊔ ty₃) <;>
-  simp
+  simp only [Option.bind_none_fun, Option.bind_some_fun]
   case none.some ty₄ =>
     rw [eq_comm]
     exact lub_assoc_none_some h₁ h₂

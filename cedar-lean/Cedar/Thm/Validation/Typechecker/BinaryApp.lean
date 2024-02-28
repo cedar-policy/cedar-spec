@@ -572,7 +572,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     simp [Set.mem_cons_self] at h₂
     replace ⟨heuid, hdty, h₂⟩ := instance_of_entity_type_is_entity h₂
     subst h₂
-    rw [Value.asEntityUID] ; simp
+    rw [Value.asEntityUID] ; simp only [Except.bind_ok]
     rw [List.mapM'_eq_mapM]
     have h₃ : InstanceOfType (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety)) := by
       apply InstanceOfType.instance_of_set
