@@ -69,10 +69,10 @@ impl<'a> Arbitrary<'a> for Input {
 fuzz_target!(|i: Input| {
     let src = i.schema.as_natural_schema().unwrap();
     let (parsed, _) = SchemaFragment::from_str_natural(&src).unwrap();
-    if let Err(msg) = equivalence_check(i.schema.clone(), parsed) {
+    if let Err(msg) = equivalence_check(i.schema.clone(), parsed.clone()) {
         println!("Schema: {src}");
         println!("LHS:\n{:?}", i.schema);
-        println!("RHS:\n{:?}", i.schema);
+        println!("RHS:\n{:?}", parsed);
         panic!("{msg}");
     }
 });
