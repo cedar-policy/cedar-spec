@@ -41,8 +41,10 @@ abbrev elts {α : Type u} (s : Set α) := s.1
 
 ----- Definitions -----
 
-/-- Creates an ordered/duplicate free list from a set provided the underlying
-  set is well formed. -/
+/-- 
+  Creates an ordered/duplicate free list from a set provided the underlying
+  set is well formed. 
+-/
 def toList {α : Type u} (s : Set α) : List α := s.elts
 
 /-- Creates a well-formed set from the given list. -/
