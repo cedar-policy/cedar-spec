@@ -60,7 +60,7 @@ theorem allowed_if_explicitly_permitted (request : Request) (entities : Entities
   unfold isAuthorized
   generalize (satisfiedPolicies forbid policies request entities) = forbids
   generalize hp : (satisfiedPolicies permit policies request entities) = permits
-  simp
+  simp only [Bool.and_eq_true, Bool.not_eq_true']
   cases forbids.isEmpty <;> simp
   cases h0 : permits.isEmpty <;> simp
   unfold IsExplicitlyPermitted

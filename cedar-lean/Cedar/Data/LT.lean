@@ -200,8 +200,8 @@ instance Bool.strictLT : StrictLT Bool where
     split <;> simp
   connected  a b   := by
     simp [LT.lt, Bool.lt]
-    split <;> simp
-    split <;> simp
+    split <;> simp only [not_false_eq_true, _root_.or_false, imp_self]
+    split <;> simp only [not_false_eq_true, _root_.or_true, imp_self]
     cases a <;> cases b <;> simp at *
 
 instance Nat.strictLT : StrictLT Nat where

@@ -179,7 +179,7 @@ theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
     have h₃ := List.Equiv.symm h₂; clear h₂
     exact List.Equiv.trans (a := xs) (b := List.canonicalize (fun x => x) xs) (c := ys) h₁ h₃
   case mpr =>
-    intro h; unfold make; simp
+    intro h; unfold make; simp only [mk.injEq]
     apply List.equiv_implies_canonical_eq _ _ h
 
 theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :

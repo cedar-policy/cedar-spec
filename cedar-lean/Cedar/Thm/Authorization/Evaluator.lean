@@ -113,8 +113,8 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
       case bool b =>
         cases b with
         | true =>
-          simp
-          simp [h_e₁] at h₁
+          simp only [true_and]
+          simp only [h_e₁] at h₁
           cases h_e₂ : (evaluate e₂ request entities) with
           | ok val =>
             cases val <;>
