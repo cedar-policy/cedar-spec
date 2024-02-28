@@ -159,7 +159,7 @@ theorem partialexprand_produces_bool_residual_or_error {e₁ e₂ : PartialExpr}
   Corollary to the above: Partial-evaluating an `Expr.and` expression
   produces either .ok bool, a residual, or an error
 -/
-theorem partial_exprand_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : PartialRequest} {entities : PartialEntities} :
+theorem exprand_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : PartialRequest} {entities : PartialEntities} :
   match (partialEvaluate (Expr.and e₁ e₂) request entities) with
   | .ok (.value (.prim (.bool _))) => true
   | .ok (.residual _) => true

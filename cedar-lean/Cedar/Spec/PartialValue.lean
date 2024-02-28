@@ -16,8 +16,8 @@
 
 import Cedar.Data.Map
 import Cedar.Spec.Ext.IPAddr
-import Cedar.Spec.Value
 import Cedar.Spec.PartialExpr
+import Cedar.Spec.Value
 
 /-!
 This file defines Cedar partial values.
@@ -109,5 +109,29 @@ def PartialValue.subst (v : PartialValue) (subsmap : Map String PartialValue) : 
   match v with
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
+
+/--
+  If converting a Value to PartialExpr gives a primitive, the Value was that
+  primitive
+-/
+theorem Value.prim_prim {v : Value} {p : Prim} :
+  v.asPartialExpr = .lit p ↔ v = .prim p
+:= by
+  unfold Value.asPartialExpr
+  constructor
+  case mp =>
+    intro h₁
+    cases v <;> simp at *
+    case prim => trivial
+    case ext x => cases x <;> simp at h₁
+  case mpr => intro h₁ ; simp [h₁]
+
+/--
+  subst on an Expr is id
+-/
+theorem subs_expr_id {expr : Expr} {subsmap : Map String PartialValue} :
+  expr.asPartialExpr.subst subsmap = expr.asPartialExpr
+:= by
+  sorry
 
 end Cedar.Spec

@@ -18,6 +18,7 @@ import Cedar.Spec.Evaluator
 import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Core.Std
 import Cedar.Thm.Utils
 
 /-! This file contains theorems about Cedar's partial evaluator. -/
@@ -91,3 +92,76 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
   all_goals {
     sorry
   }
+
+/--
+  If partial evaluation returns a concrete value, then it returns the same value
+  after any substitution of unknowns
+-/
+theorem subs_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {v : Value} {subsmap : Map String PartialValue} :
+  partialEvaluate expr req entities = ok (.value v) →
+  req.subst subsmap = some req' →
+  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = ok (.value v)
+:= by
+  unfold partialEvaluate PartialExpr.subst
+  cases expr <;> simp <;> intro h₁ h₂
+  case lit p => simp [h₁]
+  case var v =>
+    cases v <;> simp at *
+    case principal | action | resource =>
+      split at h₁ <;> simp at h₁
+      subst h₁
+      split <;> simp
+      case _ h₃ _ _ h₄ =>
+        -- invoke a lemma about PartialRequest.subst
+        sorry
+      case _ h₃ _ _ h₄ =>
+        -- invoke a lemma about PartialRequest.subst
+        sorry
+    case context =>
+      split at h₁ <;> simp at h₁
+      case _ kvs h₃ =>
+        subst h₁
+        sorry
+  case and x₁ x₂ =>
+    sorry
+  all_goals {
+    sorry
+  }
+
+/--
+  If partial evaluation returns an error, then it returns the same error
+  after any substitution of unknowns
+-/
+theorem subs_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {e : Error} {subsmap : Map String PartialValue} :
+  req.subst subsmap = some req' →
+  partialEvaluate expr req entities = error e →
+  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = error e
+:= by
+  unfold partialEvaluate PartialExpr.subst
+  cases expr <;> simp <;> intro h₁ h₂
+  case var v =>
+    cases v <;> simp at *
+    case context => split at h₂ <;> simp at h₂
+  case and x₁ x₂ =>
+    sorry
+  all_goals {
+    sorry
+  }
+
+/--
+  Corollary (contrapositive) of the above:
+  If partial evaluation returns ok after any substitution of unknowns,
+  then it must return ok before that substitution
+-/
+theorem subs_preserves_errors_mt {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+  req.subst subsmap = some req' →
+  (partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap)).isOk →
+  (partialEvaluate expr req entities).isOk
+:= by
+  unfold Except.isOk Except.toBool
+  intro h₁ h₂
+  by_contra h₃
+  split at h₃ <;> simp at h₃
+  case _ e h₄ =>
+    have h₅ := subs_preserves_errors h₁ h₄
+    simp [h₅] at h₂

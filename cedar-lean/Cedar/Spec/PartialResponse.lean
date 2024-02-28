@@ -30,6 +30,16 @@ inductive Residual where
   | residual (id : PolicyID) (effect : Effect) (condition : PartialExpr)
   | error (id : PolicyID) (error : Error) -- definitely results in this error, for any substitution of the unknowns
 
+def Residual.id (r : Residual) : PolicyID :=
+  match r with
+  | .residual id _ _ => id
+  | .error id _ => id
+
+def Residual.effect (r : Residual) : Option Effect :=
+  match r with
+  | .residual _ effect _ => effect
+  | .error _ _ => none
+
 structure PartialResponse where
   /--
     All residuals for policies that are, or may be, satisfied.
@@ -129,7 +139,7 @@ def PartialResponse.underapproximateDeterminingPolicies (resp : PartialResponse)
   then Set.empty -- we don't know the decision in this case, so we can't say any policy is for sure determining
   else resp.knownPermits -- there are no forbids that are even possibly satisfied, so if there are known permits, we know they will be determining
 
-deriving instance Repr, DecidableEq for Residual
+deriving instance Repr, DecidableEq, Inhabited for Residual
 deriving instance Repr, DecidableEq for PartialResponse
 
 end Cedar.Spec

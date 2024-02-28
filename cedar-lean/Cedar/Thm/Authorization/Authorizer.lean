@@ -295,76 +295,33 @@ theorem mapM_asEntityUID_of_uid {uids : List EntityUID} :
     rw [List.map_cons, List.mapM_cons]
     simp [pure, Except.pure, asEntityUID_of_uid, h_ind]
 
-/--
-  A generic lemma about the behavior of List.mapM' in the Except monad
--/
-theorem mapM'_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {list : List α} :
-  Except.isOk (list.mapM' f) ↔ ∀ x ∈ list, Except.isOk (f x)
+theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {list : List α} :
+  Except.isOk (list.mapM f) →
+  Except.isOk ((Set.elts (Set.make list)).mapM f)
 := by
-  simp [Except.isOk, Except.toBool]
-  constructor
-  case mp =>
-    induction list
-    case nil =>
-      intro _ x h₂
-      simp at h₂
-    case cons y ys h_ind =>
-      intro h₁ x h₂
-      unfold List.mapM' at h₁
-      cases h₄ : (f y) <;> simp [h₄] at h₁
-      case ok b =>
-        rcases (List.mem_cons.mp h₂) with h₅ | h₅
-        case inl => rw [← h₅] at h₄; simp [h₄]
-        case inr =>
-          apply h_ind; clear h_ind
-          case a =>
-            split at h₁ <;> split <;> simp
-            case h_1.h_2 h₅ _ _ h₆ => simp [h₆] at h₅
-            case h_2.h_2 => simp at h₁
-          case a => exact h₅
-  case mpr =>
-    induction list
-    case nil => simp [List.mapM', pure, Except.pure]
-    case cons x xs h_ind =>
-      intro h₂
-      split <;> simp
-      case h_2 err h₃ =>
-        cases h₄ : (f x) <;> simp [h₄] at h₂
-        case ok b =>
-          specialize h_ind h₂
-          split at h_ind <;> simp at h_ind
-          case h_1 err h₆ =>
-            simp [h₄, h₆, List.mapM', pure, Except.pure] at h₃
-
-theorem if_mapM'_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {list : List α} :
-  Except.isOk (list.mapM' f) →
-  Except.isOk ((Set.elts (Set.make list)).mapM' f)
-:= by
-  simp [mapM'_ok_iff_f_ok_on_all_elements]
+  simp [mapM_ok_iff_f_ok_on_all_elements]
   intro h₁ y h₂
   apply h₁ y; clear h₁
   rw [Set.make_mem]
   rw [← Set.in_list_iff_in_set]
   exact h₂
 
-theorem mapM'_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
-  Except.isOk (List.mapM' Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
+theorem mapM_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
+  Except.isOk (List.mapM Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
 := by
-  apply if_mapM'_doesn't_fail_on_list_then_doesn't_fail_on_set
+  apply if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set
   unfold Except.isOk Except.toBool
   split <;> simp
-  case a.h_2 err h =>
-    rw [List.mapM'_eq_mapM] at h
-    simp [mapM_asEntityUID_of_uid] at h
+  case a.h_2 err h => simp [mapM_asEntityUID_of_uid] at h
 
 theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} {err : Error} :
   Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err = .ok (Set.make list)
 := by
   unfold Set.mapOrErr
-  rw [←List.mapM'_eq_mapM]
   split <;> simp
   case h_1 list' h =>
     -- in this case, mapping Value.asEntityUID over the set returns .ok
+    rw [← List.mapM'_eq_mapM] at h
     replace h := mapM'_asEntityUID_eq_entities h
     have ⟨h₁, h₂⟩ := Set.elts_make_is_id_then_equiv h; clear h
     rw [Set.make_make_eqv]
@@ -382,7 +339,7 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} 
       exact h₂
   case h_2 err h =>
     -- in this case, mapping Value.asEntityUID over the set returns .error
-    have h₁ := @mapM'_asEntityUID_on_set_uids_produces_ok list
+    have h₁ := @mapM_asEntityUID_on_set_uids_produces_ok list
     simp [h, Except.isOk, Except.toBool] at h₁
 
 theorem action_in_set_of_euids_produces_boolean {list : List EntityUID} {request : Request} {entities : Entities} :

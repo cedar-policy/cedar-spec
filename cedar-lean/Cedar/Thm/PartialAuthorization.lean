@@ -20,6 +20,7 @@ import Cedar.Spec.Response
 import Cedar.Spec.Value
 import Cedar.Spec.PartialAuthorizer
 import Cedar.Spec.PartialResponse
+import Cedar.Spec.PartialValue
 import Cedar.Thm.PartialEval
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.Utils
@@ -66,13 +67,79 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Re
   sorry
 
 /--
+  helper lemma
+-/
+theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
+  id ∈ resp.knownPermits → id ∈ resp.permits
+:= by
+  unfold PartialResponse.knownPermits PartialResponse.permits
+  simp
+  repeat rw [← Set.make_mem]
+  repeat rw [List.mem_filterMap]
+  intro h₁
+  replace ⟨r, h₁⟩ := h₁
+  exists r
+  apply And.intro h₁.left
+  replace h₁ := h₁.right
+  split at h₁ <;> simp at h₁
+  subst h₁ ; simp
+
+/--
+  helper lemma
+-/
+theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
+  resp.permits.isEmpty → resp.knownPermits.isEmpty
+:= by
+  unfold PartialResponse.permits PartialResponse.knownPermits
+  simp
+  repeat rw [Set.empty_iff_not_exists]
+  intro h₁ h₂
+  simp at h₁
+  replace ⟨pid, h₂⟩ := h₂
+  specialize h₁ pid
+  rw [← Set.make_mem] at *
+  rw [List.mem_filterMap] at *
+  replace ⟨res, h₂⟩ := h₂
+  apply h₁ ; clear h₁
+  exists res
+  apply And.intro h₂.left
+  replace h₂ := h₂.right
+  split at h₂ <;> simp at h₂
+  subst h₂ ; simp
+
+/--
+  helper lemma
+-/
+theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
+  resp.forbids.isEmpty → resp.knownForbids.isEmpty
+:= by
+  unfold PartialResponse.forbids PartialResponse.knownForbids
+  simp
+  repeat rw [Set.empty_iff_not_exists]
+  intro h₁ h₂
+  simp at h₁
+  replace ⟨pid, h₂⟩ := h₂
+  specialize h₁ pid
+  rw [← Set.make_mem] at *
+  rw [List.mem_filterMap] at *
+  replace ⟨res, h₂⟩ := h₂
+  apply h₁ ; clear h₁
+  exists res
+  apply And.intro h₂.left
+  replace h₂ := h₂.right
+  split at h₂ <;> simp at h₂
+  subst h₂ ; simp
+
+/--
   helper lemma:
   If partial authorization returns a concrete decision, there must be either
-  at least one knownForbid, or at least one knownPermit, or no possible permits
+  at least one knownForbid, or at least one knownPermit and no possible forbids, or no possible permits
 -/
 theorem partial_authz_decision_concrete_then_kf_or_kp {resp : PartialResponse} :
   resp.decision ≠ .unknown →
-  ¬ resp.knownForbids.isEmpty ∨ ¬ resp.knownPermits.isEmpty ∨ resp.permits.isEmpty
+  ¬ resp.knownForbids.isEmpty ∨
+  (¬ resp.knownPermits.isEmpty ∧ resp.forbids.isEmpty) ∨
+  resp.permits.isEmpty
 := by
   unfold PartialResponse.decision
   intro h₁
@@ -91,13 +158,148 @@ theorem partial_authz_decision_concrete_then_kf_or_kp {resp : PartialResponse} :
 /--
   helper lemma
 -/
-theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {r : Residual} :
+theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
-  r ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
-  r ∈ (isAuthorizedPartial req entities policies).residuals
+  r' ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
+  ∃ r ∈ (isAuthorizedPartial req entities policies).residuals, r.id = r'.id ∧ (r.effect = r'.effect ∨ r'.effect = none)
 := by
+  unfold isAuthorizedPartial
   intro h₁ h₂
-  sorry
+  simp at *
+  replace ⟨p, ⟨h₂, h₃⟩⟩ := h₂
+  split at h₃ <;> simp at h₃ <;> subst h₃
+  case h_2 v h₃ h₄ =>
+    -- after subst, partial eval of the policy produced a .value other than False
+    have h₅ := subs_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+      simp [Except.isOk, Except.toBool]
+      split <;> simp
+      case _ e h₅ =>
+        simp [subs_expr_id] at h₅
+        simp [h₅] at h₄
+    )
+    simp [Except.isOk, Except.toBool] at h₅
+    split at h₅ <;> simp at h₅
+    clear h₅
+    case _ pval h₅ =>
+      exists (Residual.residual p.id p.effect pval.asPartialExpr)
+      constructor
+      case left =>
+        exists p
+        apply And.intro h₂
+        split <;> simp
+        case h_1 h₅ _ h₆ =>
+          -- before subst, partial eval of the policy produced False
+          have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+          rw [subs_expr_id] at h₇
+          simp [h₇] at h₄
+          exact h₃ h₄.symm
+        case h_2 h₅ _ v h₆ h₇ =>
+          -- before subst, partial eval of the policy produced a .value other than False
+          simp [h₇] at h₅
+          subst h₅
+          simp [PartialValue.asPartialExpr]
+        case h_3 h₅ _ x h₆ =>
+          -- before subst, partial eval of the policy produced a .residual
+          simp [h₆] at h₅
+          subst h₅
+          simp [PartialValue.asPartialExpr]
+        case h_4 h₅ _ e h₆ =>
+          -- before subst, partial eval of the policy produced an error
+          simp [h₆] at h₅
+      case right =>
+        constructor
+        case left => simp [Residual.id]
+        case right => simp [Residual.effect]
+  case h_3 x h₃ =>
+    -- after subst, partial eval of the policy produced a .residual
+    have h₄ := subs_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+      simp [Except.isOk, Except.toBool]
+      split <;> simp
+      case _ e h₄ =>
+        simp [subs_expr_id] at h₄
+        simp [h₄] at h₃
+    )
+    simp [Except.isOk, Except.toBool] at h₄
+    split at h₄ <;> simp at h₄
+    clear h₄
+    case _ pval h₄ =>
+      exists (Residual.residual p.id p.effect pval.asPartialExpr)
+      constructor
+      case left =>
+        exists p
+        apply And.intro h₂
+        split <;> simp
+        case h_1 h₅ _ h₆ =>
+          -- before subst, partial eval of the policy produced False
+          have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+          rw [subs_expr_id] at h₇
+          simp [h₇] at h₃
+        case h_2 h₅ _ v h₆ h₇ =>
+          -- before subst, partial eval of the policy produced a .value other than False
+          simp [h₇] at h₄
+          subst h₄
+          simp [PartialValue.asPartialExpr]
+        case h_3 h₅ _ x h₆ =>
+          -- before subst, partial eval of the policy produced a .residual
+          simp [h₆] at h₄
+          subst h₄
+          simp [PartialValue.asPartialExpr]
+        case h_4 h₅ _ e h₅ =>
+          -- before subst, partial eval of the policy produced an error
+          simp [h₅] at h₄
+      case right =>
+        constructor
+        case left => simp [Residual.id]
+        case right => simp [Residual.effect]
+  case h_4 e' h₃ =>
+    -- after subst, partial eval of the policy produced an error
+    cases h₄ : partialEvaluate p.toExpr req entities
+    case error e =>
+      exists (Residual.error p.id e)
+      constructor
+      case left =>
+        exists p
+        apply And.intro h₂
+        split <;> simp
+        case h_1 h₅ | h_2 h₅ | h_3 h₅ =>
+          -- before subst, partial eval of the policy produced ok
+          simp [h₅] at h₄
+        case h_4 e'' h₅ =>
+          -- before subst, partial eval of the policy produced an error
+          simp [h₅] at h₄ ; assumption
+      case right =>
+        constructor
+        case left => simp [Residual.id]
+        case right => simp [Residual.effect]
+    case ok pval =>
+      exists (Residual.residual p.id p.effect pval.asPartialExpr)
+      constructor
+      case left =>
+        exists p
+        apply And.intro h₂
+        split <;> simp
+        case h_1 h₅ =>
+          -- before subst, partial eval of the policy produced False
+          have h₆ := subs_preserves_evaluation_to_literal h₅ h₁
+          rw [subs_expr_id] at h₆
+          simp [h₆] at h₃
+        case h_2 h₅ =>
+          -- before subst, partial eval of the policy produced a .value other than False
+          simp [h₅] at h₄
+          subst h₄
+          simp [PartialValue.asPartialExpr]
+        case h_3 x h₅ =>
+          -- before subst, partial eval of the policy produced a .residual
+          simp [h₅] at h₄
+          subst h₄
+          simp [PartialValue.asPartialExpr]
+        case h_4 e h₅ =>
+          -- before subst, partial eval of the policy produced an error
+          simp [h₅] at h₄
+      case right =>
+        constructor
+        case left => simp [Residual.id]
+        case right => simp [Residual.effect]
 
 /--
   helper lemma
@@ -107,38 +309,105 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req entities policies).residuals →
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals
 := by
-  sorry
+  unfold isAuthorizedPartial
+  intro h₁ h₂
+  simp at *
+  replace ⟨p, h₂⟩ := h₂
+  exists p
+  apply And.intro h₂.left
+  replace h₂ := h₂.right
+  split <;> simp
+  case h_1 h₃ =>
+    -- after subst, partial eval of the policy produced False
+    split at h₂ <;> simp at h₂
+    case _ h₄ h₅ =>
+      replace ⟨_, _, h₂⟩ := h₂
+      rw [Value.prim_prim] at h₂
+      subst h₂
+      -- h₃ and h₅ are contradictory, need to show it
+      sorry
+    case _ h₄ =>
+      replace ⟨_, _, h₂⟩ := h₂
+      subst h₂
+      -- h₃ and h₄ are contradictory, need to show it
+      sorry
+  case h_2 h₃ | h_3 h₃ =>
+    -- after subst, partial eval of the policy produced a .value (other than False) or .residual
+    split at h₂ <;> simp at h₂
+    case h_2 v' h₄ _ v h₅ h₆ =>
+      apply And.intro h₂.left
+      replace h₂ := h₂.right
+      apply And.intro h₂.left
+      replace h₂ := h₂.right
+      rw [Value.prim_prim] at *
+      subst h₂
+      have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+      rw [subs_expr_id] at h₇
+      simp [h₃] at h₇
+    case h_3 v' h₄ _ x h₅ =>
+      apply And.intro h₂.left
+      replace h₂ := h₂.right
+      apply And.intro h₂.left
+      replace h₂ := h₂.right
+      subst h₂
+      have h₆ := residuals_contain_unknowns h₅
+      simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown] at h₆
+  case h_4 h₃ =>
+    -- after subst, partial eval of the policy produced an error
+    split at h₂ <;> simp at h₂
+    case _ v h₅ h₆ =>
+      replace ⟨_, _, h₂⟩ := h₂
+      rw [Value.prim_prim] at h₂
+      subst h₂
+      have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+      rw [subs_expr_id] at h₇
+      simp [h₃] at h₇
+    case _ x h₄ =>
+      replace ⟨_, _, h₂⟩ := h₂
+      subst h₂
+      have h₅ := residuals_contain_unknowns h₄
+      simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown] at h₅
 
 /--
   helper lemma
-  maybe corollary of above?
+  maybe corollary of subs_preserves_true_residuals?
 -/
 theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownPermits →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits
 := by
-  unfold PartialResponse.knownPermits
   intro h₁ h₂
-  sorry
+  unfold PartialResponse.knownPermits at *
+  simp at *
+  rw [← Set.make_mem] at *
+  simp [List.filterMap_nonempty_iff_exists_f_returns_some] at *
+  replace ⟨r, ⟨h₂, h₃⟩⟩ := h₂
+  exists r
+  apply And.intro _ h₃
+  split at h₃ <;> simp at h₃
+  subst h₃
+  apply subs_preserves_true_residuals h₁ h₂
 
 /--
   helper lemma
 -/
-theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
-  id ∈ resp.knownPermits → id ∈ resp.permits
+theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} :
+  req.subst subsmap = some req' →
+  pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
+  pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids
 := by
-  unfold PartialResponse.knownPermits PartialResponse.permits
-  simp
-  repeat rw [← Set.make_mem]
-  repeat rw [List.mem_filterMap]
-  intro h₁
-  replace ⟨r, h₁⟩ := h₁
+  intro h₁ h₂
+  unfold PartialResponse.knownForbids at *
+  simp at *
+  rw [← Set.make_mem] at *
+  simp [List.filterMap_nonempty_iff_exists_f_returns_some] at *
+  replace ⟨r, ⟨h₂, h₃⟩⟩ := h₂
   exists r
-  apply And.intro h₁.left
-  replace h₁ := h₁.right
-  split at h₁ <;> simp at h₁
-  case h_1 => subst h₁ ; simp
+  apply And.intro _ h₃
+  split at h₃ <;> simp at h₃
+  subst h₃
+  apply subs_preserves_true_residuals h₁ h₂
 
 /--
   helper lemma
@@ -153,15 +422,20 @@ theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRe
   simp at *
   rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
-  intro r
-  specialize h₂ r
-  intro h₃
-  split <;> simp
-  rename_i r pid cond
-  simp at h₂
-  apply h₂ ; clear h₂
-  apply subs_doesn't_increase_residuals h₁
-  assumption
+  intro r h₃
+  rcases subs_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
+  case _ =>
+    split <;> simp
+    case _ pid cond =>
+      specialize h₂ r' h₄
+      simp [Residual.id] at h₅
+      simp [Residual.effect] at h₆
+      split at h₆ <;> simp at h₆
+      subst h₆
+      simp [h₅] at h₂
+  case _ =>
+    split <;> simp
+    simp [Residual.effect] at h₆
 
 /--
   helper lemma
@@ -176,15 +450,34 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
   simp at *
   rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
-  intro r
-  specialize h₂ r
-  intro h₃
-  split <;> simp
-  rename_i r pid cond
-  simp at h₂
-  apply h₂ ; clear h₂
-  apply subs_doesn't_increase_residuals h₁
-  assumption
+  intro r h₃
+  rcases subs_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
+  case _ =>
+    split <;> simp
+    case _ pid cond =>
+      specialize h₂ r' h₄
+      simp [Residual.id] at h₅
+      simp [Residual.effect] at h₆
+      split at h₆ <;> simp at h₆
+      subst h₆
+      simp [h₅] at h₂
+  case _ =>
+    split <;> simp
+    simp [Residual.effect] at h₆
+
+/--
+  helper lemma
+-/
+theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+  req.subst subsmap = some req' →
+  ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
+  ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
+:= by
+  repeat rw [Set.non_empty_iff_exists]
+  intro h₁ h₂
+  replace ⟨pid, h₂⟩ := h₂
+  exists pid
+  exact subs_preserves_knownForbids h₁ h₂
 
 /--
   helper lemma
@@ -198,7 +491,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
   intro h₁ h₂ h₃
   cases h₄ : (isAuthorizedPartial req entities policies).knownPermits.isEmpty
   case true =>
-    rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | h₅ | h₅
+    rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
     case _ => contradiction
     case _ => contradiction
     case _ =>
@@ -239,7 +532,12 @@ theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' 
   req.subst subsmap = some req' →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).decision = .deny
 := by
-  sorry
+  intro h₁ h₂
+  unfold PartialResponse.decision
+  simp
+  intro h₃
+  replace h₁ := subs_preserves_nonempty_knownForbids h₂ h₁
+  contradiction
 
 /--
   helper lemma
@@ -252,7 +550,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_b
   ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
 := by
   intro h₁ h₂ h₃ h₄
-  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | h₅ | h₅
+  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
   case _ => contradiction
   case _ =>
     replace ⟨kp, h₅⟩ := (Set.non_empty_iff_exists _).mp h₅
@@ -262,6 +560,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_b
     apply subs_preserves_knownPermits h₂
     assumption
   case _ => contradiction
+
 /--
   helper lemma
 -/
@@ -272,7 +571,13 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_kno
   ¬ (isAuthorizedPartial req entities policies).permits.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
 := by
-  sorry
+  intro h₁ h₂ h₃ h₄
+  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨_, h₆⟩ | h₅
+  case _ => contradiction
+  case _ =>
+    apply empty_forbids_empty_knownForbids
+    apply subs_preserves_empty_forbids h₂ h₆
+  case _ => contradiction
 
 /--
   If partial authorization returns a concrete decision, then that decision is
