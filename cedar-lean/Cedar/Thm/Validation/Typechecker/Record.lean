@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Core.LT
+import Cedar.Thm.Data.LT
 import Cedar.Thm.Validation.Typechecker.Basic
 
 /-!

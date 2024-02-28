@@ -15,7 +15,7 @@
 -/
 
 import Cedar.Spec
-import Cedar.Thm.Core.Std
+import Cedar.Thm.Data.Control
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.

@@ -16,7 +16,8 @@
 
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm.Core.Std
+import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.Set
 import Cedar.Thm.Validation.Typechecker.LUB
 
 /-!
@@ -367,7 +368,7 @@ theorem sizeOf_attribute_lt_sizeOf_qualified (aqty : Attr × Qualified CedarType
     case h₁ => simp [h, ←Nat.succ_eq_one_add]
     case a =>
       cases aqty ; simp [Prod.snd]
-      apply Nat.lt_add_of_one_and_other
+      omega
   }
 
 theorem type_is_inhabited (ty : CedarType) :
@@ -468,7 +469,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
         apply @Nat.lt_trans _ (sizeOf (a', qty))
         case h₁ =>
           simp only [Prod.mk.sizeOf_spec]
-          apply Nat.lt_add_of_one_and_other
+          omega
         case a => exact List.sizeOf_lt_of_mem h₄
       case a => simp [←Nat.succ_eq_one_add]
     case a => simp [←Nat.succ_eq_one_add]

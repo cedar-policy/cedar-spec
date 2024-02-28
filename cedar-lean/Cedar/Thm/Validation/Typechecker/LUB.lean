@@ -16,7 +16,8 @@
 
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm.Core.Std
+import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.Map
 
 /-!
 This file contains useful definitions and lemmas about the
@@ -480,11 +481,12 @@ theorem sizeOf_qualified_lt_sizeOf_record_type (x : Attr × Qualified CedarType)
   sizeOf x.snd < sizeOf (x :: xs)
 := by
   simp only [List.cons.sizeOf_spec]
-  simp [Nat.add_assoc]; rw [Nat.add_comm]
+  simp only [Nat.add_assoc]
+  rw [Nat.add_comm]
   apply Nat.lt_add_right
   apply Nat.lt_add_right
-  simp [sizeOf, Prod._sizeOf_1]
-  apply Nat.lt_add_of_one_and_other
+  simp only [sizeOf, Prod._sizeOf_1]
+  omega
 
 theorem lubBool_assoc_none_some {ty₁ ty₂ : CedarType} {bty₁ bty₂ : BoolType}
   (h₁ : (ty₁ ⊔ CedarType.bool bty₁) = none)
