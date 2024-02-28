@@ -102,7 +102,7 @@ theorem map_equiv (f : α → β) (xs ys : List α) :
   intro p h <;>
   exists p <;>
   rw [List.subset_def] at a b <;>
-  simp
+  simp only [and_true]
   exact a h
   exact b h
 
@@ -228,7 +228,7 @@ theorem sortedBy_equiv_implies_eq [LT β] [StrictLT β] (f : α → β) {xs ys :
       rw [←List.subset_nil]
       exact h₃.left
     case cons yhd ytl =>
-      simp
+      simp only [cons.injEq]
       have h₅ := sortedBy_equiv_implies_head_eq f h₁ h₂ h₃
       simp only [h₅, true_and]
       subst h₅
@@ -287,7 +287,7 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
   cases xs with
   | nil => simp
   | cons hd tl =>
-    simp
+    simp only [gt_iff_lt, ne_eq]
     intro h
     split at h <;> try trivial
     split at h <;> trivial
@@ -346,7 +346,8 @@ theorem insertCanonical_cases [LT β] [DecidableLT β] (f : α → β) (x y : α
   (¬ f x < f y ∧ ¬ f x > f y ∧ insertCanonical f x (y :: ys) = x :: ys)
 := by
   generalize h₁ : insertCanonical f x ys = xys
-  unfold insertCanonical; simp
+  unfold insertCanonical
+  simp only [gt_iff_lt, ite_eq_left_iff]
   by_cases (f x < f y)
   case pos _ _ h₂ => simp [h₂]
   case neg _ _ h₂ =>
@@ -362,7 +363,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
   induction xs
   case nil => simp; exact Equiv.refl
   case cons _ _ hd tl ih =>
-    simp
+    simp only [id_eq, gt_iff_lt]
     split
     case inl => exact Equiv.refl
     case inr _ _ h₁ =>

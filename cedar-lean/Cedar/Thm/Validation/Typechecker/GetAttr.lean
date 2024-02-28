@@ -51,10 +51,12 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
     simp [typeOfGetAttr] at h₁
     split at h₁ <;> try contradiction
     case h_1 =>
-      simp
+      simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, false_and, exists_const,
+        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true]
       apply getAttrInRecord_has_empty_capabilities h₁
     case h_2 =>
-      simp
+      simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq,
+        exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true]
       split at h₁ <;> try simp [err] at h₁
       apply getAttrInRecord_has_empty_capabilities h₁
 
@@ -126,8 +128,8 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp only [Except.bind_ok]
     cases h₉ : Map.find? d.attrs a
     case none =>
-      simp
-      simp [typeOf, h₄, typeOfGetAttr, getAttrInRecord] at h₃
+      simp only [Except.error.injEq, or_self, false_and, exists_const]
+      simp only [typeOf._eq_9, h₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       split at h₃ <;> try simp at h₃
       case h_1.h_1 _ _ h₁₀ _ _ h₁₁ =>
