@@ -18,7 +18,7 @@ import Cedar.Spec.Evaluator
 import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
-import Cedar.Thm.Core.Std
+import Cedar.Thm.Data.Control
 import Cedar.Thm.Utils
 
 /-! This file contains theorems about Cedar's partial evaluator. -/
