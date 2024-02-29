@@ -53,18 +53,18 @@ pub fn dump(
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;
 
-    let schema_filename = dirname.join(format!("{testcasename}.cedarschema.json"));
+    let schema_filename = dirname.join(format!("{testcasename}.cedarschema"));
     let policies_filename = dirname.join(format!("{testcasename}.cedar"));
     let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
     let testcase_filename = dirname.join(format!("{testcasename}.json"));
 
-    let schema_file = std::fs::OpenOptions::new()
+    let mut schema_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .append(false)
         .truncate(true)
         .open(&schema_filename)?;
-    serde_json::to_writer_pretty(schema_file, &schema)?;
+    writeln!(schema_file, "{}", schema.as_natural_schema().unwrap())?;
 
     let mut policies_file = std::fs::OpenOptions::new()
         .create(true)
