@@ -118,6 +118,16 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   exact h₁ h₃
   exact h₂ h₃
 
+theorem filterMap_empty_iff_f_returns_none {f : α → Option β} {xs : List α} :
+  xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none
+:= by
+  sorry
+
+theorem filterMap_nonempty_iff_exists_f_returns_some {f : α → Option β} {xs : List α} :
+  xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
+:= by
+  sorry
+
 /-! ### Sorted -/
 
 inductive SortedBy [LT β] (f : α → β) : List α → Prop where

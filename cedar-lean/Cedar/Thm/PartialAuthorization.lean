@@ -14,13 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Data.List
-import Cedar.Data.Set
 import Cedar.Spec.Response
 import Cedar.Spec.Value
 import Cedar.Spec.PartialAuthorizer
 import Cedar.Spec.PartialResponse
 import Cedar.Spec.PartialValue
+import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Map
+import Cedar.Thm.Data.Set
 import Cedar.Thm.PartialEval
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.Utils
@@ -73,9 +75,8 @@ theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
   id ∈ resp.knownPermits → id ∈ resp.permits
 := by
   unfold PartialResponse.knownPermits PartialResponse.permits
-  simp
-  repeat rw [← Set.make_mem]
-  repeat rw [List.mem_filterMap]
+  simp only [← Set.make_mem]
+  simp only [List.mem_filterMap]
   intro h₁
   replace ⟨r, h₁⟩ := h₁
   exists r
@@ -344,6 +345,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
       have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
       rw [subs_expr_id] at h₇
       simp [h₃] at h₇
+      try assumption
     case h_3 v' h₄ _ x h₅ =>
       apply And.intro h₂.left
       replace h₂ := h₂.right
@@ -370,7 +372,6 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
 
 /--
   helper lemma
-  maybe corollary of subs_preserves_true_residuals?
 -/
 theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
