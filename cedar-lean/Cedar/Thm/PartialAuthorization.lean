@@ -25,6 +25,7 @@ import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.PartialEval
 import Cedar.Thm.PartialEval.And
+import Cedar.Thm.PartialResponse
 import Cedar.Thm.Utils
 
 /-! This file contains theorems about Cedar's partial evaluator. -/
@@ -42,10 +43,10 @@ open Except
 theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request} {entities : Entities} {presp : PartialResponse} {resp : Response} :
   isAuthorized req entities policies = resp →
   isAuthorizedPartial req entities policies = presp →
-  (resp.decision == .allow ∧ presp.decision == .allow ∨ resp.decision == .deny ∧ presp.decision == .deny) ∧
-  presp.overapproximateDeterminingPolicies == resp.determiningPolicies ∧
-  presp.underapproximateDeterminingPolicies == resp.determiningPolicies ∧
-  Set.make (presp.errors.map Prod.fst) == resp.erroringPolicies
+  (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
+  presp.overapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
 := by
   unfold isAuthorizedPartial isAuthorized
   intro h₁ h₂
@@ -67,94 +68,6 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Re
 := by
   intro h₁
   sorry
-
-/--
-  helper lemma
--/
-theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
-  id ∈ resp.knownPermits → id ∈ resp.permits
-:= by
-  unfold PartialResponse.knownPermits PartialResponse.permits
-  simp only [← Set.make_mem]
-  simp only [List.mem_filterMap]
-  intro h₁
-  replace ⟨r, h₁⟩ := h₁
-  exists r
-  apply And.intro h₁.left
-  replace h₁ := h₁.right
-  split at h₁ <;> simp at h₁
-  subst h₁ ; simp
-
-/--
-  helper lemma
--/
-theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
-  resp.permits.isEmpty → resp.knownPermits.isEmpty
-:= by
-  unfold PartialResponse.permits PartialResponse.knownPermits
-  simp
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂
-  simp at h₁
-  replace ⟨pid, h₂⟩ := h₂
-  specialize h₁ pid
-  rw [← Set.make_mem] at *
-  rw [List.mem_filterMap] at *
-  replace ⟨res, h₂⟩ := h₂
-  apply h₁ ; clear h₁
-  exists res
-  apply And.intro h₂.left
-  replace h₂ := h₂.right
-  split at h₂ <;> simp at h₂
-  subst h₂ ; simp
-
-/--
-  helper lemma
--/
-theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
-  resp.forbids.isEmpty → resp.knownForbids.isEmpty
-:= by
-  unfold PartialResponse.forbids PartialResponse.knownForbids
-  simp
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂
-  simp at h₁
-  replace ⟨pid, h₂⟩ := h₂
-  specialize h₁ pid
-  rw [← Set.make_mem] at *
-  rw [List.mem_filterMap] at *
-  replace ⟨res, h₂⟩ := h₂
-  apply h₁ ; clear h₁
-  exists res
-  apply And.intro h₂.left
-  replace h₂ := h₂.right
-  split at h₂ <;> simp at h₂
-  subst h₂ ; simp
-
-/--
-  helper lemma:
-  If partial authorization returns a concrete decision, there must be either
-  at least one knownForbid, or at least one knownPermit and no possible forbids, or no possible permits
--/
-theorem partial_authz_decision_concrete_then_kf_or_kp {resp : PartialResponse} :
-  resp.decision ≠ .unknown →
-  ¬ resp.knownForbids.isEmpty ∨
-  (¬ resp.knownPermits.isEmpty ∧ resp.forbids.isEmpty) ∨
-  resp.permits.isEmpty
-:= by
-  unfold PartialResponse.decision
-  intro h₁
-  cases h₂ : resp.knownForbids.isEmpty
-  case false => left ; simp
-  case true =>
-    right
-    simp [h₂] at h₁
-    cases h₃ : resp.permits.isEmpty
-    case true => right ; simp
-    case false =>
-      left
-      simp [h₃] at h₁
-      simp [h₁]
 
 /--
   helper lemma
@@ -492,7 +405,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
   intro h₁ h₂ h₃
   cases h₄ : (isAuthorizedPartial req entities policies).knownPermits.isEmpty
   case true =>
-    rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
+    rcases PartialResponse.decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
     case _ => contradiction
     case _ => contradiction
     case _ =>
@@ -500,7 +413,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
       apply Eq.symm
       by_contra h₇
       replace ⟨pid, h₇⟩ := (Set.non_empty_iff_exists _).mp h₇
-      replace h₇ := in_knownPermits_in_permits h₇
+      replace h₇ := PartialResponse.in_knownPermits_in_permits h₇
       rw [Set.empty_iff_not_exists] at h₆
       apply h₆ ; clear h₆
       exists pid
@@ -551,13 +464,13 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_b
   ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
 := by
   intro h₁ h₂ h₃ h₄
-  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
+  rcases PartialResponse.decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨h₅, _⟩ | h₅
   case _ => contradiction
   case _ =>
     replace ⟨kp, h₅⟩ := (Set.non_empty_iff_exists _).mp h₅
     rw [Set.non_empty_iff_exists]
     exists kp
-    apply in_knownPermits_in_permits
+    apply PartialResponse.in_knownPermits_in_permits
     apply subs_preserves_knownPermits h₂
     assumption
   case _ => contradiction
@@ -573,10 +486,10 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_kno
   (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
 := by
   intro h₁ h₂ h₃ h₄
-  rcases partial_authz_decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨_, h₆⟩ | h₅
+  rcases PartialResponse.decision_concrete_then_kf_or_kp h₁ with h₅ | ⟨_, h₆⟩ | h₅
   case _ => contradiction
   case _ =>
-    apply empty_forbids_empty_knownForbids
+    apply PartialResponse.empty_forbids_empty_knownForbids
     apply subs_preserves_empty_forbids h₂ h₆
   case _ => contradiction
 
