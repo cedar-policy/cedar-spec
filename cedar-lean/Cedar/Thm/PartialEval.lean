@@ -59,6 +59,18 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
   }
 
 /--
+  Corollary to the above: partial evaluation with concrete inputs gives a
+  concrete value (or an error)
+-/
+theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request} {entities : Entities} :
+  match partialEvaluate expr request entities with
+  | .ok (.value _) => false
+  | .ok (.residual _) => true
+  | .error _ => true
+:= by
+  sorry
+
+/--
   If partial evaluation returns a residual, then that residual expression
   contains an unknown
 -/
