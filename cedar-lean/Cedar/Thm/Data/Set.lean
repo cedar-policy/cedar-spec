@@ -45,16 +45,19 @@ theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   apply List.elem_eq_true_of_mem
   assumption
 
-theorem in_list_in_set {α : Type u} (v : α) (s : Set α) :
-  v ∈ s.elts → v ∈ s
+theorem in_list_iff_in_set {α : Type u} (v : α) (s : Set α) :
+  v ∈ s.elts ↔ v ∈ s
 := by
-  intro h0
-  apply h0
+  constructor
+  case mp => intro h ; apply h
+  case mpr => simp [elts, Membership.mem]
 
-theorem in_set_in_list {α : Type u} (v : α) (s : Set α) :
-  v ∈ s → v ∈ s.elts
+theorem in_list_iff_in_mk {α : Type u} (v : α) (xs : List α) :
+  v ∈ xs ↔ v ∈ mk xs
 := by
-  simp [Membership.mem]
+  constructor
+  case mp => intro h ; apply h
+  case mpr => simp [elts, Membership.mem]
 
 theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
   hd ∈ Set.mk (hd :: tl)
@@ -78,6 +81,20 @@ theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
 
 /-! ### isEmpty -/
 
+theorem make_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
+  xs = [] ↔ (Set.make xs).isEmpty
+:= by
+  unfold isEmpty; unfold empty; unfold make
+  constructor
+  case mp =>
+    intro h₁ ; subst h₁
+    simp
+    apply List.canonicalize_nil
+  case mpr =>
+    intro h₁ ; simp at h₁
+    apply (List.canonicalize_nil' id xs).mpr
+    assumption
+
 theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
   xs ≠ [] ↔ (Set.make xs).isEmpty = false
 := by
@@ -85,14 +102,57 @@ theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) 
   simp only [beq_eq_false_iff_ne, ne_eq, mk.injEq]
   apply List.canonicalize_not_nil
 
+theorem non_empty_iff_exists [DecidableEq α] (s : Set α) :
+  ¬ s.isEmpty ↔ ∃ a, a ∈ s
+:= by
+  simp [Set.isEmpty, Set.empty]
+  constructor
+  case mp =>
+    intro h₁
+    apply List.exists_mem_of_ne_nil s.elts
+    intro h₂
+    apply h₁ ; clear h₁
+    cases s
+    simp [Set.elts] at *
+    assumption
+  case mpr =>
+    intro h₁
+    replace ⟨a, h₁⟩ := h₁
+    intro h₂
+    rw [← in_list_iff_in_set] at h₁
+    cases s
+    simp at h₂
+    subst h₂
+    simp [elts] at h₁
+
+theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
+  s.isEmpty ↔ ¬ ∃ a, a ∈ s
+:= by
+  simp [Set.isEmpty, Set.empty]
+  constructor
+  case mp =>
+    intro h₁
+    subst h₁
+    apply List.not_mem_nil
+  case mpr =>
+    intro h₁
+    cases s
+    case mk xs =>
+      rw [mk.injEq]
+      rw [List.eq_nil_iff_forall_not_mem]
+      intro x
+      specialize h₁ x
+      rw [in_list_iff_in_mk]
+      assumption
+
 /-! ### make -/
 
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs
 := by
-  simp only [Membership.mem, make]
+  simp only [make, Membership.mem]
   have h₁ := List.canonicalize_equiv xs
-  simp [List.Equiv, List.subset_def] at h₁
+  simp only [List.Equiv, List.subset_def] at h₁
   have ⟨h₁, h₂⟩ := h₁
   constructor <;> intro h₃
   case mp => apply h₁ h₃
@@ -130,25 +190,20 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   case left =>
     intro a h₁
     rw [make_mem]
-    exact in_list_in_set a (make xs) h₁
+    rw [← in_list_iff_in_set]
+    exact h₁
   case right =>
     intro a h₁
-    apply in_set_in_list
+    rw [in_list_iff_in_set]
     rw [← make_mem]
     exact h₁
-
-theorem in_set_in_list' [LT α] [DecidableLT α] [StrictLT α] (v : α) (xs : List α) :
-  v ∈ (Set.make xs) → v ∈ xs
-:= by
-  rw [make_mem]
-  simp
 
 theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
   (Set.make xs).any f = xs.any f
 := by
-  simp [make, any]
+  simp only [make, any]
   have h₁ := List.canonicalize_equiv xs
-  simp [List.Equiv, List.subset_def] at h₁
+  simp only [List.Equiv, List.subset_def] at h₁
   have ⟨hl₁, hr₁⟩ := h₁
   cases h₃ : List.any xs f
   case false =>
@@ -158,9 +213,10 @@ theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool
     specialize hr₁ h₄
     simp [List.any_of_mem hr₁ h₅] at h₃
   case true =>
-    simp [List.any_eq_true] at *
+    simp only [List.any_eq_true] at *
     have ⟨x, h₃, h₄⟩ := h₃
-    exists x ; simp [h₄]
+    exists x
+    simp [h₄]
     apply hl₁ h₃
 
 theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :

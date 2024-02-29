@@ -362,8 +362,9 @@ theorem if_mapM'_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Decidabl
   simp [mapM'_ok_iff_f_ok_on_all_elements]
   intro h₁ y h₂
   apply h₁ y; clear h₁
-  apply Set.in_set_in_list' y list
-  exact Set.in_list_in_set y (Set.make list) h₂
+  rw [Set.make_mem]
+  rw [← Set.in_list_iff_in_set]
+  exact h₂
 
 theorem mapM'_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
   Except.isOk (List.mapM' Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
