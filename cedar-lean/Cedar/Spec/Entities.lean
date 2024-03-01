@@ -22,7 +22,6 @@ This file defines Cedar entities.
 
 namespace Cedar.Spec
 
-open Except
 open Cedar.Data
 
 ----- Definitions -----
@@ -35,7 +34,7 @@ abbrev Entities := Map EntityUID EntityData
 
 def Entities.ancestors (es : Entities) (uid : EntityUID) : Result (Set EntityUID) := do
   let d ← es.findOrErr uid .entityDoesNotExist
-  ok d.ancestors
+  .ok d.ancestors
 
 def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
@@ -44,7 +43,7 @@ def Entities.ancestorsOrEmpty (es : Entities) (uid : EntityUID) : Set EntityUID 
 
 def Entities.attrs (es : Entities) (uid : EntityUID) : Result (Map Attr Value) := do
   let d ← es.findOrErr uid .entityDoesNotExist
-  ok d.attrs
+  .ok d.attrs
 
 def Entities.attrsOrEmpty (es : Entities) (uid : EntityUID) : Map Attr Value :=
   match es.find? uid with

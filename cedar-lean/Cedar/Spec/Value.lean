@@ -23,7 +23,6 @@ namespace Cedar.Spec
 
 open Cedar.Data
 open Cedar.Spec.Ext
-open Except
 
 ----- Definitions -----
 
@@ -65,28 +64,28 @@ inductive Value where
 ----- Coercions -----
 
 def Value.asEntityUID : Value → Result EntityUID
-  | .prim (.entityUID uid) => ok uid
-  | _ => error Error.typeError
+  | .prim (.entityUID uid) => .ok uid
+  | _ => .error Error.typeError
 
 def Value.asSet : Value → Result (Data.Set Value)
-  | .set s => ok s
-  | _ => error Error.typeError
+  | .set s => .ok s
+  | _ => .error Error.typeError
 
 def Value.asBool : Value → Result Bool
-  | .prim (.bool b) => ok b
-  | _ => error Error.typeError
+  | .prim (.bool b) => .ok b
+  | _ => .error Error.typeError
 
 def Value.asString : Value →  Result String
-  | .prim (.string s) => ok s
-  | _ => error Error.typeError
+  | .prim (.string s) => .ok s
+  | _ => .error Error.typeError
 
 def Value.asInt : Value →  Result Int64
-  | .prim (.int i) => ok i
-  | _ => error Error.typeError
+  | .prim (.int i) => .ok i
+  | _ => .error Error.typeError
 
 def Result.as {α} (β) [Coe α (Result β)] : Result α → Result β
-  | ok v    => v
-  | error e => error e
+  | .ok v    => v
+  | .error e => .error e
 
 instance : Coe Bool Value where
   coe b := .prim (.bool b)
