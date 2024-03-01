@@ -25,7 +25,7 @@ use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use log::debug;
+use log::info;
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::collections::HashMap;
@@ -91,12 +91,16 @@ fn round_trip_ast(p: &StaticPolicy) -> StaticPolicy {
 fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
     // convert to json
     let est = est::Policy::from(ast::Policy::from(p));
+    info!("round_trip_json est: {est:?}");
     let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
+    info!("round_trip_json json: {}", json.to_string());
     // read back
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
+    info!("round_trip_json roundtripped est: {est:?}");
     let template = est
         .try_into_ast_template(None)
         .expect("failed to convert EST to AST");
+    info!("round_trip_json roundtripped template: {template:?}");
     template
         .try_into()
         .expect("failed to convert `Template` to `StaticPolicy`")
@@ -112,16 +116,20 @@ fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
             p, p, err
         )
     });
+    info!("round_trip_est est: {est:?}");
     let json = serde_json::to_value(est).unwrap_or_else(|err| {
         panic!(
             "Failed to convert EST to JSON: {:?}\nParse error: {:?}\n",
             p, err
         )
     });
+    info!("round_trip_est json: {}", json.to_string());
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
+    info!("round_trip_est roundtripped est: {est:?}");
     let template = est
         .try_into_ast_template(None)
         .expect("failed to convert EST to AST");
+    info!("round_trip_est roundtripped template: {template:?}");
     template
         .try_into()
         .expect("failed to convert `Template` to `StaticPolicy`")
@@ -129,7 +137,8 @@ fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
 
 // Check that round-tripping preserves syntactic equivalence.
 // Panic if the two policies are not the same, ignoring ids.
-fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
+fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy, target: &'static str) {
+    info!("Comparing after {target} roundtripping:\np1: {p1:?}\np2: {p2:?}\n");
     let (t1, _) = Template::link_static_policy(p1.clone());
     assert!(
         t1.slots().collect::<Vec<_>>().is_empty(),
@@ -194,17 +203,17 @@ fuzz_target!(|input: FuzzTargetInput| {
         return;
     }
 
-    debug!("Running on policy: {:?}", p);
+    info!("Running on policy: {:?}", p);
 
     // AST --> text --> CST --> AST
     let np = round_trip_ast(&p);
-    check_policy_equivalence(&p, &np);
+    check_policy_equivalence(&p, &np, "ast");
 
     // AST --> EST --> json --> EST --> AST
     let np = round_trip_json(p.clone());
-    check_policy_equivalence(&p, &np);
+    check_policy_equivalence(&p, &np, "json");
 
     // AST --> text --> CST --> EST --> json --> EST --> AST
     let np = round_trip_est(&p);
-    check_policy_equivalence(&p, &np);
+    check_policy_equivalence(&p, &np, "est");
 });
