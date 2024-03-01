@@ -93,7 +93,7 @@ fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
     let est = est::Policy::from(ast::Policy::from(p));
     info!("round_trip_json est: {est:?}");
     let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
-    info!("round_trip_json json: {}", json.to_string());
+    info!("round_trip_json json: {json}");
     // read back
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
     info!("round_trip_json roundtripped est: {est:?}");
@@ -123,7 +123,7 @@ fn round_trip_est(p: &StaticPolicy) -> StaticPolicy {
             p, err
         )
     });
-    info!("round_trip_est json: {}", json.to_string());
+    info!("round_trip_est json: {json}");
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
     info!("round_trip_est roundtripped est: {est:?}");
     let template = est
