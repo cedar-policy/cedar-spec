@@ -250,6 +250,21 @@ partial def exprToValue : Expr → ParseResult Value
 def jsonToValue (json : Lean.Json) : ParseResult Value :=
   jsonToExpr json >>= exprToValue
 
+def jsonToPartialValue (json : Lean.Json) : ParseResult PartialValue := do
+  let json ← getJsonField json "residual_kind"
+  let (tag, body) ← unpackJsonSum json
+  match tag with
+  | "value" => PartialValue.value <$> jsonToValue body
+  | "residual" => PartialValue.residual <$> jsonToExpr body
+  | tag => .error s!"Invalid tag for Partial Value: {tag}"
+
+
+def jsonToOptionalPartialValue (json : Lean.Json) : ParseResult (Option PartialValue) :=
+  match json with
+  | Lean.Json.null => .ok .none
+  | _ => .some <$> jsonToPartialValue json
+
+
 def jsonToOptionalValue (json : Lean.Json) : ParseResult (Option Value) :=
   match json with
   | Lean.Json.null => .ok .none

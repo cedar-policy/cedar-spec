@@ -149,9 +149,10 @@ def partialEvaluate (x : PartialExpr) (req : PartialRequest) (es : PartialEntiti
     | none     => ok (.residual (PartialExpr.record (avs.map fun (a, v) => (a, v.asPartialExpr))))
   | .call xfn xs         => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => partialEvaluate x₁ req es)
-    match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
-    | some vs => do
+    match (xfn, vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none)) with
+    | (.unknown, some [Value.prim (Prim.string s)]) => ok (.residual (.unknown s))
+    | (_, some vs) => do
       let val ← call xfn vs
       ok (.value val)
-    | none    => ok (.residual (PartialExpr.call xfn (vs.map PartialValue.asPartialExpr)))
+    | (_, none)    => ok (.residual (PartialExpr.call xfn (vs.map PartialValue.asPartialExpr)))
   | .unknown name        => ok (.residual (PartialExpr.unknown name))

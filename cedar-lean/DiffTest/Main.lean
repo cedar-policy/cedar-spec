@@ -84,6 +84,24 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
       .ok { data, duration }
   toString (Lean.toJson result)
 
+@[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
+  let result : ParseResult (Timed Bool) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"evaluateDRT: failed to parse input: {e}"
+    | .ok json => do
+      let expr ← getJsonField json "expr" >>= jsonToExpr
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      let expected ← getJsonField json "expected" >>= jsonToOptionalPartialValue
+      let result := runAndTime (λ () => partialEvaluate expr request entities)
+      let { data, duration } := unsafeBaseIO result
+      let data := match data, expected with
+        | .error _, .none => true
+        | .ok v₁, .some v₂ => v₁ == v₂
+        | _, _ => false
+      .ok { data, duration }
+  toString (Lean.toJson result)
+
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
 def evaluate (req : String) : ParseResult (Result Value) :=
   match Lean.Json.parse req with

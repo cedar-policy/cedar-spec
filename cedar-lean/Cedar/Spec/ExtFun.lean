@@ -38,6 +38,7 @@ inductive ExtFun where
   | isLoopback
   | isMulticast
   | isInRange
+  | unknown            ----- creates residuals
 
 def res {α} [Coe α Ext] : Option α → Result Value
   | some v => ok v
