@@ -21,13 +21,14 @@
 // we've already initialized.
 
 use core::panic;
+use log::debug;
 use std::collections::HashMap;
 use std::{env, ffi::CString};
 
 use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
 use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
-use cedar_policy_core::ast::{Expr, Value};
+use cedar_policy_core::ast::{Expr, PartialValue, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
@@ -382,10 +383,12 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             enable_extensions,
             "Lean defintional interpret expects extensions to be enabled"
         );
-        println!("Input expr: {expr}");
-        if let Some(ast::PartialValue::Residual(r)) = &expected {
-            println!("Expected residual: {r}");
-        }
+        debug!("Input expression: `{expr}`");
+        match expected.as_ref() {
+            Some(PartialValue::Residual(r)) => debug!("Wanted residual: `{r}`"),
+            Some(PartialValue::Value(v)) => debug!("Wanted value: `{v}`"),
+            None => debug!("Partial Evaluation should have errored"),
+        };
         self.partial_evaluate(request, entities, expr, expected)
     }
 

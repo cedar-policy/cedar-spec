@@ -118,8 +118,7 @@ pub fn run_partial_eval_test(
             return;
         }
         Err(_) => None,
-    }
-    .map(wrap_partial_value);
+    };
 
     let definitional_res = custom_impl.partial_interpret(
         &request,
