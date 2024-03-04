@@ -250,13 +250,28 @@ partial def exprToValue : Expr → ParseResult Value
 def jsonToValue (json : Lean.Json) : ParseResult Value :=
   jsonToExpr json >>= exprToValue
 
+def Pattern (a : Type) : Type := (String × (Lean.Json -> ParseResult a))
+
+def orElse {a : Type} (lhs : ParseResult a) (rhs : ParseResult a) : ParseResult a :=
+  match lhs with
+  | .ok a => Except.ok a
+  | .error _ => rhs
+
+def applyPattern {a : Type} (p: Pattern a) (json : Lean.Json) : ParseResult a := do
+  let (tag, f) := p
+  getJsonField json tag >>= f
+
+def applyPatterns {a : Type} (name : String) (patterns : List (Pattern a)) (json : Lean.Json) : ParseResult a :=
+  match patterns with
+  | pattern::rest => orElse (applyPattern pattern json) (applyPatterns name rest json)
+  | [] => .error s!"Invalid objecto for `{name}`"
+
 def jsonToPartialValue (json : Lean.Json) : ParseResult PartialValue := do
-  let json ← getJsonField json "residual_kind"
-  let (tag, body) ← unpackJsonSum json
-  match tag with
-  | "value" => PartialValue.value <$> jsonToValue body
-  | "residual" => PartialValue.residual <$> jsonToExpr body
-  | tag => .error s!"Invalid tag for Partial Value: {tag}"
+  let patterns := [
+    ("value", λ body => PartialValue.value <$> jsonToValue body),
+    ("residual", λ body => PartialValue.residual <$> jsonToExpr body),
+  ]
+  applyPatterns "jsonToPartialValue" patterns json
 
 
 def jsonToOptionalPartialValue (json : Lean.Json) : ParseResult (Option PartialValue) :=
