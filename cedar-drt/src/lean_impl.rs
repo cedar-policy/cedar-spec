@@ -382,9 +382,9 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             enable_extensions,
             "Lean defintional interpret expects extensions to be enabled"
         );
-        println!("Input expr: {:?}", expr);
+        println!("Input expr: {expr}");
         if let Some(ast::PartialValue::Residual(r)) = &expected {
-            println!("Expected residual: {:?}", r);
+            println!("Expected residual: {r}");
         }
         self.partial_evaluate(request, entities, expr, expected)
     }
