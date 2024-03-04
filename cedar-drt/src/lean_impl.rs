@@ -50,6 +50,7 @@ extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateDRT(req: *mut lean_object) -> *mut lean_object;
     fn evaluateDRT(req: *mut lean_object) -> *mut lean_object;
+    fn partialEvaluateDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_DiffTest_Main(builtin: i8, ob: *mut lean_object) -> *mut lean_object;
 }
 
@@ -219,6 +220,23 @@ impl LeanDefinitionalEngine {
         unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
     }
 
+    fn serialize_partial_evaluation_request(
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<&ValueOrResidual>,
+    ) -> *mut lean_object {
+        let request: String = serde_json::to_string(&PartialEvaluationRequest {
+            request,
+            entities,
+            expr,
+            expected,
+        })
+        .expect("Failed to serialize request, expression, or entities");
+        let cstring = CString::new(request).expect("`CString::new` failed");
+        unsafe { lean_mk_string(cstring.as_ptr() as *const u8) }
+    }
+
     fn deserialize_evaluation_response(response: *mut lean_object) -> TestResult<bool> {
         let response_string = lean_obj_to_string(response);
         let resp: EvaluationResponse =
@@ -229,6 +247,19 @@ impl LeanDefinitionalEngine {
                 TestResult::Success(resp.data)
             }
             EvaluationResponse::Error(err) => TestResult::Failure(err),
+        }
+    }
+
+    fn deserialize_partial_evaluation_response(response: *mut lean_object) -> TestResult<bool> {
+        let response_string = lean_obj_to_string(response);
+        let resp: EvaluationResponse =
+            serde_json::from_str(&response_string).expect("Could not deserialize json");
+        match resp {
+            ResultDef::Ok(resp) => {
+                info!("{}{}", LEAN_EVAL_MSG, resp.duration);
+                TestResult::Success(resp.data)
+            }
+            ResultDef::Error(err) => TestResult::Failure(err),
         }
     }
 
@@ -246,6 +277,23 @@ impl LeanDefinitionalEngine {
             Self::serialize_evaluation_request(request, entities, expr, expected_as_expr.as_ref());
         let response = unsafe { evaluateDRT(req) };
         Self::deserialize_evaluation_response(response)
+    }
+
+    pub fn partial_evaluate(
+        &self,
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        expected: Option<ast::PartialValue>,
+    ) -> TestResult<bool> {
+        let expected = expected.map(|pv| match pv {
+            ast::PartialValue::Value(v) => ValueOrResidual::Value(v.into()),
+            ast::PartialValue::Residual(r) => ValueOrResidual::Residual(r),
+        });
+        let req =
+            Self::serialize_partial_evaluation_request(request, entities, expr, expected.as_ref());
+        let response = unsafe { partialEvaluateDRT(req) };
+        Self::deserialize_partial_evaluation_response(response)
     }
 
     fn serialize_validation_request(
@@ -320,6 +368,25 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             "Lean definitional interpreter expects extensions to be enabled"
         );
         self.evaluate(request, entities, expr, expected)
+    }
+
+    fn partial_interpret(
+        &self,
+        request: &ast::Request,
+        entities: &Entities,
+        expr: &Expr,
+        enable_extensions: bool,
+        expected: Option<ast::PartialValue>,
+    ) -> TestResult<bool> {
+        assert!(
+            enable_extensions,
+            "Lean defintional interpret expects extensions to be enabled"
+        );
+        println!("Input expr: {:?}", expr);
+        if let Some(ast::PartialValue::Residual(r)) = &expected {
+            println!("Expected residual: {:?}", r);
+        }
+        self.partial_evaluate(request, entities, expr, expected)
     }
 
     fn validate(

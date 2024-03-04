@@ -18,7 +18,7 @@
 //! implementation of Cedar to use during testing.
 
 pub use cedar_policy::frontend::is_authorized::InterfaceResponse;
-use cedar_policy_core::ast::{Expr, PolicySet, Request, Value};
+use cedar_policy_core::ast::{Expr, PartialValue, PolicySet, Request, Value};
 use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::evaluator::Evaluator;
@@ -104,6 +104,15 @@ pub trait CedarTestImplementation {
         expr: &Expr,
         enable_extensions: bool,
         expected: Option<Value>,
+    ) -> TestResult<bool>;
+
+    fn partial_interpret(
+        &self,
+        request: &Request,
+        entities: &Entities,
+        expr: &Expr,
+        enable_extensions: bool,
+        expected: Option<PartialValue>,
     ) -> TestResult<bool>;
 
     /// Custom validator entry point.
@@ -230,5 +239,23 @@ impl CedarTestImplementation for RustEngine {
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::PolicyIds
+    }
+
+    fn partial_interpret(
+        &self,
+        request: &Request,
+        entities: &Entities,
+        expr: &Expr,
+        enable_extensions: bool,
+        expected: Option<PartialValue>,
+    ) -> TestResult<bool> {
+        let exts = if enable_extensions {
+            Extensions::all_available()
+        } else {
+            Extensions::none()
+        };
+        let eval = Evaluator::new(request.clone(), entities, &exts);
+        let result = eval.partial_interpret(expr, &HashMap::default());
+        TestResult::Success(result.ok() == expected)
     }
 }

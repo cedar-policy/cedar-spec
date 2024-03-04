@@ -35,6 +35,22 @@ pub struct EvaluationRequest<'a> {
 }
 
 #[derive(Debug, Serialize)]
+pub struct PartialEvaluationRequest<'a> {
+    pub request: &'a ast::Request,
+    pub entities: &'a Entities,
+    pub expr: &'a ast::Expr,
+    pub expected: Option<&'a ValueOrResidual>,
+}
+
+#[derive(Debug, Serialize)]
+pub enum ValueOrResidual {
+    #[serde(rename = "value")]
+    Value(ast::Expr),
+    #[serde(rename = "residual")]
+    Residual(ast::Expr),
+}
+
+#[derive(Debug, Serialize)]
 pub struct ValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
     pub policies: &'a ast::PolicySet,

@@ -136,7 +136,8 @@ def jsonToExtFun (json : Lean.Json) : ParseResult ExtFun := do
   | "isLoopback" => .ok .isLoopback
   | "isMulticast" => .ok .isMulticast
   | "isInRange" => .ok .isInRange
-  | xfn => .error s!"jsonToExtFun: unknown extension function {xfn}"
+  | "unknown" => .ok .unknown
+  | xfn => .error s!"jsonToExtFun: unknown extension function `{xfn}`"
 
 /- mapM functions for lists of key-value pairs -/
 def mapMValues [Monad m] (l : List (α × β)) (f : β → m γ) : m (List (α × γ)) :=

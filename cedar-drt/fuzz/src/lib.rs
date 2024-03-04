@@ -26,7 +26,8 @@ pub use cedar_drt::cedar_test_impl::{
 };
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::PolicyId;
-use cedar_policy_core::ast;
+use cedar_policy_core::ast::Expr;
+use cedar_policy_core::ast::{self, PartialValue};
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
@@ -34,6 +35,7 @@ use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 /// Times for cedar-policy authorization and validation.
@@ -95,6 +97,65 @@ pub fn run_eval_test(
             )
         }
     }
+}
+
+pub fn run_partial_eval_test(
+    custom_impl: &impl CedarTestImplementation,
+    request: ast::Request,
+    expr: &ast::Expr,
+    entities: &Entities,
+    enable_extensions: bool,
+) {
+    let exts = if enable_extensions {
+        Extensions::all_available()
+    } else {
+        Extensions::none()
+    };
+    let eval = Evaluator::new(request.clone(), entities, &exts);
+    let expected = match eval.partial_interpret(expr, &HashMap::new()) {
+        Ok(pv) => Some(pv),
+        Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
+            return;
+        }
+        Err(_) => None,
+    }
+    .map(wrap_partial_value);
+
+    let definitional_res = custom_impl.partial_interpret(
+        &request,
+        entities,
+        expr,
+        enable_extensions,
+        expected.clone(),
+    );
+    match definitional_res {
+        TestResult::Success(succeeded) => assert!(succeeded, "Test failed"),
+        TestResult::Failure(err) => {
+            panic!("Unexpected error: {err}");
+        }
+    }
+}
+
+fn wrap_partial_value(pv: PartialValue) -> PartialValue {
+    match pv {
+        PartialValue::Residual(r) => PartialValue::Residual(wrap_residual(r)),
+        PartialValue::Value(v) => PartialValue::Value(v),
+    }
+}
+
+fn wrap_residual(r: Expr) -> Expr {
+    let unknown_fn_name: ast::Name = "unknown".parse().unwrap();
+    let mapping = r
+        .unknowns()
+        .map(|u| {
+            (
+                u.name.clone(),
+                Expr::call_extension_fn(unknown_fn_name.clone(), vec![Expr::val(u.name.clone())]),
+            )
+        })
+        .collect();
+
+    r.substitute_exprs(&mapping).unwrap()
 }
 
 /// Compare the behavior of the authorizer in `cedar-policy` against a custom Cedar

@@ -68,6 +68,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "partial-eval-drt"
+path = "fuzz_targets/partial-eval-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false
