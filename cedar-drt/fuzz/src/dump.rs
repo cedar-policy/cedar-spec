@@ -21,6 +21,7 @@ use cedar_policy_core::ast::{
 };
 use cedar_policy_core::authorizer::Response;
 use cedar_policy_core::entities::{Entities, TypeAndId};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
@@ -111,7 +112,7 @@ pub fn dump(
                         q.context()
                             .expect("`dump` does not support requests missing context"),
                     ),
-                    enable_request_validation: true,
+                    enable_request_validation: passes_request_validation(schema.clone(), &q),
                     decision: a.decision,
                     reason: cedar_policy::Response::from(a.clone())
                         .diagnostics()
@@ -147,6 +148,23 @@ fn passes_validation(schema: SchemaFragment, policies: &PolicySet) -> bool {
         validator
             .validate(policies, ValidationMode::default())
             .validation_passed()
+    } else {
+        false
+    }
+}
+
+/// Check whether a request passes validation
+fn passes_request_validation(schema: SchemaFragment, request: &Request) -> bool {
+    if let Ok(schema) = ValidatorSchema::try_from(schema) {
+        Request::new_with_unknowns(
+            request.principal().clone(),
+            request.action().clone(),
+            request.resource().clone(),
+            request.context().cloned(),
+            Some(&schema),
+            Extensions::all_available(),
+        )
+        .is_ok()
     } else {
         false
     }
