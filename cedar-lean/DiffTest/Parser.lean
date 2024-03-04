@@ -155,6 +155,80 @@ def mapMKeysAndValues [Monad m] (l : List (α × β)) (f : α → m γ) (g : β 
 Defined as partial to avoid writing the proof of termination, which isn't required
 since we don't prove correctness of the parser.
 -/
+partial def jsonToPartialExpr (json : Lean.Json) : ParseResult PartialExpr := do
+  let json ← getJsonField json "expr_kind"
+  let (tag, body) ← unpackJsonSum json
+  match tag with
+  | "Lit" => do
+    let prim ← jsonToPrim body
+    .ok (.lit prim)
+  | "Var" => do
+    let var ← jsonToVar body
+    .ok (.var var)
+  | "And" => do
+    let lhs ← getJsonField body "left" >>= jsonToPartialExpr
+    let rhs ← getJsonField body "right" >>= jsonToPartialExpr
+    .ok (.and lhs rhs)
+  | "Or" => do
+    let lhs ← getJsonField body "left" >>= jsonToPartialExpr
+    let rhs ← getJsonField body "right" >>= jsonToPartialExpr
+    .ok (.or lhs rhs)
+  | "If" => do
+    let i ← getJsonField body "test_expr" >>= jsonToPartialExpr
+    let t ← getJsonField body "then_expr" >>= jsonToPartialExpr
+    let e ← getJsonField body "else_expr" >>= jsonToPartialExpr
+    .ok (.ite i t e)
+  | "UnaryApp" => do
+    let op ← getJsonField body "op" >>= jsonToUnaryOp
+    let arg ← getJsonField body "arg" >>= jsonToPartialExpr
+    .ok (.unaryApp op arg)
+  | "MulByConst" => do
+    let c ← getJsonField body "constant" >>= jsonToInt64
+    let arg ← getJsonField body "arg" >>= jsonToPartialExpr
+    .ok (.unaryApp (.mulBy c) arg)
+  | "Like" => do
+    let pat ← getJsonField body "pattern" >>= jsonToPattern
+    let expr ← getJsonField body "expr" >>= jsonToPartialExpr
+    .ok (.unaryApp (.like pat) expr)
+  | "Is" => do
+    let ety ← getJsonField body "entity_type" >>= jsonToName
+    let expr ← getJsonField body "expr" >>= jsonToPartialExpr
+    .ok (.unaryApp (.is ety) expr)
+  | "BinaryApp" => do
+    let op ← getJsonField body "op" >>= jsonToBinaryOp
+    let arg1 ← getJsonField body "arg1" >>= jsonToPartialExpr
+    let arg2 ← getJsonField body "arg2" >>= jsonToPartialExpr
+    .ok (.binaryApp op arg1 arg2)
+  | "GetAttr" => do
+    let e ← getJsonField body "expr" >>= jsonToPartialExpr
+    let attr ← getJsonField body "attr" >>= jsonToString
+    .ok (.getAttr e attr)
+  | "HasAttr" => do
+    let e ← getJsonField body "expr" >>= jsonToPartialExpr
+    let attr ← getJsonField body "attr" >>= jsonToString
+    .ok (.hasAttr e attr)
+  | "Record" => do
+    let kvs_json ← jsonObjToKVList body
+    let kvs ← mapMValues kvs_json jsonToPartialExpr
+    .ok (.record kvs)
+  | "Set" => do
+    let arr_json ← jsonToArray body
+    let arr ← List.mapM jsonToPartialExpr arr_json.toList
+    .ok (.set arr)
+  | "ExtensionFunctionApp" => do
+    let fn ← getJsonField body "fn_name" >>= jsonToExtFun
+    let args_json ← getJsonField body "args" >>= jsonToArray
+    let args ← List.mapM jsonToPartialExpr args_json.toList
+    .ok (.call fn args)
+  | "Unknown" => do
+    let name ← getJsonField body "name" >>= jsonToString
+    .ok (.unknown name)
+  | tag => .error s!"jsonToPartialExpr: unknown tag {tag}"
+
+/-
+Defined as partial to avoid writing the proof of termination, which isn't required
+since we don't prove correctness of the parser.
+-/
 partial def jsonToExpr (json : Lean.Json) : ParseResult Expr := do
   let json ← getJsonField json "expr_kind"
   let (tag, body) ← unpackJsonSum json
@@ -270,7 +344,7 @@ def applyPatterns {a : Type} (name : String) (patterns : List (Pattern a)) (json
 def jsonToPartialValue (json : Lean.Json) : ParseResult PartialValue := do
   let patterns := [
     ("value", λ body => PartialValue.value <$> jsonToValue body),
-    ("residual", λ body => PartialValue.residual <$> jsonToExpr body),
+    ("residual", λ body => PartialValue.residual <$> jsonToPartialExpr body),
   ]
   applyPatterns "jsonToPartialValue" patterns json
 

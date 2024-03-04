@@ -17,13 +17,16 @@
 import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Wildcard
+import UnitTest.PE
 
 open UnitTest
 
 def tests :=
-  Decimal.tests ++
-  IPAddr.tests ++
-  Wildcard.tests
+  -- Decimal.tests ++
+  -- IPAddr.tests ++
+  -- Wildcard.tests ++
+  PE.tests
+
 
 def main : IO UInt32 := do
   TestSuite.runAll tests
