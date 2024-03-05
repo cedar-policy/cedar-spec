@@ -65,7 +65,7 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
         match (lhs.applies_to, rhs.applies_to) {
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
-                if empty_target(&rhs) || empty_target(&lhs) || rhs == lhs {
+                if rhs == lhs {
                     Ok(())
                 } else {
                     Err(format!(
@@ -74,7 +74,8 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
                     ))
                 }
             }
-            (Some(spec), None) | (None, Some(spec)) if empty_target(&spec) => Ok(()),
+            // if one of them has `appliesTo` being null, then the other must have both principal and resource types unspecified
+            (Some(spec), None) | (None, Some(spec)) if is_both_unspecified(&spec) => Ok(()),
             (Some(_), None) => Err(format!(
                 "Mismatched applies to in `{name}`, lhs was `Some`, `rhs` was `None`"
             )),
@@ -85,14 +86,6 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
     }
 }
 
-fn empty_target(spec: &ApplySpec) -> bool {
-    spec.resource_types
-        .as_ref()
-        .map(|v| v.is_empty())
-        .unwrap_or(false)
-        || spec
-            .principal_types
-            .as_ref()
-            .map(|v| v.is_empty())
-            .unwrap_or(false)
+fn is_both_unspecified(spec: &ApplySpec) -> bool {
+    spec.resource_types.is_none() && spec.principal_types.is_none()
 }
