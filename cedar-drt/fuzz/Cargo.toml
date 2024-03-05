@@ -74,6 +74,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "partial-auth-drt"
+path = "fuzz_targets/partial-auth-drt.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false
