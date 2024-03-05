@@ -54,8 +54,18 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
   repeat (any_goals (apply And.intro))
   case _ =>
     simp [isAuthorized, PartialResponse.decision]
-    rw [knownForbids_empty_iff_no_satisfied_forbids_on_concrete]
-    sorry
+    simp only [knownForbids_eq_forbids_on_concrete]
+    simp only [forbids_empty_iff_no_satisfied_forbids_on_concrete]
+    simp only [forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete]
+    cases h₁ : (satisfiedPolicies .forbid policies req entities).isEmpty
+    case false => simp
+    case true =>
+      simp [h₁]
+      simp only [permits_empty_iff_no_satisfied_permits_on_concrete]
+      simp only [knownPermits_eq_permits_on_concrete]
+      cases h₂ : (satisfiedPolicies .permit policies req entities).isEmpty
+      case false => simp [h₂, permits_empty_iff_no_satisfied_permits_on_concrete]
+      case true => simp [h₁, h₂, permits_nonempty_iff_satisfied_permits_nonempty_on_concrete]
   case _ =>
     -- use overapproximate_determining_iff_determining_after_subst
     sorry

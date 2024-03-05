@@ -44,8 +44,8 @@ open Except
 /--
   helper lemma
 -/
-theorem knownForbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).knownForbids.isEmpty ↔
+theorem forbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).forbids.isEmpty ↔
   (satisfiedPolicies .forbid policies req entities).isEmpty
 := by
   sorry
@@ -53,8 +53,8 @@ theorem knownForbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Poli
 /--
   corollary of the above
 -/
-theorem knownForbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).knownForbids.isEmpty = false ↔
+theorem forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).forbids.isEmpty = false ↔
   (satisfiedPolicies .forbid policies req entities).isEmpty = false
 := by
   constructor
@@ -62,14 +62,60 @@ theorem knownForbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {polici
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [knownForbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    rw [forbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
     assumption
   case mpr =>
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [← knownForbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    rw [← forbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
     assumption
+
+/--
+  helper lemma
+-/
+theorem permits_empty_iff_no_satisfied_permits_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).permits.isEmpty ↔
+  (satisfiedPolicies .permit policies req entities).isEmpty
+:= by
+  sorry
+
+/--
+  helper lemma
+-/
+theorem permits_nonempty_iff_satisfied_permits_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).permits.isEmpty = false ↔
+  (satisfiedPolicies .permit policies req entities).isEmpty = false
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [permits_empty_iff_no_satisfied_permits_on_concrete] at h₁
+    assumption
+  case mpr =>
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [← permits_empty_iff_no_satisfied_permits_on_concrete] at h₁
+    assumption
+
+/--
+  helper lemma
+-/
+theorem knownForbids_eq_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).knownForbids = (isAuthorizedPartial req entities policies).forbids
+:= by
+  sorry
+
+/--
+  helper lemma
+-/
+theorem knownPermits_eq_permits_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).knownPermits = (isAuthorizedPartial req entities policies).permits
+:= by
+  sorry
 
 /--
   helper lemma
