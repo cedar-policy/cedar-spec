@@ -100,7 +100,7 @@ inductive PartialDecision where
   | deny -- definitely Deny, for any substitution of the unknowns
   | unknown -- Allow and Deny are both possible, depending on substitution of the unknowns
 
-deriving instance Repr, DecidableEq for PartialDecision
+deriving instance Repr, DecidableEq, Lean.ToJson for PartialDecision
 
 def PartialResponse.decision (resp : PartialResponse) : PartialDecision :=
   if ¬ resp.knownForbids.isEmpty

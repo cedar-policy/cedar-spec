@@ -55,6 +55,18 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
       .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
+@[export partialAuthDRT] unsafe def isPartialAuthDRT (req : String) : String :=
+  let result : ParseResult (Timed PartialDecision) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"evaluateDRT : {e}"
+    | .ok json => do
+      let request ← getJsonField json "request" >>= jsonToRequest
+      let entities ← getJsonField json "entities" >>= jsonToEntities
+      let policies ← getJsonField json "policies" >>= jsonToPolicies
+      let result := runAndTime (λ () => (isAuthorizedPartial request entities policies).decision)
+      .ok (unsafeBaseIO result)
+  toString (Lean.toJson result)
+
 @[export validateDRT] unsafe def validateDRT (req : String) : String :=
   let result : ParseResult (Timed ValidationResult) :=
     match Lean.Json.parse req with
@@ -101,6 +113,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
         | _, _ => false
       .ok { data, duration }
   toString (Lean.toJson result)
+
 
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
 def evaluate (req : String) : ParseResult (Result Value) :=
