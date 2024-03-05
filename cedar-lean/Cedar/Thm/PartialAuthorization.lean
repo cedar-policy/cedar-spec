@@ -49,16 +49,22 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
   presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
   Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
 := by
-  unfold isAuthorizedPartial isAuthorized
   intro h₁ h₂
+  subst h₁ h₂
   repeat (any_goals (apply And.intro))
   case _ =>
-    subst h₁ h₂
-    simp [PartialResponse.decision]
+    simp [isAuthorized, PartialResponse.decision]
+    rw [knownForbids_empty_iff_no_satisfied_forbids_on_concrete]
     sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+  case _ =>
+    -- use overapproximate_determining_iff_determining_after_subst
+    sorry
+  case _ =>
+    -- use underapproximate_determining_iff_determining_after_subst
+    sorry
+  case _ =>
+    -- the RHS of the goal should simplify to `errorPolicies policies req entities`, but `simp` doesn't accomplish that by itself
+    sorry
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a
@@ -68,7 +74,16 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Re
   (isAuthorizedPartial req entities policies).decision ≠ .unknown
 := by
   intro h₁
-  sorry
+  have h₂ := partial_authz_eqv_authz_on_concrete (policies := policies) (req := req) (entities := entities) (presp := isAuthorizedPartial req entities policies) (resp := isAuthorized req entities policies)
+  simp at h₂
+  replace ⟨h₂, h₃, h₄, h₅⟩ := h₂ ; clear h₃ h₄ h₅
+  cases h₃ : (isAuthorized req entities policies).decision
+  case allow =>
+    simp [h₃] at h₂
+    simp [h₂] at h₁
+  case deny =>
+    simp [h₃] at h₂
+    simp [h₂] at h₁
 
 /--
   Partial-authorizing with any partial inputs, then performing any (valid)

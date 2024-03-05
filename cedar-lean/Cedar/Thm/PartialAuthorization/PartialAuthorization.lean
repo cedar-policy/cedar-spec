@@ -44,6 +44,36 @@ open Except
 /--
   helper lemma
 -/
+theorem knownForbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).knownForbids.isEmpty ↔
+  (satisfiedPolicies .forbid policies req entities).isEmpty
+:= by
+  sorry
+
+/--
+  corollary of the above
+-/
+theorem knownForbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).knownForbids.isEmpty = false ↔
+  (satisfiedPolicies .forbid policies req entities).isEmpty = false
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [knownForbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    assumption
+  case mpr =>
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [← knownForbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    assumption
+
+/--
+  helper lemma
+-/
 theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
   r' ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
@@ -210,13 +240,22 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
       replace ⟨_, _, h₂⟩ := h₂
       rw [Value.prim_prim] at h₂
       subst h₂
-      -- h₃ and h₅ are contradictory, need to show it
-      sorry
+      have h₆ := subs_preserves_evaluation_to_literal h₅ h₁
+      rw [subs_expr_id] at h₆
+      simp [h₆] at h₃
     case _ h₄ =>
       replace ⟨_, _, h₂⟩ := h₂
       subst h₂
-      -- h₃ and h₄ are contradictory, need to show it
-      sorry
+      have h₅ := residuals_contain_unknowns h₄
+      unfold PartialExpr.containsUnknown at h₅
+      rw [List.any_eq_true] at h₅
+      replace ⟨x, h₅⟩ := h₅
+      unfold PartialExpr.subexpressions at h₅
+      rw [List.mem_cons] at h₅
+      simp only [List.not_mem_nil, or_false] at h₅
+      replace ⟨h₅, h₆⟩ := h₅
+      subst h₅
+      simp [PartialExpr.isUnknown] at h₆
   case h_2 h₃ | h_3 h₃ =>
     -- after subst, partial eval of the policy produced a .value (other than False) or .residual
     split at h₂ <;> simp at h₂
