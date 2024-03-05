@@ -166,7 +166,6 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 #[test]
 // Currently, running this in conjunction with existing tests will cause an error (#227).
 // In order see the printed output from this test, run `cargo test -- --ignored --nocapture`.
-#[ignore]
 fn run_all_tests() {
     let rust_impl = RustEngine::new();
     let lean_impl = LeanDefinitionalEngine::new();
