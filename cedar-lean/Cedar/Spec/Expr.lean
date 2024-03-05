@@ -15,7 +15,9 @@
 -/
 
 import Cedar.Data
+import Cedar.Spec.Ext
 import Cedar.Spec.ExtFun
+import Cedar.Spec.Value
 import Cedar.Spec.Wildcard
 
 /-! This file defines abstract syntax for Cedar expressions. -/
@@ -61,8 +63,17 @@ inductive Expr where
   | getAttr (expr : Expr) (attr : Attr)
   | hasAttr (expr : Expr) (attr : Attr)
   | set (ls : List Expr)
-  | record (map : List (Prod Attr Expr))
+  | record (map : List (Attr × Expr))
   | call (xfn : ExtFun) (args : List Expr)
+
+def Value.asExpr (v : Value) : Expr :=
+  match v with
+  | .prim p => .lit p
+  | .set xs => .set (xs.elts.map Value.asExpr)
+  | .record attrs => .record (attrs.kvs.map λ (k, v) => (k, v.asExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+decreasing_by sorry
 
 ----- Derivations -----
 

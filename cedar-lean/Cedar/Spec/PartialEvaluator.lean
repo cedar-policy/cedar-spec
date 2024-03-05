@@ -50,9 +50,9 @@ def partialApply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : PartialEntities
   | .mem, .prim (.entityUID uid₁), .set (vs)               => partialInₛ uid₁ vs es >>= fun x => ok (.value x)
   | _, _, _                                                => error .typeError
 
-def partialAttrsOf (v : Value) (lookup : EntityUID → Result (Map Attr PartialValue)) : Result (Map Attr PartialValue) :=
+def partialAttrsOf (v : Value) (lookup : EntityUID → Result (Map Attr RestrictedPartialValue)) : Result (Map Attr RestrictedPartialValue) :=
   match v with
-  | .record r              => ok (r.mapOnValues PartialValue.value)
+  | .record r              => ok (r.mapOnValues RestrictedPartialValue.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => error typeError
 
@@ -60,7 +60,7 @@ def partialHasAttr (v : Value) (a : Attr) (es : PartialEntities) : Result Value 
   let r ← partialAttrsOf v (fun uid => ok (es.attrsOrEmpty uid))
   ok (r.contains a)
 
-def partialGetAttr (v : Value) (a : Attr) (es : PartialEntities) : Result PartialValue := do
+def partialGetAttr (v : Value) (a : Attr) (es : PartialEntities) : Result RestrictedPartialValue := do
   let r ← partialAttrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
@@ -135,7 +135,7 @@ def partialEvaluate (x : PartialExpr) (req : PartialRequest) (es : PartialEntiti
   | .getAttr x₁ a        => do
     let pval₁ ← partialEvaluate x₁ req es
     match pval₁ with
-    | .value v₁ => partialGetAttr v₁ a es
+    | .value v₁ => (partialGetAttr v₁ a es).map RestrictedPartialValue.asPartialValue
     | .residual r => ok (.residual (PartialExpr.getAttr r a)) -- TODO more precise: pval₁ will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
   | .set xs              => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => partialEvaluate x₁ req es)
@@ -151,7 +151,7 @@ def partialEvaluate (x : PartialExpr) (req : PartialRequest) (es : PartialEntiti
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => partialEvaluate x₁ req es)
     match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
     | some vs => do
-      let val ← call xfn vs
+      let val ← ExtFun.call xfn vs
       ok (.value val)
     | none    => ok (.residual (PartialExpr.call xfn (vs.map PartialValue.asPartialExpr)))
   | .unknown name        => ok (.residual (PartialExpr.unknown name))

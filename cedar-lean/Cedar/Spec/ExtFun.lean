@@ -43,7 +43,7 @@ def res {α} [Coe α Ext] : Option α → Result Value
   | some v => ok v
   | none   => error .extensionError
 
-def call : ExtFun → List Value → Result Value
+def ExtFun.call : ExtFun → List Value → Result Value
   | .decimal, [.prim (.string s)]            => res (Decimal.decimal s)
   | .lessThan,
     [.ext (.decimal d₁), .ext (.decimal d₂)] => ok (d₁ < d₂ : Bool)

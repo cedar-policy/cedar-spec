@@ -43,16 +43,16 @@ structure PartialRequest where
   principal : UidOrUnknown
   action : UidOrUnknown
   resource : UidOrUnknown
-  context : Map Attr PartialValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
+  context : Map Attr RestrictedPartialValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
 
-deriving instance Repr, DecidableEq, Inhabited for PartialRequest
+deriving instance Inhabited for PartialRequest
 
 def Request.asPartialRequest (req : Request) : PartialRequest :=
   {
     principal := .known req.principal,
     action := .known req.action,
     resource := .known req.resource,
-    context := req.context.mapOnValues PartialValue.value,
+    context := req.context.mapOnValues RestrictedPartialValue.value,
   }
 
 instance : Coe Request PartialRequest where
@@ -66,7 +66,7 @@ instance : Coe Request PartialRequest where
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String PartialValue) : Option UidOrUnknown :=
+def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String RestrictedPartialValue) : Option UidOrUnknown :=
   match u with
   | .known uid => some (.known uid)
   | .unknown name => match subsmap.find? name with
@@ -74,6 +74,22 @@ def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String PartialValue) : 
     | some (.residual (.unknown name')) => some (.unknown name') -- substituting an unknown with another unknown, we'll allow it
     | none => some u -- no substitution available, return `u` unchanged
     | _ => none -- substitution is not for a literal UID or literal unknown. Not valid, return none
+
+/--
+  Given a map of unknown-name to value, substitute the unknown in `UidOrUnknown`,
+  or return the known EntityUID.
+
+  Returns `none` if the `UidOrUnknown` is an unknown without a mapping in
+  `subsmap`, or if the substitution is invalid -- e.g., if trying to substitute
+  a non-EntityUID into `UidOrUnknown`.
+-/
+def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Value) : Option EntityUID :=
+  match u with
+  | .known uid => some uid
+  | .unknown name => match subsmap.find? name with
+    | some (.prim (.entityUID uid)) => some uid
+    | none => none -- no substitution available
+    | _ => none -- substitution is not for a literal UID. Not valid, return none
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -84,12 +100,39 @@ def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String PartialValue) : 
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def PartialRequest.subst (req : PartialRequest) (subsmap : Map String PartialValue) : Option PartialRequest :=
+def PartialRequest.subst (req : PartialRequest) (subsmap : Map String RestrictedPartialValue) : Option PartialRequest :=
   do
     let principal ← req.principal.subst subsmap
     let action ← req.action.subst subsmap
     let resource ← req.resource.subst subsmap
-    let context := req.context.mapOnValues (PartialValue.subst · subsmap)
+    let context := req.context.mapOnValues (RestrictedPartialValue.subst · subsmap)
     some { principal, action, resource, context }
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing a Request.
+  This means that `subsmap` must contain mappings for all the unknowns.
+
+  Returns `none` if there are unknowns in the `PartialRequest` that don't have
+  mappings in `subsmap`, or if the substitution is invalid (e.g., if trying to
+  substitute a non-EntityUID into `UidOrUnknown`).
+-/
+def PartialRequest.fullSubst (req : PartialRequest) (subsmap : Map String Value) : Option Request :=
+  do
+    let principal ← req.principal.fullSubst subsmap
+    let action ← req.action.fullSubst subsmap
+    let resource ← req.resource.fullSubst subsmap
+    let context ← req.context.mapMOnValues (RestrictedPartialValue.fullSubst · subsmap)
+    some { principal, action, resource, context }
+
+/--
+  fullSubst and subst are equivalent in the cases where fullSubst returns some
+-/
+def PartialRequest.fullSubst_subst {preq : PartialRequest} {subsmap : Map String Value} {req : Request} :
+  preq.fullSubst subsmap = some req →
+  preq.subst (subsmap.mapOnValues RestrictedPartialValue.value) = req.asPartialRequest
+:= by
+  sorry
+
 
 end Cedar.Spec

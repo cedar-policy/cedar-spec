@@ -44,7 +44,7 @@ open Except
 /--
   helper lemma
 -/
-theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {r' : Residual} :
+theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
   r' ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
   ∃ r ∈ (isAuthorizedPartial req entities policies).residuals, r.id = r'.id ∧ (r.effect = r'.effect ∨ r'.effect = none)
@@ -190,7 +190,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
 /--
   helper lemma
 -/
-theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} {effect : Effect} :
+theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} {effect : Effect} :
   req.subst subsmap = some req' →
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req entities policies).residuals →
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals
@@ -258,7 +258,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
 /--
   helper lemma
 -/
-theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} :
+theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownPermits →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits
@@ -278,7 +278,7 @@ theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialReq
 /--
   helper lemma
 -/
-theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} {pid : PolicyID} :
+theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids
@@ -298,7 +298,7 @@ theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialReq
 /--
   helper lemma
 -/
-theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).permits.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
@@ -326,7 +326,7 @@ theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRe
 /--
   helper lemma
 -/
-theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).forbids.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).forbids.isEmpty
@@ -354,7 +354,7 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
 /--
   helper lemma
 -/
-theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
   ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
@@ -368,7 +368,7 @@ theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : P
 /--
   helper lemma
 -/
-theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
@@ -413,7 +413,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
 /--
   helper lemma
 -/
-theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).decision = .deny
@@ -428,7 +428,7 @@ theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' 
 /--
   helper lemma
 -/
-theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
@@ -450,7 +450,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_b
 /--
   helper lemma
 -/
-theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).knownForbids.isEmpty →

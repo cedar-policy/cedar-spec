@@ -37,12 +37,12 @@ Currently, this does not allow any unknowns about ancestor information.
 All ancestor information must be fully concrete.
 -/
 structure PartialEntityData where
-  attrs : Map Attr PartialValue
+  attrs : Map Attr RestrictedPartialValue
   ancestors : Set EntityUID
 
 def EntityData.asPartialEntityData (d : EntityData) : PartialEntityData :=
   {
-    attrs := d.attrs.mapOnValues PartialValue.value,
+    attrs := d.attrs.mapOnValues RestrictedPartialValue.value,
     ancestors := d.ancestors,
   }
 
@@ -63,16 +63,16 @@ def PartialEntities.ancestorsOrEmpty (es : PartialEntities) (uid : EntityUID) : 
   | some d => d.ancestors
   | none   => Set.empty
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Result (Map Attr PartialValue) := do
+def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Result (Map Attr RestrictedPartialValue) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   ok d.attrs
 
-def PartialEntities.attrsOrEmpty (es : PartialEntities) (uid : EntityUID) : Map Attr PartialValue :=
+def PartialEntities.attrsOrEmpty (es : PartialEntities) (uid : EntityUID) : Map Attr RestrictedPartialValue :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
 
-deriving instance Repr, DecidableEq, Inhabited for PartialEntityData
+deriving instance Inhabited for PartialEntityData
 
 def Entities.asPartialEntities (es : Entities) : PartialEntities :=
   es.mapOnValues EntityData.asPartialEntityData
@@ -86,9 +86,22 @@ instance : Coe Entities PartialEntities where
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `PartialEntityData` will still contain some unknowns.
 -/
-def PartialEntityData.subst (d : PartialEntityData) (subsmap : Map String PartialValue) : PartialEntityData :=
+def PartialEntityData.subst (d : PartialEntityData) (subsmap : Map String RestrictedPartialValue) : PartialEntityData :=
   {
-    attrs := d.attrs.mapOnValues (PartialValue.subst · subsmap),
+    attrs := d.attrs.mapOnValues (RestrictedPartialValue.subst · subsmap),
+    ancestors := d.ancestors,
+  }
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing an EntityData.
+  This means that `subsmap` must contain mappings for all the unknowns (or this
+  function will return `none`).
+-/
+def PartialEntityData.fullSubst (d : PartialEntityData) (subsmap : Map String Value) : Option EntityData := do
+  let attrs' ← d.attrs.mapMOnValues (RestrictedPartialValue.fullSubst · subsmap)
+  some {
+    attrs := attrs',
     ancestors := d.ancestors,
   }
 
@@ -98,7 +111,18 @@ def PartialEntityData.subst (d : PartialEntityData) (subsmap : Map String Partia
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `PartialEntities` will still contain some unknowns.
 -/
-def PartialEntities.subst (es : PartialEntities) (subsmap : Map String PartialValue) : PartialEntities :=
+def PartialEntities.subst (es : PartialEntities) (subsmap : Map String RestrictedPartialValue) : PartialEntities :=
   es.mapOnValues (PartialEntityData.subst · subsmap)
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing an Entities.
+  This means that `subsmap` must contain mappings for all the unknowns (or this
+  function will return `none`).
+-/
+-- TODO: turning a PartialEntities into an Entities might require adding new entities,
+-- how do we account for that?
+def PartialEntities.fullSubst (es : PartialEntities) (subsmap : Map String Value) : Option Entities :=
+  es.mapMOnValues (PartialEntityData.fullSubst · subsmap)
 
 end Cedar.Spec

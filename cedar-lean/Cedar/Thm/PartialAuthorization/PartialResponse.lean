@@ -101,3 +101,4 @@ theorem decision_concrete_then_kf_or_kp {resp : PartialResponse} :
       left
       simp [h₃] at h₁
       simp [h₁]
+

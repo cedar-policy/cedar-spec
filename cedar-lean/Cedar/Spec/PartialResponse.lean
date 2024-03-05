@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Set
+import Cedar.Spec.PartialEvaluator
 import Cedar.Spec.PartialExpr
 import Cedar.Spec.Policy
 
@@ -47,6 +48,14 @@ structure PartialResponse where
     Does include policies that are definitely satisfied (they will have residual `true`).
   -/
   residuals : List Residual
+  /--
+    The `PartialRequest` that was used to compute this `PartialResponse`
+  -/
+  req : PartialRequest
+  /--
+    The `PartialEntities` that was used to compute this `PartialResponse`
+  -/
+  entities : PartialEntities
 
 /--
   All `permit` policies which are definitely satisfied (for all possible
@@ -139,7 +148,29 @@ def PartialResponse.underapproximateDeterminingPolicies (resp : PartialResponse)
   then Set.empty -- we don't know the decision in this case, so we can't say any policy is for sure determining
   else resp.knownPermits -- there are no forbids that are even possibly satisfied, so if there are known permits, we know they will be determining
 
+/--
+  Re-evaluate with the given substitution for unknowns, giving a new PartialResponse
+
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `PartialResponse` will still contain some (nontrivial) residuals.
+
+  Returns `none` if the substitution is invalid -- e.g., if trying to substitute
+  a non-EntityUID into `UidOrUnknown`.
+-/
+def PartialResponse.reEvaluateWithSubst (resp : PartialResponse) (subsmap : Map String RestrictedPartialValue) : Option PartialResponse := do
+  let req' ← resp.req.subst subsmap
+  some {
+    residuals := resp.residuals.filterMap λ residual => match residual with
+      | .error id e => some (.error id e)
+      | .residual id effect cond => match partialEvaluate (cond.subst subsmap) req' (resp.entities.subst subsmap) with
+        | .ok (.value (.prim (.bool false))) => none
+        | .ok (.value v) => some (.residual id effect v.asPartialExpr)
+        | .ok (.residual r) => some (.residual id effect r)
+        | .error e => some (.error id e)
+    req := req'
+    entities := resp.entities.subst subsmap
+  }
+
 deriving instance Repr, DecidableEq, Inhabited for Residual
-deriving instance Repr, DecidableEq for PartialResponse
 
 end Cedar.Spec

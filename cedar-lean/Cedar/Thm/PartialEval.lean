@@ -109,7 +109,7 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
   If partial evaluation returns a concrete value, then it returns the same value
   after any substitution of unknowns
 -/
-theorem subs_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {v : Value} {subsmap : Map String PartialValue} :
+theorem subs_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {v : Value} {subsmap : Map String RestrictedPartialValue} :
   partialEvaluate expr req entities = ok (.value v) →
   req.subst subsmap = some req' →
   partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = ok (.value v)
@@ -144,7 +144,7 @@ theorem subs_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : Pa
   If partial evaluation returns an error, then it returns the same error
   after any substitution of unknowns
 -/
-theorem subs_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {e : Error} {subsmap : Map String PartialValue} :
+theorem subs_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {e : Error} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   partialEvaluate expr req entities = error e →
   partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = error e
@@ -165,7 +165,7 @@ theorem subs_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} {
   If partial evaluation returns ok after any substitution of unknowns,
   then it must return ok before that substitution
 -/
-theorem subs_preserves_errors_mt {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem subs_preserves_errors_mt {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap)).isOk →
   (partialEvaluate expr req entities).isOk

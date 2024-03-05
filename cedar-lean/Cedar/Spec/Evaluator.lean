@@ -114,6 +114,6 @@ def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
     ok (Map.make avs)
   | .call xfn xs    => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    call xfn vs
+    ExtFun.call xfn vs
 
 end Cedar.Spec

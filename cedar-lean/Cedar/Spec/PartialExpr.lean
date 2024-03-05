@@ -38,11 +38,43 @@ inductive PartialExpr where
   | getAttr (expr : PartialExpr) (attr : Attr)
   | hasAttr (expr : PartialExpr) (attr : Attr)
   | set (ls : List PartialExpr)
-  | record (map : List (Prod Attr PartialExpr))
+  | record (map : List (Attr × PartialExpr))
   | call (xfn : ExtFun) (args : List PartialExpr)
   | unknown (name : String)
 
 deriving instance Repr, Inhabited for PartialExpr
+
+def Value.asPartialExpr (v : Value) : PartialExpr :=
+  match v with
+  | .prim p => .lit p
+  | .set s => .set (s.elts.map Value.asPartialExpr)
+  | .record m => .record (m.kvs.map fun (k, v) => (k, v.asPartialExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [PartialExpr.lit (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [PartialExpr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+decreasing_by sorry
+
+/--
+  A version of `PartialExpr`, but only allows "restricted expressions" -- no
+  vars, no expressions that require entity data to evaluate, no operators at all,
+  just literals, unknowns, extension values, and sets/records of those things
+-/
+inductive RestrictedPartialExpr where
+  | lit (p : Prim)
+  | set (ls : List RestrictedPartialExpr)
+  | record (map : List (Attr × RestrictedPartialExpr))
+  | call (xfn : ExtFun) (args : List Value) -- this requires that all arguments to extension functions in RestrictedPartialExpr are concrete. TODO do we need to relax this?
+  | unknown (name : String)
+
+deriving instance Repr, Inhabited for RestrictedPartialExpr
+
+def Value.asRestrictedPartialExpr (v : Value) : RestrictedPartialExpr :=
+  match v with
+  | .prim p => .lit p
+  | .set s => .set (s.elts.map Value.asRestrictedPartialExpr)
+  | .record m => .record (m.kvs.map λ (k, v) => (k, v.asRestrictedPartialExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+decreasing_by sorry
 
 mutual
 
@@ -89,7 +121,7 @@ def decPartialExpr (x y : PartialExpr) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrPartialExprList (axs ays : List (Prod Attr PartialExpr)) : Decidable (axs = ays) :=
+def decProdAttrPartialExprList (axs ays : List (Attr × PartialExpr)) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -123,13 +155,27 @@ def Expr.asPartialExpr (x : Expr) : PartialExpr :=
   | .getAttr x₁ attr => .getAttr x₁.asPartialExpr attr
   | .hasAttr x₁ attr => .hasAttr x₁.asPartialExpr attr
   | .set xs => .set (xs.map Expr.asPartialExpr)
-  | .record attrs => .record (attrs.map fun (k, v) => (k, v.asPartialExpr))
+  | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
   | .call xfn args => .call xfn (args.map Expr.asPartialExpr)
 decreasing_by sorry
 
 instance : Coe Expr PartialExpr where
   coe := Expr.asPartialExpr
 
+def RestrictedPartialExpr.asPartialExpr (x : RestrictedPartialExpr) : PartialExpr :=
+  match x with
+  | .lit p => .lit p
+  | .set xs => .set (xs.map RestrictedPartialExpr.asPartialExpr)
+  | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
+  | .call xfn args => .call xfn (args.map Value.asPartialExpr)
+  | .unknown name => .unknown name
+decreasing_by sorry
+
+/--
+  Is this a literal "unknown".
+  (Doesn't check if it recursively contains unknowns; for that, use
+  `PartialExpr.containsUnknown`)
+-/
 def PartialExpr.isUnknown (x : PartialExpr) : Bool :=
   match x with
   | .unknown _ => true
@@ -151,7 +197,7 @@ def PartialExpr.subexpressions (x : PartialExpr) : List PartialExpr :=
   | .getAttr x₁ _ => [x] ++ x₁.subexpressions
   | .hasAttr x₁ _ => [x] ++ x₁.subexpressions
   | .set xs => [x] ++ List.join (xs.map PartialExpr.subexpressions)
-  | .record pairs => [x] ++ List.join (pairs.map fun (_, x₁) => x₁.subexpressions)
+  | .record pairs => [x] ++ List.join (pairs.map λ (_, x₁) => x₁.subexpressions)
   | .call _ xs => [x] ++ List.join (xs.map PartialExpr.subexpressions)
   | .unknown _ => [x]
 decreasing_by sorry

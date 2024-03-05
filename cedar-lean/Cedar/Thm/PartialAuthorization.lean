@@ -71,11 +71,26 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Re
   sorry
 
 /--
+  Partial-authorizing with any partial inputs, then performing any (valid)
+  substitution for the unknowns and authorizing using the residuals, gives the
+  same result as first performing the substitution and then authorizing using
+  the original policies.
+
+  Also implied by this: if a substitution is valid for the PartialRequest, then
+  it is valid for `reEvaluateWithSubst`
+-/
+theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
+  req.subst subsmap = some req' →
+  (isAuthorizedPartial req entities policies).reEvaluateWithSubst subsmap = isAuthorizedPartial req' (entities.subst subsmap) policies
+:= by
+  sorry
+
+/--
   If partial authorization returns a concrete decision, then that decision is
   identical to the decision you'd get with any (valid) substitution for the
   unknowns.
 -/
-theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String PartialValue} :
+theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).decision = (isAuthorizedPartial req' (entities.subst subsmap) policies).decision
@@ -110,3 +125,41 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
         simp [h₈]
         have h₉ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub h₁ h₂ h₃ (by simp [h₄])
         simp [h₉]
+
+/--
+  If partial authorization returns an .unknown decision, then there is some
+  substitution for the unknowns under which you get Allow, and some substitution
+  for the unknowns under which you get Deny.
+-/
+theorem partial_authz_decision_unknown_then_allow_deny_possible {policies : Policies} {req : PartialRequest} {entities : PartialEntities} :
+  (isAuthorizedPartial req entities policies).decision = .unknown →
+  (∃ req' subsmap, req.subst subsmap = some req' ∧ (isAuthorizedPartial req' (entities.subst subsmap) policies).decision = .allow) ∧
+  (∃ req' subsmap, req.subst subsmap = some req' ∧ (isAuthorizedPartial req' (entities.subst subsmap) policies).decision = .deny)
+:= by
+  sorry
+
+/--
+  A policy P is included in `overapproximateDeterminingPolicies` iff
+  there is some substitution such that P is a determining policy
+-/
+theorem overapproximate_determining_iff_determining_after_subst {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {pid : PolicyID} :
+  pid ∈ (isAuthorizedPartial req entities policies).overapproximateDeterminingPolicies ↔
+  ∃ req' entities' subsmap,
+    req.fullSubst subsmap = some req' ∧
+    entities.fullSubst subsmap = some entities' ∧
+    pid ∈ (isAuthorized req' entities' policies).determiningPolicies
+:= by
+  sorry
+
+/--
+  A policy P is included in `underapproximateDeterminingPolicies` iff
+  for all substitutions, P is a determining policy
+-/
+theorem underapproximate_determining_iff_determining_after_subst {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {pid : PolicyID} :
+  pid ∈ (isAuthorizedPartial req entities policies).overapproximateDeterminingPolicies ↔
+  ∀ req' entities' subsmap,
+    req.fullSubst subsmap = some req' →
+    entities.fullSubst subsmap = some entities' →
+    pid ∈ (isAuthorized req' entities' policies).determiningPolicies
+:= by
+  sorry

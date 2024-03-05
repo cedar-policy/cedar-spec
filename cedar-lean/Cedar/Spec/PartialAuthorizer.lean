@@ -38,20 +38,13 @@ def knownErroring (policy : Policy) (req : PartialRequest) (entities : PartialEn
 
 def isAuthorizedPartial (req : PartialRequest) (entities : PartialEntities) (policies : Policies) : PartialResponse :=
   {
-    residuals := policies.filterMap fun policy => match partialEvaluate policy.toExpr req entities with
+    residuals := policies.filterMap λ policy => match partialEvaluate policy.toExpr req entities with
       | .ok (.value (.prim (.bool false))) => none
       | .ok (.value v) => some (.residual policy.id policy.effect v.asPartialExpr)
       | .ok (.residual r) => some (.residual policy.id policy.effect r)
       | .error e => some (.error policy.id e)
+    req,
+    entities,
   }
-
-/-
-/--
-  Re-evaluate the partial response given a map of unknown-name to value.
-  It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `PartialResponse` will still contain some (nontrivial) residuals.
--/
-def PartialResponse.reEvaluate (resp : PartialResponse) (subsmap : Map String PartialValue) : PartialResponse :=
--/
 
 end Cedar.Spec
