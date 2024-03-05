@@ -64,6 +64,9 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
     } else {
         match (lhs.applies_to, rhs.applies_to) {
             (None, None) => Ok(()),
+            (Some(lhs), Some(rhs)) if is_either_empty(&lhs) => is_either_empty(&rhs),
+            (Some(lhs), Some(rhs)) if is_either_empty(&rhs) => is_either_empty(&lhs),
+            // if neither is non-applicable, they must be equal
             (Some(lhs), Some(rhs)) => {
                 if rhs == lhs {
                     Ok(())
@@ -88,4 +91,9 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
 
 fn is_both_unspecified(spec: &ApplySpec) -> bool {
     spec.resource_types.is_none() && spec.principal_types.is_none()
+}
+
+fn is_either_empty(spec: &ApplySpec) -> bool {
+    matches!(spec.resource_types.as_ref(), Some(vec![]))
+        || matches!(spec.principal_types.as_ref(), Some(vec![]))
 }
