@@ -64,8 +64,26 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
     } else {
         match (lhs.applies_to, rhs.applies_to) {
             (None, None) => Ok(()),
-            (Some(lhs), Some(rhs)) if is_either_empty(&lhs) => is_either_empty(&rhs),
-            (Some(lhs), Some(rhs)) if is_either_empty(&rhs) => is_either_empty(&lhs),
+            (Some(lhs), Some(rhs)) if is_either_empty(&lhs) => {
+                if is_either_empty(&rhs) {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Mismatched applies to in `{name}`. lhs : `{:?}`,rhs: `{:?}`",
+                        lhs, rhs
+                    ))
+                }
+            }
+            (Some(lhs), Some(rhs)) if is_either_empty(&rhs) => {
+                if is_either_empty(&lhs) {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Mismatched applies to in `{name}`. lhs : `{:?}`,rhs: `{:?}`",
+                        lhs, rhs
+                    ))
+                }
+            }
             // if neither is non-applicable, they must be equal
             (Some(lhs), Some(rhs)) => {
                 if rhs == lhs {
@@ -94,6 +112,6 @@ fn is_both_unspecified(spec: &ApplySpec) -> bool {
 }
 
 fn is_either_empty(spec: &ApplySpec) -> bool {
-    matches!(spec.resource_types.as_ref(), Some(vec![]))
-        || matches!(spec.principal_types.as_ref(), Some(vec![]))
+    matches!(spec.resource_types.as_ref(), Some(ts) if ts.is_empty())
+        || matches!(spec.principal_types.as_ref(), Some(ts) if ts.is_empty())
 }
