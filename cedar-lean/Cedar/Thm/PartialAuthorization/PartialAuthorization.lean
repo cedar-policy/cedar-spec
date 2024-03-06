@@ -120,6 +120,14 @@ theorem knownPermits_eq_permits_on_concrete {policies : Policies} {req : Request
 /--
   helper lemma
 -/
+theorem errors_is_errorPolicies_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  Set.make ((isAuthorizedPartial req entities policies).errors.map Prod.fst) = errorPolicies policies req entities
+:= by
+  sorry
+
+/--
+  helper lemma
+-/
 theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
   r' ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →

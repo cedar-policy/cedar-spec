@@ -885,4 +885,14 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [map, map, h₁, map_congr h₂]
 
+/--
+  our own variant of map_congr, for filterMap
+-/
+theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → filterMap f l = filterMap g l
+  | [], _ => rfl
+  | a :: l, h => by
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
+    rw [filterMap, filterMap, h₁, filterMap_congr h₂]
+
 end List

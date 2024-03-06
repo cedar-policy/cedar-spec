@@ -73,8 +73,11 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
     -- use underapproximate_determining_iff_determining_after_subst
     sorry
   case _ =>
-    -- the RHS of the goal should simplify to `errorPolicies policies req entities`, but `simp` doesn't accomplish that by itself
-    sorry
+    simp only [isAuthorized, Bool.and_eq_true, Bool.not_eq_true']
+    cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
+    cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
+    simp only [and_true, and_false, ite_true, ite_false] <;>
+    exact errors_is_errorPolicies_on_concrete
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a
@@ -108,6 +111,14 @@ theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).reEvaluateWithSubst subsmap = isAuthorizedPartial req' (entities.subst subsmap) policies
 := by
+  intro h₁
+  unfold PartialResponse.reEvaluateWithSubst isAuthorizedPartial
+  simp
+  apply And.intro h₁
+  rw [List.filterMap_filterMap]
+  apply List.filterMap_congr
+  intro policy h₂
+  simp only [Option.bind]
   sorry
 
 /--
