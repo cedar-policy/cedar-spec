@@ -128,7 +128,7 @@ theorem errors_is_errorPolicies_on_concrete {policies : Policies} {req : Request
 /--
   helper lemma
 -/
-theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
+theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
   r' ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals →
   ∃ r ∈ (isAuthorizedPartial req entities policies).residuals, r.id = r'.id ∧ (r.effect = r'.effect ∨ r'.effect = none)
@@ -140,7 +140,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
   split at h₃ <;> simp at h₃ <;> subst h₃
   case h_2 v h₃ h₄ =>
     -- after subst, partial eval of the policy produced a .value other than False
-    have h₅ := subs_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+    have h₅ := subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
       simp [Except.isOk, Except.toBool]
       split <;> simp
       case _ e h₅ =>
@@ -159,7 +159,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
         split <;> simp
         case h_1 h₅ _ h₆ =>
           -- before subst, partial eval of the policy produced False
-          have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+          have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
           rw [subs_expr_id] at h₇
           simp [h₇] at h₄
           exact h₃ h₄.symm
@@ -182,7 +182,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
         case right => simp [Residual.effect]
   case h_3 x h₃ =>
     -- after subst, partial eval of the policy produced a .residual
-    have h₄ := subs_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+    have h₄ := subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
       simp [Except.isOk, Except.toBool]
       split <;> simp
       case _ e h₄ =>
@@ -201,7 +201,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
         split <;> simp
         case h_1 h₅ _ h₆ =>
           -- before subst, partial eval of the policy produced False
-          have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+          have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
           rw [subs_expr_id] at h₇
           simp [h₇] at h₃
         case h_2 h₅ _ v h₆ h₇ =>
@@ -250,7 +250,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
         split <;> simp
         case h_1 h₅ =>
           -- before subst, partial eval of the policy produced False
-          have h₆ := subs_preserves_evaluation_to_literal h₅ h₁
+          have h₆ := subst_preserves_evaluation_to_literal h₅ h₁
           rw [subs_expr_id] at h₆
           simp [h₆] at h₃
         case h_2 h₅ =>
@@ -274,7 +274,7 @@ theorem subs_doesn't_increase_residuals {policies : Policies} {req req' : Partia
 /--
   helper lemma
 -/
-theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} {effect : Effect} :
+theorem subst_preserves_true_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} {effect : Effect} :
   req.subst subsmap = some req' →
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req entities policies).residuals →
   Residual.residual pid effect (.lit (.bool true)) ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).residuals
@@ -294,7 +294,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
       replace ⟨_, _, h₂⟩ := h₂
       rw [Value.prim_prim] at h₂
       subst h₂
-      have h₆ := subs_preserves_evaluation_to_literal h₅ h₁
+      have h₆ := subst_preserves_evaluation_to_literal h₅ h₁
       rw [subs_expr_id] at h₆
       simp [h₆] at h₃
     case _ h₄ =>
@@ -320,7 +320,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
       replace h₂ := h₂.right
       rw [Value.prim_prim] at *
       subst h₂
-      have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+      have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
       rw [subs_expr_id] at h₇
       simp [h₃] at h₇
       try assumption
@@ -339,7 +339,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
       replace ⟨_, _, h₂⟩ := h₂
       rw [Value.prim_prim] at h₂
       subst h₂
-      have h₇ := subs_preserves_evaluation_to_literal h₆ h₁
+      have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
       rw [subs_expr_id] at h₇
       simp [h₃] at h₇
     case _ x h₄ =>
@@ -351,7 +351,7 @@ theorem subs_preserves_true_residuals {policies : Policies} {req req' : PartialR
 /--
   helper lemma
 -/
-theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
+theorem subst_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownPermits →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits
@@ -366,12 +366,12 @@ theorem subs_preserves_knownPermits {policies : Policies} {req req' : PartialReq
   apply And.intro _ h₃
   split at h₃ <;> simp at h₃
   subst h₃
-  apply subs_preserves_true_residuals h₁ h₂
+  apply subst_preserves_true_residuals h₁ h₂
 
 /--
   helper lemma
 -/
-theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
+theorem subst_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids
@@ -386,12 +386,29 @@ theorem subs_preserves_knownForbids {policies : Policies} {req req' : PartialReq
   apply And.intro _ h₃
   split at h₃ <;> simp at h₃
   subst h₃
-  apply subs_preserves_true_residuals h₁ h₂
+  apply subst_preserves_true_residuals h₁ h₂
+
+/--
+  helper lemma
+
+  not currently used; we might or might not need this in this formulation
+-/
+theorem fullSubst_preserves_knownForbids {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {subsmap : Map String Value} {req' : Request} {entities' : Entities} {pid : PolicyID} :
+  req.fullSubst subsmap = some req' →
+  entities.fullSubst subsmap = some entities' →
+  pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
+  pid ∈ (isAuthorizedPartial req' entities' policies).knownForbids
+:= by
+  intro h₁ h₂ h₃
+  -- can we make this a corollary of `subst_preserves_knownForbids` somehow?
+  -- even better, can we have some general result that allows us to say that
+  -- anything that `subst` preserves, `fullSubst` must also preserve?
+  sorry
 
 /--
   helper lemma
 -/
-theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
+theorem subst_preserves_empty_permits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).permits.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
@@ -402,7 +419,7 @@ theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRe
   rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
   intro r h₃
-  rcases subs_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
+  rcases subst_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
   case _ =>
     split <;> simp
     case _ pid cond =>
@@ -419,7 +436,7 @@ theorem subs_preserves_empty_permits {policies : Policies} {req req' : PartialRe
 /--
   helper lemma
 -/
-theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
+theorem subst_preserves_empty_forbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).forbids.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).forbids.isEmpty
@@ -430,7 +447,7 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
   rw [← Set.make_empty] at *
   simp [List.filterMap_empty_iff_f_returns_none] at *
   intro r h₃
-  rcases subs_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
+  rcases subst_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
   case _ =>
     split <;> simp
     case _ pid cond =>
@@ -447,7 +464,7 @@ theorem subs_preserves_empty_forbids {policies : Policies} {req req' : PartialRe
 /--
   helper lemma
 -/
-theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
+theorem subst_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
   ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
@@ -456,7 +473,7 @@ theorem subs_preserves_nonempty_knownForbids {policies : Policies} {req req' : P
   intro h₁ h₂
   replace ⟨pid, h₂⟩ := h₂
   exists pid
-  exact subs_preserves_knownForbids h₁ h₂
+  exact subst_preserves_knownForbids h₁ h₂
 
 /--
   helper lemma
@@ -474,7 +491,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
     case _ => contradiction
     case _ => contradiction
     case _ =>
-      have h₆ := subs_preserves_empty_permits h₂ h₅
+      have h₆ := subst_preserves_empty_permits h₂ h₅
       apply Eq.symm
       by_contra h₇
       replace ⟨pid, h₇⟩ := (Set.non_empty_iff_exists _).mp h₇
@@ -501,7 +518,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
     rename_i r pid
     simp at h₅
     apply h₅ ; clear h₅
-    apply subs_preserves_true_residuals h₂ h₄
+    apply subst_preserves_true_residuals h₂ h₄
 
 /--
   helper lemma
@@ -515,7 +532,7 @@ theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' 
   unfold PartialResponse.decision
   simp
   intro h₃
-  replace h₁ := subs_preserves_nonempty_knownForbids h₂ h₁
+  replace h₁ := subst_preserves_nonempty_knownForbids h₂ h₁
   contradiction
 
 /--
@@ -536,7 +553,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_b
     rw [Set.non_empty_iff_exists]
     exists kp
     apply PartialResponse.in_knownPermits_in_permits
-    apply subs_preserves_knownPermits h₂
+    apply subst_preserves_knownPermits h₂
     assumption
   case _ => contradiction
 
@@ -555,5 +572,5 @@ theorem partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_kno
   case _ => contradiction
   case _ =>
     apply PartialResponse.empty_forbids_empty_knownForbids
-    apply subs_preserves_empty_forbids h₂ h₆
+    apply subst_preserves_empty_forbids h₂ h₆
   case _ => contradiction

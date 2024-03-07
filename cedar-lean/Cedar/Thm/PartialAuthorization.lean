@@ -144,7 +144,7 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
     rw [← h₄] ; clear h₄
     cases h₄ : (isAuthorizedPartial req entities policies).permits.isEmpty
     case true =>
-      have h₅ := subs_preserves_empty_permits h₂ h₄
+      have h₅ := subst_preserves_empty_permits h₂ h₄
       simp [h₅]
     case false =>
       simp [h₄]
@@ -155,7 +155,7 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
         unfold PartialResponse.decision
         simp [*]
       case true =>
-        have h₇ := subs_preserves_empty_forbids h₂ h₅
+        have h₇ := subst_preserves_empty_forbids h₂ h₅
         simp [h₇]
         have h₈ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub h₁ h₂ h₃ (by simp [h₄])
         simp [h₈]
@@ -192,10 +192,25 @@ theorem overapproximate_determining_iff_determining_after_subst {policies : Poli
   for all substitutions, P is a determining policy
 -/
 theorem underapproximate_determining_iff_determining_after_subst {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {pid : PolicyID} :
-  pid ∈ (isAuthorizedPartial req entities policies).overapproximateDeterminingPolicies ↔
+  pid ∈ (isAuthorizedPartial req entities policies).underapproximateDeterminingPolicies ↔
   ∀ req' entities' subsmap,
     req.fullSubst subsmap = some req' →
     entities.fullSubst subsmap = some entities' →
     pid ∈ (isAuthorized req' entities' policies).determiningPolicies
 := by
-  sorry
+  simp only [PartialResponse.underapproximateDeterminingPolicies, isAuthorized]
+  constructor
+  case mp =>
+    intro h₁ req' entities' subsmap h₂ h₃
+    split <;> simp
+    case inl h₄ =>
+      simp at h₄
+      replace ⟨h₄, h₅⟩ := h₄
+      -- next step: since there are no forbids after fullSubst (h₄), there are no knownForbids before subst, so that simplifies h₁
+      sorry
+    case inr h₄ =>
+      simp at h₄
+      sorry
+  case mpr =>
+    intro h₁
+    sorry
