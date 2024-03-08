@@ -17,8 +17,9 @@
 //! Integration test that runs the handwritten test cases from
 //! `cedar-integration-tests` on the definitional implementation.
 
-use cedar_policy::integration_testing::{
-    perform_integration_test_from_json_custom, resolve_integration_test_path, CustomCedarImpl,
+use cedar_testing::cedar_test_impl::CedarTestImplementation;
+use cedar_testing::integration_testing::{
+    perform_integration_test_from_json_custom, resolve_integration_test_path,
 };
 
 use cedar_drt::*;
@@ -73,22 +74,22 @@ pub fn get_corpus_tests() -> impl Iterator<Item = PathBuf> {
         })
 }
 
-fn run_tests(custom_impl: &dyn CustomCedarImpl, tests: impl Iterator<Item = PathBuf>) {
+fn run_tests(custom_impl: &impl CedarTestImplementation, tests: impl Iterator<Item = PathBuf>) {
     for test_json in tests {
         // These messages are for progress reporting and so that if the
         // `#[test]` fails, the user can know which test case failed by looking
         // for the last "Running integration test" message before the failure.
         println!("Running integration test: {:?}", test_json);
-        perform_integration_test_from_json_custom(&test_json, Some(custom_impl));
+        perform_integration_test_from_json_custom(&test_json, custom_impl);
         println!("Integration test succeeded: {:?}", test_json);
     }
 }
 
-fn run_integration_tests(custom_impl: &dyn CustomCedarImpl) {
+fn run_integration_tests(custom_impl: &impl CedarTestImplementation) {
     run_tests(custom_impl, get_integration_tests());
 }
 
-fn run_corpus_tests(custom_impl: &dyn CustomCedarImpl) {
+fn run_corpus_tests(custom_impl: &impl CedarTestImplementation) {
     run_tests(custom_impl, get_corpus_tests());
 }
 
