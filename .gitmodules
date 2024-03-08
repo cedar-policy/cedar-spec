@@ -1,4 +1,4 @@
 [submodule "cedar"]
 	path = cedar
 	url = https://github.com/cedar-policy/cedar.git
-	branch = release/2.3.x
+	branch = release/2.4.x
