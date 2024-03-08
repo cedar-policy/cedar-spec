@@ -18,6 +18,7 @@ cedar-policy = { path = "../../cedar/cedar-policy", version = "3.*" }
 cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "3.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "3.*", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "3.*" }
+cedar-testing = { path = "../../cedar/cedar-testing", version = "3.*" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "3.*" }
 smol_str = { version = "0.2", features = ["serde"] }
 regex = "1"
