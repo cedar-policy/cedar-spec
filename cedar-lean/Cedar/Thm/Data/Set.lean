@@ -32,6 +32,16 @@ namespace Cedar.Data.Set
 def WellFormed {α} [LT α] [DecidableLT α] (s : Set α) :=
   s = Set.make s.toList
 
+/--
+  why does this pass without using the wellformedness in the proof?
+  am I misunderstanding something? surely this isn't true for all sets
+-/
+theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (s : Set α) :
+  WellFormed s → ∃ list, s = Set.make list
+:= by
+  intro h₁
+  exists s.elts
+
 /-! ### contains and mem -/
 
 theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
@@ -197,6 +207,26 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
     rw [in_list_iff_in_set]
     rw [← make_mem]
     exact h₁
+
+def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
+  WellFormed s₁ → WellFormed s₂ →
+  (s₁.elts ≡ s₂.elts ↔ s₁ = s₂)
+:= by
+  intro h₁ h₂
+  constructor
+  case mp =>
+    intro h₃
+    have ⟨elts₁, h₄⟩ := if_wellformed_then_exists_make s₁ h₁ ; clear h₁
+    subst h₄
+    have ⟨elts₂, h₄⟩ := if_wellformed_then_exists_make s₂ h₂ ; clear h₂
+    subst h₄
+    rw [make_make_eqv]
+    apply List.Equiv.trans (List.Equiv.symm (elts_make_equiv (xs := elts₁)))
+    apply List.Equiv.trans h₃ (elts_make_equiv)
+  case mpr =>
+    intro h₃
+    subst h₃
+    apply List.Equiv.refl
 
 theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
   (Set.make xs).any f = xs.any f

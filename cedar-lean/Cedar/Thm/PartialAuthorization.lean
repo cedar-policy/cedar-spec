@@ -38,48 +38,6 @@ open Cedar.Spec
 open Except
 
 /--
-  Partial-authorizing with concrete inputs gives the same concrete outputs as
-  concrete-authorizing with those inputs.
--/
-theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request} {entities : Entities} {presp : PartialResponse} {resp : Response} :
-  isAuthorized req entities policies = resp →
-  isAuthorizedPartial req entities policies = presp →
-  (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
-  presp.overapproximateDeterminingPolicies = resp.determiningPolicies ∧
-  presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
-  Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
-:= by
-  intro h₁ h₂
-  subst h₁ h₂
-  repeat (any_goals (apply And.intro))
-  case _ =>
-    simp [isAuthorized, PartialResponse.decision]
-    simp only [knownForbids_eq_forbids_on_concrete]
-    simp only [forbids_empty_iff_no_satisfied_forbids_on_concrete]
-    simp only [forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete]
-    cases h₁ : (satisfiedPolicies .forbid policies req entities).isEmpty
-    case false => simp
-    case true =>
-      simp [h₁]
-      simp only [permits_empty_iff_no_satisfied_permits_on_concrete]
-      simp only [knownPermits_eq_permits_on_concrete]
-      cases h₂ : (satisfiedPolicies .permit policies req entities).isEmpty
-      case false => simp [h₂, permits_empty_iff_no_satisfied_permits_on_concrete]
-      case true => simp [h₁, h₂, permits_nonempty_iff_satisfied_permits_nonempty_on_concrete]
-  case _ =>
-    -- use overapproximate_determining_iff_determining_after_subst
-    sorry
-  case _ =>
-    -- use underapproximate_determining_iff_determining_after_subst
-    sorry
-  case _ =>
-    simp only [isAuthorized, Bool.and_eq_true, Bool.not_eq_true']
-    cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
-    cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
-    simp only [and_true, and_false, ite_true, ite_false] <;>
-    exact errors_is_errorPolicies_on_concrete
-
-/--
   Corollary to the above: partial-authorizing with concrete inputs gives a
   concrete decision.
 -/
@@ -176,7 +134,7 @@ theorem partial_authz_decision_unknown_then_allow_deny_possible {policies : Poli
 
 /--
   A policy P is included in `overapproximateDeterminingPolicies` iff
-  there is some substitution such that P is a determining policy
+  there is some (full) substitution such that P is a determining policy
 -/
 theorem overapproximate_determining_iff_determining_after_subst {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {pid : PolicyID} :
   pid ∈ (isAuthorizedPartial req entities policies).overapproximateDeterminingPolicies ↔
@@ -189,7 +147,7 @@ theorem overapproximate_determining_iff_determining_after_subst {policies : Poli
 
 /--
   A policy P is included in `underapproximateDeterminingPolicies` iff
-  for all substitutions, P is a determining policy
+  for all (full) substitutions, P is a determining policy
 -/
 theorem underapproximate_determining_iff_determining_after_subst {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {pid : PolicyID} :
   pid ∈ (isAuthorizedPartial req entities policies).underapproximateDeterminingPolicies ↔
@@ -214,3 +172,58 @@ theorem underapproximate_determining_iff_determining_after_subst {policies : Pol
   case mpr =>
     intro h₁
     sorry
+
+/--
+  Partial-authorizing with concrete inputs gives the same concrete outputs as
+  concrete-authorizing with those inputs.
+-/
+theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request} {entities : Entities} {presp : PartialResponse} {resp : Response} :
+  isAuthorized req entities policies = resp →
+  isAuthorizedPartial req entities policies = presp →
+  (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
+  presp.overapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  repeat (any_goals (apply And.intro))
+  case _ =>
+    simp [isAuthorized, PartialResponse.decision]
+    simp only [knownForbids_eq_forbids_on_concrete]
+    simp only [forbids_empty_iff_no_satisfied_forbids_on_concrete]
+    simp only [forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete]
+    cases h₁ : (satisfiedPolicies .forbid policies req entities).isEmpty
+    case false => simp
+    case true =>
+      simp [h₁]
+      simp only [permits_empty_iff_no_satisfied_permits_on_concrete]
+      simp only [knownPermits_eq_permits_on_concrete]
+      cases h₂ : (satisfiedPolicies .permit policies req entities).isEmpty
+      case false => simp [h₂, permits_empty_iff_no_satisfied_permits_on_concrete]
+      case true => simp [h₁, h₂, permits_nonempty_iff_satisfied_permits_nonempty_on_concrete]
+  case _ =>
+    rw [← Set.eq_means_eqv]
+    unfold List.Equiv
+    simp only [List.subset_def]
+    constructor
+    case left =>
+      intro pid h₁
+      rw [Set.in_list_iff_in_set] at *
+      rw [overapproximate_determining_iff_determining_after_subst] at h₁
+      replace ⟨req', entities', subsmap, h₁, h₂, h₃⟩ := h₁
+      sorry
+    case right =>
+      intro pid h₁
+      rw [Set.in_list_iff_in_set] at *
+      rw [overapproximate_determining_iff_determining_after_subst]
+      sorry
+  case _ =>
+    -- use underapproximate_determining_iff_determining_after_subst
+    sorry
+  case _ =>
+    simp only [isAuthorized, Bool.and_eq_true, Bool.not_eq_true']
+    cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
+    cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
+    simp only [and_true, and_false, ite_true, ite_false] <;>
+    exact errors_is_errorPolicies_on_concrete
