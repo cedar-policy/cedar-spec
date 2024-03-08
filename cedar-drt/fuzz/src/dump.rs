@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use cedar_policy::integration_testing::{JsonRequest, JsonTest};
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{
     Context, EntityType, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
@@ -24,6 +23,7 @@ use cedar_policy_core::entities::{Entities, TypeAndId};
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_testing::integration_testing::{JsonRequest, JsonTest};
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;

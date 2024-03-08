@@ -20,10 +20,10 @@
 mod integration_tests;
 
 use cedar_drt::ast::{PolicySet, Request};
-use cedar_drt::cedar_test_impl::*;
 use cedar_drt::{Entities, LeanDefinitionalEngine};
 use cedar_drt::{ValidationMode, ValidatorSchema};
-use cedar_policy::integration_testing::*;
+use cedar_testing::cedar_test_impl::*;
+use cedar_testing::integration_testing::*;
 use integration_tests::get_corpus_tests;
 use statrs::statistics::{Data, OrderStatistics};
 use std::{collections::HashMap, path::Path};
@@ -39,16 +39,15 @@ fn parse_test(jsonfile: impl AsRef<Path>) -> (PolicySet, Entities, ValidatorSche
         .unwrap_or_else(|e| panic!("error reading from file {test_name}: {e}"));
     let test: JsonTest =
         serde_json::from_str(&jsonstr).unwrap_or_else(|e| panic!("error parsing {test_name}: {e}"));
-    let policies = parse_policies_from_test_internal(&test);
+    let policies = parse_policies_from_test(&test);
     let schema = parse_schema_from_test(&test);
-    let schema_internal = parse_schema_from_test_internal(&test);
-    let entities = parse_entities_from_test_internal(&test, &schema);
+    let entities = parse_entities_from_test(&test, &schema);
     let requests = test
         .requests
         .into_iter()
-        .map(|json_request| parse_request_from_test_internal(&json_request, &schema, &test_name))
+        .map(|json_request| parse_request_from_test(&json_request, &schema, &test_name))
         .collect();
-    (policies, entities, schema_internal, requests)
+    (policies, entities, schema, requests)
 }
 
 fn median(data: Vec<f64>) -> f64 {
