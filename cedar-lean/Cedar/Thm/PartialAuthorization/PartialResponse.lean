@@ -22,6 +22,66 @@ namespace Cedar.Thm.PartialResponse
 open Cedar.Data
 open Cedar.Spec
 
+theorem permits_wf {resp : PartialResponse} :
+  resp.permits.WellFormed
+:= by
+  unfold Set.WellFormed PartialResponse.permits Set.toList
+  simp only [Set.make_make_eqv]
+  apply List.Equiv.symm
+  exact Set.elts_make_equiv
+
+theorem knownPermits_wf {resp : PartialResponse} :
+  resp.knownPermits.WellFormed
+:= by
+  unfold Set.WellFormed PartialResponse.knownPermits Set.toList
+  simp only [Set.make_make_eqv]
+  apply List.Equiv.symm
+  exact Set.elts_make_equiv
+
+theorem forbids_wf {resp : PartialResponse} :
+  resp.forbids.WellFormed
+:= by
+  unfold Set.WellFormed PartialResponse.forbids Set.toList
+  simp only [Set.make_make_eqv]
+  apply List.Equiv.symm
+  exact Set.elts_make_equiv
+
+theorem knownForbids_wf {resp : PartialResponse} :
+  resp.knownForbids.WellFormed
+:= by
+  unfold Set.WellFormed PartialResponse.knownForbids Set.toList
+  simp only [Set.make_make_eqv]
+  apply List.Equiv.symm
+  exact Set.elts_make_equiv
+
+theorem overapproximateDeterminingPolicies_wf {resp : PartialResponse} :
+  resp.overapproximateDeterminingPolicies.WellFormed
+:= by
+  unfold PartialResponse.overapproximateDeterminingPolicies
+  cases resp.knownForbids.isEmpty <;> simp
+  case false => exact forbids_wf
+  case true =>
+    cases resp.permits.isEmpty <;> simp
+    case true => exact forbids_wf
+    case false =>
+      cases resp.forbids.isEmpty <;> simp
+      case true => exact permits_wf
+      case false => apply Set.union_wf (s₁ := resp.permits) (s₂ := resp.forbids)
+
+theorem underapproximateDeterminingPolicies_wf {resp : PartialResponse} :
+  resp.underapproximateDeterminingPolicies.WellFormed
+:= by
+  unfold PartialResponse.underapproximateDeterminingPolicies
+  cases resp.knownForbids.isEmpty <;> simp
+  case false => exact knownForbids_wf
+  case true =>
+    cases resp.permits.isEmpty <;> simp
+    case true => exact Set.empty_wf
+    case false =>
+      cases resp.forbids.isEmpty <;> simp
+      case true => exact knownPermits_wf
+      case false => exact Set.empty_wf
+
 theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
   id ∈ resp.knownPermits → id ∈ resp.permits
 := by
@@ -101,4 +161,3 @@ theorem decision_concrete_then_kf_or_kp {resp : PartialResponse} :
       left
       simp [h₃] at h₁
       simp [h₁]
-

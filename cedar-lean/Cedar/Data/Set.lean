@@ -78,9 +78,6 @@ def intersect {α} [DecidableEq α] (s₁ s₂ : Set α) : Set α :=
 def union {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) : Set α :=
   make (s₁.elts ++ s₂.elts)           -- enforce well-formedness
 
-instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
-  hAppend := Set.union
-
 /-- Filters `s` using `f`. -/
 def filter {α} (f : α → Bool) (s : Set α) : Set α :=
   Set.mk (s.elts.filter f)            -- well-formed by construction
@@ -133,6 +130,10 @@ instance [DecidableEq α] : Inter (Set α) := ⟨Set.intersect⟩
 
 -- enables ∪
 instance [LT α] [DecidableLT α] : Union (Set α) := ⟨Set.union⟩
+
+-- enables ++
+instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
+  hAppend := Set.union
 
 end Set
 

@@ -19,6 +19,7 @@ import Cedar.Spec.Value
 import Cedar.Spec.PartialAuthorizer
 import Cedar.Spec.PartialResponse
 import Cedar.Spec.PartialValue
+import Cedar.Thm.Authorization.Authorizer
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
@@ -36,25 +37,6 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 open Except
-
-/--
-  Corollary to the above: partial-authorizing with concrete inputs gives a
-  concrete decision.
--/
-theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).decision ≠ .unknown
-:= by
-  intro h₁
-  have h₂ := partial_authz_eqv_authz_on_concrete (policies := policies) (req := req) (entities := entities) (presp := isAuthorizedPartial req entities policies) (resp := isAuthorized req entities policies)
-  simp at h₂
-  replace ⟨h₂, h₃, h₄, h₅⟩ := h₂ ; clear h₃ h₄ h₅
-  cases h₃ : (isAuthorized req entities policies).decision
-  case allow =>
-    simp [h₃] at h₂
-    simp [h₂] at h₁
-  case deny =>
-    simp [h₃] at h₂
-    simp [h₂] at h₁
 
 /--
   Partial-authorizing with any partial inputs, then performing any (valid)
@@ -203,7 +185,7 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
       case false => simp [h₂, permits_empty_iff_no_satisfied_permits_on_concrete]
       case true => simp [h₁, h₂, permits_nonempty_iff_satisfied_permits_nonempty_on_concrete]
   case _ =>
-    rw [← Set.eq_means_eqv]
+    rw [← Set.eq_means_eqv PartialResponse.overapproximateDeterminingPolicies_wf determiningPolicies_wf]
     unfold List.Equiv
     simp only [List.subset_def]
     constructor
@@ -227,3 +209,22 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
     cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
     simp only [and_true, and_false, ite_true, ite_false] <;>
     exact errors_is_errorPolicies_on_concrete
+
+/--
+  Corollary to the above: partial-authorizing with concrete inputs gives a
+  concrete decision.
+-/
+theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).decision ≠ .unknown
+:= by
+  intro h₁
+  have h₂ := partial_authz_eqv_authz_on_concrete (policies := policies) (req := req) (entities := entities) (presp := isAuthorizedPartial req entities policies) (resp := isAuthorized req entities policies)
+  simp at h₂
+  replace ⟨h₂, h₃, h₄, h₅⟩ := h₂ ; clear h₃ h₄ h₅
+  cases h₃ : (isAuthorized req entities policies).decision
+  case allow =>
+    simp [h₃] at h₂
+    simp [h₂] at h₁
+  case deny =>
+    simp [h₃] at h₂
+    simp [h₂] at h₁

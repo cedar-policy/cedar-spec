@@ -32,15 +32,17 @@ namespace Cedar.Data.Set
 def WellFormed {α} [LT α] [DecidableLT α] (s : Set α) :=
   s = Set.make s.toList
 
-/--
-  why does this pass without using the wellformedness in the proof?
-  am I misunderstanding something? surely this isn't true for all sets
--/
+theorem empty_wf [LT α] [DecidableLT α]
+  : WellFormed (Set.empty : Set α)
+:= by
+  unfold WellFormed toList empty make List.canonicalize
+  rfl
+
 theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (s : Set α) :
   WellFormed s → ∃ list, s = Set.make list
 := by
   intro h₁
-  exists s.elts
+  exists s.elts -- despite not explicitly referencing h₁, this does rely on h₁. if you don't believe me, try `clear h₁` before this line.
 
 /-! ### contains and mem -/
 
@@ -280,7 +282,7 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
  (h₁ : WellFormed s₁) :
  WellFormed (s₁ ∩ s₂)
 := by
-  simp only [WellFormed] at *
+  unfold WellFormed
   simp only [Inter.inter, intersect]
   simp only [make, toList, elts, mk.injEq] at *
   simp only [List.inter]
@@ -289,5 +291,14 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rw (config := {occs := .pos [1]}) [h₁]
   simp only
   apply h₃
+
+theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
+  WellFormed (s₁ ∪ s₂)
+:= by
+  unfold WellFormed
+  simp only [Union.union, union, toList]
+  rw [make_make_eqv]
+  apply List.Equiv.symm
+  exact elts_make_equiv
 
 end Cedar.Data.Set
