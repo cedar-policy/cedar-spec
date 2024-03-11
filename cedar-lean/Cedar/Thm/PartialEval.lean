@@ -64,8 +64,8 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
 -/
 theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request} {entities : Entities} :
   match partialEvaluate expr request entities with
-  | .ok (.value _) => false
-  | .ok (.residual _) => true
+  | .ok (.value _) => true
+  | .ok (.residual _) => false
   | .error _ => true
 := by
   sorry

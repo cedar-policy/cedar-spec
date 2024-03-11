@@ -41,6 +41,38 @@ def Residual.effect (r : Residual) : Option Effect :=
   | .residual _ effect _ => effect
   | .error _ _ => none
 
+/--
+  if this is a known permit, return the PolicyID
+-/
+def Residual.isKnownPermit (r : Residual) : Option PolicyID :=
+  match r with
+  | .residual id .permit (.lit (.bool true)) => some id
+  | _ => none
+
+/--
+  if this is a known forbid, return the PolicyID
+-/
+def Residual.isKnownForbid (r : Residual) : Option PolicyID :=
+  match r with
+  | .residual id .forbid (.lit (.bool true)) => some id
+  | _ => none
+
+/--
+  if this is a permit residual, return the PolicyID
+-/
+def Residual.isPermit (r : Residual) : Option PolicyID :=
+  match r with
+  | .residual id .permit _ => some id
+  | _ => none
+
+/--
+  if this is a forbid residual, return the PolicyID
+-/
+def Residual.isForbid (r : Residual) : Option PolicyID :=
+  match r with
+  | .residual id .forbid _ => some id
+  | _ => none
+
 structure PartialResponse where
   /--
     All residuals for policies that are, or may be, satisfied.
@@ -62,38 +94,26 @@ structure PartialResponse where
   substitutions of the unknowns)
 -/
 def PartialResponse.knownPermits (resp : PartialResponse) : Set PolicyID :=
-  let permits := resp.residuals.filterMap fun residual => match residual with
-    | .residual id .permit (.lit (.bool true)) => some id
-    | _ => none
-  Set.make permits
+  Set.make (resp.residuals.filterMap Residual.isKnownPermit)
 
 /--
   All `forbid` policies which are definitely satisfied (for all possible
   substitutions of the unknowns)
 -/
 def PartialResponse.knownForbids (resp : PartialResponse) : Set PolicyID :=
-  let forbids := resp.residuals.filterMap fun residual => match residual with
-    | .residual id .forbid (.lit (.bool true)) => some id
-    | _ => none
-  Set.make forbids
+  Set.make (resp.residuals.filterMap Residual.isKnownForbid)
 
 /--
   All `permit` policies which are, or may be, satisfied
 -/
 def PartialResponse.permits (resp : PartialResponse) : Set PolicyID :=
-  let permits := resp.residuals.filterMap fun residual => match residual with
-    | .residual id .permit _ => some id
-    | _ => none
-  Set.make permits
+  Set.make (resp.residuals.filterMap Residual.isPermit)
 
 /--
   All `forbid` policies which are, or may be, satisfied
 -/
 def PartialResponse.forbids (resp : PartialResponse) : Set PolicyID :=
-  let forbids := resp.residuals.filterMap fun residual => match residual with
-    | .residual id .forbid _ => some id
-    | _ => none
-  Set.make forbids
+  Set.make (resp.residuals.filterMap Residual.isForbid)
 
 /--
   All policies which definitely produce errors (for all possible substitutions

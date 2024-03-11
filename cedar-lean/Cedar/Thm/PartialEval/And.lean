@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec.PartialEvaluator
+import Cedar.Spec.Policy
 import Cedar.Thm.PartialEval.Basic
 
 namespace Cedar.Thm
@@ -168,5 +169,19 @@ theorem exprand_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : Pa
 := by
   unfold Expr.asPartialExpr
   exact @partialexprand_produces_bool_residual_or_error e₁.asPartialExpr e₂.asPartialExpr request entities
+
+/--
+  Corollary to the above: Partial-evaluating a policy produces either
+  .ok bool, a residual, or an error
+-/
+theorem policy_produces_bool_residual_or_error {p : Policy} {request : PartialRequest} {entities : PartialEntities} :
+  match (partialEvaluate p.toExpr request entities) with
+  | .ok (.value (.prim (.bool _))) => true
+  | .ok (.residual _) => true
+  | .error _ => true
+  | _ => false
+:= by
+  unfold Policy.toExpr
+  apply exprand_produces_bool_residual_or_error
 
 end Cedar.Thm

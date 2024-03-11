@@ -85,7 +85,7 @@ theorem underapproximateDeterminingPolicies_wf {resp : PartialResponse} :
 theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
   id ∈ resp.knownPermits → id ∈ resp.permits
 := by
-  unfold PartialResponse.knownPermits PartialResponse.permits
+  unfold PartialResponse.knownPermits PartialResponse.permits Residual.isKnownPermit Residual.isPermit
   simp only [← Set.make_mem]
   simp only [List.mem_filterMap]
   intro h₁
@@ -99,8 +99,7 @@ theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
 theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
   resp.permits.isEmpty → resp.knownPermits.isEmpty
 := by
-  unfold PartialResponse.permits PartialResponse.knownPermits
-  simp
+  unfold PartialResponse.permits PartialResponse.knownPermits Residual.isPermit Residual.isKnownPermit
   repeat rw [Set.empty_iff_not_exists]
   intro h₁ h₂
   simp at h₁
@@ -119,8 +118,7 @@ theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
 theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
   resp.forbids.isEmpty → resp.knownForbids.isEmpty
 := by
-  unfold PartialResponse.forbids PartialResponse.knownForbids
-  simp
+  unfold PartialResponse.forbids PartialResponse.knownForbids Residual.isForbid Residual.isKnownForbid
   repeat rw [Set.empty_iff_not_exists]
   intro h₁ h₂
   simp at h₁
