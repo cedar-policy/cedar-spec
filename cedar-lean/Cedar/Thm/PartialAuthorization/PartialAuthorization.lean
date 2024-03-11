@@ -41,10 +41,12 @@ open Cedar.Data
 open Cedar.Spec
 open Except
 
+namespace PartialOnConcrete -- lemmas about the behavior of partial evaluation on concrete inputs
+
 /--
   helper lemma
 -/
-theorem forbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).forbids.isEmpty ↔
   (satisfiedPolicies .forbid policies req entities).isEmpty
 := by
@@ -53,7 +55,7 @@ theorem forbids_empty_iff_no_satisfied_forbids_on_concrete {policies : Policies}
 /--
   corollary of the above
 -/
-theorem forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem forbids_nonempty_iff_satisfied_forbids_nonempty {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).forbids.isEmpty = false ↔
   (satisfiedPolicies .forbid policies req entities).isEmpty = false
 := by
@@ -62,19 +64,19 @@ theorem forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete {policies : 
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [forbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    rw [forbids_empty_iff_no_satisfied_forbids] at h₁
     assumption
   case mpr =>
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [← forbids_empty_iff_no_satisfied_forbids_on_concrete] at h₁
+    rw [← forbids_empty_iff_no_satisfied_forbids] at h₁
     assumption
 
 /--
   helper lemma
 -/
-theorem permits_empty_iff_no_satisfied_permits_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem permits_empty_iff_no_satisfied_permits {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).permits.isEmpty ↔
   (satisfiedPolicies .permit policies req entities).isEmpty
 := by
@@ -83,7 +85,7 @@ theorem permits_empty_iff_no_satisfied_permits_on_concrete {policies : Policies}
 /--
   helper lemma
 -/
-theorem permits_nonempty_iff_satisfied_permits_nonempty_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem permits_nonempty_iff_satisfied_permits_nonempty {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).permits.isEmpty = false ↔
   (satisfiedPolicies .permit policies req entities).isEmpty = false
 := by
@@ -92,19 +94,19 @@ theorem permits_nonempty_iff_satisfied_permits_nonempty_on_concrete {policies : 
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [permits_empty_iff_no_satisfied_permits_on_concrete] at h₁
+    rw [permits_empty_iff_no_satisfied_permits] at h₁
     assumption
   case mpr =>
     intro h₁
     apply eq_false_of_ne_true
     replace h₁ := ne_true_of_eq_false h₁
-    rw [← permits_empty_iff_no_satisfied_permits_on_concrete] at h₁
+    rw [← permits_empty_iff_no_satisfied_permits] at h₁
     assumption
 
 /--
   helper lemma
 -/
-theorem knownForbids_eq_forbids_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem knownForbids_eq_forbids {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).knownForbids = (isAuthorizedPartial req entities policies).forbids
 := by
   sorry
@@ -112,7 +114,7 @@ theorem knownForbids_eq_forbids_on_concrete {policies : Policies} {req : Request
 /--
   helper lemma
 -/
-theorem knownPermits_eq_permits_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem knownPermits_eq_permits {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).knownPermits = (isAuthorizedPartial req entities policies).permits
 := by
   sorry
@@ -120,10 +122,12 @@ theorem knownPermits_eq_permits_on_concrete {policies : Policies} {req : Request
 /--
   helper lemma
 -/
-theorem errors_is_errorPolicies_on_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem errors_is_errorPolicies {policies : Policies} {req : Request} {entities : Entities} :
   Set.make ((isAuthorizedPartial req entities policies).errors.map Prod.fst) = errorPolicies policies req entities
 := by
   sorry
+
+end PartialOnConcrete
 
 /--
   helper lemma

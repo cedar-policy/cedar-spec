@@ -172,18 +172,18 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
   repeat (any_goals (apply And.intro))
   case _ =>
     simp [isAuthorized, PartialResponse.decision]
-    simp only [knownForbids_eq_forbids_on_concrete]
-    simp only [forbids_empty_iff_no_satisfied_forbids_on_concrete]
-    simp only [forbids_nonempty_iff_satisfied_forbids_nonempty_on_concrete]
+    simp only [PartialOnConcrete.knownForbids_eq_forbids]
+    simp only [PartialOnConcrete.forbids_empty_iff_no_satisfied_forbids]
+    simp only [PartialOnConcrete.forbids_nonempty_iff_satisfied_forbids_nonempty]
     cases h₁ : (satisfiedPolicies .forbid policies req entities).isEmpty
     case false => simp
     case true =>
       simp [h₁]
-      simp only [permits_empty_iff_no_satisfied_permits_on_concrete]
-      simp only [knownPermits_eq_permits_on_concrete]
+      simp only [PartialOnConcrete.permits_empty_iff_no_satisfied_permits]
+      simp only [PartialOnConcrete.knownPermits_eq_permits]
       cases h₂ : (satisfiedPolicies .permit policies req entities).isEmpty
-      case false => simp [h₂, permits_empty_iff_no_satisfied_permits_on_concrete]
-      case true => simp [h₁, h₂, permits_nonempty_iff_satisfied_permits_nonempty_on_concrete]
+      case false => simp [h₂, PartialOnConcrete.permits_empty_iff_no_satisfied_permits]
+      case true => simp [h₁, h₂, PartialOnConcrete.permits_nonempty_iff_satisfied_permits_nonempty]
   case _ =>
     rw [← Set.eq_means_eqv PartialResponse.overapproximateDeterminingPolicies_wf determiningPolicies_wf]
     unfold List.Equiv
@@ -208,7 +208,7 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
     cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
     cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
     simp only [and_true, and_false, ite_true, ite_false] <;>
-    exact errors_is_errorPolicies_on_concrete
+    exact PartialOnConcrete.errors_is_errorPolicies
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a
