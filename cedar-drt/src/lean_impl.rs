@@ -332,10 +332,25 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             ValidationMode::Strict,
             "Lean definitional validator only supports `Strict` mode"
         );
-        self.validate(schema, policies)
+        let result = self.validate(schema, policies);
+        result.map(|res| {
+            // `impossiblePolicy` is considered a warning rather than an error,
+            // so it's safe to drop here (although this means it can't be used
+            // for differential testing, see #254)
+            let errors = res
+                .errors
+                .into_iter()
+                .filter(|x| x != "impossiblePolicy")
+                .collect();
+            TestValidationResult { errors, ..res }
+        })
     }
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::PolicyIds
+    }
+
+    fn validation_comparison_mode(&self) -> ValidationComparisonMode {
+        ValidationComparisonMode::AgreeOnValid
     }
 }
