@@ -93,7 +93,5 @@ fn run_corpus_tests(custom_impl: &impl CedarTestImplementation) {
 fn integration_tests_on_def_impl() {
     let lean_def_impl = LeanDefinitionalEngine::new();
     run_integration_tests(&lean_def_impl);
-
-    // This test may fail due to differences in precision between the Rust & Lean validators (#226)
-    // run_corpus_tests(&lean_def_impl);
+    run_corpus_tests(&lean_def_impl);
 }
