@@ -17,6 +17,8 @@
 //! Integration test that runs the handwritten test cases from
 //! `cedar-integration-tests` on the definitional implementation.
 
+#![cfg(feature = "integration-testing")]
+
 use cedar_testing::cedar_test_impl::CedarTestImplementation;
 use cedar_testing::integration_testing::{
     perform_integration_test_from_json_custom, resolve_integration_test_path,

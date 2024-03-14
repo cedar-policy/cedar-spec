@@ -13,7 +13,7 @@ jobs:
           - stable
     steps:
       - name: Checkout cedar-spec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Lean
@@ -39,7 +39,7 @@ jobs:
           - stable
     steps:
       - name: Checkout cedar-spec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Lean
@@ -67,3 +67,16 @@ jobs:
       - name: build.sh
         shell: bash
         run: source ~/.profile && ./build.sh
+      - name: Delete old integration tests
+        working-directory: ./cedar
+        run: rm -rf cedar-integration-tests
+      - name: Download new integration tests
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-integration-tests
+          ref: main
+          path: ./cedar/cedar-integration-tests
+      - name: Run integration tests
+        working-directory: ./cedar-drt
+        run: source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+
