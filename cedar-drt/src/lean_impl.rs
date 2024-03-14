@@ -337,11 +337,11 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         result.map(|res| {
             // `impossiblePolicy` is considered a warning rather than an error,
             // so it's safe to drop here (although this means it can't be used
-            // for differential testing, see #??)
+            // for differential testing, see #254)
             let errors = res
                 .errors
                 .into_iter()
-            .filter(|x| x != "impossiblePolicy")
+                .filter(|x| x != "impossiblePolicy")
                 .collect();
             TestValidationResult { errors, ..res }
         })
