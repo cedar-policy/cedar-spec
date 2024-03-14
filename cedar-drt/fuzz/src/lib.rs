@@ -31,6 +31,7 @@ use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
 pub use cedar_testing::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
+    ValidationComparisonMode,
 };
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
