@@ -58,11 +58,6 @@ pub fn run_eval_test(
     let eval = Evaluator::new(request.clone(), entities, &exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
-        Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
-            // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
-            // overflow error. Once we migrate to Lean this should be unnecessary.
-            return;
-        }
         Err(_) => None,
     };
 
@@ -110,17 +105,6 @@ pub fn run_auth_test(
     let (rust_res, rust_auth_dur) =
         time_function(|| authorizer.is_authorized(request.clone(), policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
-
-    // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
-    // overflow error. Once we migrate to Lean this should be unnecessary.
-    if rust_res
-        .diagnostics
-        .errors
-        .iter()
-        .any(|e| e.to_string().contains("integer overflow"))
-    {
-        return rust_res;
-    }
 
     let definitional_res = custom_impl.is_authorized(&request, policies, entities);
 
