@@ -19,10 +19,6 @@ cd ..
 cd cedar-drt
 cargo build
 
-# Run integration tests
-source set_env_vars.sh
-cargo test -- --nocapture
-
 # Build inner fuzz crate
 cd fuzz && RUSTFLAGS="--cfg=fuzzing" cargo build
 cargo test

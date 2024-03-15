@@ -17,6 +17,8 @@
 //! Run the standard and definitional implementations of Cedar on the integration
 //! tests are record performance results.
 
+#![cfg(feature = "integration-testing")]
+
 mod integration_tests;
 
 use cedar_drt::ast::{PolicySet, Request};
