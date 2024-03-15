@@ -78,5 +78,5 @@ jobs:
           path: ./cedar/cedar-integration-tests
       - name: Run integration tests
         working-directory: ./cedar-drt
-        run: source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
 
