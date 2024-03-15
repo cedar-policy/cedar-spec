@@ -76,6 +76,9 @@ jobs:
           repository: cedar-policy/cedar-integration-tests
           ref: main
           path: ./cedar/cedar-integration-tests
+      - name: Unpack corpus tests
+        working-directory: ./cedar/cedar-integration-tests
+        run: tar xzf corpus-tests.tar.gz
       - name: Run integration tests
         working-directory: ./cedar-drt
         run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
