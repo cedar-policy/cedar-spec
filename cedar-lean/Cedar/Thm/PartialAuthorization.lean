@@ -58,7 +58,10 @@ theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req
   rw [List.filterMap_filterMap]
   apply List.filterMap_congr
   intro policy h₂
-  simp only [Option.bind]
+  have h₃ := eval_on_residuals_eqv_substituting_first h₁ (expr := policy.toExpr) (entities := entities)
+  simp [Option.bind]
+  -- TODO: desugar the do-let in h₃ to show its LHS matches the LHS of the goal (which explicitly written with match-on-match and `fun residual`).
+  -- or maneuver so the goal is written in do-let form, but that seems harder.
   sorry
 
 /--

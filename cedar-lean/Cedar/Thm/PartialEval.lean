@@ -177,3 +177,14 @@ theorem subst_preserves_errors_mt {expr : PartialExpr} {req req' : PartialReques
   case _ e h₄ =>
     have h₅ := subst_preserves_errors h₁ h₄
     simp [h₅] at h₂
+
+/--
+  Re-evaluation with a substitution on the residual expression, is equivalent to
+  substituting first and then evaluating on the original expression.
+-/
+theorem eval_on_residuals_eqv_substituting_first {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap: Map String RestrictedPartialValue} :
+  req.subst subsmap = some req' →
+  (partialEvaluate expr req entities >>= λ residual => partialEvaluate (residual.subst subsmap).asPartialExpr req' (entities.subst subsmap)) =
+  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap)
+:= by
+  sorry
