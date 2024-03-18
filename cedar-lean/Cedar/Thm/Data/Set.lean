@@ -79,6 +79,23 @@ theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
   specialize h1 v
   contradiction
 
+/-! ### empty -/
+
+theorem empty_no_elts {α : Type u} (v : α) :
+  ¬ v ∈ Set.empty
+:= by
+  intro h
+  simp only [Membership.mem, Set.elts, Set.empty] at h
+  have _ := List.ne_nil_of_mem h
+  contradiction
+
+theorem empty_wf {α : Type u} [LT α] [DecidableLT α] :
+  Set.WellFormed (Set.empty : Set α)
+:= by
+  simp only [Set.empty, Set.WellFormed, Set.make,
+    Set.toList, Set.elts, List.canonicalize_nil]
+
+
 /-! ### isEmpty -/
 
 theorem make_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
@@ -147,6 +164,11 @@ theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
 
 /-! ### make -/
 
+theorem make_wf [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
+  WellFormed (Set.make xs)
+:= by
+  simp only [WellFormed, make, toList, elts, List.canonicalize_idempotent]
+
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs
 := by
@@ -179,7 +201,7 @@ theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
     have h₃ := List.Equiv.symm h₂; clear h₂
     exact List.Equiv.trans (a := xs) (b := List.canonicalize (fun x => x) xs) (c := ys) h₁ h₃
   case mpr =>
-    intro h; unfold make; simp only [mk.injEq]
+    intro h; unfold make; simp
     apply List.equiv_implies_canonical_eq _ _ h
 
 theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
@@ -189,13 +211,11 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
   constructor
   case left =>
     intro a h₁
-    rw [make_mem]
-    rw [← in_list_iff_in_set]
+    rw [make_mem, ← in_list_iff_in_set]
     exact h₁
   case right =>
     intro a h₁
-    rw [in_list_iff_in_set]
-    rw [← make_mem]
+    rw [in_list_iff_in_set, ← make_mem]
     exact h₁
 
 theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
@@ -259,5 +279,18 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rw (config := {occs := .pos [1]}) [h₁]
   simp only
   apply h₃
+
+/-! ### sizeOf -/
+
+theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
+  (h : a ∈ s) :
+  sizeOf a < sizeOf s
+:= by
+  simp only [Membership.mem, elts] at h
+  replace h := List.sizeOf_lt_of_mem h
+  have _ : sizeOf s.1 < sizeOf s := by
+    simp only [sizeOf, _sizeOf_1]
+    omega
+  omega
 
 end Cedar.Data.Set
