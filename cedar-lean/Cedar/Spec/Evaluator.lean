@@ -32,7 +32,6 @@ def intOrErr : Option Int64 → Result Value
 def apply₁ : UnaryOp → Value → Result Value
   | .not,     .prim (.bool b)        => .ok !b
   | .neg,     .prim (.int i)         => intOrErr i.neg?
-  | .mulBy c, .prim (.int i)         => intOrErr (c.mul? i)
   | .like p,  .prim (.string s)      => .ok (wildcardMatch s p)
   | .is ety,  .prim (.entityUID uid) => .ok (ety == uid.ty)
   | _, _                             => .error .typeError
@@ -51,6 +50,7 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .lessEq, .prim (.int i), .prim (.int j)                => .ok ((i ≤ j): Bool)
   | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j)
   | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j)
+  | .mul,    .prim (.int i), .prim (.int j)                => intOrErr (i.mul? j)
   | .contains,    .set vs₁, _                              => .ok (vs₁.contains v₂)
   | .containsAll, .set vs₁, .set vs₂                       => .ok (vs₂.subset vs₁)
   | .containsAny, .set vs₁, .set vs₂                       => .ok (vs₁.intersects vs₂)

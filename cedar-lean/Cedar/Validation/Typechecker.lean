@@ -106,7 +106,6 @@ def typeOfUnaryApp (op : UnaryOp) (ty : CedarType) : ResultType :=
   match op, ty with
   | .not, .bool x          => ok (.bool x.not)
   | .neg, .int             => ok .int
-  | .mulBy _, .int         => ok .int
   | .like _, .string       => ok (.bool .anyBool)
   | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
   | _, _                   => err (.unexpectedType ty)
@@ -172,6 +171,7 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Ex
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
   | .add,    .int, .int                     => ok .int
   | .sub,    .int, .int                     => ok .int
+  | .mul,    .int, .int                     => ok .int
   | .contains, .set ty₃, _                  => ifLubThenBool ty₂ ty₃
   | .containsAll, .set ty₃, .set ty₄        => ifLubThenBool ty₃ ty₄
   | .containsAny, .set ty₃, .set ty₄        => ifLubThenBool ty₃ ty₄

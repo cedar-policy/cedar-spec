@@ -133,53 +133,6 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
       exact type_is_inhabited CedarType.int
     }
 
-theorem type_of_mulBy_inversion {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.unaryApp (.mulBy k) x₁) c₁ env = Except.ok (ty, c₂)) :
-  c₂ = ∅ ∧
-  ty = .int ∧
-  ∃ c₁', typeOf x₁ c₁ env = Except.ok (.int, c₁')
-:= by
-  simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
-  case ok res =>
-    have ⟨ty₁, c₁'⟩ := res
-    simp [typeOfUnaryApp] at h₁
-    split at h₁ <;> try contradiction
-    simp [ok] at h₁
-    simp [h₁]
-
-theorem type_of_mulBy_is_sound {x₁ : Expr} {k : Int64} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp (.mulBy k) x₁) c₁ env = Except.ok (ty, c₂))
-  (ih : TypeOfIsSound x₁) :
-  GuardedCapabilitiesInvariant (Expr.unaryApp (.mulBy k) x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp (.mulBy k) x₁) request entities v ∧ InstanceOfType v ty
-:= by
-  have ⟨h₅, h₆, c₁', h₄⟩ := type_of_mulBy_inversion h₃
-  subst h₅; subst h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-    simp [EvaluatesTo] at h₆
-    simp [EvaluatesTo, evaluate]
-    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inr.inr.inr =>
-      have ⟨i, h₈⟩ := instance_of_int_is_int h₇
-      subst h₈
-      simp [apply₁, intOrErr]
-      cases h₉ : k.mul? i
-      case none =>
-        simp only [or_false, or_true, true_and]
-        exact type_is_inhabited CedarType.int
-      case some i' =>
-        simp only [Except.ok.injEq, false_or, exists_eq_left']
-        apply InstanceOfType.instance_of_int
-    all_goals {
-      exact type_is_inhabited CedarType.int
-    }
-
 theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
@@ -234,7 +187,7 @@ theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capab
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
-    case h_5 _ _ ety' h₃ =>
+    case h_4 _ _ ety' h₃ =>
       simp only [UnaryOp.is.injEq] at h₃
       subst h₃
       simp [ok] at h₁
@@ -284,7 +237,6 @@ theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : C
   match op₁ with
   | .not     => exact type_of_not_is_sound h₁ h₂ h₃ ih
   | .neg     => exact type_of_neg_is_sound h₁ h₂ h₃ ih
-  | .mulBy k => exact type_of_mulBy_is_sound h₁ h₂ h₃ ih
   | .like p  => exact type_of_like_is_sound h₁ h₂ h₃ ih
   | .is ety  => exact type_of_is_is_sound h₁ h₂ h₃ ih
 

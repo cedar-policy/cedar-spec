@@ -214,7 +214,7 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     }
 
 theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : op₂ = .add ∨ op₂ = .sub)
+  (h₁ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
   (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty = .int ∧
@@ -224,7 +224,7 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
   simp [typeOf] at *
   cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
   cases h₄ : typeOf x₂ c env <;> simp [h₄] at h₂
-  rcases h₁ with h₁ | h₁
+  rcases h₁ with h₁ | h₁ | h₁
   all_goals {
     subst h₁
     simp [typeOfBinaryApp, err, ok] at h₂
@@ -238,7 +238,7 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
   }
 
 theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₀ : op₂ = .add ∨ op₂ = .sub)
+  (h₀ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
@@ -266,13 +266,17 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
     have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
     have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
     subst ih₁ ih₂
-    rcases h₀ with h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
+    rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
     case inl =>
       cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
       case none => exact type_is_inhabited CedarType.int
       case some => simp [InstanceOfType.instance_of_int]
-    case inr =>
+    case inr.inl =>
       cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
+      case none => exact type_is_inhabited CedarType.int
+      case some => simp [InstanceOfType.instance_of_int]
+    case inr.inr =>
+      cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
       case none => exact type_is_inhabited CedarType.int
       case some => simp [InstanceOfType.instance_of_int]
 
@@ -837,7 +841,8 @@ theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   | .less
   | .lessEq      => exact type_of_int_cmp_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .add
-  | .sub         => exact type_of_int_arith_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
+  | .sub
+  | .mul         => exact type_of_int_arith_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .contains    => exact type_of_contains_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .containsAll
   | .containsAny => exact type_of_containsA_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
