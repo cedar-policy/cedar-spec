@@ -108,13 +108,10 @@ impl<'a> ExprGenerator<'a> {
                         self.generate_expr(max_depth - 1, u)?,
                         self.generate_expr(max_depth - 1, u)?,
                     )),
-                    1 => {
-                        // arbitrary expression, which may be a constant
-                        let expr = self.generate_expr(max_depth - 1, u)?;
-                        // arbitrary constant integer
-                        let c = self.constant_pool.arbitrary_int_constant(u)?;
-                        Ok(ast::Expr::mul(expr, c))
-                    },
+                    1 => Ok(ast::Expr::mul(
+                        self.generate_expr(max_depth - 1, u)?,
+                        self.generate_expr(max_depth - 1, u)?,
+                    )),
                     1 => {
                         // negation expression
                         Ok(ast::Expr::neg(self.generate_expr(max_depth - 1, u)?))
@@ -641,17 +638,18 @@ impl<'a> ExprGenerator<'a> {
                             )?,
                         )),
                         // * expression
-                        1 => {
-                            // arbitrary expression, which may be a constant
-                            let expr = self.generate_expr_for_type(
+                        1 => Ok(ast::Expr::mul(
+                            self.generate_expr_for_type(
                                 &Type::long(),
                                 max_depth - 1,
                                 u,
-                            )?;
-                            // arbitrary integer constant
-                            let c = self.constant_pool.arbitrary_int_constant(u)?;
-                            Ok(ast::Expr::mul(expr, c))
-                        },
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::long(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
                         // negation expression
                         1 => Ok(ast::Expr::neg(self.generate_expr_for_type(
                             &Type::long(),
