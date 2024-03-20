@@ -117,6 +117,7 @@ def jsonToBinaryOp (json : Lean.Json) : ParseResult BinaryOp := do
   | "LessEq" => .ok .lessEq
   | "Add" => .ok .add
   | "Sub" => .ok .sub
+  | "Mul" => .ok .mul
   | "Contains" => .ok .contains
   | "ContainsAll" => .ok .containsAll
   | "ContainsAny" => .ok .containsAny
@@ -181,10 +182,6 @@ partial def jsonToExpr (json : Lean.Json) : ParseResult Expr := do
     let op ← getJsonField body "op" >>= jsonToUnaryOp
     let arg ← getJsonField body "arg" >>= jsonToExpr
     .ok (.unaryApp op arg)
-  | "MulByConst" => do
-    let c ← getJsonField body "constant" >>= jsonToInt64
-    let arg ← getJsonField body "arg" >>= jsonToExpr
-    .ok (.unaryApp (.mulBy c) arg)
   | "Like" => do
     let pat ← getJsonField body "pattern" >>= jsonToPattern
     let expr ← getJsonField body "expr" >>= jsonToExpr
