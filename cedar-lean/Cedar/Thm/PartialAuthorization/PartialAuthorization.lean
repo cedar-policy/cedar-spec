@@ -246,12 +246,50 @@ theorem knownForbids_eq_forbids {policies : Policies} {req : Request} {entities 
   apply mustBeSatisfied_eq_mayBeSatisfied (eff := .forbid)
 
 /--
-  on concrete inputs, `errors` and `errorPolicies` are equal
+  on concrete inputs, `PartialResponse.errors` and `errorPolicies` are equal
 -/
 theorem errors_eq_errorPolicies {policies : Policies} {req : Request} {entities : Entities} :
   Set.make ((isAuthorizedPartial req entities policies).errors.map Prod.fst) = errorPolicies policies req entities
 := by
-  sorry
+  unfold errorPolicies PartialResponse.errors
+  simp [Set.make_make_eqv]
+  simp [List.map_filterMap, List.Equiv, List.subset_def]
+  constructor
+  case left =>
+    intro pid r h₁ pair h₂ h₃
+    split at h₂ <;> simp at h₂
+    case h_1 r pid' e =>
+      subst pair
+      simp at h₃
+      subst pid'
+      simp [isAuthorizedPartial, errored, hasError] at *
+      replace ⟨policy, h₁, h₂⟩ := h₁
+      exists policy
+      apply And.intro h₁
+      simp [partial_eval_on_concrete_eqv_concrete_eval] at h₂
+      split <;> split at h₂ <;> simp at h₂ <;> try simp [h₂]
+      case inr.h_4 h₃ res e' h₄ =>
+        split at h₃ <;> simp at h₃
+        case h_1 v h₅ => simp [h₅, Except.map] at h₄
+  case right =>
+    intro pid policy h₁ h₂
+    unfold errored hasError at h₂
+    simp at h₂
+    replace ⟨h₂, h₃⟩ := h₂
+    subst h₃
+    split at h₂ <;> simp at h₂
+    case h_2 e h₃ =>
+      exists (.error policy.id e)
+      constructor
+      case left =>
+        unfold isAuthorizedPartial
+        simp [partial_eval_on_concrete_eqv_concrete_eval]
+        exists policy
+        apply And.intro h₁
+        split <;> simp
+        case h_1 h₄ | h_2 h₄ | h_3 h₄ => simp [Except.map, h₃] at h₄
+        case h_4 h₄ => simp [Except.map, h₃] at h₄ ; simp [h₄]
+      case right => exists (policy.id, e)
 
 end PartialOnConcrete
 
