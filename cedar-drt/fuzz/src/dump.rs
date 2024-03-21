@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use cedar_policy::integration_testing::{JsonRequest, JsonTest};
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{
     Context, EntityType, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
@@ -24,6 +23,7 @@ use cedar_policy_core::entities::{Entities, TypeAndId};
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_testing::integration_testing::{JsonRequest, JsonTest};
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
@@ -53,18 +53,18 @@ pub fn dump(
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;
 
-    let schema_filename = dirname.join(format!("{testcasename}.cedarschema.json"));
+    let schema_filename = dirname.join(format!("{testcasename}.cedarschema"));
     let policies_filename = dirname.join(format!("{testcasename}.cedar"));
     let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
     let testcase_filename = dirname.join(format!("{testcasename}.json"));
 
-    let schema_file = std::fs::OpenOptions::new()
+    let mut schema_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .append(false)
         .truncate(true)
         .open(&schema_filename)?;
-    serde_json::to_writer_pretty(schema_file, &schema)?;
+    writeln!(schema_file, "{}", schema.as_natural_schema().unwrap())?;
 
     let mut policies_file = std::fs::OpenOptions::new()
         .create(true)

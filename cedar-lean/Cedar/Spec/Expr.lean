@@ -37,7 +37,6 @@ inductive Var where
 inductive UnaryOp where
   | not
   | neg
-  | mulBy (i : Int64)
   | like (p : Pattern)
   | is (ety : EntityType)
 
@@ -48,6 +47,7 @@ inductive BinaryOp where
   | lessEq
   | add
   | sub
+  | mul
   | contains
   | containsAll
   | containsAny

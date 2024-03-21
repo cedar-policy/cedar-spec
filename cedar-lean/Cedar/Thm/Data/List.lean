@@ -417,6 +417,26 @@ theorem insertCanonical_cases [LT β] [DecidableLT β] (f : α → β) (x y : α
     case pos _ _ h₃ => simp [h₃, h₁]
     case neg _ _ h₃ => simp [h₃]
 
+
+theorem insertCanonical_subset [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) :
+  insertCanonical f x xs ⊆ x :: xs
+:= by
+  induction xs
+  case nil => simp only [insertCanonical, Subset.refl]
+  case cons hd tl ih =>
+    have h₁ := insertCanonical_cases f x hd tl
+    rcases h₁ with h₁ | h₁ | h₁
+    case inl =>
+      simp only [h₁, Subset.refl]
+    case inr.inl =>
+      simp [h₁]
+      apply Subset.trans ih
+      simp only [cons_subset, mem_cons, true_or, true_and]
+      exact Subset.trans (List.subset_cons hd tl) (List.subset_cons x (hd :: tl))
+    case inr.inr =>
+      simp [h₁]
+      exact Subset.trans (List.subset_cons hd tl) (List.subset_cons x (hd :: tl))
+
 theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (xs : List α) :
   x :: xs ≡ insertCanonical id x xs
 := by
@@ -595,6 +615,19 @@ theorem sortedBy_implies_canonicalize_eq [LT β] [StrictLT β] [DecidableLT β] 
       specialize ih h₁
       simp [ih, insertCanonical, h₂]
 
+theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
+  xs.canonicalize f ⊆ xs
+:= by
+  induction xs
+  case nil => simp only [canonicalize, Subset.refl]
+  case cons hd tl ih =>
+    simp [canonicalize]
+    have h := insertCanonical_subset f hd (canonicalize f tl)
+    apply Subset.trans h
+    simp only [cons_subset, mem_cons, true_or, true_and]
+    apply Subset.trans ih
+    simp only [subset_cons]
+
 /-
 Note that `canonicalize_equiv` does not hold for all functions `f`.
 To see why, consider xs = [(1, false), (1, true)], f = Prod.fst.
@@ -736,6 +769,32 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   simp [h₁]
   cases h₂ : mapM' f xs <;>
   simp [h₂, pure, Except.pure]
+
+/-! ### mapM' -/
+
+theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys →
+  ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ f x = .some y
+:= by
+  intro h₁
+  induction xs generalizing ys
+  case nil =>
+    simp only [not_mem_nil, false_implies, implies_true]
+  case cons xhd xtl ih =>
+    intro x h₂
+    simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+      Option.some.injEq] at h₁
+    replace ⟨yhd, h₁, ytl, h₃, h₄⟩ := h₁
+    simp only [mem_cons] at h₂
+    rcases h₂ with h₂ | h₂
+    case inl =>
+      subst h₂
+      exists yhd
+      simp only [← h₄, mem_cons, true_or, h₁, and_self]
+    case inr =>
+      replace ⟨y, ih⟩ := ih h₃ x h₂
+      exists y
+      simp only [← h₄, mem_cons, ih, or_true, and_self]
 
 /-! ### foldlM -/
 
@@ -926,6 +985,17 @@ theorem map_pmap_subtype
   : List.map (fun x : { a : α // p a } => f x.val) (List.pmap Subtype.mk as h)
     =
     List.map f as
+:= by
+  induction as <;> simp [*]
+
+theorem all_pmap_subtype
+  {p : α → Prop}
+  (f : α → Bool)
+  (as : List α)
+  (h : ∀ a, a ∈ as → p a)
+  : List.all (List.pmap Subtype.mk as h) (fun x : { a : α // p a } => f x.val)
+    =
+    List.all as f
 := by
   induction as <;> simp [*]
 

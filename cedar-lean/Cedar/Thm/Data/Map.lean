@@ -49,6 +49,22 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
+/-! ### make -/
+
+theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
+  WellFormed (Map.make xs)
+:= by
+  simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
+
+theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  x ∈ (Map.make xs).kvs → x ∈ xs
+:= by
+  simp only [kvs, make]
+  intro h₁
+  have h₂ := List.canonicalize_subseteq Prod.fst xs
+  simp [List.subset_def] at h₂
+  exact h₂ h₁
+
 theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty
 := by simp [make, empty, List.canonicalize_nil]
@@ -99,5 +115,30 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   have h₃ := List.find?_some h₂
   simp at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
+
+theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+  Map.contains m k = Map.contains (Map.mapOnValues f m) k
+:= by
+  simp only [contains, Option.isSome]
+  split
+  case h_1 h => simp [find?_mapOnValues_some f h]
+  case h_2 h => simp [find?_mapOnValues_none f h]
+
+
+/-! ### sizeOf -/
+
+theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
+  (h : (k, v) ∈ m.1) :
+  sizeOf v < sizeOf m
+:= by
+  simp only [Membership.mem] at h
+  replace h := List.sizeOf_lt_of_mem h
+  have _ : sizeOf v < sizeOf (k, v) := by
+    simp only [sizeOf, Prod._sizeOf_1]
+    omega
+  have _ : sizeOf m.1 < sizeOf m := by
+    simp only [sizeOf, _sizeOf_1]
+    omega
+  omega
 
 end Cedar.Data.Map

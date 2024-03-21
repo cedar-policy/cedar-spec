@@ -457,6 +457,11 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let num_entities_per_type = num_entities / entity_types.len();
                         let mut uids = HashSet::new();
                         while uids.len() < num_entities_per_type {
+                            // If we run out of bytes in `u`, then `uid` will be the same on every
+                            // subsequent iteration, so the size of `uids` won't increase.
+                            if self.u.is_empty() {
+                                return Err(Error::NotEnoughData);
+                            }
                             let uid =
                                 generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)?;
                             uids.insert(uid);

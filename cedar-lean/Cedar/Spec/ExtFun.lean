@@ -22,7 +22,6 @@ namespace Cedar.Spec
 
 open Cedar.Spec.Ext
 open Option
-open Except
 
 ----- Definitions -----
 
@@ -40,27 +39,27 @@ inductive ExtFun where
   | isInRange
 
 def res {α} [Coe α Ext] : Option α → Result Value
-  | some v => ok v
-  | none   => error .extensionError
+  | some v => .ok v
+  | none   => .error .extensionError
 
 def ExtFun.call : ExtFun → List Value → Result Value
   | .decimal, [.prim (.string s)]            => res (Decimal.decimal s)
   | .lessThan,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => ok (d₁ < d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ < d₂ : Bool)
   | .lessThanOrEqual,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => ok (d₁ ≤ d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ ≤ d₂ : Bool)
   | .greaterThan,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => ok (d₁ > d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ > d₂ : Bool)
   | .greaterThanOrEqual,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => ok (d₁ ≥ d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ ≥ d₂ : Bool)
   | .ip, [.prim (.string s)]                 => res (IPAddr.ip s)
-  | .isIpv4, [.ext (.ipaddr a)]              => ok a.isV4
-  | .isIpv6, [.ext (.ipaddr a)]              => ok a.isV6
-  | .isLoopback, [.ext (.ipaddr a)]          => ok a.isLoopback
-  | .isMulticast, [.ext (.ipaddr a)]         => ok a.isMulticast
+  | .isIpv4, [.ext (.ipaddr a)]              => .ok a.isV4
+  | .isIpv6, [.ext (.ipaddr a)]              => .ok a.isV6
+  | .isLoopback, [.ext (.ipaddr a)]          => .ok a.isLoopback
+  | .isMulticast, [.ext (.ipaddr a)]         => .ok a.isMulticast
   | .isInRange,
-    [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]   => ok (a₁.inRange a₂)
-  | _, _                                     => error .typeError
+    [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]   => .ok (a₁.inRange a₂)
+  | _, _                                     => .error .typeError
 
 ----- Derivations -----
 
