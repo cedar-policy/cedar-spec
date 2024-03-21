@@ -22,37 +22,45 @@ namespace Cedar.Thm.PartialResponse
 open Cedar.Data
 open Cedar.Spec
 
-theorem permits_wf {resp : PartialResponse} :
-  resp.permits.WellFormed
+theorem mayBeSatisfied_wf {resp : PartialResponse} {eff : Effect} :
+  (resp.mayBeSatisfied eff).WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.permits Set.toList
+  unfold Set.WellFormed PartialResponse.mayBeSatisfied Set.toList
   simp only [Set.make_make_eqv]
   apply List.Equiv.symm
   exact Set.elts_make_equiv
+
+theorem mustBeSatisfied_wf {resp : PartialResponse} {eff : Effect} :
+  (resp.mustBeSatisfied eff).WellFormed
+:= by
+  unfold Set.WellFormed PartialResponse.mustBeSatisfied Set.toList
+  simp only [Set.make_make_eqv]
+  apply List.Equiv.symm
+  exact Set.elts_make_equiv
+
+theorem permits_wf {resp : PartialResponse} :
+  resp.permits.WellFormed
+:= by
+  unfold PartialResponse.permits
+  apply mayBeSatisfied_wf (eff := .permit)
 
 theorem knownPermits_wf {resp : PartialResponse} :
   resp.knownPermits.WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.knownPermits Set.toList
-  simp only [Set.make_make_eqv]
-  apply List.Equiv.symm
-  exact Set.elts_make_equiv
+  unfold PartialResponse.knownPermits
+  apply mustBeSatisfied_wf (eff := .permit)
 
 theorem forbids_wf {resp : PartialResponse} :
   resp.forbids.WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.forbids Set.toList
-  simp only [Set.make_make_eqv]
-  apply List.Equiv.symm
-  exact Set.elts_make_equiv
+  unfold PartialResponse.forbids
+  apply mayBeSatisfied_wf (eff := .forbid)
 
 theorem knownForbids_wf {resp : PartialResponse} :
   resp.knownForbids.WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.knownForbids Set.toList
-  simp only [Set.make_make_eqv]
-  apply List.Equiv.symm
-  exact Set.elts_make_equiv
+  unfold PartialResponse.knownForbids
+  apply mustBeSatisfied_wf (eff := .forbid)
 
 theorem overapproximateDeterminingPolicies_wf {resp : PartialResponse} :
   resp.overapproximateDeterminingPolicies.WellFormed
@@ -82,57 +90,45 @@ theorem underapproximateDeterminingPolicies_wf {resp : PartialResponse} :
       case true => exact knownPermits_wf
       case false => exact Set.empty_wf
 
+theorem Residual.mustBeSatisfied_then_mayBeSatisfied {res : Residual} {eff : Effect} {id : PolicyID} :
+  res.mustBeSatisfied eff = some id → res.mayBeSatisfied eff = some id
+:= by
+  unfold Residual.mustBeSatisfied Residual.mayBeSatisfied
+  intro h₁
+  split at h₁ <;> simp at h₁
+  simp [h₁]
+
+theorem mustBeSatisfied_subset_mayBeSatisfied {resp : PartialResponse} {eff : Effect} :
+  resp.mustBeSatisfied eff ⊆ resp.mayBeSatisfied eff
+:= by
+  unfold HasSubset.Subset Set.instHasSubsetSet PartialResponse.mustBeSatisfied PartialResponse.mayBeSatisfied
+  simp only
+  apply Set.elts_subset_then_subset
+  apply List.f_implies_g_then_subset
+  intro res pid
+  apply Residual.mustBeSatisfied_then_mayBeSatisfied
+
 theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
   id ∈ resp.knownPermits → id ∈ resp.permits
 := by
-  unfold PartialResponse.knownPermits PartialResponse.permits Residual.isKnownPermit Residual.isPermit
-  simp only [← Set.make_mem]
-  simp only [List.mem_filterMap]
-  intro h₁
-  replace ⟨r, h₁⟩ := h₁
-  exists r
-  apply And.intro h₁.left
-  replace h₁ := h₁.right
-  split at h₁ <;> simp at h₁
-  subst h₁ ; simp
+  unfold PartialResponse.knownPermits PartialResponse.permits
+  have h₁ := @mustBeSatisfied_subset_mayBeSatisfied resp .permit
+  rw [Set.subset_def] at h₁
+  exact h₁ id
 
 theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
   resp.permits.isEmpty → resp.knownPermits.isEmpty
 := by
-  unfold PartialResponse.permits PartialResponse.knownPermits Residual.isPermit Residual.isKnownPermit
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂
-  simp at h₁
-  replace ⟨pid, h₂⟩ := h₂
-  specialize h₁ pid
-  rw [← Set.make_mem] at *
-  rw [List.mem_filterMap] at *
-  replace ⟨res, h₂⟩ := h₂
-  apply h₁ ; clear h₁
-  exists res
-  apply And.intro h₂.left
-  replace h₂ := h₂.right
-  split at h₂ <;> simp at h₂
-  subst h₂ ; simp
+  unfold PartialResponse.permits PartialResponse.knownPermits
+  apply Set.superset_empty_subset_empty
+  exact mustBeSatisfied_subset_mayBeSatisfied
 
 theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
   resp.forbids.isEmpty → resp.knownForbids.isEmpty
 := by
-  unfold PartialResponse.forbids PartialResponse.knownForbids Residual.isForbid Residual.isKnownForbid
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂
-  simp at h₁
-  replace ⟨pid, h₂⟩ := h₂
-  specialize h₁ pid
-  rw [← Set.make_mem] at *
-  rw [List.mem_filterMap] at *
-  replace ⟨res, h₂⟩ := h₂
-  apply h₁ ; clear h₁
-  exists res
-  apply And.intro h₂.left
-  replace h₂ := h₂.right
-  split at h₂ <;> simp at h₂
-  subst h₂ ; simp
+  unfold PartialResponse.forbids PartialResponse.knownForbids
+  apply Set.superset_empty_subset_empty
+  exact mustBeSatisfied_subset_mayBeSatisfied
 
 /--
   If the decision is concrete, there must be either:

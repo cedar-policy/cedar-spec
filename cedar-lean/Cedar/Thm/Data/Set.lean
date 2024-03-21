@@ -301,4 +301,44 @@ theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   apply List.Equiv.symm
   exact elts_make_equiv
 
+/-! ### subset -/
+
+theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
+  xs ⊆ ys → Set.make xs ⊆ Set.make ys
+:= by
+  sorry
+
+/--
+  Like `List.subset_def`, but lifted to Sets
+-/
+theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
+:= by
+  unfold HasSubset.Subset instHasSubsetSet subset
+  simp
+  constructor
+  case mp =>
+    intro h₁ a h₂
+    specialize h₁ a
+    rw [in_list_iff_in_set] at h₁
+    rw [contains_prop_bool_equiv] at h₁
+    exact h₁ h₂
+  case mpr =>
+    intro h₁ a h₂
+    specialize h₁ a
+    rw [in_list_iff_in_set] at h₂
+    rw [contains_prop_bool_equiv]
+    exact h₁ h₂
+
+theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
+:= by
+  repeat rw [Set.empty_iff_not_exists]
+  intro h₁ h₂ h₃
+  rw [subset_def] at h₁
+  replace ⟨a, h₃⟩ := h₃
+  apply h₂
+  exists a
+  exact h₁ a h₃
+
 end Cedar.Data.Set

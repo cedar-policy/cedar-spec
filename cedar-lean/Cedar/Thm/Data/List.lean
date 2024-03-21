@@ -128,6 +128,17 @@ theorem filterMap_nonempty_iff_exists_f_returns_some {f : α → Option β} {xs 
 := by
   sorry
 
+theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
+  (∀ a b, f a = some b → g a = some b) →
+  xs.filterMap f ⊆ xs.filterMap g
+:= by
+  intro h₁
+  simp [List.subset_def]
+  intro b a h₂ h₃
+  exists a
+  apply And.intro h₂
+  exact h₁ a b h₃
+
 /-! ### Sorted -/
 
 inductive SortedBy [LT β] (f : α → β) : List α → Prop where

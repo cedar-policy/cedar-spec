@@ -45,13 +45,14 @@ open Except
 namespace PartialOnConcrete -- lemmas about the behavior of partial evaluation on concrete inputs
 
 /--
-  helper lemma
+  on concrete inputs, PartialResponse.mayBeSatisfied is empty iff
+  satisfiedPolicies (computed with the concrete evaluator) is empty
 -/
-theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).forbids.isEmpty ↔
-  (satisfiedPolicies .forbid policies req entities).isEmpty
+theorem mayBeSatisfied_empty_iff_no_satisfied {policies : Policies} {req : Request} {entities : Entities} {eff : Effect} :
+  ((isAuthorizedPartial req entities policies).mayBeSatisfied eff).isEmpty ↔
+  (satisfiedPolicies eff policies req entities).isEmpty
 := by
-  simp [PartialResponse.forbids, satisfiedPolicies]
+  unfold PartialResponse.mayBeSatisfied satisfiedPolicies
   repeat rw [← Set.make_empty]
   repeat rw [List.filterMap_empty_iff_f_returns_none]
   simp [satisfiedWithEffect, satisfied]
@@ -62,7 +63,7 @@ theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Requ
     simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
     rw [forall_comm] at h₁
     specialize h₁ policy
-    simp [h₃, Residual.isForbid] at h₁
+    simp [h₃, Residual.mayBeSatisfied] at h₁
     split at h₁ <;> simp at h₁
     case h_1 h₅ | h_4 h₅ => simp [h₄] at h₅
     case h_2 | h_3 => apply h₁ ; assumption
@@ -71,9 +72,10 @@ theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Requ
     simp [isAuthorizedPartial] at h₂
     replace ⟨policy, h₂, h₃⟩ := h₂
     simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₃
-    simp [Residual.isForbid]
+    simp [Residual.mayBeSatisfied]
     split <;> simp
-    case h_1 r pid cond =>
+    case h_1 r pid eff' cond =>
+      intro h₄ ; subst h₄
       split at h₃
       <;> simp at h₃
       <;> replace ⟨h₃, h₄, h₅⟩ := h₃
@@ -99,78 +101,43 @@ theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Requ
 /--
   corollary of the above
 -/
-theorem forbids_nonempty_iff_satisfied_forbids_nonempty {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).forbids.isEmpty = false ↔
-  (satisfiedPolicies .forbid policies req entities).isEmpty = false
-:= by
-  constructor
-  case mp =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [forbids_empty_iff_no_satisfied_forbids] at h₁
-    assumption
-  case mpr =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [← forbids_empty_iff_no_satisfied_forbids] at h₁
-    assumption
-
-/--
-  helper lemma
-
-  TODO: this proof is structurally identical to the proof of
-  `forbids_empty_iff_no_satisfied_permits`; how to share it?
--/
 theorem permits_empty_iff_no_satisfied_permits {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).permits.isEmpty ↔
   (satisfiedPolicies .permit policies req entities).isEmpty
 := by
-  simp [PartialResponse.permits, satisfiedPolicies]
-  repeat rw [← Set.make_empty]
-  repeat rw [List.filterMap_empty_iff_f_returns_none]
-  simp [satisfiedWithEffect, satisfied]
+  unfold PartialResponse.permits
+  apply mayBeSatisfied_empty_iff_no_satisfied (eff := .permit)
+
+/--
+  corollary of the above
+-/
+theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).forbids.isEmpty ↔
+  (satisfiedPolicies .forbid policies req entities).isEmpty
+:= by
+  unfold PartialResponse.forbids
+  apply mayBeSatisfied_empty_iff_no_satisfied (eff := .forbid)
+
+/--
+  another corollary, for the nonempty case
+-/
+theorem mayBeSatisfied_nonempty_iff_satisfied_nonempty {policies : Policies} {req : Request} {entities : Entities} {eff : Effect} :
+  ((isAuthorizedPartial req entities policies).mayBeSatisfied eff).isEmpty = false ↔
+  (satisfiedPolicies eff policies req entities).isEmpty = false
+:= by
   constructor
   case mp =>
-    intro h₁ policy h₂ h₃ h₄
-    simp [isAuthorizedPartial] at h₁
-    simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
-    rw [forall_comm] at h₁
-    specialize h₁ policy
-    simp [h₃, Residual.isPermit] at h₁
-    split at h₁ <;> simp at h₁
-    case h_1 h₅ | h_4 h₅ => simp [h₄] at h₅
-    case h_2 | h_3 => apply h₁ ; assumption
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [mayBeSatisfied_empty_iff_no_satisfied] at h₁
+    assumption
   case mpr =>
-    intro h₁ r h₂
-    simp [isAuthorizedPartial] at h₂
-    replace ⟨policy, h₂, h₃⟩ := h₂
-    simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₃
-    simp [Residual.isPermit]
-    split <;> simp
-    case h_1 r pid cond =>
-      split at h₃
-      <;> simp at h₃
-      <;> replace ⟨h₃, h₄, h₅⟩ := h₃
-      <;> subst h₃ h₅
-      <;> specialize h₁ policy h₂ h₄
-      <;> apply h₁ <;> clear h₁
-      case h_3 x h₁ => split at h₁ <;> simp at h₁
-      case h_2 v h₁ h₃ =>
-        split at h₃ <;> simp at h₃
-        case h_2 v' h₅ =>
-          subst h₃
-          simp [h₅]
-          have h₃ := @policy_produces_bool_or_error policy req entities
-          simp [h₅] at h₃
-          split at h₃
-          case h_1 b h₆ =>
-            cases b
-            case true => simp at h₆ ; assumption
-            case false => simp at h₆ ; exfalso ; apply h₁ ; assumption
-          case h_2 h₆ => simp at h₆
-          case h_3 => contradiction
+    intro h₁
+    apply eq_false_of_ne_true
+    replace h₁ := ne_true_of_eq_false h₁
+    rw [← mayBeSatisfied_empty_iff_no_satisfied] at h₁
+    assumption
 
 /--
   corollary of the above
@@ -179,22 +146,21 @@ theorem permits_nonempty_iff_satisfied_permits_nonempty {policies : Policies} {r
   (isAuthorizedPartial req entities policies).permits.isEmpty = false ↔
   (satisfiedPolicies .permit policies req entities).isEmpty = false
 := by
-  constructor
-  case mp =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [permits_empty_iff_no_satisfied_permits] at h₁
-    assumption
-  case mpr =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [← permits_empty_iff_no_satisfied_permits] at h₁
-    assumption
+  unfold PartialResponse.permits
+  apply mayBeSatisfied_nonempty_iff_satisfied_nonempty (eff := .permit)
 
 /--
-  helper lemma
+  corollary of the above
+-/
+theorem forbids_nonempty_iff_satisfied_forbids_nonempty {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).forbids.isEmpty = false ↔
+  (satisfiedPolicies .forbid policies req entities).isEmpty = false
+:= by
+  unfold PartialResponse.forbids
+  apply mayBeSatisfied_nonempty_iff_satisfied_nonempty (eff := .forbid)
+
+/--
+  on concrete inputs, the `cond` of all residuals is literal `true`
 -/
 theorem all_residuals_are_true_residuals {policies : Policies} {req : Request} {entities : Entities} {id : PolicyID} {eff : Effect} {cond : PartialExpr} :
   (Residual.residual id eff cond) ∈ (isAuthorizedPartial req entities policies).residuals →
@@ -225,75 +191,64 @@ theorem all_residuals_are_true_residuals {policies : Policies} {req : Request} {
   case h_2 e h₃ => simp [h₃] at h₁
 
 /--
-  helper lemma
+  on concrete inputs, `mustBeSatisfied` and `mayBeSatisfied` are the same
 -/
-theorem knownForbids_eq_forbids {policies : Policies} {req : Request} {entities : Entities} :
-  (isAuthorizedPartial req entities policies).knownForbids = (isAuthorizedPartial req entities policies).forbids
+theorem mustBeSatisfied_eq_mayBeSatisfied {policies : Policies} {req : Request} {entities : Entities} {eff : Effect} :
+  (isAuthorizedPartial req entities policies).mustBeSatisfied eff = (isAuthorizedPartial req entities policies).mayBeSatisfied eff
 := by
-  simp only [PartialResponse.knownForbids, PartialResponse.forbids]
+  simp only [PartialResponse.mustBeSatisfied, PartialResponse.mayBeSatisfied]
   rw [Set.make_make_eqv]
   unfold List.Equiv
-  simp [List.subset_def, Residual.isKnownForbid, Residual.isForbid]
+  simp [List.subset_def, Residual.mustBeSatisfied, Residual.mayBeSatisfied]
   constructor <;> intro pid r h₁ h₂
   case left =>
     exists r
     apply And.intro h₁
     split at h₂ <;> simp at h₂
-    case h_1 r pid => subst h₂ ; simp
+    case h_1 r pid' eff' =>
+      replace ⟨h₂, h₃⟩ := h₂
+      subst eff' pid'
+      simp
   case right =>
     exists r
     apply And.intro h₁
     split at h₂ <;> simp at h₂
-    case h_1 r pid cond =>
-      subst h₂
+    case h_1 r pid' eff' cond =>
+      replace ⟨h₂, h₃⟩ := h₂
+      subst eff' pid'
       split <;> simp
-      case h_1 pid' h₃ =>
+      case h_1 pid' eff' h₃ =>
         simp at h₃
-        exact h₃.left.symm
+        exact And.intro h₃.right.left h₃.left.symm
       case h_2 r' h₃ =>
-        specialize h₃ pid
+        specialize h₃ pid eff
         apply h₃ ; clear h₃
         have h₂ := all_residuals_are_true_residuals h₁
         subst h₂
         rfl
 
 /--
-  helper lemma
+  corollary of the above
 -/
 theorem knownPermits_eq_permits {policies : Policies} {req : Request} {entities : Entities} :
   (isAuthorizedPartial req entities policies).knownPermits = (isAuthorizedPartial req entities policies).permits
 := by
-  simp only [PartialResponse.knownPermits, PartialResponse.permits]
-  rw [Set.make_make_eqv]
-  unfold List.Equiv
-  simp [List.subset_def, Residual.isKnownPermit, Residual.isPermit]
-  constructor <;> intro pid r h₁ h₂
-  case left =>
-    exists r
-    apply And.intro h₁
-    split at h₂ <;> simp at h₂
-    case h_1 r pid => subst h₂ ; simp
-  case right =>
-    exists r
-    apply And.intro h₁
-    split at h₂ <;> simp at h₂
-    case h_1 r pid cond =>
-      subst h₂
-      split <;> simp
-      case h_1 pid' h₃ =>
-        simp at h₃
-        exact h₃.left.symm
-      case h_2 r' h₃ =>
-        specialize h₃ pid
-        apply h₃ ; clear h₃
-        have h₂ := all_residuals_are_true_residuals h₁
-        subst h₂
-        rfl
+  unfold PartialResponse.knownPermits PartialResponse.permits
+  apply mustBeSatisfied_eq_mayBeSatisfied (eff := .permit)
 
 /--
-  helper lemma
+  corollary of the above
 -/
-theorem errors_is_errorPolicies {policies : Policies} {req : Request} {entities : Entities} :
+theorem knownForbids_eq_forbids {policies : Policies} {req : Request} {entities : Entities} :
+  (isAuthorizedPartial req entities policies).knownForbids = (isAuthorizedPartial req entities policies).forbids
+:= by
+  unfold PartialResponse.knownForbids PartialResponse.forbids
+  apply mustBeSatisfied_eq_mayBeSatisfied (eff := .forbid)
+
+/--
+  on concrete inputs, `errors` and `errorPolicies` are equal
+-/
+theorem errors_eq_errorPolicies {policies : Policies} {req : Request} {entities : Entities} :
   Set.make ((isAuthorizedPartial req entities policies).errors.map Prod.fst) = errorPolicies policies req entities
 := by
   sorry
@@ -301,7 +256,11 @@ theorem errors_is_errorPolicies {policies : Policies} {req : Request} {entities 
 end PartialOnConcrete
 
 /--
-  helper lemma
+  for every residual that exists after substitution,
+  a residual with the same id and effect must have existed before substitution
+
+  (or, if the residual after substitution is an evaluation error, then a
+  residual with the same id must have existed before substitution)
 -/
 theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {r' : Residual} :
   req.subst subsmap = some req' →
@@ -447,7 +406,8 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
         case right => simp [Residual.effect]
 
 /--
-  helper lemma
+  if a residual was `true` before substitution, it's still `true` after any
+  substitution
 -/
 theorem subst_preserves_true_residuals {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} {effect : Effect} :
   req.subst subsmap = some req' →
@@ -524,130 +484,146 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
       simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown] at h₅
 
 /--
-  helper lemma
+  if a policy mustBeSatisfied before substitution, it still mustBeSatisfied
+  after substitution
+-/
+theorem subst_preserves_mustBeSatisfied {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} {eff : Effect} :
+  req.subst subsmap = some req' →
+  pid ∈ (isAuthorizedPartial req entities policies).mustBeSatisfied eff →
+  pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).mustBeSatisfied eff
+:= by
+  unfold PartialResponse.mustBeSatisfied Residual.mustBeSatisfied
+  intro h₁ h₂
+  rw [← Set.make_mem] at *
+  simp [List.filterMap_nonempty_iff_exists_f_returns_some] at *
+  replace ⟨r, ⟨h₂, h₃⟩⟩ := h₂
+  exists r
+  apply And.intro _ h₃
+  split at h₃ <;> simp at h₃
+  replace ⟨h₃, h₄⟩ := h₃
+  subst h₃ h₄
+  apply subst_preserves_true_residuals h₁ h₂
+
+/--
+  corollary of the above
 -/
 theorem subst_preserves_knownPermits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownPermits →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownPermits
 := by
-  intro h₁ h₂
-  unfold PartialResponse.knownPermits Residual.isKnownPermit at *
-  rw [← Set.make_mem] at *
-  simp [List.filterMap_nonempty_iff_exists_f_returns_some] at *
-  replace ⟨r, ⟨h₂, h₃⟩⟩ := h₂
-  exists r
-  apply And.intro _ h₃
-  split at h₃ <;> simp at h₃
-  subst h₃
-  apply subst_preserves_true_residuals h₁ h₂
+  unfold PartialResponse.knownPermits
+  apply subst_preserves_mustBeSatisfied (eff := .permit)
 
 /--
-  helper lemma
+  corollary of the above
 -/
 theorem subst_preserves_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {pid : PolicyID} :
   req.subst subsmap = some req' →
   pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
   pid ∈ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids
 := by
-  intro h₁ h₂
-  unfold PartialResponse.knownForbids Residual.isKnownForbid at *
-  rw [← Set.make_mem] at *
-  simp [List.filterMap_nonempty_iff_exists_f_returns_some] at *
-  replace ⟨r, ⟨h₂, h₃⟩⟩ := h₂
-  exists r
-  apply And.intro _ h₃
-  split at h₃ <;> simp at h₃
-  subst h₃
-  apply subst_preserves_true_residuals h₁ h₂
+  unfold PartialResponse.knownForbids
+  apply subst_preserves_mustBeSatisfied (eff := .forbid)
 
 /--
   helper lemma
 
   not currently used; we might or might not need this in this formulation
 -/
-theorem fullSubst_preserves_knownForbids {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {subsmap : Map String Value} {req' : Request} {entities' : Entities} {pid : PolicyID} :
+theorem fullSubst_preserves_mustBeSatisfied {policies : Policies} {req : PartialRequest} {entities : PartialEntities} {subsmap : Map String Value} {req' : Request} {entities' : Entities} {pid : PolicyID} {eff : Effect} :
   req.fullSubst subsmap = some req' →
   entities.fullSubst subsmap = some entities' →
-  pid ∈ (isAuthorizedPartial req entities policies).knownForbids →
-  pid ∈ (isAuthorizedPartial req' entities' policies).knownForbids
+  pid ∈ (isAuthorizedPartial req entities policies).mustBeSatisfied eff →
+  pid ∈ (isAuthorizedPartial req' entities' policies).mustBeSatisfied eff
 := by
   intro h₁ h₂ h₃
-  -- can we make this a corollary of `subst_preserves_knownForbids` somehow?
+  -- can we make this a corollary of `subst_preserves_mustBeSatisfied` somehow?
   -- even better, can we have some general result that allows us to say that
   -- anything that `subst` preserves, `fullSubst` must also preserve?
   sorry
 
 /--
-  helper lemma
+  if there are no `mayBeSatisfied` policies with a particular effect before
+  substitution, there won't be after substitution either
+-/
+theorem subst_preserves_empty_mayBeSatisfied {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {eff : Effect} :
+  req.subst subsmap = some req' →
+  ((isAuthorizedPartial req entities policies).mayBeSatisfied eff).isEmpty →
+  ((isAuthorizedPartial req' (entities.subst subsmap) policies).mayBeSatisfied eff).isEmpty
+:= by
+  intro h₁ h₂
+  unfold PartialResponse.mayBeSatisfied Residual.mayBeSatisfied at *
+  rw [← Set.make_empty] at *
+  simp [List.filterMap_empty_iff_f_returns_none] at *
+  intro r' h₃
+  rcases subst_doesn't_increase_residuals h₁ h₃ with ⟨r, ⟨h₄, h₅, h₆ | h₆⟩⟩
+  case _ =>
+    split <;> simp
+    case _ r' pid eff' cond =>
+      intro h₇ ; subst h₇
+      specialize h₂ r h₄
+      simp [Residual.id] at h₅
+      simp [Residual.effect] at h₆
+      split at h₆ <;> simp at h₆
+      subst h₆
+      simp [h₅] at h₂
+  case _ =>
+    split <;> simp
+    simp [Residual.effect] at h₆
+
+/--
+  corollary of the above
 -/
 theorem subst_preserves_empty_permits {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).permits.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).permits.isEmpty
 := by
-  intro h₁ h₂
-  unfold PartialResponse.permits Residual.isPermit at *
-  rw [← Set.make_empty] at *
-  simp [List.filterMap_empty_iff_f_returns_none] at *
-  intro r h₃
-  rcases subst_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
-  case _ =>
-    split <;> simp
-    case _ pid cond =>
-      specialize h₂ r' h₄
-      simp [Residual.id] at h₅
-      simp [Residual.effect] at h₆
-      split at h₆ <;> simp at h₆
-      subst h₆
-      simp [h₅] at h₂
-  case _ =>
-    split <;> simp
-    simp [Residual.effect] at h₆
+  unfold PartialResponse.permits
+  apply subst_preserves_empty_mayBeSatisfied (eff := .permit)
 
 /--
-  helper lemma
+  corollary of the above
 -/
 theorem subst_preserves_empty_forbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   (isAuthorizedPartial req entities policies).forbids.isEmpty →
   (isAuthorizedPartial req' (entities.subst subsmap) policies).forbids.isEmpty
 := by
-  intro h₁ h₂
-  unfold PartialResponse.forbids Residual.isForbid at *
-  rw [← Set.make_empty] at *
-  simp [List.filterMap_empty_iff_f_returns_none] at *
-  intro r h₃
-  rcases subst_doesn't_increase_residuals h₁ h₃ with ⟨r', ⟨h₄, h₅, h₆ | h₆⟩⟩
-  case _ =>
-    split <;> simp
-    case _ pid cond =>
-      specialize h₂ r' h₄
-      simp [Residual.id] at h₅
-      simp [Residual.effect] at h₆
-      split at h₆ <;> simp at h₆
-      subst h₆
-      simp [h₅] at h₂
-  case _ =>
-    split <;> simp
-    simp [Residual.effect] at h₆
+  unfold PartialResponse.forbids
+  apply subst_preserves_empty_mayBeSatisfied (eff := .forbid)
 
 /--
-  helper lemma
+  if there are any `mustBeSatisfied` policies with a particular effect before
+  substitution, there will be after substitution too
+-/
+theorem subst_preserves_nonempty_mustBeSatisfied {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} {eff : Effect} :
+  req.subst subsmap = some req' →
+  ¬ ((isAuthorizedPartial req entities policies).mustBeSatisfied eff).isEmpty →
+  ¬ ((isAuthorizedPartial req' (entities.subst subsmap) policies).mustBeSatisfied eff).isEmpty
+:= by
+  repeat rw [Set.non_empty_iff_exists]
+  intro h₁ h₂
+  replace ⟨pid, h₂⟩ := h₂
+  exists pid
+  exact subst_preserves_mustBeSatisfied h₁ h₂
+
+/--
+  corollary of the above
 -/
 theorem subst_preserves_nonempty_knownForbids {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   req.subst subsmap = some req' →
   ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →
   ¬ (isAuthorizedPartial req' (entities.subst subsmap) policies).knownForbids.isEmpty
 := by
-  repeat rw [Set.non_empty_iff_exists]
-  intro h₁ h₂
-  replace ⟨pid, h₂⟩ := h₂
-  exists pid
-  exact subst_preserves_knownForbids h₁ h₂
+  unfold PartialResponse.knownForbids
+  apply subst_preserves_nonempty_mustBeSatisfied (eff := .forbid)
 
 /--
-  helper lemma
+  if partial authorization returns a concrete decision, and there are no knownForbids,
+  then knownPermits is either empty both before and after any substitution, or
+  nonempty both before and after any substitution
 -/
 theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   (isAuthorizedPartial req entities policies).decision ≠ .unknown →
@@ -671,7 +647,7 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
       apply h₆ ; clear h₆
       exists pid
   case false =>
-    unfold PartialResponse.knownPermits Residual.isKnownPermit at *
+    unfold PartialResponse.knownPermits PartialResponse.mustBeSatisfied at *
     apply Eq.symm
     rw [← Set.make_non_empty] at *
     intro h₅
@@ -683,15 +659,18 @@ theorem partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknow
     split at h₆ <;> simp at h₆
     clear h₆
     rename_i optid pid h₆
+    unfold Residual.mustBeSatisfied at h₅ h₆
     split at h₆ <;> simp at h₆
-    subst h₆
+    replace ⟨h₆, h₇⟩ := h₆
+    subst h₆ h₇
     rename_i r pid
     simp at h₅
     apply h₅ ; clear h₅
     apply subst_preserves_true_residuals h₂ h₄
 
 /--
-  helper lemma
+  if there are any knownForbids before substitution, you always get Deny after
+  any substitution
 -/
 theorem if_knownForbids_then_deny_after_any_sub {policies : Policies} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
   ¬ (isAuthorizedPartial req entities policies).knownForbids.isEmpty →

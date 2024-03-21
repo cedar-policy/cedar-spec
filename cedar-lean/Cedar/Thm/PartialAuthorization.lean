@@ -211,7 +211,7 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
     cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
     cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
     simp only [and_true, and_false, ite_true, ite_false] <;>
-    exact PartialOnConcrete.errors_is_errorPolicies
+    exact PartialOnConcrete.errors_eq_errorPolicies
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a

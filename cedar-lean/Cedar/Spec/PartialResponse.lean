@@ -42,35 +42,21 @@ def Residual.effect (r : Residual) : Option Effect :=
   | .error _ _ => none
 
 /--
-  if this is a known permit, return the PolicyID
+  if this policy must be satisfied (for any substitution of the unknowns), and
+  has the specified effect, return the PolicyID
 -/
-def Residual.isKnownPermit (r : Residual) : Option PolicyID :=
+def Residual.mustBeSatisfied (r : Residual) (eff : Effect) : Option PolicyID :=
   match r with
-  | .residual id .permit (.lit (.bool true)) => some id
+  | .residual id eff' (.lit (.bool true)) => if eff = eff' then some id else none
   | _ => none
 
 /--
-  if this is a known forbid, return the PolicyID
+  if this policy may be satisfied (for some substitution of the unknowns), and
+  has the specified effect, return the PolicyID
 -/
-def Residual.isKnownForbid (r : Residual) : Option PolicyID :=
+def Residual.mayBeSatisfied (r : Residual) (eff : Effect) : Option PolicyID :=
   match r with
-  | .residual id .forbid (.lit (.bool true)) => some id
-  | _ => none
-
-/--
-  if this is a permit residual, return the PolicyID
--/
-def Residual.isPermit (r : Residual) : Option PolicyID :=
-  match r with
-  | .residual id .permit _ => some id
-  | _ => none
-
-/--
-  if this is a forbid residual, return the PolicyID
--/
-def Residual.isForbid (r : Residual) : Option PolicyID :=
-  match r with
-  | .residual id .forbid _ => some id
+  | .residual id eff' _ => if eff = eff' then some id else none
   | _ => none
 
 structure PartialResponse where
@@ -90,30 +76,44 @@ structure PartialResponse where
   entities : PartialEntities
 
 /--
+  Get the IDs of all policies which must be satisfied (for all possible
+  substitutions of the unknowns) and have the given `Effect`
+-/
+def PartialResponse.mustBeSatisfied (resp : PartialResponse) (eff : Effect) : Set PolicyID :=
+  Set.make (resp.residuals.filterMap (Residual.mustBeSatisfied · eff))
+
+/--
+  Get the IDs of all policies which are, or may be, satisfied (for some
+  possible substitution of the unknowns) and have the given `Effect`
+-/
+def PartialResponse.mayBeSatisfied (resp : PartialResponse) (eff : Effect) : Set PolicyID :=
+  Set.make (resp.residuals.filterMap (Residual.mayBeSatisfied · eff))
+
+/--
   All `permit` policies which are definitely satisfied (for all possible
   substitutions of the unknowns)
 -/
 def PartialResponse.knownPermits (resp : PartialResponse) : Set PolicyID :=
-  Set.make (resp.residuals.filterMap Residual.isKnownPermit)
+  resp.mustBeSatisfied .permit
 
 /--
   All `forbid` policies which are definitely satisfied (for all possible
   substitutions of the unknowns)
 -/
 def PartialResponse.knownForbids (resp : PartialResponse) : Set PolicyID :=
-  Set.make (resp.residuals.filterMap Residual.isKnownForbid)
+  resp.mustBeSatisfied .forbid
 
 /--
   All `permit` policies which are, or may be, satisfied
 -/
 def PartialResponse.permits (resp : PartialResponse) : Set PolicyID :=
-  Set.make (resp.residuals.filterMap Residual.isPermit)
+  resp.mayBeSatisfied .permit
 
 /--
   All `forbid` policies which are, or may be, satisfied
 -/
 def PartialResponse.forbids (resp : PartialResponse) : Set PolicyID :=
-  Set.make (resp.residuals.filterMap Residual.isForbid)
+  resp.mayBeSatisfied .forbid
 
 /--
   All policies which definitely produce errors (for all possible substitutions
