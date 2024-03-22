@@ -41,13 +41,14 @@ def partialApply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : PartialEntities
   | .eq, _, _                                              => ok (.value (v₁ == v₂))
   | .less,   .prim (.int i), .prim (.int j)                => ok (.value ((i < j): Bool))
   | .lessEq, .prim (.int i), .prim (.int j)                => ok (.value ((i ≤ j): Bool))
-  | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j) >>= fun x => ok (.value x)
-  | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j) >>= fun x => ok (.value x)
+  | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j) >>= λ x => ok (.value x)
+  | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j) >>= λ x => ok (.value x)
+  | .mul,    .prim (.int i), .prim (.int j)                => intOrErr (i.mul? j) >>= λ x => ok (.value x)
   | .contains,    .set vs₁, _                              => ok (.value (vs₁.contains v₂))
   | .containsAll, .set vs₁, .set vs₂                       => ok (.value (vs₂.subset vs₁))
   | .containsAny, .set vs₁, .set vs₂                       => ok (.value (vs₁.intersects vs₂))
   | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => ok (.value (partialInₑ uid₁ uid₂ es))
-  | .mem, .prim (.entityUID uid₁), .set (vs)               => partialInₛ uid₁ vs es >>= fun x => ok (.value x)
+  | .mem, .prim (.entityUID uid₁), .set (vs)               => partialInₛ uid₁ vs es >>= λ x => ok (.value x)
   | _, _, _                                                => error .typeError
 
 def partialAttrsOf (v : Value) (lookup : EntityUID → Result (Map Attr RestrictedPartialValue)) : Result (Map Attr RestrictedPartialValue) :=

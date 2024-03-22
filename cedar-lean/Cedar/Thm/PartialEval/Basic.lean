@@ -23,7 +23,7 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Except
 
-def ResidualsContainUnknowns (x₁ : PartialExpr) : Prop :=
-  ∀ {request : PartialRequest} {entities : PartialEntities} {r : PartialExpr},
-    partialEvaluate x₁ request entities = ok (.residual r) →
-    r.containsUnknown
+def ResidualsContainUnknowns (x : PartialExpr) {request : PartialRequest} {entities : PartialEntities} : Prop :=
+  ∀ r,
+  partialEvaluate x request entities = ok (.residual r) →
+  r.containsUnknown

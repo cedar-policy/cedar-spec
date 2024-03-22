@@ -83,7 +83,7 @@ theorem mapM_some_iff_f_some_on_all_elements {f : α → Option β} {list : List
       sorry
 
 /--
-  A generic lemma about the behavior of List.mapM' in the Except monad
+  A generic lemma about the behavior of List.mapM in the Except monad
 -/
 theorem mapM_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {list : List α} :
   Except.isOk (list.mapM f) ↔ ∀ x ∈ list, Except.isOk (f x)

@@ -18,6 +18,10 @@ import Cedar.Spec.Evaluator
 import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.PartialEval.Binary
+import Cedar.Thm.PartialEval.Ite
+import Cedar.Thm.PartialEval.Or
+import Cedar.Thm.PartialEval.Unary
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Utils
 
@@ -36,24 +40,37 @@ open Except
 theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Request} {entities : Entities} :
   partialEvaluate expr request entities = (evaluate expr request entities).map PartialValue.value
 := by
-  unfold partialEvaluate evaluate Except.map
-  cases expr <;> simp [Expr.asPartialExpr]
+  cases expr <;> simp only [Expr.asPartialExpr]
   case var v =>
-    cases v <;> simp [Request.asPartialRequest]
+    unfold partialEvaluate evaluate
+    cases v <;> simp only [Request.asPartialRequest, Except.map]
     case context =>
-      split <;> simp
+      split
       case h_1 kvs h =>
         -- induction on kvs?
         sorry
       case h_2 =>
         sorry
   case and x₁ x₂ =>
-    -- need some kind of inductive argument where we can assume the theorem on the subexpressions
-    sorry
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    exact PartialEval.And.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case or x₁ x₂ =>
-    sorry
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    exact PartialEval.Or.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case ite x₁ x₂ x₃ =>
-    sorry
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    have ih₃ := @partial_eval_on_concrete_eqv_concrete_eval x₃ request entities
+    exact PartialEval.Ite.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂ ih₃
+  case unaryApp op x₁ =>
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    exact PartialEval.Unary.partial_eval_on_concrete_eqv_concrete_eval ih₁
+  case binaryApp op x₁ x₂ =>
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    exact PartialEval.Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   all_goals {
     sorry
   }
@@ -74,33 +91,57 @@ theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request
   If partial evaluation returns a residual, then that residual expression
   contains an unknown
 -/
-theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities} {r : PartialExpr} :
+theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities} :
+  ∀ r,
   partialEvaluate expr request entities = ok (.residual r) →
   r.containsUnknown
 := by
-  unfold partialEvaluate PartialExpr.containsUnknown
-  cases expr <;> simp <;> intro h₁
+  cases expr
   case var v =>
+    unfold partialEvaluate
+    intro r h₁
     cases v <;> simp at h₁
     case principal =>
       cases h₂ : request.principal <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
     case action =>
       cases h₂ : request.action <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
     case resource =>
       cases h₂ : request.resource <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
     case context =>
       sorry
   case and x₁ x₂ =>
-    sorry
+    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    have ih₂ := @residuals_contain_unknowns x₂ request entities
+    rw [← ResidualsContainUnknowns] at *
+    exact PartialEval.And.residuals_contain_unknowns ih₁ ih₂
+  case or x₁ x₂ =>
+    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    have ih₂ := @residuals_contain_unknowns x₂ request entities
+    rw [← ResidualsContainUnknowns] at *
+    exact PartialEval.Or.residuals_contain_unknowns ih₁ ih₂
+  case ite x₁ x₂ x₃ =>
+    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    have ih₂ := @residuals_contain_unknowns x₂ request entities
+    have ih₃ := @residuals_contain_unknowns x₃ request entities
+    rw [← ResidualsContainUnknowns] at *
+    exact PartialEval.Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
+  case unaryApp op x₁ =>
+    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    exact PartialEval.Unary.residuals_contain_unknowns ih₁
+  case binaryApp op x₁ x₂ =>
+    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    have ih₂ := @residuals_contain_unknowns x₂ request entities
+    rw [← ResidualsContainUnknowns] at *
+    exact PartialEval.Binary.residuals_contain_unknowns ih₁ ih₂
   all_goals {
     sorry
   }
