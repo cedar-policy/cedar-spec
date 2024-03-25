@@ -124,6 +124,36 @@ theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α
   case h_1 h => simp [find?_mapOnValues_some f h]
   case h_2 h => simp [find?_mapOnValues_none f h]
 
+theorem findOrErr_mapOnValues [LT α] [DecidableLT α] [BEq α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {e : Error} :
+  (m.mapOnValues f).findOrErr k e = (m.findOrErr k e).map f
+:= by
+  unfold findOrErr
+  split <;> simp [Except.map]
+  case h_1 v h₁ =>
+    rename_i inst1 inst2 inst3 inst4 _
+    have h₂ := @find?_mapOnValues α β γ inst1 inst2 inst4 f m k
+    rw [eq_comm] at h₂
+    simp [h₁] at h₂
+    rw [h₂] at h₁
+
+
+  have h₁ := find?_mapOnValues f m k
+  simp [← h₁]
+  rw [← find?_mapOnValues f m k]
+
+/- not currently needed -/
+theorem mapM_on_kvs_eqv_mapM_on_map [LT α] [DecidableLT α] (f : β → Option γ) {m : Map α β} :
+  (m.kvs.mapM λ x => f x.snd) = (m.mapMOnValues f).map Map.values
+:= by
+  sorry
+
+/-
+theorem something [LT α] [DecidableLT α] (f : β → γ) (g : α × γ → Option ψ) {m : Map α β} :
+  (m.mapOnValues f).kvs.mapM g = m.mapMOnValues (f ∘ g)
+:= by
+  sorry
+-/
+
 
 /-! ### sizeOf -/
 

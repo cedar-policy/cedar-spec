@@ -19,6 +19,7 @@ import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
 import Cedar.Thm.PartialEval.Binary
+import Cedar.Thm.PartialEval.GetAttr
 import Cedar.Thm.PartialEval.Ite
 import Cedar.Thm.PartialEval.Or
 import Cedar.Thm.PartialEval.Unary
@@ -41,13 +42,15 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
   partialEvaluate expr request entities = (evaluate expr request entities).map PartialValue.value
 := by
   cases expr <;> simp only [Expr.asPartialExpr]
+  case lit p => simp [partialEvaluate, evaluate, Except.map]
   case var v =>
     unfold partialEvaluate evaluate
     cases v <;> simp only [Request.asPartialRequest, Except.map]
     case context =>
       split
       case h_1 kvs h =>
-        -- induction on kvs?
+        simp
+        -- rw [Map.mapOnValues_eq_make_map] at h
         sorry
       case h_2 =>
         sorry
@@ -71,9 +74,16 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
     exact PartialEval.Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
-  all_goals {
+  case getAttr x₁ attr =>
     sorry
-  }
+  case hasAttr x₁ attr =>
+    sorry
+  case set xs =>
+    sorry
+  case record attrs =>
+    sorry
+  case call xfn args =>
+    sorry
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
@@ -85,7 +95,8 @@ theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request
   | .ok (.residual _) => false
   | .error _ => true
 := by
-  sorry
+  simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map]
+  split <;> rename_i h <;> split at h <;> simp at h <;> trivial
 
 /--
   If partial evaluation returns a residual, then that residual expression
