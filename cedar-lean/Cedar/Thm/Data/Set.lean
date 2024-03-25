@@ -32,6 +32,12 @@ namespace Cedar.Data.Set
 def WellFormed {α} [LT α] [DecidableLT α] (s : Set α) :=
   s = Set.make s.toList
 
+theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (s : Set α) :
+  WellFormed s → ∃ list, s = Set.make list
+:= by
+  intro h₁
+  exists s.elts -- despite not explicitly referencing h₁, this does rely on h₁. if you don't believe me, try `clear h₁` before this line.
+
 /-! ### contains and mem -/
 
 theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
@@ -92,9 +98,8 @@ theorem empty_no_elts {α : Type u} (v : α) :
 theorem empty_wf {α : Type u} [LT α] [DecidableLT α] :
   Set.WellFormed (Set.empty : Set α)
 := by
-  simp only [Set.empty, Set.WellFormed, Set.make,
-    Set.toList, Set.elts, List.canonicalize_nil]
-
+  unfold WellFormed toList empty make List.canonicalize
+  rfl
 
 /-! ### isEmpty -/
 
@@ -218,6 +223,26 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
     rw [in_list_iff_in_set, ← make_mem]
     exact h₁
 
+def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
+  WellFormed s₁ → WellFormed s₂ →
+  (s₁.elts ≡ s₂.elts ↔ s₁ = s₂)
+:= by
+  intro h₁ h₂
+  constructor
+  case mp =>
+    intro h₃
+    have ⟨elts₁, h₄⟩ := if_wellformed_then_exists_make s₁ h₁ ; clear h₁
+    subst h₄
+    have ⟨elts₂, h₄⟩ := if_wellformed_then_exists_make s₂ h₂ ; clear h₂
+    subst h₄
+    rw [make_make_eqv]
+    apply List.Equiv.trans (List.Equiv.symm (elts_make_equiv (xs := elts₁)))
+    apply List.Equiv.trans h₃ (elts_make_equiv)
+  case mpr =>
+    intro h₃
+    subst h₃
+    apply List.Equiv.refl
+
 theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool) (xs : List α) :
   (Set.make xs).any f = xs.any f
 := by
@@ -270,7 +295,7 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
  (h₁ : WellFormed s₁) :
  WellFormed (s₁ ∩ s₂)
 := by
-  simp only [WellFormed] at *
+  unfold WellFormed
   simp only [Inter.inter, intersect]
   simp only [make, toList, elts, mk.injEq] at *
   simp only [List.inter]
@@ -279,6 +304,62 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rw (config := {occs := .pos [1]}) [h₁]
   simp only
   apply h₃
+
+theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
+  WellFormed (s₁ ∪ s₂)
+:= by
+  unfold WellFormed
+  simp only [Union.union, union, toList]
+  rw [make_make_eqv]
+  apply List.Equiv.symm
+  exact elts_make_equiv
+
+/-! ### subset -/
+
+theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
+  xs ⊆ ys → Set.make xs ⊆ Set.make ys
+:= by
+  unfold HasSubset.Subset instHasSubsetSet List.instHasSubsetList subset
+  simp only [List.all_eq_true]
+  intro h₁ x h₂
+  rw [contains_prop_bool_equiv]
+  rw [in_list_iff_in_set] at h₂
+  rw [← make_mem] at *
+  unfold List.Subset at h₁
+  apply h₁ h₂
+
+/--
+  Like `List.subset_def`, but lifted to Sets
+-/
+theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
+:= by
+  unfold HasSubset.Subset instHasSubsetSet subset
+  simp
+  constructor
+  case mp =>
+    intro h₁ a h₂
+    specialize h₁ a
+    rw [in_list_iff_in_set] at h₁
+    rw [contains_prop_bool_equiv] at h₁
+    exact h₁ h₂
+  case mpr =>
+    intro h₁ a h₂
+    specialize h₁ a
+    rw [in_list_iff_in_set] at h₂
+    rw [contains_prop_bool_equiv]
+    exact h₁ h₂
+
+theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
+:= by
+  repeat rw [Set.empty_iff_not_exists]
+  intro h₁ h₂ h₃
+  rw [subset_def] at h₁
+  replace ⟨a, h₃⟩ := h₃
+  apply h₂
+  exists a
+  exact h₁ a h₃
 
 /-! ### sizeOf -/
 

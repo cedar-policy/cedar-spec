@@ -118,6 +118,67 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   exact h₁ h₃
   exact h₂ h₃
 
+theorem filterMap_empty_iff_f_returns_none {f : α → Option β} {xs : List α} :
+  xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none
+:= by
+  constructor
+  case mp =>
+    induction xs
+    case nil => simp
+    case cons x xs h_ind =>
+      intro h₁ a h₂
+      simp only [List.filterMap_cons] at h₁
+      split at h₁ <;> try simp at h₁
+      case h_1 h₃ =>
+        rcases (List.mem_cons.mp h₂) with h₄ | h₄
+        case inl => subst h₄ ; assumption
+        case inr => apply h_ind h₁ a ; assumption
+  case mpr =>
+    intro h₁
+    induction xs
+    case nil => simp
+    case cons x xs h_ind =>
+      simp only [List.filterMap_cons]
+      split
+      case h_1 =>
+        apply h_ind ; clear h_ind
+        intro a h₂
+        apply h₁ a
+        exact List.mem_cons_of_mem x h₂
+      case h_2 b h₂ =>
+        exfalso
+        specialize h₁ x
+        simp at h₁
+        simp [h₁] at h₂
+
+theorem filterMap_nonempty_iff_exists_f_returns_some {f : α → Option β} {xs : List α} :
+  xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    replace ⟨b, h₁⟩ := List.exists_mem_of_ne_nil (xs.filterMap f) h₁
+    replace ⟨x, h₁⟩ := (List.mem_filterMap f xs).mp h₁
+    exists x
+    simp [h₁, Option.isSome]
+  case mpr =>
+    intro h₁ h₂
+    rw [filterMap_empty_iff_f_returns_none] at h₂
+    replace ⟨x, h₁, h₃⟩ := h₁
+    specialize h₂ x h₁
+    simp [h₂, Option.isSome] at h₃
+
+theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
+  (∀ a b, f a = some b → g a = some b) →
+  xs.filterMap f ⊆ xs.filterMap g
+:= by
+  intro h₁
+  simp [List.subset_def]
+  intro b a h₂ h₃
+  exists a
+  apply And.intro h₂
+  exact h₁ a b h₃
+
 /-! ### Sorted -/
 
 inductive SortedBy [LT β] (f : α → β) : List α → Prop where
@@ -944,5 +1005,15 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
   | a :: l, h => by
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [map, map, h₁, map_congr h₂]
+
+/--
+  our own variant of map_congr, for filterMap
+-/
+theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → filterMap f l = filterMap g l
+  | [], _ => rfl
+  | a :: l, h => by
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
+    rw [filterMap, filterMap, h₁, filterMap_congr h₂]
 
 end List

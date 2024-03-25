@@ -56,7 +56,6 @@ theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
 := by
   simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
 
-
 theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
 := by
