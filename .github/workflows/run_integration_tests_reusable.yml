@@ -1,0 +1,50 @@
+name: Run Integration Tests
+
+on:
+  workflow_call:
+
+jobs:
+  run_integration_tests:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: main
+          path: ./cedar-spec
+          submodules: recursive
+      - name: Delete old integration tests
+        working-directory: ./cedar-spec/cedar
+        run: rm -rf cedar-integration-tests # blast the current content
+      - name: Checkout cedar-integration-tests
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-integration-tests
+          ref: main
+          path: ./cedar-spec/cedar/cedar-integration-tests
+      - name: Decompress corpus tests
+        working-directory: ./cedar-spec/cedar/cedar-integration-tests
+        run: tar xzf corpus-tests.tar.gz
+      - name: Install Lean
+        shell: bash
+        run: |
+             wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+             bash elan-init.sh -y
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: Run build.sh script
+        working-directory: ./cedar-spec
+        shell: bash
+        run: source ~/.profile && ./build.sh
+      - name: Run integration tests
+        working-directory: ./cedar-spec/cedar-drt
+        shell: bash
+        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+
