@@ -110,7 +110,7 @@ theorem lubRecord_find_implies_find_left {a : Attr} {qty : QualifiedType} {rty r
   (h₂ : Map.find? (Map.mk rty) a = some qty) :
   ∃ qty₁,
     Map.find? (Map.mk rty₁) a = some qty₁ ∧
-    Qualified.isRequired qty₁ = Qualified.isRequired qty
+    (Qualified.isRequired qty → Qualified.isRequired qty₁)
 := by
   have ⟨qty₁, qty₂, h₃, h₄, h₅⟩ := lubRecord_find_implies_find h₁ h₂
   exists qty₁ ; simp [h₃]
@@ -143,16 +143,11 @@ theorem lubQualified_comm {qty₁ qty₂ : Qualified CedarType} :
 := by
   unfold lubQualifiedType
   split
-  case h_1 | h_2 =>
+  all_goals {
     rename_i ty₁ ty₂
     have h := @lub_comm ty₁ ty₂
     simp [h]
-  case h_3 =>
-    rename_i h₁ h₂
-    split <;> try { rfl } <;>
-    rename_i ty₁ ty₂ <;> by_contra
-    apply h₁ ty₂ ty₁ <;> rfl
-    apply h₂ ty₂ ty₁ <;> rfl
+  }
 
 theorem lubRecord_comm {rty₁ rty₂ : List (Attr × Qualified CedarType)} :
   lubRecordType rty₁ rty₂ = lubRecordType rty₂ rty₁
@@ -238,14 +233,6 @@ theorem lubQualifiedType_refl (qty : QualifiedType) :
 := by
   unfold lubQualifiedType
   split
-  case h_3 h₁ h₂ =>
-    cases qty
-    all_goals {
-      rename_i ty
-      specialize h₁ ty ty
-      specialize h₂ ty ty
-      simp at h₁ h₂
-    }
   all_goals {
     rename_i ty
     have h₁ := lub_refl ty
@@ -363,18 +350,18 @@ theorem lubQualifiedType_trans {qty₁ qty₂ qty₃ : QualifiedType} :
   unfold lubQualifiedType
   intro h₁ h₂
   cases qty₁ <;> cases qty₃ <;> simp
-  case optional.optional ty₁' ty₃' | required.required ty₁' ty₃' =>
+  case optional.optional ty₁' ty₃' | required.required ty₁' ty₃' | required.optional ty₁' ty₃' =>
     cases qty₂ <;> simp at h₁ h₂
-    rename_i ty₂'
-    cases h₃ : ty₁' ⊔ ty₂' <;> simp [h₃] at h₁
-    cases h₄ : ty₂' ⊔ ty₃' <;> simp [h₄] at h₂
-    rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
-    have h₅ := lub_trans h₃ h₄
-    simp [h₅]
-  all_goals {
-    cases qty₂ <;> simp at h₁ h₂
-  }
+    all_goals {
+      rename_i ty₂'
+      cases h₃ : ty₁' ⊔ ty₂' <;> simp [h₃] at h₁
+      cases h₄ : ty₂' ⊔ ty₃' <;> simp [h₄] at h₂
+      rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
+      have h₅ := lub_trans h₃ h₄
+      simp [h₅]
+    }
 
+  cases qty₂ <;> simp at h₁ h₂
 end
 
 theorem subty_trans {ty₁ ty₂ ty₃ : CedarType} :
@@ -582,7 +569,7 @@ theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : Qualifie
   (lubQualifiedType qty₁ qty₄) = none
 := by
   unfold lubQualifiedType at h₂
-  split at h₂ <;> try contradiction
+  split at h₂
   all_goals {
     rename_i ty₂' ty₃'
     cases h₃ : ty₂' ⊔ ty₃' <;> simp [h₃] at h₂
@@ -590,10 +577,12 @@ theorem lubQualifiedType_assoc_none_some {qty₁ qty₂ qty₃ qty₄ : Qualifie
     unfold lubQualifiedType at h₁
     cases qty₁ <;> simp at h₁ <;>
     simp [lubQualifiedType]
-    rename_i ty₁'
-    cases h₄ : ty₁' ⊔ ty₂' <;> simp [h₄] at h₁
-    have h₅ := lub_assoc_none_some h₄ h₃
-    simp [h₅]
+    all_goals {
+      rename_i ty₁'
+      cases h₄ : ty₁' ⊔ ty₂' <;> simp [h₄] at h₁
+      have h₅ := lub_assoc_none_some h₄ h₃
+      simp [h₅]
+    }
   }
 
 end
