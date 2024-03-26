@@ -1,11 +1,11 @@
-name: Build cedar-spec
+name: Build and test cedar-spec
 
 on:
   pull_request:
 
 jobs:
   build_and_test_lean:
-    name: Build and Test Lean
+    name: Build and test Lean
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,7 +31,7 @@ jobs:
         run: source ~/.profile && lake exe CedarUnitTests
 
   build_and_test_drt:
-    name: Build and Test DRT
+    name: Build and test DRT
     runs-on: ubuntu-latest
     strategy:
       matrix:
