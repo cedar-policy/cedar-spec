@@ -28,9 +28,10 @@ def lubBool (b₁ b₂ : BoolType) : BoolType :=
 mutual
   def lubQualifiedType (q₁ q₂ : QualifiedType) : Option QualifiedType :=
     match q₁, q₂ with
-    | .optional ty₁, .optional ty₂ => do let ty ← lub? ty₁ ty₂; .some (.optional ty)
+    | .optional ty₁, .optional ty₂
+    | .optional ty₁, .required ty₂
+    | .required ty₁, .optional ty₂ => do let ty ← lub? ty₁ ty₂; .some (.optional ty)
     | .required ty₁, .required ty₂ => do let ty ← lub? ty₁ ty₂; .some (.required ty)
-    | _, _ => .none
 
   def lubRecordType (ty₁ ty₂ : List (Attr × QualifiedType)) : Option (List (Attr × QualifiedType)) :=
     match ty₁, ty₂ with
