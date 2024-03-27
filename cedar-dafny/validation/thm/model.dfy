@@ -651,13 +651,6 @@ module validation.thm.model {
     reveal IsSafe();
   }
 
-  lemma MulBySafe(r: Request, s: EntityStore, e: Expr, i: int)
-    requires IsSafe(r,s,e,Type.Int)
-    ensures IsSafe(r,s,UnaryApp(MulBy(i),e),Type.Int)
-  {
-    reveal IsSafe();
-  }
-
   lemma IteTrueSafe(r: Request, s: EntityStore, e: Expr, e1: Expr, e2: Expr, t: Type)
     requires IsTrue(r,s,e)
     requires IsSafe(r,s,e1,t)
@@ -753,7 +746,7 @@ module validation.thm.model {
   }
 
   lemma ArithSafe(r: Request, s: EntityStore, op: BinaryOp, e1: Expr, e2: Expr)
-    requires op == Add || op == Sub
+    requires op == Add || op == Sub || op == Mul
     requires IsSafe(r,s,e1,Type.Int)
     requires IsSafe(r,s,e2,Type.Int)
     ensures IsSafe(r,s,BinaryApp(op,e1,e2),Type.Int)

@@ -154,12 +154,12 @@ module def.core {
 
   datatype UnaryOp =
     Not |
-    Neg | MulBy(i: int) |
+    Neg |
     Like(p: Pattern)
 
   datatype BinaryOp =
     Eq | In |
-    Less | LessEq | Add | Sub |
+    Less | LessEq | Add | Sub | Mul |
     Contains | ContainsAll | ContainsAny
 
   datatype Expr =

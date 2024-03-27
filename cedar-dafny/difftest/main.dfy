@@ -88,7 +88,8 @@ module difftest.main {
         "ContainsAll" := ContainsAll,
         "ContainsAny" := ContainsAny,
         "Add" := Add,
-        "Sub" := Sub
+        "Sub" := Sub,
+        "Mul" := Mul
       ])
 
   const unaryOpFromProdJson :=
@@ -146,10 +147,6 @@ module difftest.main {
         var arg1 :- deserializeField(body, "arg1", exprFromProdJsonRec);
         var arg2 :- deserializeField(body, "arg2", exprFromProdJsonRec);
         Ok(BinaryApp(op, arg1, arg2))
-      case "MulByConst" =>
-        var arg :- deserializeField(body, "arg", exprFromProdJsonRec);
-        var cons :- deserializeField(body, "constant", getJsonInt);
-        Ok(UnaryApp(MulBy(cons), arg))
       case "ExtensionFunctionApp" =>
         var name :- deserializeField(body, "fn_name", nameFromProdJson);
         var jargs :- getJsonField(body, "args");
