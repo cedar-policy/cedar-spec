@@ -623,26 +623,6 @@ module validation.thm.soundness {
       }
     }
 
-    lemma SoundMulBy(i: int, e: Expr, t: Type, effs: Effects)
-      decreases UnaryApp(MulBy(i),e) , 0
-      requires WellFormedRequestAndStore()
-      requires EffectsInvariant(effs)
-      requires Typesafe(UnaryApp(MulBy(i),e),effs,t)
-      ensures IsSafe(r,s,UnaryApp(MulBy(i),e),t)
-      ensures getEffects(UnaryApp(MulBy(i),e),effs) == Effects.empty()
-    {
-      var t' :| getType(UnaryApp(MulBy(i),e),effs) == t' && subty(t',t);
-      assert TC.inferArith1(MulBy(i),e,effs) == types.Ok(Type.Int);
-      assert TC.ensureIntType(e,effs).Ok?;
-      assert Typesafe(e,effs,Type.Int);
-      assert IsSafe(r,s,e,Type.Int) by { Sound(e,Type.Int,effs); }
-      assert IsSafe(r,s,UnaryApp(MulBy(i),e),t') by { MulBySafe(r,s,e,i); }
-      assert IsSafe(r,s,UnaryApp(MulBy(i),e),t) by {
-        SubtyCompat(t',t);
-        SemSubtyTransport(r,s,UnaryApp(MulBy(i),e),t',t);
-      }
-    }
-
     lemma SoundLike(e: Expr, p: Pattern, t: Type, effs: Effects)
       decreases UnaryApp(Like(p),e) , 0
       requires WellFormedRequestAndStore()
@@ -810,7 +790,7 @@ module validation.thm.soundness {
 
     lemma SoundArith(op: BinaryOp, e1: Expr, e2: Expr, t: Type, effs: Effects)
       decreases BinaryApp(op,e1,e2) , 0
-      requires op == Add || op == Sub
+      requires op == Add || op == Sub || op == Mul
       requires WellFormedRequestAndStore()
       requires EffectsInvariant(effs)
       requires Typesafe(BinaryApp(op,e1,e2),effs,t)
@@ -1434,13 +1414,13 @@ module validation.thm.soundness {
         case Or(e1,e2) => SoundOr(e1,e2,t,effs);
         case UnaryApp(Not,e') => SoundNot(e',t,effs);
         case UnaryApp(Neg,e') => SoundNeg(e',t,effs);
-        case UnaryApp(MulBy(i),e') => SoundMulBy(i,e',t,effs);
         case UnaryApp(Like(p),e') => SoundLike(e',p,t,effs);
         case BinaryApp(Eq,e1,e2) => SoundEq(e1,e2,t,effs);
         case BinaryApp(Less,e1,e2) => SoundIneq(Less,e1,e2,t,effs);
         case BinaryApp(LessEq,e1,e2) => SoundIneq(BinaryOp.LessEq,e1,e2,t,effs);
         case BinaryApp(Add,e1,e2) => SoundArith(Add,e1,e2,t,effs);
         case BinaryApp(Sub,e1,e2) => SoundArith(Sub,e1,e2,t,effs);
+        case BinaryApp(Mul,e1,e2) => SoundArith(Mul,e1,e2,t,effs);
         case BinaryApp(In,e1,e2) => SoundIn(e1,e2,t,effs);
         case BinaryApp(ContainsAny,e1,e2) => SoundContainsAnyAll(ContainsAny,e1,e2,t,effs);
         case BinaryApp(ContainsAll,e1,e2) => SoundContainsAnyAll(ContainsAll,e1,e2,t,effs);
