@@ -3,14 +3,14 @@ name: Run Integration Tests
 on:
   workflow_call:
     inputs:
-    cedar_integration_tests_ref:
-      required: false
-      default: "main"
-      type: string
-    cedar_spec_ref:
+      cedar_integration_tests_ref:
         required: false
         default: "main"
         type: string
+      cedar_spec_ref:
+          required: false
+          default: "main"
+          type: string
 
 jobs:
   run_integration_tests:
