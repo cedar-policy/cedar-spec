@@ -64,7 +64,7 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
-      - name: Build & test cedar-drt/
+      - name: Build Lean libraries, and build & test cedar-drt/
         shell: bash
         run: source ~/.profile && ./build.sh
 
