@@ -1,7 +1,6 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::expr::name_with_default_namespace;
 use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_name, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
@@ -423,7 +422,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .map(|name| {
                 let name = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name_with_default_namespace(schema.namespace(), name)
+                        name.prefix_namespace_if_unqualified(schema.namespace().cloned())
                     }
                     HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
                 };
@@ -484,9 +483,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             (
                                 build_qualified_entity_type_name(
                                     schema.namespace.clone(),
-                                    name.parse().unwrap_or_else(|e| {
-                                        panic!("invalid entity type {name:?}: {e}")
-                                    }),
+                                    ast::Name::unqualified_name(name.clone()),
                                 ),
                                 et,
                             )
@@ -520,11 +517,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         {
                             let allowed_parent_typename = build_qualified_entity_type_name(
                                 schema.namespace.clone(),
-                                allowed_parent_typename.parse().unwrap_or_else(|e| {
-                                    panic!(
-                                        "invalid parent typename {allowed_parent_typename:?}: {e}"
-                                    )
-                                }),
+                                allowed_parent_typename.clone(),
                             );
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph

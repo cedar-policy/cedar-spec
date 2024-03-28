@@ -4,16 +4,15 @@ use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, EntityUIDGenMode, Hierarchy};
 use crate::schema::{
     arbitrary_specified_uid_without_schema, attrs_from_attrs_or_context,
-    build_qualified_entity_type_name, entity_type_name_to_schema_type, uid_for_action_name, Schema,
+    entity_type_name_to_schema_type, uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast;
+use cedar_policy_core::ast::{self, Id};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 /// Struct for generating expressions
 #[derive(Debug)]
@@ -550,7 +549,7 @@ impl<'a> ExprGenerator<'a> {
                                             // This does not use an explicit namespace because entity types
                                             // implicitly use the schema namespace if an explicit one is not
                                             // provided.
-                                            name: entity_name.clone(),
+                                            name: entity_name.clone().into(),
                                         }
                                     ),
                                     max_depth - 1,
@@ -1036,9 +1035,9 @@ impl<'a> ExprGenerator<'a> {
                         })];
                         Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
                     } else {
-                        let type_name: SmolStr = match target_type {
-                            Type::IPAddr => "ipaddr",
-                            Type::Decimal => "decimal",
+                        let type_name: Id = match target_type {
+                            Type::IPAddr => "ipaddr".parse::<Id>().unwrap(),
+                            Type::Decimal => "decimal".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
                         }
                         .into();
@@ -1128,7 +1127,7 @@ impl<'a> ExprGenerator<'a> {
                 self.schema
                     .schema
                     .common_types
-                    .get(type_name)
+                    .get(&type_name.clone().try_into().unwrap())
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
@@ -1343,7 +1342,7 @@ impl<'a> ExprGenerator<'a> {
                     // UID literal
                     13 => {
                         let entity_type_name =
-                            parse_name_with_default_namespace(self.schema.namespace(), name);
+                            name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
                         Ok(ast::Expr::val(self.arbitrary_uid_with_type(
                             &entity_type_name, u,
                         )?))
@@ -1411,7 +1410,7 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_str() {
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_ref() {
                 "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
                 _ => panic!("unrecognized extension type: {name:?}"),
@@ -1512,7 +1511,7 @@ impl<'a> ExprGenerator<'a> {
                 self.schema
                     .schema
                     .common_types
-                    .get(type_name)
+                    .get(&type_name.clone().try_into().unwrap())
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
@@ -1527,7 +1526,7 @@ impl<'a> ExprGenerator<'a> {
                 SchemaTypeVariant::String => {
                     self.generate_ext_func_call_for_type(&Type::string(), max_depth, u)
                 }
-                SchemaTypeVariant::Extension { name } => match name.as_str() {
+                SchemaTypeVariant::Extension { name } => match name.as_ref() {
                     "ipaddr" => self.generate_ext_func_call_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
@@ -1707,7 +1706,7 @@ impl<'a> ExprGenerator<'a> {
                 self.schema
                     .schema
                     .common_types
-                    .get(type_name)
+                    .get(&type_name.clone().try_into().unwrap())
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
@@ -1797,7 +1796,7 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
-                    parse_name_with_default_namespace(self.schema.namespace(), name);
+                    name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
                 Ok(AttrValue::UIDLit(
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
@@ -1807,7 +1806,7 @@ impl<'a> ExprGenerator<'a> {
             {
                 panic!("shouldn't have SchemaTypeVariant::Extension with extensions disabled")
             }
-            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_str() {
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_ref() {
                 "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
                 _ => unimplemented!("extension type {name:?}"),
@@ -1920,7 +1919,7 @@ impl<'a> ExprGenerator<'a> {
                 self.schema
                     .schema
                     .common_types
-                    .get(type_name)
+                    .get(&type_name.clone().try_into().unwrap())
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
@@ -2005,7 +2004,7 @@ impl<'a> ExprGenerator<'a> {
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name =
-                    parse_name_with_default_namespace(self.schema.namespace(), name);
+                    name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::from(euid))
             }
@@ -2190,26 +2189,4 @@ fn record_schematype_with_attr(
         .collect(),
         additional_attributes: true,
     })
-}
-
-// Parse `name` into a `Name`. The result may have a namespace. If it does, keep
-// it as is. Otherwise, qualify it with the default namespace if one is provided.
-fn parse_name_with_default_namespace(namespace: Option<&ast::Name>, name: &str) -> ast::Name {
-    name_with_default_namespace(
-        namespace,
-        &ast::Name::from_str(name).expect("invalid entity type name"),
-    )
-}
-
-/// If the given `Name` has a namespace, return it as-is. Otherwise, qualify it
-/// with the default namespace if one is provided.
-pub(crate) fn name_with_default_namespace(
-    namespace: Option<&ast::Name>,
-    name: &ast::Name,
-) -> ast::Name {
-    if name.namespace_components().next().is_none() && namespace.is_some() {
-        build_qualified_entity_type_name(namespace.cloned(), name.basename().clone())
-    } else {
-        name.clone()
-    }
 }
