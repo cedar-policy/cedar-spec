@@ -95,7 +95,7 @@ impl Hierarchy {
         }
     }
 
-    /// Generate an arbitrary uid based on the hierarchy. If `unspecified_location`
+    /// Generate an arbitrary uid based on the hierarchy. If `request_field`
     /// is `Some(var)` then the generated uid may be unspecified with eid `var`.
     /// Otherwise, the uid is guaranteed to be specified.
     pub fn arbitrary_uid(
