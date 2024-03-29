@@ -201,8 +201,6 @@ module def.engine {
           Ok(Value.Bool(!b))
         case Neg =>
           applyIntUnaryOp(a => -a, x)
-        case MulBy(factor) =>
-          applyIntUnaryOp(a => factor * a, x)
         case Like(p) =>
           var s :- Value.asString(x);
           Ok(Value.Bool(wildcardMatch(s, p)))
@@ -260,6 +258,7 @@ module def.engine {
         case LessEq => applyIntBinaryPred((a, b) => a <= b, x, y)
         case Add =>    applyIntBinaryOp((a, b) => a + b, x, y)
         case Sub =>    applyIntBinaryOp((a, b) => a - b, x, y)
+        case Mul =>    applyIntBinaryOp((a, b) => a * b, x, y)
         case In =>
           var e :- Value.asEntity(x);
           if y.Set? then

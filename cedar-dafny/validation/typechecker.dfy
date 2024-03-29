@@ -519,7 +519,7 @@ module validation.typechecker {
     }
 
     function inferArith1(ghost op: UnaryOp, e: Expr, effs: Effects): Result<Type>
-      requires op.Neg? || op.MulBy?
+      requires op.Neg?
       decreases UnaryApp(op,e) , 0
     {
       var _ :- ensureIntType(e,effs);
@@ -527,7 +527,7 @@ module validation.typechecker {
     }
 
     function inferArith2(ghost op: BinaryOp, e1: Expr, e2: Expr, effs: Effects): Result<Type>
-      requires op == Add || op == Sub
+      requires op == Add || op == Sub || op == Mul
       decreases BinaryApp(op,e1,e2) , 0
     {
       var _ :- ensureIntType(e1,effs);
@@ -624,7 +624,6 @@ module validation.typechecker {
         case Or(e1,e2) => inferOr(e1,e2,effs)
         case UnaryApp(Not,e1) => wrap(inferNot(e1,effs))
         case UnaryApp(Neg,e1) => wrap(inferArith1(Neg,e1,effs))
-        case UnaryApp(MulBy(i),e1) => wrap(inferArith1(MulBy(i),e1,effs))
         case UnaryApp(Like(p),e1) => wrap(inferLike(p,e1,effs))
         case BinaryApp(Eq,e1,e2) => wrap(inferEq(e1,e2,effs))
         case BinaryApp(Less,e1,e2) => wrap(inferIneq(Less,e1,e2,effs))
@@ -632,6 +631,7 @@ module validation.typechecker {
         case BinaryApp(In,e1,e2) => wrap(inferIn(e,e1,e2,effs))
         case BinaryApp(Add,e1,e2) => wrap(inferArith2(Add,e1,e2,effs))
         case BinaryApp(Sub,e1,e2) => wrap(inferArith2(Sub,e1,e2,effs))
+        case BinaryApp(Mul,e1,e2) => wrap(inferArith2(Mul,e1,e2,effs))
         case BinaryApp(ContainsAny,e1,e2) => wrap(inferContainsAnyAll(ContainsAny,e1,e2,effs))
         case BinaryApp(ContainsAll,e1,e2) => wrap(inferContainsAnyAll(ContainsAll,e1,e2,effs))
         case BinaryApp(Contains,e1,e2) => wrap(inferContains(e1,e2,effs))
