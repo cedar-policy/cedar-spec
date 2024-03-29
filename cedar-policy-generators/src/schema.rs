@@ -803,7 +803,7 @@ impl Schema {
 
     fn arbitrary_uid_with_optional_type(
         &self,
-        ty_name: Option<ast::Name>, // REVIEW: should we allow `ast::Name` here?
+        ty_name: Option<ast::Name>,
         hierarchy: Option<&Hierarchy>,
         request_field: ast::Var,
         u: &mut Unstructured<'_>,
