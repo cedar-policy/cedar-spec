@@ -26,7 +26,7 @@ pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(),
                 let rhs_namespace = rhs
                     .0
                     .get(&name)
-                    .ok_or_else(|| format!("`{name}` does not exist in RHS schema"))?;
+                    .ok_or_else(|| format!("`{name:?}` does not exist in RHS schema"))?;
                 namespace_equivalence(lhs_namespace, rhs_namespace.clone())
             })
             .fold(Ok(()), Result::and)
