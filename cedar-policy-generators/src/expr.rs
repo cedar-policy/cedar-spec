@@ -1,10 +1,11 @@
 use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool};
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
-use crate::hierarchy::{generate_uid_with_type, EntityUIDGenMode, Hierarchy};
+use crate::hierarchy::{
+    arbitrary_specified_uid, generate_uid_with_type, EntityUIDGenMode, Hierarchy,
+};
 use crate::schema::{
-    arbitrary_specified_uid_without_schema, attrs_from_attrs_or_context,
-    entity_type_name_to_schema_type, uid_for_action_name, Schema,
+    attrs_from_attrs_or_context, entity_type_name_to_schema_type, uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -952,7 +953,7 @@ impl<'a> ExprGenerator<'a> {
                         11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
                         // UID literal, that doesn't exist
                         2 => Ok(ast::Expr::val(
-                            arbitrary_specified_uid_without_schema(u)?,
+                            arbitrary_specified_uid(u)?,
                         )),
                         // `principal`
                         6 => Ok(ast::Expr::var(ast::Var::Principal)),
@@ -1461,7 +1462,7 @@ impl<'a> ExprGenerator<'a> {
                 3 => Ok(ast::Expr::val(self.generate_uid(u)?)),
                 // UID literal, that doesn't exist
                 1 => Ok(ast::Expr::val(
-                    arbitrary_specified_uid_without_schema(u)?,
+                    arbitrary_specified_uid(u)?,
                 )))
             }
             Type::IPAddr | Type::Decimal => {
@@ -2059,7 +2060,7 @@ impl<'a> ExprGenerator<'a> {
         )),
         20 => Ok(ast::Expr::val(self.generate_uid(u)?)),
         4 => Ok(ast::Expr::val(
-            arbitrary_specified_uid_without_schema(u)?,
+            arbitrary_specified_uid(u)?,
         )))
     }
 

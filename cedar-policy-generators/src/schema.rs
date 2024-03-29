@@ -308,17 +308,6 @@ fn schematype_to_type(
     }
 }
 
-/// Get a totally arbitrary UID (but not Unspecified), with no regards to
-/// existing schema or hierarchy
-pub(crate) fn arbitrary_specified_uid_without_schema(
-    u: &mut Unstructured<'_>,
-) -> Result<ast::EntityUID> {
-    Ok(ast::EntityUID::from_components(
-        u.arbitrary::<ast::Name>()?,
-        u.arbitrary::<ast::Eid>()?,
-    ))
-}
-
 /// Get an arbitrary namespace for a schema. The namespace may be absent.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
     u.arbitrary()
@@ -405,7 +394,7 @@ fn attrs_in_schematype(
                         .iter()
                         .flat_map(|(_, v)| attrs_in_schematype(schema, v))
                         .collect::<Vec<_>>();
-                    Box::new(toplevel.into_iter().chain(recursed.into_iter()))
+                    Box::new(toplevel.into_iter().chain(recursed))
                 }
             }
         }
@@ -735,9 +724,7 @@ impl Schema {
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
         };
-        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types
-            .iter()
-            .map(|(_, et)| attrs_from_attrs_or_context(&nsdef, &et.shape))
+        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
         let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)> = attrsorcontexts
             .flat_map(|attributes| {
@@ -749,15 +736,12 @@ impl Schema {
                 })
             })
             .collect();
-        let attributes_by_type = build_attributes_by_type(
-            &nsdef,
-            nsdef.entity_types.iter().map(|(a, b)| (a, b)),
-            namespace.as_ref(),
-        );
+        let attributes_by_type =
+            build_attributes_by_type(&nsdef, nsdef.entity_types.iter(), namespace.as_ref());
         let actions_eids = nsdef
             .actions
-            .iter()
-            .map(|(name, _)| ast::Eid::new(name.clone()))
+            .keys()
+            .map(|name| ast::Eid::new(name.clone()))
             .collect();
         Ok(Schema {
             schema: nsdef,
@@ -824,6 +808,7 @@ impl Schema {
         &self,
         ty_name: Option<ast::Name>, // REVIEW: should we allow `ast::Name` here?
         hierarchy: Option<&Hierarchy>,
+        request_field: ast::Var,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
@@ -832,7 +817,7 @@ impl Schema {
                 .exprgenerator(hierarchy)
                 .arbitrary_uid_with_type(&ty, u),
             ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
-                ast::Eid::new("Unspecified"),
+                ast::Eid::new(request_field.to_string()),
             )),
         }
     }
@@ -1133,14 +1118,24 @@ impl Schema {
                 .as_ref()
                 .and_then(|at| at.principal_types.as_ref())
             {
-                None => self.arbitrary_uid_with_optional_type(None, Some(hierarchy), u)?, // unspecified principal
+                None => self.arbitrary_uid_with_optional_type(
+                    None,
+                    Some(hierarchy),
+                    ast::Var::Principal,
+                    u,
+                )?, // unspecified principal
                 Some(types) => {
                     // Assert that these are vec, so it's safe to draw from directly
                     let types: &Vec<_> = types;
                     let ty = u.choose(types).map_err(|e| {
                         while_doing("choosing one of the action principal types".into(), e)
                     })?;
-                    self.arbitrary_uid_with_optional_type(Some(ty.clone()), Some(hierarchy), u)?
+                    self.arbitrary_uid_with_optional_type(
+                        Some(ty.clone()),
+                        Some(hierarchy),
+                        ast::Var::Principal,
+                        u,
+                    )?
                 }
             },
             action: uid_for_action_name(self.namespace.clone(), ast::Eid::new(action_name.clone())),
@@ -1149,14 +1144,24 @@ impl Schema {
                 .as_ref()
                 .and_then(|at| at.resource_types.as_ref())
             {
-                None => self.arbitrary_uid_with_optional_type(None, Some(hierarchy), u)?, // unspecified resource
+                None => self.arbitrary_uid_with_optional_type(
+                    None,
+                    Some(hierarchy),
+                    ast::Var::Resource,
+                    u,
+                )?, // unspecified resource
                 Some(types) => {
                     // Assert that these are vec, so it's safe to draw from directly
                     let types: &Vec<_> = types;
                     let ty = u.choose(types).map_err(|e| {
                         while_doing("choosing one of the action resource types".into(), e)
                     })?;
-                    self.arbitrary_uid_with_optional_type(Some(ty.clone()), Some(hierarchy), u)?
+                    self.arbitrary_uid_with_optional_type(
+                        Some(ty.clone()),
+                        Some(hierarchy),
+                        ast::Var::Resource,
+                        u,
+                    )?
                 }
             },
             context: {
