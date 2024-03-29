@@ -20,6 +20,7 @@ import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
 import Cedar.Thm.PartialEval.Binary
 import Cedar.Thm.PartialEval.GetAttr
+import Cedar.Thm.PartialEval.HasAttr
 import Cedar.Thm.PartialEval.Ite
 import Cedar.Thm.PartialEval.Or
 import Cedar.Thm.PartialEval.Unary
@@ -78,7 +79,8 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     exact PartialEval.GetAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case hasAttr x₁ attr =>
-    sorry
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    exact PartialEval.HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case set xs =>
     sorry
   case record attrs =>
@@ -171,7 +173,8 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
     exact PartialEval.GetAttr.residuals_contain_unknowns wf ih₁ ih
   case hasAttr x₁ attr =>
-    sorry
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    exact PartialEval.HasAttr.residuals_contain_unknowns ih₁
   case set xs =>
     sorry
   case record attrs =>

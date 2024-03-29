@@ -54,55 +54,6 @@ theorem lhs_unknown {x₁ : PartialExpr} {attr : String} :
   case right => exact h₁.right
 
 /--
-  helper lemma: if a `RestrictedPartialExpr` is an unknown, then it's still an
-  unknown after converting it to `PartialExpr`
--/
-theorem restrictedPartialExpr_to_PartialExpr_preserves_isUnknown {rpexpr : RestrictedPartialExpr} :
-  rpexpr.isUnknown → rpexpr.asPartialExpr.isUnknown
-:= by
-  unfold RestrictedPartialExpr.isUnknown PartialExpr.isUnknown RestrictedPartialExpr.asPartialExpr
-  cases rpexpr <;> simp
-
-/--
-  helper lemma: if a `RestrictedPartialExpr` contains an unknown, then it still does
-  after converting it to `PartialExpr`
--/
-theorem restrictedPartialExpr_to_PartialExpr_preserves_containsUnknown {rpexpr : RestrictedPartialExpr} :
-  rpexpr.containsUnknown → rpexpr.asPartialExpr.containsUnknown
-:= by
-  unfold RestrictedPartialExpr.containsUnknown PartialExpr.containsUnknown
-  cases rpexpr <;> simp
-  case lit | call =>
-    intro x h₁ h₂
-    simp [RestrictedPartialExpr.subexpressions] at h₁
-    subst h₁
-    simp [RestrictedPartialExpr.isUnknown] at h₂
-  case unknown name =>
-    intro x h₁ h₂
-    simp [RestrictedPartialExpr.subexpressions] at h₁
-    subst h₁
-    exists (.unknown name)
-    simp [PartialExpr.isUnknown, RestrictedPartialExpr.asPartialExpr, PartialExpr.subexpressions]
-  case set xs | record attrs =>
-    intro x h₁ h₂
-    simp [RestrictedPartialExpr.subexpressions] at h₁
-    rcases h₁ with h₁ | h₁
-    case inl =>
-      subst h₁
-      simp [RestrictedPartialExpr.isUnknown] at h₂
-    case inr =>
-      -- `rpexpr` is a set or record that recursively contains an unknown
-      exists x.asPartialExpr
-      unfold RestrictedPartialExpr.asPartialExpr PartialExpr.subexpressions
-      cases x <;> simp [RestrictedPartialExpr.isUnknown] at h₂
-      case unknown name =>
-        split <;> simp <;> rename_i h₃ <;> simp at h₃
-        case h_5 name' =>
-          subst h₃
-          simp [PartialExpr.isUnknown]
-          sorry
-
-/--
   if `entities.attrs uid` is `ok` with some attrs, those attrs are a
   well-formed `Map`
 -/
@@ -142,6 +93,55 @@ theorem partialAttrsOf_wf {entities : PartialEntities} {v : Value} {attrs : Map 
     intro h₁
     subst h₁
     apply Map.mapOnValues_wf.mp wf_v
+
+/--
+  if a `RestrictedPartialExpr` is an unknown, then it's still an unknown after
+  converting it to `PartialExpr`
+-/
+theorem restrictedPartialExpr_to_PartialExpr_preserves_isUnknown {rpexpr : RestrictedPartialExpr} :
+  rpexpr.isUnknown → rpexpr.asPartialExpr.isUnknown
+:= by
+  unfold RestrictedPartialExpr.isUnknown PartialExpr.isUnknown RestrictedPartialExpr.asPartialExpr
+  cases rpexpr <;> simp
+
+/--
+  if a `RestrictedPartialExpr` contains an unknown, then it still does after
+  converting it to `PartialExpr`
+-/
+theorem restrictedPartialExpr_to_PartialExpr_preserves_containsUnknown {rpexpr : RestrictedPartialExpr} :
+  rpexpr.containsUnknown → rpexpr.asPartialExpr.containsUnknown
+:= by
+  unfold RestrictedPartialExpr.containsUnknown PartialExpr.containsUnknown
+  cases rpexpr <;> simp
+  case lit | call =>
+    intro x h₁ h₂
+    simp [RestrictedPartialExpr.subexpressions] at h₁
+    subst h₁
+    simp [RestrictedPartialExpr.isUnknown] at h₂
+  case unknown name =>
+    intro x h₁ h₂
+    simp [RestrictedPartialExpr.subexpressions] at h₁
+    subst h₁
+    exists (.unknown name)
+    simp [PartialExpr.isUnknown, RestrictedPartialExpr.asPartialExpr, PartialExpr.subexpressions]
+  case set xs | record attrs =>
+    intro x h₁ h₂
+    simp [RestrictedPartialExpr.subexpressions] at h₁
+    rcases h₁ with h₁ | h₁
+    case inl =>
+      subst h₁
+      simp [RestrictedPartialExpr.isUnknown] at h₂
+    case inr =>
+      -- `rpexpr` is a set or record that recursively contains an unknown
+      exists x.asPartialExpr
+      unfold RestrictedPartialExpr.asPartialExpr PartialExpr.subexpressions
+      cases x <;> simp [RestrictedPartialExpr.isUnknown] at h₂
+      case unknown name =>
+        split <;> simp <;> rename_i h₃ <;> simp at h₃
+        case h_5 name' =>
+          subst h₃
+          simp [PartialExpr.isUnknown]
+          sorry
 
 /--
   `partialAttrsOf` on concrete arguments is the same as `attrsOf` on those

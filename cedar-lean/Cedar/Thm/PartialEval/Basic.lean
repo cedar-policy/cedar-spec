@@ -20,6 +20,11 @@ import Cedar.Spec.PartialRequest
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 
+/-!
+  This file contains definitions and lemmas used by multiple files in the
+  Thm/PartialEval folder
+-/
+
 namespace Cedar.Thm
 
 open Cedar.Spec

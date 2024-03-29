@@ -182,6 +182,11 @@ theorem mapOnValues_wf [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ}
   unfold mapOnValues WellFormed
   sorry
 
+theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} :
+  (empty : Map α β).mapOnValues f = empty
+:= by
+  simp [mapOnValues, empty]
+
 theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
