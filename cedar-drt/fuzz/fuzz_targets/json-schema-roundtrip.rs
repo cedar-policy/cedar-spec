@@ -21,7 +21,6 @@ use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
-use smol_str::{SmolStr, ToSmolStr};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
@@ -51,10 +50,7 @@ impl<'a> Arbitrary<'a> for Input {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let arb_schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let namespace = arb_schema.schema;
-        let name: SmolStr = arb_schema
-            .namespace
-            .map(|name| name.to_smolstr())
-            .unwrap_or_else(|| "".into());
+        let name = arb_schema.namespace;
 
         let schema = SchemaFragment(HashMap::from([(name, namespace)]));
 
