@@ -17,13 +17,90 @@
 import Cedar.Spec.PartialEntities
 import Cedar.Spec.PartialEvaluator
 import Cedar.Spec.PartialRequest
+import Cedar.Thm.Data.Map
+import Cedar.Thm.Data.Set
 
 namespace Cedar.Thm
 
 open Cedar.Spec
-open Except
 
-def ResidualsContainUnknowns (x : PartialExpr) {request : PartialRequest} {entities : PartialEntities} : Prop :=
+/--
+  If `x` evaluates to a residual, that residual contains an unknown
+-/
+def PartialExpr.ResidualsContainUnknowns (x : PartialExpr) {request : PartialRequest} {entities : PartialEntities} : Prop :=
   ∀ r,
-  partialEvaluate x request entities = ok (.residual r) →
+  partialEvaluate x request entities = .ok (.residual r) →
   r.containsUnknown
+
+/--
+  If `rpval` is a residual, that residual contains an unknown
+-/
+def RestrictedPartialValue.ResidualsContainUnknowns (rpval : RestrictedPartialValue) : Prop :=
+  match rpval with
+  | .residual r => r.containsUnknown
+  | .value _ => true
+
+/--
+  All residuals in attribute values in `edata` contain unknowns
+-/
+def PartialEntityData.ResidualsContainUnknowns (edata : PartialEntityData) : Prop :=
+  ∀ rpval ∈ edata.attrs.values, RestrictedPartialValue.ResidualsContainUnknowns rpval
+
+/--
+  All residuals in attribute values in `entities` contain unknowns
+-/
+def PartialEntities.ResidualsContainUnknowns (entities : PartialEntities) : Prop :=
+  ∀ edata ∈ entities.values, PartialEntityData.ResidualsContainUnknowns edata
+
+end Cedar.Thm
+
+namespace Cedar.Spec
+
+/--
+  We define WellFormed for Value in the obvious way
+-/
+def Value.WellFormed (v : Value) : Prop :=
+  match v with
+  | .set s => s.WellFormed
+  | .record r => r.WellFormed
+  | _ => true
+
+/--
+  We define WellFormed for PartialValue using Value.WellFormed
+-/
+def PartialValue.WellFormed (pval : PartialValue) : Prop :=
+  match pval with
+  | .value v => v.WellFormed
+  | .residual _ => true
+
+/--
+  We define WellFormed for PartialEntityData in the obvious way
+-/
+def PartialEntityData.WellFormed (edata : PartialEntityData) : Prop :=
+  edata.attrs.WellFormed ∧ edata.ancestors.WellFormed
+
+/--
+  PartialEntities are AllWellFormed if they are WellFormed and all the
+  constituent PartialEntityData are also WellFormed
+  well-formed
+-/
+def PartialEntities.AllWellFormed (entities : PartialEntities) : Prop :=
+  entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed
+
+end Cedar.Spec
+
+namespace Cedar.Thm
+
+open Cedar.Spec
+
+/--
+  Partial evaluation always returns well-formed results
+-/
+theorem partial_eval_wf {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities} {pval : PartialValue} :
+  entities.AllWellFormed →
+  (partialEvaluate expr request entities = .ok pval) →
+  pval.WellFormed
+:= by
+  sorry
+
+end Cedar.Thm

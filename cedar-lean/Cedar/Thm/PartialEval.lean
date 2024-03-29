@@ -75,7 +75,8 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
     exact PartialEval.Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case getAttr x₁ attr =>
-    sorry
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    exact PartialEval.GetAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case hasAttr x₁ attr =>
     sorry
   case set xs =>
@@ -102,12 +103,25 @@ theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request
   If partial evaluation returns a residual, then that residual expression
   contains an unknown
 -/
-theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities} :
+theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities}
+  (wf : entities.AllWellFormed)
+  (ih : PartialEntities.ResidualsContainUnknowns entities) :
   ∀ r,
   partialEvaluate expr request entities = ok (.residual r) →
   r.containsUnknown
 := by
   cases expr
+  case lit p =>
+    unfold partialEvaluate
+    intro r h₁
+    simp at h₁
+  case unknown name =>
+    unfold partialEvaluate
+    intro r h₁
+    simp at h₁
+    subst h₁
+    unfold PartialExpr.containsUnknown PartialExpr.subexpressions
+    simp [List.any_eq_true, PartialExpr.isUnknown]
   case var v =>
     unfold partialEvaluate
     intro r h₁
@@ -130,32 +144,40 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
     case context =>
       sorry
   case and x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities
-    have ih₂ := @residuals_contain_unknowns x₂ request entities
-    rw [← ResidualsContainUnknowns] at *
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.And.residuals_contain_unknowns ih₁ ih₂
   case or x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities
-    have ih₂ := @residuals_contain_unknowns x₂ request entities
-    rw [← ResidualsContainUnknowns] at *
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Or.residuals_contain_unknowns ih₁ ih₂
   case ite x₁ x₂ x₃ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities
-    have ih₂ := @residuals_contain_unknowns x₂ request entities
-    have ih₃ := @residuals_contain_unknowns x₃ request entities
-    rw [← ResidualsContainUnknowns] at *
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    have ih₃ := @residuals_contain_unknowns x₃ request entities wf ih
+    rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
     exact PartialEval.Unary.residuals_contain_unknowns ih₁
   case binaryApp op x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities
-    have ih₂ := @residuals_contain_unknowns x₂ request entities
-    rw [← ResidualsContainUnknowns] at *
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Binary.residuals_contain_unknowns ih₁ ih₂
-  all_goals {
+  case getAttr x₁ attr =>
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    exact PartialEval.GetAttr.residuals_contain_unknowns wf ih₁ ih
+  case hasAttr x₁ attr =>
     sorry
-  }
+  case set xs =>
+    sorry
+  case record attrs =>
+    sorry
+  case call xfn args =>
+    sorry
 
 /--
   If partial evaluation returns a concrete value, then it returns the same value

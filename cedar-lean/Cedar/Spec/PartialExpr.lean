@@ -215,6 +215,35 @@ def PartialExpr.fullyConcrete (x : PartialExpr) : Bool :=
   ¬ x.containsUnknown
 
 /--
+  Is this a literal "unknown".
+  (Doesn't check if it recursively contains unknowns; for that, use
+  `RestrictedPartialExpr.containsUnknown`)
+-/
+def RestrictedPartialExpr.isUnknown (x : RestrictedPartialExpr) : Bool :=
+  match x with
+  | .unknown _ => true
+  | _ => false
+
+/--
+  Get a list of all the subexpressions of a given RestrictedPartialExpr.
+  Every expression is also a subexpression of itself.
+-/
+def RestrictedPartialExpr.subexpressions (x : RestrictedPartialExpr) : List RestrictedPartialExpr :=
+  match x with
+  | .lit _ => [x]
+  | .set xs => [x] ++ List.join (xs.map RestrictedPartialExpr.subexpressions)
+  | .record pairs => [x] ++ List.join (pairs.map λ (_, x₁) => x₁.subexpressions)
+  | .call _ xs => [x] -- in RestrictedPartialExpr, call arguments are values and cannot contain unknowns
+  | .unknown _ => [x]
+decreasing_by sorry
+
+/--
+  Does a given RestrictedPartialExpr contain an Unknown, perhaps recursively
+-/
+def RestrictedPartialExpr.containsUnknown (x : RestrictedPartialExpr) : Bool :=
+  x.subexpressions.any RestrictedPartialExpr.isUnknown
+
+/--
   any expression is a subexpression of itself
 -/
 theorem PartialExpr.subexpression_refl {x : PartialExpr} :

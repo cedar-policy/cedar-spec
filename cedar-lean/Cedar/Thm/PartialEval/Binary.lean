@@ -152,11 +152,11 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ x₂ : Expr} {request :
   Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.binaryApp`
 -/
 theorem residuals_contain_unknowns {x₁ x₂ : PartialExpr} {request : PartialRequest} {entities : PartialEntities} {op : BinaryOp} :
-  @ResidualsContainUnknowns x₁ request entities →
-  @ResidualsContainUnknowns x₂ request entities →
-  @ResidualsContainUnknowns (PartialExpr.binaryApp op x₁ x₂) request entities
+  @PartialExpr.ResidualsContainUnknowns x₁ request entities →
+  @PartialExpr.ResidualsContainUnknowns x₂ request entities →
+  @PartialExpr.ResidualsContainUnknowns (PartialExpr.binaryApp op x₁ x₂) request entities
 := by
-  unfold ResidualsContainUnknowns
+  unfold PartialExpr.ResidualsContainUnknowns
   intro ih₁ ih₂ r h₁
   unfold partialEvaluate at h₁
   cases h₂ : (partialEvaluate x₁ request entities) <;> simp [h₂] at h₁
