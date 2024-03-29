@@ -418,9 +418,6 @@ fn build_attributes_by_type<'a>(
         .into_iter()
         .map(|(name, et)| {
             (
-                // REVIEW: this fails if `name` is a qualified Name like `A::B`.  Is that the desired behavior?
-                // If we want to allow `A::B` for `name`, then the function we want is
-                // parse_name_in_default_namespace().
                 build_qualified_entity_type_name(namespace.cloned(), name.clone().into()),
                 attrs_from_attrs_or_context(schema, &et.shape),
             )
