@@ -120,8 +120,11 @@ def PartialEntities.subst (es : PartialEntities) (subsmap : Map String Restricte
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
--- TODO: turning a PartialEntities into an Entities might require adding new entities,
--- how do we account for that?
+-- TODO: as of this writing, entity existence is not allowed to be unknown, so
+-- turning a PartialEntities into an Entities cannot add new entities into the
+-- map.
+-- If we relax that assumption and allow entity existence to be unknown, we'll
+-- have to adjust this here as well
 def PartialEntities.fullSubst (es : PartialEntities) (subsmap : Map String Value) : Option Entities :=
   es.mapMOnValues (PartialEntityData.fullSubst · subsmap)
 

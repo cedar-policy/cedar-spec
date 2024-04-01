@@ -65,6 +65,129 @@ def RestrictedPartialValue.asPartialValue (v : RestrictedPartialValue) : Partial
   | .residual r => .residual (r.asPartialExpr)
 
 /--
+  termination helper lemma for ite
+-/
+theorem PartialExpr.ite_termination {x₁ x₂ x₃ : PartialExpr} :
+  x₁.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length ∧
+  x₂.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length ∧
+  x₃.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length
+:= by
+  repeat (any_goals (apply And.intro))
+  all_goals {
+    conv => rhs ; unfold subexpressions
+    simp [List.length_append]
+    omega
+  }
+
+/--
+  termination helper lemma for and
+-/
+theorem PartialExpr.and_termination {x₁ x₂ : PartialExpr} :
+  x₁.subexpressions.length < (PartialExpr.and x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (PartialExpr.and x₁ x₂).subexpressions.length
+:= by
+  apply And.intro
+  all_goals {
+    conv => rhs ; unfold subexpressions
+    simp [List.length_append]
+    omega
+  }
+
+/--
+  termination helper lemma for or
+-/
+theorem PartialExpr.or_termination {x₁ x₂ : PartialExpr} :
+  x₁.subexpressions.length < (PartialExpr.or x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (PartialExpr.or x₁ x₂).subexpressions.length
+:= by
+  apply And.intro
+  all_goals {
+    conv => rhs ; unfold subexpressions
+    simp [List.length_append]
+    omega
+  }
+
+/--
+  termination helper lemma for unaryApp
+-/
+theorem PartialExpr.unaryApp_termination {x₁ : PartialExpr} {op : UnaryOp} :
+  x₁.subexpressions.length < (PartialExpr.unaryApp op x₁).subexpressions.length
+:= by
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+
+/--
+  termination helper lemma for binaryApp
+-/
+theorem PartialExpr.binaryApp_termination {x₁ x₂ : PartialExpr} {op : BinaryOp} :
+  x₁.subexpressions.length < (PartialExpr.binaryApp op x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (PartialExpr.binaryApp op x₁ x₂).subexpressions.length
+:= by
+  apply And.intro
+  all_goals {
+    conv => rhs ; unfold subexpressions
+    simp [List.length_append]
+    omega
+  }
+
+/--
+  termination helper lemma for getAttr
+-/
+theorem PartialExpr.getAttr_termination {x₁ : PartialExpr} {attr : String} :
+  x₁.subexpressions.length < (PartialExpr.getAttr x₁ attr).subexpressions.length
+:= by
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+
+/--
+  termination helper lemma for hasAttr
+-/
+theorem PartialExpr.hasAttr_termination {x₁ : PartialExpr} {attr : String} :
+  x₁.subexpressions.length < (PartialExpr.hasAttr x₁ attr).subexpressions.length
+:= by
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+
+/--
+  termination helper lemma for set
+-/
+theorem PartialExpr.set_termination {xs : List PartialExpr} :
+  --∀ x ∈ xs, x.subexpressions.length < (PartialExpr.set xs).subexpressions.length
+  ∀ (x : {x : PartialExpr // x ∈ xs}), x.val.subexpressions.length < (PartialExpr.set xs).subexpressions.length
+:= by
+  intro x
+  replace ⟨x, h⟩ := x
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+  sorry -- `omega` can't discharge this directly, need to use h somehow
+
+/--
+  termination helper lemma for record
+-/
+theorem PartialExpr.record_termination {pairs : List (Attr × PartialExpr)} :
+  --∀ kv ∈ pairs, kv.snd.subexpressions.length < (PartialExpr.record pairs).subexpressions.length
+  ∀ (kv : {kv : Attr × PartialExpr // kv ∈ pairs}), kv.val.snd.subexpressions.length < (PartialExpr.record pairs).subexpressions.length
+:= by
+  intro x
+  replace ⟨x, h⟩ := x
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+  sorry -- `omega` can't discharge this directly, need to use h somehow
+
+/--
+  termination helper lemma for call
+-/
+theorem PartialExpr.call_termination {xs : List PartialExpr} {xfn : ExtFun} :
+  --∀ x ∈ xs, x.subexpressions.length < (PartialExpr.call xfn xs).subexpressions.length
+  ∀ (x : {x : PartialExpr // x ∈ xs}), x.val.subexpressions.length < (PartialExpr.call xfn xs).subexpressions.length
+:= by
+  intro x
+  replace ⟨x, h⟩ := x
+  conv => rhs ; unfold subexpressions
+  simp [List.length_append]
+  sorry -- `omega` can't discharge this directly, need to use h somehow
+
+/--
   Given a map of unknown-name to value, substitute all unknowns with the
   corresponding values, producing a new PartialExpr.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
@@ -77,44 +200,60 @@ def PartialExpr.subst (x : PartialExpr) (subsmap : Map String RestrictedPartialV
   | .lit _ => x -- no unknowns, nothing to substitute
   | .var _ => x -- no unknowns, nothing to substitute
   | .ite x₁ x₂ x₃ =>
+    have ⟨_, _, _⟩ := @PartialExpr.ite_termination x₁ x₂ x₃
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     let x₃' := x₃.subst subsmap
     .ite x₁' x₂' x₃'
   | .and x₁ x₂ =>
+    have ⟨_, _⟩ := @PartialExpr.and_termination x₁ x₂
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .and x₁' x₂'
   | .or x₁ x₂ =>
+    have ⟨_, _⟩ := @PartialExpr.or_termination x₁ x₂
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .or x₁' x₂'
   | .unaryApp op x₁ =>
+    have _ := @PartialExpr.unaryApp_termination x₁ op
     let x₁' := x₁.subst subsmap
-    .unaryApp op x₁
+    .unaryApp op x₁'
   | .binaryApp op x₁ x₂ =>
+    have ⟨_, _⟩ := @PartialExpr.binaryApp_termination x₁ x₂ op
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .binaryApp op x₁' x₂'
   | .getAttr x₁ attr =>
+    have _ := @PartialExpr.getAttr_termination x₁ attr
     let x₁' := x₁.subst subsmap
     .getAttr x₁' attr
   | .hasAttr x₁ attr =>
+    have _ := @PartialExpr.hasAttr_termination x₁ attr
     let x₁' := x₁.subst subsmap
     .hasAttr x₁' attr
   | .set xs =>
-    let xs' := xs.map (PartialExpr.subst · subsmap)
+    have h₁ := @PartialExpr.set_termination xs
+    let xs' := xs.map₁ λ x =>
+      have _ := h₁ x
+      PartialExpr.subst x subsmap
     .set xs'
   | .record pairs =>
-    let pairs' := pairs.map fun (k, v) => (k, v.subst subsmap)
+    have h₁ := @PartialExpr.record_termination pairs
+    let pairs' := pairs.map₁ λ kv =>
+      have _ := h₁ kv
+      (kv.val.fst, kv.val.snd.subst subsmap)
     .record pairs'
   | .call xfn xs =>
-    let xs' := xs.map (PartialExpr.subst · subsmap)
+    have h₁ := @PartialExpr.call_termination xs xfn
+    let xs' := xs.map₁ λ x =>
+      have _ := h₁ x
+      PartialExpr.subst x subsmap
     .call xfn xs'
   | unknown name => match subsmap.find? name with
     | some val => val.asPartialExpr
     | none => x -- no substitution available, return `x` unchanged
-decreasing_by sorry
+termination_by PartialExpr.subst x subsmap => x.subexpressions.length
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -129,44 +268,60 @@ def PartialExpr.fullSubst (x : PartialExpr) (subsmap : Map String Value) : Optio
   | .lit p => some (.lit p)
   | .var v => some (.var v)
   | .ite x₁ x₂ x₃ => do
+    have ⟨_, _, _⟩ := @PartialExpr.ite_termination x₁ x₂ x₃
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     let x₃' ← x₃.fullSubst subsmap
     some (.ite x₁' x₂' x₃')
   | .and x₁ x₂ => do
+    have ⟨_, _⟩ := @PartialExpr.and_termination x₁ x₂
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.and x₁' x₂')
   | .or x₁ x₂ => do
+    have ⟨_, _⟩ := @PartialExpr.or_termination x₁ x₂
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.or x₁' x₂')
   | .unaryApp op x₁ => do
+    have _ := @PartialExpr.unaryApp_termination x₁ op
     let x₁' ← x₁.fullSubst subsmap
     some (.unaryApp op x₁')
   | .binaryApp op x₁ x₂ => do
+    have ⟨_, _⟩ := @PartialExpr.binaryApp_termination x₁ x₂ op
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.binaryApp op x₁' x₂')
   | .getAttr x₁ attr => do
+    have _ := @PartialExpr.getAttr_termination x₁ attr
     let x₁' ← x₁.fullSubst subsmap
     some (.getAttr x₁' attr)
   | .hasAttr x₁ attr => do
+    have _ := @PartialExpr.hasAttr_termination x₁ attr
     let x₁' ← x₁.fullSubst subsmap
     some (.hasAttr x₁' attr)
   | .set xs => do
-    let xs' ← xs.mapM (PartialExpr.fullSubst · subsmap)
+    have h₁ := @PartialExpr.set_termination xs
+    let xs' ← xs.mapM₁ λ x =>
+      have _ := h₁ x
+      PartialExpr.fullSubst x subsmap
     some (.set xs')
   | .record pairs => do
-    let pairs' ← pairs.mapM λ (k, v) => v.fullSubst subsmap >>= λ v' => some (k, v')
+    have h₁ := @PartialExpr.record_termination pairs
+    let pairs' ← pairs.mapM₁ λ kv =>
+      have _ := h₁ kv
+      kv.val.snd.fullSubst subsmap >>= λ v' => some (kv.val.fst, v')
     some (.record pairs')
   | .call xfn xs => do
-    let xs' ← xs.mapM (PartialExpr.fullSubst · subsmap)
+    have h₁ := @PartialExpr.call_termination xs xfn
+    let xs' ← xs.mapM₁ λ x =>
+      have _ := h₁ x
+      PartialExpr.fullSubst x subsmap
     some (.call xfn xs')
   | unknown name => match subsmap.find? name with
     | some val => val.asExpr
     | none => none -- no substitution available, return `none`
-decreasing_by sorry
+termination_by PartialExpr.fullSubst x subsmap => x.subexpressions.length
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the

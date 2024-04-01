@@ -74,6 +74,9 @@ List { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } :=
     apply Nat.lt_add_right
     apply List.sizeOf_snd_lt_sizeOf_list h)
 
+def map₁ {α : Type w} {β : Type u} (xs : List α) (f : {x : α // x ∈ xs} → β) : List β :=
+  xs.attach.map f
+
 def mapM₁ {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u}
   (xs : List α) (f : {x : α // x ∈ xs} → m β) : m (List β) :=
   xs.attach.mapM f
