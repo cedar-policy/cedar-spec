@@ -30,7 +30,7 @@ RUN git clone https://github.com/cedar-policy/cedar
 
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
-RUN source /root/.profile && source ./set_env_vars.sh && lake build Cedar:static DiffTest:static Std:static
+RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && lake build Cedar:static DiffTest:static Std:static
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
