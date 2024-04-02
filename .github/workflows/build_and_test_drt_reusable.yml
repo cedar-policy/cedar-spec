@@ -7,6 +7,10 @@ on:
         required: false
         default: "main"
         type: string
+      cedar_policy_ref:
+        required: false
+        default: "main"
+        type: string
 
 jobs:
   build_and_test_drt:
@@ -20,8 +24,13 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.cedar_spec_ref }}
+      - name: checkout cedar
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar
           ref: ${{ inputs.cedar_policy_ref }}
-          submodules: recursive
       - name: Install Lean
         shell: bash
         run: |
@@ -44,11 +53,22 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
-      - name: Build Lean libraries; build & test cedar-drt/
+      - name: Build Lean libraries
+        working-directory: ./cedar-lean
+        run: source ~/.profile && lake build Cedar:static DiffTest:static Std:static
+      - name: cargo build (cedar-drt/)
         shell: bash
-        run: source ~/.profile && ./build.sh
+        working-directory: ./cedar-drt
+        run: source ~/.profile && source set_env_vars.sh && cargo build
+      - name: cargo build (cedar-drt/fuzz/)
+        working-directory: ./cedar-drt/fuzz
+        run: source ~/.profile && source ../set_env_vars.sh && RUSTFLAGS="--cfg=fuzzing" cargo build
+      - name: cargo test (cedar-drt/fuzz/)
+        working-directory: ./cedar-drt/fuzz
+        run: source ~/.profile && source ../set_env_vars.sh && cargo test
 
   run-integration-tests:
     uses: ./.github/workflows/run_integration_tests_reusable.yml
     with:
-      cedar_spec_ref: ${{ github.ref }}
+      cedar_spec_ref: ${{ inputs.cedar_spec_ref }}
+      cedar_policy_ref: ${{ inputs.cedar_policy_ref }}

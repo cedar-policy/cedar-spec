@@ -1,6 +1,5 @@
 FROM amazonlinux:2 AS prepare
 
-
 RUN yum update -y \
   && yum install -y \
 	curl clang tar zip unzip python3 git xz \
@@ -25,9 +24,14 @@ FROM prepare AS build
 ENV CEDAR_SPEC_ROOT=/opt/src/cedar-spec
 COPY . $CEDAR_SPEC_ROOT
 
-# Build DRT
+# Clone `cedar` repository
 WORKDIR $CEDAR_SPEC_ROOT
-RUN source /root/.profile && ./build.sh
+RUN git clone https://github.com/cedar-policy/cedar
 
-# Prepare DRT
+# Build the Lean formalization and extract to static C libraries
+WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
+RUN source /root/.profile && lake build Cedar:static DiffTest:static Std:static
+
+# Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
+RUN source /root/.profile && source ./set_env_vars.sh && cargo build
