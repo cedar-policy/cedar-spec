@@ -45,3 +45,12 @@ jobs:
     with:
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
+  
+  test_docker_build:
+    name: Test Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build .

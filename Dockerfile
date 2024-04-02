@@ -34,4 +34,4 @@ RUN source /root/.profile && lake build Cedar:static DiffTest:static Std:static
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
-RUN source /root/.profile && source ./set_env_vars.sh && cargo build
+RUN source /root/.profile && source ./set_env_vars_foo.sh && cargo build
