@@ -25,8 +25,6 @@ jobs:
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Lean
         shell: bash
         run: |
