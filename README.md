@@ -22,7 +22,7 @@ The simplest way to build our DRT framework is to use the included Dockerfile:
 
 ```bash
 docker build . -t cedar_drt # ~10 minutes
-docker run -it cedar_drt
+docker run -it cedar_drt --rm
 ```
 
 If you'd rather not use Docker, here are the full instructions for a local build:
