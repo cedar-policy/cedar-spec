@@ -35,3 +35,5 @@ RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && lake build C
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
 RUN source /root/.profile && source ./set_env_vars.sh && cargo build
+
+ENTRYPOINT ["/usr/bin/bash", "--rcfile", "../rcfile"]
