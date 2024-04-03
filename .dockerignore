@@ -1,0 +1,6 @@
+**/target/
+**/corpus/
+**/.lake
+**/artifacts
+.git/
+cedar/
