@@ -24,12 +24,14 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
         with:
+          repository: cedar-policy/cedar-spec
           ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
       - name: checkout cedar
         uses: actions/checkout@v4
         with:
           repository: cedar-policy/cedar
-          path: ./cedar
+          path: ./cedar-spec/cedar
           ref: ${{ inputs.cedar_policy_ref }}
       - name: Install Lean
         shell: bash
@@ -39,33 +41,33 @@ jobs:
       - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
+        working-directory: ./cedar-spec/cedar-policy-generators
         run: cargo fmt --all --check
       - name: cargo fmt (cedar-drt)
-        working-directory: ./cedar-drt
+        working-directory: ./cedar-spec/cedar-drt
         run: cargo fmt --all --check
       - name: cargo fmt (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
+        working-directory: ./cedar-spec/cedar-drt/fuzz
         run: cargo fmt --all --check
       - name: cargo build (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
+        working-directory: ./cedar-spec/cedar-policy-generators
         run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
       - name: cargo test (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
+        working-directory: ./cedar-spec/cedar-policy-generators
         run: cargo test --verbose
       - name: Build Lean libraries
-        working-directory: ./cedar-lean
+        working-directory: ./cedar-spec/cedar-lean
         run: source ~/.profile && lake build Cedar:static DiffTest:static Std:static
       - name: cargo build (cedar-drt/)
         shell: bash
-        working-directory: ./cedar-drt
+        working-directory: ./cedar-spec/cedar-drt
         run: source ~/.profile && source set_env_vars.sh && cargo build
       - name: cargo build (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
+        working-directory: ./cedar-spec/cedar-drt/fuzz
         run: source ~/.profile && source ../set_env_vars.sh && RUSTFLAGS="--cfg=fuzzing" cargo build
       - name: cargo test (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
-        run: source ~/.profile && source ../set_env_vars.sh && cargo test
+        working-directory: ./cedar-spec/cedar-drt/fuzz
+        run: source ~/.profile && source ../set_env_vars.sh && cargo test -- --nocapture
 
   run-integration-tests:
     uses: ./.github/workflows/run_integration_tests_reusable.yml

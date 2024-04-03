@@ -74,12 +74,7 @@ pub fn get_corpus_tests() -> impl Iterator<Item = PathBuf> {
 
 fn run_tests(custom_impl: &impl CedarTestImplementation, tests: impl Iterator<Item = PathBuf>) {
     for test_json in tests {
-        // These messages are for progress reporting and so that if the
-        // `#[test]` fails, the user can know which test case failed by looking
-        // for the last "Running integration test" message before the failure.
-        println!("Running integration test: {:?}", test_json);
         perform_integration_test_from_json_custom(&test_json, custom_impl);
-        println!("Integration test succeeded: {:?}", test_json);
     }
 }
 
