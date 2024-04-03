@@ -2,216 +2,9 @@
     "schema": {
         "entityTypes": [
             [
+                "User",
                 {
-                    "id": "Administrator",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Administrator",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {}
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Album",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Album",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Album",
-                            "path": []
-                        },
-                        {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "account": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "Account",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "AccountGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "AccountGroup",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Album",
-                            "path": []
-                        },
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Account",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Account",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Account",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Album",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "User",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "User",
-                        "path": []
-                    },
+                    "name": "User",
                     "descendants": [],
                     "attributes": {
                         "attrs": {
@@ -237,20 +30,11 @@
                 }
             ],
             [
+                "UserGroup",
                 {
-                    "id": "UserGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "UserGroup",
-                        "path": []
-                    },
+                    "name": "UserGroup",
                     "descendants": [
-                        {
-                            "id": "User",
-                            "path": []
-                        }
+                        "User"
                     ],
                     "attributes": {
                         "attrs": {}
@@ -259,15 +43,48 @@
                 }
             ],
             [
+                "AccountGroup",
                 {
-                    "id": "Photo",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Photo",
-                        "path": []
+                    "name": "AccountGroup",
+                    "descendants": [
+                        "Account",
+                        "Album",
+                        "Photo"
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "User"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
                     },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Administrator",
+                {
+                    "name": "Administrator",
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Photo",
+                {
+                    "name": "Photo",
                     "descendants": [],
                     "attributes": {
                         "attrs": {
@@ -276,10 +93,7 @@
                                     "EntityOrRecord": {
                                         "Entity": {
                                             "lub_elements": [
-                                                {
-                                                    "id": "Account",
-                                                    "path": []
-                                                }
+                                                "Account"
                                             ]
                                         }
                                     }
@@ -293,13 +107,112 @@
                                             "EntityOrRecord": {
                                                 "Entity": {
                                                     "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
+                                                        "User"
                                                     ]
                                                 }
                                             }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Album",
+                {
+                    "name": "Album",
+                    "descendants": [
+                        "Photo",
+                        "Album"
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "account": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "Account"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        "User"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Account",
+                {
+                    "name": "Account",
+                    "descendants": [
+                        "Photo",
+                        "Album"
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        "User"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "User"
+                                            ]
                                         }
                                     }
                                 },
@@ -323,422 +236,26 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "listPhotos"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "listPhotos"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "edit"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "edit"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "listAlbums"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "listAlbums"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "comment"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "comment"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "delete"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "delete"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "view"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "view"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
                     "eid": "addPhoto"
                 },
                 {
                     "name": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "addPhoto"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
+                                "Specified": "User"
                             }
                         ],
                         "resourceApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
+                                "Specified": "Album"
                             }
                         ]
                     },
@@ -797,6 +314,318 @@
                     },
                     "attributes": {}
                 }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "edit"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "edit"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Account"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "listPhotos"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "listPhotos"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Album"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "delete"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "comment"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "view"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
             ]
         ]
     },
@@ -811,10 +640,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "UserGroup",
-                                        "path": []
-                                    }
+                                    "Specified": "UserGroup"
                                 },
                                 "eid": "alice_friends"
                             }
@@ -824,10 +650,7 @@
                 "action_constraint": {
                     "Eq": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "view"
                     }
@@ -837,10 +660,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "Account",
-                                        "path": []
-                                    }
+                                    "Specified": "Account"
                                 },
                                 "eid": "alice"
                             }
@@ -853,155 +673,12 @@
                             "Bool": true
                         }
                     },
-                    "source_info": {
-                        "start": 140,
-                        "end": 253
-                    },
-                    "data": null
-                }
-            },
-            "policy2": {
-                "id": "policy2",
-                "annotations": {},
-                "effect": "forbid",
-                "principal_constraint": {
-                    "constraint": "Any"
-                },
-                "action_constraint": "Any",
-                "resource_constraint": {
-                    "constraint": "Any"
-                },
-                "non_head_constraints": {
-                    "expr_kind": {
-                        "And": {
-                            "left": {
-                                "expr_kind": {
-                                    "GetAttr": {
-                                        "expr": {
-                                            "expr_kind": {
-                                                "Var": "resource"
-                                            },
-                                            "source_info": {
-                                                "start": 548,
-                                                "end": 556
-                                            },
-                                            "data": null
-                                        },
-                                        "attr": "private"
-                                    }
-                                },
-                                "source_info": {
-                                    "start": 548,
-                                    "end": 564
-                                },
-                                "data": null
-                            },
-                            "right": {
-                                "expr_kind": {
-                                    "UnaryApp": {
-                                        "op": "Not",
-                                        "arg": {
-                                            "expr_kind": {
-                                                "And": {
-                                                    "left": {
-                                                        "expr_kind": {
-                                                            "HasAttr": {
-                                                                "expr": {
-                                                                    "expr_kind": {
-                                                                        "Var": "resource"
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 576,
-                                                                        "end": 584
-                                                                    },
-                                                                    "data": null
-                                                                },
-                                                                "attr": "account"
-                                                            }
-                                                        },
-                                                        "source_info": {
-                                                            "start": 576,
-                                                            "end": 596
-                                                        },
-                                                        "data": null
-                                                    },
-                                                    "right": {
-                                                        "expr_kind": {
-                                                            "BinaryApp": {
-                                                                "op": "Eq",
-                                                                "arg1": {
-                                                                    "expr_kind": {
-                                                                        "GetAttr": {
-                                                                            "expr": {
-                                                                                "expr_kind": {
-                                                                                    "GetAttr": {
-                                                                                        "expr": {
-                                                                                            "expr_kind": {
-                                                                                                "Var": "resource"
-                                                                                            },
-                                                                                            "source_info": {
-                                                                                                "start": 600,
-                                                                                                "end": 608
-                                                                                            },
-                                                                                            "data": null
-                                                                                        },
-                                                                                        "attr": "account"
-                                                                                    }
-                                                                                },
-                                                                                "source_info": {
-                                                                                    "start": 600,
-                                                                                    "end": 622
-                                                                                },
-                                                                                "data": null
-                                                                            },
-                                                                            "attr": "owner"
-                                                                        }
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 600,
-                                                                        "end": 622
-                                                                    },
-                                                                    "data": null
-                                                                },
-                                                                "arg2": {
-                                                                    "expr_kind": {
-                                                                        "Var": "principal"
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 626,
-                                                                        "end": 635
-                                                                    },
-                                                                    "data": null
-                                                                }
-                                                            }
-                                                        },
-                                                        "source_info": {
-                                                            "start": 600,
-                                                            "end": 635
-                                                        },
-                                                        "data": null
-                                                    }
-                                                }
-                                            },
-                                            "source_info": {
-                                                "start": 576,
-                                                "end": 635
-                                            },
-                                            "data": null
-                                        }
-                                    }
-                                },
-                                "source_info": {
-                                    "start": 567,
-                                    "end": 637
-                                },
-                                "data": null
-                            }
-                        }
-                    },
-                    "source_info": {
-                        "start": 504,
-                        "end": 638
+                    "source_loc": {
+                        "span": {
+                            "offset": 140,
+                            "length": 113
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                     },
                     "data": null
                 }
@@ -1028,26 +705,217 @@
                                             "expr_kind": {
                                                 "Var": "context"
                                             },
-                                            "source_info": {
-                                                "start": 751,
-                                                "end": 758
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 751,
+                                                    "length": 7
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                             },
                                             "data": null
                                         },
                                         "attr": "authenticated"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 751,
-                                    "end": 772
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 751,
+                                        "length": 21
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             }
                         }
                     },
-                    "source_info": {
-                        "start": 750,
-                        "end": 772
+                    "source_loc": {
+                        "span": {
+                            "offset": 750,
+                            "length": 22
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                    },
+                    "data": null
+                }
+            },
+            "policy2": {
+                "id": "policy2",
+                "annotations": {},
+                "effect": "forbid",
+                "principal_constraint": {
+                    "constraint": "Any"
+                },
+                "action_constraint": "Any",
+                "resource_constraint": {
+                    "constraint": "Any"
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "And": {
+                            "left": {
+                                "expr_kind": {
+                                    "GetAttr": {
+                                        "expr": {
+                                            "expr_kind": {
+                                                "Var": "resource"
+                                            },
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 548,
+                                                    "length": 8
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                            },
+                                            "data": null
+                                        },
+                                        "attr": "private"
+                                    }
+                                },
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 548,
+                                        "length": 16
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                },
+                                "data": null
+                            },
+                            "right": {
+                                "expr_kind": {
+                                    "UnaryApp": {
+                                        "op": "Not",
+                                        "arg": {
+                                            "expr_kind": {
+                                                "And": {
+                                                    "left": {
+                                                        "expr_kind": {
+                                                            "HasAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "Var": "resource"
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 576,
+                                                                            "length": 8
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "account"
+                                                            }
+                                                        },
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 576,
+                                                                "length": 20
+                                                            },
+                                                            "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "right": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "Eq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "resource"
+                                                                                            },
+                                                                                            "source_loc": {
+                                                                                                "span": {
+                                                                                                    "offset": 600,
+                                                                                                    "length": 8
+                                                                                                },
+                                                                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "account"
+                                                                                    }
+                                                                                },
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 600,
+                                                                                        "length": 22
+                                                                                    },
+                                                                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "owner"
+                                                                        }
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 600,
+                                                                            "length": 22
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Var": "principal"
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 626,
+                                                                            "length": 9
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 600,
+                                                                "length": 35
+                                                            },
+                                                            "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 576,
+                                                    "length": 59
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 567,
+                                        "length": 70
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                },
+                                "data": null
+                            }
+                        }
+                    },
+                    "source_loc": {
+                        "span": {
+                            "offset": 504,
+                            "length": 134
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                     },
                     "data": null
                 }
@@ -1065,10 +933,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "Album",
-                                        "path": []
-                                    }
+                                    "Specified": "Album"
                                 },
                                 "eid": "alice_vacation"
                             }
@@ -1086,18 +951,24 @@
                                             "expr_kind": {
                                                 "Var": "principal"
                                             },
-                                            "source_info": {
-                                                "start": 401,
-                                                "end": 410
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 401,
+                                                    "length": 9
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                             },
                                             "data": null
                                         },
                                         "attr": "department"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 401,
-                                    "end": 421
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 401,
+                                        "length": 20
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             },
@@ -1107,17 +978,23 @@
                                         "String": "Sales"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 425,
-                                    "end": 432
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 425,
+                                        "length": 7
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             }
                         }
                     },
-                    "source_info": {
-                        "start": 401,
-                        "end": 432
+                    "source_loc": {
+                        "span": {
+                            "offset": 401,
+                            "length": 31
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                     },
                     "data": null
                 }
@@ -1129,6 +1006,11 @@
                 "link_id": null,
                 "values": {}
             },
+            "policy2": {
+                "template_id": "policy2",
+                "link_id": null,
+                "values": {}
+            },
             "policy1": {
                 "template_id": "policy1",
                 "link_id": null,
@@ -1136,11 +1018,6 @@
             },
             "policy0": {
                 "template_id": "policy0",
-                "link_id": null,
-                "values": {}
-            },
-            "policy2": {
-                "template_id": "policy2",
                 "link_id": null,
                 "values": {}
             }
