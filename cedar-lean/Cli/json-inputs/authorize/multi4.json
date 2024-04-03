@@ -2,35 +2,35 @@
     "request": {
         "principal": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "User",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "User"
+                    },
+                    "eid": "stacey"
                 },
-                "eid": "stacey"
+                "loc": null
             }
         },
         "action": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "Action",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
                 },
-                "eid": "view"
+                "loc": null
             }
         },
         "resource": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "Photo",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "vacation.jpg"
                 },
-                "eid": "vacation.jpg"
+                "loc": null
             }
         },
         "context": {
@@ -42,17 +42,251 @@
                                 "Bool": true
                             }
                         },
-                        "source_info": null,
+                        "source_loc": null,
                         "data": null
                     }
                 }
             },
-            "source_info": null,
+            "source_loc": null,
             "data": null
         }
     },
     "policies": {
         "templates": {
+            "policy2": {
+                "id": "policy2",
+                "annotations": {},
+                "effect": "forbid",
+                "principal_constraint": {
+                    "constraint": "Any"
+                },
+                "action_constraint": "Any",
+                "resource_constraint": {
+                    "constraint": "Any"
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "And": {
+                            "left": {
+                                "expr_kind": {
+                                    "GetAttr": {
+                                        "expr": {
+                                            "expr_kind": {
+                                                "Var": "resource"
+                                            },
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 548,
+                                                    "length": 8
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                            },
+                                            "data": null
+                                        },
+                                        "attr": "private"
+                                    }
+                                },
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 548,
+                                        "length": 16
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                },
+                                "data": null
+                            },
+                            "right": {
+                                "expr_kind": {
+                                    "UnaryApp": {
+                                        "op": "Not",
+                                        "arg": {
+                                            "expr_kind": {
+                                                "And": {
+                                                    "left": {
+                                                        "expr_kind": {
+                                                            "HasAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "Var": "resource"
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 576,
+                                                                            "length": 8
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "attr": "account"
+                                                            }
+                                                        },
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 576,
+                                                                "length": 20
+                                                            },
+                                                            "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                        },
+                                                        "data": null
+                                                    },
+                                                    "right": {
+                                                        "expr_kind": {
+                                                            "BinaryApp": {
+                                                                "op": "Eq",
+                                                                "arg1": {
+                                                                    "expr_kind": {
+                                                                        "GetAttr": {
+                                                                            "expr": {
+                                                                                "expr_kind": {
+                                                                                    "GetAttr": {
+                                                                                        "expr": {
+                                                                                            "expr_kind": {
+                                                                                                "Var": "resource"
+                                                                                            },
+                                                                                            "source_loc": {
+                                                                                                "span": {
+                                                                                                    "offset": 600,
+                                                                                                    "length": 8
+                                                                                                },
+                                                                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                                            },
+                                                                                            "data": null
+                                                                                        },
+                                                                                        "attr": "account"
+                                                                                    }
+                                                                                },
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 600,
+                                                                                        "length": 22
+                                                                                    },
+                                                                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                                },
+                                                                                "data": null
+                                                                            },
+                                                                            "attr": "owner"
+                                                                        }
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 600,
+                                                                            "length": 22
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                },
+                                                                "arg2": {
+                                                                    "expr_kind": {
+                                                                        "Var": "principal"
+                                                                    },
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 626,
+                                                                            "length": 9
+                                                                        },
+                                                                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                                    },
+                                                                    "data": null
+                                                                }
+                                                            }
+                                                        },
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 600,
+                                                                "length": 35
+                                                            },
+                                                            "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                                        },
+                                                        "data": null
+                                                    }
+                                                }
+                                            },
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 576,
+                                                    "length": 59
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                            },
+                                            "data": null
+                                        }
+                                    }
+                                },
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 567,
+                                        "length": 70
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                                },
+                                "data": null
+                            }
+                        }
+                    },
+                    "source_loc": {
+                        "span": {
+                            "offset": 504,
+                            "length": 134
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                    },
+                    "data": null
+                }
+            },
+            "policy0": {
+                "id": "policy0",
+                "annotations": {},
+                "effect": "permit",
+                "principal_constraint": {
+                    "constraint": {
+                        "In": {
+                            "EUID": {
+                                "ty": {
+                                    "Specified": "UserGroup"
+                                },
+                                "eid": "alice_friends"
+                            }
+                        }
+                    }
+                },
+                "action_constraint": {
+                    "Eq": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "view"
+                    }
+                },
+                "resource_constraint": {
+                    "constraint": {
+                        "In": {
+                            "EUID": {
+                                "ty": {
+                                    "Specified": "Account"
+                                },
+                                "eid": "alice"
+                            }
+                        }
+                    }
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "Lit": {
+                            "Bool": true
+                        }
+                    },
+                    "source_loc": {
+                        "span": {
+                            "offset": 140,
+                            "length": 113
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
+                    },
+                    "data": null
+                }
+            },
             "policy1": {
                 "id": "policy1",
                 "annotations": {},
@@ -66,10 +300,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "Album",
-                                        "path": []
-                                    }
+                                    "Specified": "Album"
                                 },
                                 "eid": "alice_vacation"
                             }
@@ -87,18 +318,24 @@
                                             "expr_kind": {
                                                 "Var": "principal"
                                             },
-                                            "source_info": {
-                                                "start": 401,
-                                                "end": 410
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 401,
+                                                    "length": 9
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                             },
                                             "data": null
                                         },
                                         "attr": "department"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 401,
-                                    "end": 421
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 401,
+                                        "length": 20
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             },
@@ -108,17 +345,23 @@
                                         "String": "Sales"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 425,
-                                    "end": 432
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 425,
+                                        "length": 7
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             }
                         }
                     },
-                    "source_info": {
-                        "start": 401,
-                        "end": 432
+                    "source_loc": {
+                        "span": {
+                            "offset": 401,
+                            "length": 31
+                        },
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                     },
                     "data": null
                 }
@@ -145,241 +388,41 @@
                                             "expr_kind": {
                                                 "Var": "context"
                                             },
-                                            "source_info": {
-                                                "start": 751,
-                                                "end": 758
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 751,
+                                                    "length": 7
+                                                },
+                                                "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                             },
                                             "data": null
                                         },
                                         "attr": "authenticated"
                                     }
                                 },
-                                "source_info": {
-                                    "start": 751,
-                                    "end": 772
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 751,
+                                        "length": 21
+                                    },
+                                    "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                                 },
                                 "data": null
                             }
                         }
                     },
-                    "source_info": {
-                        "start": 750,
-                        "end": 772
-                    },
-                    "data": null
-                }
-            },
-            "policy2": {
-                "id": "policy2",
-                "annotations": {},
-                "effect": "forbid",
-                "principal_constraint": {
-                    "constraint": "Any"
-                },
-                "action_constraint": "Any",
-                "resource_constraint": {
-                    "constraint": "Any"
-                },
-                "non_head_constraints": {
-                    "expr_kind": {
-                        "And": {
-                            "left": {
-                                "expr_kind": {
-                                    "GetAttr": {
-                                        "expr": {
-                                            "expr_kind": {
-                                                "Var": "resource"
-                                            },
-                                            "source_info": {
-                                                "start": 548,
-                                                "end": 556
-                                            },
-                                            "data": null
-                                        },
-                                        "attr": "private"
-                                    }
-                                },
-                                "source_info": {
-                                    "start": 548,
-                                    "end": 564
-                                },
-                                "data": null
-                            },
-                            "right": {
-                                "expr_kind": {
-                                    "UnaryApp": {
-                                        "op": "Not",
-                                        "arg": {
-                                            "expr_kind": {
-                                                "And": {
-                                                    "left": {
-                                                        "expr_kind": {
-                                                            "HasAttr": {
-                                                                "expr": {
-                                                                    "expr_kind": {
-                                                                        "Var": "resource"
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 576,
-                                                                        "end": 584
-                                                                    },
-                                                                    "data": null
-                                                                },
-                                                                "attr": "account"
-                                                            }
-                                                        },
-                                                        "source_info": {
-                                                            "start": 576,
-                                                            "end": 596
-                                                        },
-                                                        "data": null
-                                                    },
-                                                    "right": {
-                                                        "expr_kind": {
-                                                            "BinaryApp": {
-                                                                "op": "Eq",
-                                                                "arg1": {
-                                                                    "expr_kind": {
-                                                                        "GetAttr": {
-                                                                            "expr": {
-                                                                                "expr_kind": {
-                                                                                    "GetAttr": {
-                                                                                        "expr": {
-                                                                                            "expr_kind": {
-                                                                                                "Var": "resource"
-                                                                                            },
-                                                                                            "source_info": {
-                                                                                                "start": 600,
-                                                                                                "end": 608
-                                                                                            },
-                                                                                            "data": null
-                                                                                        },
-                                                                                        "attr": "account"
-                                                                                    }
-                                                                                },
-                                                                                "source_info": {
-                                                                                    "start": 600,
-                                                                                    "end": 622
-                                                                                },
-                                                                                "data": null
-                                                                            },
-                                                                            "attr": "owner"
-                                                                        }
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 600,
-                                                                        "end": 622
-                                                                    },
-                                                                    "data": null
-                                                                },
-                                                                "arg2": {
-                                                                    "expr_kind": {
-                                                                        "Var": "principal"
-                                                                    },
-                                                                    "source_info": {
-                                                                        "start": 626,
-                                                                        "end": 635
-                                                                    },
-                                                                    "data": null
-                                                                }
-                                                            }
-                                                        },
-                                                        "source_info": {
-                                                            "start": 600,
-                                                            "end": 635
-                                                        },
-                                                        "data": null
-                                                    }
-                                                }
-                                            },
-                                            "source_info": {
-                                                "start": 576,
-                                                "end": 635
-                                            },
-                                            "data": null
-                                        }
-                                    }
-                                },
-                                "source_info": {
-                                    "start": 567,
-                                    "end": 637
-                                },
-                                "data": null
-                            }
-                        }
-                    },
-                    "source_info": {
-                        "start": 504,
-                        "end": 638
-                    },
-                    "data": null
-                }
-            },
-            "policy0": {
-                "id": "policy0",
-                "annotations": {},
-                "effect": "permit",
-                "principal_constraint": {
-                    "constraint": {
-                        "In": {
-                            "EUID": {
-                                "ty": {
-                                    "Specified": {
-                                        "id": "UserGroup",
-                                        "path": []
-                                    }
-                                },
-                                "eid": "alice_friends"
-                            }
-                        }
-                    }
-                },
-                "action_constraint": {
-                    "Eq": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                    "source_loc": {
+                        "span": {
+                            "offset": 750,
+                            "length": 22
                         },
-                        "eid": "view"
-                    }
-                },
-                "resource_constraint": {
-                    "constraint": {
-                        "In": {
-                            "EUID": {
-                                "ty": {
-                                    "Specified": {
-                                        "id": "Account",
-                                        "path": []
-                                    }
-                                },
-                                "eid": "alice"
-                            }
-                        }
-                    }
-                },
-                "non_head_constraints": {
-                    "expr_kind": {
-                        "Lit": {
-                            "Bool": true
-                        }
-                    },
-                    "source_info": {
-                        "start": 140,
-                        "end": 253
+                        "src": "// Multiple permit and multiple forbid policies, which could apply in various\n// combinations\n// Alice's friends can view all of her photos\npermit (\n  principal in UserGroup::\"alice_friends\",\n  action == Action::\"view\",\n  resource in Account::\"alice\"\n);\n\n// Anyone in the Sales department can view Alice's vacation photos\npermit (\n  principal,\n  action,\n  resource in Album::\"alice_vacation\"\n)\nwhen { principal.department == \"Sales\" };\n\n// anything marked private can only be viewed by the account owner\nforbid (principal, action, resource)\nwhen { resource.private }\nunless { resource has account && resource.account.owner == principal };\n\n// deny all requests that have context.authenticated set to false\nforbid (principal, action, resource)\nwhen { !context.authenticated };\n"
                     },
                     "data": null
                 }
             }
         },
         "links": {
-            "policy2": {
-                "template_id": "policy2",
-                "link_id": null,
-                "values": {}
-            },
             "policy1": {
                 "template_id": "policy1",
                 "link_id": null,
@@ -387,6 +430,11 @@
             },
             "policy3": {
                 "template_id": "policy3",
+                "link_id": null,
+                "values": {}
+            },
+            "policy2": {
+                "template_id": "policy2",
                 "link_id": null,
                 "values": {}
             },
@@ -402,22 +450,16 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
-                    "eid": "edit"
+                    "eid": "comment"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
-                        "eid": "edit"
+                        "eid": "comment"
                     },
                     "attrs": {},
                     "ancestors": []
@@ -426,88 +468,16 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Album"
                     },
-                    "eid": "addPhoto"
+                    "eid": "device_prototypes"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Album"
                         },
-                        "eid": "addPhoto"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "AccountGroup",
-                            "path": []
-                        }
-                    },
-                    "eid": "GeronimoTeam"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "AccountGroup",
-                                "path": []
-                            }
-                        },
-                        "eid": "GeronimoTeam"
-                    },
-                    "attrs": {
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "prototype_v0.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
-                        },
-                        "eid": "prototype_v0.jpg"
+                        "eid": "device_prototypes"
                     },
                     "attrs": {
                         "account": {
@@ -515,23 +485,13 @@
                                 "Lit": {
                                     "EntityUID": {
                                         "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
+                                            "Specified": "Account"
                                         },
-                                        "eid": "ahmad"
+                                        "eid": "alice"
                                     }
                                 }
                             },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         },
                         "private": {
@@ -540,118 +500,58 @@
                                     "Bool": false
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
                             "data": null
                         }
                     },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            },
-                            "eid": "device_prototypes"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "UserGroup",
-                            "path": []
-                        }
-                    },
-                    "eid": "AVTeam"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "UserGroup",
-                                "path": []
-                            }
-                        },
-                        "eid": "AVTeam"
-                    },
-                    "attrs": {},
                     "ancestors": []
                 }
             ],
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "view"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "view"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
                     "eid": "stacey"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
                         "eid": "stacey"
                     },
                     "attrs": {
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 6
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
                         "department": {
                             "expr_kind": {
                                 "Lit": {
                                     "String": "Sales"
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 6
+                                }
+                            },
+                            "source_loc": null,
                             "data": null
                         }
                     },
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
+                                "Specified": "UserGroup"
                             },
                             "eid": "alice_friends"
                         }
@@ -661,260 +561,14 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "vacation.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
-                        },
-                        "eid": "vacation.jpg"
-                    },
-                    "attrs": {
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice_vacation"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "delete"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "delete"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
-                    },
-                    "eid": "giuseppe"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
-                        },
-                        "eid": "giuseppe"
-                    },
-                    "attrs": {
-                        "department": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "String": "CustomerSupport"
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 7
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "AVTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Album",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice_vacation"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Album",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice_vacation"
-                    },
-                    "attrs": {
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
                     "eid": "listPhotos"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "listPhotos"
                     },
@@ -925,20 +579,14 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
+                        "Specified": "Account"
                     },
                     "eid": "alice"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
+                            "Specified": "Account"
                         },
                         "eid": "alice"
                     },
@@ -948,23 +596,13 @@
                                 "Lit": {
                                     "EntityUID": {
                                         "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
+                                            "Specified": "User"
                                         },
                                         "eid": "alice"
                                     }
                                 }
                             },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         },
                         "private": {
@@ -973,17 +611,21 @@
                                     "Bool": false
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
                             "data": null
                         }
                     },
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
+                                "Specified": "AccountGroup"
                             },
                             "eid": "GeronimoTeam"
                         }
@@ -993,22 +635,16 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
-                    "eid": "listAlbums"
+                    "eid": "edit"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
-                        "eid": "listAlbums"
+                        "eid": "edit"
                     },
                     "attrs": {},
                     "ancestors": []
@@ -1017,153 +653,43 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
-                    "eid": "ahmad"
+                    "eid": "giuseppe"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
-                        "eid": "ahmad"
+                        "eid": "giuseppe"
                     },
                     "attrs": {
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "ahmad"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "UserGroup",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice_friends"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "UserGroup",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice_friends"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice"
-                    },
-                    "attrs": {
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 5
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
                         "department": {
                             "expr_kind": {
                                 "Lit": {
-                                    "String": "HardwareEngineering"
+                                    "String": "CustomerSupport"
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 7
+                                }
+                            },
+                            "source_loc": null,
                             "data": null
                         }
                     },
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
+                                "Specified": "UserGroup"
                             },
                             "eid": "AVTeam"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice_friends"
                         }
                     ]
                 }
@@ -1171,217 +697,25 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
-                    },
-                    "eid": "stacey"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
-                        },
-                        "eid": "stacey"
-                    },
-                    "attrs": {
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": false
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "owner": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "User",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "stacey"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
-                    },
-                    "eid": "ahmad"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
-                        },
-                        "eid": "ahmad"
-                    },
-                    "attrs": {
-                        "department": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "String": "HardwareEngineering"
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "jobLevel": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Long": 4
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice_w2.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice_w2.jpg"
-                    },
-                    "attrs": {
-                        "account": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "private": {
-                            "expr_kind": {
-                                "Lit": {
-                                    "Bool": true
-                                }
-                            },
-                            "source_info": null,
-                            "data": null
-                        }
-                    },
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "alice"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "AccountGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "GeronimoTeam"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
+                        "Specified": "Photo"
                     },
                     "eid": "sales_projections.jpg"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
+                            "Specified": "Photo"
                         },
                         "eid": "sales_projections.jpg"
                     },
                     "attrs": {
-                        "account": {
+                        "private": {
                             "expr_kind": {
                                 "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "stacey"
-                                    }
+                                    "Bool": false
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         },
                         "admins": {
@@ -1392,40 +726,39 @@
                                             "Lit": {
                                                 "EntityUID": {
                                                     "ty": {
-                                                        "Specified": {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
+                                                        "Specified": "User"
                                                     },
                                                     "eid": "giuseppe"
                                                 }
                                             }
                                         },
-                                        "source_info": null,
+                                        "source_loc": null,
                                         "data": null
                                     }
                                 ]
                             },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         },
-                        "private": {
+                        "account": {
                             "expr_kind": {
                                 "Lit": {
-                                    "Bool": false
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "Account"
+                                        },
+                                        "eid": "stacey"
+                                    }
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         }
                     },
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
+                                "Specified": "Account"
                             },
                             "eid": "stacey"
                         }
@@ -1435,55 +768,52 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Album",
-                            "path": []
-                        }
+                        "Specified": "UserGroup"
                     },
-                    "eid": "device_prototypes"
+                    "eid": "AVTeam"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Album",
-                                "path": []
-                            }
+                            "Specified": "UserGroup"
                         },
-                        "eid": "device_prototypes"
+                        "eid": "AVTeam"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "User"
+                    },
+                    "eid": "ahmad"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "User"
+                        },
+                        "eid": "ahmad"
                     },
                     "attrs": {
-                        "private": {
+                        "jobLevel": {
                             "expr_kind": {
                                 "Lit": {
-                                    "Bool": false
+                                    "Long": 4
                                 }
                             },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         },
-                        "account": {
+                        "department": {
                             "expr_kind": {
                                 "Lit": {
-                                    "EntityUID": {
-                                        "ty": {
-                                            "Specified": {
-                                                "id": "Account",
-                                                "path": []
-                                            }
-                                        },
-                                        "eid": "alice"
-                                    }
+                                    "String": "HardwareEngineering"
                                 }
                             },
-                            "source_info": null,
-                            "data": null
-                        },
-                        "admins": {
-                            "expr_kind": {
-                                "Set": []
-                            },
-                            "source_info": null,
+                            "source_loc": null,
                             "data": null
                         }
                     },
@@ -1493,25 +823,527 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
-                    "eid": "comment"
+                    "eid": "alice"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
-                        "eid": "comment"
+                        "eid": "alice"
+                    },
+                    "attrs": {
+                        "jobLevel": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Long": 5
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "department": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "String": "HardwareEngineering"
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "UserGroup"
+                            },
+                            "eid": "alice_friends"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "UserGroup"
+                            },
+                            "eid": "AVTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "UserGroup"
+                    },
+                    "eid": "alice_friends"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "UserGroup"
+                        },
+                        "eid": "alice_friends"
                     },
                     "attrs": {},
                     "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "vacation.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "vacation.jpg"
+                    },
+                    "attrs": {
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "Account"
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "Account"
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "AccountGroup"
+                            },
+                            "eid": "GeronimoTeam"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "Album"
+                            },
+                            "eid": "alice_vacation"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "view"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "addPhoto"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "addPhoto"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "prototype_v0.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "prototype_v0.jpg"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "Account"
+                                        },
+                                        "eid": "ahmad"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "Album"
+                            },
+                            "eid": "device_prototypes"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Account"
+                    },
+                    "eid": "stacey"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Account"
+                        },
+                        "eid": "stacey"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "User"
+                                        },
+                                        "eid": "stacey"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "delete"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "delete"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "AccountGroup"
+                    },
+                    "eid": "GeronimoTeam"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "AccountGroup"
+                        },
+                        "eid": "GeronimoTeam"
+                    },
+                    "attrs": {
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "User"
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Album"
+                    },
+                    "eid": "alice_vacation"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Album"
+                        },
+                        "eid": "alice_vacation"
+                    },
+                    "attrs": {
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "Account"
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "Account"
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "AccountGroup"
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "alice_w2.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "alice_w2.jpg"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "account": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "Account"
+                                        },
+                                        "eid": "alice"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": true
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "Account"
+                            },
+                            "eid": "alice"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "AccountGroup"
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Account"
+                    },
+                    "eid": "ahmad"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Account"
+                        },
+                        "eid": "ahmad"
+                    },
+                    "attrs": {
+                        "admins": {
+                            "expr_kind": {
+                                "Set": []
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "owner": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "EntityUID": {
+                                        "ty": {
+                                            "Specified": "User"
+                                        },
+                                        "eid": "ahmad"
+                                    }
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        },
+                        "private": {
+                            "expr_kind": {
+                                "Lit": {
+                                    "Bool": false
+                                }
+                            },
+                            "source_loc": null,
+                            "data": null
+                        }
+                    },
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "AccountGroup"
+                            },
+                            "eid": "GeronimoTeam"
+                        }
+                    ]
                 }
             ]
         ]
