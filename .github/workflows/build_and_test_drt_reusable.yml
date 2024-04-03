@@ -67,7 +67,7 @@ jobs:
         run: source ~/.profile && source ../set_env_vars.sh && RUSTFLAGS="--cfg=fuzzing" cargo build
       - name: cargo test (cedar-drt/fuzz/)
         working-directory: ./cedar-spec/cedar-drt/fuzz
-        run: source ~/.profile && source ../set_env_vars.sh && cargo test
+        run: source ~/.profile && source ../set_env_vars.sh && cargo test -- --nocapture
 
   run-integration-tests:
     uses: ./.github/workflows/run_integration_tests_reusable.yml
