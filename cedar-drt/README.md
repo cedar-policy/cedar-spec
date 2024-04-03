@@ -56,14 +56,16 @@ If everything builds, but the integration tests are failing, then it may be help
 ## Running integration tests
 
 The integration tests are run by default in CI (e.g., as a part of each pull request), but you can also run them locally.
-In order to do this, you need to have the [`cedar-integration-tests`](https://github.com/cedar-policy/cedar-integration-tests) repository cloned in the `cedar` directory (`../cedar`).
+In order to do this, you need to have the [`cedar`](https://github.com/cedar-policy/cedar) and [`cedar-integration-tests`](https://github.com/cedar-policy/cedar-integration-tests) repositories cloned locally.
+`cedar` should be in the toplevel directory (so `../cedar`) and `cedar-integration-tests` should be in the `cedar` directory (so `../cedar/cedar-integration-tests`).
 Then, run `cargo test --features "integration-testing"`.
 
 ```bash
 # starting in the top-level directory (..)
+git clone --depth 1 https://github.com/cedar-policy/cedar
 cd cedar
 rm -rf cedar-integration-tests
-git clone https://github.com/cedar-policy/cedar-integration-tests
+git clone --depth 1 https://github.com/cedar-policy/cedar-integration-tests
 cd cedar-integration-tests
 tar xzf corpus-tests.tar.gz
 cd ../../cedar-drt
