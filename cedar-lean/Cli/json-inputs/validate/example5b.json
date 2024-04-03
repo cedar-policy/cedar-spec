@@ -2,20 +2,121 @@
     "schema": {
         "entityTypes": [
             [
+                "Photo",
                 {
-                    "id": "UserGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "UserGroup",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "User",
-                            "path": []
+                    "name": "Photo",
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "account": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "Account"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        "User"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
                         }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Account",
+                {
+                    "name": "Account",
+                    "descendants": [
+                        "Album",
+                        "Photo"
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "admins": {
+                                "attrType": {
+                                    "Set": {
+                                        "elementType": {
+                                            "EntityOrRecord": {
+                                                "Entity": {
+                                                    "lub_elements": [
+                                                        "User"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "User"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            },
+                            "private": {
+                                "attrType": {
+                                    "Primitive": {
+                                        "primitiveType": "Bool"
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "Administrator",
+                {
+                    "name": "Administrator",
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "UserGroup",
+                {
+                    "name": "UserGroup",
+                    "descendants": [
+                        "User"
                     ],
                     "attributes": {
                         "attrs": {}
@@ -24,15 +125,37 @@
                 }
             ],
             [
+                "AccountGroup",
                 {
-                    "id": "User",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "User",
-                        "path": []
+                    "name": "AccountGroup",
+                    "descendants": [
+                        "Account",
+                        "Photo",
+                        "Album"
+                    ],
+                    "attributes": {
+                        "attrs": {
+                            "owner": {
+                                "attrType": {
+                                    "EntityOrRecord": {
+                                        "Entity": {
+                                            "lub_elements": [
+                                                "User"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
                     },
+                    "open_attributes": "ClosedAttributes"
+                }
+            ],
+            [
+                "User",
+                {
+                    "name": "User",
                     "descendants": [],
                     "attributes": {
                         "attrs": {
@@ -58,139 +181,12 @@
                 }
             ],
             [
+                "Album",
                 {
-                    "id": "AccountGroup",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "AccountGroup",
-                        "path": []
-                    },
+                    "name": "Album",
                     "descendants": [
-                        {
-                            "id": "Album",
-                            "path": []
-                        },
-                        {
-                            "id": "Account",
-                            "path": []
-                        },
-                        {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Account",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Account",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Album",
-                            "path": []
-                        }
-                    ],
-                    "attributes": {
-                        "attrs": {
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "owner": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "User",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Album",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Album",
-                        "path": []
-                    },
-                    "descendants": [
-                        {
-                            "id": "Photo",
-                            "path": []
-                        },
-                        {
-                            "id": "Album",
-                            "path": []
-                        }
+                        "Photo",
+                        "Album"
                     ],
                     "attributes": {
                         "attrs": {
@@ -199,10 +195,7 @@
                                     "EntityOrRecord": {
                                         "Entity": {
                                             "lub_elements": [
-                                                {
-                                                    "id": "Account",
-                                                    "path": []
-                                                }
+                                                "Account"
                                             ]
                                         }
                                     }
@@ -216,10 +209,7 @@
                                             "EntityOrRecord": {
                                                 "Entity": {
                                                     "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
+                                                        "User"
                                                     ]
                                                 }
                                             }
@@ -237,83 +227,6 @@
                                 "isRequired": true
                             }
                         }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Photo",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Photo",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {
-                            "account": {
-                                "attrType": {
-                                    "EntityOrRecord": {
-                                        "Entity": {
-                                            "lub_elements": [
-                                                {
-                                                    "id": "Account",
-                                                    "path": []
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "admins": {
-                                "attrType": {
-                                    "Set": {
-                                        "elementType": {
-                                            "EntityOrRecord": {
-                                                "Entity": {
-                                                    "lub_elements": [
-                                                        {
-                                                            "id": "User",
-                                                            "path": []
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "isRequired": true
-                            },
-                            "private": {
-                                "attrType": {
-                                    "Primitive": {
-                                        "primitiveType": "Bool"
-                                    }
-                                },
-                                "isRequired": true
-                            }
-                        }
-                    },
-                    "open_attributes": "ClosedAttributes"
-                }
-            ],
-            [
-                {
-                    "id": "Administrator",
-                    "path": []
-                },
-                {
-                    "name": {
-                        "id": "Administrator",
-                        "path": []
-                    },
-                    "descendants": [],
-                    "attributes": {
-                        "attrs": {}
                     },
                     "open_attributes": "ClosedAttributes"
                 }
@@ -323,38 +236,26 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
-                    "eid": "view"
+                    "eid": "delete"
                 },
                 {
                     "name": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
-                        "eid": "view"
+                        "eid": "delete"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
+                                "Specified": "User"
                             }
                         ],
                         "resourceApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
+                                "Specified": "Photo"
                             }
                         ]
                     },
@@ -387,38 +288,26 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
-                    "eid": "listAlbums"
+                    "eid": "edit"
                 },
                 {
                     "name": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
-                        "eid": "listAlbums"
+                        "eid": "edit"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
+                                "Specified": "User"
                             }
                         ],
                         "resourceApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
+                                "Specified": "Photo"
                             }
                         ]
                     },
@@ -451,38 +340,78 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
+                        "Specified": "Action"
+                    },
+                    "eid": "comment"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "comment"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
                         }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
                     },
                     "eid": "addPhoto"
                 },
                 {
                     "name": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "addPhoto"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
+                                "Specified": "User"
                             }
                         ],
                         "resourceApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
+                                "Specified": "Album"
                             }
                         ]
                     },
@@ -545,230 +474,130 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "view"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Photo"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
                         }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "listAlbums"
+                },
+                {
+                    "name": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "listAlbums"
+                    },
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            {
+                                "Specified": "User"
+                            }
+                        ],
+                        "resourceApplySpec": [
+                            {
+                                "Specified": "Account"
+                            }
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": {
+                                        "authenticated": {
+                                            "attrType": {
+                                                "Primitive": {
+                                                    "primitiveType": "Bool"
+                                                }
+                                            },
+                                            "isRequired": true
+                                        }
+                                    }
+                                },
+                                "open_attributes": "ClosedAttributes"
+                            }
+                        }
+                    },
+                    "attribute_types": {
+                        "attrs": {}
+                    },
+                    "attributes": {}
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
                     },
                     "eid": "listPhotos"
                 },
                 {
                     "name": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "listPhotos"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
+                                "Specified": "User"
                             }
                         ],
                         "resourceApplySpec": [
                             {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "edit"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "edit"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "delete"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "delete"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
-                            }
-                        ]
-                    },
-                    "descendants": [],
-                    "context": {
-                        "EntityOrRecord": {
-                            "Record": {
-                                "attrs": {
-                                    "attrs": {
-                                        "authenticated": {
-                                            "attrType": {
-                                                "Primitive": {
-                                                    "primitiveType": "Bool"
-                                                }
-                                            },
-                                            "isRequired": true
-                                        }
-                                    }
-                                },
-                                "open_attributes": "ClosedAttributes"
-                            }
-                        }
-                    },
-                    "attribute_types": {
-                        "attrs": {}
-                    },
-                    "attributes": {}
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "comment"
-                },
-                {
-                    "name": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "comment"
-                    },
-                    "appliesTo": {
-                        "principalApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "User",
-                                    "path": []
-                                }
-                            }
-                        ],
-                        "resourceApplySpec": [
-                            {
-                                "Specified": {
-                                    "id": "Photo",
-                                    "path": []
-                                }
+                                "Specified": "Album"
                             }
                         ]
                     },
@@ -812,10 +641,7 @@
                 "action_constraint": {
                     "Eq": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "addPhoto"
                     }
@@ -825,10 +651,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "Account",
-                                        "path": []
-                                    }
+                                    "Specified": "Account"
                                 },
                                 "eid": "alice"
                             }
@@ -854,9 +677,12 @@
                                                                             "String": "JPEG"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 322,
-                                                                        "end": 328
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 322,
+                                                                            "length": 6
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 },
@@ -866,17 +692,23 @@
                                                                             "String": "PNG"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 330,
-                                                                        "end": 335
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 330,
+                                                                            "length": 5
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 }
                                                             ]
                                                         },
-                                                        "source_info": {
-                                                            "start": 321,
-                                                            "end": 336
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 321,
+                                                                "length": 15
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     },
@@ -890,35 +722,47 @@
                                                                                 "expr_kind": {
                                                                                     "Var": "context"
                                                                                 },
-                                                                                "source_info": {
-                                                                                    "start": 346,
-                                                                                    "end": 353
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 346,
+                                                                                        "length": 7
+                                                                                    },
+                                                                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                 },
                                                                                 "data": null
                                                                             },
                                                                             "attr": "photo"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 346,
-                                                                        "end": 368
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 346,
+                                                                            "length": 22
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 },
                                                                 "attr": "filetype"
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 346,
-                                                            "end": 368
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 346,
+                                                                "length": 22
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     }
                                                 }
                                             },
-                                            "source_info": {
-                                                "start": 321,
-                                                "end": 369
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 321,
+                                                    "length": 48
+                                                },
+                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                             },
                                             "data": null
                                         },
@@ -936,27 +780,36 @@
                                                                                 "expr_kind": {
                                                                                     "Var": "context"
                                                                                 },
-                                                                                "source_info": {
-                                                                                    "start": 376,
-                                                                                    "end": 383
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 376,
+                                                                                        "length": 7
+                                                                                    },
+                                                                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                 },
                                                                                 "data": null
                                                                             },
                                                                             "attr": "photo"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 376,
-                                                                        "end": 401
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 376,
+                                                                            "length": 25
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 },
                                                                 "attr": "filesize_mb"
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 376,
-                                                            "end": 401
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 376,
+                                                                "length": 25
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     },
@@ -966,25 +819,34 @@
                                                                 "Long": 1
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 405,
-                                                            "end": 406
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 405,
+                                                                "length": 1
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     }
                                                 }
                                             },
-                                            "source_info": {
-                                                "start": 376,
-                                                "end": 406
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 376,
+                                                    "length": 30
+                                                },
+                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                             },
                                             "data": null
                                         }
                                     }
                                 },
-                                "source_info": {
-                                    "start": 321,
-                                    "end": 406
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 321,
+                                        "length": 85
+                                    },
+                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                 },
                                 "data": null
                             },
@@ -1008,27 +870,36 @@
                                                                                             "expr_kind": {
                                                                                                 "Var": "context"
                                                                                             },
-                                                                                            "source_info": {
-                                                                                                "start": 414,
-                                                                                                "end": 421
+                                                                                            "source_loc": {
+                                                                                                "span": {
+                                                                                                    "offset": 414,
+                                                                                                    "length": 7
+                                                                                                },
+                                                                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                             },
                                                                                             "data": null
                                                                                         },
                                                                                         "attr": "photo"
                                                                                     }
                                                                                 },
-                                                                                "source_info": {
-                                                                                    "start": 414,
-                                                                                    "end": 436
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 414,
+                                                                                        "length": 22
+                                                                                    },
+                                                                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                 },
                                                                                 "data": null
                                                                             },
                                                                             "attr": "filetype"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 414,
-                                                                        "end": 436
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 414,
+                                                                            "length": 22
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 },
@@ -1038,17 +909,23 @@
                                                                             "String": "RAW"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 440,
-                                                                        "end": 445
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 440,
+                                                                            "length": 5
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 }
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 414,
-                                                            "end": 445
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 414,
+                                                                "length": 31
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     },
@@ -1066,27 +943,36 @@
                                                                                             "expr_kind": {
                                                                                                 "Var": "context"
                                                                                             },
-                                                                                            "source_info": {
-                                                                                                "start": 452,
-                                                                                                "end": 459
+                                                                                            "source_loc": {
+                                                                                                "span": {
+                                                                                                    "offset": 452,
+                                                                                                    "length": 7
+                                                                                                },
+                                                                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                             },
                                                                                             "data": null
                                                                                         },
                                                                                         "attr": "photo"
                                                                                     }
                                                                                 },
-                                                                                "source_info": {
-                                                                                    "start": 452,
-                                                                                    "end": 477
+                                                                                "source_loc": {
+                                                                                    "span": {
+                                                                                        "offset": 452,
+                                                                                        "length": 25
+                                                                                    },
+                                                                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                                 },
                                                                                 "data": null
                                                                             },
                                                                             "attr": "filesize_mb"
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 452,
-                                                                        "end": 477
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 452,
+                                                                            "length": 25
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 },
@@ -1096,25 +982,34 @@
                                                                             "Long": 100
                                                                         }
                                                                     },
-                                                                    "source_info": {
-                                                                        "start": 481,
-                                                                        "end": 484
+                                                                    "source_loc": {
+                                                                        "span": {
+                                                                            "offset": 481,
+                                                                            "length": 3
+                                                                        },
+                                                                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                                     },
                                                                     "data": null
                                                                 }
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 452,
-                                                            "end": 484
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 452,
+                                                                "length": 32
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     }
                                                 }
                                             },
-                                            "source_info": {
-                                                "start": 414,
-                                                "end": 523
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 414,
+                                                    "length": 109
+                                                },
+                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                             },
                                             "data": null
                                         },
@@ -1126,9 +1021,12 @@
                                                         "expr_kind": {
                                                             "Var": "principal"
                                                         },
-                                                        "source_info": {
-                                                            "start": 491,
-                                                            "end": 500
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 491,
+                                                                "length": 9
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     },
@@ -1137,42 +1035,51 @@
                                                             "Lit": {
                                                                 "EntityUID": {
                                                                     "ty": {
-                                                                        "Specified": {
-                                                                            "id": "UserGroup",
-                                                                            "path": []
-                                                                        }
+                                                                        "Specified": "UserGroup"
                                                                     },
                                                                     "eid": "AVTeam"
                                                                 }
                                                             }
                                                         },
-                                                        "source_info": {
-                                                            "start": 504,
-                                                            "end": 523
+                                                        "source_loc": {
+                                                            "span": {
+                                                                "offset": 504,
+                                                                "length": 19
+                                                            },
+                                                            "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                                         },
                                                         "data": null
                                                     }
                                                 }
                                             },
-                                            "source_info": {
-                                                "start": 491,
-                                                "end": 523
+                                            "source_loc": {
+                                                "span": {
+                                                    "offset": 491,
+                                                    "length": 32
+                                                },
+                                                "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                             },
                                             "data": null
                                         }
                                     }
                                 },
-                                "source_info": {
-                                    "start": 414,
-                                    "end": 523
+                                "source_loc": {
+                                    "span": {
+                                        "offset": 414,
+                                        "length": 109
+                                    },
+                                    "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                                 },
                                 "data": null
                             }
                         }
                     },
-                    "source_info": {
-                        "start": 320,
-                        "end": 524
+                    "source_loc": {
+                        "span": {
+                            "offset": 320,
+                            "length": 204
+                        },
+                        "src": "// Scenario 5B: Anyone can upload photos to albums in Alice's account as long as\n// the photo is a JPEG or PNG with maximum size of 1MB. However, members of the\n// group AVTeam can also create RAW files up to 100MB in size.\npermit (\n  principal,\n  action == Action::\"addPhoto\",\n  resource in Account::\"alice\"\n)\nwhen\n{\n  ([\"JPEG\", \"PNG\"].contains(context.photo.filetype) &&\n   context.photo.filesize_mb <= 1) ||\n  (context.photo.filetype == \"RAW\" &&\n   context.photo.filesize_mb <= 100 &&\n   principal in UserGroup::\"AVTeam\")\n};\n"
                     },
                     "data": null
                 }

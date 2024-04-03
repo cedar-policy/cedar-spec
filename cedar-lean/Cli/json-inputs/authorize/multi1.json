@@ -2,35 +2,35 @@
     "request": {
         "principal": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "User",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "User"
+                    },
+                    "eid": "alice"
                 },
-                "eid": "alice"
+                "loc": null
             }
         },
         "action": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "Action",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
                 },
-                "eid": "view"
+                "loc": null
             }
         },
         "resource": {
             "Known": {
-                "ty": {
-                    "Specified": {
-                        "id": "Photo",
-                        "path": []
-                    }
+                "euid": {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "VacationPhoto94.jpg"
                 },
-                "eid": "VacationPhoto94.jpg"
+                "loc": null
             }
         },
         "context": {
@@ -42,16 +42,13 @@
                                 "Bool": true
                             }
                         },
-                        "source_info": null,
+                        "source_loc": null,
                         "data": null
                     },
                     "confidence_score": {
                         "expr_kind": {
                             "ExtensionFunctionApp": {
-                                "fn_name": {
-                                    "id": "decimal",
-                                    "path": []
-                                },
+                                "fn_name": "decimal",
                                 "args": [
                                     {
                                         "expr_kind": {
@@ -59,22 +56,19 @@
                                                 "String": "0.6"
                                             }
                                         },
-                                        "source_info": null,
+                                        "source_loc": null,
                                         "data": null
                                     }
                                 ]
                             }
                         },
-                        "source_info": null,
+                        "source_loc": null,
                         "data": null
                     },
                     "source_ip": {
                         "expr_kind": {
                             "ExtensionFunctionApp": {
-                                "fn_name": {
-                                    "id": "ip",
-                                    "path": []
-                                },
+                                "fn_name": "ip",
                                 "args": [
                                     {
                                         "expr_kind": {
@@ -82,92 +76,23 @@
                                                 "String": "123.123.123.123"
                                             }
                                         },
-                                        "source_info": null,
+                                        "source_loc": null,
                                         "data": null
                                     }
                                 ]
                             }
                         },
-                        "source_info": null,
+                        "source_loc": null,
                         "data": null
                     }
                 }
             },
-            "source_info": null,
+            "source_loc": null,
             "data": null
         }
     },
     "policies": {
         "templates": {
-            "policy1": {
-                "id": "policy1",
-                "annotations": {},
-                "effect": "permit",
-                "principal_constraint": {
-                    "constraint": {
-                        "Eq": {
-                            "EUID": {
-                                "ty": {
-                                    "Specified": {
-                                        "id": "User",
-                                        "path": []
-                                    }
-                                },
-                                "eid": "bob"
-                            }
-                        }
-                    }
-                },
-                "action_constraint": {
-                    "In": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Action",
-                                    "path": []
-                                }
-                            },
-                            "eid": "view"
-                        },
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Action",
-                                    "path": []
-                                }
-                            },
-                            "eid": "edit"
-                        }
-                    ]
-                },
-                "resource_constraint": {
-                    "constraint": {
-                        "In": {
-                            "EUID": {
-                                "ty": {
-                                    "Specified": {
-                                        "id": "Account",
-                                        "path": []
-                                    }
-                                },
-                                "eid": "bob"
-                            }
-                        }
-                    }
-                },
-                "non_head_constraints": {
-                    "expr_kind": {
-                        "Lit": {
-                            "Bool": true
-                        }
-                    },
-                    "source_info": {
-                        "start": 204,
-                        "end": 318
-                    },
-                    "data": null
-                }
-            },
             "policy0": {
                 "id": "policy0",
                 "annotations": {},
@@ -177,10 +102,7 @@
                         "Eq": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "User",
-                                        "path": []
-                                    }
+                                    "Specified": "User"
                                 },
                                 "eid": "alice"
                             }
@@ -190,10 +112,7 @@
                 "action_constraint": {
                     "Eq": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "view"
                     }
@@ -203,10 +122,7 @@
                         "In": {
                             "EUID": {
                                 "ty": {
-                                    "Specified": {
-                                        "id": "Album",
-                                        "path": []
-                                    }
+                                    "Specified": "Album"
                                 },
                                 "eid": "jane_vacation"
                             }
@@ -219,22 +135,85 @@
                             "Bool": true
                         }
                     },
-                    "source_info": {
-                        "start": 96,
-                        "end": 202
+                    "source_loc": {
+                        "span": {
+                            "offset": 96,
+                            "length": 106
+                        },
+                        "src": "// This test has two Permit policies, and tests that we give the right Reason\n// for each Allow\npermit (\n  principal == User::\"alice\",\n  action == Action::\"view\",\n  resource in Album::\"jane_vacation\"\n);\n\npermit (\n  principal == User::\"bob\",\n  action in [Action::\"view\", Action::\"edit\"],\n  resource in Account::\"bob\"\n);\n"
+                    },
+                    "data": null
+                }
+            },
+            "policy1": {
+                "id": "policy1",
+                "annotations": {},
+                "effect": "permit",
+                "principal_constraint": {
+                    "constraint": {
+                        "Eq": {
+                            "EUID": {
+                                "ty": {
+                                    "Specified": "User"
+                                },
+                                "eid": "bob"
+                            }
+                        }
+                    }
+                },
+                "action_constraint": {
+                    "In": [
+                        {
+                            "ty": {
+                                "Specified": "Action"
+                            },
+                            "eid": "view"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "Action"
+                            },
+                            "eid": "edit"
+                        }
+                    ]
+                },
+                "resource_constraint": {
+                    "constraint": {
+                        "In": {
+                            "EUID": {
+                                "ty": {
+                                    "Specified": "Account"
+                                },
+                                "eid": "bob"
+                            }
+                        }
+                    }
+                },
+                "non_head_constraints": {
+                    "expr_kind": {
+                        "Lit": {
+                            "Bool": true
+                        }
+                    },
+                    "source_loc": {
+                        "span": {
+                            "offset": 204,
+                            "length": 114
+                        },
+                        "src": "// This test has two Permit policies, and tests that we give the right Reason\n// for each Allow\npermit (\n  principal == User::\"alice\",\n  action == Action::\"view\",\n  resource in Album::\"jane_vacation\"\n);\n\npermit (\n  principal == User::\"bob\",\n  action in [Action::\"view\", Action::\"edit\"],\n  resource in Account::\"bob\"\n);\n"
                     },
                     "data": null
                 }
             }
         },
         "links": {
-            "policy0": {
-                "template_id": "policy0",
+            "policy1": {
+                "template_id": "policy1",
                 "link_id": null,
                 "values": {}
             },
-            "policy1": {
-                "template_id": "policy1",
+            "policy0": {
+                "template_id": "policy0",
                 "link_id": null,
                 "values": {}
             }
@@ -245,88 +224,14 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
-                    },
-                    "eid": "selfie.jpg"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
-                        },
-                        "eid": "selfie.jpg"
-                    },
-                    "attrs": {},
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "bob"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
-                    },
-                    "eid": "alice"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
-                        },
-                        "eid": "alice"
-                    },
-                    "attrs": {},
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
-                            },
-                            "eid": "jane_friends"
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
+                        "Specified": "Account"
                     },
                     "eid": "jane"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
+                            "Specified": "Account"
                         },
                         "eid": "jane"
                     },
@@ -337,22 +242,16 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
-                    "eid": "comment"
+                    "eid": "bob"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
-                        "eid": "comment"
+                        "eid": "bob"
                     },
                     "attrs": {},
                     "ancestors": []
@@ -361,33 +260,42 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
+                        "Specified": "Account"
                     },
-                    "eid": "tim"
+                    "eid": "bob"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
+                            "Specified": "Account"
                         },
-                        "eid": "tim"
+                        "eid": "bob"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "passportscan.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "passportscan.jpg"
                     },
                     "attrs": {},
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "UserGroup",
-                                    "path": []
-                                }
+                                "Specified": "Account"
                             },
-                            "eid": "jane_friends"
+                            "eid": "jane"
                         }
                     ]
                 }
@@ -395,20 +303,14 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "UserGroup",
-                            "path": []
-                        }
+                        "Specified": "UserGroup"
                     },
                     "eid": "jane_friends"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "UserGroup",
-                                "path": []
-                            }
+                            "Specified": "UserGroup"
                         },
                         "eid": "jane_friends"
                     },
@@ -419,92 +321,14 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "edit"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "edit"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "listPhotos"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "listPhotos"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
-                    },
-                    "eid": "view"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
-                        },
-                        "eid": "view"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
                     "eid": "delete"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "delete"
                     },
@@ -515,40 +339,28 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
+                        "Specified": "Video"
                     },
-                    "eid": "VacationPhoto94.jpg"
+                    "eid": "surf.mp4"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
+                            "Specified": "Video"
                         },
-                        "eid": "VacationPhoto94.jpg"
+                        "eid": "surf.mp4"
                     },
                     "attrs": {},
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
+                                "Specified": "Album"
                             },
                             "eid": "jane_vacation"
                         },
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
+                                "Specified": "Account"
                             },
                             "eid": "jane"
                         }
@@ -558,81 +370,24 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "User",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
-                    "eid": "bob"
+                    "eid": "tim"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "User",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
-                        "eid": "bob"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Account",
-                            "path": []
-                        }
-                    },
-                    "eid": "bob"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Account",
-                                "path": []
-                            }
-                        },
-                        "eid": "bob"
-                    },
-                    "attrs": {},
-                    "ancestors": []
-                }
-            ],
-            [
-                {
-                    "ty": {
-                        "Specified": {
-                            "id": "Album",
-                            "path": []
-                        }
-                    },
-                    "eid": "jane_vacation"
-                },
-                {
-                    "uid": {
-                        "ty": {
-                            "Specified": {
-                                "id": "Album",
-                                "path": []
-                            }
-                        },
-                        "eid": "jane_vacation"
+                        "eid": "tim"
                     },
                     "attrs": {},
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
+                                "Specified": "UserGroup"
                             },
-                            "eid": "jane"
+                            "eid": "jane_friends"
                         }
                     ]
                 }
@@ -640,22 +395,41 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Administrator",
-                            "path": []
-                        }
+                        "Specified": "User"
                     },
-                    "eid": "ahmad"
+                    "eid": "alice"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Administrator",
-                                "path": []
-                            }
+                            "Specified": "User"
                         },
-                        "eid": "ahmad"
+                        "eid": "alice"
+                    },
+                    "attrs": {},
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "UserGroup"
+                            },
+                            "eid": "jane_friends"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "edit"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "edit"
                     },
                     "attrs": {},
                     "ancestors": []
@@ -664,54 +438,32 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Photo",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
-                    "eid": "passportscan.jpg"
+                    "eid": "comment"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Photo",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
-                        "eid": "passportscan.jpg"
+                        "eid": "comment"
                     },
                     "attrs": {},
-                    "ancestors": [
-                        {
-                            "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
-                            },
-                            "eid": "jane"
-                        }
-                    ]
+                    "ancestors": []
                 }
             ],
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
-                        }
+                        "Specified": "Action"
                     },
                     "eid": "addPhoto"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "addPhoto"
                     },
@@ -722,40 +474,83 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Video",
-                            "path": []
-                        }
+                        "Specified": "Administrator"
                     },
-                    "eid": "surf.mp4"
+                    "eid": "ahmad"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Video",
-                                "path": []
-                            }
+                            "Specified": "Administrator"
                         },
-                        "eid": "surf.mp4"
+                        "eid": "ahmad"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
+                    },
+                    "eid": "listPhotos"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "listPhotos"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "selfie.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "selfie.jpg"
                     },
                     "attrs": {},
                     "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Album",
-                                    "path": []
-                                }
+                                "Specified": "Account"
                             },
-                            "eid": "jane_vacation"
+                            "eid": "bob"
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Album"
+                    },
+                    "eid": "jane_vacation"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Album"
                         },
+                        "eid": "jane_vacation"
+                    },
+                    "attrs": {},
+                    "ancestors": [
                         {
                             "ty": {
-                                "Specified": {
-                                    "id": "Account",
-                                    "path": []
-                                }
+                                "Specified": "Account"
                             },
                             "eid": "jane"
                         }
@@ -765,20 +560,63 @@
             [
                 {
                     "ty": {
-                        "Specified": {
-                            "id": "Action",
-                            "path": []
+                        "Specified": "Action"
+                    },
+                    "eid": "view"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Action"
+                        },
+                        "eid": "view"
+                    },
+                    "attrs": {},
+                    "ancestors": []
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Photo"
+                    },
+                    "eid": "VacationPhoto94.jpg"
+                },
+                {
+                    "uid": {
+                        "ty": {
+                            "Specified": "Photo"
+                        },
+                        "eid": "VacationPhoto94.jpg"
+                    },
+                    "attrs": {},
+                    "ancestors": [
+                        {
+                            "ty": {
+                                "Specified": "Album"
+                            },
+                            "eid": "jane_vacation"
+                        },
+                        {
+                            "ty": {
+                                "Specified": "Account"
+                            },
+                            "eid": "jane"
                         }
+                    ]
+                }
+            ],
+            [
+                {
+                    "ty": {
+                        "Specified": "Action"
                     },
                     "eid": "listAlbums"
                 },
                 {
                     "uid": {
                         "ty": {
-                            "Specified": {
-                                "id": "Action",
-                                "path": []
-                            }
+                            "Specified": "Action"
                         },
                         "eid": "listAlbums"
                     },
