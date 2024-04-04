@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ def jsonToNum (json : Json) : ParseResult JsonNumber :=
 def jsonToInt64 (json : Json) : ParseResult Int64 := do
   let num ← jsonToNum json
   match num.exponent with
-  | 0 => 
+  | 0 =>
     match Int64.mk? num.mantissa with
     | .some i64 => .ok i64
     | .none => .error s!"jsonToInt64: not a signed 64-bit integer {num.mantissa}"
