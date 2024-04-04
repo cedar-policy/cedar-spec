@@ -22,7 +22,7 @@ The simplest way to build our DRT framework is to use the included Dockerfile:
 
 ```bash
 docker build . -t cedar_drt # ~10 minutes
-docker run -it cedar_drt --rm
+docker run --rm -it cedar_drt
 ```
 
 If you'd rather not use Docker, here are the full instructions for a local build:
@@ -40,7 +40,6 @@ The build has only been tested on **Amazon Linux 2**.
 To run DRT:
 
 * Follow the build instructions above.
-* If running in docker, `source /root/.profile && source ./set_env_vars.sh`.
 * If running locally, `source ./set_env_vars.sh`.
 * `cargo fuzz run -s none <target>`.
 
