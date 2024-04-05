@@ -26,13 +26,9 @@ use std::ffi::CString;
 use std::sync::Once;
 
 use crate::definitional_request_types::*;
-use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
-use cedar_policy::Decision;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 use cedar_testing::cedar_test_impl::*;
-pub use entities::Entities;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
 pub use lean_sys::string::lean_mk_string;
@@ -43,7 +39,6 @@ use lean_sys::{
 };
 use log::info;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::ffi::CStr;
 use std::str::FromStr;
 
@@ -115,16 +110,26 @@ type ValidationResponse = ResultDef<TimedDef<ValidationResponseInner>>;
 #[derive(Default)]
 pub struct LeanDefinitionalEngine {}
 
-impl LeanDefinitionalEngine {
-    pub fn new() -> Self {
-        // We run this once per thread:
-        unsafe {
-            lean_initialize_runtime_module_locked();
-        };
+fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
+    let lean_obj_p = unsafe { lean_string_cstr(lean_str_obj) };
+    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
+    let rust_string = lean_obj_cstr
+        .to_str()
+        .expect("failed to convert Lean object to string")
+        .to_owned();
+    unsafe {
+        lean_dec(lean_str_obj);
+    };
+    rust_string
+}
 
+impl LeanDefinitionalEngine {
+    /// WARNING: we can only have one Lean thread
+    pub fn new() -> Self {
         START.call_once(|| {
             unsafe {
                 // following: https://lean-lang.org/lean4/doc/dev/ffi.html
+                lean_initialize_runtime_module_locked();
                 let builtin: u8 = 1;
                 let res = initialize_DiffTest_Main(builtin, lean_io_mk_world());
                 if lean_io_result_is_ok(res) {
@@ -199,20 +204,11 @@ impl LeanDefinitionalEngine {
         })
         .expect("failed to serialize request, policies, or entities");
         let cstring = CString::new(request).expect("`CString::new` failed");
-        // Lean with decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { isAuthorizedDRT(req) };
         // req can no longer be assumed to exist
-
-        let lean_obj_p = unsafe { lean_string_cstr(response) };
-        let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
-        let response_string = lean_obj_cstr
-            .to_str()
-            .expect("failed to convert Lean object to string")
-            .to_owned();
-        unsafe {
-            lean_dec(response);
-        };
+        let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_authorization_response(response_string)
     }
 
@@ -246,20 +242,11 @@ impl LeanDefinitionalEngine {
         })
         .expect("failed to serialize request, expression, or entities");
         let cstring = CString::new(request).expect("`CString::new` failed");
-        // Lean with decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { evaluateDRT(req) };
         // req can no longer be assumed to exist
-
-        let lean_obj_p = unsafe { lean_string_cstr(response) };
-        let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
-        let response_string = lean_obj_cstr
-            .to_str()
-            .expect("failed to convert Lean object to string")
-            .to_owned();
-        unsafe {
-            lean_dec(response);
-        };
+        let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_evaluation_response(response_string)
     }
 
@@ -298,19 +285,11 @@ impl LeanDefinitionalEngine {
         })
         .expect("failed to serialize schema or policies");
         let cstring = CString::new(request).expect("`CString::new` failed");
-        // Lean with decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { validateDRT(req) };
         // req can no longer be assumed to exist
-        let lean_obj_p = unsafe { lean_string_cstr(response) };
-        let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
-        let response_string = lean_obj_cstr
-            .to_str()
-            .expect("failed to convert Lean object to string")
-            .to_owned();
-        unsafe {
-            lean_dec(response);
-        };
+        let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
 }
