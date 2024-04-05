@@ -13,8 +13,11 @@ This repository contains the formalization of Cedar and infrastructure for perfo
 ### Lean formalization and proofs
 
 * Install Lean, following the instructions [here](https://leanprover.github.io/lean4/doc/setup.html).
-* `source cedar-drt/set_env_vars.sh`
-* `cd cedar-lean && lake build Cedar`
+* `cd cedar-lean`
+* `source ../cedar-drt/set_env_vars.sh`
+* `lake build Cedar`
+
+(It's important to source `set_env_vars.sh` from inside the `cedar-lean` lake project so that the right version of Lean is used.)
 
 ### DRT framework
 
