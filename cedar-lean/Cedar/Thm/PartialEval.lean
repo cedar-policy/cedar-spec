@@ -19,10 +19,12 @@ import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
 import Cedar.Thm.PartialEval.Binary
+import Cedar.Thm.PartialEval.Call
 import Cedar.Thm.PartialEval.GetAttr
 import Cedar.Thm.PartialEval.HasAttr
 import Cedar.Thm.PartialEval.Ite
 import Cedar.Thm.PartialEval.Or
+import Cedar.Thm.PartialEval.Set
 import Cedar.Thm.PartialEval.Unary
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Utils
@@ -82,11 +84,17 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     exact PartialEval.HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case set xs =>
-    sorry
+    have ih : ∀ x ∈ xs, partialEvaluate x request entities = (evaluate x request entities).map PartialValue.value := by
+      intro x h₁
+      apply @partial_eval_on_concrete_eqv_concrete_eval x request entities
+    exact PartialEval.Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
     sorry
   case call xfn args =>
-    sorry
+    have ih : ∀ arg ∈ args, partialEvaluate arg request entities = (evaluate arg request entities).map PartialValue.value := by
+      intro arg h₁
+      apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities
+    exact PartialEval.Call.partial_eval_on_concrete_eqv_concrete_eval ih
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
@@ -176,11 +184,19 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
     exact PartialEval.HasAttr.residuals_contain_unknowns ih₁
   case set xs =>
-    sorry
+    have ih : ∀ x ∈ xs, @PartialExpr.ResidualsContainUnknowns x request entities := by
+      intro x h₁
+      unfold PartialExpr.ResidualsContainUnknowns
+      apply @residuals_contain_unknowns x request entities wf ih
+    exact PartialEval.Set.residuals_contain_unknowns ih
   case record attrs =>
     sorry
   case call xfn args =>
-    sorry
+    have ih : ∀ arg ∈ args, @PartialExpr.ResidualsContainUnknowns arg request entities := by
+      intro arg h₁
+      unfold PartialExpr.ResidualsContainUnknowns
+      apply @residuals_contain_unknowns arg request entities wf ih
+    exact PartialEval.Call.residuals_contain_unknowns ih
 
 /--
   If partial evaluation returns a concrete value, then it returns the same value
