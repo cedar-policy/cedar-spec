@@ -56,9 +56,17 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
   x ∈ xs → sizeOf x.snd < 1 + sizeOf xs
 := by
   intro h
-  have := List.sizeOf_lt_of_mem h
-  have : sizeOf x = 1 + sizeOf x.1 + sizeOf x.2 := rfl
-  omega
+  rw [Nat.add_comm]
+  apply Nat.lt_add_right
+  apply @Nat.lt_trans (sizeOf x.snd) (sizeOf x) (sizeOf xs)
+  {
+    simp [Prod._sizeOf_inst, Prod._sizeOf_1]
+    rw [Nat.add_comm]
+    apply Nat.lt_add_of_pos_right
+    apply Nat.add_pos_left
+    apply Nat.one_pos
+  }
+  { apply List.sizeOf_lt_of_mem; exact h }
 
 def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=
