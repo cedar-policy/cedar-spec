@@ -143,7 +143,7 @@ theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entit
 := by
   cases h : evaluate (Expr.and e₁ e₂) request entities <;> simp
   case ok val =>
-    cases val <;> simp only [evaluate._eq_4, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true',
+    cases val <;> simp only [evaluate, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true',
       Lean.Internal.coeM, pure, Except.pure] at h <;>
     generalize (evaluate e₁ request entities) = r₁ at h <;>
     generalize (evaluate e₂ request entities) = r₂ at h

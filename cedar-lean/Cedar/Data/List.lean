@@ -60,7 +60,7 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
   apply Nat.lt_add_right
   apply @Nat.lt_trans (sizeOf x.snd) (sizeOf x) (sizeOf xs)
   {
-    simp [Prod._sizeOf_inst, Prod._sizeOf_1]
+    simp only [sizeOf, Prod._sizeOf_1]
     rw [Nat.add_comm]
     apply Nat.lt_add_of_pos_right
     apply Nat.add_pos_left
