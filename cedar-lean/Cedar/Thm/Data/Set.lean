@@ -282,12 +282,13 @@ theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys
 
 /-! ### inter -/
 
+
+open BEq LawfulBEq in
 theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α} :
   x ∈ s₁ ∩ s₂ ↔ x ∈ s₁ ∧ x ∈ s₂
 := by
   simp only [Membership.mem, intersect]
-  rename_i iDecEq
-  have h := @List.mem_inter_iff α iDecEq x s₁.1 s₂.1
+  have h := @List.mem_inter_iff α _ _ x (elts s₁) (elts s₂)
   simp only [Membership.mem, Inter.inter] at h
   exact h
 
@@ -302,8 +303,8 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rename_i iLT iSLT iDecLT iDecEq
   have h₃ := @List.canonicalize_id_filter α iLT iSLT iDecLT (fun x => decide (x ∈ s₂.1)) s₁.1
   rw (config := {occs := .pos [1]}) [h₁]
-  simp only
-  apply h₃
+  simp only [List.elem_eq_mem]
+  exact h₃
 
 theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   WellFormed (s₁ ∪ s₂)

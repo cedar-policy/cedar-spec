@@ -254,17 +254,19 @@ theorem lubQualifiedType_refl (qty : QualifiedType) :
   }
 end
 
+
 theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
   (h₁ : lubQualifiedType qty₁ qty₂ = .some qty) :
   (qty₁.getType ⊔ qty₂.getType) = .some qty.getType
 := by
   unfold lubQualifiedType at h₁
-  split at h₁ <;> try simp at h₁
+  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
   all_goals {
     rename_i aty₁ aty₂
-    cases h₂ : (aty₁ ⊔ aty₂) <;> simp [h₂] at h₁
-    simp [Qualified.getType, ←h₁]
+    cases h₂ : (aty₁ ⊔ aty₂) <;> simp only [Qualified.getType] <;> rw [h₂] <;> simp only [h₂, false_and, exists_const, exists_eq_left', Option.some.injEq] at h₁
+    simp only [Qualified.getType, ← h₁]
   }
+
 
 mutual
 theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
@@ -647,6 +649,8 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
     simp [lub?]
     have h₅ := lubRecordType_assoc_some_some h₃ h₄
     simp [h₅]
+  termination_by
+    (sizeOf ty₁)
 
 theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List (Attr × QualifiedType)}
   (h₁ : (lubRecordType rty₁ rty₂) = some rty₄)
@@ -698,6 +702,8 @@ theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List
         have h₇ := lubQualifiedType_assoc_some_some h₃ h₅
         have h₈ := lubRecordType_assoc_some_some h₄ h₆
         simp [h₇, h₈]
+  termination_by
+    (sizeOf rty₁)
 
 theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : QualifiedType}
   (h₁ : (lubQualifiedType qty₁ qty₂) = some qty₄)
@@ -714,12 +720,11 @@ theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : Q
     subst h₁ h₂
     simp [h₄, h₅]
   }
+  termination_by
+    (sizeOf qty₁)
+
 
 end
-termination_by
-lub_assoc_some_some ty₁ ty₂ ty₃ _ _ _ => (sizeOf ty₁)
-lubRecordType_assoc_some_some rty₁ rty₂ rty₃ _ _ _ => (sizeOf rty₁)
-lubQualifiedType_assoc_some_some qty₁ qty₂ qty₃ _ _ _ => (sizeOf qty₁)
 
 theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
   (do let ty₄ ← (ty₁ ⊔ ty₂) ; (ty₄ ⊔ ty₃)) =
