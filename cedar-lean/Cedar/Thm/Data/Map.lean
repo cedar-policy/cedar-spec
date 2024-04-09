@@ -75,7 +75,7 @@ theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp [Map.find?, Map.mapOnValues, Map.kvs, ←List.find?_pair_map]
-  cases h : List.find? (fun x => x.fst == k) m.1 <;>
+  cases __ : List.find? (fun x => x.fst == k) m.1 <;>
   simp only [Option.map_none', Option.map_some']
 
 theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
