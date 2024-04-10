@@ -60,3 +60,12 @@ To break up implications across multiple lines:
 ## Comments
 
 Main theorems should have a docstring comment `/-- ... -/` explaining what is proven. See [here](https://leanprover-community.github.io/contribute/doc.html) for more information on the Mathlib documentation style.
+
+
+## Proof stability
+To make version upgrades easier, strive to follow these guidelines:
+
+- Use `simp only` instead of `simp`. It's okay to use `simp` to close a goal.
+- Use `have` to deconstruct values. Use `rcases` only to split disjunctions.
+- Use `exact` instead of `apply` whenever possible.
+- Fully spell out types in function and theorem declarations.
