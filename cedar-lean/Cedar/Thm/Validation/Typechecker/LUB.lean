@@ -649,8 +649,7 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
     simp [lub?]
     have h₅ := lubRecordType_assoc_some_some h₃ h₄
     simp [h₅]
-  termination_by
-    (sizeOf ty₁)
+  termination_by sizeOf ty₁
 
 theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List (Attr × QualifiedType)}
   (h₁ : (lubRecordType rty₁ rty₂) = some rty₄)
@@ -702,8 +701,7 @@ theorem lubRecordType_assoc_some_some {rty₁ rty₂ rty₃ rty₄ rty₅ : List
         have h₇ := lubQualifiedType_assoc_some_some h₃ h₅
         have h₈ := lubRecordType_assoc_some_some h₄ h₆
         simp [h₇, h₈]
-  termination_by
-    (sizeOf rty₁)
+  termination_by sizeOf rty₁
 
 theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : QualifiedType}
   (h₁ : (lubQualifiedType qty₁ qty₂) = some qty₄)
@@ -720,8 +718,7 @@ theorem lubQualifiedType_assoc_some_some {qty₁ qty₂ qty₃ qty₄ qty₅ : Q
     subst h₁ h₂
     simp [h₄, h₅]
   }
-  termination_by
-    (sizeOf qty₁)
+  termination_by sizeOf qty₁
 
 
 end
