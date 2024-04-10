@@ -75,7 +75,7 @@ theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp [Map.find?, Map.mapOnValues, Map.kvs, ←List.find?_pair_map]
-  cases h : List.find? (fun x => x.fst == k) m.1 <;>
+  cases __ : List.find? (fun x => x.fst == k) m.1 <;>
   simp only [Option.map_none', Option.map_some']
 
 theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
@@ -139,6 +139,16 @@ theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v :
   have _ : sizeOf m.1 < sizeOf m := by
     simp only [sizeOf, _sizeOf_1]
     omega
-  omega
+  rename_i v_lt_kv m1_lt_m
+  let a := sizeOf v
+  let c := sizeOf m.1
+  let d := sizeOf m
+  have v_lt_m1 : a < c := by apply Nat.lt_trans v_lt_kv h
+  have v_lt_m : a < d := by apply Nat.lt_trans v_lt_m1 m1_lt_m
+  have ha : a = sizeOf v := by simp
+  have hd : d = sizeOf m := by simp
+  rw [ha, hd] at v_lt_m
+  exact v_lt_m
+
 
 end Cedar.Data.Map

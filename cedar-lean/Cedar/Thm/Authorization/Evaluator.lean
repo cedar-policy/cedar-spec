@@ -143,29 +143,29 @@ theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entit
 := by
   cases h : evaluate (Expr.and e₁ e₂) request entities <;> simp
   case ok val =>
-    cases val <;> simp [evaluate, Result.as, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] at h <;>
+    cases val <;> simp only [evaluate, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true',
+      Lean.Internal.coeM, pure, Except.pure] at h <;>
     generalize (evaluate e₁ request entities) = r₁ at h <;>
     generalize (evaluate e₂ request entities) = r₂ at h
     case prim prim =>
       cases prim <;> simp
       case int | string | entityUID =>
-        simp [evaluate, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe] at h
-        split at h <;> split at h <;> simp at h
+        split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
         split at h
-        case _ => simp at h
+        case _ => simp only [Except.ok.injEq, Value.prim.injEq] at h
         case _ =>
           split at h
-          case _ => split at h <;> simp at h
-          case _ => simp at h
+          case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Value.prim.injEq] at h
+          case _ => simp only [Except.bind_err] at h
     case set | record | ext =>
       exfalso
-      split at h <;> split at h <;> simp at h
+      split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
       split at h
-      case _ => simp at h
+      case _ => simp only [Except.ok.injEq] at h
       case _ =>
         split at h
-        case _ => split at h <;> simp at h
-        case _ => simp at h
+        case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
+        case _ => simp only [Except.bind_err] at h
 
 
 end Cedar.Thm

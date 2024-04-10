@@ -501,8 +501,8 @@ theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [De
   simp [Forallᵥ] at *
   cases h₂
   case nil =>
-    simp [insertCanonical_singleton]
-    apply Forall₂.cons (by exact h₁) (by simp only [Forall₂.nil])
+    simp only [insertCanonical_singleton, forall₂_cons, Forall₂.nil, and_true]
+    apply h₁
   case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄ =>
     simp [insertCanonical]
     split <;> split
