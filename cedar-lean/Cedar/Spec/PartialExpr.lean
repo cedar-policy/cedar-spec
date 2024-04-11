@@ -16,6 +16,7 @@
 
 import Cedar.Data
 import Cedar.Spec.Expr
+import Cedar.Thm.Data.Map -- necessary for a termination argument
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -47,11 +48,15 @@ deriving instance Repr, Inhabited for PartialExpr
 def Value.asPartialExpr (v : Value) : PartialExpr :=
   match v with
   | .prim p => .lit p
-  | .set s => .set (s.elts.map Value.asPartialExpr)
-  | .record m => .record (m.kvs.map fun (k, v) => (k, v.asPartialExpr))
+  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
+      have := Value.set_termination v s h₁
+      v.asPartialExpr)
+  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
+      have := Value.record_termination v m (Map.in_kvs_values h₁)
+      (k, v.asPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [PartialExpr.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [PartialExpr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-decreasing_by all_goals sorry
+termination_by v.size
 
 /--
   A version of `PartialExpr`, but only allows "restricted expressions" -- no
@@ -70,11 +75,15 @@ deriving instance Repr, Inhabited for RestrictedPartialExpr
 def Value.asRestrictedPartialExpr (v : Value) : RestrictedPartialExpr :=
   match v with
   | .prim p => .lit p
-  | .set s => .set (s.elts.map Value.asRestrictedPartialExpr)
-  | .record m => .record (m.kvs.map λ (k, v) => (k, v.asRestrictedPartialExpr))
+  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
+      have := Value.set_termination v s h₁
+      v.asRestrictedPartialExpr)
+  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
+      have := Value.record_termination v m (Map.in_kvs_values h₁)
+      (k, v.asRestrictedPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-decreasing_by all_goals sorry
+termination_by v.size
 
 mutual
 

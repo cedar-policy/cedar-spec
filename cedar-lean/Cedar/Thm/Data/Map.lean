@@ -41,6 +41,14 @@ theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp only [List.mem_map] ; exists (k, v)
   apply h₁
 
+theorem in_kvs_values {k : α} {v : β} {m : Map α β} :
+  (k, v) ∈ m.kvs → v ∈ m.values
+:= by
+  intro h₁
+  unfold values
+  simp [List.mem_map]
+  exists (k, v)
+
 theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
