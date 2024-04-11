@@ -20,8 +20,6 @@ import Lean.Data.Json.FromToJson
 import Lean.Data.AssocList
 import Lean.Data.RBMap
 
-import Std
-
 import Cedar.Data
 import Cedar.Spec
 import Cedar.Spec.Ext

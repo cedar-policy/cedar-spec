@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Validation.Typechecker.Basic
+import Std.Tactic.Case
 
 /-!
 This file proves that typechecking of `.lit` and `.var` expressions is sound.

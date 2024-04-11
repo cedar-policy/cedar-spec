@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 
-import Std
 
 /-!
 This file contains `simp` lemmas for proofs about code that uses the `do`

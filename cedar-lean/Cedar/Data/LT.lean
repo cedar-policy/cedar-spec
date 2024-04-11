@@ -15,7 +15,9 @@
 -/
 
 import Init.Classical
-import Std
+import Std.Tactic.Init
+import Std.Data.String
+import Std.Data.UInt
 
 /-!
 This file contains utilities for working with strict and decidable LT relations.

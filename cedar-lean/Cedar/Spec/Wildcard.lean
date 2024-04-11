@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Std
+import Std.Data.HashMap
 
 namespace Cedar.Spec
 
