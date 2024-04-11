@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 
-import Std
 import Cedar.Data.LT
 
 /-!

@@ -15,7 +15,6 @@
 -/
 
 import Cedar.Spec
-import Std
 
 /-!
 This file contains proofs that the less-than (`<`) relation on Cedar values is strict.

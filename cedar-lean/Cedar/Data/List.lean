@@ -15,8 +15,7 @@
 -/
 
 import Cedar.Data.LT
-import Std.Data.List.Basic
-import Std.Data.List.Lemmas
+import Std.Data.List
 
 /-!
 This file contains utilities for working with lists that are canonical or
