@@ -70,7 +70,7 @@ def wildcardMatchIdx (text : List Char) (pattern : Pattern) (i j : Nat)
          (← wildcardMatchIdx text pattern (i + 1) (j + 1) (by omega) (by omega))
   modifyGet λ cache => (r, cache.insert (i, j) r)
 termination_by
-  wildcardMatchIdx text pattern i j _ _=> (text.length - i) + (pattern.length - j)
+  (text.length - i) + (pattern.length - j)
 decreasing_by
   all_goals { simp_wf ; omega }
 

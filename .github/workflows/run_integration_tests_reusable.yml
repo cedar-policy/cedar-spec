@@ -1,0 +1,67 @@
+name: Run Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      cedar_spec_ref:
+        required: false
+        default: "main"
+        type: string
+      cedar_policy_ref:
+        required: false
+        default: "main"
+        type: string
+      cedar_integration_tests_ref:
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  run_integration_tests:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-spec
+          ref: ${{ inputs.cedar_spec_ref }}
+          path: ./cedar-spec
+      - name: checkout cedar
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar
+          path: ./cedar-spec/cedar
+          ref: ${{ inputs.cedar_policy_ref }}
+      - name: Delete old integration tests
+        working-directory: ./cedar-spec/cedar
+        run: rm -rf cedar-integration-tests # blast the current content
+      - name: Checkout cedar-integration-tests
+        uses: actions/checkout@v4
+        with:
+          repository: cedar-policy/cedar-integration-tests
+          ref: ${{ inputs.cedar_integration_tests_ref }}
+          path: ./cedar-spec/cedar/cedar-integration-tests
+      - name: Decompress corpus tests
+        working-directory: ./cedar-spec/cedar/cedar-integration-tests
+        run: tar xzf corpus-tests.tar.gz
+      - name: Install Lean
+        shell: bash
+        run: |
+             wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+             bash elan-init.sh -y
+      - name: Prepare Rust build
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: Build Lean libraries
+        working-directory: ./cedar-spec/cedar-lean
+        run: source ~/.profile && lake build Cedar:static DiffTest:static Std:static
+      - name: Run integration tests
+        working-directory: ./cedar-spec/cedar-drt
+        shell: bash
+        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+

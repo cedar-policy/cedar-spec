@@ -129,7 +129,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     cases h₉ : Map.find? d.attrs a
     case none =>
       simp only [Except.error.injEq, or_self, false_and, exists_const]
-      simp only [typeOf._eq_9, h₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok] at h₃
+      simp only [typeOf, h₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       split at h₃ <;> try simp at h₃
       case h_1.h_1 _ _ h₁₀ _ _ h₁₁ =>

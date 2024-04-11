@@ -1,11 +1,22 @@
-name: Build cedar-spec
+name: Build and Test cedar-spec
 
 on:
   pull_request:
 
 jobs:
+  get-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get branch name
+        shell: bash
+        # The workflow is triggered by pull_request so we use `GITHUB_BASE_REF`
+        run: echo "branch_name=${GITHUB_BASE_REF}" >> $GITHUB_OUTPUT
+        id: get_branch_name
+    outputs:
+      branch_name: ${{ steps.get_branch_name.outputs.branch_name }}
+
   build_and_test_lean:
-    name: Build and Test Lean
+    name: Build and test Lean
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -14,8 +25,6 @@ jobs:
     steps:
       - name: Checkout cedar-spec
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Lean
         shell: bash
         run: |
@@ -31,55 +40,20 @@ jobs:
         run: source ~/.profile && lake exe CedarUnitTests
 
   build_and_test_drt:
-    name: Build and Test DRT
+    needs: get-branch-name
+    uses: ./.github/workflows/build_and_test_drt_reusable.yml
+    with:
+      cedar_spec_ref: ${{ github.ref }}
+      cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
+  
+  test_docker_build:
+    name: Test Docker build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        toolchain:
-          - stable
     steps:
-      - name: Checkout cedar-spec
-        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
         with:
-          submodules: recursive
-      - name: Install Lean
-        shell: bash
-        run: |
-              wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
-              bash elan-init.sh -y
-      - name: rustup
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - name: cargo fmt (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: cargo fmt --all --check
-      - name: cargo fmt (cedar-drt)
-        working-directory: ./cedar-drt
-        run: cargo fmt --all --check
-      - name: cargo fmt (cedar-drt/fuzz/)
-        working-directory: ./cedar-drt/fuzz
-        run: cargo fmt --all --check
-      - name: cargo rustc (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: RUSTFLAGS="-D warnings -F unsafe-code" cargo build --verbose
-      - name: cargo test (cedar-policy-generators)
-        working-directory: ./cedar-policy-generators
-        run: cargo test --verbose
-      - name: build.sh
-        shell: bash
-        run: source ~/.profile && ./build.sh
-      - name: Delete old integration tests
-        working-directory: ./cedar
-        run: rm -rf cedar-integration-tests
-      - name: Download new integration tests
-        uses: actions/checkout@v4
-        with:
-          repository: cedar-policy/cedar-integration-tests
-          ref: main
-          path: ./cedar/cedar-integration-tests
-      - name: Unpack corpus tests
-        working-directory: ./cedar/cedar-integration-tests
-        run: tar xzf corpus-tests.tar.gz
-      - name: Run integration tests
-        working-directory: ./cedar-drt
-        run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
-
+          push: false
+          tags: cedar-drt:latest

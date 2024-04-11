@@ -55,7 +55,7 @@ theorem IPNet.lt_conn {a₁ a₂ p₁ p₂ : Nat}
 
 instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
   asymmetric a b   := by
-    cases a <;> cases b <;> simp [LT.lt, Ext.IPAddr.IPNet.lt]
+    cases a <;> cases b <;> simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.lt, UInt32.val_val_eq_toNat, Nat.lt_eq, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, not_false_eq_true, not_true_eq_false, imp_self]
     case V4 a₁ p₁ a₂ p₂ =>
       cases a₁ ; rename_i a₁ ; cases a₁
       cases a₂ ; rename_i a₂ ; cases a₂
@@ -64,12 +64,13 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
       exact IPNet.lt_asymm
     case V6 a₁ p₁ a₂ p₂ =>
       cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      simp only
       exact IPNet.lt_asymm
   transitive a b c := by
     intro h₁ h₂
-    simp [LT.lt, Ext.IPAddr.IPNet.lt] at h₁ h₂ ; split at h₁ <;> split at h₂ <;>
-    simp [LT.lt, Ext.IPAddr.IPNet.lt] at * <;>
+    simp only [LT.lt] at h₁ h₂
+    simp only [Ext.IPAddr.IPNet.lt, Nat.lt_eq] at h₁ h₂
+    split at h₁ <;> split at h₂ <;>
+    simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.V6.injEq, Nat.lt_eq, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, Ext.IPAddr.IPNet.V4.injEq, Ext.IPAddr.IPNet.lt, UInt32.val_val_eq_toNat] at * <;>
     rename_i h₃ <;>
     have ⟨h₃, h₄⟩ := h₃ <;> subst h₃ h₄
     case h_3 a₁ p₁ a₂ p₂ _ _ a₃ p₃ =>
@@ -84,22 +85,23 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
       simp only at *
       exact IPNet.lt_trans h₁ h₂
   connected  a b   := by
-    cases a <;> cases b <;> simp [LT.lt, Ext.IPAddr.IPNet.lt] <;> intro h₁
+    cases a <;> cases b <;> simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.lt, ne_eq, Bool.or_eq_true, or_false, UInt32.val_val_eq_toNat, not_and, not_false_eq_true, imp_self, Bool.and_eq_true, Ext.IPAddr.IPNet.V6.injEq, Ext.IPAddr.IPNet.V4.injEq, decide_eq_true_eq, or_true, Nat.lt_eq] <;> intro h₁
     case V4 a₁ p₁ a₂ p₂ =>
       cases a₁ ; rename_i a₁ ; cases a₁
       cases a₂ ; rename_i a₂ ; cases a₂
       cases p₁ ; cases p₂
-      simp at *
+      simp only [Fin.mk.injEq] at *
       rename_i a₁ _ a₂ _ p₁ _ p₂ _
       apply IPNet.lt_conn
       intro h₂
-      simp [UInt32.toNat] at h₂
-      simp [h₂] at h₁
+      simp only [UInt32.toNat] at h₂
+      simp only [h₂, forall_const] at h₁
       exact h₁
     case V6 a₁ p₁ a₂ p₂ =>
       cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      simp at *
+      simp only [Fin.mk.injEq] at *
       exact IPNet.lt_conn h₁
+
 
 ----- `<` is strict on `Ext` -----
 
