@@ -77,13 +77,14 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {xs : List Expr} {request : R
     sorry
     -- rw [← h₂]
   case ok.ok vals pvals =>
-    cases h₃ : pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none <;> simp
+    cases h₃ : pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none
     case some vals' =>
       have : vals = vals' := by
         -- have to use ih₁
         sorry
       subst vals'
-      rfl
+      -- unsure why `rw [h₃]` fails here
+      sorry
     case none =>
       simp [mapM_none_iff_f_none_on_some_element] at h₃
       replace ⟨pval, h₃, h₄⟩ := h₃

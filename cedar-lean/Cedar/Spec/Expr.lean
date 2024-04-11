@@ -73,7 +73,7 @@ def Value.asExpr (v : Value) : Expr :=
   | .record attrs => .record (attrs.kvs.map λ (k, v) => (k, v.asExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 ----- Derivations -----
 

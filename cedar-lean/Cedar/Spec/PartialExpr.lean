@@ -51,7 +51,7 @@ def Value.asPartialExpr (v : Value) : PartialExpr :=
   | .record m => .record (m.kvs.map fun (k, v) => (k, v.asPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [PartialExpr.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [PartialExpr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 /--
   A version of `PartialExpr`, but only allows "restricted expressions" -- no
@@ -74,7 +74,7 @@ def Value.asRestrictedPartialExpr (v : Value) : RestrictedPartialExpr :=
   | .record m => .record (m.kvs.map λ (k, v) => (k, v.asRestrictedPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 mutual
 
@@ -157,7 +157,7 @@ def Expr.asPartialExpr (x : Expr) : PartialExpr :=
   | .set xs => .set (xs.map Expr.asPartialExpr)
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
   | .call xfn args => .call xfn (args.map Expr.asPartialExpr)
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 instance : Coe Expr PartialExpr where
   coe := Expr.asPartialExpr
@@ -169,7 +169,7 @@ def RestrictedPartialExpr.asPartialExpr (x : RestrictedPartialExpr) : PartialExp
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
   | .call xfn args => .call xfn (args.map Value.asPartialExpr)
   | .unknown name => .unknown name
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 /--
   Is this a literal "unknown".
@@ -200,7 +200,7 @@ def PartialExpr.subexpressions (x : PartialExpr) : List PartialExpr :=
   | .record pairs => [x] ++ List.join (pairs.map λ (_, x₁) => x₁.subexpressions)
   | .call _ xs => [x] ++ List.join (xs.map PartialExpr.subexpressions)
   | .unknown _ => [x]
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 /--
   Does a given PartialExpr contain an Unknown, perhaps recursively
@@ -235,7 +235,7 @@ def RestrictedPartialExpr.subexpressions (x : RestrictedPartialExpr) : List Rest
   | .record pairs => [x] ++ List.join (pairs.map λ (_, x₁) => x₁.subexpressions)
   | .call _ xs => [x] -- in RestrictedPartialExpr, call arguments are values and cannot contain unknowns
   | .unknown _ => [x]
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 /--
   Does a given RestrictedPartialExpr contain an Unknown, perhaps recursively

@@ -253,7 +253,7 @@ def PartialExpr.subst (x : PartialExpr) (subsmap : Map String RestrictedPartialV
   | unknown name => match subsmap.find? name with
     | some val => val.asPartialExpr
     | none => x -- no substitution available, return `x` unchanged
-termination_by PartialExpr.subst x subsmap => x.subexpressions.length
+termination_by x.subexpressions.length
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -321,7 +321,7 @@ def PartialExpr.fullSubst (x : PartialExpr) (subsmap : Map String Value) : Optio
   | unknown name => match subsmap.find? name with
     | some val => val.asExpr
     | none => none -- no substitution available, return `none`
-termination_by PartialExpr.fullSubst x subsmap => x.subexpressions.length
+termination_by x.subexpressions.length
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -340,7 +340,7 @@ def RestrictedPartialExpr.subst (x : RestrictedPartialExpr) (subsmap : Map Strin
   | .unknown name => match subsmap.find? name with
     | some val => val.asRestrictedPartialExpr
     | none => x -- no substitution available, return `x` unchanged
-decreasing_by sorry
+decreasing_by all_goals sorry
 
 mutual
 
@@ -367,6 +367,7 @@ def RestrictedPartialExpr.fullSubst (x : RestrictedPartialExpr) (subsmap : Map S
     | .ok v => some v
     | .error _ => none
   | .unknown name => subsmap.find? name -- if no substitution is available, returns `none`
+decreasing_by all_goals sorry
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -416,7 +417,6 @@ def RestrictedPartialValue.fullSubst (v : RestrictedPartialValue) (subsmap : Map
   | .value v    => some v -- doesn't contain unknowns, nothing to substitute
 
 end
-decreasing_by sorry
 
 /--
   If converting a Value to PartialExpr gives a primitive, the Value was that
@@ -445,8 +445,6 @@ theorem subs_expr_id {expr : Expr} {subsmap : Map String RestrictedPartialValue}
   case and x₁ x₂ =>
     -- inductive argument needed
     sorry
-  all_goals {
-    sorry
-  }
+  all_goals sorry
 
 end Cedar.Spec

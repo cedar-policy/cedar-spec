@@ -280,7 +280,7 @@ theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys
   rw [← make_make_eqv]
   exact make_of_make_is_id xs
 
-/-! ### inter -/
+/-! ### inter and union -/
 
 
 open BEq LawfulBEq in
@@ -305,62 +305,6 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rw (config := {occs := .pos [1]}) [h₁]
   simp only [List.elem_eq_mem]
   exact h₃
-
-theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
-  WellFormed (s₁ ∪ s₂)
-:= by
-  unfold WellFormed
-  simp only [Union.union, union, toList]
-  rw [make_make_eqv]
-  apply List.Equiv.symm
-  exact elts_make_equiv
-
-/-! ### subset -/
-
-theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
-  xs ⊆ ys → Set.make xs ⊆ Set.make ys
-:= by
-  unfold HasSubset.Subset instHasSubsetSet List.instHasSubsetList subset
-  simp only [List.all_eq_true]
-  intro h₁ x h₂
-  rw [contains_prop_bool_equiv]
-  rw [in_list_iff_in_set] at h₂
-  rw [← make_mem] at *
-  unfold List.Subset at h₁
-  apply h₁ h₂
-
-/--
-  Like `List.subset_def`, but lifted to Sets
--/
-theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
-  s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
-:= by
-  unfold HasSubset.Subset instHasSubsetSet subset
-  simp
-  constructor
-  case mp =>
-    intro h₁ a h₂
-    specialize h₁ a
-    rw [in_list_iff_in_set] at h₁
-    rw [contains_prop_bool_equiv] at h₁
-    exact h₁ h₂
-  case mpr =>
-    intro h₁ a h₂
-    specialize h₁ a
-    rw [in_list_iff_in_set] at h₂
-    rw [contains_prop_bool_equiv]
-    exact h₁ h₂
-
-theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
-  s₁ ⊆ s₂ → s₂.isEmpty → s₁.isEmpty
-:= by
-  repeat rw [Set.empty_iff_not_exists]
-  intro h₁ h₂ h₃
-  rw [subset_def] at h₁
-  replace ⟨a, h₃⟩ := h₃
-  apply h₂
-  exists a
-  exact h₁ a h₃
 
 theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   WellFormed (s₁ ∪ s₂)

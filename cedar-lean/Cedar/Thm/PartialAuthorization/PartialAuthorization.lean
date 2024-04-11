@@ -268,9 +268,7 @@ theorem errors_eq_errorPolicies {policies : Policies} {req : Request} {entities 
       apply And.intro h₁
       simp [partial_eval_on_concrete_eqv_concrete_eval] at h₂
       split <;> split at h₂ <;> simp at h₂ <;> try simp [h₂]
-      case inr.h_4 h₃ res e' h₄ =>
-        split at h₃ <;> simp at h₃
-        case h_1 v h₅ => simp [h₅, Except.map] at h₄
+      case h_1.h_4 h₃ _ e' h₄ => simp [h₃, Except.map] at h₄
   case right =>
     intro pid policy h₁ h₂
     unfold errored hasError at h₂
