@@ -42,6 +42,19 @@ theorem all_values_have_positive_size (v : Value) :
     generalize (m.values.map Value.size).foldl Nat.add 0 = n
     omega
 
+theorem List.foldl_add_pos {xs : List Nat} {init : Nat} :
+  init > 0 → xs.foldl Nat.add init > 0
+:= by
+  intro h₁
+  induction xs
+  case nil => simp [h₁]
+  case cons x tail h_ind =>
+    simp [List.foldl_cons]
+    have h₂ : init <= init + x := by simp [Nat.le_add_right]
+    apply @Nat.lt_of_lt_of_le 0 (tail.foldl Nat.add init) _ (by simp [h_ind])
+    -- should follow from h₂ and associativity
+    sorry
+
 theorem Value.set_termination (v : Value) (vs : Set Value) :
   v ∈ vs.elts → v.size < (Value.set vs).size
 := by
@@ -52,10 +65,14 @@ theorem Value.set_termination (v : Value) (vs : Set Value) :
   case cons v' tail =>
     cases v <;> simp
     case prim p | ext x =>
-      -- our goal clearly follows from `all_values_have_positive_size`
-      -- and the fact that `Nat.add` is non-decreasing. But not sure
-      -- how to convince Lean
-      sorry
+      have h₃ := all_values_have_positive_size v'
+      have h₄ := List.foldl_add_pos h₃ (xs := tail.map size)
+      apply @Nat.lt_of_lt_of_le 1 (1 + 1) _ (by simp)
+      generalize (tail.map size).foldl Nat.add v'.size = n at *
+      apply Nat.add_le_add_left
+      cases n
+      case zero => simp at h₄
+      case succ n' => omega
     case set s =>
       sorry
     case record m =>
