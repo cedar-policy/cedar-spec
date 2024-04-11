@@ -17,6 +17,8 @@
 import Cedar.Data
 import Cedar.Spec.Expr
 import Cedar.Thm.Data.Map -- necessary for a termination argument
+import Cedar.Thm.Termination.Expr
+import Cedar.Thm.Termination.Value
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -156,17 +158,46 @@ def Expr.asPartialExpr (x : Expr) : PartialExpr :=
   match x with
   | .lit p => .lit p
   | .var v => .var v
-  | .ite x₁ x₂ x₃ => .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
-  | .and x₁ x₂ => .and x₁.asPartialExpr x₂.asPartialExpr
-  | .or x₁ x₂ => .or x₁.asPartialExpr x₂.asPartialExpr
-  | .unaryApp op x₁ => .unaryApp op x₁.asPartialExpr
-  | .binaryApp op x₁ x₂ => .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
-  | .getAttr x₁ attr => .getAttr x₁.asPartialExpr attr
-  | .hasAttr x₁ attr => .hasAttr x₁.asPartialExpr attr
-  | .set xs => .set (xs.map Expr.asPartialExpr)
-  | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
-  | .call xfn args => .call xfn (args.map Expr.asPartialExpr)
-decreasing_by all_goals sorry
+  | .ite x₁ x₂ x₃ =>
+      have := @Expr.ite_termination x₁ x₂ x₃
+      .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
+  | .and x₁ x₂ =>
+      have := @Expr.and_termination x₁ x₂
+      .and x₁.asPartialExpr x₂.asPartialExpr
+  | .or x₁ x₂ =>
+      have := @Expr.or_termination x₁ x₂
+      .or x₁.asPartialExpr x₂.asPartialExpr
+  | .unaryApp op x₁ =>
+      have := @Expr.unaryApp_termination x₁ op
+      .unaryApp op x₁.asPartialExpr
+  | .binaryApp op x₁ x₂ =>
+      have := @Expr.binaryApp_termination x₁ x₂ op
+      .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
+  | .getAttr x₁ attr =>
+      have := @Expr.getAttr_termination x₁ attr
+      .getAttr x₁.asPartialExpr attr
+  | .hasAttr x₁ attr =>
+      have := @Expr.hasAttr_termination x₁ attr
+      .hasAttr x₁.asPartialExpr attr
+  | .set xs =>
+      have h := @Expr.set_termination xs
+      let xs' := xs.map₁ λ ⟨x, prop⟩ =>
+        have := h x prop
+        x.asPartialExpr
+      .set xs'
+  | .record attrs =>
+      have h := @Expr.record_termination attrs
+      let attrs' := attrs.map₁ λ ⟨(k, v), prop⟩ =>
+        have := h (k, v) prop
+        (k, v.asPartialExpr)
+      .record attrs'
+  | .call xfn args =>
+      have h := @Expr.call_termination args xfn
+      let args' := args.map₁ λ ⟨x, prop⟩ =>
+        have := h x prop
+        x.asPartialExpr
+      .call xfn args'
+termination_by x.size
 
 instance : Coe Expr PartialExpr where
   coe := Expr.asPartialExpr
