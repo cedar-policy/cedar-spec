@@ -246,6 +246,37 @@ def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
 
+def unParse (ip : IPNet) : String :=
+  match ip with
+  | .V4 v p =>
+    let a0 := (v >>> 24) &&& 0xFF
+    let a1 := (v >>> 16) &&& 0xFF
+    let a2 := (v >>> 8) &&& 0xFF
+    let a3 := v &&& 0xFF
+    ToString.toString a0
+      ++ "." ++ ToString.toString a1
+      ++ "." ++ ToString.toString a2
+      ++ "." ++ ToString.toString a3
+      ++ "/" ++ ToString.toString p
+  | .V6 v p =>
+    let a0 := (v >>> 112) &&& 0xFF
+    let a1 := (v >>> 96) &&& 0xFF
+    let a2 := (v >>> 80) &&& 0xFF
+    let a3 := (v >>> 64) &&& 0xFF
+    let a4 := (v >>> 48) &&& 0xFF
+    let a5 := (v >>> 32) &&& 0xFF
+    let a6 := (v >>> 16) &&& 0xFF
+    let a7 := v &&& 0xFF
+    ToString.toString a0
+      ++ "::" ++ ToString.toString a1
+      ++ "::" ++ ToString.toString a2
+      ++ "::" ++ ToString.toString a3
+      ++ "::" ++ ToString.toString a4
+      ++ "::" ++ ToString.toString a5
+      ++ "::" ++ ToString.toString a6
+      ++ "::" ++ ToString.toString a7
+      ++ "/" ++ ToString.toString p
+
 def ip (str : String) : Option IPNet := parse str
 
 def IPNet.lt : IPNet → IPNet → Bool

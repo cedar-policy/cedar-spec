@@ -58,6 +58,11 @@ def parse (str : String) : Option Decimal :=
     else .none
   | _ => .none
 
+def unParse (d : Decimal) : String :=
+  let left  := d / (Int.pow 10 DECIMAL_DIGITS)
+  let right := d % (Int.pow 10 DECIMAL_DIGITS)
+  ToString.toString left ++ "." ++ ToString.toString right
+
 abbrev decimal := parse
 
 end Decimal

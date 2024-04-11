@@ -61,7 +61,7 @@ theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities
     exists .ext d
     apply And.intro
     case left =>
-      simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+      simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, ExtFun.call, res, h₅, Coe.coe]
     case right =>
       apply InstanceOfType.instance_of_ext
       simp [InstanceOfExtType]
@@ -101,7 +101,7 @@ theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {en
     exists .ext ip
     apply And.intro
     case left =>
-      simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+      simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, ExtFun.call, res, h₅, Coe.coe]
     case right =>
       apply InstanceOfType.instance_of_ext
       simp [InstanceOfExtType]
@@ -217,7 +217,7 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
     subst hr₁ hr₂
     simp [IsDecimalComparator] at h₀
     split at h₀ <;>
-    simp [call] <;> try { contradiction }
+    simp [ExtFun.call] <;> try { contradiction }
     all_goals {
       apply bool_is_instance_of_anyBool
     }
@@ -272,7 +272,7 @@ theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ :
     have ⟨d₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
     have ⟨d₂, hr₂⟩ := instance_of_ipAddr_type_is_ipAddr hr₂
     subst hr₁ hr₂
-    simp [call]
+    simp [ExtFun.call]
     apply bool_is_instance_of_anyBool
 
 def IsIpAddrRecognizer : ExtFun → Prop
@@ -368,7 +368,7 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
     subst hr₁
     simp [IsIpAddrRecognizer] at h₀
     split at h₀ <;>
-    simp [call] <;> try { contradiction }
+    simp [ExtFun.call] <;> try { contradiction }
     all_goals {
       apply bool_is_instance_of_anyBool
     }

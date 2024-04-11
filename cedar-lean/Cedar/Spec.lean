@@ -19,6 +19,8 @@ import Cedar.Spec.Entities
 import Cedar.Spec.Evaluator
 import Cedar.Spec.Expr
 import Cedar.Spec.Ext
+import Cedar.Spec.PartialEvaluator
+import Cedar.Spec.PartialExpr
 import Cedar.Spec.Policy
 import Cedar.Spec.Request
 import Cedar.Spec.Response

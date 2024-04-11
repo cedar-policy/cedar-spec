@@ -61,7 +61,7 @@ inductive Expr where
   | getAttr (expr : Expr) (attr : Attr)
   | hasAttr (expr : Expr) (attr : Attr)
   | set (ls : List Expr)
-  | record (map : List (Prod Attr Expr))
+  | record (map : List (Attr × Expr))
   | call (xfn : ExtFun) (args : List Expr)
 
 ----- Derivations -----
