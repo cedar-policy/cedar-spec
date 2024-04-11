@@ -31,7 +31,6 @@ use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidati
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
-use cedar_testing::cedar_test_impl::*;
 pub use entities::Entities;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
