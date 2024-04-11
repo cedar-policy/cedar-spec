@@ -38,7 +38,7 @@ theorem if_f_produces_pure_then_mapM_f_is_pure_map {α β} [Monad m] [LawfulMona
 /--
   A generic lemma about composing List.mapM with List.map. Not in Std AFAICT.
 -/
-theorem mapM_over_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
+theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
   List.mapM g (xs.map f) = xs.mapM fun x => g (f x)
 := by
   induction xs

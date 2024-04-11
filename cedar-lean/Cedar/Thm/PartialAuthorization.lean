@@ -76,16 +76,17 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
 := by
   intro h₁ h₂
   have wf : entities.AllWellFormed := by sorry -- TODO: can we establish this somehow, or do we need to admit this as a top-level assumption for this theorem?
-  have rcu : PartialEntities.ResidualsContainUnknowns entities := by sorry -- TODO: can we establish this somehow, or do we need to admit this as a top-level assumption for this theorem?
+  have rcu_e : PartialEntities.ResidualsContainUnknowns entities := by sorry -- TODO: can we establish this somehow, or do we need to admit this as a top-level assumption for this theorem?
+  have rcu_r : PartialRequest.ResidualsContainUnknowns req := by sorry -- TODO: can we establish this somehow, or do we need to admit this as a top-level assumption for this theorem?
   cases h₃ : (isAuthorizedPartial req entities policies).knownForbids.isEmpty
   case false =>
-    rw [if_knownForbids_then_deny_after_any_sub wf rcu (by simp [h₃]) h₂]
+    rw [if_knownForbids_then_deny_after_any_sub wf rcu_e rcu_r (by simp [h₃]) h₂]
     unfold PartialResponse.decision
     simp [h₃]
   case true =>
     unfold PartialResponse.decision
     simp [h₃]
-    have h₄ := partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic wf rcu h₁ h₂ h₃
+    have h₄ := partial_authz_decision_concrete_no_knownForbids_then_knownPermits_unknown_agnostic wf rcu_e rcu_r h₁ h₂ h₃
     rw [← h₄] ; clear h₄
     cases h₄ : (isAuthorizedPartial req entities policies).permits.isEmpty
     case true =>
@@ -102,7 +103,7 @@ theorem partial_authz_decision_concrete_then_unknown_agnostic {policies : Polici
       case true =>
         have h₇ := subst_preserves_empty_forbids h₂ h₅
         simp [h₇]
-        have h₈ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub wf rcu h₁ h₂ h₃ (by simp [h₄])
+        have h₈ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_must_be_permits_after_any_sub wf rcu_e rcu_r h₁ h₂ h₃ (by simp [h₄])
         simp [h₈]
         have h₉ := partial_authz_decision_concrete_no_knownForbids_some_permits_then_no_knownForbids_after_any_sub h₁ h₂ h₃ (by simp [h₄])
         simp [h₉]

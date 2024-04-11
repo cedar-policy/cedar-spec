@@ -57,6 +57,12 @@ def PartialEntityData.ResidualsContainUnknowns (edata : PartialEntityData) : Pro
 def PartialEntities.ResidualsContainUnknowns (entities : PartialEntities) : Prop :=
   ∀ edata ∈ entities.values, PartialEntityData.ResidualsContainUnknowns edata
 
+/--
+  All residuals in a `request` (ie, in the `context`) contain unknowns
+-/
+def PartialRequest.ResidualsContainUnknowns (request : PartialRequest) : Prop :=
+  ∀ val ∈ request.context.values, RestrictedPartialValue.ResidualsContainUnknowns val
+
 end Cedar.Thm
 
 namespace Cedar.Spec
@@ -79,6 +85,22 @@ def PartialValue.WellFormed (pval : PartialValue) : Prop :=
   | .residual _ => true
 
 /--
+  We define WellFormed for RestrictedPartialValue using Value.WellFormed
+-/
+def RestrictedPartialValue.WellFormed (rpval : RestrictedPartialValue) : Prop :=
+  match rpval with
+  | .value v => v.WellFormed
+  | .residual _ => true
+
+/--
+  PartialRequests are AllWellFormed if the context is WellFormed and
+  all the context's constituent RestrictedPartialValues are also WellFormed.
+  (principal, action, and resource are always well-formed)
+-/
+def PartialRequest.AllWellFormed (preq : PartialRequest) : Prop :=
+  preq.context.WellFormed ∧ ∀ rpval ∈ preq.context.values, rpval.WellFormed
+
+/--
   We define WellFormed for PartialEntityData in the obvious way
 -/
 def PartialEntityData.WellFormed (edata : PartialEntityData) : Prop :=
@@ -87,7 +109,6 @@ def PartialEntityData.WellFormed (edata : PartialEntityData) : Prop :=
 /--
   PartialEntities are AllWellFormed if they are WellFormed and all the
   constituent PartialEntityData are also WellFormed
-  well-formed
 -/
 def PartialEntities.AllWellFormed (entities : PartialEntities) : Prop :=
   entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed

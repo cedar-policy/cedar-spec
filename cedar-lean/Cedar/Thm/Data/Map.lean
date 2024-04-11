@@ -69,6 +69,11 @@ theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp only [List.mem_map] ; exists (k, v)
   apply h₁
 
+theorem in_kvs_snd_in_values {kv : α × β} {m : Map α β} :
+  kv ∈ m.kvs → kv.snd ∈ m.values
+:= by
+  sorry
+
 theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] (k : α) (v : β) (m : Map α β) :
   m.WellFormed →
   ((k, v) ∈ m.kvs ↔ m.find? k = some v)
@@ -106,25 +111,6 @@ theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] (k : α) (v
       simp
       exact equal_keys_same_value k' k v m h₁ h₄ h₃
 
-/- currently unused -/
-/-
-theorem contains_iff_in_map [BEq α] (k : α) (m : Map α β) :
-  m.contains k ↔ k ∈ m
-:= by
-  simp [contains, Option.isSome_iff_exists]
-  constructor
-  case mp =>
-    simp [find?]
-    intro v h₁
-    apply in_list_in_map k v m
-    split at h₁ <;> simp at h₁
-    subst h₁
-    case h_1 k' v h₁ =>
-      have h₂ := List.mem_of_find?_eq_some h₁ ; simp at h₂
-      have h₃ := List.find?_some h₁ ; simp at h₃
-      simp [h₃] at h₂
--/
-
 theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
@@ -154,6 +140,13 @@ theorem in_values_iff_some_find? {α β} [DecidableEq α] [LT α] [DecidableLT �
     rw [← in_list_some_find? k v m wf] at h₁
     exists (k, v)
 
+theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
+  (wf₁ : m₁.WellFormed)
+  (wf₂ : m₂.WellFormed) :
+  m₁ = m₂ ↔ m₁.kvs ≡ m₂.kvs
+:= by
+  sorry
+
 /-! ### make -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
@@ -161,6 +154,11 @@ theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
 := by
   simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
 
+/-
+  Note that the converse of this is not true:
+  counterexample `xs = [(1, false), (1, true)]`.
+  Then `Map.make xs = [(1, false)]`.
+-/
 theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
 := by

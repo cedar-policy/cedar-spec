@@ -251,3 +251,36 @@ theorem PartialExpr.subexpression_refl {x : PartialExpr} :
 := by
   unfold PartialExpr.subexpressions
   cases x <;> simp
+
+/--
+  any expression is a subexpression of itself
+-/
+theorem RestrictedPartialExpr.subexpression_refl {x : RestrictedPartialExpr} :
+  x ∈ x.subexpressions
+:= by
+  unfold RestrictedPartialExpr.subexpressions
+  cases x <;> simp
+
+/--
+  `isUnknown` remains true across conversions
+-/
+theorem isUnknown_asPartialExpr {x : RestrictedPartialExpr} :
+  x.isUnknown ↔ x.asPartialExpr.isUnknown
+:= by
+  unfold RestrictedPartialExpr.asPartialExpr RestrictedPartialExpr.isUnknown PartialExpr.isUnknown
+  cases x <;> simp
+
+/--
+  `containsUnknown` remains true across conversions
+-/
+theorem containsUnknown_asPartialExpr {x : RestrictedPartialExpr} :
+  x.containsUnknown ↔ x.asPartialExpr.containsUnknown
+:= by
+  unfold RestrictedPartialExpr.asPartialExpr RestrictedPartialExpr.containsUnknown PartialExpr.containsUnknown RestrictedPartialExpr.subexpressions PartialExpr.subexpressions
+  cases x <;> simp [isUnknown_asPartialExpr, RestrictedPartialExpr.asPartialExpr]
+  all_goals sorry
+
+theorem subexpressions_asPartialExpr {x₁ x₂ : RestrictedPartialExpr} :
+  x₁ ∈ x₂.subexpressions → x₁.asPartialExpr ∈ x₂.asPartialExpr.subexpressions
+:= by
+  sorry

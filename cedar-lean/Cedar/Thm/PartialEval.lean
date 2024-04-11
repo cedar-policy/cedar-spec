@@ -51,10 +51,24 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     cases v <;> simp only [Request.asPartialRequest, Except.map]
     case context =>
       split
-      case h_1 kvs h =>
+      case h_1 kvs h₁ =>
         simp
-        -- rw [Map.mapOnValues_eq_make_map] at h
-        sorry
+        rw [Map.mapOnValues_eq_make_map] at h₁
+        rw [Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.make_wf])]
+        simp [List.Equiv, List.subset_def]
+        have h₂ := mapM_some_iff_f_some_on_all_elements.mp (Option.isSome_iff_exists.mpr (Exists.intro kvs h₁))
+        simp at h₂
+        -- h₂ says, approximately, that context after wrapping in
+        -- RestrictedPartialValue.value doesn't have any residuals.
+        -- We may not need it stated in that form.
+        constructor
+        case left =>
+          intro kv h₃
+          sorry
+        case right =>
+          intro kv h₃
+          sorry
+        all_goals sorry
       case h_2 =>
         sorry
   case and x₁ x₂ =>
@@ -114,8 +128,9 @@ theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request
   contains an unknown
 -/
 theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities}
-  (wf : entities.AllWellFormed)
-  (ih : PartialEntities.ResidualsContainUnknowns entities) :
+  (wf_e : entities.AllWellFormed)
+  (ih_e : PartialEntities.ResidualsContainUnknowns entities)
+  (ih_r : PartialRequest.ResidualsContainUnknowns request) :
   ∀ r,
   partialEvaluate expr request entities = ok (.residual r) →
   r.containsUnknown
@@ -152,42 +167,72 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
         subst h₁
         simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
     case context =>
-      sorry
+      unfold PartialRequest.ResidualsContainUnknowns at ih_r
+      split at h₁ <;> simp at h₁
+      case h_2 h₂ =>
+        subst h₁
+        simp [mapM_none_iff_f_none_on_some_element] at h₂
+        replace ⟨kv, h₂, h₃⟩ := h₂
+        split at h₃ <;> simp at h₃
+        case h_2 r h₄ =>
+          specialize ih_r kv.snd (Map.in_kvs_snd_in_values h₂)
+          unfold PartialExpr.containsUnknown PartialExpr.subexpressions
+          unfold RestrictedPartialValue.ResidualsContainUnknowns at ih_r
+          simp [h₄] at ih_r
+          simp
+          right
+          simp [RestrictedPartialExpr.containsUnknown] at ih_r
+          have ⟨subx, h₅, h₆⟩ := ih_r ; clear ih_r
+          exists subx.asPartialExpr
+          constructor
+          case right =>
+            rw [← isUnknown_asPartialExpr]
+            assumption
+          case left =>
+            rw [List.mem_join]
+            exists kv.snd.asPartialExpr.subexpressions
+            constructor
+            case left =>
+              simp [List.mem_map]
+              exists kv
+            case right =>
+              simp [h₄, RestrictedPartialValue.asPartialExpr]
+              exact subexpressions_asPartialExpr h₅
   case and x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
-    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.And.residuals_contain_unknowns ih₁ ih₂
   case or x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
-    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Or.residuals_contain_unknowns ih₁ ih₂
   case ite x₁ x₂ x₃ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
-    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
-    have ih₃ := @residuals_contain_unknowns x₃ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
+    have ih₃ := @residuals_contain_unknowns x₃ request entities wf_e ih_e ih_r
     rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     exact PartialEval.Unary.residuals_contain_unknowns ih₁
   case binaryApp op x₁ x₂ =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
-    have ih₂ := @residuals_contain_unknowns x₂ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
+    have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← PartialExpr.ResidualsContainUnknowns] at *
     exact PartialEval.Binary.residuals_contain_unknowns ih₁ ih₂
   case getAttr x₁ attr =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
-    exact PartialEval.GetAttr.residuals_contain_unknowns wf ih₁ ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
+    exact PartialEval.GetAttr.residuals_contain_unknowns wf_e ih₁ ih_e
   case hasAttr x₁ attr =>
-    have ih₁ := @residuals_contain_unknowns x₁ request entities wf ih
+    have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     exact PartialEval.HasAttr.residuals_contain_unknowns ih₁
   case set xs =>
     have ih : ∀ x ∈ xs, @PartialExpr.ResidualsContainUnknowns x request entities := by
       intro x h₁
       unfold PartialExpr.ResidualsContainUnknowns
-      apply @residuals_contain_unknowns x request entities wf ih
+      apply @residuals_contain_unknowns x request entities wf_e ih_e ih_r
     exact PartialEval.Set.residuals_contain_unknowns ih
   case record attrs =>
     sorry
@@ -195,7 +240,7 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
     have ih : ∀ arg ∈ args, @PartialExpr.ResidualsContainUnknowns arg request entities := by
       intro arg h₁
       unfold PartialExpr.ResidualsContainUnknowns
-      apply @residuals_contain_unknowns arg request entities wf ih
+      apply @residuals_contain_unknowns arg request entities wf_e ih_e ih_r
     exact PartialEval.Call.residuals_contain_unknowns ih
 
 /--
@@ -229,9 +274,7 @@ theorem subst_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : P
         sorry
   case and x₁ x₂ =>
     sorry
-  all_goals {
-    sorry
-  }
+  all_goals sorry
 
 /--
   If partial evaluation returns an error, then it returns the same error
@@ -249,9 +292,7 @@ theorem subst_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} 
     case context => split at h₂ <;> simp at h₂
   case and x₁ x₂ =>
     sorry
-  all_goals {
-    sorry
-  }
+  all_goals sorry
 
 /--
   Corollary (contrapositive) of the above:

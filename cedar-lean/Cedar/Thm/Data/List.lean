@@ -1016,4 +1016,12 @@ theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [filterMap, filterMap, h₁, filterMap_congr h₂]
 
+/--
+  and a variant for mapM₁
+-/
+theorem mapM₁_congr [Monad m] {xs : List α} {f g : {x : α // x ∈ xs} → m β} :
+  (∀ x, f x = g x) → xs.mapM₁ f = xs.mapM₁ g
+:= by
+  sorry
+
 end List

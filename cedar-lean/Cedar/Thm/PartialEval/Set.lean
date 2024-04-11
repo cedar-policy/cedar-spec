@@ -74,9 +74,33 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {xs : List Expr} {request : R
   case error.error e₁ e₂ =>
     rw [← Except.error.injEq]
     rw [← h₁]
-    rw [← h₂]
     sorry
-  sorry
+    -- rw [← h₂]
+  case ok.ok vals pvals =>
+    cases h₃ : pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none <;> simp
+    case some vals' =>
+      have : vals = vals' := by
+        -- have to use ih₁
+        sorry
+      subst vals'
+      rfl
+    case none =>
+      simp [mapM_none_iff_f_none_on_some_element] at h₃
+      replace ⟨pval, h₃, h₄⟩ := h₃
+      cases pval <;> simp at h₄
+      case residual r =>
+        -- in this case, `partialEvaluate` returned a residual, which shouldn't
+        -- be possible on concrete inputs
+        have ⟨pexpr, h₄, h₅⟩ := mem_mapM_ok h₂ h₃
+        have ⟨x, h₆, h₇⟩ := List.exists_of_mem_map h₄
+        subst h₇
+        specialize ih₁ x h₆
+        simp [ih₁, Except.map] at h₅
+        cases h₈ : evaluate x request entities <;> simp [h₈] at h₅
+  case ok.error vals e =>
+    sorry
+  case error.ok e pvals =>
+    sorry
 
 /--
   Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.set`
