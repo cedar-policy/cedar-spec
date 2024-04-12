@@ -14,8 +14,9 @@
  limitations under the License.
 -/
 
+import Cedar.Partial.Evaluator
+import Cedar.Partial.Expr
 import Cedar.Spec.Evaluator
-import Cedar.Spec.PartialEvaluator
 import Cedar.Thm.PartialEval.And
 import Cedar.Thm.PartialEval.Basic
 import Cedar.Thm.PartialEval.Binary
@@ -34,21 +35,21 @@ import Cedar.Thm.Utils
 namespace Cedar.Thm
 
 open Cedar.Data
-open Cedar.Spec
+open Cedar.Spec (Error Result)
 open Except
 
 /--
   Partial evaluation with concrete inputs gives the same output as
   concrete evaluation with those inputs
 -/
-theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Request} {entities : Entities} :
-  partialEvaluate expr request entities = (evaluate expr request entities).map PartialValue.value
+theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+  Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
 := by
-  cases expr <;> simp only [Expr.asPartialExpr]
-  case lit p => simp [partialEvaluate, evaluate, Except.map]
+  cases expr <;> simp only [Spec.Expr.asPartialExpr]
+  case lit p => simp [Partial.evaluate, Spec.evaluate, Except.map]
   case var v =>
-    unfold partialEvaluate evaluate
-    cases v <;> simp only [Request.asPartialRequest, Except.map]
+    unfold Partial.evaluate Spec.evaluate
+    cases v <;> simp only [Spec.Request.asPartialRequest, Except.map]
     case context =>
       split
       case h_1 kvs h₁ =>
@@ -59,7 +60,7 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
         have h₂ := mapM_some_iff_f_some_on_all_elements.mp (Option.isSome_iff_exists.mpr (Exists.intro kvs h₁))
         simp at h₂
         -- h₂ says, approximately, that context after wrapping in
-        -- RestrictedPartialValue.value doesn't have any residuals.
+        -- Partial.RestrictedValue.value doesn't have any residuals.
         -- We may not need it stated in that form.
         constructor
         case left =>
@@ -98,14 +99,14 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     exact PartialEval.HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case set xs =>
-    have ih : ∀ x ∈ xs, partialEvaluate x request entities = (evaluate x request entities).map PartialValue.value := by
+    have ih : ∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value := by
       intro x h₁
       apply @partial_eval_on_concrete_eqv_concrete_eval x request entities
     exact PartialEval.Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
     sorry
   case call xfn args =>
-    have ih : ∀ arg ∈ args, partialEvaluate arg request entities = (evaluate arg request entities).map PartialValue.value := by
+    have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
       intro arg h₁
       apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities
     exact PartialEval.Call.partial_eval_on_concrete_eqv_concrete_eval ih
@@ -114,8 +115,8 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Expr} {request : Requ
   Corollary to the above: partial evaluation with concrete inputs gives a
   concrete value (or an error)
 -/
-theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request} {entities : Entities} :
-  match partialEvaluate expr request entities with
+theorem partial_eval_on_concrete_gives_concrete {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+  match Partial.evaluate expr request entities with
   | .ok (.value _) => true
   | .ok (.residual _) => false
   | .error _ => true
@@ -127,47 +128,47 @@ theorem partial_eval_on_concrete_gives_concrete {expr : Expr} {request : Request
   If partial evaluation returns a residual, then that residual expression
   contains an unknown
 -/
-theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialRequest} {entities : PartialEntities}
+theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
   (wf_e : entities.AllWellFormed)
-  (ih_e : PartialEntities.ResidualsContainUnknowns entities)
-  (ih_r : PartialRequest.ResidualsContainUnknowns request) :
+  (ih_e : Partial.Entities.ResidualsContainUnknowns entities)
+  (ih_r : Partial.Request.ResidualsContainUnknowns request) :
   ∀ r,
-  partialEvaluate expr request entities = ok (.residual r) →
+  Partial.evaluate expr request entities = ok (.residual r) →
   r.containsUnknown
 := by
   cases expr
   case lit p =>
-    unfold partialEvaluate
+    unfold Partial.evaluate
     intro r h₁
     simp at h₁
   case unknown name =>
-    unfold partialEvaluate
+    unfold Partial.evaluate
     intro r h₁
     simp at h₁
     subst h₁
-    unfold PartialExpr.containsUnknown PartialExpr.subexpressions
-    simp [List.any_eq_true, PartialExpr.isUnknown]
+    unfold Partial.Expr.containsUnknown Partial.Expr.subexpressions
+    simp [List.any_eq_true, Partial.Expr.isUnknown]
   case var v =>
-    unfold partialEvaluate
+    unfold Partial.evaluate
     intro r h₁
     cases v <;> simp at h₁
     case principal =>
       cases h₂ : request.principal <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [Partial.Expr.containsUnknown, Partial.Expr.subexpressions, Partial.Expr.isUnknown]
     case action =>
       cases h₂ : request.action <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [Partial.Expr.containsUnknown, Partial.Expr.subexpressions, Partial.Expr.isUnknown]
     case resource =>
       cases h₂ : request.resource <;> simp [h₂] at h₁
       case unknown name =>
         subst h₁
-        simp [PartialExpr.containsUnknown, PartialExpr.subexpressions, PartialExpr.isUnknown]
+        simp [Partial.Expr.containsUnknown, Partial.Expr.subexpressions, Partial.Expr.isUnknown]
     case context =>
-      unfold PartialRequest.ResidualsContainUnknowns at ih_r
+      unfold Partial.Request.ResidualsContainUnknowns at ih_r
       split at h₁ <;> simp at h₁
       case h_2 h₂ =>
         subst h₁
@@ -176,17 +177,17 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
         split at h₃ <;> simp at h₃
         case h_2 r h₄ =>
           specialize ih_r kv.snd (Map.in_kvs_snd_in_values h₂)
-          unfold PartialExpr.containsUnknown PartialExpr.subexpressions
-          unfold RestrictedPartialValue.ResidualsContainUnknowns at ih_r
+          unfold Partial.Expr.containsUnknown Partial.Expr.subexpressions
+          unfold Partial.RestrictedValue.ResidualsContainUnknowns at ih_r
           simp [h₄] at ih_r
           simp
           right
-          simp [RestrictedPartialExpr.containsUnknown] at ih_r
+          simp [Partial.RestrictedExpr.containsUnknown] at ih_r
           have ⟨subx, h₅, h₆⟩ := ih_r ; clear ih_r
           exists subx.asPartialExpr
           constructor
           case right =>
-            rw [← isUnknown_asPartialExpr]
+            rw [← Partial.isUnknown_asPartialExpr]
             assumption
           case left =>
             rw [List.mem_join]
@@ -196,23 +197,23 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
               simp [List.mem_map]
               exists kv
             case right =>
-              simp [h₄, RestrictedPartialValue.asPartialExpr]
-              exact subexpressions_asPartialExpr h₅
+              simp [h₄, Partial.RestrictedValue.asPartialExpr]
+              exact Partial.subexpressions_asPartialExpr h₅
   case and x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
-    rw [← PartialExpr.ResidualsContainUnknowns] at *
+    rw [← Partial.Expr.ResidualsContainUnknowns] at *
     exact PartialEval.And.residuals_contain_unknowns ih₁ ih₂
   case or x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
-    rw [← PartialExpr.ResidualsContainUnknowns] at *
+    rw [← Partial.Expr.ResidualsContainUnknowns] at *
     exact PartialEval.Or.residuals_contain_unknowns ih₁ ih₂
   case ite x₁ x₂ x₃ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     have ih₃ := @residuals_contain_unknowns x₃ request entities wf_e ih_e ih_r
-    rw [← PartialExpr.ResidualsContainUnknowns] at *
+    rw [← Partial.Expr.ResidualsContainUnknowns] at *
     exact PartialEval.Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
@@ -220,7 +221,7 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
   case binaryApp op x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
-    rw [← PartialExpr.ResidualsContainUnknowns] at *
+    rw [← Partial.Expr.ResidualsContainUnknowns] at *
     exact PartialEval.Binary.residuals_contain_unknowns ih₁ ih₂
   case getAttr x₁ attr =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
@@ -229,17 +230,17 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     exact PartialEval.HasAttr.residuals_contain_unknowns ih₁
   case set xs =>
-    have ih : ∀ x ∈ xs, @PartialExpr.ResidualsContainUnknowns x request entities := by
+    have ih : ∀ x ∈ xs, @Partial.Expr.ResidualsContainUnknowns x request entities := by
       intro x h₁
-      unfold PartialExpr.ResidualsContainUnknowns
+      unfold Partial.Expr.ResidualsContainUnknowns
       apply @residuals_contain_unknowns x request entities wf_e ih_e ih_r
     exact PartialEval.Set.residuals_contain_unknowns ih
   case record attrs =>
     sorry
   case call xfn args =>
-    have ih : ∀ arg ∈ args, @PartialExpr.ResidualsContainUnknowns arg request entities := by
+    have ih : ∀ arg ∈ args, @Partial.Expr.ResidualsContainUnknowns arg request entities := by
       intro arg h₁
-      unfold PartialExpr.ResidualsContainUnknowns
+      unfold Partial.Expr.ResidualsContainUnknowns
       apply @residuals_contain_unknowns arg request entities wf_e ih_e ih_r
     exact PartialEval.Call.residuals_contain_unknowns ih
 
@@ -247,12 +248,12 @@ theorem residuals_contain_unknowns {expr : PartialExpr} {request : PartialReques
   If partial evaluation returns a concrete value, then it returns the same value
   after any substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {v : Value} {subsmap : Map String RestrictedPartialValue} :
-  partialEvaluate expr req entities = ok (.value v) →
+theorem subst_preserves_evaluation_to_literal {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Map String Partial.RestrictedValue} :
+  Partial.evaluate expr req entities = ok (.value v) →
   req.subst subsmap = some req' →
-  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = ok (.value v)
+  Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = ok (.value v)
 := by
-  unfold partialEvaluate PartialExpr.subst
+  unfold Partial.evaluate Partial.Expr.subst
   cases expr <;> simp <;> intro h₁ h₂
   case lit p => simp [h₁]
   case var v =>
@@ -262,10 +263,10 @@ theorem subst_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : P
       subst h₁
       split <;> simp
       case _ h₃ _ _ h₄ =>
-        -- invoke a lemma about PartialRequest.subst
+        -- invoke a lemma about Partial.Request.subst
         sorry
       case _ h₃ _ _ h₄ =>
-        -- invoke a lemma about PartialRequest.subst
+        -- invoke a lemma about Partial.Request.subst
         sorry
     case context =>
       split at h₁ <;> simp at h₁
@@ -280,12 +281,12 @@ theorem subst_preserves_evaluation_to_literal {expr : PartialExpr} {req req' : P
   If partial evaluation returns an error, then it returns the same error
   after any substitution of unknowns
 -/
-theorem subst_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {e : Error} {subsmap : Map String RestrictedPartialValue} :
+theorem subst_preserves_errors {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {e : Error} {subsmap : Map String Partial.RestrictedValue} :
   req.subst subsmap = some req' →
-  partialEvaluate expr req entities = error e →
-  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap) = error e
+  Partial.evaluate expr req entities = error e →
+  Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = error e
 := by
-  unfold partialEvaluate PartialExpr.subst
+  unfold Partial.evaluate Partial.Expr.subst
   cases expr <;> simp <;> intro h₁ h₂
   case var v =>
     cases v <;> simp at *
@@ -299,10 +300,10 @@ theorem subst_preserves_errors {expr : PartialExpr} {req req' : PartialRequest} 
   If partial evaluation returns ok after any substitution of unknowns,
   then it must return ok before that substitution
 -/
-theorem subst_preserves_errors_mt {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap : Map String RestrictedPartialValue} :
+theorem subst_preserves_errors_mt {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} :
   req.subst subsmap = some req' →
-  (partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap)).isOk →
-  (partialEvaluate expr req entities).isOk
+  (Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap)).isOk →
+  (Partial.evaluate expr req entities).isOk
 := by
   unfold Except.isOk Except.toBool
   intro h₁ h₂
@@ -316,9 +317,9 @@ theorem subst_preserves_errors_mt {expr : PartialExpr} {req req' : PartialReques
   Re-evaluation with a substitution on the residual expression, is equivalent to
   substituting first and then evaluating on the original expression.
 -/
-theorem eval_on_residuals_eqv_substituting_first {expr : PartialExpr} {req req' : PartialRequest} {entities : PartialEntities} {subsmap: Map String RestrictedPartialValue} :
+theorem eval_on_residuals_eqv_substituting_first {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap: Map String Partial.RestrictedValue} :
   req.subst subsmap = some req' →
-  (partialEvaluate expr req entities >>= λ residual => partialEvaluate (residual.subst subsmap).asPartialExpr req' (entities.subst subsmap)) =
-  partialEvaluate (expr.subst subsmap) req' (entities.subst subsmap)
+  (Partial.evaluate expr req entities >>= λ residual => Partial.evaluate (residual.subst subsmap).asPartialExpr req' (entities.subst subsmap)) =
+  Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap)
 := by
   sorry

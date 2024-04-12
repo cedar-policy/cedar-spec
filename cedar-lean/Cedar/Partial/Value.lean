@@ -14,52 +14,50 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Map
-import Cedar.Spec.Ext.IPAddr
-import Cedar.Spec.ExtFun
-import Cedar.Spec.PartialExpr
+import Cedar.Partial.Expr
 import Cedar.Spec.Value
 
 /-!
 This file defines Cedar partial values.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr BinaryOp ExtFun UnaryOp)
 
-inductive PartialValue where
-  | value (v : Value)
-  | residual (r : PartialExpr)
+inductive Value where
+  | value (v : Spec.Value)
+  | residual (r : Partial.Expr)
 
-deriving instance Repr, DecidableEq, Inhabited for PartialValue
+deriving instance Repr, DecidableEq, Inhabited for Value
 
-def PartialValue.asPartialExpr (v : PartialValue) : PartialExpr :=
+def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
   match v with
   | .value v    => v.asPartialExpr
   | .residual r => r
 
 /--
-  Like `PartialValue`, but cannot contain residual expressions which depend on
+  Like `Partial.Value`, but cannot contain residual expressions which depend on
   vars or entity data
 -/
-inductive RestrictedPartialValue where
-  | value (v : Value)
-  | residual (r : RestrictedPartialExpr)
+inductive RestrictedValue where
+  | value (v : Spec.Value)
+  | residual (r : Partial.RestrictedExpr)
 
-deriving instance Inhabited for RestrictedPartialValue
+deriving instance Inhabited for RestrictedValue
 
-def RestrictedPartialValue.asPartialExpr (v : RestrictedPartialValue) : PartialExpr :=
+def RestrictedValue.asPartialExpr (v : Partial.RestrictedValue) : Partial.Expr :=
   match v with
   | .value v    => v.asPartialExpr
   | .residual r => r.asPartialExpr
 
-def RestrictedPartialValue.asRestrictedPartialExpr (v : RestrictedPartialValue) : RestrictedPartialExpr :=
+def RestrictedValue.asPartialRestrictedExpr (v : Partial.RestrictedValue) : Partial.RestrictedExpr :=
   match v with
-  | .value v    => v.asRestrictedPartialExpr
+  | .value v    => v.asPartialRestrictedExpr
   | .residual r => r
 
-def RestrictedPartialValue.asPartialValue (v : RestrictedPartialValue) : PartialValue :=
+def RestrictedValue.asPartialValue (v : RestrictedValue) : Partial.Value :=
   match v with
   | .value v    => .value v
   | .residual r => .residual (r.asPartialExpr)
@@ -67,10 +65,10 @@ def RestrictedPartialValue.asPartialValue (v : RestrictedPartialValue) : Partial
 /--
   termination helper lemma for ite
 -/
-theorem PartialExpr.ite_termination {x₁ x₂ x₃ : PartialExpr} :
-  x₁.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length ∧
-  x₂.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length ∧
-  x₃.subexpressions.length < (PartialExpr.ite x₁ x₂ x₃).subexpressions.length
+theorem Expr.ite_termination {x₁ x₂ x₃ : Partial.Expr} :
+  x₁.subexpressions.length < (Partial.Expr.ite x₁ x₂ x₃).subexpressions.length ∧
+  x₂.subexpressions.length < (Partial.Expr.ite x₁ x₂ x₃).subexpressions.length ∧
+  x₃.subexpressions.length < (Partial.Expr.ite x₁ x₂ x₃).subexpressions.length
 := by
   repeat (any_goals (apply And.intro))
   all_goals {
@@ -82,9 +80,9 @@ theorem PartialExpr.ite_termination {x₁ x₂ x₃ : PartialExpr} :
 /--
   termination helper lemma for and
 -/
-theorem PartialExpr.and_termination {x₁ x₂ : PartialExpr} :
-  x₁.subexpressions.length < (PartialExpr.and x₁ x₂).subexpressions.length ∧
-  x₂.subexpressions.length < (PartialExpr.and x₁ x₂).subexpressions.length
+theorem Expr.and_termination {x₁ x₂ : Partial.Expr} :
+  x₁.subexpressions.length < (Partial.Expr.and x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (Partial.Expr.and x₁ x₂).subexpressions.length
 := by
   apply And.intro
   all_goals {
@@ -96,9 +94,9 @@ theorem PartialExpr.and_termination {x₁ x₂ : PartialExpr} :
 /--
   termination helper lemma for or
 -/
-theorem PartialExpr.or_termination {x₁ x₂ : PartialExpr} :
-  x₁.subexpressions.length < (PartialExpr.or x₁ x₂).subexpressions.length ∧
-  x₂.subexpressions.length < (PartialExpr.or x₁ x₂).subexpressions.length
+theorem Expr.or_termination {x₁ x₂ : Partial.Expr} :
+  x₁.subexpressions.length < (Partial.Expr.or x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (Partial.Expr.or x₁ x₂).subexpressions.length
 := by
   apply And.intro
   all_goals {
@@ -110,8 +108,8 @@ theorem PartialExpr.or_termination {x₁ x₂ : PartialExpr} :
 /--
   termination helper lemma for unaryApp
 -/
-theorem PartialExpr.unaryApp_termination {x₁ : PartialExpr} {op : UnaryOp} :
-  x₁.subexpressions.length < (PartialExpr.unaryApp op x₁).subexpressions.length
+theorem Expr.unaryApp_termination {x₁ : Partial.Expr} {op : UnaryOp} :
+  x₁.subexpressions.length < (Partial.Expr.unaryApp op x₁).subexpressions.length
 := by
   conv => rhs ; unfold subexpressions
   simp [List.length_append]
@@ -119,9 +117,9 @@ theorem PartialExpr.unaryApp_termination {x₁ : PartialExpr} {op : UnaryOp} :
 /--
   termination helper lemma for binaryApp
 -/
-theorem PartialExpr.binaryApp_termination {x₁ x₂ : PartialExpr} {op : BinaryOp} :
-  x₁.subexpressions.length < (PartialExpr.binaryApp op x₁ x₂).subexpressions.length ∧
-  x₂.subexpressions.length < (PartialExpr.binaryApp op x₁ x₂).subexpressions.length
+theorem Expr.binaryApp_termination {x₁ x₂ : Partial.Expr} {op : BinaryOp} :
+  x₁.subexpressions.length < (Partial.Expr.binaryApp op x₁ x₂).subexpressions.length ∧
+  x₂.subexpressions.length < (Partial.Expr.binaryApp op x₁ x₂).subexpressions.length
 := by
   apply And.intro
   all_goals {
@@ -133,8 +131,8 @@ theorem PartialExpr.binaryApp_termination {x₁ x₂ : PartialExpr} {op : Binary
 /--
   termination helper lemma for getAttr
 -/
-theorem PartialExpr.getAttr_termination {x₁ : PartialExpr} {attr : String} :
-  x₁.subexpressions.length < (PartialExpr.getAttr x₁ attr).subexpressions.length
+theorem Expr.getAttr_termination {x₁ : Partial.Expr} {attr : Attr} :
+  x₁.subexpressions.length < (Partial.Expr.getAttr x₁ attr).subexpressions.length
 := by
   conv => rhs ; unfold subexpressions
   simp [List.length_append]
@@ -142,8 +140,8 @@ theorem PartialExpr.getAttr_termination {x₁ : PartialExpr} {attr : String} :
 /--
   termination helper lemma for hasAttr
 -/
-theorem PartialExpr.hasAttr_termination {x₁ : PartialExpr} {attr : String} :
-  x₁.subexpressions.length < (PartialExpr.hasAttr x₁ attr).subexpressions.length
+theorem Expr.hasAttr_termination {x₁ : Partial.Expr} {attr : Attr} :
+  x₁.subexpressions.length < (Partial.Expr.hasAttr x₁ attr).subexpressions.length
 := by
   conv => rhs ; unfold subexpressions
   simp [List.length_append]
@@ -151,9 +149,9 @@ theorem PartialExpr.hasAttr_termination {x₁ : PartialExpr} {attr : String} :
 /--
   termination helper lemma for set
 -/
-theorem PartialExpr.set_termination {xs : List PartialExpr} :
-  --∀ x ∈ xs, x.subexpressions.length < (PartialExpr.set xs).subexpressions.length
-  ∀ (x : {x : PartialExpr // x ∈ xs}), x.val.subexpressions.length < (PartialExpr.set xs).subexpressions.length
+theorem Expr.set_termination {xs : List Partial.Expr} :
+  --∀ x ∈ xs, x.subexpressions.length < (Partial.Expr.set xs).subexpressions.length
+  ∀ (x : {x : Partial.Expr // x ∈ xs}), x.val.subexpressions.length < (Partial.Expr.set xs).subexpressions.length
 := by
   intro x
   replace ⟨x, h⟩ := x
@@ -164,9 +162,9 @@ theorem PartialExpr.set_termination {xs : List PartialExpr} :
 /--
   termination helper lemma for record
 -/
-theorem PartialExpr.record_termination {pairs : List (Attr × PartialExpr)} :
-  --∀ kv ∈ pairs, kv.snd.subexpressions.length < (PartialExpr.record pairs).subexpressions.length
-  ∀ (kv : {kv : Attr × PartialExpr // kv ∈ pairs}), kv.val.snd.subexpressions.length < (PartialExpr.record pairs).subexpressions.length
+theorem Expr.record_termination {pairs : List (Attr × Partial.Expr)} :
+  --∀ kv ∈ pairs, kv.snd.subexpressions.length < (Partial.Expr.record pairs).subexpressions.length
+  ∀ (kv : {kv : Attr × Partial.Expr // kv ∈ pairs}), kv.val.snd.subexpressions.length < (Partial.Expr.record pairs).subexpressions.length
 := by
   intro x
   replace ⟨x, h⟩ := x
@@ -177,9 +175,9 @@ theorem PartialExpr.record_termination {pairs : List (Attr × PartialExpr)} :
 /--
   termination helper lemma for call
 -/
-theorem PartialExpr.call_termination {xs : List PartialExpr} {xfn : ExtFun} :
-  --∀ x ∈ xs, x.subexpressions.length < (PartialExpr.call xfn xs).subexpressions.length
-  ∀ (x : {x : PartialExpr // x ∈ xs}), x.val.subexpressions.length < (PartialExpr.call xfn xs).subexpressions.length
+theorem Expr.call_termination {xs : List Partial.Expr} {xfn : ExtFun} :
+  --∀ x ∈ xs, x.subexpressions.length < (Partial.Expr.call xfn xs).subexpressions.length
+  ∀ (x : {x : Partial.Expr // x ∈ xs}), x.val.subexpressions.length < (Partial.Expr.call xfn xs).subexpressions.length
 := by
   intro x
   replace ⟨x, h⟩ := x
@@ -189,66 +187,66 @@ theorem PartialExpr.call_termination {xs : List PartialExpr} {xfn : ExtFun} :
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new PartialExpr.
+  corresponding values, producing a new Partial.Expr.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `PartialExpr` will still contain some unknowns.
+  `Partial.Expr` will still contain some unknowns.
 -/
--- NB: this function can't live in PartialExpr.lean because it needs PartialValue, and
--- PartialExpr.lean can't import PartialValue, cyclic dependency
-def PartialExpr.subst (x : PartialExpr) (subsmap : Map String RestrictedPartialValue) : PartialExpr :=
+-- NB: this function can't live in Partial/Expr.lean because it needs Partial.Value, and
+-- Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
+def Expr.subst (x : Partial.Expr) (subsmap : Map String Partial.RestrictedValue) : Partial.Expr :=
   match x with
   | .lit _ => x -- no unknowns, nothing to substitute
   | .var _ => x -- no unknowns, nothing to substitute
   | .ite x₁ x₂ x₃ =>
-    have ⟨_, _, _⟩ := @PartialExpr.ite_termination x₁ x₂ x₃
+    have ⟨_, _, _⟩ := @Expr.ite_termination x₁ x₂ x₃
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     let x₃' := x₃.subst subsmap
     .ite x₁' x₂' x₃'
   | .and x₁ x₂ =>
-    have ⟨_, _⟩ := @PartialExpr.and_termination x₁ x₂
+    have ⟨_, _⟩ := @Expr.and_termination x₁ x₂
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .and x₁' x₂'
   | .or x₁ x₂ =>
-    have ⟨_, _⟩ := @PartialExpr.or_termination x₁ x₂
+    have ⟨_, _⟩ := @Expr.or_termination x₁ x₂
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .or x₁' x₂'
   | .unaryApp op x₁ =>
-    have _ := @PartialExpr.unaryApp_termination x₁ op
+    have _ := @Expr.unaryApp_termination x₁ op
     let x₁' := x₁.subst subsmap
     .unaryApp op x₁'
   | .binaryApp op x₁ x₂ =>
-    have ⟨_, _⟩ := @PartialExpr.binaryApp_termination x₁ x₂ op
+    have ⟨_, _⟩ := @Expr.binaryApp_termination x₁ x₂ op
     let x₁' := x₁.subst subsmap
     let x₂' := x₂.subst subsmap
     .binaryApp op x₁' x₂'
   | .getAttr x₁ attr =>
-    have _ := @PartialExpr.getAttr_termination x₁ attr
+    have _ := @Expr.getAttr_termination x₁ attr
     let x₁' := x₁.subst subsmap
     .getAttr x₁' attr
   | .hasAttr x₁ attr =>
-    have _ := @PartialExpr.hasAttr_termination x₁ attr
+    have _ := @Expr.hasAttr_termination x₁ attr
     let x₁' := x₁.subst subsmap
     .hasAttr x₁' attr
   | .set xs =>
-    have h₁ := @PartialExpr.set_termination xs
+    have h₁ := @Expr.set_termination xs
     let xs' := xs.map₁ λ x =>
       have _ := h₁ x
-      PartialExpr.subst x subsmap
+      Partial.Expr.subst x subsmap
     .set xs'
   | .record pairs =>
-    have h₁ := @PartialExpr.record_termination pairs
+    have h₁ := @Expr.record_termination pairs
     let pairs' := pairs.map₁ λ kv =>
       have _ := h₁ kv
       (kv.val.fst, kv.val.snd.subst subsmap)
     .record pairs'
   | .call xfn xs =>
-    have h₁ := @PartialExpr.call_termination xs xfn
+    have h₁ := @Expr.call_termination xs xfn
     let xs' := xs.map₁ λ x =>
       have _ := h₁ x
-      PartialExpr.subst x subsmap
+      Partial.Expr.subst x subsmap
     .call xfn xs'
   | unknown name => match subsmap.find? name with
     | some val => val.asPartialExpr
@@ -261,62 +259,62 @@ termination_by x.subexpressions.length
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
--- NB: this function can't live in PartialExpr.lean because it needs PartialValue, and
--- PartialExpr.lean can't import PartialValue, cyclic dependency
-def PartialExpr.fullSubst (x : PartialExpr) (subsmap : Map String Value) : Option Expr :=
+-- NB: this function can't live in Partial/Expr.lean because it needs Partial.Value, and
+-- Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
+def Expr.fullSubst (x : Partial.Expr) (subsmap : Map String Spec.Value) : Option Spec.Expr :=
   match x with
   | .lit p => some (.lit p)
   | .var v => some (.var v)
   | .ite x₁ x₂ x₃ => do
-    have ⟨_, _, _⟩ := @PartialExpr.ite_termination x₁ x₂ x₃
+    have ⟨_, _, _⟩ := @Expr.ite_termination x₁ x₂ x₃
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     let x₃' ← x₃.fullSubst subsmap
     some (.ite x₁' x₂' x₃')
   | .and x₁ x₂ => do
-    have ⟨_, _⟩ := @PartialExpr.and_termination x₁ x₂
+    have ⟨_, _⟩ := @Expr.and_termination x₁ x₂
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.and x₁' x₂')
   | .or x₁ x₂ => do
-    have ⟨_, _⟩ := @PartialExpr.or_termination x₁ x₂
+    have ⟨_, _⟩ := @Expr.or_termination x₁ x₂
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.or x₁' x₂')
   | .unaryApp op x₁ => do
-    have _ := @PartialExpr.unaryApp_termination x₁ op
+    have _ := @Expr.unaryApp_termination x₁ op
     let x₁' ← x₁.fullSubst subsmap
     some (.unaryApp op x₁')
   | .binaryApp op x₁ x₂ => do
-    have ⟨_, _⟩ := @PartialExpr.binaryApp_termination x₁ x₂ op
+    have ⟨_, _⟩ := @Expr.binaryApp_termination x₁ x₂ op
     let x₁' ← x₁.fullSubst subsmap
     let x₂' ← x₂.fullSubst subsmap
     some (.binaryApp op x₁' x₂')
   | .getAttr x₁ attr => do
-    have _ := @PartialExpr.getAttr_termination x₁ attr
+    have _ := @Expr.getAttr_termination x₁ attr
     let x₁' ← x₁.fullSubst subsmap
     some (.getAttr x₁' attr)
   | .hasAttr x₁ attr => do
-    have _ := @PartialExpr.hasAttr_termination x₁ attr
+    have _ := @Expr.hasAttr_termination x₁ attr
     let x₁' ← x₁.fullSubst subsmap
     some (.hasAttr x₁' attr)
   | .set xs => do
-    have h₁ := @PartialExpr.set_termination xs
+    have h₁ := @Expr.set_termination xs
     let xs' ← xs.mapM₁ λ x =>
       have _ := h₁ x
-      PartialExpr.fullSubst x subsmap
+      Partial.Expr.fullSubst x subsmap
     some (.set xs')
   | .record pairs => do
-    have h₁ := @PartialExpr.record_termination pairs
+    have h₁ := @Expr.record_termination pairs
     let pairs' ← pairs.mapM₁ λ kv =>
       have _ := h₁ kv
       kv.val.snd.fullSubst subsmap >>= λ v' => some (kv.val.fst, v')
     some (.record pairs')
   | .call xfn xs => do
-    have h₁ := @PartialExpr.call_termination xs xfn
+    have h₁ := @Expr.call_termination xs xfn
     let xs' ← xs.mapM₁ λ x =>
       have _ := h₁ x
-      PartialExpr.fullSubst x subsmap
+      Partial.Expr.fullSubst x subsmap
     some (.call xfn xs')
   | unknown name => match subsmap.find? name with
     | some val => val.asExpr
@@ -325,20 +323,20 @@ termination_by x.subexpressions.length
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new RestrictedPartialExpr.
+  corresponding values, producing a new Partial.RestrictedExpr.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `RestrictedPartialExpr` will still contain some unknowns.
+  `Partial.RestrictedExpr` will still contain some unknowns.
 -/
--- NB: this function can't live in PartialExpr.lean because it needs RestrictedPartialValue,
--- and PartialExpr.lean can't import RestrictedPartialValue, cyclic dependency
-def RestrictedPartialExpr.subst (x : RestrictedPartialExpr) (subsmap : Map String RestrictedPartialValue) : RestrictedPartialExpr :=
+-- NB: this function can't live in Partial/Expr.lean because it needs Partial.RestrictedValue,
+-- and Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
+def RestrictedExpr.subst (x : Partial.RestrictedExpr) (subsmap : Map String Partial.RestrictedValue) : Partial.RestrictedExpr :=
   match x with
   | .lit p => .lit p
-  | .set xs => .set (xs.map (RestrictedPartialExpr.subst · subsmap))
+  | .set xs => .set (xs.map (Partial.RestrictedExpr.subst · subsmap))
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.subst subsmap))
   | .call xfn args => .call xfn args
   | .unknown name => match subsmap.find? name with
-    | some val => val.asRestrictedPartialExpr
+    | some val => val.asPartialRestrictedExpr
     | none => x -- no substitution available, return `x` unchanged
 decreasing_by all_goals sorry
 
@@ -346,24 +344,24 @@ mutual
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values and fully evaluate, producing a Value.
+  corresponding values and fully evaluate, producing a Spec.Value.
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 
   Also returns `none` if an extension constructor fails to evaluate.
 -/
--- NB: this function can't live in PartialExpr.lean because it needs RestrictedPartialValue,
--- and PartialExpr.lean can't import RestrictedPartialValue, cyclic dependency
-def RestrictedPartialExpr.fullSubst (x : RestrictedPartialExpr) (subsmap : Map String Value) : Option Value :=
+-- NB: this function can't live in Partial/Expr.lean because it needs Partial.RestrictedValue,
+-- and Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
+def RestrictedExpr.fullSubst (x : Partial.RestrictedExpr) (subsmap : Map String Spec.Value) : Option Spec.Value :=
   match x with
   | .lit p => some (.prim p)
   | .set xs => do
-      let xs' ← xs.mapM (RestrictedPartialExpr.fullSubst · subsmap)
+      let xs' ← xs.mapM (Partial.RestrictedExpr.fullSubst · subsmap)
       some (.set (Set.make xs'))
   | .record attrs => do
       let attrs' ← attrs.mapM λ (k, v) => v.fullSubst subsmap >>= λ v' => some (k, v')
       some (.record (Map.make attrs'))
-  | .call xfn args => match ExtFun.call xfn args with
+  | .call xfn args => match Spec.call xfn args with
     | .ok v => some v
     | .error _ => none
   | .unknown name => subsmap.find? name -- if no substitution is available, returns `none`
@@ -371,16 +369,16 @@ decreasing_by all_goals sorry
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new PartialValue.
+  corresponding values, producing a new Partial.Value.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `PartialValue` will still contain some unknowns.
 -/
-def PartialValue.subst (v : PartialValue) (subsmap : Map String RestrictedPartialValue) : PartialValue :=
+def Value.subst (v : Partial.Value) (subsmap : Map String Partial.RestrictedValue) : Partial.Value :=
   match v with
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
 
-/- Hard to define PartialValue.fullSubst, because it could be an arbitrary residual depending on variables / entity data etc.
+/- Hard to define Partial.Value.fullSubst, because it could be an arbitrary residual depending on variables / entity data etc.
   Probably should return Option Expr if we need this. But hopefully we can do without this.
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -388,7 +386,7 @@ def PartialValue.subst (v : PartialValue) (subsmap : Map String RestrictedPartia
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def PartialValue.fullSubst (v : PartialValue) (subsmap : Map String Value) : Option Value :=
+def Partial.Value.fullSubst (v : Partial.Value) (subsmap : Map String Spec.Value) : Option Spec.Value :=
   match v with
   | .residual r => r.fullSubst subsmap
   | .value v    => some v
@@ -396,11 +394,11 @@ def PartialValue.fullSubst (v : PartialValue) (subsmap : Map String Value) : Opt
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new RestrictedPartialValue.
+  corresponding values, producing a new Partial.RestrictedValue.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `RestrictedPartialValue` will still contain some unknowns.
+  `Partial.RestrictedValue` will still contain some unknowns.
 -/
-def RestrictedPartialValue.subst (v : RestrictedPartialValue) (subsmap : Map String RestrictedPartialValue) : RestrictedPartialValue :=
+def RestrictedValue.subst (v : Partial.RestrictedValue) (subsmap : Map String Partial.RestrictedValue) : Partial.RestrictedValue :=
   match v with
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
@@ -411,7 +409,7 @@ def RestrictedPartialValue.subst (v : RestrictedPartialValue) (subsmap : Map Str
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def RestrictedPartialValue.fullSubst (v : RestrictedPartialValue) (subsmap : Map String Value) : Option Value :=
+def RestrictedValue.fullSubst (v : Partial.RestrictedValue) (subsmap : Map String Spec.Value) : Option Spec.Value :=
   match v with
   | .residual r => r.fullSubst subsmap
   | .value v    => some v -- doesn't contain unknowns, nothing to substitute
@@ -419,13 +417,30 @@ def RestrictedPartialValue.fullSubst (v : RestrictedPartialValue) (subsmap : Map
 end
 
 /--
-  If converting a Value to PartialExpr gives a primitive, the Value was that
+  subst on a Spec.Expr is id
+-/
+theorem subs_expr_id {expr : Spec.Expr} {subsmap : Map String Partial.RestrictedValue} :
+  expr.asPartialExpr.subst subsmap = expr.asPartialExpr
+:= by
+  unfold Partial.Expr.subst
+  cases expr <;> simp [Spec.Expr.asPartialExpr]
+  case and x₁ x₂ =>
+    -- inductive argument needed
+    sorry
+  all_goals sorry
+
+end Cedar.Partial
+
+namespace Cedar.Spec
+
+/--
+  If converting a Spec.Value to Partial.Expr gives a primitive, the Value was that
   primitive
 -/
-theorem Value.prim_prim {v : Value} {p : Prim} :
+theorem Value.prim_prim {v : Spec.Value} {p : Prim} :
   v.asPartialExpr = .lit p ↔ v = .prim p
 := by
-  unfold Value.asPartialExpr
+  unfold Spec.Value.asPartialExpr
   constructor
   case mp =>
     intro h₁
@@ -433,18 +448,5 @@ theorem Value.prim_prim {v : Value} {p : Prim} :
     case prim => trivial
     case ext x => cases x <;> simp at h₁
   case mpr => intro h₁ ; simp [h₁]
-
-/--
-  subst on an Expr is id
--/
-theorem subs_expr_id {expr : Expr} {subsmap : Map String RestrictedPartialValue} :
-  expr.asPartialExpr.subst subsmap = expr.asPartialExpr
-:= by
-  unfold PartialExpr.subst
-  cases expr <;> simp [Expr.asPartialExpr]
-  case and x₁ x₂ =>
-    -- inductive argument needed
-    sorry
-  all_goals sorry
 
 end Cedar.Spec

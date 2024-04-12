@@ -246,10 +246,32 @@ def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
 
-def unParse (ip : IPNet) : String :=
-  "todo"
+-- as of this writing, only handles nats up to 0xffff
+def toHex (n : Nat) : String :=
+  let a0 := hexDigitRepr ((n % 0x10000) / 0x1000)
+  let a1 := hexDigitRepr ((n % 0x1000) / 0x100)
+  let a2 := hexDigitRepr ((n % 0x100) / 0x10)
+  let a3 := hexDigitRepr ((n % 0x10) / 0x1)
+  s!"{a0}{a1}{a2}{a3}"
 
-#check unParse
+def unParse (ip : IPNet) : String :=
+  match ip with
+  | .V4 v p =>
+    let a0 := (v >>> 24) &&& 0xFF
+    let a1 := (v >>> 16) &&& 0xFF
+    let a2 := (v >>> 8) &&& 0xFF
+    let a3 := v &&& 0xFF
+    s!"{a0}.{a1}.{a2}.{a3}/{p}"
+  | .V6 v p =>
+    let a0 := toHex ((v >>> 112) &&& 0xFFFF)
+    let a1 := toHex ((v >>> 96) &&& 0xFFFF)
+    let a2 := toHex ((v >>> 80) &&& 0xFFFF)
+    let a3 := toHex ((v >>> 64) &&& 0xFFFF)
+    let a4 := toHex ((v >>> 48) &&& 0xFFFF)
+    let a5 := toHex ((v >>> 32) &&& 0xFFFF)
+    let a6 := toHex ((v >>> 16) &&& 0xFFFF)
+    let a7 := toHex (v &&& 0xFFFF)
+    s!"{a0}:{a1}:{a2}:{a3}:{a4}:{a5}:{a6}:{a7}/{p}"
 
 def ip (str : String) : Option IPNet := parse str
 
@@ -268,6 +290,15 @@ instance : LT IPNet where
 
 instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
 if h : IPNet.lt d₁ d₂ then isTrue h else isFalse h
+
+theorem test1 : unParse ((parse "192.168.0.1/32").get!) = "192.168.0.1/32" := by decide
+theorem test2 : unParse ((parse "0.0.0.0/1").get!) = "0.0.0.0/1" := by decide
+theorem test3 : unParse ((parse "8.8.8.8/24").get!) = "8.8.8.8/24" := by decide
+theorem test4 : unParse ((parse "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by decide
+theorem test5 : unParse ((parse "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by decide
+theorem test6 : unParse ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by decide
+theorem test7 : unParse ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by decide
+theorem test8 : unParse ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by decide
 
 end IPAddr
 

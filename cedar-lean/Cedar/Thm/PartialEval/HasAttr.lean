@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialEvaluator
+import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
@@ -24,27 +24,27 @@ import Cedar.Thm.PartialEval.Basic
 namespace Cedar.Thm.PartialEval.HasAttr
 
 open Cedar.Data
-open Cedar.Spec
+open Cedar.Spec (Attr Error Result)
 open Except
 
 /--
   helper lemma: any subexpression of x₁ is a subexpression of (x₁ has attr)
 -/
-theorem lhs_subexpression {x₁ x : PartialExpr} {attr : String} :
-  x ∈ x₁.subexpressions → x ∈ (PartialExpr.hasAttr x₁ attr).subexpressions
+theorem lhs_subexpression {x₁ x : Partial.Expr} {attr : Attr} :
+  x ∈ x₁.subexpressions → x ∈ (Partial.Expr.hasAttr x₁ attr).subexpressions
 := by
   intro h₁
-  unfold PartialExpr.subexpressions
+  unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right ; assumption
 
 /--
-  helper lemma: if LHS of a `PartialExpr.hasAttr` contains an unknown, the whole expression does
+  helper lemma: if LHS of a `Partial.Expr.hasAttr` contains an unknown, the whole expression does
 -/
-theorem lhs_unknown {x₁ : PartialExpr} {attr : String} :
-  x₁.containsUnknown → (PartialExpr.hasAttr x₁ attr).containsUnknown
+theorem lhs_unknown {x₁ : Partial.Expr} {attr : Attr} :
+  x₁.containsUnknown → (Partial.Expr.hasAttr x₁ attr).containsUnknown
 := by
-  unfold PartialExpr.containsUnknown
+  unfold Partial.Expr.containsUnknown
   repeat rw [List.any_eq_true]
   intro h₁
   replace ⟨subx, h₁⟩ := h₁
@@ -54,33 +54,33 @@ theorem lhs_unknown {x₁ : PartialExpr} {attr : String} :
   case right => exact h₁.right
 
 /--
-  `partialAttrsOf` on concrete arguments is the same as `attrsOf` on those
+  `Partial.attrsOf` on concrete arguments is the same as `attrsOf` on those
   arguments
 
-  Note that the "concrete arguments" provided to `partialAttrsOf` and `attrsOf`
+  Note that the "concrete arguments" provided to `Partial.attrsOf` and `attrsOf`
   in this theorem are different from the "concrete arguments" provided in the
   theorem of the same name in PartialEval/GetAttr.lean
 -/
-theorem partialAttrsOf_on_concrete_eqv_attrsOf {v : Value} {entities : Entities} :
-  partialAttrsOf v (λ uid => ok (entities.asPartialEntities.attrsOrEmpty uid)) =
-  (attrsOf v (λ uid => ok (entities.attrsOrEmpty uid))).map λ m => m.mapOnValues RestrictedPartialValue.value
+theorem Partial.attrsOf_on_concrete_eqv_attrsOf {v : Spec.Value} {entities : Spec.Entities} :
+  Partial.attrsOf v (λ uid => ok (entities.asPartialEntities.attrsOrEmpty uid)) =
+  (Spec.attrsOf v (λ uid => ok (entities.attrsOrEmpty uid))).map λ m => m.mapOnValues Partial.RestrictedValue.value
 := by
-  unfold partialAttrsOf attrsOf Except.map
+  unfold Partial.attrsOf Spec.attrsOf Except.map
   cases v <;> simp
   case prim p =>
     cases p <;> simp
     case entityUID uid =>
-      unfold PartialEntities.attrsOrEmpty Entities.attrsOrEmpty Entities.asPartialEntities
-      cases h₁ : (entities.mapOnValues EntityData.asPartialEntityData).find? uid <;> simp
+      unfold Partial.Entities.attrsOrEmpty Spec.Entities.attrsOrEmpty Spec.Entities.asPartialEntities
+      cases h₁ : (entities.mapOnValues Spec.EntityData.asPartialEntityData).find? uid <;> simp
       <;> cases h₂ : entities.find? uid <;> simp
-      <;> unfold EntityData.asPartialEntityData at h₁
+      <;> unfold Spec.EntityData.asPartialEntityData at h₁
       case none.none => simp [Map.mapOnValues_empty]
       case none.some edata =>
-        exfalso -- it should not be the case that partialAttrsOf returns none and attrsOf returns some
+        exfalso -- it should not be the case that Partial.attrsOf returns none and attrsOf returns some
         simp [← Map.find?_mapOnValues] at h₁
         simp [h₁] at h₂
       case some.none edata =>
-        exfalso -- it should not be the case that partialAttrsOf returns some and attrsOf returns none
+        exfalso -- it should not be the case that Partial.attrsOf returns some and attrsOf returns none
         simp [← Map.find?_mapOnValues] at h₁
         replace ⟨edata, h₁⟩ := h₁
         simp [h₂] at h₁
@@ -93,37 +93,37 @@ theorem partialAttrsOf_on_concrete_eqv_attrsOf {v : Value} {entities : Entities}
         simp [Map.mapOnValues]
 
 /--
-  `partialHasAttr` on concrete arguments is the same as `hasAttr` on those
+  `Partial.hasAttr` on concrete arguments is the same as `hasAttr` on those
   arguments
 -/
-theorem partialHasAttr_on_concrete_eqv_hasAttr {v₁ : Value} {entities : Entities} {attr : String} :
-  partialHasAttr v₁ attr entities = hasAttr v₁ attr entities
+theorem Partial.hasAttr_on_concrete_eqv_hasAttr {v₁ : Spec.Value} {entities : Spec.Entities} {attr : Attr} :
+  Partial.hasAttr v₁ attr entities = Spec.hasAttr v₁ attr entities
 := by
-  unfold partialHasAttr hasAttr
-  simp [partialAttrsOf_on_concrete_eqv_attrsOf, Except.map]
-  cases h₁ : attrsOf v₁ λ uid => ok (entities.attrsOrEmpty uid) <;> simp
+  unfold Partial.hasAttr Spec.hasAttr
+  simp [Partial.attrsOf_on_concrete_eqv_attrsOf, Except.map]
+  cases h₁ : Spec.attrsOf v₁ λ uid => ok (entities.attrsOrEmpty uid) <;> simp
   case ok m => simp [← Map.mapOnValues_contains]
 
 /--
   helper lemma:
 
-  If `ResidualsContainUnknowns` is true for an `Entities`, and `partialAttrsOf`
+  If `ResidualsContainUnknowns` is true for an `Entities`, and `Partial.attrsOf`
   returns `ok`, then `ResidualsContainUnknowns` is also true for all the
-  attributes returned by `partialAttrsOf`
+  attributes returned by `Partial.attrsOf`
 -/
-theorem partialAttrsOf_ResidualsContainUnknowns {entities : PartialEntities} {v : Value} :
+theorem Partial.attrsOf_ResidualsContainUnknowns {entities : Partial.Entities} {v : Spec.Value} :
   entities.WellFormed →
-  PartialEntities.ResidualsContainUnknowns entities →
-  partialAttrsOf v entities.attrs = .ok attrs →
-  ∀ rpval ∈ attrs.values, RestrictedPartialValue.ResidualsContainUnknowns rpval
+  Partial.Entities.ResidualsContainUnknowns entities →
+  Partial.attrsOf v entities.attrs = .ok attrs →
+  ∀ rpval ∈ attrs.values, Partial.RestrictedValue.ResidualsContainUnknowns rpval
 := by
-  unfold PartialEntities.ResidualsContainUnknowns partialAttrsOf
+  unfold Partial.Entities.ResidualsContainUnknowns Partial.attrsOf
   intro wf h₁ h₂ rpval h₃
   split at h₂
   case h_1 attrs' =>
     simp at h₂
     subst h₂
-    unfold RestrictedPartialValue.ResidualsContainUnknowns
+    unfold Partial.RestrictedValue.ResidualsContainUnknowns
     split <;> try simp
     case h_1 r =>
       exfalso
@@ -136,52 +136,52 @@ theorem partialAttrsOf_ResidualsContainUnknowns {entities : PartialEntities} {v 
         unfold List.map at h₃
         simp [List.mem_cons] at h₃
   case h_2 uid =>
-    unfold PartialEntities.attrs at h₂
+    unfold Partial.Entities.attrs at h₂
     cases h₄ : entities.findOrErr uid Error.entityDoesNotExist <;> simp [h₄] at h₂
     case ok edata =>
       subst h₂
       specialize h₁ edata
-      unfold PartialEntityData.ResidualsContainUnknowns at h₁
+      unfold Partial.EntityData.ResidualsContainUnknowns at h₁
       have h₅ := (Map.in_values_iff_findOrErr_ok (m := entities) (v := edata) (e := Error.entityDoesNotExist) wf).mpr
       specialize h₅ (by exists uid)
       exact h₁ h₅ rpval h₃
   case h_3 => simp at h₂
 
 /--
-  Inductive argument that partial evaluating a concrete `PartialExpr.hasAttr`
+  Inductive argument that partial evaluating a concrete `Partial.Expr.hasAttr`
   expression gives the same output as concrete-evaluating the `Expr.hasAttr` with
   the same subexpressions
 -/
-theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Request} {entities : Entities} {attr : String} :
-  partialEvaluate x₁ request entities = (evaluate x₁ request entities).map PartialValue.value →
-  partialEvaluate (PartialExpr.hasAttr x₁ attr) request entities = (evaluate (Expr.hasAttr x₁ attr) request entities).map PartialValue.value
+theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {attr : Attr} :
+  Partial.evaluate x₁ request entities = (Spec.evaluate x₁ request entities).map Partial.Value.value →
+  Partial.evaluate (Partial.Expr.hasAttr x₁ attr) request entities = (Spec.evaluate (Spec.Expr.hasAttr x₁ attr) request entities).map Partial.Value.value
 := by
   intro ih₁
-  unfold partialEvaluate evaluate
+  unfold Partial.evaluate Spec.evaluate
   simp [ih₁]
   simp [Except.map, pure, Except.pure, Result.as, Coe.coe, Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
   split <;> simp
   case h_1 e h₁ => simp [h₁]
   case h_2 v₁ h₁ =>
-    simp [h₁, partialHasAttr_on_concrete_eqv_hasAttr, Except.map]
-    cases h₂ : hasAttr v₁ attr entities <;> simp [h₂, RestrictedPartialValue.asPartialValue]
+    simp [h₁, Partial.hasAttr_on_concrete_eqv_hasAttr, Except.map]
+    cases h₂ : Spec.hasAttr v₁ attr entities <;> simp [h₂, Partial.RestrictedValue.asPartialValue]
 
 /--
-  Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.getAttr`
+  Inductive argument for `ResidualsContainUnknowns` for `Partial.Expr.getAttr`
 -/
-theorem residuals_contain_unknowns {x₁ : PartialExpr} {request : PartialRequest} {entities : PartialEntities} {attr : String} :
-  @PartialExpr.ResidualsContainUnknowns x₁ request entities →
-  @PartialExpr.ResidualsContainUnknowns (PartialExpr.hasAttr x₁ attr) request entities
+theorem residuals_contain_unknowns {x₁ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} {attr : Attr} :
+  @Partial.Expr.ResidualsContainUnknowns x₁ request entities →
+  @Partial.Expr.ResidualsContainUnknowns (Partial.Expr.hasAttr x₁ attr) request entities
 := by
-  unfold PartialExpr.ResidualsContainUnknowns
+  unfold Partial.Expr.ResidualsContainUnknowns
   intro ih₁ r h₁
-  unfold partialEvaluate at h₁
-  cases h₂ : (partialEvaluate x₁ request entities) <;> simp [h₂] at h₁
+  unfold Partial.evaluate at h₁
+  cases h₂ : (Partial.evaluate x₁ request entities) <;> simp [h₂] at h₁
   case ok pval₁ =>
     cases pval₁ <;> simp at h₁
     case value v₁ =>
       exfalso
-      cases h₃ : partialHasAttr v₁ attr entities <;> simp [h₃] at h₁
+      cases h₃ : Partial.hasAttr v₁ attr entities <;> simp [h₃] at h₁
     case residual r₁ =>
       subst h₁
       apply lhs_unknown

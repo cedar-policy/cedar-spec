@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
+import Cedar.Partial.Expr
+import Cedar.Partial.Value
 import Cedar.Spec.Expr
-import Cedar.Spec.PartialExpr
-import Cedar.Spec.PartialValue
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 
@@ -24,39 +24,51 @@ import Cedar.Spec.Value
 This file defines Cedar partial requests.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr EntityUID)
 
 inductive UidOrUnknown where
   | known (uid : EntityUID)
-  | unknown (name : String)
+  | unknown (u : Unknown)
 
 deriving instance Repr, DecidableEq, Inhabited for UidOrUnknown
 
-instance : Coe UidOrUnknown PartialValue where
+instance : Coe UidOrUnknown Partial.Value where
   coe x := match x with
-  | .known uid    => .value uid
-  | .unknown name => .residual (PartialExpr.unknown name)
+  | .known uid => .value uid
+  | .unknown u => .residual (Partial.Expr.unknown u)
 
-structure PartialRequest where
+structure Request where
   principal : UidOrUnknown
   action : UidOrUnknown
   resource : UidOrUnknown
-  context : Map Attr RestrictedPartialValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
+  context : Map Attr Partial.RestrictedValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
 
-deriving instance Inhabited for PartialRequest
+deriving instance Inhabited for Request
 
-def Request.asPartialRequest (req : Request) : PartialRequest :=
+end Cedar.Partial
+
+namespace Cedar.Spec
+
+def Request.asPartialRequest (req : Spec.Request) : Partial.Request :=
   {
     principal := .known req.principal,
     action := .known req.action,
     resource := .known req.resource,
-    context := req.context.mapOnValues RestrictedPartialValue.value,
+    context := req.context.mapOnValues Partial.RestrictedValue.value,
   }
 
-instance : Coe Request PartialRequest where
-  coe := Request.asPartialRequest
+instance : Coe Spec.Request Partial.Request where
+  coe := Spec.Request.asPartialRequest
+
+end Cedar.Spec
+
+namespace Cedar.Partial
+
+open Cedar.Data
+open Cedar.Spec (EntityUID)
 
 /--
   Given a map of unknown-name to value, substitute the unknown in `UidOrUnknown`
@@ -66,7 +78,7 @@ instance : Coe Request PartialRequest where
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String RestrictedPartialValue) : Option UidOrUnknown :=
+def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String Partial.RestrictedValue) : Option UidOrUnknown :=
   match u with
   | .known uid => some (.known uid)
   | .unknown name => match subsmap.find? name with
@@ -83,7 +95,7 @@ def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String RestrictedPartia
   `subsmap`, or if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Value) : Option EntityUID :=
+def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Spec.Value) : Option EntityUID :=
   match u with
   | .known uid => some uid
   | .unknown name => match subsmap.find? name with
@@ -93,19 +105,19 @@ def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Value) : Opt
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new PartialRequest.
+  corresponding values, producing a new Partial.Request.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `PartialRequest` will still contain some unknowns.
+  `Partial.Request` will still contain some unknowns.
 
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def PartialRequest.subst (req : PartialRequest) (subsmap : Map String RestrictedPartialValue) : Option PartialRequest :=
+def Request.subst (req : Partial.Request) (subsmap : Map String Partial.RestrictedValue) : Option Partial.Request :=
   do
     let principal ← req.principal.subst subsmap
     let action ← req.action.subst subsmap
     let resource ← req.resource.subst subsmap
-    let context := req.context.mapOnValues (RestrictedPartialValue.subst · subsmap)
+    let context := req.context.mapOnValues (Partial.RestrictedValue.subst · subsmap)
     some { principal, action, resource, context }
 
 /--
@@ -113,26 +125,26 @@ def PartialRequest.subst (req : PartialRequest) (subsmap : Map String Restricted
   corresponding values, producing a Request.
   This means that `subsmap` must contain mappings for all the unknowns.
 
-  Returns `none` if there are unknowns in the `PartialRequest` that don't have
+  Returns `none` if there are unknowns in the `Partial.Request` that don't have
   mappings in `subsmap`, or if the substitution is invalid (e.g., if trying to
   substitute a non-EntityUID into `UidOrUnknown`).
 -/
-def PartialRequest.fullSubst (req : PartialRequest) (subsmap : Map String Value) : Option Request :=
+def Request.fullSubst (req : Partial.Request) (subsmap : Map String Spec.Value) : Option Spec.Request :=
   do
     let principal ← req.principal.fullSubst subsmap
     let action ← req.action.fullSubst subsmap
     let resource ← req.resource.fullSubst subsmap
-    let context ← req.context.mapMOnValues (RestrictedPartialValue.fullSubst · subsmap)
+    let context ← req.context.mapMOnValues (Partial.RestrictedValue.fullSubst · subsmap)
     some { principal, action, resource, context }
 
 /--
   fullSubst and subst are equivalent in the cases where fullSubst returns some
 -/
-def PartialRequest.fullSubst_subst {preq : PartialRequest} {subsmap : Map String Value} {req : Request} :
+def PartialRequest.fullSubst_subst {preq : Partial.Request} {subsmap : Map String Spec.Value} {req : Spec.Request} :
   preq.fullSubst subsmap = some req →
-  preq.subst (subsmap.mapOnValues RestrictedPartialValue.value) = req.asPartialRequest
+  preq.subst (subsmap.mapOnValues Partial.RestrictedValue.value) = req.asPartialRequest
 := by
   sorry
 
 
-end Cedar.Spec
+end Cedar.Partial

@@ -14,58 +14,59 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialResponse
+import Cedar.Partial.Response
 import Cedar.Thm.Data.Set
 
-namespace Cedar.Thm.PartialResponse
+namespace Cedar.Thm.Partial.Response
 
 open Cedar.Data
-open Cedar.Spec
+open Cedar.Spec (Effect PolicyID)
+open Cedar.Partial (Residual)
 
-theorem mayBeSatisfied_wf {resp : PartialResponse} {eff : Effect} :
+theorem mayBeSatisfied_wf {resp : Partial.Response} {eff : Effect} :
   (resp.mayBeSatisfied eff).WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.mayBeSatisfied Set.toList
+  unfold Set.WellFormed Partial.Response.mayBeSatisfied Set.toList
   simp only [Set.make_make_eqv]
   apply List.Equiv.symm
   exact Set.elts_make_equiv
 
-theorem mustBeSatisfied_wf {resp : PartialResponse} {eff : Effect} :
+theorem mustBeSatisfied_wf {resp : Partial.Response} {eff : Effect} :
   (resp.mustBeSatisfied eff).WellFormed
 := by
-  unfold Set.WellFormed PartialResponse.mustBeSatisfied Set.toList
+  unfold Set.WellFormed Partial.Response.mustBeSatisfied Set.toList
   simp only [Set.make_make_eqv]
   apply List.Equiv.symm
   exact Set.elts_make_equiv
 
-theorem permits_wf {resp : PartialResponse} :
+theorem permits_wf {resp : Partial.Response} :
   resp.permits.WellFormed
 := by
-  unfold PartialResponse.permits
+  unfold Partial.Response.permits
   apply mayBeSatisfied_wf (eff := .permit)
 
-theorem knownPermits_wf {resp : PartialResponse} :
+theorem knownPermits_wf {resp : Partial.Response} :
   resp.knownPermits.WellFormed
 := by
-  unfold PartialResponse.knownPermits
+  unfold Partial.Response.knownPermits
   apply mustBeSatisfied_wf (eff := .permit)
 
-theorem forbids_wf {resp : PartialResponse} :
+theorem forbids_wf {resp : Partial.Response} :
   resp.forbids.WellFormed
 := by
-  unfold PartialResponse.forbids
+  unfold Partial.Response.forbids
   apply mayBeSatisfied_wf (eff := .forbid)
 
-theorem knownForbids_wf {resp : PartialResponse} :
+theorem knownForbids_wf {resp : Partial.Response} :
   resp.knownForbids.WellFormed
 := by
-  unfold PartialResponse.knownForbids
+  unfold Partial.Response.knownForbids
   apply mustBeSatisfied_wf (eff := .forbid)
 
-theorem overapproximateDeterminingPolicies_wf {resp : PartialResponse} :
+theorem overapproximateDeterminingPolicies_wf {resp : Partial.Response} :
   resp.overapproximateDeterminingPolicies.WellFormed
 := by
-  unfold PartialResponse.overapproximateDeterminingPolicies
+  unfold Partial.Response.overapproximateDeterminingPolicies
   cases resp.knownForbids.isEmpty <;> simp
   case false => exact forbids_wf
   case true =>
@@ -76,10 +77,10 @@ theorem overapproximateDeterminingPolicies_wf {resp : PartialResponse} :
       case true => exact permits_wf
       case false => apply Set.union_wf (s₁ := resp.permits) (s₂ := resp.forbids)
 
-theorem underapproximateDeterminingPolicies_wf {resp : PartialResponse} :
+theorem underapproximateDeterminingPolicies_wf {resp : Partial.Response} :
   resp.underapproximateDeterminingPolicies.WellFormed
 := by
-  unfold PartialResponse.underapproximateDeterminingPolicies
+  unfold Partial.Response.underapproximateDeterminingPolicies
   cases resp.knownForbids.isEmpty <;> simp
   case false => exact knownForbids_wf
   case true =>
@@ -98,35 +99,35 @@ theorem Residual.mustBeSatisfied_then_mayBeSatisfied {res : Residual} {eff : Eff
   split at h₁ <;> simp at h₁
   simp [h₁]
 
-theorem mustBeSatisfied_subset_mayBeSatisfied {resp : PartialResponse} {eff : Effect} :
+theorem mustBeSatisfied_subset_mayBeSatisfied {resp : Partial.Response} {eff : Effect} :
   resp.mustBeSatisfied eff ⊆ resp.mayBeSatisfied eff
 := by
-  unfold HasSubset.Subset Set.instHasSubsetSet PartialResponse.mustBeSatisfied PartialResponse.mayBeSatisfied
+  unfold HasSubset.Subset Set.instHasSubsetSet Partial.Response.mustBeSatisfied Partial.Response.mayBeSatisfied
   simp only
   apply Set.elts_subset_then_subset
   apply List.f_implies_g_then_subset
   intro res pid
   apply Residual.mustBeSatisfied_then_mayBeSatisfied
 
-theorem in_knownPermits_in_permits {resp : PartialResponse} {id : PolicyID} :
+theorem in_knownPermits_in_permits {resp : Partial.Response} {id : PolicyID} :
   id ∈ resp.knownPermits → id ∈ resp.permits
 := by
-  unfold PartialResponse.knownPermits PartialResponse.permits
+  unfold Partial.Response.knownPermits Partial.Response.permits
   have h₁ := @mustBeSatisfied_subset_mayBeSatisfied resp .permit
   rw [Set.subset_def] at h₁
   exact h₁ id
 
-theorem empty_permits_empty_knownPermits {resp : PartialResponse} :
+theorem empty_permits_empty_knownPermits {resp : Partial.Response} :
   resp.permits.isEmpty → resp.knownPermits.isEmpty
 := by
-  unfold PartialResponse.permits PartialResponse.knownPermits
+  unfold Partial.Response.permits Partial.Response.knownPermits
   apply Set.superset_empty_subset_empty
   exact mustBeSatisfied_subset_mayBeSatisfied
 
-theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
+theorem empty_forbids_empty_knownForbids {resp : Partial.Response} :
   resp.forbids.isEmpty → resp.knownForbids.isEmpty
 := by
-  unfold PartialResponse.forbids PartialResponse.knownForbids
+  unfold Partial.Response.forbids Partial.Response.knownForbids
   apply Set.superset_empty_subset_empty
   exact mustBeSatisfied_subset_mayBeSatisfied
 
@@ -136,13 +137,13 @@ theorem empty_forbids_empty_knownForbids {resp : PartialResponse} :
     - at least one knownPermit and no possible forbids, or
     - no possible permits
 -/
-theorem decision_concrete_then_kf_or_kp {resp : PartialResponse} :
+theorem decision_concrete_then_kf_or_kp {resp : Partial.Response} :
   resp.decision ≠ .unknown →
   ¬ resp.knownForbids.isEmpty ∨
   (¬ resp.knownPermits.isEmpty ∧ resp.forbids.isEmpty) ∨
   resp.permits.isEmpty
 := by
-  unfold PartialResponse.decision
+  unfold Partial.Response.decision
   intro h₁
   cases h₂ : resp.knownForbids.isEmpty
   case false => left ; simp

@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialEvaluator
+import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.PartialEval.Basic
@@ -27,21 +27,21 @@ open Except
 /--
   helper lemma: any subexpression of x₁ is a subexpression of (x₁ || x₂)
 -/
-theorem lhs_subexpression {x₁ x₂ x : PartialExpr} :
-  x ∈ x₁.subexpressions → x ∈ (PartialExpr.or x₁ x₂).subexpressions
+theorem lhs_subexpression {x₁ x₂ x : Partial.Expr} :
+  x ∈ x₁.subexpressions → x ∈ (Partial.Expr.or x₁ x₂).subexpressions
 := by
   intro h₁
-  unfold PartialExpr.subexpressions
+  unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right ; left ; assumption
 
 /--
-  helper lemma: if LHS of a `PartialExpr.or` contains an unknown, the whole expression does
+  helper lemma: if LHS of a `Partial.Expr.or` contains an unknown, the whole expression does
 -/
-theorem lhs_unknown {x₁ x₂ : PartialExpr} :
-  x₁.containsUnknown → (PartialExpr.or x₁ x₂).containsUnknown
+theorem lhs_unknown {x₁ x₂ : Partial.Expr} :
+  x₁.containsUnknown → (Partial.Expr.or x₁ x₂).containsUnknown
 := by
-  unfold PartialExpr.containsUnknown
+  unfold Partial.Expr.containsUnknown
   repeat rw [List.any_eq_true]
   intro h₁
   replace ⟨subx, h₁⟩ := h₁
@@ -51,17 +51,17 @@ theorem lhs_unknown {x₁ x₂ : PartialExpr} :
   case right => exact h₁.right
 
 /--
-  Inductive argument that partial evaluating a concrete `PartialExpr.or`
+  Inductive argument that partial evaluating a concrete `Partial.Expr.or`
   expression gives the same output as concrete-evaluating the `Expr.or` with
   the same subexpressions
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ x₂ : Expr} {request : Request} {entities : Entities} :
-  partialEvaluate x₁ request entities = (evaluate x₁ request entities).map PartialValue.value →
-  partialEvaluate x₂ request entities = (evaluate x₂ request entities).map PartialValue.value →
-  partialEvaluate (PartialExpr.or x₁ x₂) request entities = (evaluate (Expr.or x₁ x₂) request entities).map PartialValue.value
+  Partial.evaluate x₁ request entities = (evaluate x₁ request entities).map Partial.Value.value →
+  Partial.evaluate x₂ request entities = (evaluate x₂ request entities).map Partial.Value.value →
+  Partial.evaluate (Partial.Expr.or x₁ x₂) request entities = (evaluate (Expr.or x₁ x₂) request entities).map Partial.Value.value
 := by
   intro ih₁ ih₂
-  unfold partialEvaluate evaluate
+  unfold Partial.evaluate evaluate
   simp [ih₁, ih₂]
   simp [Except.map, pure, Except.pure, Result.as, Coe.coe, Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
   split <;> simp
@@ -82,17 +82,17 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ x₂ : Expr} {request :
             case prim p => cases p <;> simp only [bind_ok, bind_err, pure, Except.pure]
 
 /--
-  Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.or`
+  Inductive argument for `ResidualsContainUnknowns` for `Partial.Expr.or`
 -/
-theorem residuals_contain_unknowns {x₁ x₂ : PartialExpr} {request : PartialRequest} {entities : PartialEntities}
-  (ih₁ : @PartialExpr.ResidualsContainUnknowns x₁ request entities)
-  (ih₂ : @PartialExpr.ResidualsContainUnknowns x₂ request entities) :
-  @PartialExpr.ResidualsContainUnknowns (PartialExpr.or x₁ x₂) request entities
+theorem residuals_contain_unknowns {x₁ x₂ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (ih₁ : @Partial.Expr.ResidualsContainUnknowns x₁ request entities)
+  (ih₂ : @Partial.Expr.ResidualsContainUnknowns x₂ request entities) :
+  @Partial.Expr.ResidualsContainUnknowns (Partial.Expr.or x₁ x₂) request entities
 := by
-  unfold PartialExpr.ResidualsContainUnknowns at *
+  unfold Partial.Expr.ResidualsContainUnknowns at *
   intro r h₁
-  unfold partialEvaluate at h₁
-  cases h₂ : (partialEvaluate x₁ request entities) <;> simp [h₂] at h₁
+  unfold Partial.evaluate at h₁
+  cases h₂ : (Partial.evaluate x₁ request entities) <;> simp [h₂] at h₁
   case ok pval₁ =>
     cases pval₁ <;> simp at h₁
     case residual r₁ =>
@@ -110,7 +110,7 @@ theorem residuals_contain_unknowns {x₁ x₂ : PartialExpr} {request : PartialR
           cases b₁ <;> simp at h₁
           case false =>
             -- partial evaluating the LHS produced ok-false
-            cases h₃ : (partialEvaluate x₂ request entities) <;> simp [h₃] at h₁
+            cases h₃ : (Partial.evaluate x₂ request entities) <;> simp [h₃] at h₁
             case ok pval₂ =>
               cases pval₂ <;> simp at h₁
               case residual r₂ =>
@@ -123,21 +123,21 @@ theorem residuals_contain_unknowns {x₁ x₂ : PartialExpr} {request : PartialR
                 case prim p₂ => cases p₂ <;> cases h₁
 
 /--
-  Partial-evaluating a `PartialExpr.or` expression produces either .ok bool, a residual,
+  Partial-evaluating a `Partial.Expr.or` expression produces either .ok bool, a residual,
   or an error
 -/
-theorem partialexpror_produces_bool_residual_or_error {e₁ e₂ : PartialExpr} {request : PartialRequest} {entities : PartialEntities} :
-  match (partialEvaluate (PartialExpr.or e₁ e₂) request entities) with
+theorem partialexpror_produces_bool_residual_or_error {e₁ e₂ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} :
+  match (Partial.evaluate (Partial.Expr.or e₁ e₂) request entities) with
   | .ok (.value (.prim (.bool _))) => true
   | .ok (.residual _) => true
   | .error _ => true
   | _ => false
 := by
-  cases h : partialEvaluate (PartialExpr.or e₁ e₂) request entities <;> simp
+  cases h : Partial.evaluate (Partial.Expr.or e₁ e₂) request entities <;> simp
   case ok val =>
-    cases val <;> simp [partialEvaluate] at h <;>
-    generalize (partialEvaluate e₁ request entities) = res₁ at h <;>
-    generalize (partialEvaluate e₂ request entities) = res₂ at h
+    cases val <;> simp [Partial.evaluate] at h <;>
+    generalize (Partial.evaluate e₁ request entities) = res₁ at h <;>
+    generalize (Partial.evaluate e₂ request entities) = res₂ at h
     case residual r => simp
     case value v =>
       simp [Value.asBool] at h
@@ -182,8 +182,8 @@ theorem partialexpror_produces_bool_residual_or_error {e₁ e₂ : PartialExpr} 
   Corollary to the above: Partial-evaluating an `Expr.or` expression
   produces either .ok bool, a residual, or an error
 -/
-theorem expror_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : PartialRequest} {entities : PartialEntities} :
-  match (partialEvaluate (Expr.or e₁ e₂) request entities) with
+theorem expror_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : Partial.Request} {entities : Partial.Entities} :
+  match (Partial.evaluate (Expr.or e₁ e₂) request entities) with
   | .ok (.value (.prim (.bool _))) => true
   | .ok (.residual _) => true
   | .error _ => true

@@ -16,6 +16,7 @@
 
 import Cedar.Spec.Entities
 import Cedar.Spec.Expr
+import Cedar.Spec.ExtFun
 import Cedar.Spec.Request
 
 /-! This file defines the semantics of Cedar operators and expressions. -/
@@ -79,10 +80,11 @@ def bindAttr (a : Attr) (res : Result Value) : Result (Attr × Value) := do
 def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with
   | .lit l           => .ok l
-  | .var .principal  => .ok req.principal
-  | .var .action     => .ok req.action
-  | .var .resource   => .ok req.resource
-  | .var .context    => .ok req.context
+  | .var v           => match v with
+    | .principal     => .ok req.principal
+    | .action        => .ok req.action
+    | .resource      => .ok req.resource
+    | .context       => .ok req.context
   | .ite x₁ x₂ x₃    => do
     let b ← (evaluate x₁ req es).as Bool
     if b then evaluate x₂ req es else evaluate x₃ req es
@@ -113,6 +115,6 @@ def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
     .ok (Map.make avs)
   | .call xfn xs     => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    ExtFun.call xfn vs
+    call xfn vs
 
 end Cedar.Spec

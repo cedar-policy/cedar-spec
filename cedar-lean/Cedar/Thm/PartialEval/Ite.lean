@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialEvaluator
+import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.PartialEval.Basic
@@ -27,21 +27,21 @@ open Except
 /--
   helper lemma: any subexpression of x₁ is a subexpression of (if x₁ then x₂ else x₃)
 -/
-theorem guard_subexpression {x₁ x₂ x₃ x : PartialExpr} :
-  x ∈ x₁.subexpressions → x ∈ (PartialExpr.ite x₁ x₂ x₃).subexpressions
+theorem guard_subexpression {x₁ x₂ x₃ x : Partial.Expr} :
+  x ∈ x₁.subexpressions → x ∈ (Partial.Expr.ite x₁ x₂ x₃).subexpressions
 := by
   intro h₁
-  unfold PartialExpr.subexpressions
+  unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right ; left ; assumption
 
 /--
-  helper lemma: if guard of a `PartialExpr.ite` contains an unknown, the whole expression does
+  helper lemma: if guard of a `Partial.Expr.ite` contains an unknown, the whole expression does
 -/
-theorem guard_unknown {x₁ x₂ x₃ : PartialExpr} :
-  x₁.containsUnknown → (PartialExpr.ite x₁ x₂ x₃).containsUnknown
+theorem guard_unknown {x₁ x₂ x₃ : Partial.Expr} :
+  x₁.containsUnknown → (Partial.Expr.ite x₁ x₂ x₃).containsUnknown
 := by
-  unfold PartialExpr.containsUnknown
+  unfold Partial.Expr.containsUnknown
   repeat rw [List.any_eq_true]
   intro h₁
   replace ⟨subx, h₁⟩ := h₁
@@ -51,18 +51,18 @@ theorem guard_unknown {x₁ x₂ x₃ : PartialExpr} :
   case right => exact h₁.right
 
 /--
-  Inductive argument that partial evaluating a concrete `PartialExpr.ite`
+  Inductive argument that partial evaluating a concrete `Partial.Expr.ite`
   expression gives the same output as concrete-evaluating the `Expr.ite` with
   the same subexpressions
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Expr} {request : Request} {entities : Entities} :
-  partialEvaluate x₁ request entities = (evaluate x₁ request entities).map PartialValue.value →
-  partialEvaluate x₂ request entities = (evaluate x₂ request entities).map PartialValue.value →
-  partialEvaluate x₃ request entities = (evaluate x₃ request entities).map PartialValue.value →
-  partialEvaluate (PartialExpr.ite x₁ x₂ x₃) request entities = (evaluate (Expr.ite x₁ x₂ x₃) request entities).map PartialValue.value
+  Partial.evaluate x₁ request entities = (evaluate x₁ request entities).map Partial.Value.value →
+  Partial.evaluate x₂ request entities = (evaluate x₂ request entities).map Partial.Value.value →
+  Partial.evaluate x₃ request entities = (evaluate x₃ request entities).map Partial.Value.value →
+  Partial.evaluate (Partial.Expr.ite x₁ x₂ x₃) request entities = (evaluate (Expr.ite x₁ x₂ x₃) request entities).map Partial.Value.value
 := by
   intro ih₁ ih₂ ih₃
-  unfold partialEvaluate evaluate
+  unfold Partial.evaluate evaluate
   simp [ih₁, ih₂, ih₃]
   simp [Except.map, pure, Except.pure, Result.as, Coe.coe, Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
   split <;> simp
@@ -76,18 +76,18 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Expr} {requ
         cases b <;> simp only [ite_true, ite_false]
 
 /--
-  Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.ite`
+  Inductive argument for `ResidualsContainUnknowns` for `Partial.Expr.ite`
 -/
-theorem residuals_contain_unknowns {x₁ x₂ x₃ : PartialExpr} {request : PartialRequest} {entities : PartialEntities} :
-  @PartialExpr.ResidualsContainUnknowns x₁ request entities →
-  @PartialExpr.ResidualsContainUnknowns x₂ request entities →
-  @PartialExpr.ResidualsContainUnknowns x₃ request entities →
-  @PartialExpr.ResidualsContainUnknowns (PartialExpr.ite x₁ x₂ x₃) request entities
+theorem residuals_contain_unknowns {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} :
+  @Partial.Expr.ResidualsContainUnknowns x₁ request entities →
+  @Partial.Expr.ResidualsContainUnknowns x₂ request entities →
+  @Partial.Expr.ResidualsContainUnknowns x₃ request entities →
+  @Partial.Expr.ResidualsContainUnknowns (Partial.Expr.ite x₁ x₂ x₃) request entities
 := by
-  unfold PartialExpr.ResidualsContainUnknowns
+  unfold Partial.Expr.ResidualsContainUnknowns
   intro ih₁ ih₂ ih₃ r h₁
-  unfold partialEvaluate at h₁
-  cases h₂ : (partialEvaluate x₁ request entities) <;> simp [h₂] at h₁
+  unfold Partial.evaluate at h₁
+  cases h₂ : (Partial.evaluate x₁ request entities) <;> simp [h₂] at h₁
   case ok pval₁ =>
     cases pval₁ <;> simp at h₁
     case residual r₁ =>
@@ -105,7 +105,7 @@ theorem residuals_contain_unknowns {x₁ x₂ x₃ : PartialExpr} {request : Par
           cases b₁ <;> simp at h₁
           case false =>
             -- partial evaluating the guard produced ok-false
-            cases h₃ : (partialEvaluate x₃ request entities) <;> simp [h₃] at h₁
+            cases h₃ : (Partial.evaluate x₃ request entities) <;> simp [h₃] at h₁
             case ok pval₂ =>
               cases pval₂ <;> simp at h₁
               case residual r₂ =>
@@ -114,7 +114,7 @@ theorem residuals_contain_unknowns {x₁ x₂ x₃ : PartialExpr} {request : Par
                 apply @ih₃ r₂ h₃
           case true =>
             -- partial evaluating the guard produced ok-true
-            cases h₃ : (partialEvaluate x₂ request entities) <;> simp [h₃] at h₁
+            cases h₃ : (Partial.evaluate x₂ request entities) <;> simp [h₃] at h₁
             case ok pval₂ =>
               cases pval₂ <;> simp at h₁
               case residual r₂ =>

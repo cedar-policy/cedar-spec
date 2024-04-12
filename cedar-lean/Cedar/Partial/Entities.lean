@@ -15,16 +15,16 @@
 -/
 
 import Cedar.Spec.Entities
-import Cedar.Spec.PartialValue
+import Cedar.Partial.Value
 
 /-!
 This file defines Cedar partial-entities structures.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
-open Except
 open Cedar.Data
+open Cedar.Spec (Attr EntityUID Result)
 
 /--
 Represents the information about one entity.
@@ -36,59 +36,74 @@ but does not allow attrs to be unknown-whether-they-exist-entirely.
 Currently, this does not allow any unknowns about ancestor information.
 All ancestor information must be fully concrete.
 -/
-structure PartialEntityData where
-  attrs : Map Attr RestrictedPartialValue
+structure EntityData where
+  attrs : Map Attr Partial.RestrictedValue
   ancestors : Set EntityUID
-
-def EntityData.asPartialEntityData (d : EntityData) : PartialEntityData :=
-  {
-    attrs := d.attrs.mapOnValues RestrictedPartialValue.value,
-    ancestors := d.ancestors,
-  }
 
 /--
 Represents the information about all entities.
 
 Currently, this does not allow it to be unknown whether an entity exists.
-Either it exists (and we have a PartialEntityData) or it does not.
+Either it exists (and we have a Partial.EntityData) or it does not.
 -/
-abbrev PartialEntities := Map EntityUID PartialEntityData
+abbrev Entities := Map EntityUID Partial.EntityData
 
-def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Result (Set EntityUID) := do
+def Entities.ancestors (es : Partial.Entities) (uid : EntityUID) : Result (Set EntityUID) := do
   let d ← es.findOrErr uid .entityDoesNotExist
-  ok d.ancestors
+  .ok d.ancestors
 
-def PartialEntities.ancestorsOrEmpty (es : PartialEntities) (uid : EntityUID) : Set EntityUID :=
+def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
   | none   => Set.empty
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Result (Map Attr RestrictedPartialValue) := do
+def Entities.attrs (es : Partial.Entities) (uid : EntityUID) : Result (Map Attr Partial.RestrictedValue) := do
   let d ← es.findOrErr uid .entityDoesNotExist
-  ok d.attrs
+  .ok d.attrs
 
-def PartialEntities.attrsOrEmpty (es : PartialEntities) (uid : EntityUID) : Map Attr RestrictedPartialValue :=
+def Entities.attrsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Map Attr Partial.RestrictedValue :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
 
-deriving instance Inhabited for PartialEntityData
+deriving instance Inhabited for EntityData
 
-def Entities.asPartialEntities (es : Entities) : PartialEntities :=
-  es.mapOnValues EntityData.asPartialEntityData
+end Cedar.Partial
 
-instance : Coe Entities PartialEntities where
-  coe := Entities.asPartialEntities
+namespace Cedar.Spec
+
+open Cedar.Data
+
+def EntityData.asPartialEntityData (d : Spec.EntityData) : Partial.EntityData :=
+  {
+    attrs := d.attrs.mapOnValues Partial.RestrictedValue.value,
+    ancestors := d.ancestors,
+  }
+
+instance : Coe Spec.EntityData Partial.EntityData where
+  coe := Spec.EntityData.asPartialEntityData
+
+def Entities.asPartialEntities (es : Spec.Entities) : Partial.Entities :=
+  es.mapOnValues Spec.EntityData.asPartialEntityData
+
+instance : Coe Spec.Entities Partial.Entities where
+  coe := Spec.Entities.asPartialEntities
+
+end Cedar.Spec
+
+namespace Cedar.Partial
+
+open Cedar.Data
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new PartialEntityData.
+  corresponding values, producing a new Partial.EntityData.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `PartialEntityData` will still contain some unknowns.
+  `Partial.EntityData` will still contain some unknowns.
 -/
-def PartialEntityData.subst (d : PartialEntityData) (subsmap : Map String RestrictedPartialValue) : PartialEntityData :=
+def EntityData.subst (d : Partial.EntityData) (subsmap : Map String Partial.RestrictedValue) : Partial.EntityData :=
   {
-    attrs := d.attrs.mapOnValues (RestrictedPartialValue.subst · subsmap),
+    attrs := d.attrs.mapOnValues (Partial.RestrictedValue.subst · subsmap),
     ancestors := d.ancestors,
   }
 
@@ -98,8 +113,8 @@ def PartialEntityData.subst (d : PartialEntityData) (subsmap : Map String Restri
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def PartialEntityData.fullSubst (d : PartialEntityData) (subsmap : Map String Value) : Option EntityData := do
-  let attrs' ← d.attrs.mapMOnValues (RestrictedPartialValue.fullSubst · subsmap)
+def EntityData.fullSubst (d : Partial.EntityData) (subsmap : Map String Spec.Value) : Option Spec.EntityData := do
+  let attrs' ← d.attrs.mapMOnValues (Partial.RestrictedValue.fullSubst · subsmap)
   some {
     attrs := attrs',
     ancestors := d.ancestors,
@@ -107,12 +122,12 @@ def PartialEntityData.fullSubst (d : PartialEntityData) (subsmap : Map String Va
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
-  corresponding values, producing a new PartialEntities.
+  corresponding values, producing a new Partial.Entities.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
-  `PartialEntities` will still contain some unknowns.
+  `Partial.Entities` will still contain some unknowns.
 -/
-def PartialEntities.subst (es : PartialEntities) (subsmap : Map String RestrictedPartialValue) : PartialEntities :=
-  es.mapOnValues (PartialEntityData.subst · subsmap)
+def Entities.subst (es : Partial.Entities) (subsmap : Map String Partial.RestrictedValue) : Partial.Entities :=
+  es.mapOnValues (Partial.EntityData.subst · subsmap)
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -121,11 +136,11 @@ def PartialEntities.subst (es : PartialEntities) (subsmap : Map String Restricte
   function will return `none`).
 -/
 -- TODO: as of this writing, entity existence is not allowed to be unknown, so
--- turning a PartialEntities into an Entities cannot add new entities into the
+-- turning a Partial.Entities into an Entities cannot add new entities into the
 -- map.
 -- If we relax that assumption and allow entity existence to be unknown, we'll
 -- have to adjust this here as well
-def PartialEntities.fullSubst (es : PartialEntities) (subsmap : Map String Value) : Option Entities :=
-  es.mapMOnValues (PartialEntityData.fullSubst · subsmap)
+def Entities.fullSubst (es : Partial.Entities) (subsmap : Map String Spec.Value) : Option Spec.Entities :=
+  es.mapMOnValues (Partial.EntityData.fullSubst · subsmap)
 
-end Cedar.Spec
+end Cedar.Partial

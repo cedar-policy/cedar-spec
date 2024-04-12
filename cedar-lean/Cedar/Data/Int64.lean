@@ -56,6 +56,8 @@ def mul? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 * i₂.1)
 
 def neg? (i₁ : Int64) : Option Int64 := mk? (- i₁.1)
 
+def natAbs (i₁ : Int64) : Nat := i₁.1.natAbs
+
 ----- Derivations -----
 instance : LT Int64 where
   lt := fun i₁ i₂ => Int64.lt i₁ i₂

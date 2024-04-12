@@ -14,31 +14,31 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialEvaluator
-import Cedar.Spec.PartialResponse
-import Cedar.Spec.PartialValue
+import Cedar.Partial.Evaluator
+import Cedar.Partial.Response
+import Cedar.Partial.Value
 
 /-! This file defines the Cedar partial authorizer. -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
-open Effect
+open Cedar.Spec (Policy Policies)
 
-def knownSatisfied (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Bool :=
-  partialEvaluate policy.toExpr req entities = .ok (.value true)
+def knownSatisfied (policy : Policy) (req : Partial.Request) (entities : Partial.Entities) : Bool :=
+  Partial.evaluate policy.toExpr req entities = .ok (.value true)
 
-def knownUnsatisfied (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Bool :=
-  partialEvaluate policy.toExpr req entities = .ok (.value false)
+def knownUnsatisfied (policy : Policy) (req : Partial.Request) (entities : Partial.Entities) : Bool :=
+  Partial.evaluate policy.toExpr req entities = .ok (.value false)
 
-def knownErroring (policy : Policy) (req : PartialRequest) (entities : PartialEntities) : Bool :=
-  match (partialEvaluate policy.toExpr req entities) with
+def knownErroring (policy : Policy) (req : Partial.Request) (entities : Partial.Entities) : Bool :=
+  match (Partial.evaluate policy.toExpr req entities) with
   | .ok _ => false
   | .error _ => true
 
-def isAuthorizedPartial (req : PartialRequest) (entities : PartialEntities) (policies : Policies) : PartialResponse :=
+def isAuthorized (req : Partial.Request) (entities : Partial.Entities) (policies : Policies) : Partial.Response :=
   {
-    residuals := policies.filterMap λ policy => match partialEvaluate policy.toExpr req entities with
+    residuals := policies.filterMap λ policy => match Partial.evaluate policy.toExpr req entities with
       | .ok (.value (.prim (.bool false))) => none
       | .ok (.value v) => some (.residual policy.id policy.effect v.asPartialExpr)
       | .ok (.residual r) => some (.residual policy.id policy.effect r)
@@ -47,4 +47,4 @@ def isAuthorizedPartial (req : PartialRequest) (entities : PartialEntities) (pol
     entities,
   }
 
-end Cedar.Spec
+end Cedar.Partial

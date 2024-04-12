@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.PartialEvaluator
+import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.PartialEval.Basic
@@ -27,11 +27,11 @@ open Except
 /--
   helper lemma: any subexpression of x₁ is a subexpression of (unaryApp op x₁)
 -/
-theorem operand_subexpression {x₁ x : PartialExpr} {op : UnaryOp} :
-  x ∈ x₁.subexpressions → x ∈ (PartialExpr.unaryApp op x₁).subexpressions
+theorem operand_subexpression {x₁ x : Partial.Expr} {op : UnaryOp} :
+  x ∈ x₁.subexpressions → x ∈ (Partial.Expr.unaryApp op x₁).subexpressions
 := by
   intro h₁
-  unfold PartialExpr.subexpressions
+  unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right ; assumption
 
@@ -39,10 +39,10 @@ theorem operand_subexpression {x₁ x : PartialExpr} {op : UnaryOp} :
   helper lemma: if the operand of a `unaryApp` contains an unknown, the whole
   expression does
 -/
-theorem operand_unknown {x₁ : PartialExpr} {op : UnaryOp} :
-  x₁.containsUnknown → (PartialExpr.unaryApp op x₁).containsUnknown
+theorem operand_unknown {x₁ : Partial.Expr} {op : UnaryOp} :
+  x₁.containsUnknown → (Partial.Expr.unaryApp op x₁).containsUnknown
 := by
-  unfold PartialExpr.containsUnknown
+  unfold Partial.Expr.containsUnknown
   repeat rw [List.any_eq_true]
   intro h₁
   replace ⟨subx, h₁⟩ := h₁
@@ -52,16 +52,16 @@ theorem operand_unknown {x₁ : PartialExpr} {op : UnaryOp} :
   case right => exact h₁.right
 
 /--
-  Inductive argument that partial evaluating a concrete `PartialExpr.unaryApp`
+  Inductive argument that partial evaluating a concrete `Partial.Expr.unaryApp`
   expression gives the same output as concrete-evaluating the `Expr.unaryApp` with
   the same subexpressions
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Request} {entities : Entities} {op : UnaryOp} :
-  partialEvaluate x₁ request entities = (evaluate x₁ request entities).map PartialValue.value →
-  partialEvaluate (PartialExpr.unaryApp op x₁) request entities = (evaluate (Expr.unaryApp op x₁) request entities).map PartialValue.value
+  Partial.evaluate x₁ request entities = (evaluate x₁ request entities).map Partial.Value.value →
+  Partial.evaluate (Partial.Expr.unaryApp op x₁) request entities = (evaluate (Expr.unaryApp op x₁) request entities).map Partial.Value.value
 := by
   intro ih₁
-  unfold partialEvaluate evaluate
+  unfold Partial.evaluate evaluate
   simp [ih₁]
   simp [Except.map, pure, Except.pure, Result.as, Coe.coe, Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
   split <;> simp
@@ -72,16 +72,16 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Requ
     case h_1 h₂ | h_2 h₂ => simp [h₂]
 
 /--
-  Inductive argument for `ResidualsContainUnknowns` for `PartialExpr.unaryApp`
+  Inductive argument for `ResidualsContainUnknowns` for `Partial.Expr.unaryApp`
 -/
-theorem residuals_contain_unknowns {x₁ : PartialExpr} {request : PartialRequest} {entities : PartialEntities} {op : UnaryOp} :
-  @PartialExpr.ResidualsContainUnknowns x₁ request entities →
-  @PartialExpr.ResidualsContainUnknowns (PartialExpr.unaryApp op x₁) request entities
+theorem residuals_contain_unknowns {x₁ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} {op : UnaryOp} :
+  @Partial.Expr.ResidualsContainUnknowns x₁ request entities →
+  @Partial.Expr.ResidualsContainUnknowns (Partial.Expr.unaryApp op x₁) request entities
 := by
-  unfold PartialExpr.ResidualsContainUnknowns
+  unfold Partial.Expr.ResidualsContainUnknowns
   intro ih₁ r h₁
-  unfold partialEvaluate at h₁
-  cases h₂ : (partialEvaluate x₁ request entities) <;> simp [h₂] at h₁
+  unfold Partial.evaluate at h₁
+  cases h₂ : (Partial.evaluate x₁ request entities) <;> simp [h₂] at h₁
   case ok pval₁ =>
     cases pval₁ <;> simp at h₁
     case residual r₁ =>
