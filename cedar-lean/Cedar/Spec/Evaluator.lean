@@ -16,6 +16,7 @@
 
 import Cedar.Spec.Entities
 import Cedar.Spec.Expr
+import Cedar.Spec.ExtFun
 import Cedar.Spec.Request
 
 /-! This file defines the semantics of Cedar operators and expressions. -/
@@ -114,6 +115,6 @@ def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
     .ok (Map.make avs)
   | .call xfn xs     => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    ExtFun.call xfn vs
+    call xfn vs
 
 end Cedar.Spec

@@ -19,6 +19,7 @@ import Cedar.Partial.Expr
 import Cedar.Partial.Request
 import Cedar.Partial.Value
 import Cedar.Spec.Evaluator
+import Cedar.Spec.ExtFun
 import Cedar.Spec.Value
 
 /-! This file defines the semantics of Cedar partial evaluation. -/
@@ -151,7 +152,7 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
     | some vs => do
-      let val ← Spec.ExtFun.call xfn vs
+      let val ← Spec.call xfn vs
       .ok (.value val)
     | none    => .ok (.residual (Partial.Expr.call xfn (vs.map Partial.Value.asPartialExpr)))
   | .unknown name   => .ok (.residual (Partial.Expr.unknown name))
