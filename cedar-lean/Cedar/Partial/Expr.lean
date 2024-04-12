@@ -16,7 +16,6 @@
 
 import Cedar.Data
 import Cedar.Spec.Expr
-import Cedar.Thm.Data.Set -- Set.sizeOf_elts, for a termination argument
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
