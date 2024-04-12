@@ -79,10 +79,11 @@ def bindAttr (a : Attr) (res : Result Value) : Result (Attr × Value) := do
 def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with
   | .lit l           => .ok l
-  | .var .principal  => .ok req.principal
-  | .var .action     => .ok req.action
-  | .var .resource   => .ok req.resource
-  | .var .context    => .ok req.context
+  | .var v           => match v with
+    | .principal     => .ok req.principal
+    | .action        => .ok req.action
+    | .resource      => .ok req.resource
+    | .context       => .ok req.context
   | .ite x₁ x₂ x₃    => do
     let b ← (evaluate x₁ req es).as Bool
     if b then evaluate x₂ req es else evaluate x₃ req es
