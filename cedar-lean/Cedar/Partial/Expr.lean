@@ -138,7 +138,7 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-def Value.asPartialExpr (v : Value) : Partial.Expr :=
+def Value.asPartialExpr (v : Spec.Value) : Partial.Expr :=
   match v with
   | .prim p => .lit p
   | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
@@ -151,7 +151,7 @@ def Value.asPartialExpr (v : Value) : Partial.Expr :=
   | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
 termination_by v.size
 
-def Value.asPartialRestrictedExpr (v : Value) : Partial.RestrictedExpr :=
+def Value.asPartialRestrictedExpr (v : Spec.Value) : Partial.RestrictedExpr :=
   match v with
   | .prim p => .lit p
   | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
