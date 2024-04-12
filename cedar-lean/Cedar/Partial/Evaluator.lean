@@ -155,4 +155,4 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
       let val ← Spec.call xfn vs
       .ok (.value val)
     | none    => .ok (.residual (Partial.Expr.call xfn (vs.map Partial.Value.asPartialExpr)))
-  | .unknown name   => .ok (.residual (Partial.Expr.unknown name))
+  | .unknown u      => .ok (.residual (Partial.Expr.unknown u))

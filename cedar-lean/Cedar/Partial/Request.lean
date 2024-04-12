@@ -30,14 +30,14 @@ open Cedar.Data
 
 inductive UidOrUnknown where
   | known (uid : Spec.EntityUID)
-  | unknown (name : String)
+  | unknown (u : Unknown)
 
 deriving instance Repr, DecidableEq, Inhabited for UidOrUnknown
 
 instance : Coe UidOrUnknown Partial.Value where
   coe x := match x with
-  | .known uid    => .value uid
-  | .unknown name => .residual (Partial.Expr.unknown name)
+  | .known uid => .value uid
+  | .unknown u => .residual (Partial.Expr.unknown u)
 
 structure Request where
   principal : UidOrUnknown

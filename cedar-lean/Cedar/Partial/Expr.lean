@@ -26,6 +26,9 @@ namespace Cedar.Partial
 
 open Cedar.Data
 
+-- Unknowns are currently represented by a string name
+abbrev Unknown := String
+
 /--
   Identical to `Spec.Expr` except that it has an `unknown` case, and the recursive
   elements are also all `Partial.Expr` instead of `Spec.Expr`
@@ -43,7 +46,7 @@ inductive Expr where
   | set (ls : List Partial.Expr)
   | record (map : List (Spec.Attr × Partial.Expr))
   | call (xfn : Spec.ExtFun) (args : List Partial.Expr)
-  | unknown (name : String)
+  | unknown (u : Unknown)
 
 deriving instance Repr, Inhabited for Expr
 
@@ -57,7 +60,7 @@ inductive RestrictedExpr where
   | set (ls : List Partial.RestrictedExpr)
   | record (map : List (Spec.Attr × Partial.RestrictedExpr))
   | call (xfn : Spec.ExtFun) (args : List Spec.Value) -- this requires that all arguments to extension functions in Partial.RestrictedExpr are concrete. TODO do we need to relax this?
-  | unknown (name : String)
+  | unknown (u : Unknown)
 
 deriving instance Repr, Inhabited for RestrictedExpr
 
@@ -218,7 +221,7 @@ def RestrictedExpr.asPartialExpr (x : Partial.RestrictedExpr) : Partial.Expr :=
   | .set xs => .set (xs.map Partial.RestrictedExpr.asPartialExpr)
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
   | .call xfn args => .call xfn (args.map Spec.Value.asPartialExpr)
-  | .unknown name => .unknown name
+  | .unknown u => .unknown u
 decreasing_by all_goals sorry
 
 end Cedar.Partial
