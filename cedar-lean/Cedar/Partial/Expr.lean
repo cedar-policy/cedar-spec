@@ -49,20 +49,6 @@ inductive Expr where
 
 deriving instance Repr, Inhabited for Expr
 
-/--
-  A version of `Partial.Expr`, but only allows "restricted expressions" -- no
-  vars, no expressions that require entity data to evaluate, no operators at all,
-  just literals, unknowns, extension values, and sets/records of those things
--/
-inductive RestrictedExpr where
-  | lit (p : Prim)
-  | set (ls : List Partial.RestrictedExpr)
-  | record (map : List (Attr × Partial.RestrictedExpr))
-  | call (xfn : ExtFun) (args : List Spec.Value) -- this requires that all arguments to extension functions in Partial.RestrictedExpr are concrete. TODO do we need to relax this?
-  | unknown (u : Unknown)
-
-deriving instance Repr, Inhabited for RestrictedExpr
-
 mutual
 
 -- We should be able to get rid of this manual deriviation eventually.
@@ -143,13 +129,6 @@ def Value.asPartialExpr : Spec.Value → Partial.Expr
   | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
 
-def Value.asPartialRestrictedExpr : Spec.Value → Partial.RestrictedExpr
-  | .prim p => .lit p
-  | .set (Set.mk elts) => .set (elts.map₁ λ ⟨v, _⟩ => v.asPartialRestrictedExpr)
-  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialRestrictedExpr))
-  | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Spec.Ext.IPAddr.unParse ip))]
-
 def Expr.asPartialExpr : Spec.Expr → Partial.Expr
   | .lit p => .lit p
   | .var v => .var v
@@ -178,14 +157,3 @@ instance : Coe Spec.Expr Partial.Expr where
   coe := Spec.Expr.asPartialExpr
 
 end Cedar.Spec
-
-namespace Cedar.Partial
-
-def RestrictedExpr.asPartialExpr : Partial.RestrictedExpr → Partial.Expr
-  | .lit p => .lit p
-  | .set xs => .set (xs.map₁ λ ⟨x, _⟩ => Partial.RestrictedExpr.asPartialExpr x)
-  | .record attrs => .record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
-  | .call xfn args => .call xfn (args.map₁ λ ⟨x, _⟩ => Spec.Value.asPartialExpr x)
-  | .unknown u => .unknown u
-
-end Cedar.Partial

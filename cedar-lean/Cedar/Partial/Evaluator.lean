@@ -52,9 +52,9 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities)
   | .mem, .prim (.entityUID uid₁), .set (vs)               => Partial.inₛ uid₁ vs es >>= λ x => .ok (.value x)
   | _, _, _                                                => .error .typeError
 
-def attrsOf (v : Spec.Value) (lookup : EntityUID → Result (Map Attr Partial.RestrictedValue)) : Result (Map Attr Partial.RestrictedValue) :=
+def attrsOf (v : Spec.Value) (lookup : EntityUID → Result (Map Attr Partial.Value)) : Result (Map Attr Partial.Value) :=
   match v with
-  | .record r              => .ok (r.mapOnValues Partial.RestrictedValue.value)
+  | .record r              => .ok (r.mapOnValues Partial.Value.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
@@ -62,7 +62,7 @@ def hasAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Spec.Va
   let r ← Partial.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
-def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.RestrictedValue := do
+def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
@@ -137,7 +137,7 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
   | .getAttr x₁ a   => do
     let pval₁ ← Partial.evaluate x₁ req es
     match pval₁ with
-    | .value v₁ => (Partial.getAttr v₁ a es).map Partial.RestrictedValue.asPartialValue
+    | .value v₁ => Partial.getAttr v₁ a es
     | .residual r => .ok (.residual (Partial.Expr.getAttr r a)) -- TODO more precise: pval₁ will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
   | .set xs         => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)

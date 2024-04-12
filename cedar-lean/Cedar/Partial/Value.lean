@@ -34,29 +34,4 @@ def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
   | .value v    => v.asPartialExpr
   | .residual r => r
 
-/--
-  Like `Partial.Value`, but cannot contain residual expressions which depend on
-  vars or entity data
--/
-inductive RestrictedValue where
-  | value (v : Spec.Value)
-  | residual (r : Partial.RestrictedExpr)
-
-deriving instance Inhabited for RestrictedValue
-
-def RestrictedValue.asPartialExpr (v : Partial.RestrictedValue) : Partial.Expr :=
-  match v with
-  | .value v    => v.asPartialExpr
-  | .residual r => r.asPartialExpr
-
-def RestrictedValue.asPartialRestrictedExpr (v : Partial.RestrictedValue) : Partial.RestrictedExpr :=
-  match v with
-  | .value v    => v.asPartialRestrictedExpr
-  | .residual r => r
-
-def RestrictedValue.asPartialValue (v : RestrictedValue) : Partial.Value :=
-  match v with
-  | .value v    => .value v
-  | .residual r => .residual (r.asPartialExpr)
-
 end Cedar.Partial

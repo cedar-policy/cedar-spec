@@ -37,7 +37,7 @@ Currently, this does not allow any unknowns about ancestor information.
 All ancestor information must be fully concrete.
 -/
 structure EntityData where
-  attrs : Map Attr Partial.RestrictedValue
+  attrs : Map Attr Partial.Value
   ancestors : Set EntityUID
 
 /--
@@ -57,11 +57,11 @@ def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Set En
   | some d => d.ancestors
   | none   => Set.empty
 
-def Entities.attrs (es : Partial.Entities) (uid : EntityUID) : Result (Map Attr Partial.RestrictedValue) := do
+def Entities.attrs (es : Partial.Entities) (uid : EntityUID) : Result (Map Attr Partial.Value) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.attrs
 
-def Entities.attrsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Map Attr Partial.RestrictedValue :=
+def Entities.attrsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Map Attr Partial.Value :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
@@ -74,7 +74,7 @@ namespace Cedar.Spec
 
 def EntityData.asPartialEntityData (d : Spec.EntityData) : Partial.EntityData :=
   {
-    attrs := d.attrs.mapOnValues Partial.RestrictedValue.value,
+    attrs := d.attrs.mapOnValues Partial.Value.value,
     ancestors := d.ancestors,
   }
 

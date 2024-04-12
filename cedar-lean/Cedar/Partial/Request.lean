@@ -44,7 +44,7 @@ structure Request where
   principal : UidOrUnknown
   action : UidOrUnknown
   resource : UidOrUnknown
-  context : Map Attr Partial.RestrictedValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
+  context : Map Attr Partial.Value -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
 
 deriving instance Inhabited for Request
 
@@ -57,7 +57,7 @@ def Request.asPartialRequest (req : Spec.Request) : Partial.Request :=
     principal := .known req.principal,
     action := .known req.action,
     resource := .known req.resource,
-    context := req.context.mapOnValues Partial.RestrictedValue.value,
+    context := req.context.mapOnValues Partial.Value.value,
   }
 
 instance : Coe Spec.Request Partial.Request where
