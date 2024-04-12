@@ -118,11 +118,11 @@ theorem restrictedPartialExpr_to_Partial.Expr_preserves_containsUnknown {rpexpr 
     simp [Partial.RestrictedExpr.subexpressions] at h₁
     subst h₁
     simp [Partial.RestrictedExpr.isUnknown] at h₂
-  case unknown name =>
+  case unknown u =>
     intro x h₁ h₂
     simp [Partial.RestrictedExpr.subexpressions] at h₁
     subst h₁
-    exists (.unknown name)
+    exists (.unknown u)
     simp [Partial.Expr.isUnknown, Partial.RestrictedExpr.asPartialExpr, Partial.Expr.subexpressions]
   case set xs | record attrs =>
     intro x h₁ h₂
@@ -136,7 +136,7 @@ theorem restrictedPartialExpr_to_Partial.Expr_preserves_containsUnknown {rpexpr 
       exists x.asPartialExpr
       unfold Partial.RestrictedExpr.asPartialExpr Partial.Expr.subexpressions
       cases x <;> simp [Partial.RestrictedExpr.isUnknown] at h₂
-      case unknown name =>
+      case unknown u =>
         split <;> simp <;> rename_i h₃ <;> simp at h₃
         case h_5 name' =>
           subst h₃

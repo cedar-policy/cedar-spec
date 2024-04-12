@@ -193,7 +193,7 @@ theorem Expr.call_termination {xs : List Partial.Expr} {xfn : ExtFun} :
 -/
 -- NB: this function can't live in Partial/Expr.lean because it needs Partial.Value, and
 -- Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
-def Expr.subst (x : Partial.Expr) (subsmap : Map String Partial.RestrictedValue) : Partial.Expr :=
+def Expr.subst (x : Partial.Expr) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.Expr :=
   match x with
   | .lit _ => x -- no unknowns, nothing to substitute
   | .var _ => x -- no unknowns, nothing to substitute
@@ -248,7 +248,7 @@ def Expr.subst (x : Partial.Expr) (subsmap : Map String Partial.RestrictedValue)
       have _ := h₁ x
       Partial.Expr.subst x subsmap
     .call xfn xs'
-  | unknown name => match subsmap.find? name with
+  | .unknown u => match subsmap.find? u with
     | some val => val.asPartialExpr
     | none => x -- no substitution available, return `x` unchanged
 termination_by x.subexpressions.length
@@ -261,7 +261,7 @@ termination_by x.subexpressions.length
 -/
 -- NB: this function can't live in Partial/Expr.lean because it needs Partial.Value, and
 -- Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
-def Expr.fullSubst (x : Partial.Expr) (subsmap : Map String Spec.Value) : Option Spec.Expr :=
+def Expr.fullSubst (x : Partial.Expr) (subsmap : Map Unknown Spec.Value) : Option Spec.Expr :=
   match x with
   | .lit p => some (.lit p)
   | .var v => some (.var v)
@@ -316,7 +316,7 @@ def Expr.fullSubst (x : Partial.Expr) (subsmap : Map String Spec.Value) : Option
       have _ := h₁ x
       Partial.Expr.fullSubst x subsmap
     some (.call xfn xs')
-  | unknown name => match subsmap.find? name with
+  | .unknown u => match subsmap.find? u with
     | some val => val.asExpr
     | none => none -- no substitution available, return `none`
 termination_by x.subexpressions.length
@@ -329,13 +329,13 @@ termination_by x.subexpressions.length
 -/
 -- NB: this function can't live in Partial/Expr.lean because it needs Partial.RestrictedValue,
 -- and Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
-def RestrictedExpr.subst (x : Partial.RestrictedExpr) (subsmap : Map String Partial.RestrictedValue) : Partial.RestrictedExpr :=
+def RestrictedExpr.subst (x : Partial.RestrictedExpr) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.RestrictedExpr :=
   match x with
   | .lit p => .lit p
   | .set xs => .set (xs.map (Partial.RestrictedExpr.subst · subsmap))
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.subst subsmap))
   | .call xfn args => .call xfn args
-  | .unknown name => match subsmap.find? name with
+  | .unknown u => match subsmap.find? u with
     | some val => val.asPartialRestrictedExpr
     | none => x -- no substitution available, return `x` unchanged
 decreasing_by all_goals sorry
@@ -352,7 +352,7 @@ mutual
 -/
 -- NB: this function can't live in Partial/Expr.lean because it needs Partial.RestrictedValue,
 -- and Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
-def RestrictedExpr.fullSubst (x : Partial.RestrictedExpr) (subsmap : Map String Spec.Value) : Option Spec.Value :=
+def RestrictedExpr.fullSubst (x : Partial.RestrictedExpr) (subsmap : Map Unknown Spec.Value) : Option Spec.Value :=
   match x with
   | .lit p => some (.prim p)
   | .set xs => do
@@ -364,7 +364,7 @@ def RestrictedExpr.fullSubst (x : Partial.RestrictedExpr) (subsmap : Map String 
   | .call xfn args => match Spec.call xfn args with
     | .ok v => some v
     | .error _ => none
-  | .unknown name => subsmap.find? name -- if no substitution is available, returns `none`
+  | .unknown u => subsmap.find? u -- if no substitution is available, returns `none`
 decreasing_by all_goals sorry
 
 /--
@@ -373,7 +373,7 @@ decreasing_by all_goals sorry
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `PartialValue` will still contain some unknowns.
 -/
-def Value.subst (v : Partial.Value) (subsmap : Map String Partial.RestrictedValue) : Partial.Value :=
+def Value.subst (v : Partial.Value) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.Value :=
   match v with
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
@@ -386,7 +386,7 @@ def Value.subst (v : Partial.Value) (subsmap : Map String Partial.RestrictedValu
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def Partial.Value.fullSubst (v : Partial.Value) (subsmap : Map String Spec.Value) : Option Spec.Value :=
+def Partial.Value.fullSubst (v : Partial.Value) (subsmap : Map Unknown Spec.Value) : Option Spec.Value :=
   match v with
   | .residual r => r.fullSubst subsmap
   | .value v    => some v
@@ -398,7 +398,7 @@ def Partial.Value.fullSubst (v : Partial.Value) (subsmap : Map String Spec.Value
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.RestrictedValue` will still contain some unknowns.
 -/
-def RestrictedValue.subst (v : Partial.RestrictedValue) (subsmap : Map String Partial.RestrictedValue) : Partial.RestrictedValue :=
+def RestrictedValue.subst (v : Partial.RestrictedValue) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.RestrictedValue :=
   match v with
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
@@ -409,7 +409,7 @@ def RestrictedValue.subst (v : Partial.RestrictedValue) (subsmap : Map String Pa
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def RestrictedValue.fullSubst (v : Partial.RestrictedValue) (subsmap : Map String Spec.Value) : Option Spec.Value :=
+def RestrictedValue.fullSubst (v : Partial.RestrictedValue) (subsmap : Map Unknown Spec.Value) : Option Spec.Value :=
   match v with
   | .residual r => r.fullSubst subsmap
   | .value v    => some v -- doesn't contain unknowns, nothing to substitute
@@ -419,7 +419,7 @@ end
 /--
   subst on a Spec.Expr is id
 -/
-theorem subs_expr_id {expr : Spec.Expr} {subsmap : Map String Partial.RestrictedValue} :
+theorem subs_expr_id {expr : Spec.Expr} {subsmap : Map Unknown Partial.RestrictedValue} :
   expr.asPartialExpr.subst subsmap = expr.asPartialExpr
 := by
   unfold Partial.Expr.subst

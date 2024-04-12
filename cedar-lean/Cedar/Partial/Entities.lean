@@ -101,7 +101,7 @@ open Cedar.Data
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.EntityData` will still contain some unknowns.
 -/
-def EntityData.subst (d : Partial.EntityData) (subsmap : Map String Partial.RestrictedValue) : Partial.EntityData :=
+def EntityData.subst (d : Partial.EntityData) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.EntityData :=
   {
     attrs := d.attrs.mapOnValues (Partial.RestrictedValue.subst · subsmap),
     ancestors := d.ancestors,
@@ -113,7 +113,7 @@ def EntityData.subst (d : Partial.EntityData) (subsmap : Map String Partial.Rest
   This means that `subsmap` must contain mappings for all the unknowns (or this
   function will return `none`).
 -/
-def EntityData.fullSubst (d : Partial.EntityData) (subsmap : Map String Spec.Value) : Option Spec.EntityData := do
+def EntityData.fullSubst (d : Partial.EntityData) (subsmap : Map Unknown Spec.Value) : Option Spec.EntityData := do
   let attrs' ← d.attrs.mapMOnValues (Partial.RestrictedValue.fullSubst · subsmap)
   some {
     attrs := attrs',
@@ -126,7 +126,7 @@ def EntityData.fullSubst (d : Partial.EntityData) (subsmap : Map String Spec.Val
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.Entities` will still contain some unknowns.
 -/
-def Entities.subst (es : Partial.Entities) (subsmap : Map String Partial.RestrictedValue) : Partial.Entities :=
+def Entities.subst (es : Partial.Entities) (subsmap : Map Unknown Partial.RestrictedValue) : Partial.Entities :=
   es.mapOnValues (Partial.EntityData.subst · subsmap)
 
 /--
@@ -140,7 +140,7 @@ def Entities.subst (es : Partial.Entities) (subsmap : Map String Partial.Restric
 -- map.
 -- If we relax that assumption and allow entity existence to be unknown, we'll
 -- have to adjust this here as well
-def Entities.fullSubst (es : Partial.Entities) (subsmap : Map String Spec.Value) : Option Spec.Entities :=
+def Entities.fullSubst (es : Partial.Entities) (subsmap : Map Unknown Spec.Value) : Option Spec.Entities :=
   es.mapMOnValues (Partial.EntityData.fullSubst · subsmap)
 
 end Cedar.Partial

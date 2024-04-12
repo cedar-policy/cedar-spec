@@ -39,7 +39,7 @@ import Cedar.Thm.Utils
 namespace Cedar.Thm
 
 open Cedar.Data
-open Cedar.Partial (Residual)
+open Cedar.Partial (Residual Unknown)
 open Cedar.Spec (Effect Policies PolicyID)
 
 namespace PartialOnConcrete -- lemmas about the behavior of partial evaluation on concrete inputs
@@ -298,7 +298,7 @@ end PartialOnConcrete
   (or, if the residual after substitution is an evaluation error, then a
   residual with the same id must have existed before substitution)
 -/
-theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {r' : Residual} :
+theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {r' : Residual} :
   req.subst subsmap = some req' →
   r' ∈ (Partial.isAuthorized req' (entities.subst subsmap) policies).residuals →
   ∃ r ∈ (Partial.isAuthorized req entities policies).residuals, r.id = r'.id ∧ (r.effect = r'.effect ∨ r'.effect = none)
@@ -445,7 +445,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
   if a residual was `true` before substitution, it's still `true` after any
   substitution
 -/
-theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {pid : PolicyID} {effect : Effect} :
+theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {pid : PolicyID} {effect : Effect} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →
@@ -526,7 +526,7 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
   if a policy mustBeSatisfied before substitution, it still mustBeSatisfied
   after substitution
 -/
-theorem subst_preserves_mustBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {pid : PolicyID} {eff : Effect} :
+theorem subst_preserves_mustBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {pid : PolicyID} {eff : Effect} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →
@@ -549,7 +549,7 @@ theorem subst_preserves_mustBeSatisfied {policies : Policies} {req req' : Partia
 /--
   corollary of the above
 -/
-theorem subst_preserves_knownPermits {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {pid : PolicyID} :
+theorem subst_preserves_knownPermits {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {pid : PolicyID} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →
@@ -563,7 +563,7 @@ theorem subst_preserves_knownPermits {policies : Policies} {req req' : Partial.R
 /--
   corollary of the above
 -/
-theorem subst_preserves_knownForbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {pid : PolicyID} :
+theorem subst_preserves_knownForbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {pid : PolicyID} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →
@@ -579,7 +579,7 @@ theorem subst_preserves_knownForbids {policies : Policies} {req req' : Partial.R
 
   not currently used; we might or might not need this in this formulation
 -/
-theorem fullSubst_preserves_mustBeSatisfied {policies : Policies} {req : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Spec.Value} {req' : Spec.Request} {entities' : Spec.Entities} {pid : PolicyID} {eff : Effect} :
+theorem fullSubst_preserves_mustBeSatisfied {policies : Policies} {req : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Spec.Value} {req' : Spec.Request} {entities' : Spec.Entities} {pid : PolicyID} {eff : Effect} :
   req.fullSubst subsmap = some req' →
   entities.fullSubst subsmap = some entities' →
   pid ∈ (Partial.isAuthorized req entities policies).mustBeSatisfied eff →
@@ -595,7 +595,7 @@ theorem fullSubst_preserves_mustBeSatisfied {policies : Policies} {req : Partial
   if there are no `mayBeSatisfied` policies with a particular effect before
   substitution, there won't be after substitution either
 -/
-theorem subst_preserves_empty_mayBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {eff : Effect} :
+theorem subst_preserves_empty_mayBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {eff : Effect} :
   req.subst subsmap = some req' →
   ((Partial.isAuthorized req entities policies).mayBeSatisfied eff).isEmpty →
   ((Partial.isAuthorized req' (entities.subst subsmap) policies).mayBeSatisfied eff).isEmpty
@@ -623,7 +623,7 @@ theorem subst_preserves_empty_mayBeSatisfied {policies : Policies} {req req' : P
 /--
   corollary of the above
 -/
-theorem subst_preserves_empty_permits {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} :
+theorem subst_preserves_empty_permits {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} :
   req.subst subsmap = some req' →
   (Partial.isAuthorized req entities policies).permits.isEmpty →
   (Partial.isAuthorized req' (entities.subst subsmap) policies).permits.isEmpty
@@ -634,7 +634,7 @@ theorem subst_preserves_empty_permits {policies : Policies} {req req' : Partial.
 /--
   corollary of the above
 -/
-theorem subst_preserves_empty_forbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} :
+theorem subst_preserves_empty_forbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} :
   req.subst subsmap = some req' →
   (Partial.isAuthorized req entities policies).forbids.isEmpty →
   (Partial.isAuthorized req' (entities.subst subsmap) policies).forbids.isEmpty
@@ -646,7 +646,7 @@ theorem subst_preserves_empty_forbids {policies : Policies} {req req' : Partial.
   if there are any `mustBeSatisfied` policies with a particular effect before
   substitution, there will be after substitution too
 -/
-theorem subst_preserves_nonempty_mustBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} {eff : Effect} :
+theorem subst_preserves_nonempty_mustBeSatisfied {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} {eff : Effect} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →
@@ -663,7 +663,7 @@ theorem subst_preserves_nonempty_mustBeSatisfied {policies : Policies} {req req'
 /--
   corollary of the above
 -/
-theorem subst_preserves_nonempty_knownForbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} :
+theorem subst_preserves_nonempty_knownForbids {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} :
   entities.AllWellFormed →
   Partial.Entities.ResidualsContainUnknowns entities →
   Partial.Request.ResidualsContainUnknowns req →

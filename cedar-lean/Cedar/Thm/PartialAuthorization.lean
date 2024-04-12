@@ -47,7 +47,7 @@ open Except
   Also implied by this: if a substitution is valid for the Partial.Request, then
   it is valid for `reEvaluateWithSubst`
 -/
-theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map String Partial.RestrictedValue} :
+theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.RestrictedValue} :
   req.subst subsmap = some req' →
   (Partial.isAuthorized req entities policies).reEvaluateWithSubst subsmap = Partial.isAuthorized req' (entities.subst subsmap) policies
 := by

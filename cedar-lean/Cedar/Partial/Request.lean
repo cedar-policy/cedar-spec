@@ -78,12 +78,12 @@ open Cedar.Spec (EntityUID)
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String Partial.RestrictedValue) : Option UidOrUnknown :=
+def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map Unknown Partial.RestrictedValue) : Option UidOrUnknown :=
   match u with
   | .known uid => some (.known uid)
-  | .unknown name => match subsmap.find? name with
+  | .unknown unk => match subsmap.find? unk with
     | some (.value (.prim (.entityUID uid))) => some (.known uid)
-    | some (.residual (.unknown name')) => some (.unknown name') -- substituting an unknown with another unknown, we'll allow it
+    | some (.residual (.unknown unk')) => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
     | none => some u -- no substitution available, return `u` unchanged
     | _ => none -- substitution is not for a literal UID or literal unknown. Not valid, return none
 
@@ -95,10 +95,10 @@ def UidOrUnknown.subst (u : UidOrUnknown) (subsmap : Map String Partial.Restrict
   `subsmap`, or if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Spec.Value) : Option EntityUID :=
+def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map Unknown Spec.Value) : Option EntityUID :=
   match u with
   | .known uid => some uid
-  | .unknown name => match subsmap.find? name with
+  | .unknown unk => match subsmap.find? unk with
     | some (.prim (.entityUID uid)) => some uid
     | none => none -- no substitution available
     | _ => none -- substitution is not for a literal UID. Not valid, return none
@@ -112,7 +112,7 @@ def UidOrUnknown.fullSubst (u : UidOrUnknown) (subsmap : Map String Spec.Value) 
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-EntityUID into `UidOrUnknown`.
 -/
-def Request.subst (req : Partial.Request) (subsmap : Map String Partial.RestrictedValue) : Option Partial.Request :=
+def Request.subst (req : Partial.Request) (subsmap : Map Unknown Partial.RestrictedValue) : Option Partial.Request :=
   do
     let principal ← req.principal.subst subsmap
     let action ← req.action.subst subsmap
@@ -129,7 +129,7 @@ def Request.subst (req : Partial.Request) (subsmap : Map String Partial.Restrict
   mappings in `subsmap`, or if the substitution is invalid (e.g., if trying to
   substitute a non-EntityUID into `UidOrUnknown`).
 -/
-def Request.fullSubst (req : Partial.Request) (subsmap : Map String Spec.Value) : Option Spec.Request :=
+def Request.fullSubst (req : Partial.Request) (subsmap : Map Unknown Spec.Value) : Option Spec.Request :=
   do
     let principal ← req.principal.fullSubst subsmap
     let action ← req.action.fullSubst subsmap
@@ -140,7 +140,7 @@ def Request.fullSubst (req : Partial.Request) (subsmap : Map String Spec.Value) 
 /--
   fullSubst and subst are equivalent in the cases where fullSubst returns some
 -/
-def PartialRequest.fullSubst_subst {preq : Partial.Request} {subsmap : Map String Spec.Value} {req : Spec.Request} :
+def PartialRequest.fullSubst_subst {preq : Partial.Request} {subsmap : Map Unknown Spec.Value} {req : Spec.Request} :
   preq.fullSubst subsmap = some req →
   preq.subst (subsmap.mapOnValues Partial.RestrictedValue.value) = req.asPartialRequest
 := by
