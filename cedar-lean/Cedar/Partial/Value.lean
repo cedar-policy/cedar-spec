@@ -14,10 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Data.Map
 import Cedar.Partial.Expr
-import Cedar.Spec.Ext.IPAddr
-import Cedar.Spec.ExtFun
 import Cedar.Spec.Value
 
 /-!
@@ -25,8 +22,6 @@ This file defines Cedar partial values.
 -/
 
 namespace Cedar.Partial
-
-open Cedar.Data
 
 inductive Value where
   | value (v : Spec.Value)

@@ -25,6 +25,7 @@ import Cedar.Thm.Termination.Value
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr BinaryOp ExtFun Prim UnaryOp Var)
 
 -- Unknowns are currently represented by a string name
 abbrev Unknown := String
@@ -34,18 +35,18 @@ abbrev Unknown := String
   elements are also all `Partial.Expr` instead of `Spec.Expr`
 -/
 inductive Expr where
-  | lit (p : Spec.Prim)
-  | var (v : Spec.Var)
+  | lit (p : Prim)
+  | var (v : Var)
   | ite (cond : Partial.Expr) (thenExpr : Partial.Expr) (elseExpr : Partial.Expr)
   | and (a : Partial.Expr) (b : Partial.Expr)
   | or (a : Partial.Expr) (b : Partial.Expr)
-  | unaryApp (op : Spec.UnaryOp) (expr : Partial.Expr)
-  | binaryApp (op : Spec.BinaryOp) (a : Partial.Expr) (b : Partial.Expr)
-  | getAttr (expr : Partial.Expr) (attr : Spec.Attr)
-  | hasAttr (expr : Partial.Expr) (attr : Spec.Attr)
+  | unaryApp (op : UnaryOp) (expr : Partial.Expr)
+  | binaryApp (op : BinaryOp) (a : Partial.Expr) (b : Partial.Expr)
+  | getAttr (expr : Partial.Expr) (attr : Attr)
+  | hasAttr (expr : Partial.Expr) (attr : Attr)
   | set (ls : List Partial.Expr)
-  | record (map : List (Spec.Attr × Partial.Expr))
-  | call (xfn : Spec.ExtFun) (args : List Partial.Expr)
+  | record (map : List (Attr × Partial.Expr))
+  | call (xfn : ExtFun) (args : List Partial.Expr)
   | unknown (u : Unknown)
 
 deriving instance Repr, Inhabited for Expr
@@ -56,10 +57,10 @@ deriving instance Repr, Inhabited for Expr
   just literals, unknowns, extension values, and sets/records of those things
 -/
 inductive RestrictedExpr where
-  | lit (p : Spec.Prim)
+  | lit (p : Prim)
   | set (ls : List Partial.RestrictedExpr)
-  | record (map : List (Spec.Attr × Partial.RestrictedExpr))
-  | call (xfn : Spec.ExtFun) (args : List Spec.Value) -- this requires that all arguments to extension functions in Partial.RestrictedExpr are concrete. TODO do we need to relax this?
+  | record (map : List (Attr × Partial.RestrictedExpr))
+  | call (xfn : ExtFun) (args : List Spec.Value) -- this requires that all arguments to extension functions in Partial.RestrictedExpr are concrete. TODO do we need to relax this?
   | unknown (u : Unknown)
 
 deriving instance Repr, Inhabited for RestrictedExpr
@@ -109,7 +110,7 @@ def decPartialExpr (x y : Partial.Expr) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrPartialExprList (axs ays : List (Spec.Attr × Partial.Expr)) : Decidable (axs = ays) :=
+def decProdAttrPartialExprList (axs ays : List (Attr × Partial.Expr)) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -147,7 +148,7 @@ def Value.asPartialExpr (v : Value) : Partial.Expr :=
       have := Value.record_termination v m (Map.in_kvs_values h₁)
       (k, v.asPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
 termination_by v.size
 
 def Value.asPartialRestrictedExpr (v : Value) : Partial.RestrictedExpr :=
@@ -160,7 +161,7 @@ def Value.asPartialRestrictedExpr (v : Value) : Partial.RestrictedExpr :=
       have := Value.record_termination v m (Map.in_kvs_values h₁)
       (k, v.asPartialRestrictedExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Spec.Ext.IPAddr.unParse ip))]
 termination_by v.size
 
 def Expr.asPartialExpr (x : Spec.Expr) : Partial.Expr :=

@@ -27,23 +27,24 @@ import Cedar.Spec.Value
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr BinaryOp EntityUID Result UnaryOp intOrErr)
 open Cedar.Spec.Error
 
-def inₑ (uid₁ uid₂ : Spec.EntityUID) (es : Partial.Entities) : Bool :=
+def inₑ (uid₁ uid₂ : EntityUID) (es : Partial.Entities) : Bool :=
   uid₁ == uid₂ || (es.ancestorsOrEmpty uid₁).contains uid₂
 
-def inₛ (uid : Spec.EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Spec.Result Spec.Value := do
+def inₛ (uid : EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Result Spec.Value := do
   let uids ← vs.mapOrErr Spec.Value.asEntityUID .typeError
   .ok (uids.any (Partial.inₑ uid · es))
 
-def apply₂ (op₂ : Spec.BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Spec.Result Partial.Value :=
+def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Result Partial.Value :=
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (.value (v₁ == v₂))
   | .less,   .prim (.int i), .prim (.int j)                => .ok (.value ((i < j): Bool))
   | .lessEq, .prim (.int i), .prim (.int j)                => .ok (.value ((i ≤ j): Bool))
-  | .add,    .prim (.int i), .prim (.int j)                => Spec.intOrErr (i.add? j) >>= λ x => .ok (.value x)
-  | .sub,    .prim (.int i), .prim (.int j)                => Spec.intOrErr (i.sub? j) >>= λ x => .ok (.value x)
-  | .mul,    .prim (.int i), .prim (.int j)                => Spec.intOrErr (i.mul? j) >>= λ x => .ok (.value x)
+  | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j) >>= λ x => .ok (.value x)
+  | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j) >>= λ x => .ok (.value x)
+  | .mul,    .prim (.int i), .prim (.int j)                => intOrErr (i.mul? j) >>= λ x => .ok (.value x)
   | .contains,    .set vs₁, _                              => .ok (.value (vs₁.contains v₂))
   | .containsAll, .set vs₁, .set vs₂                       => .ok (.value (vs₂.subset vs₁))
   | .containsAny, .set vs₁, .set vs₂                       => .ok (.value (vs₁.intersects vs₂))
@@ -51,25 +52,25 @@ def apply₂ (op₂ : Spec.BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Enti
   | .mem, .prim (.entityUID uid₁), .set (vs)               => Partial.inₛ uid₁ vs es >>= λ x => .ok (.value x)
   | _, _, _                                                => .error .typeError
 
-def attrsOf (v : Spec.Value) (lookup : Spec.EntityUID → Spec.Result (Map Spec.Attr Partial.RestrictedValue)) : Spec.Result (Map Spec.Attr Partial.RestrictedValue) :=
+def attrsOf (v : Spec.Value) (lookup : EntityUID → Result (Map Attr Partial.RestrictedValue)) : Result (Map Attr Partial.RestrictedValue) :=
   match v with
   | .record r              => .ok (r.mapOnValues Partial.RestrictedValue.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
-def hasAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Spec.Value := do
+def hasAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Spec.Value := do
   let r ← Partial.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
-def getAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Partial.RestrictedValue := do
+def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.RestrictedValue := do
   let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-def bindAttr (a : Spec.Attr) (res : Spec.Result Partial.Value) : Spec.Result (Spec.Attr × Partial.Value) := do
+def bindAttr (a : Attr) (res : Result Partial.Value) : Result (Attr × Partial.Value) := do
   let v ← res
   .ok (a, v)
 
-def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) : Spec.Result Partial.Value :=
+def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
   match x with
   | .lit l          => .ok (.value l)
   | .var .principal => .ok req.principal

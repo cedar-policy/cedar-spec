@@ -27,9 +27,10 @@ This file defines Cedar partial requests.
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr EntityUID)
 
 inductive UidOrUnknown where
-  | known (uid : Spec.EntityUID)
+  | known (uid : EntityUID)
   | unknown (u : Unknown)
 
 deriving instance Repr, DecidableEq, Inhabited for UidOrUnknown
@@ -43,7 +44,7 @@ structure Request where
   principal : UidOrUnknown
   action : UidOrUnknown
   resource : UidOrUnknown
-  context : Map Spec.Attr Partial.RestrictedValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
+  context : Map Attr Partial.RestrictedValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
 
 deriving instance Inhabited for Request
 

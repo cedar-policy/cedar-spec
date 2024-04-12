@@ -24,6 +24,7 @@ This file defines Cedar partial-entities structures.
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr EntityUID Result)
 
 /--
 Represents the information about one entity.
@@ -36,8 +37,8 @@ Currently, this does not allow any unknowns about ancestor information.
 All ancestor information must be fully concrete.
 -/
 structure EntityData where
-  attrs : Map Spec.Attr Partial.RestrictedValue
-  ancestors : Set Spec.EntityUID
+  attrs : Map Attr Partial.RestrictedValue
+  ancestors : Set EntityUID
 
 /--
 Represents the information about all entities.
@@ -45,22 +46,22 @@ Represents the information about all entities.
 Currently, this does not allow it to be unknown whether an entity exists.
 Either it exists (and we have a Partial.EntityData) or it does not.
 -/
-abbrev Entities := Map Spec.EntityUID Partial.EntityData
+abbrev Entities := Map EntityUID Partial.EntityData
 
-def Entities.ancestors (es : Partial.Entities) (uid : Spec.EntityUID) : Spec.Result (Set Spec.EntityUID) := do
+def Entities.ancestors (es : Partial.Entities) (uid : EntityUID) : Result (Set EntityUID) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
-def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : Spec.EntityUID) : Set Spec.EntityUID :=
+def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Set EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
   | none   => Set.empty
 
-def Entities.attrs (es : Partial.Entities) (uid : Spec.EntityUID) : Spec.Result (Map Spec.Attr Partial.RestrictedValue) := do
+def Entities.attrs (es : Partial.Entities) (uid : EntityUID) : Result (Map Attr Partial.RestrictedValue) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.attrs
 
-def Entities.attrsOrEmpty (es : Partial.Entities) (uid : Spec.EntityUID) : Map Spec.Attr Partial.RestrictedValue :=
+def Entities.attrsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Map Attr Partial.RestrictedValue :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
@@ -76,6 +77,9 @@ def EntityData.asPartialEntityData (d : Spec.EntityData) : Partial.EntityData :=
     attrs := d.attrs.mapOnValues Partial.RestrictedValue.value,
     ancestors := d.ancestors,
   }
+
+instance : Coe Spec.EntityData Partial.EntityData where
+  coe := Spec.EntityData.asPartialEntityData
 
 def Entities.asPartialEntities (es : Spec.Entities) : Partial.Entities :=
   es.mapOnValues Spec.EntityData.asPartialEntityData
