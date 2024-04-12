@@ -50,8 +50,8 @@ theorem List.foldl_add_pos {xs : List Nat} {init : Nat} :
   case nil => simp [h₁]
   case cons x tail h_ind =>
     simp [List.foldl_cons]
-    have h₂ : init <= init + x := by simp [Nat.le_add_right]
     apply @Nat.lt_of_lt_of_le 0 (tail.foldl Nat.add init) _ (by simp [h_ind])
+    have h₂ : init <= init + x := by simp [Nat.le_add_right]
     -- should follow from h₂ and associativity
     sorry
 
@@ -65,13 +65,12 @@ theorem Value.set_termination (v : Value) (vs : Set Value) :
   case cons v' tail =>
     cases v <;> simp
     case prim p | ext x =>
-      have h₃ := all_values_have_positive_size v'
-      have h₄ := List.foldl_add_pos h₃ (xs := tail.map size)
+      have h₃ := List.foldl_add_pos (all_values_have_positive_size v') (xs := tail.map size)
       apply @Nat.lt_of_lt_of_le 1 (1 + 1) _ (by simp)
-      generalize (tail.map size).foldl Nat.add v'.size = n at *
       apply Nat.add_le_add_left
+      generalize (tail.map size).foldl Nat.add v'.size = n at *
       cases n
-      case zero => simp at h₄
+      case zero => simp at h₃
       case succ n' => omega
     case set s =>
       sorry
