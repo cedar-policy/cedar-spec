@@ -22,77 +22,51 @@ import Cedar.Thm.Termination.Value
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
 
 /--
-  Identical to `Expr` except that it has an `unknown` case, and the recursive
-  elements are also all `PartialExpr` instead of `Expr`
+  Identical to `Spec.Expr` except that it has an `unknown` case, and the recursive
+  elements are also all `Partial.Expr` instead of `Spec.Expr`
 -/
-inductive PartialExpr where
-  | lit (p : Prim)
-  | var (v : Var)
-  | ite (cond : PartialExpr) (thenExpr : PartialExpr) (elseExpr : PartialExpr)
-  | and (a : PartialExpr) (b : PartialExpr)
-  | or (a : PartialExpr) (b : PartialExpr)
-  | unaryApp (op : UnaryOp) (expr : PartialExpr)
-  | binaryApp (op : BinaryOp) (a : PartialExpr) (b : PartialExpr)
-  | getAttr (expr : PartialExpr) (attr : Attr)
-  | hasAttr (expr : PartialExpr) (attr : Attr)
-  | set (ls : List PartialExpr)
-  | record (map : List (Attr × PartialExpr))
-  | call (xfn : ExtFun) (args : List PartialExpr)
+inductive Expr where
+  | lit (p : Spec.Prim)
+  | var (v : Spec.Var)
+  | ite (cond : Partial.Expr) (thenExpr : Partial.Expr) (elseExpr : Partial.Expr)
+  | and (a : Partial.Expr) (b : Partial.Expr)
+  | or (a : Partial.Expr) (b : Partial.Expr)
+  | unaryApp (op : Spec.UnaryOp) (expr : Partial.Expr)
+  | binaryApp (op : Spec.BinaryOp) (a : Partial.Expr) (b : Partial.Expr)
+  | getAttr (expr : Partial.Expr) (attr : Spec.Attr)
+  | hasAttr (expr : Partial.Expr) (attr : Spec.Attr)
+  | set (ls : List Partial.Expr)
+  | record (map : List (Spec.Attr × Partial.Expr))
+  | call (xfn : Spec.ExtFun) (args : List Partial.Expr)
   | unknown (name : String)
 
-deriving instance Repr, Inhabited for PartialExpr
-
-def Value.asPartialExpr (v : Value) : PartialExpr :=
-  match v with
-  | .prim p => .lit p
-  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
-      have := Value.set_termination v s h₁
-      v.asPartialExpr)
-  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
-      have := Value.record_termination v m (Map.in_kvs_values h₁)
-      (k, v.asPartialExpr))
-  | .ext (.decimal d) => .call ExtFun.decimal [PartialExpr.lit (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [PartialExpr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-termination_by v.size
+deriving instance Repr, Inhabited for Expr
 
 /--
-  A version of `PartialExpr`, but only allows "restricted expressions" -- no
+  A version of `Partial.Expr`, but only allows "restricted expressions" -- no
   vars, no expressions that require entity data to evaluate, no operators at all,
   just literals, unknowns, extension values, and sets/records of those things
 -/
-inductive RestrictedPartialExpr where
-  | lit (p : Prim)
-  | set (ls : List RestrictedPartialExpr)
-  | record (map : List (Attr × RestrictedPartialExpr))
-  | call (xfn : ExtFun) (args : List Value) -- this requires that all arguments to extension functions in RestrictedPartialExpr are concrete. TODO do we need to relax this?
+inductive RestrictedExpr where
+  | lit (p : Spec.Prim)
+  | set (ls : List Partial.RestrictedExpr)
+  | record (map : List (Spec.Attr × Partial.RestrictedExpr))
+  | call (xfn : Spec.ExtFun) (args : List Spec.Value) -- this requires that all arguments to extension functions in Partial.RestrictedExpr are concrete. TODO do we need to relax this?
   | unknown (name : String)
 
-deriving instance Repr, Inhabited for RestrictedPartialExpr
-
-def Value.asRestrictedPartialExpr (v : Value) : RestrictedPartialExpr :=
-  match v with
-  | .prim p => .lit p
-  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
-      have := Value.set_termination v s h₁
-      v.asRestrictedPartialExpr)
-  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
-      have := Value.record_termination v m (Map.in_kvs_values h₁)
-      (k, v.asRestrictedPartialExpr))
-  | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
-termination_by v.size
+deriving instance Repr, Inhabited for RestrictedExpr
 
 mutual
 
 -- We should be able to get rid of this manual deriviation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
-def decPartialExpr (x y : PartialExpr) : Decidable (x = y) := by
+def decPartialExpr (x y : Partial.Expr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
   case lit.lit x₁ y₁ | var.var x₁ y₁ | unknown.unknown x₁ y₁ =>
@@ -132,7 +106,7 @@ def decPartialExpr (x y : PartialExpr) : Decidable (x = y) := by
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrPartialExprList (axs ays : List (Attr × PartialExpr)) : Decidable (axs = ays) :=
+def decProdAttrPartialExprList (axs ays : List (Spec.Attr × Partial.Expr)) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -142,7 +116,7 @@ def decProdAttrPartialExprList (axs ays : List (Attr × PartialExpr)) : Decidabl
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
       isFalse (by simp; intros; first | contradiction | assumption)
 
-def decPartialExprList (xs ys : List PartialExpr) : Decidable (xs = ys) :=
+def decPartialExprList (xs ys : List Partial.Expr) : Decidable (xs = ys) :=
   match xs, ys with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
@@ -152,9 +126,41 @@ def decPartialExprList (xs ys : List PartialExpr) : Decidable (xs = ys) :=
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
-instance : DecidableEq PartialExpr := decPartialExpr
+instance : DecidableEq Partial.Expr := decPartialExpr
 
-def Expr.asPartialExpr (x : Expr) : PartialExpr :=
+end Cedar.Partial
+
+namespace Cedar.Spec
+
+open Cedar.Data
+
+def Value.asPartialExpr (v : Value) : Partial.Expr :=
+  match v with
+  | .prim p => .lit p
+  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
+      have := Value.set_termination v s h₁
+      v.asPartialExpr)
+  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
+      have := Value.record_termination v m (Map.in_kvs_values h₁)
+      (k, v.asPartialExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+termination_by v.size
+
+def Value.asPartialRestrictedExpr (v : Value) : Partial.RestrictedExpr :=
+  match v with
+  | .prim p => .lit p
+  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
+      have := Value.set_termination v s h₁
+      v.asPartialRestrictedExpr)
+  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
+      have := Value.record_termination v m (Map.in_kvs_values h₁)
+      (k, v.asPartialRestrictedExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Cedar.Spec.Ext.IPAddr.unParse ip))]
+termination_by v.size
+
+def Expr.asPartialExpr (x : Spec.Expr) : Partial.Expr :=
   match x with
   | .lit p => .lit p
   | .var v => .var v
@@ -199,14 +205,20 @@ def Expr.asPartialExpr (x : Expr) : PartialExpr :=
       .call xfn args'
 termination_by x.size
 
-instance : Coe Expr PartialExpr where
-  coe := Expr.asPartialExpr
+instance : Coe Spec.Expr Partial.Expr where
+  coe := Spec.Expr.asPartialExpr
 
-def RestrictedPartialExpr.asPartialExpr (x : RestrictedPartialExpr) : PartialExpr :=
+end Cedar.Spec
+
+namespace Cedar.Partial
+
+def RestrictedExpr.asPartialExpr (x : Partial.RestrictedExpr) : Partial.Expr :=
   match x with
   | .lit p => .lit p
-  | .set xs => .set (xs.map RestrictedPartialExpr.asPartialExpr)
+  | .set xs => .set (xs.map Partial.RestrictedExpr.asPartialExpr)
   | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
-  | .call xfn args => .call xfn (args.map Value.asPartialExpr)
+  | .call xfn args => .call xfn (args.map Spec.Value.asPartialExpr)
   | .unknown name => .unknown name
 decreasing_by all_goals sorry
+
+end Cedar.Partial

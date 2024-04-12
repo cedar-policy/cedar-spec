@@ -15,13 +15,13 @@
 -/
 
 import Cedar.Spec.Entities
-import Cedar.Spec.PartialValue
+import Cedar.Partial.Value
 
 /-!
 This file defines Cedar partial-entities structures.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
 
@@ -35,48 +35,52 @@ but does not allow attrs to be unknown-whether-they-exist-entirely.
 Currently, this does not allow any unknowns about ancestor information.
 All ancestor information must be fully concrete.
 -/
-structure PartialEntityData where
-  attrs : Map Attr RestrictedPartialValue
-  ancestors : Set EntityUID
-
-def EntityData.asPartialEntityData (d : EntityData) : PartialEntityData :=
-  {
-    attrs := d.attrs.mapOnValues RestrictedPartialValue.value,
-    ancestors := d.ancestors,
-  }
+structure EntityData where
+  attrs : Map Spec.Attr Partial.RestrictedValue
+  ancestors : Set Spec.EntityUID
 
 /--
 Represents the information about all entities.
 
 Currently, this does not allow it to be unknown whether an entity exists.
-Either it exists (and we have a PartialEntityData) or it does not.
+Either it exists (and we have a Partial.EntityData) or it does not.
 -/
-abbrev PartialEntities := Map EntityUID PartialEntityData
+abbrev Entities := Map Spec.EntityUID Partial.EntityData
 
-def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Result (Set EntityUID) := do
+def Entities.ancestors (es : Partial.Entities) (uid : Spec.EntityUID) : Spec.Result (Set Spec.EntityUID) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
-def PartialEntities.ancestorsOrEmpty (es : PartialEntities) (uid : EntityUID) : Set EntityUID :=
+def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : Spec.EntityUID) : Set Spec.EntityUID :=
   match es.find? uid with
   | some d => d.ancestors
   | none   => Set.empty
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Result (Map Attr RestrictedPartialValue) := do
+def Entities.attrs (es : Partial.Entities) (uid : Spec.EntityUID) : Spec.Result (Map Spec.Attr Partial.RestrictedValue) := do
   let d ← es.findOrErr uid .entityDoesNotExist
   .ok d.attrs
 
-def PartialEntities.attrsOrEmpty (es : PartialEntities) (uid : EntityUID) : Map Attr RestrictedPartialValue :=
+def Entities.attrsOrEmpty (es : Partial.Entities) (uid : Spec.EntityUID) : Map Spec.Attr Partial.RestrictedValue :=
   match es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
 
-deriving instance Inhabited for PartialEntityData
+deriving instance Inhabited for EntityData
 
-def Entities.asPartialEntities (es : Entities) : PartialEntities :=
-  es.mapOnValues EntityData.asPartialEntityData
+end Cedar.Partial
 
-instance : Coe Entities PartialEntities where
-  coe := Entities.asPartialEntities
+namespace Cedar.Spec
+
+def EntityData.asPartialEntityData (d : Spec.EntityData) : Partial.EntityData :=
+  {
+    attrs := d.attrs.mapOnValues Partial.RestrictedValue.value,
+    ancestors := d.ancestors,
+  }
+
+def Entities.asPartialEntities (es : Spec.Entities) : Partial.Entities :=
+  es.mapOnValues Spec.EntityData.asPartialEntityData
+
+instance : Coe Spec.Entities Partial.Entities where
+  coe := Spec.Entities.asPartialEntities
 
 end Cedar.Spec

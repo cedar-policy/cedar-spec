@@ -14,14 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Authorizer
-import Cedar.Spec.Entities
-import Cedar.Spec.Evaluator
-import Cedar.Spec.Expr
-import Cedar.Spec.Ext
-import Cedar.Spec.Policy
-import Cedar.Spec.Request
-import Cedar.Spec.Response
-import Cedar.Spec.Template
-import Cedar.Spec.Value
-import Cedar.Spec.Wildcard
+import Cedar.Partial.Entities
+import Cedar.Partial.Evaluator
+import Cedar.Partial.Expr
+import Cedar.Partial.Request
+import Cedar.Partial.Value

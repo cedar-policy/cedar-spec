@@ -15,53 +15,53 @@
 -/
 
 import Cedar.Data.Map
+import Cedar.Partial.Expr
 import Cedar.Spec.Ext.IPAddr
 import Cedar.Spec.ExtFun
-import Cedar.Spec.PartialExpr
 import Cedar.Spec.Value
 
 /-!
 This file defines Cedar partial values.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
 
-inductive PartialValue where
-  | value (v : Value)
-  | residual (r : PartialExpr)
+inductive Value where
+  | value (v : Spec.Value)
+  | residual (r : Partial.Expr)
 
-deriving instance Repr, DecidableEq, Inhabited for PartialValue
+deriving instance Repr, DecidableEq, Inhabited for Value
 
-def PartialValue.asPartialExpr (v : PartialValue) : PartialExpr :=
+def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
   match v with
   | .value v    => v.asPartialExpr
   | .residual r => r
 
 /--
-  Like `PartialValue`, but cannot contain residual expressions which depend on
+  Like `Partial.Value`, but cannot contain residual expressions which depend on
   vars or entity data
 -/
-inductive RestrictedPartialValue where
-  | value (v : Value)
-  | residual (r : RestrictedPartialExpr)
+inductive RestrictedValue where
+  | value (v : Spec.Value)
+  | residual (r : Partial.RestrictedExpr)
 
-deriving instance Inhabited for RestrictedPartialValue
+deriving instance Inhabited for RestrictedValue
 
-def RestrictedPartialValue.asPartialExpr (v : RestrictedPartialValue) : PartialExpr :=
+def RestrictedValue.asPartialExpr (v : Partial.RestrictedValue) : Partial.Expr :=
   match v with
   | .value v    => v.asPartialExpr
   | .residual r => r.asPartialExpr
 
-def RestrictedPartialValue.asRestrictedPartialExpr (v : RestrictedPartialValue) : RestrictedPartialExpr :=
+def RestrictedValue.asPartialRestrictedExpr (v : Partial.RestrictedValue) : Partial.RestrictedExpr :=
   match v with
-  | .value v    => v.asRestrictedPartialExpr
+  | .value v    => v.asPartialRestrictedExpr
   | .residual r => r
 
-def RestrictedPartialValue.asPartialValue (v : RestrictedPartialValue) : PartialValue :=
+def RestrictedValue.asPartialValue (v : RestrictedValue) : Partial.Value :=
   match v with
   | .value v    => .value v
   | .residual r => .residual (r.asPartialExpr)
 
-end Cedar.Spec
+end Cedar.Partial

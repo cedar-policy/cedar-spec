@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
+import Cedar.Partial.Expr
+import Cedar.Partial.Value
 import Cedar.Spec.Expr
-import Cedar.Spec.PartialExpr
-import Cedar.Spec.PartialValue
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 
@@ -24,39 +24,42 @@ import Cedar.Spec.Value
 This file defines Cedar partial requests.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
 
 inductive UidOrUnknown where
-  | known (uid : EntityUID)
+  | known (uid : Spec.EntityUID)
   | unknown (name : String)
 
 deriving instance Repr, DecidableEq, Inhabited for UidOrUnknown
 
-instance : Coe UidOrUnknown PartialValue where
+instance : Coe UidOrUnknown Partial.Value where
   coe x := match x with
   | .known uid    => .value uid
-  | .unknown name => .residual (PartialExpr.unknown name)
+  | .unknown name => .residual (Partial.Expr.unknown name)
 
-structure PartialRequest where
+structure Request where
   principal : UidOrUnknown
   action : UidOrUnknown
   resource : UidOrUnknown
-  context : Map Attr RestrictedPartialValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
+  context : Map Spec.Attr Partial.RestrictedValue -- allows individual context attributes to have unknown values, but does not allow it to be unknown whether a context attribute exists at all
 
-deriving instance Inhabited for PartialRequest
+deriving instance Inhabited for Request
 
-def Request.asPartialRequest (req : Request) : PartialRequest :=
+end Cedar.Partial
+
+namespace Cedar.Spec
+
+def Request.asPartialRequest (req : Spec.Request) : Partial.Request :=
   {
     principal := .known req.principal,
     action := .known req.action,
     resource := .known req.resource,
-    context := req.context.mapOnValues RestrictedPartialValue.value,
+    context := req.context.mapOnValues Partial.RestrictedValue.value,
   }
 
-instance : Coe Request PartialRequest where
-  coe := Request.asPartialRequest
-
+instance : Coe Spec.Request Partial.Request where
+  coe := Spec.Request.asPartialRequest
 
 end Cedar.Spec
