@@ -164,50 +164,32 @@ def Value.asPartialRestrictedExpr (v : Value) : Partial.RestrictedExpr :=
   | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Spec.Ext.IPAddr.unParse ip))]
 termination_by v.size
 
-def Expr.asPartialExpr (x : Spec.Expr) : Partial.Expr :=
-  match x with
+def Expr.asPartialExpr : Spec.Expr → Partial.Expr
   | .lit p => .lit p
   | .var v => .var v
   | .ite x₁ x₂ x₃ =>
-      have := @Expr.ite_termination x₁ x₂ x₃
-      .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
+    .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
   | .and x₁ x₂ =>
-      have := @Expr.and_termination x₁ x₂
-      .and x₁.asPartialExpr x₂.asPartialExpr
+    .and x₁.asPartialExpr x₂.asPartialExpr
   | .or x₁ x₂ =>
-      have := @Expr.or_termination x₁ x₂
-      .or x₁.asPartialExpr x₂.asPartialExpr
+    .or x₁.asPartialExpr x₂.asPartialExpr
   | .unaryApp op x₁ =>
-      have := @Expr.unaryApp_termination x₁ op
-      .unaryApp op x₁.asPartialExpr
+    .unaryApp op x₁.asPartialExpr
   | .binaryApp op x₁ x₂ =>
-      have := @Expr.binaryApp_termination x₁ x₂ op
-      .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
+    .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
   | .getAttr x₁ attr =>
-      have := @Expr.getAttr_termination x₁ attr
-      .getAttr x₁.asPartialExpr attr
+    .getAttr x₁.asPartialExpr attr
   | .hasAttr x₁ attr =>
-      have := @Expr.hasAttr_termination x₁ attr
-      .hasAttr x₁.asPartialExpr attr
+    .hasAttr x₁.asPartialExpr attr
   | .set xs =>
-      have h := @Expr.set_termination xs
-      let xs' := xs.map₁ λ ⟨x, prop⟩ =>
-        have := h x prop
-        x.asPartialExpr
-      .set xs'
-  | .record attrs =>
-      have h := @Expr.record_termination attrs
-      let attrs' := attrs.map₁ λ ⟨(k, v), prop⟩ =>
-        have := h (k, v) prop
-        (k, v.asPartialExpr)
-      .record attrs'
+    let xs' := xs.map₁ λ ⟨x, _⟩ => x.asPartialExpr
+    .set xs'
+  | .record axs =>
+    let axs' := axs.attach₂.map λ ⟨(a, x), _⟩ => (a, x.asPartialExpr)
+    .record axs'
   | .call xfn args =>
-      have h := @Expr.call_termination args xfn
-      let args' := args.map₁ λ ⟨x, prop⟩ =>
-        have := h x prop
-        x.asPartialExpr
-      .call xfn args'
-termination_by x.size
+    let args' := args.map₁ λ ⟨x, _⟩ => x.asPartialExpr
+    .call xfn args'
 
 instance : Coe Spec.Expr Partial.Expr where
   coe := Spec.Expr.asPartialExpr
