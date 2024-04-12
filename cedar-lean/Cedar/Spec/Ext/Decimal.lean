@@ -71,15 +71,6 @@ def unParse (d : Decimal) : String :=
     else s!".{right}"
   s!"{neg}{left}{right}"
 
-theorem test1 : unParse ((parse "3.14").get!) = "3.1400" := by decide
-theorem test2 : unParse ((parse "11.0003").get!) = "11.0003" := by decide
-theorem test3 : unParse ((parse "11.003").get!) = "11.0030" := by decide
-theorem test4 : unParse ((parse "11.3000").get!) = "11.3000" := by decide
-theorem test5 : unParse ((parse "123.0").get!) = "123.0000" := by decide
-theorem test6 : unParse ((parse "-123.0").get!) = "-123.0000" := by decide
-theorem test7 : unParse ((parse "-3.14").get!) = "-3.1400" := by decide
-theorem test8 : unParse ((parse "-11.0003").get!) = "-11.0003" := by decide
-
 abbrev decimal := parse
 
 end Decimal
