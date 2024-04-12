@@ -138,19 +138,15 @@ open Cedar.Data
 
 def Value.asPartialExpr : Spec.Value → Partial.Expr
   | .prim p => .lit p
-  | .set s =>
-      have := Set.sizeOf_elts (s := s)
-      .set (s.elts.map₁ λ ⟨v, h₁⟩ => v.asPartialExpr)
+  | .set (Set.mk elts) => .set (elts.map₁ λ ⟨v, _⟩ => v.asPartialExpr)
   | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
 
 def Value.asPartialRestrictedExpr : Spec.Value → Partial.RestrictedExpr
   | .prim p => .lit p
-  | .set s =>
-      have := Set.sizeOf_elts (s := s)
-      .set (s.elts.map₁ λ ⟨v, h₁⟩ => v.asPartialRestrictedExpr)
-  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), h₁⟩ => (k, v.asPartialRestrictedExpr))
+  | .set (Set.mk elts) => .set (elts.map₁ λ ⟨v, _⟩ => v.asPartialRestrictedExpr)
+  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialRestrictedExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Spec.Ext.IPAddr.unParse ip))]
 
