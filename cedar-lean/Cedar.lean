@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data
+import Cedar.Partial
 import Cedar.Spec
 import Cedar.Thm
 import Cedar.Validation

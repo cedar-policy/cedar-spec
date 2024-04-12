@@ -28,14 +28,14 @@ namespace Cedar.Partial
 open Cedar.Data
 open Cedar.Spec.Error
 
-def partialInₑ (uid₁ uid₂ : Spec.EntityUID) (es : Partial.Entities) : Bool :=
+def inₑ (uid₁ uid₂ : Spec.EntityUID) (es : Partial.Entities) : Bool :=
   uid₁ == uid₂ || (es.ancestorsOrEmpty uid₁).contains uid₂
 
-def partialInₛ (uid : Spec.EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Spec.Result Spec.Value := do
+def inₛ (uid : Spec.EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Spec.Result Spec.Value := do
   let uids ← vs.mapOrErr Spec.Value.asEntityUID .typeError
-  .ok (uids.any (partialInₑ uid · es))
+  .ok (uids.any (Partial.inₑ uid · es))
 
-def partialApply₂ (op₂ : Spec.BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Spec.Result Partial.Value :=
+def apply₂ (op₂ : Spec.BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Spec.Result Partial.Value :=
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (.value (v₁ == v₂))
   | .less,   .prim (.int i), .prim (.int j)                => .ok (.value ((i < j): Bool))
@@ -46,29 +46,29 @@ def partialApply₂ (op₂ : Spec.BinaryOp) (v₁ v₂ : Spec.Value) (es : Parti
   | .contains,    .set vs₁, _                              => .ok (.value (vs₁.contains v₂))
   | .containsAll, .set vs₁, .set vs₂                       => .ok (.value (vs₂.subset vs₁))
   | .containsAny, .set vs₁, .set vs₂                       => .ok (.value (vs₁.intersects vs₂))
-  | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok (.value (partialInₑ uid₁ uid₂ es))
-  | .mem, .prim (.entityUID uid₁), .set (vs)               => partialInₛ uid₁ vs es >>= λ x => .ok (.value x)
+  | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok (.value (Partial.inₑ uid₁ uid₂ es))
+  | .mem, .prim (.entityUID uid₁), .set (vs)               => Partial.inₛ uid₁ vs es >>= λ x => .ok (.value x)
   | _, _, _                                                => .error .typeError
 
-def partialAttrsOf (v : Spec.Value) (lookup : Spec.EntityUID → Spec.Result (Map Spec.Attr Partial.RestrictedValue)) : Spec.Result (Map Spec.Attr Partial.RestrictedValue) :=
+def attrsOf (v : Spec.Value) (lookup : Spec.EntityUID → Spec.Result (Map Spec.Attr Partial.RestrictedValue)) : Spec.Result (Map Spec.Attr Partial.RestrictedValue) :=
   match v with
   | .record r              => .ok (r.mapOnValues Partial.RestrictedValue.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
-def partialHasAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Spec.Value := do
-  let r ← partialAttrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
+def hasAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Spec.Value := do
+  let r ← Partial.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
-def partialGetAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Partial.RestrictedValue := do
-  let r ← partialAttrsOf v es.attrs
+def getAttr (v : Spec.Value) (a : Spec.Attr) (es : Partial.Entities) : Spec.Result Partial.RestrictedValue := do
+  let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-def partialBindAttr (a : Spec.Attr) (res : Spec.Result Partial.Value) : Spec.Result (Spec.Attr × Partial.Value) := do
+def bindAttr (a : Spec.Attr) (res : Spec.Result Partial.Value) : Spec.Result (Spec.Attr × Partial.Value) := do
   let v ← res
   .ok (a, v)
 
-def partialEvaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) : Spec.Result Partial.Value :=
+def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) : Spec.Result Partial.Value :=
   match x with
   | .lit l          => .ok (.value l)
   | .var .principal => .ok req.principal
@@ -78,19 +78,19 @@ def partialEvaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Ent
     | some kvs      => .ok (.value (Map.make kvs))
     | none          => .ok (.residual (Partial.Expr.record (req.context.kvs.map fun (k, v) => (k, v.asPartialExpr))))
   | .ite x₁ x₂ x₃   => do
-    let pval ← partialEvaluate x₁ req es
+    let pval ← Partial.evaluate x₁ req es
     match pval with
     | .value v => do
       let b ← v.asBool
-      if b then partialEvaluate x₂ req es else partialEvaluate x₃ req es
+      if b then Partial.evaluate x₂ req es else Partial.evaluate x₃ req es
     | .residual r => .ok (.residual (Partial.Expr.ite r x₂ x₃))
   | .and x₁ x₂      => do
-    let pval ← partialEvaluate x₁ req es
+    let pval ← Partial.evaluate x₁ req es
     match pval with
     | .value v => do
       let b ← v.asBool
       if !b then .ok (.value b) else do
-        let pval ← partialEvaluate x₂ req es
+        let pval ← Partial.evaluate x₂ req es
         match pval with
         | .value v => do
           let b ← v.asBool
@@ -98,12 +98,12 @@ def partialEvaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Ent
         | .residual r => .ok (.residual r)
     | .residual r => .ok (.residual (Partial.Expr.and r x₂))
   | .or x₁ x₂       => do
-    let pval ← partialEvaluate x₁ req es
+    let pval ← Partial.evaluate x₁ req es
     match pval with
     | .value v => do
       let b ← v.asBool
       if b then .ok (.value b) else do
-        let pval ← partialEvaluate x₂ req es
+        let pval ← Partial.evaluate x₂ req es
         match pval with
         | .value v => do
           let b ← v.asBool
@@ -111,44 +111,44 @@ def partialEvaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Ent
         | .residual r => .ok (.residual r)
     | .residual r => .ok (.residual (Partial.Expr.or r x₂))
   | .unaryApp op₁ x₁ => do
-    let pval ← partialEvaluate x₁ req es
+    let pval ← Partial.evaluate x₁ req es
     match pval with
     | .value v₁ => do
       let val ← Spec.apply₁ op₁ v₁
       .ok (.value val)
     | .residual r => .ok (.residual (Partial.Expr.unaryApp op₁ r))
   | .binaryApp op₂ x₁ x₂ => do
-    let pval₁ ← partialEvaluate x₁ req es
-    let pval₂ ← partialEvaluate x₂ req es
+    let pval₁ ← Partial.evaluate x₁ req es
+    let pval₂ ← Partial.evaluate x₂ req es
     match (pval₁, pval₂) with
-    | (.value v₁, .value v₂) => partialApply₂ op₂ v₁ v₂ es
+    | (.value v₁, .value v₂) => Partial.apply₂ op₂ v₁ v₂ es
     | (.value v₁, .residual r₂) => .ok (.residual (Partial.Expr.binaryApp op₂ v₁.asPartialExpr r₂))
     | (.residual r₁, .value v₂) => .ok (.residual (Partial.Expr.binaryApp op₂ r₁ v₂.asPartialExpr))
     | (.residual r₁, .residual r₂) => .ok (.residual (Partial.Expr.binaryApp op₂ r₁ r₂))
   | .hasAttr x₁ a   => do
-    let pval₁ ← partialEvaluate x₁ req es
+    let pval₁ ← Partial.evaluate x₁ req es
     match pval₁ with
     | .value v₁ => do
-      let val ← partialHasAttr v₁ a es
+      let val ← Partial.hasAttr v₁ a es
       .ok (.value val)
     | .residual r => .ok (.residual (Partial.Expr.hasAttr r a)) -- TODO more precise: even though pval₁ is a residual we may know concretely whether it contains the particular attr we care about
   | .getAttr x₁ a   => do
-    let pval₁ ← partialEvaluate x₁ req es
+    let pval₁ ← Partial.evaluate x₁ req es
     match pval₁ with
-    | .value v₁ => (partialGetAttr v₁ a es).map Partial.RestrictedValue.asPartialValue
+    | .value v₁ => (Partial.getAttr v₁ a es).map Partial.RestrictedValue.asPartialValue
     | .residual r => .ok (.residual (Partial.Expr.getAttr r a)) -- TODO more precise: pval₁ will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
   | .set xs         => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => partialEvaluate x₁ req es)
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
     | some vs => .ok (.value (Set.make vs))
     | none    => .ok (.residual (Partial.Expr.set (vs.map Partial.Value.asPartialExpr)))
   | .record axs     => do
-    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => partialBindAttr a₁ (partialEvaluate x₁ req es))
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => Partial.bindAttr a₁ (Partial.evaluate x₁ req es))
     match avs.mapM (fun (a, pval) => match pval with | .value v => some (a, v) | .residual _ => none) with
     | some avs => .ok (.value (Map.make avs))
     | none     => .ok (.residual (Partial.Expr.record (avs.map fun (a, v) => (a, v.asPartialExpr))))
   | .call xfn xs    => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => partialEvaluate x₁ req es)
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
     | some vs => do
       let val ← Spec.ExtFun.call xfn vs
