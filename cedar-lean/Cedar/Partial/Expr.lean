@@ -16,9 +16,7 @@
 
 import Cedar.Data
 import Cedar.Spec.Expr
-import Cedar.Thm.Data.Map -- necessary for a termination argument
-import Cedar.Thm.Termination.Expr
-import Cedar.Thm.Termination.Value
+import Cedar.Thm.Data.Set -- Set.sizeOf_elts, for a termination argument
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -138,76 +136,47 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-def Value.asPartialExpr (v : Spec.Value) : Partial.Expr :=
-  match v with
+def Value.asPartialExpr : Spec.Value → Partial.Expr
   | .prim p => .lit p
-  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
-      have := Value.set_termination v s h₁
-      v.asPartialExpr)
-  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
-      have := Value.record_termination v m (Map.in_kvs_values h₁)
-      (k, v.asPartialExpr))
+  | .set s =>
+      have := Set.sizeOf_elts (s := s)
+      .set (s.elts.map₁ λ ⟨v, h₁⟩ => v.asPartialExpr)
+  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
-termination_by v.size
 
-def Value.asPartialRestrictedExpr (v : Spec.Value) : Partial.RestrictedExpr :=
-  match v with
+def Value.asPartialRestrictedExpr : Spec.Value → Partial.RestrictedExpr
   | .prim p => .lit p
-  | .set s => .set (s.elts.map₁ λ ⟨v, h₁⟩ =>
-      have := Value.set_termination v s h₁
-      v.asPartialRestrictedExpr)
-  | .record m => .record (m.kvs.map₁ λ ⟨(k, v), h₁⟩ =>
-      have := Value.record_termination v m (Map.in_kvs_values h₁)
-      (k, v.asPartialRestrictedExpr))
+  | .set s =>
+      have := Set.sizeOf_elts (s := s)
+      .set (s.elts.map₁ λ ⟨v, h₁⟩ => v.asPartialRestrictedExpr)
+  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), h₁⟩ => (k, v.asPartialRestrictedExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [Value.prim (.string d.unParse)]
   | .ext (.ipaddr ip) => .call ExtFun.ip [Value.prim (.string (Spec.Ext.IPAddr.unParse ip))]
-termination_by v.size
 
-def Expr.asPartialExpr (x : Spec.Expr) : Partial.Expr :=
-  match x with
+def Expr.asPartialExpr : Spec.Expr → Partial.Expr
   | .lit p => .lit p
   | .var v => .var v
   | .ite x₁ x₂ x₃ =>
-      have := @Expr.ite_termination x₁ x₂ x₃
       .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
   | .and x₁ x₂ =>
-      have := @Expr.and_termination x₁ x₂
       .and x₁.asPartialExpr x₂.asPartialExpr
   | .or x₁ x₂ =>
-      have := @Expr.or_termination x₁ x₂
       .or x₁.asPartialExpr x₂.asPartialExpr
   | .unaryApp op x₁ =>
-      have := @Expr.unaryApp_termination x₁ op
       .unaryApp op x₁.asPartialExpr
   | .binaryApp op x₁ x₂ =>
-      have := @Expr.binaryApp_termination x₁ x₂ op
       .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
   | .getAttr x₁ attr =>
-      have := @Expr.getAttr_termination x₁ attr
       .getAttr x₁.asPartialExpr attr
   | .hasAttr x₁ attr =>
-      have := @Expr.hasAttr_termination x₁ attr
       .hasAttr x₁.asPartialExpr attr
   | .set xs =>
-      have h := @Expr.set_termination xs
-      let xs' := xs.map₁ λ ⟨x, prop⟩ =>
-        have := h x prop
-        x.asPartialExpr
-      .set xs'
+      .set (xs.map₁ λ ⟨x, _⟩ => x.asPartialExpr)
   | .record attrs =>
-      have h := @Expr.record_termination attrs
-      let attrs' := attrs.map₁ λ ⟨(k, v), prop⟩ =>
-        have := h (k, v) prop
-        (k, v.asPartialExpr)
-      .record attrs'
+      .record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
   | .call xfn args =>
-      have h := @Expr.call_termination args xfn
-      let args' := args.map₁ λ ⟨x, prop⟩ =>
-        have := h x prop
-        x.asPartialExpr
-      .call xfn args'
-termination_by x.size
+      .call xfn (args.map₁ λ ⟨x, _⟩ => x.asPartialExpr)
 
 instance : Coe Spec.Expr Partial.Expr where
   coe := Spec.Expr.asPartialExpr
@@ -216,13 +185,11 @@ end Cedar.Spec
 
 namespace Cedar.Partial
 
-def RestrictedExpr.asPartialExpr (x : Partial.RestrictedExpr) : Partial.Expr :=
-  match x with
+def RestrictedExpr.asPartialExpr : Partial.RestrictedExpr → Partial.Expr
   | .lit p => .lit p
-  | .set xs => .set (xs.map Partial.RestrictedExpr.asPartialExpr)
-  | .record attrs => .record (attrs.map λ (k, v) => (k, v.asPartialExpr))
-  | .call xfn args => .call xfn (args.map Spec.Value.asPartialExpr)
+  | .set xs => .set (xs.map₁ λ ⟨x, _⟩ => Partial.RestrictedExpr.asPartialExpr x)
+  | .record attrs => .record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
+  | .call xfn args => .call xfn (args.map₁ λ ⟨x, _⟩ => Spec.Value.asPartialExpr x)
   | .unknown u => .unknown u
-decreasing_by all_goals sorry
 
 end Cedar.Partial
