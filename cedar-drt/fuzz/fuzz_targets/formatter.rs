@@ -28,7 +28,7 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
 use smol_str::SmolStr;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 // A thin wrapper for policy
@@ -107,11 +107,28 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
     let formatted_policy_str =
         &policies_str_to_pretty(&attach_comment(&p.to_string(), &mut uuids), &config)
             .expect("pretty-printing should not fail");
-    // check if pretty-printing drops any comment
-    for u in &uuids {
-        assert!(formatted_policy_str.contains(u), "missing comment: {}\n", u);
-    }
+    check_comments(&formatted_policy_str, &uuids);
     parse_policy(None, formatted_policy_str)
+}
+
+// check if pretty-printing drops any comment
+fn check_comments(formatted_policy_str: &str, uuids: &[String]) {
+    let formatted_comments: HashSet<String> = formatted_policy_str
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| line.starts_with("//"))
+        .map(|s| s.to_owned())
+        .collect();
+    let original_comments: HashSet<String> =
+        uuids.iter().map(|uuid| format!("//{}", uuid)).collect();
+    assert!(
+        original_comments.is_subset(&formatted_comments),
+        "missing comment: {}\n",
+        formatted_comments
+            .difference(&original_comments)
+            .next()
+            .unwrap()
+    );
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
