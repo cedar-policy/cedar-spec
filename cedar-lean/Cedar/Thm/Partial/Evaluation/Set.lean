@@ -17,10 +17,10 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 import Cedar.Thm.Utils
 
-namespace Cedar.Thm.PartialEval.Set
+namespace Cedar.Thm.Partial.Evaluation.Set
 
 open Cedar.Spec (Result)
 open Except
@@ -141,4 +141,4 @@ theorem residuals_contain_unknowns {xs : List Partial.Expr} {request : Partial.R
           -- `x` is the set element which evaluated to `.residual r`
           exact ih₁ x h₄ r h₆
 
-end Cedar.Thm.PartialEval.Set
+end Cedar.Thm.Partial.Evaluation.Set

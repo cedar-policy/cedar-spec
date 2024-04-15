@@ -17,22 +17,22 @@
 import Cedar.Partial.Evaluator
 import Cedar.Partial.Expr
 import Cedar.Spec.Evaluator
-import Cedar.Thm.PartialEval.And
-import Cedar.Thm.PartialEval.Basic
-import Cedar.Thm.PartialEval.Binary
-import Cedar.Thm.PartialEval.Call
-import Cedar.Thm.PartialEval.GetAttr
-import Cedar.Thm.PartialEval.HasAttr
-import Cedar.Thm.PartialEval.Ite
-import Cedar.Thm.PartialEval.Or
-import Cedar.Thm.PartialEval.Set
-import Cedar.Thm.PartialEval.Unary
+import Cedar.Thm.Partial.Evaluation.And
+import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Binary
+import Cedar.Thm.Partial.Evaluation.Call
+import Cedar.Thm.Partial.Evaluation.GetAttr
+import Cedar.Thm.Partial.Evaluation.HasAttr
+import Cedar.Thm.Partial.Evaluation.Ite
+import Cedar.Thm.Partial.Evaluation.Or
+import Cedar.Thm.Partial.Evaluation.Set
+import Cedar.Thm.Partial.Evaluation.Unary
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Utils
 
 /-! This file contains theorems about Cedar's partial evaluator. -/
 
-namespace Cedar.Thm
+namespace Cedar.Thm.Partial.Evaluation
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
@@ -76,41 +76,41 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request :
   case and x₁ x₂ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
-    exact PartialEval.And.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
+    exact And.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case or x₁ x₂ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
-    exact PartialEval.Or.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
+    exact Or.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case ite x₁ x₂ x₃ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
     have ih₃ := @partial_eval_on_concrete_eqv_concrete_eval x₃ request entities
-    exact PartialEval.Ite.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂ ih₃
+    exact Ite.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    exact PartialEval.Unary.partial_eval_on_concrete_eqv_concrete_eval ih₁
+    exact Unary.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case binaryApp op x₁ x₂ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
-    exact PartialEval.Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
+    exact Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case getAttr x₁ attr =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    exact PartialEval.GetAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
+    exact GetAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case hasAttr x₁ attr =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    exact PartialEval.HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
+    exact HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case set xs =>
     have ih : ∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value := by
       intro x h₁
       apply @partial_eval_on_concrete_eqv_concrete_eval x request entities
-    exact PartialEval.Set.partial_eval_on_concrete_eqv_concrete_eval ih
+    exact Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
     sorry
   case call xfn args =>
     have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
       intro arg h₁
       apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities
-    exact PartialEval.Call.partial_eval_on_concrete_eqv_concrete_eval ih
+    exact Call.partial_eval_on_concrete_eqv_concrete_eval ih
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
@@ -204,38 +204,38 @@ theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Requ
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← Partial.Expr.ResidualsContainUnknowns] at *
-    exact PartialEval.And.residuals_contain_unknowns ih₁ ih₂
+    exact And.residuals_contain_unknowns ih₁ ih₂
   case or x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← Partial.Expr.ResidualsContainUnknowns] at *
-    exact PartialEval.Or.residuals_contain_unknowns ih₁ ih₂
+    exact Or.residuals_contain_unknowns ih₁ ih₂
   case ite x₁ x₂ x₃ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     have ih₃ := @residuals_contain_unknowns x₃ request entities wf_e ih_e ih_r
     rw [← Partial.Expr.ResidualsContainUnknowns] at *
-    exact PartialEval.Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
+    exact Ite.residuals_contain_unknowns ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
-    exact PartialEval.Unary.residuals_contain_unknowns ih₁
+    exact Unary.residuals_contain_unknowns ih₁
   case binaryApp op x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
     rw [← Partial.Expr.ResidualsContainUnknowns] at *
-    exact PartialEval.Binary.residuals_contain_unknowns ih₁ ih₂
+    exact Binary.residuals_contain_unknowns ih₁ ih₂
   case getAttr x₁ attr =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
-    exact PartialEval.GetAttr.residuals_contain_unknowns wf_e ih₁ ih_e
+    exact GetAttr.residuals_contain_unknowns wf_e ih₁ ih_e
   case hasAttr x₁ attr =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
-    exact PartialEval.HasAttr.residuals_contain_unknowns ih₁
+    exact HasAttr.residuals_contain_unknowns ih₁
   case set xs =>
     have ih : ∀ x ∈ xs, @Partial.Expr.ResidualsContainUnknowns x request entities := by
       intro x h₁
       unfold Partial.Expr.ResidualsContainUnknowns
       apply @residuals_contain_unknowns x request entities wf_e ih_e ih_r
-    exact PartialEval.Set.residuals_contain_unknowns ih
+    exact Set.residuals_contain_unknowns ih
   case record attrs =>
     sorry
   case call xfn args =>
@@ -243,7 +243,7 @@ theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Requ
       intro arg h₁
       unfold Partial.Expr.ResidualsContainUnknowns
       apply @residuals_contain_unknowns arg request entities wf_e ih_e ih_r
-    exact PartialEval.Call.residuals_contain_unknowns ih
+    exact Call.residuals_contain_unknowns ih
 
 /--
   If partial evaluation returns a concrete value, then it returns the same value

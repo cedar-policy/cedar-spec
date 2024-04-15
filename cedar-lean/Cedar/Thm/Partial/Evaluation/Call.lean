@@ -17,10 +17,10 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 import Cedar.Thm.Utils
 
-namespace Cedar.Thm.PartialEval.Call
+namespace Cedar.Thm.Partial.Evaluation.Call
 
 open Cedar.Spec (Error ExtFun Result)
 open Except
@@ -114,4 +114,4 @@ theorem residuals_contain_unknowns {xs : List Partial.Expr} {request : Partial.R
           -- `arg` is the argument which evaluated to `.residual r`
           exact ih₁ arg h₄ r h₆
 
-end Cedar.Thm.PartialEval.Call
+end Cedar.Thm.Partial.Evaluation.Call

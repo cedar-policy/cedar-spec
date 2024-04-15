@@ -24,25 +24,25 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.PartialEval
-import Cedar.Thm.PartialEval.And
-import Cedar.Thm.PartialAuthorization.PartialResponse
+import Cedar.Thm.Partial.Evaluation
+import Cedar.Thm.Partial.Evaluation.And
+import Cedar.Thm.Partial.Authorization.PartialResponse
 import Cedar.Thm.Utils
 
 /-!
   This file contains lemmas about Cedar's partial authorizer.
 
   The toplevel theorems (proved using these lemmas) are in
-  Thm/PartialAuthorization.lean, not this file.
+  Thm/Partial/Authorization.lean, not this file.
 -/
 
-namespace Cedar.Thm
+namespace Cedar.Thm.Partial.Authorization
 
 open Cedar.Data
 open Cedar.Partial (Residual Unknown)
 open Cedar.Spec (Effect Policies PolicyID)
 
-namespace PartialOnConcrete -- lemmas about the behavior of partial evaluation on concrete inputs
+namespace PartialOnConcrete -- lemmas about the behavior of partial authorization on concrete inputs
 
 /--
   on concrete inputs, Partial.Response.mayBeSatisfied is empty iff
@@ -60,7 +60,7 @@ theorem mayBeSatisfied_empty_iff_no_satisfied {policies : Spec.Policies} {req : 
   case mp =>
     intro h₁ policy h₂ h₃ h₄
     simp [Partial.isAuthorized] at h₁
-    simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
+    simp [Partial.Evaluation.partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
     rw [forall_comm] at h₁
     specialize h₁ policy
     simp [h₃, Residual.mayBeSatisfied] at h₁
@@ -71,7 +71,7 @@ theorem mayBeSatisfied_empty_iff_no_satisfied {policies : Spec.Policies} {req : 
     intro h₁ r h₂
     simp [Partial.isAuthorized] at h₂
     replace ⟨policy, h₂, h₃⟩ := h₂
-    simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₃
+    simp [Partial.Evaluation.partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₃
     simp [Residual.mayBeSatisfied]
     split <;> simp
     case h_1 r pid eff' cond =>
@@ -168,7 +168,7 @@ theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Reque
 := by
   intro h₁
   unfold Partial.isAuthorized at h₁
-  simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
+  simp [Partial.Evaluation.partial_eval_on_concrete_eqv_concrete_eval, Except.map] at h₁
   replace ⟨policy, _, h₁⟩ := h₁
   have h₂ := policy_produces_bool_or_error (p := policy) (request := req) (entities := entities)
   split at h₂ <;> simp at h₂
@@ -266,7 +266,7 @@ theorem errors_eq_errorPolicies {policies : Policies} {req : Spec.Request} {enti
       replace ⟨policy, h₁, h₂⟩ := h₁
       exists policy
       apply And.intro h₁
-      simp [partial_eval_on_concrete_eqv_concrete_eval] at h₂
+      simp [Partial.Evaluation.partial_eval_on_concrete_eqv_concrete_eval] at h₂
       split <;> split at h₂ <;> simp at h₂ <;> try simp [h₂]
       case h_1.h_4 h₃ _ e' h₄ => simp [h₃, Except.map] at h₄
   case right =>
@@ -281,7 +281,7 @@ theorem errors_eq_errorPolicies {policies : Policies} {req : Spec.Request} {enti
       constructor
       case left =>
         unfold Partial.isAuthorized
-        simp [partial_eval_on_concrete_eqv_concrete_eval]
+        simp [Partial.Evaluation.partial_eval_on_concrete_eqv_concrete_eval]
         exists policy
         apply And.intro h₁
         split <;> simp
@@ -310,7 +310,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
   split at h₃ <;> simp at h₃ <;> subst h₃
   case h_2 v h₃ h₄ =>
     -- after subst, partial eval of the policy produced a .value other than False
-    have h₅ := subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+    have h₅ := Partial.Evaluation.subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
       simp [Except.isOk, Except.toBool]
       split <;> simp
       case _ e h₅ =>
@@ -329,7 +329,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
         split <;> simp
         case h_1 h₅ _ h₆ =>
           -- before subst, partial eval of the policy produced False
-          have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
+          have h₇ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₆ h₁
           rw [Partial.subs_expr_id] at h₇
           simp [h₇] at h₄
           exact h₃ h₄.symm
@@ -352,7 +352,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
         case right => simp [Residual.effect]
   case h_3 x h₃ =>
     -- after subst, partial eval of the policy produced a .residual
-    have h₄ := subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
+    have h₄ := Partial.Evaluation.subst_preserves_errors_mt (expr := p.toExpr.asPartialExpr) (entities := entities) h₁ (by
       simp [Except.isOk, Except.toBool]
       split <;> simp
       case _ e h₄ =>
@@ -371,7 +371,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
         split <;> simp
         case h_1 h₅ _ h₆ =>
           -- before subst, partial eval of the policy produced False
-          have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
+          have h₇ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₆ h₁
           rw [Partial.subs_expr_id] at h₇
           simp [h₇] at h₃
         case h_2 h₅ _ v h₆ h₇ =>
@@ -420,7 +420,7 @@ theorem subst_doesn't_increase_residuals {policies : Policies} {req req' : Parti
         split <;> simp
         case h_1 h₅ =>
           -- before subst, partial eval of the policy produced False
-          have h₆ := subst_preserves_evaluation_to_literal h₅ h₁
+          have h₆ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₅ h₁
           rw [Partial.subs_expr_id] at h₆
           simp [h₆] at h₃
         case h_2 h₅ =>
@@ -468,13 +468,13 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
       replace ⟨_, _, h₂⟩ := h₂
       rw [Spec.Value.prim_prim] at h₂
       subst h₂
-      have h₆ := subst_preserves_evaluation_to_literal h₅ h₁
+      have h₆ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₅ h₁
       rw [Partial.subs_expr_id] at h₆
       simp [h₆] at h₃
     case _ h₄ =>
       replace ⟨_, _, h₂⟩ := h₂
       subst h₂
-      have h₅ := residuals_contain_unknowns wf rcu_e rcu_r _ h₄
+      have h₅ := Partial.Evaluation.residuals_contain_unknowns wf rcu_e rcu_r _ h₄
       unfold Partial.Expr.containsUnknown at h₅
       rw [List.any_eq_true] at h₅
       replace ⟨x, h₅⟩ := h₅
@@ -494,7 +494,7 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
       replace h₂ := h₂.right
       rw [Spec.Value.prim_prim] at *
       subst h₂
-      have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
+      have h₇ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₆ h₁
       rw [Partial.subs_expr_id] at h₇
       simp [h₃] at h₇
       try assumption
@@ -504,7 +504,7 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
       apply And.intro h₂.left
       replace h₂ := h₂.right
       subst h₂
-      have h₆ := residuals_contain_unknowns wf rcu_e rcu_r _ h₅
+      have h₆ := Partial.Evaluation.residuals_contain_unknowns wf rcu_e rcu_r _ h₅
       simp [Partial.Expr.containsUnknown, Partial.Expr.subexpressions, Partial.Expr.isUnknown] at h₆
   case h_4 h₃ =>
     -- after subst, partial eval of the policy produced an error
@@ -513,13 +513,13 @@ theorem subst_preserves_true_residuals {policies : Policies} {req req' : Partial
       replace ⟨_, _, h₂⟩ := h₂
       rw [Spec.Value.prim_prim] at h₂
       subst h₂
-      have h₇ := subst_preserves_evaluation_to_literal h₆ h₁
+      have h₇ := Partial.Evaluation.subst_preserves_evaluation_to_literal h₆ h₁
       rw [Partial.subs_expr_id] at h₇
       simp [h₃] at h₇
     case _ x h₄ =>
       replace ⟨_, _, h₂⟩ := h₂
       subst h₂
-      have h₅ := residuals_contain_unknowns wf rcu_e rcu_r _ h₄
+      have h₅ := Partial.Evaluation.residuals_contain_unknowns wf rcu_e rcu_r _ h₄
       simp [Partial.Expr.containsUnknown, Partial.Expr.subexpressions, Partial.Expr.isUnknown] at h₅
 
 /--

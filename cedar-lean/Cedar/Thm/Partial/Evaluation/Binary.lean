@@ -19,9 +19,9 @@ import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 
-namespace Cedar.Thm.PartialEval.Binary
+namespace Cedar.Thm.Partial.Evaluation.Binary
 
 open Cedar.Data
 open Cedar.Spec (BinaryOp EntityUID intOrErr Result)
@@ -179,4 +179,4 @@ theorem residuals_contain_unknowns {x₁ x₂ : Partial.Expr} {request : Partial
       apply rhs_unknown
       apply @ih₂ r₂ h₃
 
-end Cedar.Thm.PartialEval.Binary
+end Cedar.Thm.Partial.Evaluation.Binary

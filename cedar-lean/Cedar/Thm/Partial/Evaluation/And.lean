@@ -17,9 +17,9 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 
-namespace Cedar.Thm.PartialEval.And
+namespace Cedar.Thm.Partial.Evaluation.And
 
 open Cedar.Spec
 open Except
@@ -206,4 +206,4 @@ theorem policy_produces_bool_residual_or_error {p : Policy} {request : Partial.R
   unfold Policy.toExpr
   apply exprand_produces_bool_residual_or_error
 
-end Cedar.Thm.PartialEval.And
+end Cedar.Thm.Partial.Evaluation.And

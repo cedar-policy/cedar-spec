@@ -14,7 +14,5 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Authorization
-import Cedar.Thm.Partial
-import Cedar.Thm.Slicing
-import Cedar.Thm.Typechecking
+import Cedar.Thm.Partial.Authorization
+import Cedar.Thm.Partial.Evaluation

@@ -17,9 +17,9 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 
-namespace Cedar.Thm.PartialEval.Unary
+namespace Cedar.Thm.Partial.Evaluation.Unary
 
 open Cedar.Spec
 open Except
@@ -93,4 +93,4 @@ theorem residuals_contain_unknowns {x₁ : Partial.Expr} {request : Partial.Requ
       -- partial evaluating the operand produced a value v₁
       cases h₃ : apply₁ op v₁ <;> simp [h₃] at h₁
 
-end Cedar.Thm.PartialEval.Unary
+end Cedar.Thm.Partial.Evaluation.Unary

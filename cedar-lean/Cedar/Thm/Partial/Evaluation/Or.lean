@@ -17,9 +17,9 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 
-namespace Cedar.Thm.PartialEval.Or
+namespace Cedar.Thm.Partial.Evaluation.Or
 
 open Cedar.Spec
 open Except
@@ -192,4 +192,4 @@ theorem expror_produces_bool_residual_or_error {e₁ e₂ : Expr} {request : Par
   unfold Expr.asPartialExpr
   exact @partialexpror_produces_bool_residual_or_error e₁.asPartialExpr e₂.asPartialExpr request entities
 
-end Cedar.Thm.PartialEval.Or
+end Cedar.Thm.Partial.Evaluation.Or

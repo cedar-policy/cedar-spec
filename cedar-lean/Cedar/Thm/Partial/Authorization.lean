@@ -24,17 +24,18 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.PartialEval
-import Cedar.Thm.PartialEval.And
-import Cedar.Thm.PartialAuthorization.PartialAuthorization
-import Cedar.Thm.PartialAuthorization.PartialResponse
+import Cedar.Thm.Partial.Evaluation
+import Cedar.Thm.Partial.Evaluation.And
+import Cedar.Thm.Partial.Authorization.PartialAuthorization
+import Cedar.Thm.Partial.Authorization.PartialResponse
 import Cedar.Thm.Utils
 
 /-! This file contains toplevel theorems about Cedar's partial authorizer. -/
 
-namespace Cedar.Thm
+namespace Cedar.Thm.Partial.Authorization
 
 open Cedar.Data
+open Cedar.Partial (Unknown)
 open Cedar.Spec
 open Except
 
@@ -58,7 +59,7 @@ theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req
   rw [List.filterMap_filterMap]
   apply List.filterMap_congr
   intro policy h₂
-  have h₃ := eval_on_residuals_eqv_substituting_first h₁ (expr := policy.toExpr) (entities := entities)
+  have h₃ := Partial.Evaluation.eval_on_residuals_eqv_substituting_first h₁ (expr := policy.toExpr) (entities := entities)
   simp [Option.bind]
   -- TODO: desugar the do-let in h₃ to show its LHS matches the LHS of the goal (which explicitly written with match-on-match and `fun residual`).
   -- or maneuver so the goal is written in do-let form, but that seems harder.

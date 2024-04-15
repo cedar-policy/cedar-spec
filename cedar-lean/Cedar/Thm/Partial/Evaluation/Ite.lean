@@ -17,9 +17,9 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
-import Cedar.Thm.PartialEval.Basic
+import Cedar.Thm.Partial.Evaluation.Basic
 
-namespace Cedar.Thm.PartialEval.Ite
+namespace Cedar.Thm.Partial.Evaluation.Ite
 
 open Cedar.Spec
 open Except
@@ -122,4 +122,4 @@ theorem residuals_contain_unknowns {x₁ x₂ x₃ : Partial.Expr} {request : Pa
                 subst h₁
                 apply @ih₂ r₂ h₃
 
-end Cedar.Thm.PartialEval.Ite
+end Cedar.Thm.Partial.Evaluation.Ite

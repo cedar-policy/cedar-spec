@@ -22,7 +22,7 @@ import Cedar.Thm.Data.Set
 
 /-!
   This file contains definitions and lemmas used by multiple files in the
-  Thm/PartialEval folder
+  Thm/Partial folder
 -/
 
 namespace Cedar.Thm
@@ -117,7 +117,7 @@ def Entities.AllWellFormed (entities : Partial.Entities) : Prop :=
 
 end Cedar.Partial
 
-namespace Cedar.Thm
+namespace Cedar.Thm.Partial.Evaluation
 
 /--
   Partial evaluation always returns well-formed results
@@ -129,4 +129,4 @@ theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entit
 := by
   sorry
 
-end Cedar.Thm
+end Cedar.Thm.Partial.Evaluation
