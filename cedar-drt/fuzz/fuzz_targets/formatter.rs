@@ -24,13 +24,11 @@ use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
-use lazy_static::lazy_static;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use regex::Regex;
 use serde::Serialize;
 use smol_str::SmolStr;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 // A thin wrapper for policy
@@ -113,26 +111,19 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
     parse_policy(None, formatted_policy_str)
 }
 
-lazy_static! {
-    static ref COMMENT: Regex = Regex::new(r"//[^\n\r]*[\n\r]*").unwrap();
-}
-
 // check if pretty-printing drops any comment
 fn check_comments(formatted_policy_str: &str, uuids: &[String]) {
-    let formatted_comments: HashSet<String> = COMMENT
-        .find_iter(formatted_policy_str)
-        .map(|s| s.as_str().trim().to_owned())
-        .collect();
-    let original_comments: HashSet<String> =
-        uuids.iter().map(|uuid| format!("//{}", uuid)).collect();
-    assert!(
-        original_comments.is_subset(&formatted_comments),
-        "missing comment: {}\n",
-        original_comments
-            .difference(&formatted_comments)
-            .next()
-            .unwrap()
-    );
+    let mut work_str = formatted_policy_str;
+    for uuid in uuids {
+        match work_str.find(&format!("//{uuid}")) {
+            Some(i) => {
+                work_str = &work_str[i..];
+            }
+            None => {
+                assert!(false, "missing comment: //{uuid}");
+            }
+        }
+    }
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
