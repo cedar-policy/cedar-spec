@@ -24,8 +24,10 @@ use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
+use lazy_static::lazy_static;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
+use regex::Regex;
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::collections::{HashMap, HashSet};
@@ -111,21 +113,23 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
     parse_policy(None, formatted_policy_str)
 }
 
+lazy_static! {
+    static ref COMMENT: Regex = Regex::new(r"//[^\n\r]*[\n\r]*").unwrap();
+}
+
 // check if pretty-printing drops any comment
 fn check_comments(formatted_policy_str: &str, uuids: &[String]) {
-    let formatted_comments: HashSet<String> = formatted_policy_str
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| line.starts_with("//"))
-        .map(|s| s.to_owned())
+    let formatted_comments: HashSet<String> = COMMENT
+        .find_iter(formatted_policy_str)
+        .map(|s| s.as_str().trim().to_owned())
         .collect();
     let original_comments: HashSet<String> =
         uuids.iter().map(|uuid| format!("//{}", uuid)).collect();
     assert!(
         original_comments.is_subset(&formatted_comments),
         "missing comment: {}\n",
-        formatted_comments
-            .difference(&original_comments)
+        original_comments
+            .difference(&formatted_comments)
             .next()
             .unwrap()
     );
