@@ -74,6 +74,12 @@ def Value.WellFormed (v : Value) : Prop :=
   | .record r => r.WellFormed
   | _ => true
 
+/--
+  Requests are WellFormed if the context is WellFormed
+-/
+def Request.WellFormed (req : Request) : Prop :=
+  req.context.WellFormed
+
 end Cedar.Spec
 
 namespace Cedar.Partial

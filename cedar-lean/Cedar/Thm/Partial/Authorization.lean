@@ -166,7 +166,8 @@ theorem underapproximate_determining_iff_determining_after_subst {policies : Pol
   Partial-authorizing with concrete inputs gives the same concrete outputs as
   concrete-authorizing with those inputs.
 -/
-theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request} {entities : Entities} {presp : Partial.Response} {resp : Response} :
+theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request} {entities : Entities} {presp : Partial.Response} {resp : Response}
+  (wf : req.WellFormed) :
   isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
@@ -179,18 +180,18 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
   repeat (any_goals (apply And.intro))
   case _ =>
     simp [isAuthorized, Partial.Response.decision]
-    simp only [PartialOnConcrete.knownForbids_eq_forbids]
-    simp only [PartialOnConcrete.forbids_empty_iff_no_satisfied_forbids]
-    simp only [PartialOnConcrete.forbids_nonempty_iff_satisfied_forbids_nonempty]
+    simp only [PartialOnConcrete.knownForbids_eq_forbids wf]
+    simp only [PartialOnConcrete.forbids_empty_iff_no_satisfied_forbids wf]
+    simp only [PartialOnConcrete.forbids_nonempty_iff_satisfied_forbids_nonempty wf]
     cases h₁ : (satisfiedPolicies .forbid policies req entities).isEmpty
     case false => simp
     case true =>
       simp [h₁]
-      simp only [PartialOnConcrete.permits_empty_iff_no_satisfied_permits]
-      simp only [PartialOnConcrete.knownPermits_eq_permits]
+      simp only [PartialOnConcrete.permits_empty_iff_no_satisfied_permits wf]
+      simp only [PartialOnConcrete.knownPermits_eq_permits wf]
       cases h₂ : (satisfiedPolicies .permit policies req entities).isEmpty
-      case false => simp [h₂, PartialOnConcrete.permits_empty_iff_no_satisfied_permits]
-      case true => simp [h₁, h₂, PartialOnConcrete.permits_nonempty_iff_satisfied_permits_nonempty]
+      case false => simp [h₂, PartialOnConcrete.permits_empty_iff_no_satisfied_permits wf]
+      case true => simp [h₁, h₂, PartialOnConcrete.permits_nonempty_iff_satisfied_permits_nonempty wf]
   case _ =>
     rw [← Set.eq_means_eqv Partial.Response.overapproximateDeterminingPolicies_wf determiningPolicies_wf]
     unfold List.Equiv
@@ -215,17 +216,18 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Request
     cases (satisfiedPolicies .forbid policies req entities).isEmpty <;>
     cases (satisfiedPolicies .permit policies req entities).isEmpty <;>
     simp only [and_true, and_false, ite_true, ite_false] <;>
-    exact PartialOnConcrete.errors_eq_errorPolicies
+    exact PartialOnConcrete.errors_eq_errorPolicies wf
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a
   concrete decision.
 -/
-theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Request} {entities : Entities} :
+theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Request} {entities : Entities}
+  (wf : req.WellFormed) :
   (Partial.isAuthorized req entities policies).decision ≠ .unknown
 := by
   intro h₁
-  have h₂ := partial_authz_eqv_authz_on_concrete (policies := policies) (req := req) (entities := entities) (presp := Partial.isAuthorized req entities policies) (resp := isAuthorized req entities policies)
+  have h₂ := partial_authz_eqv_authz_on_concrete (policies := policies) (req := req) (entities := entities) (presp := Partial.isAuthorized req entities policies) (resp := isAuthorized req entities policies) wf
   simp at h₂
   replace ⟨h₂, h₃, h₄, h₅⟩ := h₂ ; clear h₃ h₄ h₅
   cases h₃ : (isAuthorized req entities policies).decision

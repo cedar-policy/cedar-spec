@@ -62,7 +62,7 @@ theorem equal_keys_same_value [BEq α] [LT α] [DecidableLT α] (k₁ k₂ : α)
 
 /-! ### contains, mem, and find? -/
 
-theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
+theorem in_list_in_map {α : Type u} {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.kvs → k ∈ m
 := by
   intro h₀
@@ -74,7 +74,7 @@ theorem in_kvs_snd_in_values {kv : α × β} {m : Map α β} :
 := by
   sorry
 
-theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] (k : α) (v : β) (m : Map α β) :
+theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β} :
   m.WellFormed →
   ((k, v) ∈ m.kvs ↔ m.find? k = some v)
 := by
@@ -132,12 +132,12 @@ theorem in_values_iff_some_find? {α β} [DecidableEq α] [LT α] [DecidableLT �
     exists k
     simp [Prod.snd] at h₂
     subst v'
-    rw [← in_list_some_find? k v m wf]
+    rw [← in_list_some_find? wf]
     trivial
   case mpr =>
     intro h₁
     replace ⟨k, h₁⟩ := h₁
-    rw [← in_list_some_find? k v m wf] at h₁
+    rw [← in_list_some_find? wf] at h₁
     exists (k, v)
 
 theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
@@ -185,48 +185,48 @@ theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {
 := by
   simp [mapOnValues, empty]
 
-theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
+theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α}  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp [Map.find?, Map.mapOnValues, Map.kvs, ←List.find?_pair_map]
-  cases __ : List.find? (fun x => x.fst == k) m.1 <;>
+  cases __ : List.find? (λ x => x.fst == k) m.1 <;>
   simp only [Option.map_none', Option.map_some']
 
-theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
+theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v →
   (m.mapOnValues f).find? k = .some (f v)
 := by
   intro h₁
-  rw [← find?_mapOnValues f m k]
+  rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} :
   m.find? k = .none →
   (m.mapOnValues f).find? k = .none
 := by
   intro h₁
-  rw [← find?_mapOnValues f m k]
+  rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
+theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] {f : β → γ} {m : Map α β}
   (wf : m.WellFormed) :
   m.mapOnValues f = Map.make (m.toList.map λ kv => (kv.fst, f kv.snd))
 := by
   unfold WellFormed at wf
   simp [mapOnValues, toList, kvs, make] at *
   rw [wf] ; simp only ; rw [eq_comm]
-  have h₁ : Prod.map id f = (fun (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
+  have h₁ : Prod.map id f = (λ (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
   simp only [← h₁, ← List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
-theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
+theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} :
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
   simp only [contains, Option.isSome]
   split
-  case h_1 h => simp [find?_mapOnValues_some f h]
-  case h_2 h => simp [find?_mapOnValues_none f h]
+  case h_1 h => simp [find?_mapOnValues_some h]
+  case h_2 h => simp [find?_mapOnValues_none h]
 
-theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} :
+theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
 := by
   unfold mapOnValues values
@@ -264,17 +264,17 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [DecidableEq α] {m 
     simp at h₂
     subst v'
     exists k
-    simp [← in_list_some_find? k v m wf]
+    simp [← in_list_some_find? wf]
     trivial
   case mpr =>
     intro h₁
     replace ⟨k, h₁⟩ := h₁
     exists (k, v)
-    simp [in_list_some_find? k v m wf]
+    simp [in_list_some_find? wf]
     trivial
 
 /- not currently needed -/
-theorem mapM_on_kvs_eqv_mapM_on_map [LT α] [DecidableLT α] (f : β → Option γ) {m : Map α β} :
+theorem mapM_on_kvs_eqv_mapM_on_map [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   (m.kvs.mapM λ x => f x.snd) = (m.mapMOnValues f).map Map.values
 := by
   sorry

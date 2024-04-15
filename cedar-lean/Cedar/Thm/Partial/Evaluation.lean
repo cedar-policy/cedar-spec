@@ -43,86 +43,105 @@ open Except
   Partial evaluation with concrete inputs gives the same output as
   concrete evaluation with those inputs
 -/
-theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities}
+  (wf : request.WellFormed) :
   Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
 := by
   cases expr <;> simp only [Spec.Expr.asPartialExpr]
   case lit p => simp [Partial.evaluate, Spec.evaluate, Except.map]
   case var v =>
     unfold Partial.evaluate Spec.evaluate
+    unfold Spec.Request.WellFormed at wf
     cases v <;> simp only [Spec.Request.asPartialRequest, Except.map]
     case context =>
       split
       case h_1 kvs h₁ =>
         simp
-        rw [Map.mapOnValues_eq_make_map] at h₁
-        rw [Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.make_wf])]
+        rw [Map.mapOnValues_eq_make_map wf] at h₁
+        simp [Map.toList] at h₁
+        rw [Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.make_wf]) (wf₂ := wf)]
         simp [List.Equiv, List.subset_def]
-        have h₂ := mapM_some_iff_f_some_on_all_elements.mp (Option.isSome_iff_exists.mpr (Exists.intro kvs h₁))
-        simp at h₂
-        -- h₂ says, approximately, that context after wrapping in
-        -- Partial.RestrictedValue.value doesn't have any residuals.
-        -- We may not need it stated in that form.
         constructor
         case left =>
           intro kv h₃
-          sorry
+          replace h₃ := Map.make_mem_list_mem h₃
+          have ⟨kv', h₄, h₅⟩ := mem_mapM_some h₁ h₃
+          replace h₄ := Map.make_mem_list_mem h₄
+          cases h₆ : kv'.snd <;> simp [h₆] at h₅
+          case value v =>
+            subst kv
+            rw [List.mem_map] at h₄
+            replace ⟨kv, h₄, h₅⟩ := h₄
+            subst kv'
+            simp at h₃ h₆
+            subst v
+            simp [h₄]
         case right =>
           intro kv h₃
           sorry
-        all_goals sorry
-      case h_2 =>
-        sorry
+      case h_2 h₁ =>
+        exfalso
+        simp [mapM_none_iff_f_none_on_some_element] at h₁
+        replace ⟨kv, h₁, h₂⟩ := h₁
+        cases h₃ : kv.snd <;> simp [h₃] at h₂
+        case residual r =>
+          rw [Map.mapOnValues_eq_make_map wf] at h₁
+          replace h₁ := Map.make_mem_list_mem h₁
+          simp [List.mem_map] at h₁
+          replace ⟨kv', h₁, h₂⟩ := h₁
+          subst h₂
+          simp at h₃
   case and x₁ x₂ =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities wf
     exact And.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case or x₁ x₂ =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities wf
     exact Or.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case ite x₁ x₂ x₃ =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
-    have ih₃ := @partial_eval_on_concrete_eqv_concrete_eval x₃ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities wf
+    have ih₃ := @partial_eval_on_concrete_eqv_concrete_eval x₃ request entities wf
     exact Ite.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
     exact Unary.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case binaryApp op x₁ x₂ =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
-    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities wf
     exact Binary.partial_eval_on_concrete_eqv_concrete_eval ih₁ ih₂
   case getAttr x₁ attr =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
     exact GetAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case hasAttr x₁ attr =>
-    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities
+    have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
     exact HasAttr.partial_eval_on_concrete_eqv_concrete_eval ih₁
   case set xs =>
     have ih : ∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value := by
       intro x h₁
-      apply @partial_eval_on_concrete_eqv_concrete_eval x request entities
+      apply @partial_eval_on_concrete_eqv_concrete_eval x request entities wf
     exact Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
     sorry
   case call xfn args =>
     have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
       intro arg h₁
-      apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities
+      apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities wf
     exact Call.partial_eval_on_concrete_eqv_concrete_eval ih
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
   concrete value (or an error)
 -/
-theorem partial_eval_on_concrete_gives_concrete {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+theorem partial_eval_on_concrete_gives_concrete {expr : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities}
+  (wf : request.WellFormed) :
   match Partial.evaluate expr request entities with
   | .ok (.value _) => true
   | .ok (.residual _) => false
   | .error _ => true
 := by
-  simp [partial_eval_on_concrete_eqv_concrete_eval, Except.map]
+  simp [partial_eval_on_concrete_eqv_concrete_eval wf, Except.map]
   split <;> rename_i h <;> split at h <;> simp at h <;> trivial
 
 /--

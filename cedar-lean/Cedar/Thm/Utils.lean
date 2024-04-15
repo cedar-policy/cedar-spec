@@ -158,6 +158,14 @@ theorem mapM_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {xs : List α
             cases h₃
 
 /--
+  Another generic lemma about the behavior of List.mapM in the Option monad
+-/
+theorem mem_mapM_some {f : α → Option β} {xs : List α} {y : β} :
+  xs.mapM f = some ys → y ∈ ys → ∃ x ∈ xs, f x = some y
+:= by
+  sorry
+
+/--
   Another generic lemma about the behavior of List.mapM in the Except monad
 -/
 theorem mem_mapM_ok {f : α → Except ε β} {xs : List α} {y : β} :
