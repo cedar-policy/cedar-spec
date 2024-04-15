@@ -118,67 +118,6 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   exact h₁ h₃
   exact h₂ h₃
 
-theorem filterMap_empty_iff_f_returns_none {f : α → Option β} {xs : List α} :
-  xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none
-:= by
-  constructor
-  case mp =>
-    induction xs
-    case nil => simp
-    case cons x xs h_ind =>
-      intro h₁ a h₂
-      simp only [List.filterMap_cons] at h₁
-      split at h₁ <;> try simp at h₁
-      case h_1 h₃ =>
-        rcases (List.mem_cons.mp h₂) with h₄ | h₄
-        case inl => subst h₄ ; assumption
-        case inr => apply h_ind h₁ a ; assumption
-  case mpr =>
-    intro h₁
-    induction xs
-    case nil => simp
-    case cons x xs h_ind =>
-      simp only [List.filterMap_cons]
-      split
-      case h_1 =>
-        apply h_ind ; clear h_ind
-        intro a h₂
-        apply h₁ a
-        exact List.mem_cons_of_mem x h₂
-      case h_2 b h₂ =>
-        exfalso
-        specialize h₁ x
-        simp at h₁
-        simp [h₁] at h₂
-
-theorem filterMap_nonempty_iff_exists_f_returns_some {f : α → Option β} {xs : List α} :
-  xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
-:= by
-  constructor
-  case mp =>
-    intro h₁
-    replace ⟨b, h₁⟩ := List.exists_mem_of_ne_nil (xs.filterMap f) h₁
-    replace ⟨x, h₁⟩ := (List.mem_filterMap f xs).mp h₁
-    exists x
-    simp [h₁, Option.isSome]
-  case mpr =>
-    intro h₁ h₂
-    rw [filterMap_empty_iff_f_returns_none] at h₂
-    replace ⟨x, h₁, h₃⟩ := h₁
-    specialize h₂ x h₁
-    simp [h₂, Option.isSome] at h₃
-
-theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
-  (∀ a b, f a = some b → g a = some b) →
-  xs.filterMap f ⊆ xs.filterMap g
-:= by
-  intro h₁
-  simp [List.subset_def]
-  intro b a h₂ h₃
-  exists a
-  apply And.intro h₂
-  exact h₁ a b h₃
-
 /-! ### Sorted -/
 
 inductive SortedBy [LT β] (f : α → β) : List α → Prop where
@@ -725,7 +664,47 @@ theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
     subst h₁ ; simp [h₂]
     apply Or.inr ; exists x
 
+/-! ### map and map₁ -/
+
+/--
+  Copied from Mathlib. We can delete this if it gets added to Std.
+-/
+theorem map_congr {f g : α → β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → map f l = map g l
+  | [], _ => rfl
+  | a :: l, h => by
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
+    rw [map, map, h₁, map_congr h₂]
+
+/--
+  Copied from Mathlib. We can delete this if it gets added to Std.
+-/
+theorem map_pmap_subtype
+  {p : α → Prop}
+  (f : α → β)
+  (as : List α)
+  (h : ∀ a, a ∈ as → p a)
+  : List.map (fun x : { a : α // p a } => f x.val) (List.pmap Subtype.mk as h)
+    =
+    List.map f as
+:= by
+  induction as <;> simp [*]
+
+theorem map₁_eq_map (f : α → β) (as : List α) :
+  as.map₁ (λ x : {x // x ∈ as} => f x.val) =
+  as.map f
+:= by
+  simp [map₁, attach, map_pmap_subtype]
+
 /-! ### mapM and mapM₁ -/
+
+/--
+  variant of map_congr for mapM₁
+-/
+theorem mapM₁_congr [Monad m] {xs : List α} {f g : {x : α // x ∈ xs} → m β} :
+  (∀ x, f x = g x) → xs.mapM₁ f = xs.mapM₁ g
+:= by
+  sorry
 
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   {p : α → Prop}
@@ -971,40 +950,7 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       simp only [Prod.map, id_eq] at heq
       simp only [find?_cons, heq, ih, and_self]
 
-/-! ### map -/
-
-/-
-These are copied from Mathlib. We can delete them if they get added to Std.
--/
-
-theorem map_pmap_subtype
-  {p : α → Prop}
-  (f : α → β)
-  (as : List α)
-  (h : ∀ a, a ∈ as → p a)
-  : List.map (fun x : { a : α // p a } => f x.val) (List.pmap Subtype.mk as h)
-    =
-    List.map f as
-:= by
-  induction as <;> simp [*]
-
-theorem all_pmap_subtype
-  {p : α → Prop}
-  (f : α → Bool)
-  (as : List α)
-  (h : ∀ a, a ∈ as → p a)
-  : List.all (List.pmap Subtype.mk as h) (fun x : { a : α // p a } => f x.val)
-    =
-    List.all as f
-:= by
-  induction as <;> simp [*]
-
-theorem map_congr {f g : α → β} : ∀ {l : List α},
-  (∀ x ∈ l, f x = g x) → map f l = map g l
-  | [], _ => rfl
-  | a :: l, h => by
-    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
-    rw [map, map, h₁, map_congr h₂]
+/-! ### filterMap -/
 
 /--
   our own variant of map_congr, for filterMap
@@ -1016,12 +962,81 @@ theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [filterMap, filterMap, h₁, filterMap_congr h₂]
 
-/--
-  and a variant for mapM₁
--/
-theorem mapM₁_congr [Monad m] {xs : List α} {f g : {x : α // x ∈ xs} → m β} :
-  (∀ x, f x = g x) → xs.mapM₁ f = xs.mapM₁ g
+theorem filterMap_empty_iff_f_returns_none {f : α → Option β} {xs : List α} :
+  xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none
 := by
-  sorry
+  constructor
+  case mp =>
+    induction xs
+    case nil => simp
+    case cons x xs h_ind =>
+      intro h₁ a h₂
+      simp only [List.filterMap_cons] at h₁
+      split at h₁ <;> try simp at h₁
+      case h_1 h₃ =>
+        rcases (List.mem_cons.mp h₂) with h₄ | h₄
+        case inl => subst h₄ ; assumption
+        case inr => apply h_ind h₁ a ; assumption
+  case mpr =>
+    intro h₁
+    induction xs
+    case nil => simp
+    case cons x xs h_ind =>
+      simp only [List.filterMap_cons]
+      split
+      case h_1 =>
+        apply h_ind ; clear h_ind
+        intro a h₂
+        apply h₁ a
+        exact List.mem_cons_of_mem x h₂
+      case h_2 b h₂ =>
+        exfalso
+        specialize h₁ x
+        simp at h₁
+        simp [h₁] at h₂
+
+theorem filterMap_nonempty_iff_exists_f_returns_some {f : α → Option β} {xs : List α} :
+  xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
+:= by
+  constructor
+  case mp =>
+    intro h₁
+    replace ⟨b, h₁⟩ := List.exists_mem_of_ne_nil (xs.filterMap f) h₁
+    replace ⟨x, h₁⟩ := (List.mem_filterMap f xs).mp h₁
+    exists x
+    simp [h₁, Option.isSome]
+  case mpr =>
+    intro h₁ h₂
+    rw [filterMap_empty_iff_f_returns_none] at h₂
+    replace ⟨x, h₁, h₃⟩ := h₁
+    specialize h₂ x h₁
+    simp [h₂, Option.isSome] at h₃
+
+theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
+  (∀ a b, f a = some b → g a = some b) →
+  xs.filterMap f ⊆ xs.filterMap g
+:= by
+  intro h₁
+  simp [List.subset_def]
+  intro b a h₂ h₃
+  exists a
+  apply And.intro h₂
+  exact h₁ a b h₃
+
+/-! ### all -/
+
+/--
+  Copied from Mathlib. We can delete this if it gets added to Std.
+-/
+theorem all_pmap_subtype
+  {p : α → Prop}
+  (f : α → Bool)
+  (as : List α)
+  (h : ∀ a, a ∈ as → p a)
+  : List.all (List.pmap Subtype.mk as h) (fun x : { a : α // p a } => f x.val)
+    =
+    List.all as f
+:= by
+  induction as <;> simp [*]
 
 end List
