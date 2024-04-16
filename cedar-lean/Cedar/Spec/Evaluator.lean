@@ -16,6 +16,7 @@
 
 import Cedar.Spec.Entities
 import Cedar.Spec.Expr
+import Cedar.Spec.ExtFun
 import Cedar.Spec.Request
 
 /-! This file defines the semantics of Cedar operators and expressions. -/
@@ -78,42 +79,41 @@ def bindAttr (a : Attr) (res : Result Value) : Result (Attr × Value) := do
 
 def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with
-  | .lit l       => .ok l
-  | .var var     =>
-    match var with
-    | .principal => .ok req.principal
-    | .action    => .ok req.action
-    | .resource  => .ok req.resource
-    | .context   => .ok req.context
-  | .ite x₁ x₂ x₃ => do
+  | .lit l           => .ok l
+  | .var v           => match v with
+    | .principal     => .ok req.principal
+    | .action        => .ok req.action
+    | .resource      => .ok req.resource
+    | .context       => .ok req.context
+  | .ite x₁ x₂ x₃    => do
     let b ← (evaluate x₁ req es).as Bool
     if b then evaluate x₂ req es else evaluate x₃ req es
-  | .and x₁ x₂   => do
+  | .and x₁ x₂       => do
     let b ← (evaluate x₁ req es).as Bool
     if !b then .ok b else (evaluate x₂ req es).as Bool
-  | .or x₁ x₂    => do
+  | .or x₁ x₂        => do
     let b ← (evaluate x₁ req es).as Bool
     if b then .ok b else (evaluate x₂ req es).as Bool
-  | .unaryApp op₁ x₁     => do
+  | .unaryApp op₁ x₁ => do
     let v₁ ← evaluate x₁ req es
     apply₁ op₁ v₁
   | .binaryApp op₂ x₁ x₂ => do
     let v₁ ← evaluate x₁ req es
     let v₂ ← evaluate x₂ req es
     apply₂ op₂ v₁ v₂ es
-  | .hasAttr x₁ a        => do
+  | .hasAttr x₁ a    => do
     let v₁ ← evaluate x₁ req es
     hasAttr v₁ a es
-  | .getAttr x₁ a        => do
+  | .getAttr x₁ a    => do
     let v₁ ← evaluate x₁ req es
     getAttr v₁ a es
-  | .set xs              => do
+  | .set xs          => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     .ok (Set.make vs)
-  | .record axs          => do
+  | .record axs      => do
     let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
     .ok (Map.make avs)
-  | .call xfn xs         => do
+  | .call xfn xs     => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     call xfn vs
 

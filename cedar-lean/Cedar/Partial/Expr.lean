@@ -15,60 +15,37 @@
 -/
 
 import Cedar.Data
-import Cedar.Spec.ExtFun
-import Cedar.Spec.Wildcard
+import Cedar.Spec.Expr
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Spec (Attr BinaryOp ExtFun Prim UnaryOp Var)
 
------ Definitions -----
+-- Unknowns are currently represented by a string name
+abbrev Unknown := String
 
-inductive Var where
-  | principal
-  | action
-  | resource
-  | context
-
-inductive UnaryOp where
-  | not
-  | neg
-  | like (p : Pattern)
-  | is (ety : EntityType)
-
-inductive BinaryOp where
-  | eq
-  | mem -- represents Cedar's in operator
-  | less
-  | lessEq
-  | add
-  | sub
-  | mul
-  | contains
-  | containsAll
-  | containsAny
-
+/--
+  Identical to `Spec.Expr` except that it has an `unknown` case, and the recursive
+  elements are also all `Partial.Expr` instead of `Spec.Expr`
+-/
 inductive Expr where
   | lit (p : Prim)
   | var (v : Var)
-  | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
-  | and (a : Expr) (b : Expr)
-  | or (a : Expr) (b : Expr)
-  | unaryApp (op : UnaryOp) (expr : Expr)
-  | binaryApp (op : BinaryOp) (a : Expr) (b : Expr)
-  | getAttr (expr : Expr) (attr : Attr)
-  | hasAttr (expr : Expr) (attr : Attr)
-  | set (ls : List Expr)
-  | record (map : List (Attr × Expr))
-  | call (xfn : ExtFun) (args : List Expr)
+  | ite (cond : Partial.Expr) (thenExpr : Partial.Expr) (elseExpr : Partial.Expr)
+  | and (a : Partial.Expr) (b : Partial.Expr)
+  | or (a : Partial.Expr) (b : Partial.Expr)
+  | unaryApp (op : UnaryOp) (expr : Partial.Expr)
+  | binaryApp (op : BinaryOp) (a : Partial.Expr) (b : Partial.Expr)
+  | getAttr (expr : Partial.Expr) (attr : Attr)
+  | hasAttr (expr : Partial.Expr) (attr : Attr)
+  | set (ls : List Partial.Expr)
+  | record (map : List (Attr × Partial.Expr))
+  | call (xfn : ExtFun) (args : List Partial.Expr)
+  | unknown (u : Unknown)
 
------ Derivations -----
-
-deriving instance Repr, DecidableEq, Inhabited for Var
-deriving instance Repr, DecidableEq, Inhabited for UnaryOp
-deriving instance Repr, DecidableEq, Inhabited for BinaryOp
 deriving instance Repr, Inhabited for Expr
 
 mutual
@@ -76,66 +53,106 @@ mutual
 -- We should be able to get rid of this manual deriviation eventually.
 -- There is work in progress on making these mutual derivations automatic.
 
-def decExpr (x y : Expr) : Decidable (x = y) := by
+def decPartialExpr (x y : Partial.Expr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
-  case lit.lit x₁ y₁ | var.var x₁ y₁ =>
+  case lit.lit x₁ y₁ | var.var x₁ y₁ | unknown.unknown x₁ y₁ =>
     exact match decEq x₁ y₁ with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case ite.ite x₁ x₂ x₃ y₁ y₂ y₃ =>
-    exact match decExpr x₁ y₁, decExpr x₂ y₂, decExpr x₃ y₃ with
+    exact match decPartialExpr x₁ y₁, decPartialExpr x₂ y₂, decPartialExpr x₃ y₃ with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case and.and x₁ x₂ y₁ y₂ | or.or x₁ x₂ y₁ y₂ =>
-    exact match decExpr x₁ y₁, decExpr x₂ y₂ with
+    exact match decPartialExpr x₁ y₁, decPartialExpr x₂ y₂ with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case unaryApp.unaryApp o x₁ o' y₁ =>
-    exact match decEq o o', decExpr x₁ y₁ with
+    exact match decEq o o', decPartialExpr x₁ y₁ with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case binaryApp.binaryApp o x₁ x₂ o' y₁ y₂ =>
-    exact match decEq o o', decExpr x₁ y₁, decExpr x₂ y₂ with
+    exact match decEq o o', decPartialExpr x₁ y₁, decPartialExpr x₂ y₂ with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case getAttr.getAttr x₁ a y₁ a' | hasAttr.hasAttr x₁ a y₁ a' =>
-    exact match decExpr x₁ y₁, decEq a a' with
+    exact match decPartialExpr x₁ y₁, decEq a a' with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
   case set.set xs ys =>
-    exact match decExprList xs ys with
+    exact match decPartialExprList xs ys with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record axs ays =>
-    exact match decProdAttrExprList axs ays with
+    exact match decProdAttrPartialExprList axs ays with
     | isTrue h₁ => isTrue (by rw [h₁])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case call.call f xs f' ys =>
-    exact match decEq f f', decExprList xs ys with
+    exact match decEq f f', decPartialExprList xs ys with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 
-def decProdAttrExprList (axs ays : List (Prod Attr Expr)) : Decidable (axs = ays) :=
+def decProdAttrPartialExprList (axs ays : List (Attr × Partial.Expr)) : Decidable (axs = ays) :=
   match axs, ays with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
   | (a, x)::axs, (a', y)::ays =>
-    match decEq a a', decExpr x y, decProdAttrExprList axs ays with
+    match decEq a a', decPartialExpr x y, decProdAttrPartialExprList axs ays with
     | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
     | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
       isFalse (by simp; intros; first | contradiction | assumption)
 
-def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
+def decPartialExprList (xs ys : List Partial.Expr) : Decidable (xs = ys) :=
   match xs, ys with
   | [], [] => isTrue rfl
   | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
   | x::xs, y::ys =>
-    match decExpr x y, decExprList xs ys with
+    match decPartialExpr x y, decPartialExprList xs ys with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
 end
 
-instance : DecidableEq Expr := decExpr
+instance : DecidableEq Partial.Expr := decPartialExpr
+
+end Cedar.Partial
+
+namespace Cedar.Spec
+
+open Cedar.Data
+
+def Value.asPartialExpr : Spec.Value → Partial.Expr
+  | .prim p => .lit p
+  | .set (Set.mk elts) => .set (elts.map₁ λ ⟨v, _⟩ => v.asPartialExpr)
+  | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
+
+def Expr.asPartialExpr : Spec.Expr → Partial.Expr
+  | .lit p => .lit p
+  | .var v => .var v
+  | .ite x₁ x₂ x₃ =>
+      .ite x₁.asPartialExpr x₂.asPartialExpr x₃.asPartialExpr
+  | .and x₁ x₂ =>
+      .and x₁.asPartialExpr x₂.asPartialExpr
+  | .or x₁ x₂ =>
+      .or x₁.asPartialExpr x₂.asPartialExpr
+  | .unaryApp op x₁ =>
+      .unaryApp op x₁.asPartialExpr
+  | .binaryApp op x₁ x₂ =>
+      .binaryApp op x₁.asPartialExpr x₂.asPartialExpr
+  | .getAttr x₁ attr =>
+      .getAttr x₁.asPartialExpr attr
+  | .hasAttr x₁ attr =>
+      .hasAttr x₁.asPartialExpr attr
+  | .set xs =>
+      .set (xs.map₁ λ ⟨x, _⟩ => x.asPartialExpr)
+  | .record attrs =>
+      .record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
+  | .call xfn args =>
+      .call xfn (args.map₁ λ ⟨x, _⟩ => x.asPartialExpr)
+
+instance : Coe Spec.Expr Partial.Expr where
+  coe := Spec.Expr.asPartialExpr
 
 end Cedar.Spec
