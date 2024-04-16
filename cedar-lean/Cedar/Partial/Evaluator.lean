@@ -30,13 +30,16 @@ open Cedar.Data
 open Cedar.Spec (Attr BinaryOp EntityUID Result UnaryOp intOrErr)
 open Cedar.Spec.Error
 
+/-- Analogous to Spec.inₑ but for partial entities -/
 def inₑ (uid₁ uid₂ : EntityUID) (es : Partial.Entities) : Bool :=
   uid₁ == uid₂ || (es.ancestorsOrEmpty uid₁).contains uid₂
 
+/-- Analogous to Spec.inₛ but for partial entities -/
 def inₛ (uid : EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Result Spec.Value := do
   let uids ← vs.mapOrErr Spec.Value.asEntityUID .typeError
   .ok (uids.any (Partial.inₑ uid · es))
 
+/-- Analogous to Spec.apply₂ but for partial entities -/
 def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Result Partial.Value :=
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (.value (v₁ == v₂))
@@ -52,24 +55,29 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities)
   | .mem, .prim (.entityUID uid₁), .set (vs)               => Partial.inₛ uid₁ vs es >>= λ x => .ok (.value x)
   | _, _, _                                                => .error .typeError
 
+/-- Analogous to Spec.attrsOf but for lookup functions that return partial values -/
 def attrsOf (v : Spec.Value) (lookup : EntityUID → Result (Map Attr Partial.Value)) : Result (Map Attr Partial.Value) :=
   match v with
   | .record r              => .ok (r.mapOnValues Partial.Value.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
+/-- Analogous to Spec.hasAttr but for partial entities -/
 def hasAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Spec.Value := do
   let r ← Partial.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
+/-- Analogous to Spec.getAttr but for partial entities -/
 def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
+/-- Analogous to Spec.bindAttr but for partial values -/
 def bindAttr (a : Attr) (res : Result Partial.Value) : Result (Attr × Partial.Value) := do
   let v ← res
   .ok (a, v)
 
+/-- Analogous to Spec.evaluate but performs partial evaluation on partial expr/request/entities -/
 def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
   match x with
   | .lit l          => .ok (.value l)

@@ -17,7 +17,7 @@
 import Cedar.Data
 import Cedar.Spec.Expr
 
-/-! This file defines abstract syntax for Cedar expressions. -/
+/-! This file defines abstract syntax for Cedar partial expressions. -/
 
 namespace Cedar.Partial
 
@@ -125,8 +125,8 @@ def Value.asPartialExpr : Spec.Value → Partial.Expr
   | .prim p => .lit p
   | .set (Set.mk elts) => .set (elts.map₁ λ ⟨v, _⟩ => v.asPartialExpr)
   | .record m => .record (m.kvs.attach₃.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))
-  | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (Spec.Ext.IPAddr.unParse ip))]
+  | .ext (.decimal d) => .call ExtFun.decimal [Partial.Expr.lit (.string (toString d))]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [Partial.Expr.lit (.string (toString ip))]
 
 def Expr.asPartialExpr : Spec.Expr → Partial.Expr
   | .lit p => .lit p
