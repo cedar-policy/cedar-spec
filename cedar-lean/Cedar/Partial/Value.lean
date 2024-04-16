@@ -1,5 +1,5 @@
 /-
- Copyright Cedar Contributors
+ Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,22 +14,24 @@
  limitations under the License.
 -/
 
+import Cedar.Partial.Expr
 import Cedar.Spec.Value
 
 /-!
-This file defines Cedar requests.
+This file defines Cedar partial values.
 -/
 
-namespace Cedar.Spec
+namespace Cedar.Partial
 
-open Cedar.Data
+inductive Value where
+  | value (v : Spec.Value)
+  | residual (r : Partial.Expr)
 
-structure Request where
-  principal : EntityUID
-  action : EntityUID
-  resource : EntityUID
-  context : Map Attr Value
+deriving instance Repr, DecidableEq, Inhabited for Value
 
-deriving instance Repr, DecidableEq, Inhabited for Request
+def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
+  match v with
+  | .value v    => v.asPartialExpr
+  | .residual r => r
 
-end Cedar.Spec
+end Cedar.Partial

@@ -1,5 +1,5 @@
 /-
- Copyright Cedar Contributors
+ Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,22 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Value
-
-/-!
-This file defines Cedar requests.
--/
-
-namespace Cedar.Spec
-
-open Cedar.Data
-
-structure Request where
-  principal : EntityUID
-  action : EntityUID
-  resource : EntityUID
-  context : Map Attr Value
-
-deriving instance Repr, DecidableEq, Inhabited for Request
-
-end Cedar.Spec
+import Cedar.Partial.Entities
+import Cedar.Partial.Evaluator
+import Cedar.Partial.Expr
+import Cedar.Partial.Request
+import Cedar.Partial.Value
