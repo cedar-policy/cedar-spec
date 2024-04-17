@@ -63,8 +63,12 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities)
   | .mem, .prim (.entityUID uid₁), .set (vs)               => Partial.inₛ uid₁ vs es >>= λ x => .ok (.value x)
   | _, _, _                                                => .error .typeError
 
-/-- Analogous to Spec.apply₂ but for partial values and partial entities -/
-def apply₂ₚ (op₂ : BinaryOp) (pv₁ pv₂ : Partial.Value) (es : Partial.Entities) : Result Partial.Value :=
+/--
+  Partial-evaluate `op₂ pv₁ pv₂`. No analogue in Spec.Evaluator; this logic
+  (that sits between `Partial.evaluate` and `Partial.apply₂`) is not needed in
+  the equivalent Spec.Evaluator position
+-/
+def evaluateBinaryApp (op₂ : BinaryOp) (pv₁ pv₂ : Partial.Value) (es : Partial.Entities) : Result Partial.Value :=
   match (pv₁, pv₂) with
   | (.value v₁, .value v₂) => Partial.apply₂ op₂ v₁ v₂ es
   | (.value v₁, .residual r₂) => .ok (.residual (Partial.Expr.binaryApp op₂ v₁.asPartialExpr r₂))
@@ -83,8 +87,12 @@ def hasAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Spec.Va
   let r ← Partial.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid))
   .ok (r.contains a)
 
-/-- Analogous to Spec.hasAttr but for partial value and partial entities -/
-def hasAttrₚ (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
+/--
+  Partial-evaluate `pv has a`. No analogue in Spec.Evaluator; this logic (that
+  sits between `Partial.evaluate` and `Partial.hasAttr`) is not needed in the
+  equivalent Spec.Evaluator position
+-/
+def evaluateHasAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   match pv with
   | .value v₁ => do
     let val ← Partial.hasAttr v₁ a es
@@ -96,8 +104,12 @@ def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial
   let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-/-- Analogous to Spec.getAttr but for partial value and partial entities -/
-def getAttrₚ (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
+/--
+  Partial-evaluate `pv[a]`. No analogue in Spec.Evaluator; this logic (that sits
+  between `Partial.evaluate` and `Partial.getAttr`) is not needed in the equivalent
+  Spec.Evaluator position
+-/
+def evaluateGetAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
     match pv with
     | .value v₁ => Partial.getAttr v₁ a es
     | .residual r => .ok (.residual (Partial.Expr.getAttr r a)) -- TODO more precise: pv will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
@@ -118,7 +130,7 @@ def evaluateVar (v : Var) (req : Partial.Request) : Result Partial.Value :=
     | none     => .ok (.residual (Partial.Expr.record (req.context.kvs.map fun (k, v) => (k, v.asPartialExpr))))
 
 /-- Call an extension function with partial values as arguments -/
-def call (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Value :=
+def evaluateCall (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Value :=
   match args.mapM (λ pval => match pval with | .value v => some v | .residual _ => none) with
   | some vs => do
     let val ← Spec.call xfn vs
@@ -169,13 +181,13 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
   | .binaryApp op₂ x₁ x₂ => do
     let pval₁ ← Partial.evaluate x₁ req es
     let pval₂ ← Partial.evaluate x₂ req es
-    Partial.apply₂ₚ op₂ pval₁ pval₂ es
+    evaluateBinaryApp op₂ pval₁ pval₂ es
   | .hasAttr x₁ a    => do
     let pval₁ ← Partial.evaluate x₁ req es
-    Partial.hasAttrₚ pval₁ a es
+    evaluateHasAttr pval₁ a es
   | .getAttr x₁ a    => do
     let pval₁ ← Partial.evaluate x₁ req es
-    Partial.getAttrₚ pval₁ a es
+    evaluateGetAttr pval₁ a es
   | .set xs          => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     match vs.mapM (fun pval => match pval with | .value v => some v | .residual _ => none) with
@@ -188,5 +200,5 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
     | none     => .ok (.residual (Partial.Expr.record (avs.map fun (a, v) => (a, v.asPartialExpr))))
   | .call xfn xs     => do
     let pvs ← xs.mapM₁ (fun ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
-    Partial.call xfn pvs
+    evaluateCall xfn pvs
   | .unknown u       => .ok (.residual (Partial.Expr.unknown u))
