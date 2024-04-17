@@ -254,8 +254,8 @@ def toHex (n : Nat) : String :=
   let a3 := hexDigitRepr ((n % 0x10) / 0x1)
   s!"{a0}{a1}{a2}{a3}"
 
-def unParse (ip : IPNet) : String :=
-  match ip with
+instance : ToString IPNet where
+  toString : IPNet → String
   | .V4 v p =>
     let a0 := (v >>> 24) &&& 0xFF
     let a1 := (v >>> 16) &&& 0xFF
