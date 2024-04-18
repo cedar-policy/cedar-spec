@@ -74,6 +74,12 @@ theorem in_kvs_snd_in_values {kv : α × β} {m : Map α β} :
 := by
   sorry
 
+/-- kinda the converse of `in_kvs_snd_in_values` -/
+theorem in_values_exists_key {m : Map α β} {v : β} :
+  v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
+:= by
+  sorry
+
 theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β} :
   m.WellFormed →
   ((k, v) ∈ m.kvs ↔ m.find? k = some v)
@@ -158,6 +164,8 @@ theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   Note that the converse of this is not true:
   counterexample `xs = [(1, false), (1, true)]`.
   Then `Map.make xs = [(1, false)]`.
+
+  But for a limited converse, see `blah` way farther below
 -/
 theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
@@ -168,9 +176,45 @@ theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α 
   simp [List.subset_def] at h₂
   exact h₂ h₁
 
+/-- helper lemma for the proof of `mem_values_make` -/
+theorem in_pairs_in_map_snd {xs : List (α × β)} {k : α} {v : β} :
+  (k, v) ∈ xs → v ∈ xs.map Prod.snd
+:= by
+  sorry
+
+/-- helper lemma for the proof of `mem_values_make` -/
+theorem in_snd_exists_fst {xs : List (α × β)} {b : β} :
+  b ∈ xs.map Prod.snd → ∃ a, (a, b) ∈ xs
+:= by
+  intro h₁
+  by_contra h₂
+  simp at h₂
+  sorry
+
+/--
+  Very similar to `make_mem_list_mem` above
+-/
+theorem mem_values_make [iα : Inhabited α] [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  v ∈ (Map.make xs).values → v ∈ xs.map Prod.snd
+:= by
+  simp only [values, make]
+  intro h₁
+  have h₂ := List.canonicalize_subseteq Prod.fst xs
+  simp [List.subset_def] at h₂
+  replace ⟨k, h₁⟩ := in_snd_exists_fst h₁
+  specialize @h₂ (k, v)
+  apply in_pairs_in_map_snd
+  apply h₂ ; clear h₂
+  simp [h₁]
+
 theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty
 := by simp [make, empty, List.canonicalize_nil]
+
+theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α × β} :
+  make xs = make ys → make (ab :: xs) = make (ab :: ys)
+:= by
+  sorry
 
 /-! ### find? and mapOnValues -/
 
@@ -277,6 +321,37 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [DecidableEq α] {m 
 theorem mapM_on_kvs_eqv_mapM_on_map [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   (m.kvs.mapM λ x => f x.snd) = (m.mapMOnValues f).map Map.values
 := by
+  sorry
+
+theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
+  (k, v) ∈ m.kvs → (k, f v) ∈ (m.mapOnValues f).kvs
+:= by
+  sorry
+
+/--
+  If `xs` is actually the `kvs` of a well-formed map, then we do have the
+  converse of `make_mem_list_mem`
+-/
+theorem blah [LT α] [DecidableLT α] {m : Map α β} {xs : List (α × β)}:
+  m.WellFormed →
+  xs = m.kvs →
+  (k, v) ∈ xs →
+  (k, v) ∈ (make xs).kvs
+:= by
+  sorry
+
+/-! ### mapMOnValues -/
+
+theorem mapMOnValues_wf [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.WellFormed →
+  (m₁.mapMOnValues f = some m₂) →
+  m₂.WellFormed
+:= by
+  unfold WellFormed toList
+  intro wf h₁
+  simp [mapMOnValues] at h₁
+  replace ⟨xs, h₁, h₂⟩ := h₁
+  subst h₂
   sorry
 
 /-! ### sizeOf -/

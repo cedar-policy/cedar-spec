@@ -287,7 +287,7 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
 theorem mapM_evaluate_uids_produces_uids {list : List EntityUID} {request : Request} {entities : Entities} :
   List.mapM (evaluate · request entities) (list.map fun uid => Expr.lit (.entityUID uid)) = .ok (list.map (Value.prim ∘ Prim.entityUID))
 := by
-  rw [mapM_map]
+  rw [List.mapM_map]
   simp [evaluate]
   apply if_f_produces_pure_then_mapM_f_is_pure_map
 

@@ -22,13 +22,14 @@ import Cedar.Thm.Utils
 
 namespace Cedar.Thm.Partial.Evaluation.Set
 
+open Cedar.Data
 open Cedar.Spec (Result)
 open Except
 
 /--
   helper lemma: any subexpression of x is a subexpression of any set containing x
 -/
-theorem operand_subexpression {x₁ x₂ : Partial.Expr} {xs : List Partial.Expr} :
+theorem element_subexpression {x₁ x₂ : Partial.Expr} {xs : List Partial.Expr} :
   x₁ ∈ xs → x₂ ∈ x₁.subexpressions → x₂ ∈ (Partial.Expr.set xs).subexpressions
 := by
   intro h₁ h₂
@@ -42,7 +43,7 @@ theorem operand_subexpression {x₁ x₂ : Partial.Expr} {xs : List Partial.Expr
   helper lemma: if any component of a `set` contains an unknown, the whole
   expression does
 -/
-theorem operand_unknown {x : Partial.Expr} {xs : List Partial.Expr} :
+theorem element_unknown {x : Partial.Expr} {xs : List Partial.Expr} :
   x ∈ xs → x.containsUnknown → (Partial.Expr.set xs).containsUnknown
 := by
   unfold Partial.Expr.containsUnknown
@@ -51,13 +52,13 @@ theorem operand_unknown {x : Partial.Expr} {xs : List Partial.Expr} :
   replace ⟨subx, h₂⟩ := h₂
   exists subx
   constructor
-  case left => apply operand_subexpression h₁ h₂.left
+  case left => apply element_subexpression h₁ h₂.left
   case right => exact h₂.right
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.set`
-  expression gives the same output as concrete-evaluating the `Expr.set` with
-  the same subexpressions
+  expression gives the same output as concrete-evaluating the `Spec.Expr.set`
+  with the same subexpressions
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
   (∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value) →
@@ -65,42 +66,50 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {reques
 := by
   intro ih₁
   unfold Partial.evaluate Spec.evaluate
-  simp [Except.map, pure, Except.pure, Result.as, Coe.coe, Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
-  rw [List.mapM₁_eq_mapM (λ x => Partial.evaluate x request entities) (xs.map₁ λ x => Spec.Expr.asPartialExpr x.val)]
+  rw [List.map₁_eq_map (λ x => Spec.Expr.asPartialExpr x) xs]
+  rw [List.mapM₁_eq_mapM (λ x => Partial.evaluate x request entities) (xs.map Spec.Expr.asPartialExpr)]
   rw [List.mapM₁_eq_mapM (λ x => Spec.evaluate x request entities) xs]
-  cases h₁ : xs.mapM λ x => Spec.evaluate x request entities
-  <;> cases h₂ : (xs.map Spec.Expr.asPartialExpr).mapM λ x => Partial.evaluate x request entities
-  <;> simp [h₁, h₂]
-  case error.error e₁ e₂ =>
-    -- unsure why `rw [h₂]` fails here
-    sorry
-    -- rw [← Except.error.injEq]
-  case ok.ok vals pvals =>
-    cases h₃ : pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none
-    case some vals' =>
-      have : vals = vals' := by
-        -- have to use ih₁
-        sorry
-      subst vals'
-      -- unsure why `rw [h₃]` fails here
-      sorry
-    case none =>
-      simp [mapM_none_iff_f_none_on_some_element] at h₃
-      replace ⟨pval, h₃, h₄⟩ := h₃
-      cases pval <;> simp at h₄
-      case residual r =>
-        -- in this case, `Partial.evaluate` returned a residual, which shouldn't
-        -- be possible on concrete inputs
-        have ⟨pexpr, h₄, h₅⟩ := mem_mapM_ok h₂ h₃
-        have ⟨x, h₆, h₇⟩ := List.exists_of_mem_map h₄
-        subst h₇
-        specialize ih₁ x h₆
-        simp [ih₁, Except.map] at h₅
-        cases h₈ : Spec.evaluate x request entities <;> simp [h₈] at h₅
-  case ok.error vals e =>
-    sorry
-  case error.ok e pvals =>
-    sorry
+  induction xs
+  case nil => simp [Except.map, pure, Except.pure]
+  case cons x xs' h_ind =>
+    specialize h_ind (by
+      intro x' h₁
+      exact ih₁ x' (List.mem_cons_of_mem x h₁)
+    )
+    cases h₁ : Spec.evaluate x request entities
+    <;> cases h₂ : Partial.evaluate x request entities
+    <;> simp [h₁, h₂]
+    case error.error e₁ e₂ =>
+      simp [ih₁ x, h₁, Except.map, pure, Except.pure] at h₂
+      simp [h₂, Except.map, pure, Except.pure]
+    case ok.error val e | error.ok e pval =>
+      simp [ih₁ x, h₁, Except.map, pure, Except.pure] at h₂
+    case ok.ok val pval =>
+      simp [ih₁, h₁, Except.map, pure, Except.pure] at h₂
+      subst h₂
+      simp [List.mapM_map]
+      simp [List.mapM_map] at h_ind
+      -- the remaining goal is just a statement about `xs'`, not `x` itself
+      -- (don't be confused by the goal's unfortunate use of `x` as a local in a let binding)
+      -- so we can dispatch it using `h_ind`
+      generalize h₃ : (xs'.mapM λ x => Partial.evaluate x.asPartialExpr request entities) = pres at *
+      generalize h₄ : (xs'.mapM λ x => Spec.evaluate x request entities) = sres at *
+      cases pres <;> cases sres <;> simp [Except.map, pure, Except.pure] at *
+      case error.error e₁ e₂ => exact h_ind
+      case ok.error pvals e =>
+        -- here, partial evaluation of `xs'` produced `ok` (h₃), while concrete
+        -- evaluation of `xs'` produced `error` (h₄).
+        -- this contradicts `h_ind`.
+        exfalso
+        split at h_ind <;> simp at h_ind
+      case ok.ok pvals vals =>
+        -- here, partial evaluation of `xs'` produced `ok pvals` (h₃), while
+        -- concrete evaluation of `xs'` produced `ok vals` (h₄), and we need to
+        -- show a particular relationship between `pvals` and `vals` using `h_ind`.
+        split at h_ind <;> simp at h_ind
+        case h_1 vals' h₂ =>
+          simp [h₂]
+          exact Set.make_cons h_ind
 
 /--
   Inductive argument for `ResidualsContainUnknowns` for `Partial.Expr.set`
@@ -130,7 +139,7 @@ theorem residuals_contain_unknowns {xs : List Partial.Expr} {request : Partial.R
       case h_2 r =>
         -- `.residual r` is the residual we got when evaluating some element of
         -- the set
-        apply operand_unknown (x := r)
+        apply element_unknown (x := r)
         case _ =>
           simp [List.mem_map]
           exists (Partial.Value.residual r)

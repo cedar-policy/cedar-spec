@@ -76,9 +76,9 @@ def evaluate (x : Partial.Expr) (req : Partial.Request) (es : Partial.Entities) 
   | .var .principal => .ok req.principal
   | .var .action    => .ok req.action
   | .var .resource  => .ok req.resource
-  | .var .context   => match req.context.kvs.mapM fun (k, v) => match v with | .value v => some (k, v) | .residual _ => none with
-    | some kvs      => .ok (.value (Map.make kvs))
-    | none          => .ok (.residual (Partial.Expr.record (req.context.kvs.map fun (k, v) => (k, v.asPartialExpr))))
+  | .var .context   => match req.context.mapMOnValues λ v => match v with | .value v => some v | .residual _ => none with
+    | some m        => .ok (.value m)
+    | none          => .ok (.residual (Partial.Expr.record ((req.context.mapOnValues Partial.RestrictedValue.asPartialExpr).kvs)))
   | .ite x₁ x₂ x₃   => do
     let pval ← Partial.evaluate x₁ req es
     match pval with

@@ -696,7 +696,27 @@ theorem map₁_eq_map (f : α → β) (as : List α) :
 := by
   simp [map₁, attach, map_pmap_subtype]
 
+theorem map₁_eq_map' (f : α → β) (as : List α) :
+  as.map₁ (λ x : {x // x ∈ as} => match x with | ⟨x, _⟩ => f x) =
+  as.map f
+:= by
+  simp [map₁, attach, map_pmap_subtype]
+
+theorem map₁_eq_map_snd (f : β → γ) (pairs : List (α × β)) :
+  pairs.map₁ (λ x : {x // x ∈ pairs} => match x with | ⟨(x, y), _⟩ => (x, f y)) =
+  pairs.map λ (x, y) => (x, f y)
+:= by
+  simp [map₁, attach, map_pmap_subtype]
+  sorry
+
 /-! ### mapM and mapM₁ -/
+
+theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
+  List.mapM g (xs.map f) = xs.mapM fun x => g (f x)
+:= by
+  induction xs
+  case nil => simp
+  case cons x xs h => simp [h]
 
 /--
   variant of map_congr for mapM₁
@@ -721,10 +741,18 @@ theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
 theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :
-  List.mapM₁ as (fun x : { x // x ∈ as } => f x.val) =
+  List.mapM₁ as (λ x : { x // x ∈ as } => f x.val) =
   List.mapM f as
 := by
   simp [mapM₁, attach, mapM_pmap_subtype]
+
+theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
+  (f : (α × β) → m γ)
+  (as : List (α × β)) :
+  List.mapM₂ as (λ x : {x : α × β // sizeOf x.snd < 1 + sizeOf as} => f x.val) =
+  List.mapM f as
+:= by
+  simp [mapM₂, attach₂, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :

@@ -280,6 +280,11 @@ theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys
   rw [← make_make_eqv]
   exact make_of_make_is_id xs
 
+theorem make_cons [LT α] [DecidableLT α] {xs ys : List α} {a : α} :
+  make xs = make ys → make (a :: xs) = make (a :: ys)
+:= by
+  sorry
+
 /-! ### inter and union -/
 
 

@@ -112,39 +112,40 @@ theorem restrictedPartialExpr_to_Partial.Expr_preserves_containsUnknown {rpexpr 
   rpexpr.containsUnknown → rpexpr.asPartialExpr.containsUnknown
 := by
   unfold Partial.RestrictedExpr.containsUnknown Partial.Expr.containsUnknown
-  cases rpexpr <;> simp
+  cases rpexpr <;> simp <;> intro x h₁ h₂
+  all_goals simp [Partial.RestrictedExpr.subexpressions] at h₁
   case lit | call =>
-    intro x h₁ h₂
-    simp [Partial.RestrictedExpr.subexpressions] at h₁
     subst h₁
     simp [Partial.RestrictedExpr.isUnknown] at h₂
   case unknown u =>
-    intro x h₁ h₂
-    simp [Partial.RestrictedExpr.subexpressions] at h₁
     subst h₁
     exists (.unknown u)
     simp [Partial.Expr.isUnknown, Partial.RestrictedExpr.asPartialExpr, Partial.Expr.subexpressions]
-  case set xs | record attrs =>
-    intro x h₁ h₂
-    simp [Partial.RestrictedExpr.subexpressions] at h₁
-    rcases h₁ with h₁ | h₁
-    case inl =>
-      subst h₁
-      simp [Partial.RestrictedExpr.isUnknown] at h₂
-    case inr =>
-      -- `rpexpr` is a set or record that recursively contains an unknown
-      exists x.asPartialExpr
-      unfold Partial.RestrictedExpr.asPartialExpr Partial.Expr.subexpressions
-      cases x <;> simp [Partial.RestrictedExpr.isUnknown] at h₂
-      case unknown u =>
-        split <;> simp <;> rename_i h₃ <;> simp at h₃
-        case h_5 name' =>
-          subst h₃
-          simp [Partial.Expr.isUnknown]
-          sorry
+  all_goals rcases h₁ with h₁ | h₁
+  case set.inl | record.inl => subst h₁ ; simp [Partial.RestrictedExpr.isUnknown] at h₂
+  all_goals exists x.asPartialExpr
+  all_goals unfold Partial.RestrictedExpr.asPartialExpr Partial.Expr.subexpressions
+  case set.inr xs =>
+    -- `rpexpr` is a set that recursively contains an unknown
+    cases x <;> simp [Partial.RestrictedExpr.isUnknown] at h₂
+    case unknown u =>
+      split <;> simp <;> rename_i h₃ <;> simp at h₃
+      case h_5 name' =>
+        subst h₃
+        simp [Partial.Expr.isUnknown]
+        sorry
+  case record.inr attrs =>
+    -- `rpexpr` is a record that recursively contains an unknown
+    cases x <;> simp [Partial.RestrictedExpr.isUnknown] at h₂
+    case unknown u =>
+      split <;> simp <;> rename_i h₃ <;> simp at h₃
+      case h_5 name' =>
+        subst h₃
+        simp [Partial.Expr.isUnknown]
+        sorry
 
 /--
-  `Partial.attrsOf` on concrete arguments is the same as `attrsOf` on those
+  `Partial.attrsOf` on concrete arguments is the same as `Spec.attrsOf` on those
   arguments
 -/
 theorem Partial.attrsOf_on_concrete_eqv_attrsOf {v : Spec.Value} {entities : Spec.Entities} :
@@ -160,7 +161,7 @@ theorem Partial.attrsOf_on_concrete_eqv_attrsOf {v : Spec.Value} {entities : Spe
       <;> simp [h₁, Map.findOrErr_mapOnValues, Except.map, Spec.EntityData.asPartialEntityData]
 
 /--
-  `Partial.getAttr` on concrete arguments is the same as `getAttr` on those
+  `Partial.getAttr` on concrete arguments is the same as `Spec.getAttr` on those
   arguments
 -/
 theorem Partial.getAttr_on_concrete_eqv_getAttr {v₁ : Spec.Value} {entities : Spec.Entities} {attr : Attr} :
@@ -168,7 +169,7 @@ theorem Partial.getAttr_on_concrete_eqv_getAttr {v₁ : Spec.Value} {entities : 
 := by
   unfold Partial.getAttr Spec.getAttr
   simp [Partial.attrsOf_on_concrete_eqv_attrsOf, Except.map]
-  cases h₁ : Spec.attrsOf v₁ entities.attrs <;> simp
+  cases Spec.attrsOf v₁ entities.attrs <;> simp
   case ok m => simp [Map.findOrErr_mapOnValues, Except.map]
 
 /--
@@ -216,7 +217,7 @@ theorem Partial.attrsOf_ResidualsContainUnknowns {entities : Partial.Entities} {
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.getAttr`
-  expression gives the same output as concrete-evaluating the `Expr.getAttr` with
+  expression gives the same output as concrete-evaluating the `Spec.Expr.getAttr` with
   the same subexpressions
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {attr : Attr} :

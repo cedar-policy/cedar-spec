@@ -101,7 +101,7 @@ theorem Partial.hasAttr_on_concrete_eqv_hasAttr {v₁ : Spec.Value} {entities : 
 := by
   unfold Partial.hasAttr Spec.hasAttr
   simp [Partial.attrsOf_on_concrete_eqv_attrsOf, Except.map]
-  cases h₁ : Spec.attrsOf v₁ λ uid => ok (entities.attrsOrEmpty uid) <;> simp
+  cases Spec.attrsOf v₁ λ uid => ok (entities.attrsOrEmpty uid) <;> simp
   case ok m => simp [← Map.mapOnValues_contains]
 
 /--

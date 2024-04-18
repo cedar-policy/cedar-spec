@@ -25,6 +25,7 @@ import Cedar.Thm.Partial.Evaluation.GetAttr
 import Cedar.Thm.Partial.Evaluation.HasAttr
 import Cedar.Thm.Partial.Evaluation.Ite
 import Cedar.Thm.Partial.Evaluation.Or
+import Cedar.Thm.Partial.Evaluation.Record
 import Cedar.Thm.Partial.Evaluation.Set
 import Cedar.Thm.Partial.Evaluation.Unary
 import Cedar.Thm.Data.Control
@@ -55,42 +56,43 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request :
     cases v <;> simp only [Spec.Request.asPartialRequest, Except.map]
     case context =>
       split
-      case h_1 kvs h₁ =>
+      case h_1 m h₁ =>
         simp
-        rw [Map.mapOnValues_eq_make_map wf] at h₁
-        simp [Map.toList] at h₁
-        rw [Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.make_wf]) (wf₂ := wf)]
+        rw [Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.mapMOnValues_wf (Map.mapOnValues_wf.mp wf) h₁]) (wf₂ := wf)]
         simp [List.Equiv, List.subset_def]
         constructor
         case left =>
-          intro kv h₃
-          replace h₃ := Map.make_mem_list_mem h₃
-          have ⟨kv', h₄, h₅⟩ := mem_mapM_some h₁ h₃
-          replace h₄ := Map.make_mem_list_mem h₄
-          cases h₆ : kv'.snd <;> simp [h₆] at h₅
+          intro kv h₂
+          rw [Map.mapOnValues_eq_make_map wf] at h₁
+          simp [Map.toList] at h₁
+          replace ⟨pv, h₁, h₃⟩ := mem_mapMOnValues_some h₁ h₂
+          replace h₁ := Map.make_mem_list_mem h₁
+          cases pv <;> simp at h₃
           case value v =>
-            subst kv
-            rw [List.mem_map] at h₄
-            replace ⟨kv, h₄, h₅⟩ := h₄
-            subst kv'
-            simp at h₃ h₆
             subst v
-            simp [h₄]
+            rw [List.mem_map] at h₁
+            replace ⟨kv', h₁, h₃⟩ := h₁
+            simp at h₃
+            have h₄ : kv' = kv := Prod.ext h₃.left h₃.right
+            subst kv'
+            assumption
         case right =>
-          intro kv h₃
-          sorry
+          intro kv h₂
+          have h₃ := mapMOnValues_eq_some h₁ (k := kv.fst) (v := Partial.RestrictedValue.value kv.snd)
+          specialize h₃ (Map.in_kvs_in_mapOnValues h₂)
+          replace ⟨v', h₃, h₄⟩ := h₃
+          simp at h₄
+          subst h₄
+          simp [h₃]
       case h_2 h₁ =>
         exfalso
-        simp [mapM_none_iff_f_none_on_some_element] at h₁
-        replace ⟨kv, h₁, h₂⟩ := h₁
-        cases h₃ : kv.snd <;> simp [h₃] at h₂
+        simp [mapMOnValues_none_iff_f_none_on_some_value] at h₁
+        replace ⟨v, h₁, h₂⟩ := h₁
+        cases v <;> simp at h₂
         case residual r =>
           rw [Map.mapOnValues_eq_make_map wf] at h₁
-          replace h₁ := Map.make_mem_list_mem h₁
+          replace h₁ := Map.mem_values_make h₁
           simp [List.mem_map] at h₁
-          replace ⟨kv', h₁, h₂⟩ := h₁
-          subst h₂
-          simp at h₃
   case and x₁ x₂ =>
     have ih₁ := @partial_eval_on_concrete_eqv_concrete_eval x₁ request entities wf
     have ih₂ := @partial_eval_on_concrete_eqv_concrete_eval x₂ request entities wf
@@ -123,12 +125,18 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request :
       apply @partial_eval_on_concrete_eqv_concrete_eval x request entities wf
     exact Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
-    sorry
+    have ih : ∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value := by
+      intro kv h₁
+      have h₂ : sizeOf kv.snd <= sizeOf kv := by simp [sizeOf, Prod._sizeOf_1] ; omega
+      have : sizeOf kv.snd < sizeOf (Spec.Expr.record attrs) := by sorry
+      apply @partial_eval_on_concrete_eqv_concrete_eval kv.snd request entities wf
+    exact Record.partial_eval_on_concrete_eqv_concrete_eval ih
   case call xfn args =>
     have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
       intro arg h₁
       apply @partial_eval_on_concrete_eqv_concrete_eval arg request entities wf
     exact Call.partial_eval_on_concrete_eqv_concrete_eval ih
+decreasing_by all_goals sorry
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
@@ -192,14 +200,14 @@ theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Requ
       split at h₁ <;> simp at h₁
       case h_2 h₂ =>
         subst h₁
-        simp [mapM_none_iff_f_none_on_some_element] at h₂
-        replace ⟨kv, h₂, h₃⟩ := h₂
-        split at h₃ <;> simp at h₃
-        case h_2 r h₄ =>
-          specialize ih_r kv.snd (Map.in_kvs_snd_in_values h₂)
+        simp [mapMOnValues_none_iff_f_none_on_some_value] at h₂
+        replace ⟨pv, h₂, h₃⟩ := h₂
+        cases pv <;> simp at h₃
+        case residual r =>
+          specialize ih_r (.residual r) h₂
           unfold Partial.Expr.containsUnknown Partial.Expr.subexpressions
           unfold Partial.RestrictedValue.ResidualsContainUnknowns at ih_r
-          simp [h₄] at ih_r
+          simp at ih_r
           simp
           right
           simp [Partial.RestrictedExpr.containsUnknown] at ih_r
@@ -211,14 +219,17 @@ theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Requ
             assumption
           case left =>
             rw [List.mem_join]
-            exists kv.snd.asPartialExpr.subexpressions
+            exists r.asPartialExpr.subexpressions
             constructor
             case left =>
               simp [List.mem_map]
-              exists kv
-            case right =>
-              simp [h₄, Partial.RestrictedValue.asPartialExpr]
-              exact Partial.subexpressions_asPartialExpr h₅
+              replace ⟨k, h₂⟩ := Map.in_values_exists_key h₂
+              exists (k, r.asPartialExpr)
+              simp
+              -- this is provable just from h₂, but requires reasoning about the
+              -- behavior of `RestrictedValue.asPartialExpr` on residuals
+              sorry
+            case right => exact Partial.subexpressions_asPartialExpr h₅
   case and x₁ x₂ =>
     have ih₁ := @residuals_contain_unknowns x₁ request entities wf_e ih_e ih_r
     have ih₂ := @residuals_contain_unknowns x₂ request entities wf_e ih_e ih_r
