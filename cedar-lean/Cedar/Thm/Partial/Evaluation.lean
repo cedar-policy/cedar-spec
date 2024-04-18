@@ -125,6 +125,7 @@ theorem partial_eval_on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request :
       apply @partial_eval_on_concrete_eqv_concrete_eval x request entities wf
     exact Set.partial_eval_on_concrete_eqv_concrete_eval ih
   case record attrs =>
+    -- rw [List.map_attach₂ (λ x => (x.fst, Spec.Expr.asPartialExpr x.snd))]
     have ih : ∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value := by
       intro kv h₁
       have h₂ : sizeOf kv.snd <= sizeOf kv := by simp [sizeOf, Prod._sizeOf_1] ; omega
@@ -206,6 +207,7 @@ theorem residuals_contain_unknowns {expr : Partial.Expr} {request : Partial.Requ
         case residual r =>
           specialize ih_r (.residual r) h₂
           unfold Partial.Expr.containsUnknown Partial.Expr.subexpressions
+          rw [List.map_attach₂ (λ x => Partial.Expr.subexpressions x.snd)]
           unfold Partial.RestrictedValue.ResidualsContainUnknowns at ih_r
           simp at ih_r
           simp

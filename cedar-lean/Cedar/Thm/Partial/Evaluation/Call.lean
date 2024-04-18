@@ -35,6 +35,7 @@ theorem operand_subexpression {x₁ x₂ : Partial.Expr} {xs : List Partial.Expr
   unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right
+  rw [List.map₁_eq_map]
   have h₃ := List.mem_map_of_mem Partial.Expr.subexpressions h₁
   apply List.mem_join_of_mem h₃ h₂
 

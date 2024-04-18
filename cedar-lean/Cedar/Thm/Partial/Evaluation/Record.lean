@@ -36,6 +36,7 @@ theorem value_subexpression {x₁ x₂ : Partial.Expr} {attrs : List (Attr × Pa
   unfold Partial.Expr.subexpressions
   simp [List.append_eq_append]
   right
+  rw [List.map_attach₂ (λ x => Partial.Expr.subexpressions x.snd)]
   have h₃ := List.mem_map_of_mem Partial.Expr.subexpressions h₁
   rw [List.map_map] at h₃
   apply List.mem_join_of_mem h₃ h₂
@@ -129,11 +130,11 @@ theorem mapM₂_eq_mapM_specialized' [SizeOf β]
 -/
 theorem partial_eval_on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {request : Spec.Request} {entities : Spec.Entities} :
   (∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value) →
-  Partial.evaluate (Partial.Expr.record (attrs.map₁ λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))) request entities = (Spec.evaluate (Spec.Expr.record attrs) request entities).map Partial.Value.value
+  Partial.evaluate (Partial.Expr.record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))) request entities = (Spec.evaluate (Spec.Expr.record attrs) request entities).map Partial.Value.value
 := by
   intro ih₁
   unfold Partial.evaluate Spec.evaluate
-  rw [List.map₁_eq_map_snd Spec.Expr.asPartialExpr attrs]
+  rw [List.map_attach₂_snd Spec.Expr.asPartialExpr]
   rw [mapM₂_eq_mapM_specialized (Spec.evaluate · request entities) attrs]
   rw [mapM₂_eq_mapM_specialized' (Partial.evaluate · request entities) _]
   induction attrs

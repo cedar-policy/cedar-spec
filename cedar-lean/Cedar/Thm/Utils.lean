@@ -185,7 +185,6 @@ theorem mapM_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {xs : List α
       intro h₁ x h₂
       unfold List.mapM' at h₁
       cases h₄ : (f y) <;> simp [h₄] at h₁
-      case error => cases h₁
       case ok b =>
         rcases (List.mem_cons.mp h₂) with h₅ | h₅
         case inl => rw [← h₅] at h₄; simp [h₄]
@@ -195,7 +194,6 @@ theorem mapM_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {xs : List α
             split at h₁ <;> split <;> simp
             case h_1.h_2 h₅ _ _ h₆ =>
               simp [h₆] at h₅
-              cases h₅
             case h_2.h_2 => simp at h₁
           case a => exact h₅
   case mpr =>
@@ -211,7 +209,6 @@ theorem mapM_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {xs : List α
           split at h_ind <;> simp at h_ind
           case h_1 err h₆ =>
             simp [h₄, h₆, List.mapM', pure, Except.pure] at h₃
-            cases h₃
 
 /--
   Corollary of the above

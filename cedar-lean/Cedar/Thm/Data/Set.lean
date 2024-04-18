@@ -380,4 +380,11 @@ theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
     omega
   omega
 
+theorem sizeOf_lt_of_elts [SizeOf α] {s : Set α} :
+  sizeOf s.elts ≤ sizeOf s
+:= by
+  simp only [elts]
+  conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp
+  omega
+
 end Cedar.Data.Set

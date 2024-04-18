@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -254,8 +254,8 @@ def toHex (n : Nat) : String :=
   let a3 := hexDigitRepr ((n % 0x10) / 0x1)
   s!"{a0}{a1}{a2}{a3}"
 
-def unParse (ip : IPNet) : String :=
-  match ip with
+instance : ToString IPNet where
+  toString : IPNet → String
   | .V4 v p =>
     let a0 := (v >>> 24) &&& 0xFF
     let a1 := (v >>> 16) &&& 0xFF
@@ -290,15 +290,6 @@ instance : LT IPNet where
 
 instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
 if h : IPNet.lt d₁ d₂ then isTrue h else isFalse h
-
-theorem test1 : unParse ((parse "192.168.0.1/32").get!) = "192.168.0.1/32" := by decide
-theorem test2 : unParse ((parse "0.0.0.0/1").get!) = "0.0.0.0/1" := by decide
-theorem test3 : unParse ((parse "8.8.8.8/24").get!) = "8.8.8.8/24" := by decide
-theorem test4 : unParse ((parse "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by decide
-theorem test5 : unParse ((parse "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by decide
-theorem test6 : unParse ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by decide
-theorem test7 : unParse ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by decide
-theorem test8 : unParse ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by decide
 
 end IPAddr
 

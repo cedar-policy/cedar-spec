@@ -709,6 +709,19 @@ theorem map₁_eq_map_snd (f : β → γ) (pairs : List (α × β)) :
   simp [map₁, attach, map_pmap_subtype]
   sorry
 
+theorem map_attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
+  xs.attach₂.map (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
+  xs.map f
+:= by
+  simp [attach₂, map_pmap_subtype]
+
+theorem map_attach₂_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
+  xs.attach₂.map (λ x : {x : α × β // sizeOf x.snd < 1 + sizeOf xs } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
+  xs.map λ (a, b) => (a, f b)
+:= by
+  simp [attach₂, map_pmap_subtype]
+  sorry
+
 /-! ### mapM and mapM₁ -/
 
 theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :

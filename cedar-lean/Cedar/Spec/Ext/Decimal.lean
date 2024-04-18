@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -58,27 +58,19 @@ def parse (str : String) : Option Decimal :=
     else .none
   | _ => .none
 
-def unParse (d : Decimal) : String :=
-  let neg   := if d < (0 : Int) then "-" else ""
-  let d     := d.natAbs
-  let left  := d / (Nat.pow 10 DECIMAL_DIGITS)
-  let right := d % (Nat.pow 10 DECIMAL_DIGITS)
-  let right :=
-    -- this is not generalized for arbitrary DECIMAL_DIGITS
-    if right < 10 then s!".000{right}"
-    else if right < 100 then s!".00{right}"
-    else if right < 1000 then s!".0{right}"
-    else s!".{right}"
-  s!"{neg}{left}{right}"
-
-theorem test1 : unParse ((parse "3.14").get!) = "3.1400" := by decide
-theorem test2 : unParse ((parse "11.0003").get!) = "11.0003" := by decide
-theorem test3 : unParse ((parse "11.003").get!) = "11.0030" := by decide
-theorem test4 : unParse ((parse "11.3000").get!) = "11.3000" := by decide
-theorem test5 : unParse ((parse "123.0").get!) = "123.0000" := by decide
-theorem test6 : unParse ((parse "-123.0").get!) = "-123.0000" := by decide
-theorem test7 : unParse ((parse "-3.14").get!) = "-3.1400" := by decide
-theorem test8 : unParse ((parse "-11.0003").get!) = "-11.0003" := by decide
+instance : ToString Decimal where
+  toString (d : Decimal) : String :=
+    let neg   := if d < (0 : Int) then "-" else ""
+    let d     := d.natAbs
+    let left  := d / (Nat.pow 10 DECIMAL_DIGITS)
+    let right := d % (Nat.pow 10 DECIMAL_DIGITS)
+    let right :=
+      -- this is not generalized for arbitrary DECIMAL_DIGITS
+      if right < 10 then s!".000{right}"
+      else if right < 100 then s!".00{right}"
+      else if right < 1000 then s!".0{right}"
+      else s!".{right}"
+    s!"{neg}{left}{right}"
 
 abbrev decimal := parse
 

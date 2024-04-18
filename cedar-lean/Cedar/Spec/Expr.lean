@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 import Cedar.Data
 import Cedar.Spec.ExtFun
 import Cedar.Spec.Wildcard
+import Cedar.Thm.Data.Set -- sizeOf theorems for termination arguments
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -138,13 +139,14 @@ end
 
 instance : DecidableEq Expr := decExpr
 
-def Value.asExpr (v : Value) : Expr :=
-  match v with
+def Value.asExpr : Value → Expr
   | .prim p => .lit p
-  | .set xs => .set (xs.elts.map Value.asExpr)
-  | .record attrs => .record (attrs.kvs.map λ (k, v) => (k, v.asExpr))
-  | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string d.unParse)]
-  | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (Ext.IPAddr.unParse ip))]
+  | .set vs => .set (vs.elts.map₁ λ ⟨v, _⟩ =>
+      have := Set.sizeOf_lt_of_elts (s := vs)
+      v.asExpr)
+  | .record attrs => .record (attrs.kvs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string (toString d))]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (toString ip))]
 decreasing_by all_goals sorry
 
 end Cedar.Spec
