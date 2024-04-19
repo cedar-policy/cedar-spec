@@ -35,6 +35,8 @@ pub use cedar_testing::cedar_test_impl::{
 };
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
+use miette::miette;
+use smol_str::ToSmolStr;
 use std::collections::HashSet;
 
 /// Times for cedar-policy authorization and validation.
@@ -130,9 +132,13 @@ pub fn run_auth_test(
                         .diagnostics
                         .errors
                         .iter()
+                        .cloned()
                         .map(|err| match err {
                             AuthorizationError::PolicyEvaluationError { id, .. } => {
-                                format!("{id}")
+                                ffi::AuthorizationError::new_from_report(
+                                    id.to_smolstr(),
+                                    miette!("{id}"),
+                                )
                             }
                         })
                         .collect(),
@@ -140,7 +146,8 @@ pub fn run_auth_test(
                         .diagnostics
                         .errors
                         .iter()
-                        .map(ToString::to_string)
+                        .cloned()
+                        .map(Into::into)
                         .collect(),
                 };
                 ffi::Response::new(
