@@ -21,7 +21,7 @@ pub use dump::*;
 pub use prt::*;
 pub mod schemas;
 
-use cedar_policy::frontend;
+use cedar_policy::ffi;
 use cedar_policy::PolicyId;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
@@ -123,7 +123,7 @@ pub fn run_auth_test(
             }
         }
         TestResult::Success(definitional_res) => {
-            let rust_res_for_comparison: frontend::is_authorized::Response = {
+            let rust_res_for_comparison: ffi::Response = {
                 let errors = match custom_impl.error_comparison_mode() {
                     ErrorComparisonMode::Ignore => HashSet::new(),
                     ErrorComparisonMode::PolicyIds => rust_res
@@ -143,7 +143,7 @@ pub fn run_auth_test(
                         .map(ToString::to_string)
                         .collect(),
                 };
-                frontend::is_authorized::Response::new(
+                ffi::Response::new(
                     rust_res.decision,
                     rust_res
                         .diagnostics
