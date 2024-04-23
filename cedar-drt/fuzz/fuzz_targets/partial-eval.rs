@@ -147,6 +147,7 @@ fn substitute_policy(p: &Policy, mapping: &HashMap<SmolStr, Value>) -> Policy {
         p.effect(),
         Arc::new(condition),
         p.id().clone(),
+        None,
         p.annotations_arc().clone(),
     )
 }

@@ -135,6 +135,7 @@ impl From<GeneratedPolicy> for StaticPolicy {
     fn from(gen: GeneratedPolicy) -> StaticPolicy {
         StaticPolicy::new(
             gen.id,
+            None,
             convert_annotations(gen.annotations),
             gen.effect,
             gen.principal_constraint.into(),
@@ -150,6 +151,7 @@ impl From<GeneratedPolicy> for Template {
     fn from(gen: GeneratedPolicy) -> Template {
         Template::new(
             gen.id,
+            None,
             convert_annotations(gen.annotations),
             gen.effect,
             gen.principal_constraint.into(),
