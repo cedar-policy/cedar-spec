@@ -103,14 +103,14 @@ theorem in_list_in_map {α : Type u} {k : α} {v : β} {m : Map α β} :
   have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp only [List.mem_map] ; exists (k, v)
   apply h₁
 
-theorem in_kvs_snd_in_values {kv : α × β} {m : Map α β} :
-  kv ∈ m.kvs → kv.snd ∈ m.values
+theorem in_kvs_in_values {k : α} {v : β} {m : Map α β} :
+  (k, v) ∈ m.kvs → v ∈ m.values
 := by
   simp only [values, List.mem_map]
   intro h₁
-  exists kv
+  exists (k, v)
 
-/-- kinda the converse of `in_kvs_snd_in_values` -/
+/-- kinda the converse of `in_kvs_in_values` -/
 theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
 := by
@@ -394,7 +394,7 @@ theorem isSome_mapMOnValues [LT α] [DecidableLT α] {f : β → Option γ} {m :
     <;> simp only [Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.isSome_none, Option.isSome_some]
     case none =>
       replace ⟨(k, v), h₂, h₃⟩ := List.mapM_eq_none.mp h₂
-      specialize h₁ v (Map.in_kvs_snd_in_values h₂)
+      specialize h₁ v (in_kvs_in_values h₂)
       cases h₄ : f v
       case some => simp [h₄] at h₃
       case none => simp [h₄] at h₁
