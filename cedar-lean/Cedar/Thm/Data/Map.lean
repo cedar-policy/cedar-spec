@@ -114,7 +114,10 @@ theorem in_kvs_in_values {k : α} {v : β} {m : Map α β} :
 theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
 := by
-  sorry
+  simp [values]
+  intro kv h₁ h₂
+  subst h₂
+  exists kv.fst
 
 theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β} :
   m.WellFormed →
