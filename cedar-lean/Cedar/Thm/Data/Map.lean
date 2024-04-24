@@ -110,6 +110,12 @@ theorem in_kvs_snd_in_values {kv : α × β} {m : Map α β} :
   intro h₁
   exists kv
 
+/-- kinda the converse of `in_kvs_snd_in_values` -/
+theorem in_values_exists_key {m : Map α β} {v : β} :
+  v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
+:= by
+  sorry
+
 theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β} :
   m.WellFormed →
   ((k, v) ∈ m.kvs ↔ m.find? k = some v)
@@ -327,27 +333,42 @@ theorem mapMOnValues_wf [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : 
   sorry
 
 /--
-  Isolating the lemma needed for `isSome_mapMOnValues`, which I'm having trouble
-  proving as of this writing.
-  Once proved, we can decide whether we actually want this stated as a separate
-  lemma or just inline the proof into `isSome_mapMOnValues`.
+  Analogue of `List.mapM_eq_some` for Map.mapMOnValues
 -/
-theorem lemma {f : β → Option γ} {abs : List (α × β)} {ags : List (α × γ)} :
-  abs.mapM (λ ab => (f ab.snd).bind λ g => some (ab.fst, g)) = some ags →
-  (abs.map Prod.snd).mapM f = ags.map Prod.snd
+theorem mapMOnValues_eq_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  (m₁.mapMOnValues f = some m₂) → (
+    (∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v) ∧
+    (∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd)
+  )
 := by
+  unfold mapMOnValues
   intro h₁
-  induction abs
-  case nil => simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at h₁ ; subst h₁ ; simp
-  case cons hd tl ih => -- this isn't the statement of `ih` that I want. Somehow we need to induction on both `abs` and `ags` simultaneously. We know they're the same length from `h₁`.
-    have (a, b) := hd ; clear hd
-    replace ⟨h₁, _⟩ := List.mapM_eq_some h₁
-    simp only [List.mem_cons, Option.bind_eq_some, Option.some.injEq, forall_eq_or_imp] at h₁
-    replace ⟨⟨(a', g), h₁, ⟨g', h₂, h₃⟩⟩, h₄⟩ := h₁
-    simp only [Prod.mk.injEq] at h₃
-    replace ⟨h₃, h₃'⟩ := h₃
-    subst h₃ h₃'
-    sorry
+  constructor
+  <;> intro kv h₂
+  <;> cases h₃ : m₁.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
+  <;> rw [h₃] at h₁
+  <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq] at h₁
+  <;> subst h₁
+  case left.some ags =>
+    have (a, b) := kv ; clear kv
+    simp only
+    replace ⟨h₃, _⟩ := List.mapM_eq_some h₃
+    replace ⟨(a', g), h₃, h₄⟩ := h₃ (a, b) h₂
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      Prod.mk.injEq, exists_eq_right_right] at h₄
+    replace ⟨h₄, h₄'⟩ := h₄
+    subst a'
+    exists g
+  case right.some ags =>
+    have (a, g) := kv ; clear kv
+    simp only
+    replace ⟨_, h₃⟩ := List.mapM_eq_some h₃
+    replace ⟨(a', b), h₃, h₄⟩ := h₃ (a, g) h₂
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      Prod.mk.injEq, exists_eq_right_right] at h₄
+    replace ⟨h₄, h₄'⟩ := h₄
+    subst a'
+    exists b
 
 /--
   Analogue of `List.isSome_mapM` for Map.mapMOnValues
@@ -355,33 +376,19 @@ theorem lemma {f : β → Option γ} {abs : List (α × β)} {ags : List (α × 
 theorem isSome_mapMOnValues [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   Option.isSome (m.mapMOnValues f) ↔ ∀ v ∈ m.values, Option.isSome (f v)
 := by
-  unfold Map.mapMOnValues
   constructor
   case mp =>
-    intro h₁
-    apply (List.isSome_mapM (xs := m.values)).mp
-    replace ⟨m', h₁⟩ := Option.isSome_iff_exists.mp h₁
+    intro h₁ v h₂
     rw [Option.isSome_iff_exists]
-    exists m'.values
-    cases h₂ : m.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-    <;> simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
-    <;> replace ⟨ags, h₁, h₃⟩ := h₁
-    <;> subst h₃
-    case some xs' =>
-      simp only [values]
-      apply lemma (f := f) (abs := m.kvs) h₁
-    case none =>
-      exfalso
-      replace ⟨(k, v), h₂, h₃⟩ := List.mapM_eq_none.mp h₂
-      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none] at h₃
-      replace h₁ := (Option.isSome_iff_exists (x := m.kvs.mapM λ x => (f x.snd).bind λ v => some (x.fst, v))).mpr (by exists ags)
-      rw [List.isSome_mapM] at h₁
-      specialize h₁ (k, v) h₂
-      simp only [Option.isSome, Option.bind] at h₁
-      cases h₄ : f v
-      case some => simp [h₄] at h₃
-      case none => simp [h₄] at h₁
+    rw [Option.isSome_iff_exists] at h₁
+    replace ⟨m', h₁⟩ := h₁
+    replace ⟨h₁, _⟩ := mapMOnValues_eq_some h₁
+    have ⟨k, h₃⟩ := in_values_exists_key h₂
+    replace ⟨v', _, h₁⟩ := h₁ (k, v) h₃
+    simp at h₁
+    exists v'
   case mpr =>
+    unfold Map.mapMOnValues
     intro h₁
     cases h₂ : m.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
     <;> simp only [Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.isSome_none, Option.isSome_some]
@@ -424,44 +431,6 @@ theorem mapMOnValues_eq_none [LT α] [DecidableLT α] {f : β → Option γ} {m 
     rw [isSome_mapMOnValues] at h₃
     specialize h₃ v h₁
     simp [h₂] at h₃
-
-/--
-  Analogue of `List.mapM_eq_some` for Map.mapMOnValues
--/
-theorem mapMOnValues_eq_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  (m₁.mapMOnValues f = some m₂) → (
-    (∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v) ∧
-    (∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd)
-  )
-:= by
-  unfold mapMOnValues
-  intro h₁
-  constructor
-  <;> intro kv h₂
-  <;> cases h₃ : m₁.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-  <;> rw [h₃] at h₁
-  <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq] at h₁
-  <;> subst h₁
-  case left.some ags =>
-    have (a, b) := kv ; clear kv
-    simp only
-    replace ⟨h₃, _⟩ := List.mapM_eq_some h₃
-    replace ⟨(a', g), h₃, h₄⟩ := h₃ (a, b) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
-      Prod.mk.injEq, exists_eq_right_right] at h₄
-    replace ⟨h₄, h₄'⟩ := h₄
-    subst a'
-    exists g
-  case right.some ags =>
-    have (a, g) := kv ; clear kv
-    simp only
-    replace ⟨_, h₃⟩ := List.mapM_eq_some h₃
-    replace ⟨(a', b), h₃, h₄⟩ := h₃ (a, g) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
-      Prod.mk.injEq, exists_eq_right_right] at h₄
-    replace ⟨h₄, h₄'⟩ := h₄
-    subst a'
-    exists b
 
 /-! ### sizeOf -/
 
