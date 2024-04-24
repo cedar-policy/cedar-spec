@@ -280,8 +280,17 @@ theorem elts_make_is_id_then_equiv [LT α] [DecidableLT α] [StrictLT α] {xs ys
   rw [← make_make_eqv]
   exact make_of_make_is_id xs
 
-/-! ### inter -/
+/--
+  Note that the converse of this is not true:
+  counterexample `xs = [1]`, `ys = []`, `a = 1`.
+-/
+theorem make_cons [LT α] [DecidableLT α] {xs ys : List α} {a : α} :
+  make xs = make ys → make (a :: xs) = make (a :: ys)
+:= by
+  simp only [make, mk.injEq]
+  apply List.canonicalize_cons
 
+/-! ### inter and union -/
 
 open BEq LawfulBEq in
 theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α} :

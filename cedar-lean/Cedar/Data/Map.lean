@@ -91,6 +91,14 @@ def mapOnValues {α β γ} [LT α] [DecidableLT α] (f : β → γ) (m : Map α 
 def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
   Map.make (m.kvs.map (λ (k, v) => (f k, v)))
 
+def mapMOnValues {α β γ} [LT α] [DecidableLT α] [Monad m] (f : β → m γ) (map : Map α β) : m (Map α γ) := do
+  let kvs ← map.kvs.mapM (λ (k, v) => f v >>= λ v' => pure (k, v'))
+  pure (Map.mk kvs)
+
+def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (map : Map α β) : m (Map γ β) := do
+  let kvs ← map.kvs.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
+  pure (Map.make kvs)
+
 ----- Instances -----
 
 instance [LT (Prod α β)] : LT (Map α β) where

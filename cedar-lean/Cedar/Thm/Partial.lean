@@ -14,27 +14,4 @@
  limitations under the License.
 -/
 
-import Cedar.Partial.Expr
-import Cedar.Spec.Value
-
-/-!
-This file defines Cedar partial values.
--/
-
-namespace Cedar.Partial
-
-inductive Value where
-  | value (v : Spec.Value)
-  | residual (r : Partial.Expr)
-
-deriving instance Repr, DecidableEq, Inhabited for Value
-
-def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
-  match v with
-  | .value v    => v.asPartialExpr
-  | .residual r => r
-
-instance : Coe Spec.Value Partial.Value where
-  coe := Partial.Value.value
-
-end Cedar.Partial
+import Cedar.Thm.Partial.Evaluation
