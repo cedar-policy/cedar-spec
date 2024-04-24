@@ -114,7 +114,7 @@ theorem in_kvs_in_values {k : α} {v : β} {m : Map α β} :
 theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
 := by
-  simp [values]
+  simp only [values, List.mem_map, forall_exists_index, and_imp]
   intro kv h₁ h₂
   subst h₂
   exists kv.fst
