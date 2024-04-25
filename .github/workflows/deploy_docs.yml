@@ -38,8 +38,6 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake -Kenv=dev build Cedar:docs
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - name: Move documentation to `docs/docs`
         run: |
               mkdir docs
