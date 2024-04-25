@@ -39,10 +39,14 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake -Kenv=dev build Cedar:docs
+      - name: Move documentation to `docs/docs`
+        run: |
+              mkdir docs
+              cp -r .lake/build/doc docs/docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-            path: '.lake/build/doc'
+            path: docs/
 
   # Deployment job
   deploy:
