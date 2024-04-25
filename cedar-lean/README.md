@@ -2,6 +2,8 @@
 
 This folder contains the Lean formalization of, and proofs about, Cedar.
 
+Auto-generated documentation is available at <https://cedar-policy.github.io/cedar-spec/docs/>.
+
 ## Setup
 
 Follow [these instructions](https://leanprover.github.io/lean4/doc/setup.html) to set up Lean and install the VS Code plugin.
