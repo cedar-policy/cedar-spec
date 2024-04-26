@@ -362,6 +362,18 @@ theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
   exists a
   exact h₁ a h₃
 
+theorem subset_iff_subset_elts [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ ↔ s₁.elts ⊆ s₂.elts
+:= by
+  simp only [subset_def, elts, List.subset_def, in_list_iff_in_set]
+
+theorem subset_iff_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+  WellFormed s₁ → WellFormed s₂ →
+  ((s₁ ⊆ s₂ ∧ s₂ ⊆ s₁) ↔ s₁ = s₂)
+:= by
+  intro hw₁ hw₂
+  simp only [← (eq_means_eqv hw₁ hw₂), elts, List.Equiv, subset_iff_subset_elts]
+
 /-! ### sizeOf -/
 
 theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}

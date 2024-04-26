@@ -329,6 +329,33 @@ theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (
       exact h₂.left
     case inr => exact ih
 
+theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {g : α → Option γ} {f' : γ → β} {xs : List α} :
+  (∀ x y, g x = some y → f x = f' y) →
+  SortedBy f xs →
+  SortedBy f' (xs.filterMap g)
+:= by
+  intro h₁ h₂
+  induction xs
+  case nil => simp only [filterMap_nil, SortedBy.nil]
+  case cons hd tl ih =>
+    simp only [filterMap_cons]
+    specialize ih (tail_sortedBy h₂)
+    split
+    case h_1 => exact ih
+    case h_2 ac heq =>
+      cases htl : filterMap g tl
+      case nil =>
+        exact SortedBy.cons_nil
+      case cons hd' tl' =>
+        rw [htl] at ih
+        apply SortedBy.cons_cons _ ih
+        rw [← h₁ hd ac heq]
+        have hhd : hd' ∈ filterMap g tl := by simp only [htl, mem_cons, true_or]
+        simp only [mem_filterMap] at hhd
+        have ⟨x, hx, hgx⟩ := hhd
+        rw [← h₁ x hd' hgx]
+        exact sortedBy_implies_head_lt_tail h₂ x hx
+
 /-! ### Forallᵥ -/
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
@@ -770,31 +797,135 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   cases h₂ : mapM' f xs <;>
   simp [h₂, pure, Except.pure]
 
+/-! ### Forall₂ -/
+
+theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
+  List.Forall₂ R xs ys →
+  ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ R x y
+:= by
+  intro h
+  induction h
+  case nil =>
+    simp only [not_mem_nil, false_and, exists_false, imp_self, implies_true]
+  case cons xhd yhd xtl ytl hhd _ ih =>
+    intro x hx
+    simp only [mem_cons] at hx
+    rcases hx with hx | hx
+    case inl =>
+      subst hx
+      exists yhd
+      simp only [mem_cons, true_or, hhd, and_self]
+    case inr =>
+      have ⟨y, ih⟩ := ih x hx
+      exists y
+      simp only [mem_cons, ih, or_true, and_self]
+
+theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
+  List.Forall₂ R xs ys →
+  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ R x y
+:= by
+  intro h
+  induction h
+  case nil =>
+    simp only [not_mem_nil, false_and, exists_false, imp_self, implies_true]
+  case cons xhd yhd xtl ytl hhd _ ih =>
+    intro y hy
+    simp only [mem_cons] at hy
+    rcases hy with hy | hy
+    case inl =>
+      subst hy
+      exists xhd
+      simp only [mem_cons, true_or, hhd, and_self]
+    case inr =>
+      have ⟨x, ih⟩ := ih y hy
+      exists x
+      simp only [mem_cons, ih, or_true, and_self]
+
 /-! ### mapM' -/
+
+theorem mapM'_ok_implies_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .ok ys →
+  List.Forall₂ (λ x y => f x = .ok y) xs ys
+:= by
+  intro h₁
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM'_nil, pure, Except.pure, Except.ok.injEq] at h₁
+    subst h₁
+    exact List.Forall₂.nil
+  case cons xhd xtl ih =>
+    simp only [mapM'_cons, pure, Except.pure] at h₁
+    cases h₂ : f xhd <;>
+    simp only [h₂, Except.bind_err, Except.bind_ok] at h₁
+    rename_i yhd
+    cases h₃ : mapM' f xtl <;>
+    simp only [h₃, Except.bind_err, Except.bind_ok] at h₁
+    rename_i ytl
+    simp only [Except.ok.injEq] at h₁
+    subst h₁
+    exact List.Forall₂.cons h₂ (ih h₃)
+
+theorem mapM'_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .ok ys →
+  ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ f x = .ok y
+:= by
+  intro h
+  exact forall₂_implies_all_left (mapM'_ok_implies_forall₂ h)
+
+theorem mapM'_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .ok ys →
+  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ f x = .ok y
+:= by
+  intro h
+  exact forall₂_implies_all_right (mapM'_ok_implies_forall₂ h)
+
+theorem mapM'_some_implies_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys →
+  List.Forall₂ (λ x y => f x = .some y) xs ys
+:= by
+  intro h₁
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM'_nil, pure, Option.some.injEq] at h₁
+    subst h₁
+    exact List.Forall₂.nil
+  case cons xhd xtl ih =>
+    simp only [mapM'_cons, pure, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+    replace ⟨yhd, h₁, ytl, h₂, h₃⟩ := h₁
+    subst h₃
+    exact List.Forall₂.cons h₁ (ih h₂)
 
 theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
   ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ f x = .some y
 := by
-  intro h₁
+  intro h
+  exact forall₂_implies_all_left (mapM'_some_implies_forall₂ h)
+
+theorem mapM'_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys →
+  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ f x = .some y
+:= by
+  intro h
+  exact forall₂_implies_all_right (mapM'_some_implies_forall₂ h)
+
+theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys →
+  List.filterMap f xs = ys
+:= by
+  intro h
   induction xs generalizing ys
   case nil =>
-    simp only [not_mem_nil, false_implies, implies_true]
-  case cons xhd xtl ih =>
-    intro x h₂
+    simp only [mapM'_nil, Option.pure_def, Option.some.injEq, filterMap_nil] at *
+    exact h
+  case cons hd tl ih =>
+    simp only [filterMap_cons]
     simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
-      Option.some.injEq] at h₁
-    replace ⟨yhd, h₁, ytl, h₃, h₄⟩ := h₁
-    simp only [mem_cons] at h₂
-    rcases h₂ with h₂ | h₂
-    case inl =>
-      subst h₂
-      exists yhd
-      simp only [← h₄, mem_cons, true_or, h₁, and_self]
-    case inr =>
-      replace ⟨y, ih⟩ := ih h₃ x h₂
-      exists y
-      simp only [← h₄, mem_cons, ih, or_true, and_self]
+      Option.some.injEq] at h
+    replace ⟨hd', h, tl', hm, hys⟩ := h
+    subst hys
+    simp only [h, cons.injEq, true_and]
+    exact ih hm
 
 /-! ### foldlM -/
 
@@ -970,6 +1101,62 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       exists x
       simp only [Prod.map, id_eq] at heq
       simp only [find?_cons, heq, ih, and_self]
+
+theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+  {f : α → β} {x : α} {xs : List α} :
+  x ∈ xs → xs.SortedBy f →
+  xs.find? (fun y => f y == f x) = x
+:= by
+  intro h₁ h₂
+  induction xs
+  case nil =>
+    simp only [not_mem_nil] at h₁
+  case cons hd tl ih =>
+    simp only [mem_cons] at h₁
+    simp only [find?_cons]
+    split
+    case h_1 heq =>
+      simp only [beq_iff_eq] at heq
+      simp only [Option.some.injEq]
+      rcases h₁ with h₁ | h₁
+      case inl => simp only [h₁]
+      case inr =>
+        have h₃ := sortedBy_implies_head_lt_tail h₂
+        specialize h₃ x h₁
+        simp only [heq, StrictLT.irreflexive] at h₃
+    case h_2 heq =>
+      simp only [beq_eq_false_iff_ne, ne_eq] at heq
+      rcases h₁ with h₁ | h₁
+      case inl =>
+        simp only [h₁, not_true_eq_false] at heq
+      case inr =>
+        exact ih h₁ (tail_sortedBy h₂)
+
+theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+  {f : α → β} {x y : α} {xs : List α} :
+  xs.SortedBy f → x ∈ xs → y ∈ xs → f x = f y →
+  x = y
+:= by
+  intro hsrt hx hy hf
+  induction xs
+  case nil =>
+    simp only [not_mem_nil] at hx
+  case cons hd tl ih =>
+    simp only [mem_cons] at hx hy
+    specialize ih (tail_sortedBy hsrt)
+    have hlt := sortedBy_implies_head_lt_tail hsrt
+    rcases hx with hx | hx <;>
+    rcases hy with hy | hy
+    case inl.inl => simp only [hx, hy]
+    case inr.inr => exact ih hx hy
+    case inl.inr =>
+      subst hx
+      specialize hlt y hy
+      simp only [hf, StrictLT.irreflexive] at hlt
+    case inr.inl =>
+      subst hy
+      specialize hlt x hx
+      simp only [hf, StrictLT.irreflexive] at hlt
 
 /-! ### map -/
 
