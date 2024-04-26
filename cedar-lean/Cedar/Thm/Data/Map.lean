@@ -375,6 +375,9 @@ theorem mapMOnValues_eq_some [LT α] [DecidableLT α] {f : β → Option γ} {m�
 
 /--
   Analogue of `List.isSome_mapM` for Map.mapMOnValues
+
+  `mp` direction is a corollary of `mapMOnValues_eq_some`, but the `mpr`
+  direction is also valid
 -/
 theorem isSome_mapMOnValues [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   Option.isSome (m.mapMOnValues f) ↔ ∀ v ∈ m.values, Option.isSome (f v)

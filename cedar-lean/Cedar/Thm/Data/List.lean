@@ -804,41 +804,62 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   cases h₂ : mapM' f xs <;>
   simp [h₂, pure, Except.pure]
 
+theorem mapM_eq_some {f : α → Option β} {xs : List α} {ys : List β} :
+  (xs.mapM f = some ys) → (
+    (∀ x ∈ xs, ∃ y ∈ ys, f x = some y) ∧
+    (∀ y ∈ ys, ∃ x ∈ xs, f x = some y)
+  )
+:= by
+  rw [← List.mapM'_eq_mapM]
+  intro h₁
+  constructor
+  case left =>
+    intro x h₂
+    induction xs generalizing ys
+    case nil => simp at h₂
+    case cons hd tl ih =>
+      simp at h₁
+      replace ⟨y₁, h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
+      subst h₄
+      cases h₂
+      case head => exists y₁ ; simp [h₁]
+      case tail h₂ =>
+        replace ⟨y₂, ih⟩ := @ih tl' h₃ h₂
+        exists y₂
+        simp [ih]
+  case right =>
+    intro y h₂
+    induction xs generalizing ys
+    case nil => simp at h₁ ; subst h₁ ; simp at h₂
+    case cons hd tl ih =>
+      simp at h₁
+      replace ⟨y', h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
+      subst h₄
+      cases h₂
+      case head => exists hd ; simp [h₁]
+      case tail h₂ =>
+        replace ⟨x, ih⟩ := @ih tl' h₃ h₂
+        exists x
+        simp [ih]
+
+/--
+  `mp` direction is a corollary of `mapM_eq_some`, but the `mpr` direction is
+  also valid
+-/
 theorem isSome_mapM {f : α → Option β} {xs : List α} :
   Option.isSome (xs.mapM f) ↔ ∀ x ∈ xs, Option.isSome (f x)
 := by
-  rw [← List.mapM'_eq_mapM]
   constructor
   case mp =>
-    induction xs
-    case nil => simp
-    case cons hd tl ih =>
-      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, mem_cons, forall_eq_or_imp]
-      intro h₁
-      unfold List.mapM' at h₁
-      constructor
-      case left =>
-        cases h₂ : (f hd)
-        <;> simp only [h₂, Option.pure_def, Option.bind_eq_bind,
-          Option.none_bind, Option.some_bind, Option.isSome_none] at h₁
-        simp
-      case right =>
-        intro a
-        apply ih ; clear ih
-        rw [Option.isSome_iff_exists] at h₁
-        replace ⟨as, h₁⟩ := h₁
-        cases h₂ : (f hd)
-        <;> simp only [h₂, Option.pure_def, Option.bind_eq_bind,
-          Option.some_bind, Option.none_bind, Option.bind_eq_some, Option.some.injEq] at h₁
-        replace ⟨bs, ⟨h₁, h₂⟩⟩ := h₁
-        simp only [Option.bind] at h₁
-        subst h₂
-        cases tl
-        case a.some.nil => simp
-        case a.some.cons hd tl =>
-          cases h₂ : f hd <;> simp [h₂] at *
-          cases h₂ : mapM' f tl <;> simp [h₂] at *
+    intro h₁ x h₂
+    rw [Option.isSome_iff_exists]
+    rw [Option.isSome_iff_exists] at h₁
+    replace ⟨m', h₁⟩ := h₁
+    replace ⟨h₁, _⟩ := mapM_eq_some h₁
+    replace ⟨y, _, h₁⟩ := h₁ x h₂
+    exists y
   case mpr =>
+    rw [← List.mapM'_eq_mapM]
     intro h₁
     induction xs
     case nil => simp [List.mapM']
@@ -878,47 +899,6 @@ theorem mapM_eq_none {f : α → Option β} {xs : List α} :
     rw [isSome_mapM] at h₃
     specialize h₃ v h₁
     simp [h₂] at h₃
-
-/--
-  Possibly the `mp` direction of `isSome_mapM` could be a corollary of this?
--/
-theorem mapM_eq_some {f : α → Option β} {xs : List α} {ys : List β} :
-  (xs.mapM f = some ys) → (
-    (∀ x ∈ xs, ∃ y ∈ ys, f x = some y) ∧
-    (∀ y ∈ ys, ∃ x ∈ xs, f x = some y)
-  )
-:= by
-  rw [← List.mapM'_eq_mapM]
-  intro h₁
-  constructor
-  case left =>
-    intro x h₂
-    induction xs generalizing ys
-    case nil => simp at h₂
-    case cons hd tl ih =>
-      simp at h₁
-      replace ⟨y₁, h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
-      subst h₄
-      cases h₂
-      case head => exists y₁ ; simp [h₁]
-      case tail h₂ =>
-        replace ⟨y₂, ih⟩ := @ih tl' h₃ h₂
-        exists y₂
-        simp [ih]
-  case right =>
-    intro y h₂
-    induction xs generalizing ys
-    case nil => simp at h₁ ; subst h₁ ; simp at h₂
-    case cons hd tl ih =>
-      simp at h₁
-      replace ⟨y', h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
-      subst h₄
-      cases h₂
-      case head => exists hd ; simp [h₁]
-      case tail h₂ =>
-        replace ⟨x, ih⟩ := @ih tl' h₃ h₂
-        exists x
-        simp [ih]
 
 /--
   Analogue of `isSome_mapM` but for the Except monad
