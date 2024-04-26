@@ -893,30 +893,32 @@ theorem mapM_eq_some {f : α → Option β} {xs : List α} {ys : List β} :
   constructor
   case left =>
     intro x h₂
-    induction xs
+    induction xs generalizing ys
     case nil => simp at h₂
-    case cons hd tl ih => -- this `ih` is unhelpful because that first condition is always false (contradicts h₁). Somehow we need to induction on `xs` and `ys` simultaneously. We know they're the same length from h₁.
+    case cons hd tl ih =>
       simp at h₁
-      replace ⟨y, h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
+      replace ⟨y₁, h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
       subst h₄
       cases h₂
-      case head => exists y ; simp [h₁]
+      case head => exists y₁ ; simp [h₁]
       case tail h₂ =>
-        apply ih _ h₂ ; clear ih
-        -- here we run into the issue above; all that remains is to satisfy the unsatisfiable first condition of `ih`
-        sorry
+        replace ⟨y₂, ih⟩ := @ih tl' h₃ h₂
+        exists y₂
+        simp [ih]
   case right =>
     intro y h₂
-    induction xs
+    induction xs generalizing ys
     case nil => simp at h₁ ; subst h₁ ; simp at h₂
-    case cons hd tl ih => -- again `ih` has this undesired first condition; see the `left` case
+    case cons hd tl ih =>
       simp at h₁
       replace ⟨y', h₁, ⟨tl', h₃, h₄⟩⟩ := h₁
       subst h₄
       cases h₂
       case head => exists hd ; simp [h₁]
       case tail h₂ =>
-        sorry
+        replace ⟨x, ih⟩ := @ih tl' h₃ h₂
+        exists x
+        simp [ih]
 
 /--
   Analogue of `isSome_mapM` but for the Except monad
