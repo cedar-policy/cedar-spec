@@ -110,7 +110,7 @@ theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
   intro h₁
   exists (k, v)
 
-/-- kinda the converse of `in_kvs_in_values` -/
+/-- kinda the converse of `in_list_in_values` -/
 theorem in_values_exists_key {m : Map α β} {v : β} :
   v ∈ m.values → ∃ k, (k, v) ∈ m.kvs
 := by
