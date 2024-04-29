@@ -94,7 +94,7 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
     subst h₁
     exact List.Equiv.refl
 
-/-! ### contains, mem, and find? -/
+/-! ### contains, mem, kvs, values -/
 
 theorem in_list_in_map {α : Type u} {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.kvs → k ∈ m
@@ -118,43 +118,6 @@ theorem in_values_exists_key {m : Map α β} {v : β} :
   intro kv h₁ h₂
   subst h₂
   exists kv.fst
-
-theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β} :
-  m.WellFormed →
-  ((k, v) ∈ m.kvs ↔ m.find? k = some v)
-:= by
-  intro h₁
-  unfold find?
-  constructor
-  case mp =>
-    intro h₂
-    cases h₃ : m.kvs.find? λ x => match x with | (k', _) => k' == k
-    case none =>
-      exfalso
-      rw [List.find?_eq_none] at h₃
-      specialize h₃ (k, v) h₂
-      apply h₃ ; clear h₃
-      simp
-    case some kv =>
-      simp only [Option.some.injEq]
-      have h₄ := List.find?_some h₃
-      simp only [beq_iff_eq] at h₄
-      subst h₄
-      replace h₃ := List.mem_of_find?_eq_some h₃
-      apply (key_maps_to_one_value kv.fst v kv.snd m h₁ h₂ _).symm
-      trivial
-  case mpr =>
-    intro h₂
-    cases h₃ : m.kvs.find? λ x => match x with | (k', _) => k' == k
-    case none => simp [h₃] at h₂
-    case some kv =>
-      simp only [h₃, Option.some.injEq] at h₂
-      subst h₂
-      have h₄ := List.mem_of_find?_eq_some h₃
-      replace h₃ := List.find?_some h₃
-      split at h₃ ; rename_i k' v
-      simp only
-      exact equal_keys_same_value k' k v m h₁ h₄ h₃
 
 theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
@@ -218,6 +181,46 @@ theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α ×
   apply List.canonicalize_cons
 
 /-! ### find? and mapOnValues -/
+
+theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+  (h₁ : m.find? k = .some v) :
+  (k, v) ∈ m.toList
+:= by
+  simp [toList, kvs, find?] at *
+  split at h₁ <;> simp at h₁
+  subst h₁
+  rename_i h₂
+  have h₃ := List.find?_some h₂
+  simp at h₃ ; subst h₃
+  exact List.mem_of_find?_eq_some h₂
+
+/--
+  The `mpr` direction of this does not need the `wf` precondition and, in fact,
+  is available separately as `find?_mem_toList` above
+-/
+theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β}
+  (wf : m.WellFormed) :
+  (k, v) ∈ m.kvs ↔ m.find? k = some v
+:= by
+  unfold find?
+  constructor
+  case mp =>
+    intro h₁
+    cases h₂ : m.kvs.find? λ x => match x with | (k', _) => k' == k
+    case none =>
+      exfalso
+      rw [List.find?_eq_none] at h₂
+      apply h₂ (k, v) h₁ ; clear h₂
+      simp
+    case some kv =>
+      simp only [Option.some.injEq]
+      have h₃ := List.find?_some h₂
+      simp only [beq_iff_eq] at h₃
+      subst h₃
+      replace h₃ := List.mem_of_find?_eq_some h₂
+      apply (key_maps_to_one_value kv.fst v kv.snd m wf h₁ _).symm
+      trivial
+  case mpr => exact find?_mem_toList
 
 theorem mapOnValues_wf [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
