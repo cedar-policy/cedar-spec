@@ -96,14 +96,14 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
 
 /-! ### contains, mem, kvs, values -/
 
-theorem in_list_in_map {α : Type u} {k : α} {v : β} {m : Map α β} :
+theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
   intro h₀
   have h₁ : k ∈ (List.map Prod.fst m.kvs) := by simp only [List.mem_map] ; exists (k, v)
   apply h₁
 
-theorem in_kvs_in_values {k : α} {v : β} {m : Map α β} :
+theorem in_list_in_values {k : α} {v : β} {m : Map α β} :
   (k, v) ∈ m.kvs → v ∈ m.values
 := by
   simp only [values, List.mem_map]
@@ -233,13 +233,13 @@ theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {
 := by
   simp [mapOnValues, empty]
 
-theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α}  :
+theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp only [find?, kvs, mapOnValues, ← List.find?_pair_map]
   cases m.1.find? (λ x => x.fst == k) <;> simp
 
-theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
+theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v →
   (m.mapOnValues f).find? k = .some (f v)
 := by
@@ -247,7 +247,7 @@ theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq 
   rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} :
+theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   m.find? k = .none →
   (m.mapOnValues f).find? k = .none
 := by
@@ -255,7 +255,7 @@ theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq 
   rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
-theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] {f : β → γ} {m : Map α β}
+theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α] (f : β → γ) {m : Map α β}
   (wf : m.WellFormed) :
   m.mapOnValues f = Map.make (m.toList.map λ kv => (kv.fst, f kv.snd))
 := by
@@ -265,13 +265,13 @@ theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α
   have h₁ : Prod.map id f = (λ (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
   simp only [← h₁, ← List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
-theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} :
+theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
   simp only [contains, Option.isSome]
   split
-  case h_1 h => simp [find?_mapOnValues_some h]
-  case h_2 h => simp [find?_mapOnValues_none h]
+  case h_1 h => simp [find?_mapOnValues_some f h]
+  case h_2 h => simp [find?_mapOnValues_none f h]
 
 theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
@@ -403,7 +403,7 @@ theorem isSome_mapMOnValues [LT α] [DecidableLT α] {f : β → Option γ} {m :
     <;> simp only [Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.isSome_none, Option.isSome_some]
     case none =>
       replace ⟨(k, v), h₂, h₃⟩ := List.mapM_eq_none.mp h₂
-      specialize h₁ v (in_kvs_in_values h₂)
+      specialize h₁ v (in_list_in_values h₂)
       cases h₄ : f v
       case some => simp [h₄] at h₃
       case none => simp [h₄] at h₁

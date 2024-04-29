@@ -45,7 +45,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Sp
       constructor
       case left =>
         intro (k, v) h₂
-        rw [Map.mapOnValues_eq_make_map wf] at h₁
+        rw [Map.mapOnValues_eq_make_map _ wf] at h₁
         unfold Map.toList at h₁
         replace ⟨pv, h₁, h₃⟩ := (Map.mapMOnValues_eq_some h₁).right (k, v) h₂
         replace h₁ := Map.mem_kvs_make h₁
@@ -70,7 +70,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Sp
       replace ⟨v, h₁, h₂⟩ := h₁
       cases v <;> simp only at h₂
       case residual r =>
-        rw [Map.mapOnValues_eq_make_map wf] at h₁
+        rw [Map.mapOnValues_eq_make_map _ wf] at h₁
         replace h₁ := Map.mem_values_make h₁
         simp [List.mem_map] at h₁
 
