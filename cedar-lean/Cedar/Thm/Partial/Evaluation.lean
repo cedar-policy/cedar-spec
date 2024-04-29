@@ -78,21 +78,30 @@ theorem on_concrete_eqv_concrete_eval {expr : Spec.Expr} {request : Spec.Request
   case set xs =>
     have ih : ∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value := by
       intro x h₁
+      have := List.sizeOf_lt_of_mem h₁
       apply @on_concrete_eqv_concrete_eval x request entities wf
     exact Set.on_concrete_eqv_concrete_eval ih
   case record attrs =>
     -- rw [List.map_attach₂ (λ x => (x.fst, Spec.Expr.asPartialExpr x.snd))]
     have ih : ∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value := by
       intro kv h₁
-      have h₂ : sizeOf kv.snd <= sizeOf kv := by simp only [sizeOf, Prod._sizeOf_1] ; omega
-      have : sizeOf kv.snd < sizeOf (Spec.Expr.record attrs) := by sorry
+      have := List.sizeOf_lt_of_mem h₁
       apply @on_concrete_eqv_concrete_eval kv.snd request entities wf
     exact Record.on_concrete_eqv_concrete_eval ih
   case call xfn args =>
     have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
       intro arg h₁
+      have := List.sizeOf_lt_of_mem h₁
       apply @on_concrete_eqv_concrete_eval arg request entities wf
     exact Call.on_concrete_eqv_concrete_eval ih
+termination_by expr
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ => -- record
+    have h₂ : sizeOf kv.snd < sizeOf kv := by simp only [sizeOf, Prod._sizeOf_1] ; omega
+    apply Nat.lt_trans h₂
+    omega
 
 /--
   Corollary to the above: partial evaluation with concrete inputs gives a
