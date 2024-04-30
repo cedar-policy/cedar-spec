@@ -27,7 +27,6 @@ namespace Cedar.Partial
 
 open Cedar.Data
 open Cedar.Spec (Effect Error PolicyID)
-open Cedar.Spec.Effect
 
 inductive Residual where
   | residual (id : PolicyID) (effect : Effect) (condition : Partial.Expr)
