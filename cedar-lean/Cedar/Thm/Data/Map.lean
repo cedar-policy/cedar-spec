@@ -27,10 +27,25 @@ This file proves useful properties of canonical list-based maps defined in
 
 namespace Cedar.Data.Map
 
-/-! ### Well-formed sets -/
+/-! ### Well-formed maps -/
 
 def WellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) :=
   m = Map.make m.toList
+
+theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
+  m.WellFormed ↔ m.toList.SortedBy Prod.fst
+:= by
+  constructor
+  case mp =>
+    intro h
+    rw [WellFormed, make] at h
+    rw [h, toList, kvs]
+    simp only [List.canonicalize_sortedBy]
+  case mpr =>
+    intro h
+    rw [toList, kvs] at *
+    replace h := List.sortedBy_implies_canonicalize_eq h
+    rw [WellFormed, toList, kvs, make, h]
 
 /-! ### contains and mem -/
 
@@ -49,12 +64,20 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
-/-! ### make -/
+/-! ### make and mk -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   WellFormed (Map.make xs)
 := by
   simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
+
+theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  xs.SortedBy Prod.fst → (Map.mk xs).WellFormed
+:= by
+  intro h
+  replace h := List.sortedBy_implies_canonicalize_eq h
+  rw [← h, WellFormed, make, toList, kvs]
+  simp only [List.canonicalize_idempotent]
 
 theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
@@ -115,6 +138,23 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   have h₃ := List.find?_some h₂
   simp at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
+
+theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+  (h₁ : m.WellFormed)
+  (h₂ : (k, v) ∈ m.toList) :
+  m.find? k = .some v
+:= by
+  rw [WellFormed, make] at h₁
+  generalize hm : toList m = l
+  rw [hm] at h₁ h₂
+  subst h₁
+  simp only [toList, kvs] at hm
+  rw [hm]
+  have hsrt := List.canonicalize_sortedBy Prod.fst l
+  rw [hm] at hsrt
+  have h := List.mem_of_sortedBy_implies_find? h₂ hsrt
+  simp only at h
+  simp only [find?, kvs, h]
 
 theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
