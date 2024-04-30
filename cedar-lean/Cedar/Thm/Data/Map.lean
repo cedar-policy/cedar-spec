@@ -32,21 +32,20 @@ namespace Cedar.Data.Map
 def WellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) :=
   m = Map.make m.toList
 
-theorem wf_implies_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
-  m.WellFormed → m.toList.SortedBy Prod.fst
+theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
+  m.WellFormed ↔ m.toList.SortedBy Prod.fst
 := by
-  intro h
-  rw [WellFormed, make] at h
-  rw [h, toList, kvs]
-  simp only [List.canonicalize_sortedBy]
-
-theorem sorted_implies_wf {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
-  m.toList.SortedBy Prod.fst → m.WellFormed
-:= by
-  intro h
-  rw [toList, kvs] at *
-  replace h := List.sortedBy_implies_canonicalize_eq h
-  rw [WellFormed, toList, kvs, make, h]
+  constructor
+  case mp =>
+    intro h
+    rw [WellFormed, make] at h
+    rw [h, toList, kvs]
+    simp only [List.canonicalize_sortedBy]
+  case mpr =>
+    intro h
+    rw [toList, kvs] at *
+    replace h := List.sortedBy_implies_canonicalize_eq h
+    rw [WellFormed, toList, kvs, make, h]
 
 /-! ### contains and mem -/
 
