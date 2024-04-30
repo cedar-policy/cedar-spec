@@ -55,6 +55,7 @@ def Residual.mustBeSatisfied (eff : Effect) : Residual → Option PolicyID
   has the specified effect, return the PolicyID
 -/
 def Residual.mayBeSatisfied (eff : Effect) : Residual → Option PolicyID
+  | .residual _ _ (.lit (.bool false)) => none
   | .residual id eff' _ => if eff = eff' then some id else none
   | _ => none
 
