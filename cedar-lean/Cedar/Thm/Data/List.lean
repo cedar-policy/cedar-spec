@@ -897,7 +897,7 @@ theorem mapM'_some_implies_forall₂ {α β} {f : α → Option β} {xs : List �
 
 theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
-  ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ f x = .some y
+  ∀ x ∈ xs, ∃ y ∈ ys, f x = .some y
 := by
   intro h
   exact forall₂_implies_all_left (mapM'_some_implies_forall₂ h)
