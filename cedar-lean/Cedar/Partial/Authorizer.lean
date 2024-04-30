@@ -43,8 +43,6 @@ def isAuthorized (req : Partial.Request) (entities : Partial.Entities) (policies
       | .ok (.value v) => some (.residual policy.id policy.effect v.asPartialExpr)
       | .ok (.residual r) => some (.residual policy.id policy.effect r)
       | .error e => some (.error policy.id e)
-    req,
-    entities,
   }
 
 end Cedar.Partial
