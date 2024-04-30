@@ -904,7 +904,7 @@ theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α
 
 theorem mapM'_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
-  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ f x = .some y
+  ∀ y ∈ ys, ∃ x ∈ xs, f x = .some y
 := by
   intro h
   exact forall₂_implies_all_right (mapM'_some_implies_forall₂ h)
