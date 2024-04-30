@@ -123,40 +123,62 @@ inductive Decision where
 deriving instance Repr, DecidableEq for Decision
 
 def Response.decision (resp : Partial.Response) : Partial.Decision :=
-  if ¬ resp.knownForbids.isEmpty
-  then .deny -- there is a known forbid, we'll always get explicit deny
-  else if resp.permits.isEmpty
-  then .deny -- there are no permits that are even possibly satisfied
-  else if ¬ resp.forbids.isEmpty
-  then .unknown -- there's at least one forbid that may be satisfied, and at least one permit that may be (or is) satisfied
-  else if ¬ resp.knownPermits.isEmpty
-  then .allow -- there are no forbids that are even possibly satisfied, and at least one permit that is definitely satisfied
-  else .unknown -- there are no forbids that are even possibly satisfied, and at least one permit that may be satisfied
+  if ¬ resp.knownForbids.isEmpty then
+    -- there is a known forbid, we'll always get explicit deny
+    .deny
+  else if resp.permits.isEmpty then
+    -- there are no permits that are even possibly satisfied
+    .deny
+  else if resp.forbids.isEmpty && ¬ resp.knownPermits.isEmpty then
+    -- there are no forbids that are even possibly satisfied, and at least one
+    -- permit that is definitely satisfied
+    .allow
+  else
+    -- all other cases we cannot know the decision yet.
+    -- This includes at least two distinct cases:
+    --   - there's at least one forbid that may be satisfied, and at least one
+    --     permit that may be (or is) satisfied
+    --   - there are no forbids that are even possibly satisfied, and at least
+    --     one permit that may be satisfied, but none known to be satisfied
+    .unknown
 
 /--
   All policies which could possibly be determining, given some substitution of
   the unknowns
 -/
 def Response.overapproximateDeterminingPolicies (resp : Partial.Response) : Set PolicyID :=
-  if ¬ resp.knownForbids.isEmpty
-  then resp.forbids -- there is a known forbid so the decision will always be Deny, but any of resp.forbids could be determining
-  else if resp.permits.isEmpty
-  then resp.forbids -- there are no permits that are even possibly satisfied, so forbids will be determining, or if no forbids, then nothing will be determining
-  else if ¬ resp.forbids.isEmpty
-  then resp.permits ∪ resp.forbids -- we don't know the decision in this case, so any permits or forbids could be determining
-  else resp.permits -- there are no forbids that are even possibly satisfied, so permits will be determining, or if no permits, then nothing will be determining
+  match resp.decision with
+  | .deny =>
+    -- when the decision is Deny, forbids (if any) are determining.
+    -- Any forbid that may be satisfied may be determining.
+    resp.forbids
+  | .allow =>
+    -- when the decision is Allow, permits (if any) are determining.
+    -- Any permit that may be satisfied may be determining.
+    resp.permits
+  | .unknown =>
+    -- when the decision is Unknown, any permits or forbids could be
+    -- determining.
+    resp.permits ∪ resp.forbids
 
 /--
   All policies that must be determining (for all possible substitutions of the
   unknowns)
 -/
 def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set PolicyID :=
-  if ¬ resp.knownForbids.isEmpty
-  then resp.knownForbids -- there is a known forbid, so we know at least the known forbids will be determining
-  else if resp.permits.isEmpty
-  then Set.empty -- there are no permits that are even possibly satisfied. The determining policies will be forbids, if any, but there aren't any known forbids so there are no policies we know will be determining
-  else if ¬ resp.forbids.isEmpty
-  then Set.empty -- we don't know the decision in this case, so we can't say any policy is for sure determining
-  else resp.knownPermits -- there are no forbids that are even possibly satisfied, so if there are known permits, we know they will be determining
+  match resp.decision with
+  | .deny =>
+    -- when the decision is Deny, forbids (if any) are determining.
+    -- The only forbids we _know_ will be determining are those that must be
+    -- satisfied.
+    resp.knownForbids
+  | .allow =>
+    -- when the decision is Allow, permits (if any) are determining.
+    -- The only permits we _know_ will be determining are those that must be
+    -- satisfied.
+    resp.knownPermits
+  | .unknown =>
+    -- when the decision is Unknown, nothing is guaranteed to be determining.
+    Set.empty
 
 end Cedar.Partial
