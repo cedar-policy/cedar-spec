@@ -65,14 +65,6 @@ structure Response where
     Does include policies that are definitely satisfied (residual `true`).
   -/
   residuals : List Residual
-  /--
-    The `Partial.Request` that was used to compute this `Partial.Response`
-  -/
-  req : Partial.Request
-  /--
-    The `Partial.Entities` that was used to compute this `Partial.Response`
-  -/
-  entities : Partial.Entities
 
 /--
   Get the IDs of all policies which must be satisfied (for all possible
