@@ -801,7 +801,7 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
 
 theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
   List.Forall₂ R xs ys →
-  ∀ x, x ∈ xs → ∃ y, y ∈ ys ∧ R x y
+  ∀ x ∈ xs, ∃ y ∈ ys, R x y
 := by
   intro h
   induction h
