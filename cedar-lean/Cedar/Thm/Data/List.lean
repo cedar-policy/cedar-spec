@@ -874,7 +874,7 @@ theorem mapM'_ok_implies_all_ok {α β γ} {f : α → Except γ β} {xs : List 
 
 theorem mapM'_ok_implies_all_from_ok {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .ok ys →
-  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ f x = .ok y
+  ∀ y ∈ ys, ∃ x ∈ xs, f x = .ok y
 := by
   intro h
   exact forall₂_implies_all_right (mapM'_ok_implies_forall₂ h)
