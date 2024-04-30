@@ -822,7 +822,7 @@ theorem forall₂_implies_all_left {α β} {R : α → β → Prop} {xs : List �
 
 theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List α} {ys : List β} :
   List.Forall₂ R xs ys →
-  ∀ y, y ∈ ys → ∃ x, x ∈ xs ∧ R x y
+  ∀ y ∈ ys, ∃ x ∈ xs, R x y
 := by
   intro h
   induction h
