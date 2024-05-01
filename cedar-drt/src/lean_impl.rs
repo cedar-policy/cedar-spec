@@ -39,7 +39,9 @@ use lean_sys::{
     lean_string_cstr,
 };
 use log::info;
+use miette::miette;
 use serde::Deserialize;
+use smol_str::ToSmolStr;
 use std::ffi::CStr;
 use std::str::FromStr;
 
@@ -178,7 +180,7 @@ impl LeanDefinitionalEngine {
                         // coerce to PolicyId just to ensure it's valid
                         let pid = cedar_policy::PolicyId::from_str(&x)
                             .expect("could not coerce policy id");
-                        pid.to_string()
+                        ffi::AuthorizationError::new_from_report(pid.to_smolstr(), miette!("{pid}"))
                     })
                     .collect();
                 TestResult::Success(TestResponse {
