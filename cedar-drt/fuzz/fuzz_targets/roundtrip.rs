@@ -174,11 +174,11 @@ fn check_policy_equivalence(p1: &StaticPolicy, p2: &StaticPolicy) {
         t1.resource_constraint()
     );
     assert!(
-        p2.non_head_constraints()
-            .eq_shape(t1.non_head_constraints()),
+        p2.non_scope_constraints()
+            .eq_shape(t1.non_scope_constraints()),
         "\nnew policy condition: {}\nold policy condition: {}\n",
-        p2.non_head_constraints(),
-        t1.non_head_constraints()
+        p2.non_scope_constraints(),
+        t1.non_scope_constraints()
     );
 }
 
