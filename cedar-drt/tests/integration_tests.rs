@@ -59,7 +59,7 @@ pub fn get_corpus_tests() -> impl Iterator<Item = PathBuf> {
     WalkDir::new(&tests_folder)
         .into_iter()
         .map(|e| {
-            e.expect("failed to access file in corpus_tests")
+            e.expect("failed to access file in corpus_tests. Maybe you haven't unpacked `corpus-tests.tar.gz`")
                 .into_path()
         })
         .filter(|p| {

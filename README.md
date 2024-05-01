@@ -24,8 +24,6 @@ See the README in each directory for more information.
 * `source ../cedar-drt/set_env_vars.sh`
 * `lake build Cedar`
 
-(It's important to source `set_env_vars.sh` from inside the `cedar-lean` lake project so that the right version of Lean is used.)
-
 ### DRT framework
 
 The simplest way to build our DRT framework is to use the included Dockerfile:
