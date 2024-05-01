@@ -304,16 +304,35 @@ theorem mapM_asEntityUID_of_uid {uids : List EntityUID} :
     rw [List.map_cons, List.mapM_cons]
     simp [pure, Except.pure, asEntityUID_of_uid, ih]
 
-theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {list : List α} :
-  Except.isOk (list.mapM f) →
-  Except.isOk ((Set.elts (Set.make list)).mapM f)
+/--
+  Std has `Option.isSome_iff_exists`, but not this analogue for `Except`
+-/
+theorem Except.isOk_iff_exists {x : Except ε α} :
+  Except.isOk x ↔ ∃ a, x = .ok a
 := by
-  simp [List.isOk_mapM]
-  intro h₁ y h₂
-  apply h₁ y; clear h₁
-  rw [Set.make_mem]
-  rw [← Set.in_list_iff_in_set]
-  exact h₂
+  cases x <;> simp [Except.isOk, Except.toBool]
+
+theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {as : List α} :
+  Except.isOk (as.mapM f) →
+  Except.isOk ((Set.elts (Set.make as)).mapM f)
+:= by
+  intro h₁
+  replace ⟨bs, h₁⟩ := Except.isOk_iff_exists.mp h₁
+  replace h₁ := List.mapM_ok_implies_all_ok h₁
+  cases as <;> simp at h₁
+  case nil => simp [Set.elts_make_nil, pure, Except.pure, Except.isOk, Except.toBool]
+  case cons ahd atl =>
+    replace ⟨⟨b, _, h₁⟩, h₂⟩ := h₁
+    apply Except.isOk_iff_exists.mpr
+    apply List.all_ok_implies_mapM_ok
+    intro a h₃
+    rw [Set.in_list_iff_in_set] at h₃
+    rw [← Set.make_mem] at h₃
+    rcases List.mem_cons.mp h₃ with h₃ | h₃
+    case a.inl => subst h₃ ; exists b
+    case a.inr =>
+      replace ⟨b, _, h₄⟩ := h₂ a h₃
+      exists b
 
 theorem mapM_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
   Except.isOk (List.mapM Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))

@@ -47,8 +47,8 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Sp
         intro (k, v) h₂
         rw [Map.mapOnValues_eq_make_map _ wf] at h₁
         unfold Map.toList at h₁
-        replace ⟨pv, h₁, h₃⟩ := (Map.mapMOnValues_eq_some h₁).right (k, v) h₂
-        replace h₁ := Map.mem_kvs_make h₁
+        replace ⟨pv, h₁, h₃⟩ := Map.mapMOnValues_some_implies_all_from_some h₁ (k, v) h₂
+        replace h₁ := Map.make_mem_list_mem h₁
         cases pv <;> simp only [Option.some.injEq] at h₃
         case value v =>
           subst v
@@ -60,14 +60,13 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Sp
           exact h₁
       case right =>
         intro (k, v) h₂
-        have ⟨v', h₃, h₄⟩ := (Map.mapMOnValues_eq_some h₁).left (k, v) (Map.in_kvs_in_mapOnValues h₂)
+        have ⟨v', h₃, h₄⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, v) (Map.in_kvs_in_mapOnValues h₂)
         simp only [Option.some.injEq] at h₄
         subst h₄
         simp [h₃]
     case h_2 h₁ =>
       exfalso
-      rw [Map.mapMOnValues_eq_none] at h₁
-      replace ⟨v, h₁, h₂⟩ := h₁
+      replace ⟨v, h₁, h₂⟩ := Map.mapMOnValues_none_iff_exists.mp h₁
       cases v <;> simp only at h₂
       case residual r =>
         rw [Map.mapOnValues_eq_make_map _ wf] at h₁

@@ -77,6 +77,11 @@ theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
   simp only [Membership.mem] ; intro h₁
   apply List.mem_cons_of_mem hd h₁
 
+theorem mem_cons {a : α} {hd : α} {tl : List α} :
+  a ∈ Set.mk (hd :: tl) → a = hd ∨ a ∈ tl
+:= by
+  simp [← in_list_iff_in_mk]
+
 theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts → ¬(s.elts = [])
 := by
@@ -222,6 +227,11 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
     intro a h₁
     rw [in_list_iff_in_set, ← make_mem]
     exact h₁
+
+theorem elts_make_nil [LT α] [DecidableLT α] [StrictLT α] :
+  Set.elts (Set.make ([] : List α)) = []
+:= by
+  simp [make, elts, List.canonicalize_nil]
 
 def eq_means_eqv [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
   WellFormed s₁ → WellFormed s₂ →
@@ -370,6 +380,18 @@ theorem superset_empty_subset_empty [DecidableEq α] {s₁ s₂ : Set α} :
   apply h₂
   exists a
   exact h₁ a h₃
+
+theorem subset_iff_subset_elts [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ⊆ s₂ ↔ s₁.elts ⊆ s₂.elts
+:= by
+  simp only [subset_def, elts, List.subset_def, in_list_iff_in_set]
+
+theorem subset_iff_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+  WellFormed s₁ → WellFormed s₂ →
+  ((s₁ ⊆ s₂ ∧ s₂ ⊆ s₁) ↔ s₁ = s₂)
+:= by
+  intro hw₁ hw₂
+  simp only [← (eq_means_eqv hw₁ hw₂), elts, List.Equiv, subset_iff_subset_elts]
 
 /-! ### sizeOf -/
 

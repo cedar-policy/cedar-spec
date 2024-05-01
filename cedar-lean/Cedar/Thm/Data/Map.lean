@@ -27,10 +27,62 @@ This file proves useful properties of canonical list-based maps defined in
 
 namespace Cedar.Data.Map
 
+/-! ### sizeOf -/
+
+theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
+  (h : (k, v) ∈ m.1) :
+  sizeOf v < sizeOf m
+:= by
+  simp only [Membership.mem] at h
+  replace h := List.sizeOf_lt_of_mem h
+  have v_lt_kv : sizeOf v < sizeOf (k, v) := by
+    simp only [sizeOf, Prod._sizeOf_1]
+    omega
+  have m1_lt_m : sizeOf m.1 < sizeOf m := by
+    simp only [sizeOf, _sizeOf_1]
+    omega
+  let a := sizeOf v
+  let c := sizeOf m.1
+  let d := sizeOf m
+  have v_lt_m1 : a < c := by apply Nat.lt_trans v_lt_kv h
+  have v_lt_m : a < d := by apply Nat.lt_trans v_lt_m1 m1_lt_m
+  have ha : a = sizeOf v := by simp
+  have hd : d = sizeOf m := by simp
+  rw [ha, hd] at v_lt_m
+  exact v_lt_m
+
+theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
+  (h : m.kvs = (k, v) :: tl) :
+  1 + sizeOf tl < sizeOf m
+:= by
+  conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1
+  simp
+  unfold kvs at h
+  simp [h]
+  generalize sizeOf k = kn
+  generalize sizeOf v = vn
+  generalize sizeOf tl = tn
+  omega
+
 /-! ### Well-formed maps -/
 
 def WellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) :=
   m = Map.make m.toList
+
+theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α β} :
+  m.WellFormed ↔ m.toList.SortedBy Prod.fst
+:= by
+  constructor
+  case mp =>
+    intro h
+    rw [WellFormed, make] at h
+    rw [h, toList, kvs]
+    simp only [List.canonicalize_sortedBy]
+  case mpr =>
+    intro h
+    rw [toList, kvs] at *
+    replace h := List.sortedBy_implies_canonicalize_eq h
+    rw [WellFormed, toList, kvs, make, h]
 
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
@@ -96,6 +148,18 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
 
 /-! ### contains, mem, kvs, values -/
 
+theorem kvs_nil_iff_empty {m : Map α β} :
+  m.kvs = [] ↔ m = Map.empty
+:= by
+  simp [kvs, empty]
+  constructor
+  case mp =>
+    intro h
+    match m with | mk [] => trivial | mk ((k, v) :: kvs) => trivial
+  case mpr =>
+    intro h
+    simp [h]
+
 theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
@@ -119,6 +183,14 @@ theorem in_values_exists_key {m : Map α β} {v : β} :
   subst h₂
   exists kv.fst
 
+theorem values_cons {m : Map α β} :
+  m.kvs = (k, v) :: tl →
+  m.values = v :: (mk tl).values
+:= by
+  unfold values kvs
+  intro h₁
+  simp [h₁]
+
 theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
@@ -127,19 +199,22 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
-/-! ### make -/
+/-! ### make and mk -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   WellFormed (Map.make xs)
 := by
   simp [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
 
-/-
-  Note that the converse of this is not true:
-  counterexample `xs = [(1, false), (1, true)]`.
-  Then `Map.make xs = [(1, false)]`.
--/
-theorem mem_kvs_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  xs.SortedBy Prod.fst → (Map.mk xs).WellFormed
+:= by
+  intro h
+  replace h := List.sortedBy_implies_canonicalize_eq h
+  rw [← h, WellFormed, make, toList, kvs]
+  simp only [List.canonicalize_idempotent]
+
+theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
 := by
   simp only [kvs, make]
@@ -149,13 +224,13 @@ theorem mem_kvs_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β
   exact h₂ h₁
 
 /--
-  Very similar to `mem_kvs_make` above
+  Very similar to `make_mem_list_mem` above
 -/
 theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   v ∈ (Map.make xs).values → v ∈ xs.map Prod.snd
 := by
-  -- despite the similarity to `mem_kvs_make`, the proof does not currently
-  -- use `mem_kvs_make`
+  -- despite the similarity to `make_mem_list_mem`, the proof does not currently
+  -- use `make_mem_list_mem`
   simp only [values, make]
   simp only [List.mem_map, forall_exists_index, and_imp]
   intro (k, v) h₁ h₂
@@ -265,6 +340,23 @@ theorem mapOnValues_eq_make_map {α β γ} [LT α] [StrictLT α] [DecidableLT α
   have h₁ : Prod.map id f = (λ (x : α × β) => (x.fst, f x.snd)) := by unfold Prod.map ; simp only [id_eq]
   simp only [← h₁, ← List.canonicalize_of_map_fst, List.canonicalize_idempotent]
 
+theorem mem_toList_find? {α β} [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+  (h₁ : m.WellFormed)
+  (h₂ : (k, v) ∈ m.toList) :
+  m.find? k = .some v
+:= by
+  rw [WellFormed, make] at h₁
+  generalize hm : toList m = l
+  rw [hm] at h₁ h₂
+  subst h₁
+  simp only [toList, kvs] at hm
+  rw [hm]
+  have hsrt := List.canonicalize_sortedBy Prod.fst l
+  rw [hm] at hsrt
+  have h := List.mem_of_sortedBy_implies_find? h₂ hsrt
+  simp only at h
+  simp only [find?, kvs, h]
+
 theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
@@ -338,37 +430,129 @@ theorem mapMOnValues_wf [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : 
   subst h₂
   sorry
 
+theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
+  (Map.empty : Map α β).mapMOnValues f = some Map.empty
+:= by
+  simp [mapMOnValues, empty, kvs, List.mapM_nil]
+
+theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} {k : α} {v : β} {tl : List (α × β)}:
+  m.kvs = (k, v) :: tl →
+  (m.mapMOnValues f = do
+    let v' ← f v
+    let tl' ← (mk tl).mapMOnValues f
+    return mk ((k, v') :: tl'.kvs))
+:= by
+  intro h₁
+  cases h₂ : f v <;> simp [h₂]
+  case none => unfold mapMOnValues ; simp [h₁, h₂]
+  case some v' =>
+    cases h₃ : (mk tl).mapMOnValues f <;> simp [h₃]
+    case none =>
+      unfold mapMOnValues
+      simp [h₁]
+      intro kvs' v'' h₄ tl' h₅ h₆
+      simp [h₂] at h₄ ; subst v''
+      subst kvs'
+      unfold mapMOnValues kvs at h₃
+      cases h₄ : (tl.mapM λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
+      <;> simp [h₄] at h₃
+      <;> exact h₃ tl' h₅
+    case some mtl' =>
+      unfold mapMOnValues at *
+      simp [h₁] at *
+      apply And.intro h₂
+      replace ⟨tl', h₃, h₄⟩ := h₃
+      subst mtl'
+      simp [h₃]
+
+theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ f kv₁.snd = some kv₂.snd) m₁.kvs m₂.kvs
+:= by
+  unfold mapMOnValues kvs
+  intro h₁
+  simp at h₁
+  replace ⟨x, h₁, h₂⟩ := h₁
+  subst h₂
+  replace h₁ := List.mapM_some_iff_forall₂.mp h₁
+  simp
+  apply List.Forall₂.imp _ h₁
+  intro (k, v) (k', v') h₂
+  simp at h₂
+  replace ⟨h₂, h₂'⟩ := h₂
+  subst k'
+  simp
+  exact h₂
+
+theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  ∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v
+:= by
+  intro h₁
+  replace h₁ := List.forall₂_implies_all_left (mapMOnValues_some_implies_forall₂ h₁)
+  intro (k, v) h₂
+  replace ⟨(k', v'), h₁, h₃, h₄⟩ := h₁ (k, v) h₂
+  simp at h₃ ; subst k'
+  simp
+  exists v'
+
 /--
-  Analogue of `List.mapM_eq_some` for Map.mapMOnValues
+  alternate proof of `mapMOnValues_some_implies_all_some`, which instead of
+  relying on `mapMOnValues_some_implies_forall₂`, relies on
+  `List.mapM_some_implies_all_some`.  Which do we prefer?
 -/
-theorem mapMOnValues_eq_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  (m₁.mapMOnValues f = some m₂) → (
-    (∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v) ∧
-    (∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd)
-  )
+theorem mapMOnValues_some_implies_all_some_alt_proof [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  ∀ kv ∈ m₁.kvs, ∃ v, (kv.fst, v) ∈ m₂.kvs ∧ f kv.snd = some v
 := by
   unfold mapMOnValues
-  intro h₁
-  constructor
-  <;> intro kv h₂
-  <;> cases h₃ : m₁.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
+  intro h₁ kv h₂
+  cases h₃ : m₁.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
   <;> rw [h₃] at h₁
   <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq] at h₁
-  <;> subst h₁
-  case left.some ags =>
+  case some ags =>
+    subst h₁
     have (a, b) := kv ; clear kv
     simp only
-    replace ⟨h₃, _⟩ := List.mapM_eq_some h₃
+    replace h₃ := List.mapM_some_implies_all_some h₃
     replace ⟨(a', g), h₃, h₄⟩ := h₃ (a, b) h₂
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
       Prod.mk.injEq, exists_eq_right_right] at h₄
     replace ⟨h₄, h₄'⟩ := h₄
     subst a'
     exists g
-  case right.some ags =>
+
+theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  ∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd
+:= by
+  intro h₁
+  replace h₁ := List.forall₂_implies_all_right (mapMOnValues_some_implies_forall₂ h₁)
+  intro (k, v) h₂
+  replace ⟨(k', v'), h₁, h₃, h₄⟩ := h₁ (k, v) h₂
+  simp at h₃ ; subst k'
+  simp
+  exists v'
+
+/--
+  alternate proof of `mapMOnValues_some_implies_all_from_some`, which instead of
+  relying on `mapMOnValues_some_implies_forall₂`, relies on
+  `List.mapM_some_implies_all_from_some`. Which do we prefer?
+-/
+theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  ∀ kv ∈ m₂.kvs, ∃ v, (kv.fst, v) ∈ m₁.kvs ∧ f v = kv.snd
+:= by
+  unfold mapMOnValues
+  intro h₁ kv h₂
+  cases h₃ : m₁.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
+  <;> rw [h₃] at h₁
+  <;> simp only [Option.pure_def, Option.bind_some_fun, Option.bind_none_fun, Option.some.injEq] at h₁
+  case some ags =>
+    subst h₁
     have (a, g) := kv ; clear kv
     simp only
-    replace ⟨_, h₃⟩ := List.mapM_eq_some h₃
+    replace h₃ := List.mapM_some_implies_all_from_some h₃
     replace ⟨(a', b), h₃, h₄⟩ := h₃ (a, g) h₂
     simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
       Prod.mk.injEq, exists_eq_right_right] at h₄
@@ -376,94 +560,51 @@ theorem mapMOnValues_eq_some [LT α] [DecidableLT α] {f : β → Option γ} {m�
     subst a'
     exists b
 
-/--
-  Analogue of `List.isSome_mapM` for Map.mapMOnValues
-
-  `mp` direction is a corollary of `mapMOnValues_eq_some`, but the `mpr`
-  direction is also valid
--/
-theorem isSome_mapMOnValues [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
-  Option.isSome (m.mapMOnValues f) ↔ ∀ v ∈ m.values, Option.isSome (f v)
-:= by
-  constructor
-  case mp =>
-    intro h₁ v h₂
-    rw [Option.isSome_iff_exists]
-    rw [Option.isSome_iff_exists] at h₁
-    replace ⟨m', h₁⟩ := h₁
-    replace ⟨h₁, _⟩ := mapMOnValues_eq_some h₁
-    have ⟨k, h₃⟩ := in_values_exists_key h₂
-    replace ⟨v', _, h₁⟩ := h₁ (k, v) h₃
-    simp at h₁
-    exists v'
-  case mpr =>
-    unfold Map.mapMOnValues
-    intro h₁
-    cases h₂ : m.kvs.mapM (λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-    <;> simp only [Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.isSome_none, Option.isSome_some]
-    case none =>
-      replace ⟨(k, v), h₂, h₃⟩ := List.mapM_eq_none.mp h₂
-      specialize h₁ v (in_list_in_values h₂)
-      cases h₄ : f v
-      case some => simp [h₄] at h₃
-      case none => simp [h₄] at h₁
-
-/--
-  Analogue of `List.mapM_eq_none` for Map.mapMOnValues
-
-  Corollary of `isSome_mapMOnValues`
--/
-theorem mapMOnValues_eq_none [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
+theorem mapMOnValues_none_iff_exists {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   m.mapMOnValues f = none ↔ ∃ v ∈ m.values, f v = none
 := by
-  -- As of this writing, this proof is nearly syntactically identical to the
-  -- proof of `List.mapM_eq_none`
   constructor
   case mp =>
     intro h₁
-    by_contra h₂
-    replace h₂ := forall_not_of_not_exists h₂
-    simp only [not_and] at h₂
-    rw [← Option.not_isSome_iff_eq_none] at h₁
-    rw [isSome_mapMOnValues] at h₁
-    apply h₁ ; clear h₁
-    intro v h₁
-    specialize h₂ v h₁
-    rw [← ne_eq] at h₂
-    rw [Option.ne_none_iff_isSome] at h₂
-    exact h₂
+    cases h₂ : m.kvs <;> simp [h₂] at h₁
+    case nil =>
+      rw [kvs_nil_iff_empty] at h₂ ; subst h₂
+      simp [mapMOnValues_nil] at h₁
+    case cons hd tl =>
+      have (khd, vhd) := hd ; clear hd
+      simp [values_cons h₂]
+      simp [mapMOnValues_cons h₂] at h₁
+      cases h₃ : f vhd
+      case none => simp
+      case some yhd =>
+        right
+        specialize h₁ yhd h₃
+        have := sizeOf_lt_of_tl h₂ -- required for Lean to allow the following recursive call
+        apply mapMOnValues_none_iff_exists.mp
+        by_contra h₄
+        rw [← ne_eq] at h₄
+        replace ⟨ytl, h₄⟩ := Option.ne_none_iff_exists'.mp h₄
+        exact h₁ ytl h₄
   case mpr =>
     intro h₁
     replace ⟨v, h₁, h₂⟩ := h₁
-    rw [← Option.not_isSome_iff_eq_none]
-    intro h₃
-    rw [isSome_mapMOnValues] at h₃
-    specialize h₃ v h₁
-    simp [h₂] at h₃
-
-/-! ### sizeOf -/
-
-theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
-  (h : (k, v) ∈ m.1) :
-  sizeOf v < sizeOf m
-:= by
-  simp only [Membership.mem] at h
-  replace h := List.sizeOf_lt_of_mem h
-  have v_lt_kv : sizeOf v < sizeOf (k, v) := by
-    simp only [sizeOf, Prod._sizeOf_1]
-    omega
-  have m1_lt_m : sizeOf m.1 < sizeOf m := by
-    simp only [sizeOf, _sizeOf_1]
-    omega
-  let a := sizeOf v
-  let c := sizeOf m.1
-  let d := sizeOf m
-  have v_lt_m1 : a < c := by apply Nat.lt_trans v_lt_kv h
-  have v_lt_m : a < d := by apply Nat.lt_trans v_lt_m1 m1_lt_m
-  have ha : a = sizeOf v := by simp
-  have hd : d = sizeOf m := by simp
-  rw [ha, hd] at v_lt_m
-  exact v_lt_m
+    cases h₃ : m.kvs
+    case nil =>
+      rw [kvs_nil_iff_empty] at h₃ ; subst h₃
+      simp [values, kvs, empty] at h₁
+    case cons hd tl =>
+      have (khd, vhd) := hd ; clear hd
+      simp [values_cons h₃] at h₁
+      simp [mapMOnValues_cons h₃]
+      intro yhd h₄ ytl h₅
+      rcases h₁ with h₁ | h₁
+      case inl => subst h₁ ; simp [h₂] at h₄
+      case inr =>
+        replace h₅ := mapMOnValues_some_implies_all_some h₅
+        replace ⟨k', h₁⟩ := in_values_exists_key h₁
+        replace ⟨y, _, h₅⟩ := h₅ (k', v) h₁
+        simp [h₂] at h₅
+termination_by m
 
 
 end Cedar.Data.Map
