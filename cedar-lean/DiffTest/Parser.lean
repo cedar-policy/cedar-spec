@@ -346,7 +346,7 @@ def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?principal"
   let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
   let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?resource"
-  let condition ← getJsonField json "non_head_constraints" >>= jsonToExpr
+  let condition ← getJsonField json "non_scope_constraints" >>= jsonToExpr
   .ok {
     effect := effect,
     principalScope := .principalScope principalConstraint,
