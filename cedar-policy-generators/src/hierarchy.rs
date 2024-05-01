@@ -171,7 +171,11 @@ impl Hierarchy {
             )?;
             Ok(uid.clone())
         } else {
-            Ok(EntityUID::from_components(typename.clone(), u.arbitrary()?))
+            Ok(EntityUID::from_components(
+                typename.clone(),
+                u.arbitrary()?,
+                None,
+            ))
         }
     }
     /// size hint for arbitrary_uid_with_type()
@@ -418,6 +422,7 @@ pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::E
     Ok(ast::EntityUID::from_components(
         u.arbitrary::<ast::Name>()?,
         u.arbitrary::<ast::Eid>()?,
+        None,
     ))
 }
 
@@ -437,7 +442,7 @@ pub(crate) fn generate_uid_with_type(
             Eid::new(nanoid!(n))
         }
     };
-    Ok(ast::EntityUID::from_components(ty, eid))
+    Ok(ast::EntityUID::from_components(ty, eid, None))
 }
 
 impl<'a, 'u> HierarchyGenerator<'a, 'u> {
