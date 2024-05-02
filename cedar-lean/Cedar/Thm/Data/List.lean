@@ -248,6 +248,49 @@ theorem sortedBy_cons [LT β] [StrictLT β] {f : α → β} {x : α} {ys : List 
     apply h₂
     simp only [mem_cons, true_or]
 
+theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ → β} {xs : List α} {ys : List γ} :
+  xs.map f = ys.map g →
+  (SortedBy f xs ↔ SortedBy g ys)
+:= by
+  intro h₁
+  constructor
+  case mp =>
+    intro h₂
+    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq] at h₁
+    case nil.nil => exact SortedBy.nil
+    case cons.cons xhd xtl yhd ytl =>
+      replace ⟨h₁, h₃⟩ := h₁
+      have ih := map_eq_implies_sortedBy h₃
+      cases ytl <;> simp only [map_nil, map_cons, map_eq_nil] at *
+      case nil => exact SortedBy.cons_nil
+      case cons yhd' ytl =>
+        simp only [tail_sortedBy h₂, true_iff] at ih
+        apply SortedBy.cons_cons _ ih
+        rw [← h₁]
+        cases xtl <;> simp only [map_nil, map_cons, cons.injEq] at h₃
+        case cons xhd' xtl =>
+          rw [← h₃.left]
+          apply sortedBy_implies_head_lt_tail h₂
+          simp
+  case mpr =>
+    intro h₂
+    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq] at h₁
+    case nil.nil => exact SortedBy.nil
+    case cons.cons xhd xtl yhd ytl =>
+      replace ⟨h₁, h₃⟩ := h₁
+      have ih := map_eq_implies_sortedBy h₃
+      cases xtl <;> simp only [map_nil, map_cons, map_eq_nil] at *
+      case nil => exact SortedBy.cons_nil
+      case cons xhd' xtl =>
+        simp only [tail_sortedBy h₂, iff_true] at ih
+        apply SortedBy.cons_cons _ ih
+        rw [h₁]
+        cases ytl <;> simp only [map_nil, map_cons, cons.injEq] at h₃
+        case cons yhd' ytl =>
+          rw [h₃.left]
+          apply sortedBy_implies_head_lt_tail h₂
+          simp
+
 theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
   SortedBy f xs → SortedBy f (xs.filter p)
 := by
@@ -593,6 +636,15 @@ theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α →
     apply Subset.trans ih
     simp
 
+/-- Corollary of `canonicalize_subseteq` -/
+theorem in_canonicalize_in_list [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {x : α} {xs : List α} :
+  x ∈ xs.canonicalize f → x ∈ xs
+:= by
+  intro h₁
+  have h₂ := canonicalize_subseteq f xs
+  simp [List.subset_def] at h₂
+  exact h₂ h₁
+
 /-
 Note that `canonicalize_equiv` does not hold for all functions `f`.
 To see why, consider xs = [(1, false), (1, true)], f = Prod.fst.
@@ -612,6 +664,10 @@ theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α)
     apply cons_equiv_cons
     exact ih
 
+/-
+Note that `equiv_implies_canonical_eq` does not hold for all functions `f`.
+To see why, consider the `example` immediately below this.
+-/
 theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [DecidableLT α] (xs ys : List α) :
   xs ≡ ys → (canonicalize id xs) = (canonicalize id ys)
 := by
@@ -626,6 +682,23 @@ theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [DecidableLT α] (xs ys
   apply Equiv.trans h₃
   apply Equiv.symm
   exact h₁
+
+/--
+  Illustration that `equiv_implies_canonical_eq` does not hold for
+  all functions `f` -- in particular, does not hold for `Prod.fst`.
+
+  (One `canonicalize` produces `[(1, false)]`, and the other
+  produces `[(1, true)]`.)
+-/
+example :
+  xs = [(1, false), (1, true)] →
+  ys = [(1, true), (1, false)] →
+  xs ≡ ys ∧ (canonicalize Prod.fst xs) ≠ (canonicalize Prod.fst ys)
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  simp [List.Equiv]
+  decide
 
 theorem canonicalize_idempotent {α β} [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
   canonicalize f (canonicalize f xs) = canonicalize f xs
@@ -868,21 +941,6 @@ theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List 
       exists x
       simp only [mem_cons, ih, or_true, and_self]
 
-/- not needed? -/
-theorem forall₂_congr {R₁ R₂ : α → β → Prop} {as : List α} {bs : List β} :
-  List.Forall₂ as bs (R := λ a b => R₁ a b ↔ R₂ a b) →
-  List.Forall₂ R₁ as bs = List.Forall₂ R₂ as bs
-:= by
-  cases as <;> cases bs <;> simp
-  case nil.cons hd tl | cons.nil hd tl =>
-    simp [List.forall₂_nil_left_iff, List.forall₂_nil_right_iff]
-  case cons.cons ahd atl bhd btl =>
-    intro h₁ h₂
-    have h₃ := forall₂_congr (as := atl) (bs := btl) h₂
-    simp [h₃]
-    intro _
-    exact h₁
-
 /-! ### mapM, mapM', and mapM₁ -/
 
 /--
@@ -990,7 +1048,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
       cases h₂ : f xhd
       case error e => simp [h₁] at h₂
       case ok y' =>
-        simp [h₁] at h₂
+        simp only [h₁, Except.ok.injEq] at h₂
         subst y'
         specialize @ih ytl h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
@@ -1030,7 +1088,7 @@ theorem all_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {xs : List 
   induction xs
   case nil => exists []
   case cons xhd xtl ih =>
-    simp at h₁
+    simp only [mem_cons, forall_eq_or_imp] at h₁
     replace ⟨⟨yhd, h₁⟩, h₂⟩ := h₁
     replace ⟨ytl, ih⟩ := ih h₂
     exists yhd :: ytl
@@ -1071,7 +1129,7 @@ theorem all_from_ok_implies_mapM'_ok {α β γ} {f : α → Except γ β} {ys : 
   induction ys
   case nil => exists []
   case cons yhd ytl ih =>
-    simp at h₁
+    simp only [mem_cons, forall_eq_or_imp] at h₁
     replace ⟨⟨xhd, h₁⟩, h₂⟩ := h₁
     replace ⟨xtl, ih⟩ := ih h₂
     exists xhd :: xtl
@@ -1116,7 +1174,7 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
       cases h₂ : f xhd
       case none => simp [h₁] at h₂
       case some y' =>
-        simp [h₁] at h₂
+        simp only [h₁, Option.some.injEq] at h₂
         subst y'
         simp [@ih ytl h₃]
 
@@ -1163,7 +1221,7 @@ theorem mapM_some_implies_all_from_some {α β} {f : α → Option β} {xs : Lis
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_from_some
 
-theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
+theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM' f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   constructor
@@ -1172,10 +1230,11 @@ theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
     cases xs
     case nil => simp at h₁
     case cons xhd xtl =>
-      cases h₂ : f xhd <;> simp [h₂]
+      cases h₂ : f xhd <;> simp only [h₂, mem_cons, exists_eq_or_imp, true_or, false_or]
       case some yhd =>
-        simp [h₂] at h₁
-        apply mapM'_none_iff_exists.mp
+        simp only [mapM'_cons, h₂, Option.pure_def, Option.bind_eq_bind, Option.bind_some_fun,
+          Option.bind_eq_none] at h₁
+        apply mapM'_none_iff_exists_none.mp
         by_contra h₃
         rw [← ne_eq] at h₃
         replace ⟨ytl, h₃⟩ := Option.ne_none_iff_exists'.mp h₃
@@ -1183,9 +1242,9 @@ theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
   case mpr =>
     intro h₁
     replace ⟨x, h₁, h₂⟩ := h₁
-    cases xs <;> simp at h₁
+    cases xs <;> simp only [mem_cons, not_mem_nil] at h₁
     case cons xhd xtl =>
-      simp
+      simp only [mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
       intro yhd h₃ ytl h₄
       rcases h₁ with h₁ | h₁
       case inl => subst h₁ ; simp [h₂] at h₃
@@ -1194,11 +1253,11 @@ theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
         replace ⟨y, _, h₅⟩ := h₄ x h₁
         simp [h₂] at h₅
 
-theorem mapM_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
+theorem mapM_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   rw [← List.mapM'_eq_mapM]
-  exact mapM'_none_iff_exists
+  exact mapM'_none_iff_exists_none
 
 theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
@@ -1498,7 +1557,7 @@ theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
         simp only [mem_cons, true_or, forall_const] at h₁
         simp [h₁] at h₂
 
-theorem filterMap_nonempty_iff_exists {f : α → Option β} {xs : List α} :
+theorem filterMap_nonempty_iff_exists_some {f : α → Option β} {xs : List α} :
   xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
 := by
   constructor

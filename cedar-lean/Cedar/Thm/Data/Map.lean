@@ -56,9 +56,9 @@ theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α �
   1 + sizeOf tl < sizeOf m
 := by
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1
-  simp
+  simp only
   unfold kvs at h
-  simp [h]
+  simp only [h, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
   generalize sizeOf k = kn
   generalize sizeOf v = vn
   generalize sizeOf tl = tn
@@ -88,48 +88,42 @@ theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value
 -/
-theorem key_maps_to_one_value [BEq α] [LT α] [DecidableLT α] (k : α) (v₁ v₂ : β) (m : Map α β) :
+theorem key_maps_to_one_value [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] (k : α) (v₁ v₂ : β) (m : Map α β) :
   m.WellFormed →
   (k, v₁) ∈ m.kvs →
   (k, v₂) ∈ m.kvs →
   v₁ = v₂
 := by
-  unfold WellFormed toList
+  simp only [wf_iff_sorted, toList]
   intro wf h₁ h₂
-  sorry
+  have h₃ := List.mem_of_sortedBy_unique wf h₁ h₂ (by simp)
+  injection h₃
 
 /--
-  In well-formed maps, if a key maps to a value, then all equal keys (by BEq)
-  also map to that value
--/
-theorem equal_keys_same_value [BEq α] [LT α] [DecidableLT α] (k₁ k₂ : α) (v : β) (m : Map α β) :
-  m.WellFormed →
-  (k₁, v) ∈ m.kvs →
-  k₁ == k₂ →
-  (k₂, v) ∈ m.kvs
-:= by
-  unfold WellFormed toList
-  intro wf h₁ h₂
-  sorry
+  If two maps have exactly equal (k,v) sets, then the maps are equal
 
-/--
-  `make` on equivalent lists of (k,v) pairs produces equal maps
+  This doesn't require WellFormed, but we use it in the proof of
+  `eq_iff_kvs_equiv` below
 
-  (Organizationally belongs in the `make` section, but is needed before that)
+  Surprisingly this is not a one-line proof.
 -/
-theorem make_eqv [LT α] [DecidableLT α] {xs ys : List (α × β)}:
-  xs ≡ ys →
-  Map.make xs = Map.make ys
+theorem eq_iff_kvs_eq {m₁ m₂ : Map α β} :
+  m₁.kvs = m₂.kvs ↔ m₁ = m₂
 := by
-  unfold make
-  intro h₁
-  sorry
+  constructor
+  case mp =>
+    unfold kvs
+    intro h
+    match m₁ with
+    | mk kvs₁ => match m₂ with
+      | mk kvs₂ => simp at h ; subst h ; rfl
+  case mpr => intro h ; subst h ; rfl
 
 /--
   If two well-formed maps have equivalent (k,v) sets, then the maps are actually
   equal
 -/
-theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
+theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map α β}
   (wf₁ : m₁.WellFormed)
   (wf₂ : m₂.WellFormed) :
   m₁.kvs ≡ m₂.kvs ↔ m₁ = m₂
@@ -137,10 +131,9 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
   constructor
   case mp =>
     intro h₁
-    unfold WellFormed toList at wf₁ wf₂
-    rw [wf₁]
-    rw [wf₂]
-    exact make_eqv h₁
+    simp [wf_iff_sorted, toList] at wf₁ wf₂
+    have h₂ := List.sortedBy_equiv_implies_eq Prod.fst wf₁ wf₂ h₁
+    exact eq_iff_kvs_eq.mp h₂
   case mpr =>
     intro h₁
     subst h₁
@@ -151,14 +144,12 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] {m₁ m₂ : Map α β}
 theorem kvs_nil_iff_empty {m : Map α β} :
   m.kvs = [] ↔ m = Map.empty
 := by
-  simp [kvs, empty]
-  constructor
-  case mp =>
-    intro h
-    match m with | mk [] => trivial | mk ((k, v) :: kvs) => trivial
-  case mpr =>
-    intro h
-    simp [h]
+  unfold kvs empty
+  constructor <;> intro h
+  case mp => match m with
+    | mk [] => trivial
+    | mk ((k, v) :: kvs) => trivial
+  case mpr => simp [h]
 
 theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
@@ -255,25 +246,33 @@ theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α ×
   simp only [make, mk.injEq]
   apply List.canonicalize_cons
 
+theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α × β)) :
+  Map.make (Map.kvs (Map.make xs)) = Map.make xs
+:= by
+  simp only [make, mk.injEq]
+  have h₁ := List.canonicalize_idempotent Prod.fst xs
+  unfold id at h₁
+  exact h₁
+
 /-! ### find? and mapOnValues -/
 
 theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
   (h₁ : m.find? k = .some v) :
   (k, v) ∈ m.toList
 := by
-  simp [toList, kvs, find?] at *
-  split at h₁ <;> simp at h₁
+  unfold toList kvs find? at *
+  split at h₁ <;> simp only [Option.some.injEq] at h₁
   subst h₁
   rename_i h₂
   have h₃ := List.find?_some h₂
-  simp at h₃ ; subst h₃
+  simp only [beq_iff_eq] at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
 
 /--
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_mem_toList` above
 -/
-theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v : β} {m : Map α β}
+theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {k : α} {v : β} {m : Map α β}
   (wf : m.WellFormed) :
   (k, v) ∈ m.kvs ↔ m.find? k = some v
 := by
@@ -297,11 +296,14 @@ theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] {k : α} {v
       trivial
   case mpr => exact find?_mem_toList
 
-theorem mapOnValues_wf [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
+theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by
-  unfold mapOnValues WellFormed toList
-  sorry
+  simp only [wf_iff_sorted, toList]
+  apply List.map_eq_implies_sortedBy
+  simp only [kvs, mapOnValues, List.map_map]
+  apply List.map_congr
+  simp
 
 theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} :
   (empty : Map α β).mapOnValues f = empty
@@ -388,7 +390,7 @@ theorem findOrErr_ok_iff_find?_some [LT α] [DecidableLT α] [DecidableEq α] {m
   unfold findOrErr
   cases m.find? k <;> simp
 
-theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
+theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
   (wf : m.WellFormed) :
   v ∈ m.values ↔ ∃ k, m.findOrErr k e = .ok v
 := by
@@ -400,12 +402,12 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [DecidableEq α] {m 
     simp only at h₂
     subst v'
     exists k
-    simp [h₁, ← in_list_some_find? wf]
+    simp [h₁, ← in_list_iff_find?_some wf]
   case mpr =>
     intro h₁
     replace ⟨k, h₁⟩ := h₁
     exists (k, v)
-    simp [h₁, in_list_some_find? wf, and_true]
+    simp [h₁, in_list_iff_find?_some wf, and_true]
 
 theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.kvs → (k, f v) ∈ (m.mapOnValues f).kvs
@@ -417,18 +419,72 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
 
 /-! ### mapMOnValues -/
 
-theorem mapMOnValues_wf [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
-  m₁.WellFormed →
-  (m₁.mapMOnValues f = some m₂) →
-  m₂.WellFormed
+/--
+  This is not stated in terms of `Map.keys` because `Map.keys` produces a `Set`,
+  and we want the even stronger property that it not only preserves the key-set,
+  but also the key-order. (We'll use this to prove `mapMOnValues_wf`.)
+-/
+theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.mapMOnValues f = some m₂ →
+  m₁.kvs.map Prod.fst = m₂.kvs.map Prod.fst
 := by
-  unfold WellFormed toList
-  intro wf h₁
+  intro h₁
   simp only [mapMOnValues, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
     Option.some.injEq] at h₁
   replace ⟨xs, h₁, h₂⟩ := h₁
   subst h₂
-  sorry
+  cases h₂ : m₁.kvs <;> simp only [h₂, List.mapM_nil, List.mapM_cons, Option.pure_def,
+    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+  <;> unfold kvs at *
+  case nil =>
+    subst h₁
+    simp [h₂]
+  case cons kv tl =>
+    have (k, v) := kv ; clear kv
+    replace ⟨(k', y), ⟨y', h₁, h₃⟩, ⟨tl', h₄, h₅⟩⟩ := h₁
+    subst h₅
+    simp only [Prod.mk.injEq, List.map_cons, List.cons.injEq] at *
+    replace ⟨h₃, h₃'⟩ := h₃
+    subst k' y'
+    have ih := mapMOnValues_preserves_keys (m₁ := mk tl) (m₂ := mk tl') (f := f)
+    simp only [mapMOnValues, kvs, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_eq_some, Option.some.injEq, mk.injEq, exists_eq_right] at ih
+    specialize ih h₄
+    simp [ih, h₂]
+
+theorem mapMOnValues_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.WellFormed →
+  (m₁.mapMOnValues f = some m₂) →
+  m₂.WellFormed
+:= by
+  simp only [wf_iff_sorted, toList]
+  intro wf h₁
+  have h₂ := mapMOnValues_preserves_keys h₁
+  exact (List.map_eq_implies_sortedBy h₂).mp wf
+
+/--
+  Alternate proof of `mapMOnValues_wf`, that relies on
+  `List.mapM_some_eq_filterMap` instead of `mapMOnValues_preserves_keys`. Which do
+  we prefer?
+-/
+theorem mapMOnValues_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.WellFormed →
+  (m₁.mapMOnValues f = some m₂) →
+  m₂.WellFormed
+:= by
+  simp only [wf_iff_sorted, toList]
+  intro wf h₁
+  simp [mapMOnValues] at h₁
+  replace ⟨xs, h₁, h₂⟩ := h₁
+  subst h₂
+  simp [kvs]
+  replace h₁ := List.mapM_some_eq_filterMap h₁
+  subst h₁
+  apply List.filterMap_sortedBy _ wf
+  intro (k, v) (k', v') h₁
+  simp only at *
+  cases h₂ : f v <;> simp [h₂, Option.bind] at h₁
+  exact h₁.left
 
 theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
   (Map.empty : Map α β).mapMOnValues f = some Map.empty
@@ -443,23 +499,25 @@ theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Opt
     return mk ((k, v') :: tl'.kvs))
 := by
   intro h₁
-  cases h₂ : f v <;> simp [h₂]
+  cases h₂ : f v <;> simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_none_fun, Option.bind_some_fun]
   case none => unfold mapMOnValues ; simp [h₁, h₂]
   case some v' =>
-    cases h₃ : (mk tl).mapMOnValues f <;> simp [h₃]
+    cases h₃ : (mk tl).mapMOnValues f <;> simp only [Option.none_bind, Option.some_bind]
+    <;> unfold mapMOnValues at *
     case none =>
-      unfold mapMOnValues
-      simp [h₁]
+      simp only [h₁, Option.pure_def, Option.bind_eq_bind, List.mapM_cons, Option.bind_eq_none,
+        Option.bind_eq_some, Option.some.injEq, forall_exists_index, and_imp,
+        forall_apply_eq_imp_iff₂]
       intro kvs' v'' h₄ tl' h₅ h₆
-      simp [h₂] at h₄ ; subst v''
-      subst kvs'
-      unfold mapMOnValues kvs at h₃
-      cases h₄ : (tl.mapM λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-      <;> simp [h₄] at h₃
+      simp only [h₂, Option.some.injEq] at h₄
+      subst v'' kvs'
+      cases (tl.mapM λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
+      <;> simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none] at h₃
       <;> exact h₃ tl' h₅
     case some mtl' =>
-      unfold mapMOnValues at *
-      simp [h₁] at *
+      simp only [h₁, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+        List.mapM_cons, mk.injEq, exists_eq_right, List.cons.injEq, exists_eq_right_right,
+        Prod.mk.injEq, true_and] at *
       apply And.intro h₂
       replace ⟨tl', h₃, h₄⟩ := h₃
       subst mtl'
@@ -471,17 +529,17 @@ theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β →
 := by
   unfold mapMOnValues kvs
   intro h₁
-  simp at h₁
+  simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
   replace ⟨x, h₁, h₂⟩ := h₁
   subst h₂
   replace h₁ := List.mapM_some_iff_forall₂.mp h₁
-  simp
+  simp only
   apply List.Forall₂.imp _ h₁
   intro (k, v) (k', v') h₂
-  simp at h₂
+  simp only [Option.bind_eq_some, Option.some.injEq, Prod.mk.injEq, exists_eq_right_right] at h₂
   replace ⟨h₂, h₂'⟩ := h₂
   subst k'
-  simp
+  simp only [true_and]
   exact h₂
 
 theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
@@ -492,8 +550,8 @@ theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α
   replace h₁ := List.forall₂_implies_all_left (mapMOnValues_some_implies_forall₂ h₁)
   intro (k, v) h₂
   replace ⟨(k', v'), h₁, h₃, h₄⟩ := h₁ (k, v) h₂
-  simp at h₃ ; subst k'
-  simp
+  simp only at *
+  subst k'
   exists v'
 
 /--
@@ -530,8 +588,8 @@ theorem mapMOnValues_some_implies_all_from_some [LT α] [DecidableLT α] {f : β
   replace h₁ := List.forall₂_implies_all_right (mapMOnValues_some_implies_forall₂ h₁)
   intro (k, v) h₂
   replace ⟨(k', v'), h₁, h₃, h₄⟩ := h₁ (k, v) h₂
-  simp at h₃ ; subst k'
-  simp
+  simp only at *
+  subst k'
   exists v'
 
 /--
@@ -560,27 +618,28 @@ theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT �
     subst a'
     exists b
 
-theorem mapMOnValues_none_iff_exists {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
+theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   m.mapMOnValues f = none ↔ ∃ v ∈ m.values, f v = none
 := by
   constructor
   case mp =>
     intro h₁
-    cases h₂ : m.kvs <;> simp [h₂] at h₁
+    cases h₂ : m.kvs <;> simp only at h₁
     case nil =>
       rw [kvs_nil_iff_empty] at h₂ ; subst h₂
       simp [mapMOnValues_nil] at h₁
     case cons hd tl =>
       have (khd, vhd) := hd ; clear hd
-      simp [values_cons h₂]
-      simp [mapMOnValues_cons h₂] at h₁
+      simp only [values_cons h₂, List.mem_cons, exists_eq_or_imp]
+      simp only [mapMOnValues_cons h₂, Option.pure_def, Option.bind_eq_bind,
+        Option.bind_eq_none] at h₁
       cases h₃ : f vhd
       case none => simp
       case some yhd =>
         right
         specialize h₁ yhd h₃
         have := sizeOf_lt_of_tl h₂ -- required for Lean to allow the following recursive call
-        apply mapMOnValues_none_iff_exists.mp
+        apply mapMOnValues_none_iff_exists_none.mp
         by_contra h₄
         rw [← ne_eq] at h₄
         replace ⟨ytl, h₄⟩ := Option.ne_none_iff_exists'.mp h₄
@@ -594,8 +653,8 @@ theorem mapMOnValues_none_iff_exists {α : Type 0} [LT α] [DecidableLT α] {f :
       simp [values, kvs, empty] at h₁
     case cons hd tl =>
       have (khd, vhd) := hd ; clear hd
-      simp [values_cons h₃] at h₁
-      simp [mapMOnValues_cons h₃]
+      simp only [values_cons h₃, List.mem_cons] at h₁
+      simp only [mapMOnValues_cons h₃, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
       intro yhd h₄ ytl h₅
       rcases h₁ with h₁ | h₁
       case inl => subst h₁ ; simp [h₂] at h₄

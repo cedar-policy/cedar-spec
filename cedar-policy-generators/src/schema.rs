@@ -274,7 +274,7 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
 pub fn uid_for_action_name(namespace: Option<ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
     let entity_type =
         build_qualified_entity_type_name(namespace, "Action".parse().expect("valid id"));
-    ast::EntityUID::from_components(entity_type, action_name)
+    ast::EntityUID::from_components(entity_type, action_name, None)
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some

@@ -66,7 +66,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
         simp [h₃]
     case h_2 h₁ =>
       exfalso
-      replace ⟨v, h₁, h₂⟩ := Map.mapMOnValues_none_iff_exists.mp h₁
+      replace ⟨v, h₁, h₂⟩ := Map.mapMOnValues_none_iff_exists_none.mp h₁
       cases v <;> simp only at h₂
       case residual r =>
         rw [Map.mapOnValues_eq_make_map _ wf] at h₁
