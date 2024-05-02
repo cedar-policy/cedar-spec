@@ -456,11 +456,10 @@ impl Bindings {
     fn add_binding(&mut self, binding: (SchemaType, Id)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
-        let new_id = if self.ids.get(&id).is_some() {
-            format!("_{id}").parse().unwrap()
-        } else {
-            id
-        };
+        let mut new_id = id;
+        while self.ids.contains(&new_id) {
+            new_id = format!("_{new_id}").parse().unwrap();
+        }
         self.ids.insert(new_id.clone());
         if let Some(binding_for_ty) = self.bindings.get_mut(&ty) {
             binding_for_ty.push(new_id);
@@ -594,6 +593,7 @@ impl Schema {
         for (_, ty) in attribute_types {
             bind_type(ty, u, &mut bindings)?;
         }
+
         let common_types = bindings.to_common_types(u)?;
         let entity_types: HashMap<Id, EntityType> = HashMap::from_iter(
             self.schema
