@@ -84,12 +84,6 @@ theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α
     replace h := List.sortedBy_implies_canonicalize_eq h
     rw [WellFormed, toList, kvs, make, h]
 
-theorem if_wf_then_exists_make [LT α] [DecidableLT α] (m : Map α β) :
-  m.WellFormed → ∃ list, m = Map.make list
-:= by
-  intro h₁
-  exists m.kvs
-
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value
@@ -106,27 +100,24 @@ theorem key_maps_to_one_value [DecidableEq α] [LT α] [DecidableLT α] [StrictL
   injection h₃
 
 /--
-  `make` on equivalent lists of (k,v) pairs produces equal maps
+  If two maps have exactly equal (k,v) sets, then the maps are equal
 
-  (Organizationally belongs in the `make` section, but is needed before that)
--/
-theorem make_eqv [LT α] [DecidableLT α] {xs ys : List (α × β)}:
-  xs ≡ ys →
-  Map.make xs = Map.make ys
-:= by
-  intro h; unfold make; simp
-  sorry
+  This doesn't require WellFormed, but we use it in the proof of
+  `eq_iff_kvs_equiv` below
 
-/--
-  (Organizationally belongs in the `make` section, but is needed before that)
+  Surprisingly this is not a one-line proof.
 -/
-theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α × β)) :
-  Map.make (Map.kvs (Map.make xs)) = Map.make xs
+theorem eq_iff_kvs_eq {m₁ m₂ : Map α β} :
+  m₁.kvs = m₂.kvs ↔ m₁ = m₂
 := by
-  simp only [make, mk.injEq]
-  have h₁ := List.canonicalize_idempotent Prod.fst xs
-  unfold id at h₁
-  exact h₁
+  constructor
+  case mp =>
+    unfold kvs
+    intro h
+    match m₁ with
+    | mk kvs₁ => match m₂ with
+      | mk kvs₂ => simp at h ; subst h ; rfl
+  case mpr => intro h ; subst h ; rfl
 
 /--
   If two well-formed maps have equivalent (k,v) sets, then the maps are actually
@@ -140,13 +131,9 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map
   constructor
   case mp =>
     intro h₁
-    replace ⟨kvs₁, wf₁⟩ := if_wf_then_exists_make m₁ wf₁
-    subst wf₁
-    replace ⟨kvs₂, wf₂⟩ := if_wf_then_exists_make m₂ wf₂
-    subst wf₂
-    replace h₁ := make_eqv h₁
-    simp only [make_of_make_is_id] at h₁
-    exact h₁
+    simp [wf_iff_sorted, toList] at wf₁ wf₂
+    have h₂ := List.sortedBy_equiv_implies_eq Prod.fst wf₁ wf₂ h₁
+    exact eq_iff_kvs_eq.mp h₂
   case mpr =>
     intro h₁
     subst h₁
@@ -258,6 +245,14 @@ theorem make_cons [LT α] [DecidableLT α] {xs ys : List (α × β)} {ab : α ×
 := by
   simp only [make, mk.injEq]
   apply List.canonicalize_cons
+
+theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α × β)) :
+  Map.make (Map.kvs (Map.make xs)) = Map.make xs
+:= by
+  simp only [make, mk.injEq]
+  have h₁ := List.canonicalize_idempotent Prod.fst xs
+  unfold id at h₁
+  exact h₁
 
 /-! ### find? and mapOnValues -/
 
