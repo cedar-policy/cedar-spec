@@ -1221,7 +1221,7 @@ theorem mapM_some_implies_all_from_some {α β} {f : α → Option β} {xs : Lis
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_from_some
 
-theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
+theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM' f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   constructor
@@ -1234,7 +1234,7 @@ theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
       case some yhd =>
         simp only [mapM'_cons, h₂, Option.pure_def, Option.bind_eq_bind, Option.bind_some_fun,
           Option.bind_eq_none] at h₁
-        apply mapM'_none_iff_exists.mp
+        apply mapM'_none_iff_exists_none.mp
         by_contra h₃
         rw [← ne_eq] at h₃
         replace ⟨ytl, h₃⟩ := Option.ne_none_iff_exists'.mp h₃
@@ -1253,11 +1253,11 @@ theorem mapM'_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
         replace ⟨y, _, h₅⟩ := h₄ x h₁
         simp [h₂] at h₅
 
-theorem mapM_none_iff_exists {α β} {f : α → Option β} {xs : List α} :
+theorem mapM_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM f xs = none ↔ ∃ x ∈ xs, f x = none
 := by
   rw [← List.mapM'_eq_mapM]
-  exact mapM'_none_iff_exists
+  exact mapM'_none_iff_exists_none
 
 theorem mapM'_some_eq_filterMap {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
@@ -1557,7 +1557,7 @@ theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
         simp only [mem_cons, true_or, forall_const] at h₁
         simp [h₁] at h₂
 
-theorem filterMap_nonempty_iff_exists {f : α → Option β} {xs : List α} :
+theorem filterMap_nonempty_iff_exists_some {f : α → Option β} {xs : List α} :
   xs.filterMap f ≠ [] ↔ ∃ x ∈ xs, (f x).isSome
 := by
   constructor
