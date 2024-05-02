@@ -277,7 +277,7 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `find?_mem_toList` above
 -/
-theorem in_list_some_find? [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {k : α} {v : β} {m : Map α β}
+theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {k : α} {v : β} {m : Map α β}
   (wf : m.WellFormed) :
   (k, v) ∈ m.kvs ↔ m.find? k = some v
 := by
@@ -407,12 +407,12 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [Decid
     simp only at h₂
     subst v'
     exists k
-    simp [h₁, ← in_list_some_find? wf]
+    simp [h₁, ← in_list_iff_find?_some wf]
   case mpr =>
     intro h₁
     replace ⟨k, h₁⟩ := h₁
     exists (k, v)
-    simp [h₁, in_list_some_find? wf, and_true]
+    simp [h₁, in_list_iff_find?_some wf, and_true]
 
 theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.kvs → (k, f v) ∈ (m.mapOnValues f).kvs
