@@ -373,27 +373,25 @@ fn attrs_in_schematype(
     schematype: &cedar_policy_validator::SchemaType,
 ) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType)>> {
     match schematype {
-        cedar_policy_validator::SchemaType::Type(variant) => {
-            match variant {
-                SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Long => Box::new(std::iter::empty()),
-                SchemaTypeVariant::String => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
-                SchemaTypeVariant::Record { attributes, .. } => {
-                    let toplevel = attributes
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.ty.clone()))
-                        .collect::<Vec<_>>();
-                    let recursed = toplevel
-                        .iter()
-                        .flat_map(|(_, v)| attrs_in_schematype(schema, v))
-                        .collect::<Vec<_>>();
-                    Box::new(toplevel.into_iter().chain(recursed))
-                }
+        cedar_policy_validator::SchemaType::Type(variant) => match variant {
+            SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Long => Box::new(std::iter::empty()),
+            SchemaTypeVariant::String => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
+            SchemaTypeVariant::Record { attributes, .. } => {
+                let toplevel = attributes
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.ty.clone()))
+                    .collect::<Vec<_>>();
+                let recursed = toplevel
+                    .iter()
+                    .flat_map(|(_, v)| attrs_in_schematype(schema, v))
+                    .collect::<Vec<_>>();
+                Box::new(toplevel.into_iter().chain(recursed))
             }
-        }
+        },
         cedar_policy_validator::SchemaType::TypeDef { type_name } => attrs_in_schematype(
             schema,
             schema
