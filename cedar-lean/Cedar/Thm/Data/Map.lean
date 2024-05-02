@@ -623,7 +623,7 @@ theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT �
     subst a'
     exists b
 
-theorem mapMOnValues_none_iff_exists {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
+theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m : Map α β} :
   m.mapMOnValues f = none ↔ ∃ v ∈ m.values, f v = none
 := by
   constructor
@@ -644,7 +644,7 @@ theorem mapMOnValues_none_iff_exists {α : Type 0} [LT α] [DecidableLT α] {f :
         right
         specialize h₁ yhd h₃
         have := sizeOf_lt_of_tl h₂ -- required for Lean to allow the following recursive call
-        apply mapMOnValues_none_iff_exists.mp
+        apply mapMOnValues_none_iff_exists_none.mp
         by_contra h₄
         rw [← ne_eq] at h₄
         replace ⟨ytl, h₄⟩ := Option.ne_none_iff_exists'.mp h₄
