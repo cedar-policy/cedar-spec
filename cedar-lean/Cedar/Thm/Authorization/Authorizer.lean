@@ -270,16 +270,6 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
   exact resource_eval_ok_means_resource_in_uid h₁ h₂
 
 /--
-  A generic lemma that relates List.mapM to List.map. Not in Std AFAICT.
--/
-theorem if_f_produces_pure_then_mapM_f_is_pure_map {α β} [Monad m] [LawfulMonad m] {f : α → β} {list : List α} :
-  list.mapM ((fun a => pure (f a)) : α → m β) = pure (list.map f)
-:= by
-  induction list
-  case nil => simp
-  case cons x xs h => simp [h]
-
-/--
   A generic lemma about composing List.mapM with List.map. Not in Std AFAICT.
 -/
 theorem mapM_over_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {list : List α} :
@@ -293,8 +283,8 @@ theorem mapM_evaluate_uids_produces_uids {list : List EntityUID} {request : Requ
   List.mapM (evaluate · request entities) (list.map fun uid => Expr.lit (.entityUID uid)) = .ok (list.map (Value.prim ∘ Prim.entityUID))
 := by
   rw [mapM_over_map]
-  simp [evaluate]
-  apply if_f_produces_pure_then_mapM_f_is_pure_map
+  unfold evaluate
+  exact List.mapM_pure
 
 theorem asEntityUID_of_uid {uid : EntityUID} :
   Value.asEntityUID (.prim (.entityUID uid)) = .ok uid
@@ -310,80 +300,56 @@ theorem mapM_asEntityUID_of_uid {uids : List EntityUID} :
   case nil =>
     rw [List.map_nil, List.mapM_nil]
     simp [pure, Except.pure]
-  case cons x xs h_ind =>
+  case cons x xs ih =>
     rw [List.map_cons, List.mapM_cons]
-    simp [pure, Except.pure, asEntityUID_of_uid, h_ind]
+    simp [pure, Except.pure, asEntityUID_of_uid, ih]
 
 /--
-  A generic lemma about the behavior of List.mapM' in the Except monad
+  Std has `Option.isSome_iff_exists`, but not this analogue for `Except`
 -/
-theorem mapM'_ok_iff_f_ok_on_all_elements {f : α → Except ε β} {list : List α} :
-  Except.isOk (list.mapM' f) ↔ ∀ x ∈ list, Except.isOk (f x)
+theorem Except.isOk_iff_exists {x : Except ε α} :
+  Except.isOk x ↔ ∃ a, x = .ok a
 := by
-  simp [Except.isOk, Except.toBool]
-  constructor
-  case mp =>
-    induction list
-    case nil =>
-      intro _ x h₂
-      simp at h₂
-    case cons y ys h_ind =>
-      intro h₁ x h₂
-      unfold List.mapM' at h₁
-      cases h₄ : (f y) <;> simp [h₄] at h₁
-      case ok b =>
-        rcases (List.mem_cons.mp h₂) with h₅ | h₅
-        case inl => rw [← h₅] at h₄; simp [h₄]
-        case inr =>
-          apply h_ind; clear h_ind
-          case a =>
-            split at h₁ <;> split <;> simp
-            case h_1.h_2 h₅ _ _ h₆ => simp [h₆] at h₅
-            case h_2.h_2 => simp at h₁
-          case a => exact h₅
-  case mpr =>
-    induction list
-    case nil => simp [List.mapM', pure, Except.pure]
-    case cons x xs h_ind =>
-      intro h₂
-      split <;> simp
-      case h_2 err h₃ =>
-        cases h₄ : (f x) <;> simp [h₄] at h₂
-        case ok b =>
-          specialize h_ind h₂
-          split at h_ind <;> simp at h_ind
-          case h_1 err h₆ =>
-            simp [h₄, h₆, List.mapM', pure, Except.pure] at h₃
+  cases x <;> simp [Except.isOk, Except.toBool]
 
-theorem if_mapM'_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {list : List α} :
-  Except.isOk (list.mapM' f) →
-  Except.isOk ((Set.elts (Set.make list)).mapM' f)
+theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {as : List α} :
+  Except.isOk (as.mapM f) →
+  Except.isOk ((Set.elts (Set.make as)).mapM f)
 := by
-  simp [mapM'_ok_iff_f_ok_on_all_elements]
-  intro h₁ y h₂
-  apply h₁ y; clear h₁
-  rw [Set.make_mem]
-  rw [← Set.in_list_iff_in_set]
-  exact h₂
+  intro h₁
+  replace ⟨bs, h₁⟩ := Except.isOk_iff_exists.mp h₁
+  replace h₁ := List.mapM_ok_implies_all_ok h₁
+  cases as <;> simp at h₁
+  case nil => simp [Set.elts_make_nil, pure, Except.pure, Except.isOk, Except.toBool]
+  case cons ahd atl =>
+    replace ⟨⟨b, _, h₁⟩, h₂⟩ := h₁
+    apply Except.isOk_iff_exists.mpr
+    apply List.all_ok_implies_mapM_ok
+    intro a h₃
+    rw [Set.in_list_iff_in_set] at h₃
+    rw [← Set.make_mem] at h₃
+    rcases List.mem_cons.mp h₃ with h₃ | h₃
+    case a.inl => subst h₃ ; exists b
+    case a.inr =>
+      replace ⟨b, _, h₄⟩ := h₂ a h₃
+      exists b
 
-theorem mapM'_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
-  Except.isOk (List.mapM' Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
+theorem mapM_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
+  Except.isOk (List.mapM Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
 := by
-  apply if_mapM'_doesn't_fail_on_list_then_doesn't_fail_on_set
+  apply if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set
   unfold Except.isOk Except.toBool
   split <;> simp
-  case a.h_2 err h =>
-    rw [List.mapM'_eq_mapM] at h
-    simp [mapM_asEntityUID_of_uid] at h
+  case a.h_2 e h => simp [mapM_asEntityUID_of_uid] at h
 
 theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} {err : Error} :
   Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err = .ok (Set.make list)
 := by
   unfold Set.mapOrErr
-  rw [←List.mapM'_eq_mapM]
   split <;> simp
   case h_1 list' h =>
     -- in this case, mapping Value.asEntityUID over the set returns .ok
+    rw [← List.mapM'_eq_mapM] at h
     replace h := mapM'_asEntityUID_eq_entities h
     have ⟨h₁, h₂⟩ := Set.elts_make_is_id_then_equiv h; clear h
     rw [Set.make_make_eqv]
@@ -401,7 +367,7 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} 
       exact h₂
   case h_2 err h =>
     -- in this case, mapping Value.asEntityUID over the set returns .error
-    have h₁ := @mapM'_asEntityUID_on_set_uids_produces_ok list
+    have h₁ := @mapM_asEntityUID_on_set_uids_produces_ok list
     simp [h, Except.isOk, Except.toBool] at h₁
 
 theorem action_in_set_of_euids_produces_boolean {list : List EntityUID} {request : Request} {entities : Entities} :
@@ -425,7 +391,8 @@ theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {
   cases policy.principalScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
+    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
+      beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.principal uid entities) = b₁
     generalize (ety == request.principal.ty) = b₂
     split
@@ -454,7 +421,8 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
     simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
     cases scope <;> simp [evaluate, apply₁, apply₂, Result.as]
     case isMem ety uid =>
-      simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
+      simp only [Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok, beq_eq_false_iff_ne,
+        ne_eq, ite_not]
       generalize (inₑ request.action uid entities) = b₁
       generalize (ety == request.action.ty) = b₂
       split
@@ -471,7 +439,8 @@ theorem resource_scope_produces_boolean {policy : Policy} {request : Request} {e
   cases policy.resourceScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp [Result.as, Lean.Internal.coeM, Coe.coe, Value.asBool, pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe]
+    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
+      beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.resource uid entities) = b₁
     generalize (ety == request.resource.ty) = b₂
     split
