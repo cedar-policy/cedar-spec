@@ -467,6 +467,30 @@ theorem mapMOnValues_wf [LT α] [DecidableLT α] [StrictLT α] {f : β → Optio
   have h₂ := mapMOnValues_preserves_keys h₁
   exact (List.map_eq_implies_sortedBy h₂).mp wf
 
+/--
+  Alternate proof of `mapMOnValues_wf`, that relies on
+  `List.mapM_some_eq_filterMap` instead of `mapMOnValues_preserves_keys`. Which do
+  we prefer?
+-/
+theorem mapMOnValues_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
+  m₁.WellFormed →
+  (m₁.mapMOnValues f = some m₂) →
+  m₂.WellFormed
+:= by
+  simp only [wf_iff_sorted, toList]
+  intro wf h₁
+  simp [mapMOnValues] at h₁
+  replace ⟨xs, h₁, h₂⟩ := h₁
+  subst h₂
+  simp [kvs]
+  replace h₁ := List.mapM_some_eq_filterMap h₁
+  subst h₁
+  apply List.filterMap_sortedBy _ wf
+  intro (k, v) (k', v') h₁
+  simp only at *
+  cases h₂ : f v <;> simp [h₂, Option.bind] at h₁
+  exact h₁.left
+
 theorem mapMOnValues_nil [LT α] [DecidableLT α] {f : β → Option γ} :
   (Map.empty : Map α β).mapMOnValues f = some Map.empty
 := by
