@@ -115,7 +115,7 @@ theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {reques
   case cons kv tl ih =>
     specialize ih (by
       intro kv' h₁
-      apply ih₁ kv' (List.mem_cons_of_mem kv h₁)
+      exact ih₁ kv' (List.mem_cons_of_mem kv h₁)
     )
     cases h₁ : Spec.bindAttr kv.fst (Spec.evaluate kv.snd request entities)
     <;> cases h₂ : Partial.bindAttr kv.fst (Partial.evaluate kv.snd request entities)
