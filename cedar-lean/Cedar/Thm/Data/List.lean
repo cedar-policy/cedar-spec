@@ -636,6 +636,15 @@ theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α →
     apply Subset.trans ih
     simp
 
+/-- Corollary of `canonicalize_subseteq` -/
+theorem in_canonicalize_in_list [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {x : α} {xs : List α} :
+  x ∈ xs.canonicalize f → x ∈ xs
+:= by
+  intro h₁
+  have h₂ := canonicalize_subseteq f xs
+  simp [List.subset_def] at h₂
+  exact h₂ h₁
+
 /-
 Note that `canonicalize_equiv` does not hold for all functions `f`.
 To see why, consider xs = [(1, false), (1, true)], f = Prod.fst.
@@ -656,8 +665,8 @@ theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α)
     exact ih
 
 /-
-Open problem: does `equiv_implies_canonical_eq` hold for functions other than `id`?
-In particular, for `Prod.fst`?
+Note that `equiv_implies_canonical_eq` does not hold for all functions `f`.
+To see why, consider the `example` immediately below this.
 -/
 theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [DecidableLT α] (xs ys : List α) :
   xs ≡ ys → (canonicalize id xs) = (canonicalize id ys)
@@ -673,6 +682,23 @@ theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [DecidableLT α] (xs ys
   apply Equiv.trans h₃
   apply Equiv.symm
   exact h₁
+
+/--
+  Illustration that `equiv_implies_canonical_eq` does not hold for
+  all functions `f` -- in particular, does not hold for `Prod.fst`.
+
+  (One `canonicalize` produces `[(1, false)]`, and the other
+  produces `[(1, true)]`.)
+-/
+example :
+  xs = [(1, false), (1, true)] →
+  ys = [(1, true), (1, false)] →
+  xs ≡ ys ∧ (canonicalize Prod.fst xs) ≠ (canonicalize Prod.fst ys)
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  simp [List.Equiv]
+  decide
 
 theorem canonicalize_idempotent {α β} [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
   canonicalize f (canonicalize f xs) = canonicalize f xs
