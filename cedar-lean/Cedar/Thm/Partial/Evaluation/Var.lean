@@ -29,7 +29,7 @@ open Cedar.Spec (Var)
   `Partial.evaluateVar` on concrete arguments gives the same output as
   `Spec.evaluate` on those arguments
 -/
-theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Spec.Request} {entities : Spec.Entities}
+theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
   Partial.evaluateVar v request = (Spec.evaluate (Spec.Expr.var v) request entities).map Partial.Value.value
 := by
@@ -77,11 +77,11 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval {v : Var} {request : Sp
   Partial-evaluating a concrete `Var` expression gives the same output as
   concrete-evaluating the `Var`
 -/
-theorem on_concrete_eqv_concrete_eval {v : Var} {request : Spec.Request} {entities : Spec.Entities}
+theorem on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
   Partial.evaluate (Partial.Expr.var v) request entities = (Spec.evaluate (Spec.Expr.var v) request entities).map Partial.Value.value
 := by
   unfold Partial.evaluate
-  exact partialEvaluateVar_on_concrete_eqv_concrete_eval wf
+  exact partialEvaluateVar_on_concrete_eqv_concrete_eval v request entities wf
 
 end Cedar.Thm.Partial.Evaluation.Var
