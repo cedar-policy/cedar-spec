@@ -28,9 +28,13 @@ namespace Cedar.Partial
 open Cedar.Data
 open Cedar.Spec (Effect Error PolicyID)
 
+/-- The result of partial-evaluating a policy -/
 inductive Residual where
+  /-- Some `Partial.Expr`, which may be constant `true` (definitely satisfied),
+  constant `false` (definitely not satisfied), or a nontrivial expression  -/
   | residual (id : PolicyID) (effect : Effect) (condition : Partial.Expr)
-  | error (id : PolicyID) (error : Error) -- definitely results in this error, for any substitution of the unknowns
+  /-- definitely results in this error, for any substitution of the unknowns -/
+  | error (id : PolicyID) (error : Error)
 
 deriving instance Repr, DecidableEq, Inhabited for Residual
 
@@ -59,6 +63,7 @@ def Residual.mayBeSatisfied (eff : Effect) : Residual → Option PolicyID
   | .residual id eff' _ => if eff = eff' then some id else none
   | _ => none
 
+/-- Response to a partial authorization request -/
 structure Response where
   /--
     All residuals for policies that are, or may be, satisfied.
@@ -117,12 +122,20 @@ def Response.errors (resp : Partial.Response) : List (PolicyID × Error) :=
     | _ => none
 
 inductive Decision where
-  | allow -- definitely Allow, for any substitution of the unknowns
-  | deny -- definitely Deny, for any substitution of the unknowns
-  | unknown -- Allow and Deny are both possible, depending on substitution of the unknowns
+  /-- definitely Allow, for any substitution of the unknowns -/
+  | allow
+  /-- definitely Deny, for any substitution of the unknowns -/
+  | deny
+  /-- Allow and Deny are both possible, depending on substitution of the unknowns -/
+  | unknown
 
 deriving instance Repr, DecidableEq for Decision
 
+/--
+  Return a `Partial.Decision` representing the authz decision, if it is known
+  (for instance, if there is a forbid known to be satisfied, or no permits that
+  are even possibly satisfied), or otherwise `Partial.Decision.unknown`
+-/
 def Response.decision (resp : Partial.Response) : Partial.Decision :=
   if ¬ resp.knownForbids.isEmpty then
     -- there is a known forbid, we'll always get explicit deny
