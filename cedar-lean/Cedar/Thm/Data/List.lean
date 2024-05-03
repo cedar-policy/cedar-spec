@@ -41,7 +41,7 @@ infix:50 " ≡ " => Equiv
 
 theorem Equiv.refl {a : List α} :
   a ≡ a
-:= by unfold List.Equiv; simp
+:= by unfold List.Equiv; simp only [Subset.refl, and_self]
 
 theorem Equiv.symm {a b : List α} :
   a ≡ b → b ≡ a
@@ -268,7 +268,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
         case cons xhd' xtl =>
           rw [← h₃.left]
           apply sortedBy_implies_head_lt_tail h₂
-          simp
+          simp only [mem_cons, true_or]
   case mpr =>
     intro h₂
     cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq] at h₁
@@ -286,7 +286,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
         case cons yhd' ytl =>
           rw [h₃.left]
           apply sortedBy_implies_head_lt_tail h₂
-          simp
+          simp only [mem_cons, true_or]
 
 theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
   SortedBy f xs → SortedBy f (xs.filter p)
@@ -349,7 +349,7 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
 := by
   unfold insertCanonical
   cases xs
-  case nil => simp
+  case nil => simp only [ne_eq, not_false_eq_true]
   case cons hd tl =>
     simp only [gt_iff_lt, ne_eq]
     intro h
@@ -477,7 +477,8 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               have h₆ := StrictLT.if_not_lt_gt_then_eq x hd' h₃ h₄
               subst h₆
               unfold List.Equiv
-              simp
+              simp only [cons_subset, mem_cons, true_or, or_true, Subset.refl, and_self,
+                subset_cons]
             case inl _ _ _ h₃ =>
               replace ⟨h₃, h₄, h₅⟩ := h₃
               simp only [h₅]
@@ -579,7 +580,7 @@ theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α �
   case mpr =>
     unfold canonicalize
     intro h₀
-    cases xs <;> simp only [ne_eq, not_true_eq_false] at h₀; simp
+    cases xs <;> simp only [ne_eq, not_true_eq_false, not_false_eq_true] at *
 
 theorem canonicalize_cons [LT β] [DecidableLT β] (f : α → β) (xs : List α) (a : α) :
   canonicalize f xs = canonicalize f ys → canonicalize f (a :: xs) = canonicalize f (a :: ys)
@@ -619,7 +620,7 @@ theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α →
     apply Subset.trans h
     simp only [cons_subset, mem_cons, true_or, true_and]
     apply Subset.trans ih
-    simp
+    simp only [subset_cons]
 
 /-- Corollary of `canonicalize_subseteq` -/
 theorem in_canonicalize_in_list [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {x : α} {xs : List α} :
@@ -931,7 +932,7 @@ theorem mapM_pure {α β} [Monad m] [LawfulMonad m] {f : α → β} {xs : List �
   xs.mapM ((λ a => pure (f a)) : α → m β) = pure (xs.map f)
 := by
   induction xs
-  case nil => simp
+  case nil => simp only [mapM_nil, map_nil]
   case cons hd tl ih => simp [ih]
 
 theorem mapM_some {xs : List α} :
@@ -940,14 +941,14 @@ theorem mapM_some {xs : List α} :
   -- Probably could be proved as a corollary of `mapM_pure`, but I couldn't
   -- easily get that to work, and the direct inductive proof is very short
   induction xs
-  case nil => simp
+  case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
 
 theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
   List.mapM g (xs.map f) = xs.mapM λ x => g (f x)
 := by
   induction xs
-  case nil => simp
+  case nil => simp only [map_nil, mapM_nil]
   case cons hd tl ih => simp [ih]
 
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
@@ -1406,7 +1407,7 @@ theorem find?_pair_map {α β γ} [BEq α] (f : β → γ) (xs : List (α × β)
   List.find? (λ x => x.fst == k) (List.map (λ x => (x.fst, f x.snd)) xs)
 := by
   induction xs
-  case nil => simp
+  case nil => simp only [find?_nil, Option.map_none', map_nil]
   case cons hd tl ih =>
     cases h₁ : hd.fst == k <;> simp only [map_cons]
     case false =>
@@ -1513,7 +1514,8 @@ theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
   constructor
   case mp =>
     induction xs
-    case nil => simp
+    case nil =>
+      simp only [filterMap_nil, not_mem_nil, false_implies, implies_true, imp_self]
     case cons hd tl ih =>
       intro h₁ a h₂
       simp only [List.filterMap_cons] at h₁
@@ -1525,7 +1527,7 @@ theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
   case mpr =>
     intro h₁
     induction xs
-    case nil => simp
+    case nil => simp only [filterMap_nil]
     case cons hd tl ih =>
       simp only [List.filterMap_cons]
       split

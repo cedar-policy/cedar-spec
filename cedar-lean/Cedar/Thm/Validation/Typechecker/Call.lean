@@ -341,7 +341,7 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
 := by
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_ipAddr_recognizer_inversion h₀ h₃
   subst h₄ h₅ h₆
-  apply And.intro exact empty_guarded_capabilities_invariant
+  apply And.intro empty_guarded_capabilities_invariant
   simp [EvaluatesTo, evaluate, List.mapM₁, List.attach]
   have ih₁ := ih x₁
   simp [TypeOfIsSound] at ih₁
