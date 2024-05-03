@@ -141,3 +141,31 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
   <;> split at h
   <;> simp only [Except.ok.injEq, Except.error.injEq, Partial.Value.value.injEq] at h
   <;> trivial
+
+/--
+  subst on a Spec.Expr is id
+-/
+theorem subst_expr_id (subsmap : Map Unknown Partial.Value) (expr : Spec.Expr) :
+  expr.asPartialExpr.subst subsmap = expr.asPartialExpr
+:= by
+  unfold Partial.Expr.subst
+  cases expr <;> simp [Spec.Expr.asPartialExpr]
+  case unaryApp op x₁ | getAttr x₁ attr | hasAttr x₁ attr =>
+    simp [subst_expr_id subsmap x₁]
+  case and x₁ x₂ | or x₁ x₂ | binaryApp op x₁ x₂ =>
+    simp [subst_expr_id subsmap x₁, subst_expr_id subsmap x₂]
+  case ite x₁ x₂ x₃ =>
+    simp [subst_expr_id subsmap x₁, subst_expr_id subsmap x₂, subst_expr_id subsmap x₃]
+  case set xs | call xfn xs =>
+    simp [List.map₁_eq_map, List.map_map]
+    apply List.map_congr
+    intro x _
+    exact subst_expr_id subsmap x
+  case record attrs =>
+    simp [List.map_attach₂_snd]
+    apply List.map_congr
+    intro (a, x) h₁
+    simp
+    have := List.sizeOf_snd_lt_sizeOf_list h₁
+    exact subst_expr_id subsmap x
+termination_by expr

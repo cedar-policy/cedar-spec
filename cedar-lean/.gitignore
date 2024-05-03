@@ -3,4 +3,5 @@
 *.json
 !lake-manifest.json
 *.olean
+lake-packages
 

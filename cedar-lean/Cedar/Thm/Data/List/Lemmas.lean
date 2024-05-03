@@ -379,7 +379,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
       case ok y' =>
         simp only [h₁, Except.ok.injEq] at h₂
         subst y'
-        specialize @ih ytl h₃
+        specialize ih h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
 
 theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
@@ -540,7 +540,7 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
       case some y' =>
         simp only [h₁, Option.some.injEq] at h₂
         subst y'
-        simp [@ih ytl h₃]
+        simp [ih h₃]
 
 theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys ↔

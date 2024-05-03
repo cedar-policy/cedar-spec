@@ -64,3 +64,44 @@ instance : Coe Spec.Request Partial.Request where
   coe := Spec.Request.asPartialRequest
 
 end Cedar.Spec
+
+namespace Cedar.Partial
+
+open Cedar.Data
+open Cedar.Spec (EntityUID)
+
+/--
+  Given a map of unknown-name to value, substitute the unknown in `UidOrUnknown`
+  if possible. If the `UidOrUnknown` is already known, or it's an unknown that doesn't
+  have a mapping in `subsmap`, return it unchanged.
+
+  Returns `none` if the substitution is invalid -- e.g., if trying to substitute
+  a non-`EntityUID` into `UidOrUnknown`.
+-/
+def UidOrUnknown.subst (subsmap : Map Unknown Partial.Value) : UidOrUnknown → Option UidOrUnknown
+  | .known uid => some (.known uid)
+  | .unknown unk => match subsmap.find? unk with
+    | some (.value (.prim (.entityUID uid))) => some (.known uid)
+    | some (.residual (.unknown unk')) => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
+    | none => some (.unknown unk) -- no substitution available, return `unk` unchanged
+    | _ => none -- substitution is not for a literal UID or literal unknown. Not valid, return none
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing a new `Partial.Request`.
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `Partial.Request` will still contain some unknowns.
+
+  Returns `none` if the substitution is invalid -- e.g., if trying to substitute
+  a non-`EntityUID` into `UidOrUnknown`.
+-/
+def Request.subst (subsmap : Map Unknown Partial.Value) : Partial.Request → Option Partial.Request
+  | { principal, action, resource, context } => do
+    let principal ← principal.subst subsmap
+    let action ← action.subst subsmap
+    let resource ← resource.subst subsmap
+    let context := context.mapOnValues (Partial.Value.subst subsmap)
+    some { principal, action, resource, context }
+
+
+end Cedar.Partial

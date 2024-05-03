@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Data.Map
 import Cedar.Spec.Value
 
 /-!

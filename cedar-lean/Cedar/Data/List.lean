@@ -50,7 +50,6 @@ def canonicalize [LT β] [DecidableLT β] (f : α → β) : List α → List α
   | [] => []
   | hd :: tl => insertCanonical f hd (canonicalize f tl)
 
-
 theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x : α × β} {xs : List (α × β)} :
   x ∈ xs → sizeOf x.snd < 1 + sizeOf xs
 := by
@@ -58,14 +57,12 @@ theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeO
   rw [Nat.add_comm]
   apply Nat.lt_add_right
   apply @Nat.lt_trans (sizeOf x.snd) (sizeOf x) (sizeOf xs)
-  {
-    simp only [sizeOf, Prod._sizeOf_1]
+  · simp only [sizeOf, Prod._sizeOf_1]
     rw [Nat.add_comm]
     apply Nat.lt_add_of_pos_right
     apply Nat.add_pos_left
-    apply Nat.one_pos
-  }
-  { apply List.sizeOf_lt_of_mem; exact h }
+    exact Nat.one_pos
+  · exact List.sizeOf_lt_of_mem h
 
 def attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] (xs : List (α × β)) :
 List { x : α × β // sizeOf x.snd < 1 + sizeOf xs } :=

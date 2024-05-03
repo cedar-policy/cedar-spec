@@ -485,17 +485,4 @@ theorem subset_iff_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s
   intro hw₁ hw₂
   simp only [← (eq_means_eqv hw₁ hw₂), elts, List.Equiv, subset_iff_subset_elts]
 
-/-! ### sizeOf -/
-
-theorem sizeOf_lt_of_mem [SizeOf α] {s : Set α}
-  (h : a ∈ s) :
-  sizeOf a < sizeOf s
-:= by
-  simp only [Membership.mem, elts] at h
-  replace h := List.sizeOf_lt_of_mem h
-  have _ : sizeOf s.1 < sizeOf s := by
-    simp only [sizeOf, _sizeOf_1]
-    omega
-  omega
-
 end Cedar.Data.Set

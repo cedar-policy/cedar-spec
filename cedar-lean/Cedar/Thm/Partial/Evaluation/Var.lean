@@ -40,7 +40,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
     split
     case h_1 m h₁ =>
       simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
-      rw [← Map.eq_iff_kvs_equiv (wf₁ := by simp [Map.mapMOnValues_wf (Map.mapOnValues_wf.mp wf) h₁]) (wf₂ := wf)]
+      rw [← Map.eq_iff_kvs_equiv (wf₁ := Map.mapMOnValues_wf (Map.mapOnValues_wf.mp wf) h₁) (wf₂ := wf)]
       simp only [List.Equiv, List.subset_def]
       constructor
       case left =>
