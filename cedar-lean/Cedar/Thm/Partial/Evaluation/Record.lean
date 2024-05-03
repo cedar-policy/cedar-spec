@@ -39,7 +39,7 @@ theorem bindAttr_on_concrete_eqv_concrete {a : Attr} {res : Result Spec.Value} :
   `List.mapM_pmap_subtype` specialized for a particular setting involving pairs
   and `Spec.bindAttr`
 -/
-theorem mapM_pmap_subtype_spec_bindAttr
+private theorem mapM_pmap_subtype_spec_bindAttr
   {p : (Attr × β) → Prop}
   (f : β → Result Spec.Value)
   (pairs: List (Attr × β))
@@ -54,7 +54,7 @@ theorem mapM_pmap_subtype_spec_bindAttr
   `List.mapM_pmap_subtype` specialized for a particular setting involving pairs
   and `Partial.bindAttr`
 -/
-theorem mapM_pmap_subtype_partial_bindAttr
+private theorem mapM_pmap_subtype_partial_bindAttr
   {p : (Attr × β) → Prop}
   (f : β → Result Partial.Value)
   (pairs: List (Attr × β))
@@ -69,7 +69,7 @@ theorem mapM_pmap_subtype_partial_bindAttr
   `List.mapM₂_eq_mapM` specialized for a particular setting involving pairs and
   `Spec.bindAttr`
 -/
-theorem mapM₂_eq_mapM_spec_bindAttr [SizeOf β]
+private theorem mapM₂_eq_mapM_spec_bindAttr [SizeOf β]
   (f : β → Result Spec.Value)
   (attrs : List (Attr × β)) :
   attrs.mapM₂
@@ -84,7 +84,7 @@ theorem mapM₂_eq_mapM_spec_bindAttr [SizeOf β]
   `List.mapM₂_eq_mapM` specialized for a particular setting involving pairs and
   `Partial.bindAttr`
 -/
-theorem mapM₂_eq_mapM_partial_bindAttr [SizeOf β]
+private theorem mapM₂_eq_mapM_partial_bindAttr [SizeOf β]
   (f : β → Result Partial.Value)
   (attrs : List (Attr × β)) :
   attrs.mapM₂
