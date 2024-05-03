@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Lean.Data.Json.FromToJson
 import Cedar.Data.Set
 import Cedar.Partial.Evaluator
 import Cedar.Partial.Expr
@@ -141,6 +142,12 @@ inductive Decision where
 
 deriving instance Repr, DecidableEq for Decision
 
+instance : ToString Decision where
+  toString d := match d with
+    | .allow => "allow"
+    | .deny => "deny"
+    | .unknown => "unknown"
+
 /--
   Return a `Partial.Decision` representing the authz decision, if it is known
   (for instance, if there is a forbid known to be satisfied, or no permits that
@@ -246,5 +253,32 @@ def Response.reEvaluateWithSubst (subsmap : Subsmap) : Partial.Response → Opti
     req := req'
     entities := entities'
   }
+
+private structure JSONResponse where
+  knownPermits : List String
+  knownForbids : List String
+  mayBeSatisifedPermits : List String
+  mayBeSatisifedForbids : List String
+  decision : String
+  determiningUnderApprox : List String
+  determiningOverApprox : List String
+  deriving Lean.ToJson
+
+instance : Coe Response JSONResponse where
+  coe r := {
+    knownPermits := r.knownPermits.toList
+    knownForbids := r.knownForbids.toList
+    mayBeSatisifedPermits := (r.mayBeSatisfied .permit).toList
+    mayBeSatisifedForbids := (r.mayBeSatisfied .forbid).toList
+    decision := toString r.decision
+    determiningOverApprox := r.overapproximateDeterminingPolicies.toList
+    determiningUnderApprox := r.underapproximateDeterminingPolicies.toList
+    : JSONResponse
+  }
+
+instance : Lean.ToJson Response where
+  toJson r :=
+    let json_r : JSONResponse := r
+    Lean.toJson json_r
 
 end Cedar.Partial

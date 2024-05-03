@@ -16,6 +16,7 @@
 
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
+use cedar_testing::cedar_test_impl::ExprOrValue;
 pub use entities::Entities;
 use serde::Serialize;
 
@@ -32,6 +33,21 @@ pub struct EvaluationRequest<'a> {
     pub entities: &'a Entities,
     pub expr: &'a ast::Expr,
     pub expected: Option<&'a ast::Expr>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PartialEvaluationRequest<'a> {
+    pub request: &'a ast::Request,
+    pub entities: &'a Entities,
+    pub expr: &'a ast::Expr,
+    pub expected: Option<ExprOrValue>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PartialAuthorizationRequest<'a> {
+    pub request: &'a ast::Request,
+    pub entities: &'a Entities,
+    pub policies: &'a ast::PolicySet,
 }
 
 #[derive(Debug, Serialize)]

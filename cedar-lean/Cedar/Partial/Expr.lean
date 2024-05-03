@@ -16,7 +16,6 @@
 
 import Cedar.Data
 import Cedar.Spec.Expr
-
 /-! This file defines abstract syntax for Cedar partial expressions. -/
 
 namespace Cedar.Partial
@@ -47,6 +46,25 @@ inductive Expr where
   | unknown (u : Unknown)
 
 deriving instance Repr, Inhabited for Expr
+
+def Expr.asSpec (e : Expr) : Option Spec.Expr :=
+  match e with
+  | .lit p => some (.lit p)
+  | .var v => some (.var v)
+  | .ite cond cons alt =>  .ite <$> cond.asSpec <*> cons.asSpec <*> alt.asSpec
+  | .and lhs rhs => .and <$> lhs.asSpec <*> rhs.asSpec
+  | .or lhs rhs => .or <$> lhs.asSpec <*> rhs.asSpec
+  | .unaryApp op expr => .unaryApp op <$> expr.asSpec
+  | .binaryApp op lhs rhs => .binaryApp op <$> lhs.asSpec <*> rhs.asSpec
+  | .getAttr expr attr => .getAttr <$> expr.asSpec <*> some attr
+  | .hasAttr expr attr => .hasAttr <$> expr.asSpec <*> some attr
+  | .set members => .set <$> members.mapM₁ (λ ⟨x, _⟩ => x.asSpec)
+  | .record attrs =>
+    .record <$> attrs.mapM₂ (λ ⟨(name,e),_⟩ => (λ e => (name, e)) <$> e.asSpec)
+  | .call xfn args => .call xfn <$> args.mapM₁ (λ ⟨x,_⟩ => x.asSpec)
+  | .unknown _ => none
+
+
 
 mutual
 
