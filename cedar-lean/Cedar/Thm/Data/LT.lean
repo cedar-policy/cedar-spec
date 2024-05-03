@@ -175,17 +175,13 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
   have h₃ := Name.strictLT.asymmetric a.ty b.ty
   simp [LT.lt] at h₃
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  case inl.inl =>
-    simp only [h₁, h₂, forall_const] at h₃
-  case inl.inr =>
-    have ⟨h₂, _⟩ := h₂
+  · simp only [h₁, h₂, forall_const] at h₃
+  · have ⟨h₂, _⟩ := h₂
     rw [h₂] at h₁ h₃
     simp [h₁] at h₃
-  case inr.inl =>
-    have h₄ := StrictLT.not_eq b.ty a.ty h₂
+  · have h₄ := StrictLT.not_eq b.ty a.ty h₂
     simp [h₁] at h₄
-  case inr.inr =>
-    have h₄ := String.strictLT.asymmetric a.eid b.eid
+  · have h₄ := String.strictLT.asymmetric a.eid b.eid
     simp [LT.lt, h₁, h₂] at h₄
 
 theorem EntityUID.lt_trans {a b c : EntityUID} :
@@ -194,20 +190,16 @@ theorem EntityUID.lt_trans {a b c : EntityUID} :
   simp [LT.lt, EntityUID.lt]
   intro h₁ h₂
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  case inl.inl =>
-    have h₃ := Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂
+  · have h₃ := Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂
     simp only [LT.lt] at h₃
     simp [h₃]
-  case inl.inr =>
-    have ⟨h₂, _⟩ := h₂
+  · have ⟨h₂, _⟩ := h₂
     simp [h₂] at h₁
     simp [h₁]
-  case inr.inl =>
-    have ⟨h₁, _⟩ := h₁
+  · have ⟨h₁, _⟩ := h₁
     simp [←h₁] at h₂
     simp [h₂]
-  case inr.inr =>
-    have ⟨hl₁, hr₁⟩ := h₁
+  · have ⟨hl₁, hr₁⟩ := h₁
     have ⟨hl₂, hr₂⟩ := h₂
     simp [hl₁] at * ; simp [hl₂] at *
     have h₃ := String.strictLT.transitive a.eid b.eid c.eid hr₁ hr₂
@@ -297,11 +289,9 @@ theorem Values.lt_irrefl (vs : List Value) :
   cases vs ; simp [Values.lt] ; rename_i hd tl ; simp [Values.lt]
   by_contra h₁
   rcases h₁ with h₁ | h₁
-  case inl =>
-    have h₂ := Value.lt_irrefl hd
+  · have h₂ := Value.lt_irrefl hd
     simp [h₁] at h₂
-  case inr =>
-    have h₂ := Values.lt_irrefl tl
+  · have h₂ := Values.lt_irrefl tl
     simp [h₁] at h₂
 
 theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
@@ -311,16 +301,12 @@ theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   cases hd ; rename_i a v ; simp [ValueAttrs.lt]
   by_contra h₁
   rcases h₁ with h₁ | h₁
-  case inl =>
-    rcases h₁ with h₁ | h₁
-    case inl =>
-      have h₂ := StrictLT.irreflexive a
+  · rcases h₁ with h₁ | h₁
+    · have h₂ := StrictLT.irreflexive a
       contradiction
-    case inr =>
-      have h₂ := Value.lt_irrefl v
+    · have h₂ := Value.lt_irrefl v
       contradiction
-  case inr =>
-    have h₂ := ValueAttrs.lt_irrefl tl
+  · have h₂ := ValueAttrs.lt_irrefl tl
     contradiction
 
 end
@@ -360,13 +346,11 @@ theorem Values.lt_asym {vs₁ vs₂: List Value} :
   cases vs₁ <;> cases vs₂ <;> simp [Values.lt]
   rename_i hd₁ tl₁ hd₂ tl₂
   intro h₁ ; rcases h₁ with h₁ | h₁
-  case inl =>
-    have h₂ := Value.lt_asymm h₁
+  · have h₂ := Value.lt_asymm h₁
     simp [LT.lt] at h₂
     simp [h₂] ; intro h₃ ; subst h₃
     simp [h₁] at h₂
-  case inr =>
-    have ⟨hl₁, h₂⟩ := h₁
+  · have ⟨hl₁, h₂⟩ := h₁
     subst hl₁ ; simp only [true_and]
     have h₂ := Values.lt_asym h₂
     simp [h₂, Value.lt_irrefl hd₁]
@@ -435,17 +419,13 @@ theorem Values.lt_trans {vs₁ vs₂ vs₃: List Value}
   cases vs₁ <;> cases vs₂ <;> cases vs₃ <;> simp [Values.lt] at *
   rename_i hd₁ tl₁ hd₂ tl₂ hd₃ tl₃
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  case inl.inl =>
-    have h₃ := Value.lt_trans h₁ h₂
+  · have h₃ := Value.lt_trans h₁ h₂
     simp [LT.lt] at h₃ ; simp [h₃]
-  case inl.inr =>
-    have ⟨h₂, _⟩ := h₂
+  · have ⟨h₂, _⟩ := h₂
     subst h₂ ; simp [h₁]
-  case inr.inl =>
-    have ⟨h₁, _⟩ := h₁
+  · have ⟨h₁, _⟩ := h₁
     subst h₁ ; simp [h₂]
-  case inr.inr =>
-    have ⟨hl₁, h₃⟩ := h₁ ; subst hl₁
+  · have ⟨hl₁, h₃⟩ := h₁ ; subst hl₁
     have ⟨hl₂, h₄⟩ := h₂ ; subst hl₂
     have h₃ := Values.lt_trans h₃ h₄
     simp [h₃]
@@ -462,17 +442,12 @@ theorem ValueAttrs.lt_trans {vs₁ vs₂ vs₃: List (Attr × Value)}
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
   case inl.inl =>
     rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-    case inl.inl =>
-      have h₃ := String.strictLT.transitive a₁ a₂ a₃ h₁ h₂
-      simp [h₃]
-    case inl.inr =>
-      have ⟨h₂, _⟩ := h₂ ; subst h₂ ; simp [h₁]
-    case inr.inl =>
-      have ⟨h₁, _⟩ := h₁ ; subst h₁ ; simp [h₂]
-    case inr.inr =>
-      have ⟨hl₁, h₃⟩ := h₁ ; subst hl₁
-      have ⟨hl₂, h₄⟩ := h₂ ; subst hl₂
-      have h₃ := Value.lt_trans h₃ h₄
+    · simp [String.strictLT.transitive a₁ a₂ a₃ h₁ h₂]
+    · replace ⟨h₂, _⟩ := h₂ ; subst h₂ ; simp [h₁]
+    · replace ⟨h₁, _⟩ := h₁ ; subst h₁ ; simp [h₂]
+    · replace ⟨h₁', h₁⟩ := h₁ ; subst h₁'
+      replace ⟨h₂', h₂⟩ := h₂ ; subst h₂'
+      have h₃ := Value.lt_trans h₁ h₂
       simp [LT.lt] at h₃ ; simp [h₃]
   case inl.inr =>
     have ⟨⟨hl₂, hr₂⟩, _⟩ := h₂

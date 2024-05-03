@@ -271,18 +271,16 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
 := by
   have ⟨h₆, rty, h₅, h₄⟩ := type_of_record_inversion h₃
   subst h₅ h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    simp [EvaluatesTo, evaluate, List.mapM₂, List.attach₂]
-    let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
-    simp [List.mapM_pmap_subtype f]
-    cases h₅ : (axs.mapM f) <;>
-    simp [h₅]
-    case error err =>
-      simp [type_is_inhabited]
-      exact type_of_record_is_sound_err ih h₁ h₂ h₄ h₅
-    case ok avs =>
-      exact type_of_record_is_sound_ok ih h₁ h₂ h₄ h₅
+  apply And.intro empty_guarded_capabilities_invariant
+  simp [EvaluatesTo, evaluate, List.mapM₂, List.attach₂]
+  let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
+  simp [List.mapM_pmap_subtype f]
+  cases h₅ : (axs.mapM f) <;>
+  simp [h₅]
+  case error err =>
+    simp [type_is_inhabited]
+    exact type_of_record_is_sound_err ih h₁ h₂ h₄ h₅
+  case ok avs =>
+    exact type_of_record_is_sound_ok ih h₁ h₂ h₄ h₅
 
 end Cedar.Thm

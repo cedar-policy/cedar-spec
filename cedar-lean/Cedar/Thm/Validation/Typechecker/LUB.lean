@@ -401,13 +401,7 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
   split at h₁
   case h_1 bty₁ bty₂ =>
     simp [lubBool] at h₁
-    split at h₁
-    case inl h₂ =>
-      subst h₁
-      simp [lub?, lubBool]
-    case inr h₂ =>
-      subst h₁
-      simp [lub?, lubBool]
+    split at h₁ <;> subst h₁ <;> simp [lub?, lubBool]
   case h_2 sty₁ sty₂ =>
     cases h₂ : sty₁ ⊔ sty₂ <;> simp [h₂] at h₁
     rename_i sty₃

@@ -431,20 +431,17 @@ theorem instance_of_lubBool_left {v : Value} {bty₁ bty₂ : BoolType} :
   intro h₁ ; cases h₁
   simp [lubBool]
   split <;> rename_i b h₁ h₂
-  case inl =>
-    subst h₂
+  · subst h₂
     apply InstanceOfType.instance_of_bool b bty₁ h₁
-  case inr => try exact bool_is_instance_of_anyBool b
+  · exact bool_is_instance_of_anyBool b
 
 theorem instance_of_lubBool {v : Value} {bty₁ bty₂ : BoolType} :
   (InstanceOfType v (CedarType.bool bty₁) ∨ InstanceOfType v (CedarType.bool bty₂)) →
   InstanceOfType v (CedarType.bool (lubBool bty₁ bty₂))
 := by
-  intro h₁ ; cases h₁
-  case inl h₂ =>
-    exact instance_of_lubBool_left h₂
-  case inr h₂ =>
-    rw [lubBool_comm]
+  intro h₁ ; cases h₁ <;> rename_i h₂
+  · exact instance_of_lubBool_left h₂
+  · rw [lubBool_comm]
     exact instance_of_lubBool_left h₂
 
 theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType } {rty : List (Attr × Qualified CedarType) }
@@ -535,12 +532,10 @@ theorem instance_of_lub {v : Value} {ty ty₁ ty₂ : CedarType}
   (h₂ : InstanceOfType v ty₁ ∨ InstanceOfType v ty₂) :
   InstanceOfType v ty
 := by
-  cases h₂
-  case inl h₃ =>
-    apply instance_of_lub_left h₁ h₃
-  case inr h₃ =>
-    rw [lub_comm] at h₁
-    apply instance_of_lub_left h₁ h₃
+  cases h₂ <;> rename_i h₃
+  · exact instance_of_lub_left h₁ h₃
+  · rw [lub_comm] at h₁
+    exact instance_of_lub_left h₁ h₃
 
 
 end Cedar.Thm

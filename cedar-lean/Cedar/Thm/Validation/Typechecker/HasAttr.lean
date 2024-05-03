@@ -38,19 +38,15 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp at h₁
-    split at h₁ <;> try simp [err, ok, hasAttrInRecord] at h₁
-    case h_1 _ _ =>
-      split at h₁ <;> try split at h₁
-      all_goals {
-        simp [ok] at h₁
-        simp [h₁]
-      }
-    case h_2 _ _ =>
-      split at h₁ <;> split at h₁ <;> try split at h₁
-      all_goals {
-        simp [ok] at h₁
-        try simp [h₁]
-      }
+    split at h₁
+    <;> simp [err, ok, hasAttrInRecord] at h₁
+    <;> split at h₁
+    <;> try split at h₁
+    <;> try split at h₁
+    all_goals {
+      simp [ok] at h₁
+      try simp [h₁]
+    }
 
 theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -186,12 +182,9 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo] at h₆ <;>
     simp [EvaluatesTo, evaluate] <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inl.intro.inr.inr.inr =>
-      exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
-    case inr.intro.inr.inr.inr =>
-      exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
-    all_goals {
-      exact type_is_inhabited ty
-    }
+    <;> try exact type_is_inhabited ty
+    · exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
+    · exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
+
 
 end Cedar.Thm

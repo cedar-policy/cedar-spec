@@ -57,16 +57,15 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
   simp [evaluate, h₂, Result.as, Coe.coe, Value.asBool] at h₁
   generalize h₃ : (evaluate e₂ request entities) = r₂
   simp [h₃] at h₁
-  cases r₂ <;> simp [Lean.Internal.coeM] at h₁
+  cases r₂ <;> simp only [Except.bind_err] at h₁
   case ok v₂ =>
-    cases v₂ <;> try simp at h₁
+    cases v₂ <;> try simp only [Except.bind_err] at h₁
     case _ p₂ =>
-      cases p₂ <;> simp at h₁
+      cases p₂ <;> simp only [Except.bind_ok, Except.bind_err] at h₁
       case _ b =>
         cases b
         case false =>
-          simp only [pure, Except.pure, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe,
-            CoeTC.coe, Coe.coe, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at h₁
+          simp only [pure, Except.pure, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at h₁
         case true => rfl
 
 /- some shorthand to make things easier to read and write -/
@@ -118,14 +117,14 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
           cases h_e₂ : (evaluate e₂ request entities) with
           | ok val =>
             cases val <;>
-            simp [h_e₂, evaluate, Result.as, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] at h₁ <;>
+            simp [h_e₂, evaluate, Result.as, Value.asBool, pure, Except.pure] at h₁ <;>
             simp [h₁]
             case prim prim =>
               cases prim <;>
               simp [h_e₂] at h₁ <;>
               simp [h₁]
           | error e =>
-            simp [h_e₂, Lean.Internal.coeM] at h₁
+            simp only [h_e₂, ↓reduceIte, Except.bind_err, Except.error.injEq] at h₁
             simp [h₁]
         | false => simp [h_e₁] at h₁
   case error e =>
@@ -143,10 +142,10 @@ theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entit
 := by
   cases h : evaluate (Expr.and e₁ e₂) request entities <;> simp
   case ok val =>
-    cases val <;> simp only [evaluate, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true',
-      Lean.Internal.coeM, pure, Except.pure] at h <;>
-    generalize (evaluate e₁ request entities) = r₁ at h <;>
-    generalize (evaluate e₂ request entities) = r₂ at h
+    cases val
+    <;> simp only [evaluate, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true', pure, Except.pure] at h
+    <;> generalize (evaluate e₁ request entities) = r₁ at h
+    <;> generalize (evaluate e₂ request entities) = r₂ at h
     case prim prim =>
       cases prim <;> simp
       case int | string | entityUID =>

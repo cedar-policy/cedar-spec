@@ -62,12 +62,11 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       case h_2 =>
         exists tc₁.fst
         constructor
-        case left  => exists tc₁.snd
-        case right =>
-          exists tc₂.fst
+        · exists tc₁.snd
+        · exists tc₂.fst
           constructor
-          case left  => exists tc₂.snd
-          case right => simp [h₅]
+          · exists tc₂.snd
+          · simp [h₅]
     case h_2 h₅ =>
       split at h₁ <;> simp at h₁ ; simp [h₁]
       split
@@ -76,16 +75,14 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       case h_2 ety₁ ety₂ _ true_is_instance_of_tt _ _ _ _ =>
         exists tc₁.fst
         constructor
-        case left  => exists tc₁.snd
-        case right =>
-          exists tc₂.fst
+        · exists tc₁.snd
+        · exists tc₂.fst
           constructor
-          case left  => exists tc₂.snd
-          case right =>
-            simp [h₅]
+          · exists tc₂.snd
+          · simp [h₅]
             constructor
-            case left  => exists ety₁
-            case right => exists ety₂
+            · exists ety₁
+            · exists ety₂
 
 theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
   (h₁ : InstanceOfType v₁ (CedarType.entity ety₁))
@@ -113,46 +110,44 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
 := by
   have ⟨hc, hty⟩ := type_of_eq_inversion h₃
   subst hc
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
+  apply And.intro empty_guarded_capabilities_invariant
+  split at hty
+  case h_1 =>
+    split at hty <;> subst hty
+    case inl heq _ _ =>
+      subst heq
+      simp [EvaluatesTo, evaluate, apply₂]
+      exact true_is_instance_of_tt
+    case inr p₁ p₂ heq _ _ =>
+      simp [EvaluatesTo, evaluate, apply₂]
+      cases h₃ : Value.prim p₁ == Value.prim p₂ <;>
+      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₃
+      case false => exact false_is_instance_of_ff
+      case true  => contradiction
+  case h_2 =>
+    replace ⟨ty₁, c₁', ty₂, c₂', ht₁, ht₂, hty⟩ := hty
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+    simp [EvaluatesTo, evaluate] at *
+    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+    try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
+    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+    simp [apply₂]
     split at hty
     case h_1 =>
-      split at hty <;> subst hty
-      case inl heq _ _ =>
-        subst heq
-        simp [EvaluatesTo, evaluate, apply₂]
-        exact true_is_instance_of_tt
-      case inr p₁ p₂ heq _ _ =>
-        simp [EvaluatesTo, evaluate, apply₂]
-        cases h₃ : Value.prim p₁ == Value.prim p₂ <;>
-        simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₃
-        case false => exact false_is_instance_of_ff
-        case true  => contradiction
-    case h_2 =>
-      replace ⟨ty₁, c₁', ty₂, c₂', ht₁, ht₂, hty⟩ := hty
-      specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-      specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-      simp [EvaluatesTo, evaluate] at *
-      cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-      cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-      try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-      replace ⟨ihl₁, ih₃⟩ := ih₁
-      replace ⟨ihl₂, ih₄⟩ := ih₂
-      rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-      simp [apply₂]
-      split at hty
-      case h_1 =>
-        rw [hty]
-        apply bool_is_instance_of_anyBool
-      case h_2 heq =>
-        have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
-        subst hty₀ hty₁ hty₂
-        have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
-        cases h₇ : v₁ == v₂ <;>
-        simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₇
-        case false => exact false_is_instance_of_ff
-        case true  => contradiction
+      rw [hty]
+      apply bool_is_instance_of_anyBool
+    case h_2 heq =>
+      have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
+      subst hty₀ hty₁ hty₂
+      have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
+      cases h₇ : v₁ == v₂ <;>
+      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₇
+      case false => exact false_is_instance_of_ff
+      case true  => contradiction
 
 theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : op₂ = .less ∨ op₂ = .lessEq)
@@ -173,8 +168,8 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
     simp at h₂ ; simp [h₂]
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     constructor
-    case left  => exists tc₁.snd ; simp [←h₅]
-    case right => exists tc₂.snd ; simp [←h₆]
+    · exists tc₁.snd ; simp [←h₅]
+    · exists tc₂.snd ; simp [←h₆]
   }
 
 theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
@@ -189,29 +184,27 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
 := by
   have ⟨hc, hty, ht₁, ht₂⟩ := type_of_int_cmp_inversion h₀ h₃
   subst hc hty
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    replace ⟨c₁', ht₁⟩ := ht₁
-    replace ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-    simp [EvaluatesTo, evaluate] at *
-    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
-    replace ⟨ihl₁, ih₃⟩ := ih₁
-    replace ⟨ihl₂, ih₄⟩ := ih₂
-    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-    have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
-    subst ih₁ ih₂
-    rcases h₀ with h₀ | h₀
-    all_goals {
-      subst h₀
-      simp [apply₂]
-      apply bool_is_instance_of_anyBool
-    }
+  apply And.intro empty_guarded_capabilities_invariant
+  replace ⟨c₁', ht₁⟩ := ht₁
+  replace ⟨c₂', ht₂⟩ := ht₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  simp [EvaluatesTo, evaluate] at *
+  cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+  cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+  try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
+  replace ⟨ihl₁, ih₃⟩ := ih₁
+  replace ⟨ihl₂, ih₄⟩ := ih₂
+  rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+  have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
+  subst ih₁ ih₂
+  rcases h₀ with h₀ | h₀
+  all_goals {
+    subst h₀
+    simp [apply₂]
+    apply bool_is_instance_of_anyBool
+  }
 
 theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
@@ -233,8 +226,8 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     replace ⟨h₂, _⟩ := h₂
     constructor
-    case left  => exists tc₁.snd ; simp [←h₂, ←h₅]
-    case right => exists tc₂.snd ; simp [←h₂, ←h₆]
+    · exists tc₁.snd ; simp [←h₂, ←h₅]
+    · exists tc₂.snd ; simp [←h₂, ←h₆]
   }
 
 theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
@@ -249,36 +242,34 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
 := by
   have ⟨hc, hty, ht₁, ht₂⟩ := type_of_int_arith_inversion h₀ h₃
   subst hc hty
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    replace ⟨c₁', ht₁⟩ := ht₁
-    replace ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-    simp [EvaluatesTo, evaluate] at *
-    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; exact type_is_inhabited .int }
-    replace ⟨ihl₁, ih₃⟩ := ih₁
-    replace ⟨ihl₂, ih₄⟩ := ih₂
-    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-    have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
-    subst ih₁ ih₂
-    rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
-    case inl =>
-      cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
-      case none => exact type_is_inhabited CedarType.int
-      case some => simp [InstanceOfType.instance_of_int]
-    case inr.inl =>
-      cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
-      case none => exact type_is_inhabited CedarType.int
-      case some => simp [InstanceOfType.instance_of_int]
-    case inr.inr =>
-      cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
-      case none => exact type_is_inhabited CedarType.int
-      case some => simp [InstanceOfType.instance_of_int]
+  apply And.intro empty_guarded_capabilities_invariant
+  replace ⟨c₁', ht₁⟩ := ht₁
+  replace ⟨c₂', ht₂⟩ := ht₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  simp [EvaluatesTo, evaluate] at *
+  cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+  cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+  try { simp [ih₁, ih₂] ; exact type_is_inhabited .int }
+  replace ⟨ihl₁, ih₃⟩ := ih₁
+  replace ⟨ihl₂, ih₄⟩ := ih₂
+  rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+  have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
+  subst ih₁ ih₂
+  rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
+  case inl =>
+    cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
+    case none => exact type_is_inhabited CedarType.int
+    case some => simp [InstanceOfType.instance_of_int]
+  case inr.inl =>
+    cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
+    case none => exact type_is_inhabited CedarType.int
+    case some => simp [InstanceOfType.instance_of_int]
+  case inr.inr =>
+    cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
+    case none => exact type_is_inhabited CedarType.int
+    case some => simp [InstanceOfType.instance_of_int]
 
 theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.binaryApp .contains x₁ x₂) c env = Except.ok (ty, c')) :
@@ -302,8 +293,8 @@ theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env
   rw [lub_comm] at h₅
   simp [h₅, ←h₄]
   constructor
-  case left  => exists tc₁.snd
-  case right => exists tc₂.snd
+  · exists tc₁.snd
+  · exists tc₂.snd
 
 theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -316,24 +307,22 @@ theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} 
 := by
   have ⟨hc, hty, ty₁, ty₂, _, ht₁, ht₂⟩ := type_of_contains_inversion h₃
   subst hc hty
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    replace ⟨c₁', ht₁⟩ := ht₁
-    replace ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-    simp [EvaluatesTo, evaluate] at *
-    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-    replace ⟨ihl₁, ih₃⟩ := ih₁
-    replace ⟨ihl₂, ih₄⟩ := ih₂
-    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-    have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
-    subst ih₁
-    simp [apply₂]
-    apply bool_is_instance_of_anyBool
+  apply And.intro empty_guarded_capabilities_invariant
+  replace ⟨c₁', ht₁⟩ := ht₁
+  replace ⟨c₂', ht₂⟩ := ht₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  simp [EvaluatesTo, evaluate] at *
+  cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+  cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+  try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+  replace ⟨ihl₁, ih₃⟩ := ih₁
+  replace ⟨ihl₂, ih₄⟩ := ih₂
+  rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+  have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
+  subst ih₁
+  simp [apply₂]
+  apply bool_is_instance_of_anyBool
 
 theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : op₂ = .containsAll ∨ op₂ = .containsAny)
@@ -360,8 +349,8 @@ theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     exists ty₁, ty₂
     simp [h₇]
     constructor
-    case left  => exists tc₁.snd ; simp [←h₅]
-    case right => exists tc₂.snd ; simp [←h₆]
+    · exists tc₁.snd ; simp [←h₅]
+    · exists tc₂.snd ; simp [←h₆]
   }
 
 
@@ -377,29 +366,27 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
 := by
   have ⟨hc, hty, ty₁, ty₂, _, ht₁, ht₂⟩ := type_of_containsA_inversion h₀ h₃
   subst hc hty
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    replace ⟨c₁', ht₁⟩ := ht₁
-    replace ⟨c₂', ht₂⟩ := ht₂
-    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-    simp [EvaluatesTo, evaluate] at *
-    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; apply type_is_inhabited }
-    replace ⟨ihl₁, ih₃⟩ := ih₁
-    replace ⟨ihl₂, ih₄⟩ := ih₂
-    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-    have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
-    have ⟨s₂, ih₂⟩ := instance_of_set_type_is_set ih₄
-    subst ih₁ ih₂
-    rcases h₀ with h₀ | h₀
-    all_goals {
-      subst h₀
-      simp [apply₂]
-      apply bool_is_instance_of_anyBool
-    }
+  apply And.intro empty_guarded_capabilities_invariant
+  replace ⟨c₁', ht₁⟩ := ht₁
+  replace ⟨c₂', ht₂⟩ := ht₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  simp [EvaluatesTo, evaluate] at *
+  cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+  cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+  try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+  replace ⟨ihl₁, ih₃⟩ := ih₁
+  replace ⟨ihl₂, ih₄⟩ := ih₂
+  rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+  have ⟨s₁, ih₁⟩ := instance_of_set_type_is_set ih₃
+  have ⟨s₂, ih₂⟩ := instance_of_set_type_is_set ih₄
+  subst ih₁ ih₂
+  rcases h₀ with h₀ | h₀
+  all_goals {
+    subst h₀
+    simp [apply₂]
+    apply bool_is_instance_of_anyBool
+  }
 
 theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.binaryApp .mem x₁ x₂) c env = Except.ok (ty, c')) :
@@ -423,8 +410,8 @@ theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     rename_i tc₁ tc₂ _ _ _ ety₁ ety₂ _ h₄ h₅
     exists ety₁
     constructor
-    case left  => exists tc₁.snd ; simp [←h₄]
-    case right => exists ety₂, tc₂.snd ; simp [←h₅, h₁]
+    · exists tc₁.snd ; simp [←h₄]
+    · exists ety₂, tc₂.snd ; simp [←h₅, h₁]
   }
 
 theorem entityUID?_some_implies_entity_lit {x : Expr} {euid : EntityUID}
@@ -640,8 +627,8 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
     simp [pure, Except.pure] at h₁ ; subst h₁
     simp [List.map]
     constructor
-    case left  => simp [evaluate] at h₂ ; simp [h₂]
-    case right => apply mapM'_eval_lits_eq_prims h₃
+    · simp [evaluate] at h₂ ; simp [h₂]
+    · exact mapM'_eval_lits_eq_prims h₃
 
 theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
   (h₁ : List.mapM' Value.asEntityUID vs = Except.ok euids) :
@@ -660,13 +647,11 @@ theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
     simp [pure, Except.pure] at h₁ ; subst h₁
     simp [List.map]
     constructor
-    case left  =>
-      simp [Value.asEntityUID] at h₂
+    · simp [Value.asEntityUID] at h₂
       split at h₂ <;> simp at h₂
       rw [eq_comm] at h₂ ; subst h₂
       rfl
-    case right =>
-      apply mapM'_asEntityUID_eq_entities h₃
+    · exact mapM'_asEntityUID_eq_entities h₃
 
 theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID} {request : Request} {entities : Entities}
   (h₁ : evaluate (Expr.set (List.map (Expr.lit ∘ Prim.entityUID) euids')) request entities =
@@ -688,8 +673,8 @@ theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID
   simp [List.Equiv, List.subset_def] at *
   have ⟨hl₁, hr₁⟩ := h₁
   constructor
-  case left  => apply hr₁
-  case right => apply hl₁
+  · apply hr₁
+  · apply hl₁
 
 theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List EntityUID} {env : Environment} {entities : Entities}
   (h₁ : InstanceOfActionSchema entities env.acts)
@@ -818,14 +803,10 @@ theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
 := by
   have ⟨hc, ety₁, ety₂, ⟨c₁', h₄⟩ , c₂', h₅⟩ := type_of_mem_inversion h₃
   subst hc
-  constructor
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    rcases h₅ with ⟨h₅, h₆⟩ | ⟨h₅, h₆⟩ <;> subst h₆
-    case inl =>
-      apply type_of_mem_is_soundₑ h₁ h₂ h₄ h₅ ih₁ ih₂
-    case inr =>
-      apply type_of_mem_is_soundₛ h₁ h₂ h₄ h₅ ih₁ ih₂
+  apply And.intro empty_guarded_capabilities_invariant
+  rcases h₅ with ⟨h₅, h₆⟩ | ⟨h₅, h₆⟩ <;> subst h₆
+  · exact type_of_mem_is_soundₑ h₁ h₂ h₄ h₅ ih₁ ih₂
+  · exact type_of_mem_is_soundₛ h₁ h₂ h₄ h₅ ih₁ ih₂
 
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
