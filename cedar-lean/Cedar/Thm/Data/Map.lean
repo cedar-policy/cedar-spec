@@ -195,7 +195,7 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
   WellFormed (Map.make xs)
 := by
-  simp [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
+  simp only [WellFormed, make, toList, kvs, List.canonicalize_idempotent]
 
 theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst → (Map.mk xs).WellFormed
