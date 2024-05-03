@@ -42,9 +42,8 @@ theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
     case h_1 _ ty₁ bty _ =>
       simp [ok] at h₁
       apply And.intro
-      case left => simp [h₁]
-      case right =>
-        exists bty, c₁'
+      · simp [h₁]
+      · exists bty, c₁'
         simp only [and_true, h₁]
 
 theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
@@ -57,34 +56,32 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
 := by
   have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
   subst h₅; subst h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-    simp [EvaluatesTo] at h₆
-    simp [EvaluatesTo, evaluate]
-    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inr.inr.inr =>
-      cases bty
-      case anyBool =>
-        have ⟨b, h₈⟩ := instance_of_anyBool_is_bool h₇
-        cases b <;>
-        subst h₈ <;>
-        simp [apply₁] <;>
-        apply bool_is_instance_of_anyBool
-      case tt =>
-        have h₈ := instance_of_tt_is_true h₇
-        subst h₈
-        simp [apply₁, BoolType.not]
-        exact false_is_instance_of_ff
-      case ff =>
-        have h₈ := instance_of_ff_is_false h₇
-        subst h₈
-        simp [apply₁, BoolType.not]
-        exact true_is_instance_of_tt
-    all_goals {
-      exact type_is_inhabited (CedarType.bool (BoolType.not bty))
-    }
+  apply And.intro empty_guarded_capabilities_invariant
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
+  simp [EvaluatesTo] at h₆
+  simp [EvaluatesTo, evaluate]
+  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+  case inr.inr.inr =>
+    cases bty
+    case anyBool =>
+      have ⟨b, h₈⟩ := instance_of_anyBool_is_bool h₇
+      cases b <;>
+      subst h₈ <;>
+      simp [apply₁] <;>
+      apply bool_is_instance_of_anyBool
+    case tt =>
+      have h₈ := instance_of_tt_is_true h₇
+      subst h₈
+      simp [apply₁, BoolType.not]
+      exact false_is_instance_of_ff
+    case ff =>
+      have h₈ := instance_of_ff_is_false h₇
+      subst h₈
+      simp [apply₁, BoolType.not]
+      exact true_is_instance_of_tt
+  all_goals {
+    exact type_is_inhabited (CedarType.bool (BoolType.not bty))
+  }
 
 theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.unaryApp .neg x₁) c₁ env = Except.ok (ty, c₂)) :
@@ -111,27 +108,25 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
 := by
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_neg_inversion h₃
   subst h₅; subst h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-    simp [EvaluatesTo] at h₆
-    simp [EvaluatesTo, evaluate]
-    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inr.inr.inr =>
-      have ⟨i, h₈⟩ := instance_of_int_is_int h₇
-      subst h₈
-      simp [apply₁, intOrErr]
-      cases __ : i.neg?
-      case none =>
-        simp only [or_false, or_true, true_and]
-        exact type_is_inhabited CedarType.int
-      case some i' =>
-        simp only [Except.ok.injEq, false_or, exists_eq_left']
-        apply InstanceOfType.instance_of_int
-    all_goals {
+  apply And.intro empty_guarded_capabilities_invariant
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
+  simp [EvaluatesTo] at h₆
+  simp [EvaluatesTo, evaluate]
+  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+  case inr.inr.inr =>
+    have ⟨i, h₈⟩ := instance_of_int_is_int h₇
+    subst h₈
+    simp [apply₁, intOrErr]
+    cases __ : i.neg?
+    case none =>
+      simp only [or_false, or_true, true_and]
       exact type_is_inhabited CedarType.int
-    }
+    case some i' =>
+      simp only [Except.ok.injEq, false_or, exists_eq_left']
+      apply InstanceOfType.instance_of_int
+  all_goals {
+    exact type_is_inhabited CedarType.int
+  }
 
 theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂)) :
@@ -158,21 +153,19 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
 := by
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_like_inversion h₃
   subst h₅; subst h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-    simp [EvaluatesTo] at h₆
-    simp [EvaluatesTo, evaluate]
-    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inr.inr.inr =>
-      have ⟨s, h₈⟩ := instance_of_string_is_string h₇
-      subst h₈
-      simp [apply₁]
-      exact bool_is_instance_of_anyBool (wildcardMatch s p)
-    all_goals {
-      exact type_is_inhabited (.bool .anyBool)
-    }
+  apply And.intro empty_guarded_capabilities_invariant
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
+  simp [EvaluatesTo] at h₆
+  simp [EvaluatesTo, evaluate]
+  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+  case inr.inr.inr =>
+    have ⟨s, h₈⟩ := instance_of_string_is_string h₇
+    subst h₈
+    simp [apply₁]
+    exact bool_is_instance_of_anyBool (wildcardMatch s p)
+  all_goals {
+    exact type_is_inhabited (.bool .anyBool)
+  }
 
 theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env = Except.ok (ty, c₂)) :
@@ -192,9 +185,8 @@ theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capab
       subst h₃
       simp [ok] at h₁
       apply And.intro
-      case left => simp [h₁]
-      case right =>
-        exists ety', c₁'
+      · simp [h₁]
+      · exists ety', c₁'
         simp only [h₁, and_self]
 
 theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
@@ -207,24 +199,22 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
 := by
   have ⟨h₅, ety', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
   subst h₅; subst h₆
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-    simp [EvaluatesTo] at h₆
-    simp [EvaluatesTo, evaluate]
-    rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    case inr.inr.inr =>
-      have ⟨uid, h₈, h₉⟩ := instance_of_entity_type_is_entity h₇
-      simp [apply₁, h₉, h₈]
-      cases h₁₀ : ety == ety' <;>
-      simp at h₁₀ <;>
-      simp [h₁₀]
-      case false => exact false_is_instance_of_ff
-      case true => exact true_is_instance_of_tt
-    all_goals {
-      apply type_is_inhabited
-    }
+  apply And.intro empty_guarded_capabilities_invariant
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
+  simp [EvaluatesTo] at h₆
+  simp [EvaluatesTo, evaluate]
+  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+  case inr.inr.inr =>
+    have ⟨uid, h₈, h₉⟩ := instance_of_entity_type_is_entity h₇
+    simp [apply₁, h₉, h₈]
+    cases h₁₀ : ety == ety' <;>
+    simp at h₁₀ <;>
+    simp [h₁₀]
+    case false => exact false_is_instance_of_ff
+    case true => exact true_is_instance_of_tt
+  all_goals {
+    apply type_is_inhabited
+  }
 
 theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

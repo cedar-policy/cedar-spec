@@ -101,16 +101,14 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   case inl h₆ =>
     subst h₆
     have ⟨hty, hc⟩ := h₅ ; subst hty hc
-    apply And.intro
-    case left => exact empty_guarded_capabilities_invariant
-    case right =>
-      have h₇ := instance_of_tt_is_true ih₁₃
-      simp at h₇ ; subst h₇
-      simp [EvaluatesTo] at ih₁₂
-      rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
-      simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-      try exact type_is_inhabited (CedarType.bool BoolType.tt)
-      exact true_is_instance_of_tt
+    apply And.intro empty_guarded_capabilities_invariant
+    have h₇ := instance_of_tt_is_true ih₁₃
+    simp at h₇ ; subst h₇
+    simp [EvaluatesTo] at ih₁₂
+    rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
+    try exact type_is_inhabited (CedarType.bool BoolType.tt)
+    exact true_is_instance_of_tt
   case inr =>
     have ⟨bty₂, rc₂, h₅', h₇⟩ := h₅
     specialize ih₂ h₁ h₂ h₅'
@@ -147,15 +145,14 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
           simp [InstanceOfBoolType] at ih₂₃
         case anyBool.tt =>
           apply And.intro
-          case left => apply empty_capabilities_invariant
-          case right => apply true_is_instance_of_tt
+          · apply empty_capabilities_invariant
+          · exact true_is_instance_of_tt
         case anyBool.anyBool =>
           apply And.intro
-          case left =>
-            simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
+          · simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
             apply capability_intersection_invariant
             simp [ih₂₁]
-          case right => apply bool_is_instance_of_anyBool
+          · apply bool_is_instance_of_anyBool
         all_goals {
           simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
           simp [ih₂₁]

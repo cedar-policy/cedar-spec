@@ -285,7 +285,7 @@ theorem in_list_iff_find?_some [DecidableEq α] [LT α] [DecidableLT α] [Strict
       exfalso
       rw [List.find?_eq_none] at h₂
       apply h₂ (k, v) h₁ ; clear h₂
-      simp
+      simp only [beq_self_eq_true]
     case some kv =>
       simp only [Option.some.injEq]
       have h₃ := List.find?_some h₂
@@ -314,7 +314,7 @@ theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp only [find?, kvs, mapOnValues, ← List.find?_pair_map]
-  cases m.1.find? (λ x => x.fst == k) <;> simp
+  cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none', Option.map_some']
 
 theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v →
@@ -363,16 +363,16 @@ theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
   simp only [contains, Option.isSome]
-  split
-  case h_1 h => simp [find?_mapOnValues_some f h]
-  case h_2 h => simp [find?_mapOnValues_none f h]
+  split <;> rename_i h
+  · simp [find?_mapOnValues_some f h]
+  · simp [find?_mapOnValues_none f h]
 
 theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
 := by
   unfold mapOnValues values kvs
   induction m.1
-  case nil => simp
+  case nil => simp only [List.map_nil]
   case cons hd tl ih =>
     simp only [List.map_cons, List.cons.injEq, true_and]
     trivial
@@ -388,7 +388,7 @@ theorem findOrErr_ok_iff_find?_some [LT α] [DecidableLT α] [DecidableEq α] {m
   m.findOrErr k e = .ok v ↔ m.find? k = some v
 := by
   unfold findOrErr
-  cases m.find? k <;> simp
+  cases m.find? k <;> simp only [Except.ok.injEq, Option.some.injEq]
 
 theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
   (wf : m.WellFormed) :
@@ -634,7 +634,7 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
       simp only [mapMOnValues_cons h₂, Option.pure_def, Option.bind_eq_bind,
         Option.bind_eq_none] at h₁
       cases h₃ : f vhd
-      case none => simp
+      case none => simp only [true_or]
       case some yhd =>
         right
         specialize h₁ yhd h₃
@@ -657,9 +657,8 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
       simp only [mapMOnValues_cons h₃, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
       intro yhd h₄ ytl h₅
       rcases h₁ with h₁ | h₁
-      case inl => subst h₁ ; simp [h₂] at h₄
-      case inr =>
-        replace h₅ := mapMOnValues_some_implies_all_some h₅
+      · subst h₁ ; simp [h₂] at h₄
+      · replace h₅ := mapMOnValues_some_implies_all_some h₅
         replace ⟨k', h₁⟩ := in_values_exists_key h₁
         replace ⟨y, _, h₅⟩ := h₅ (k', v) h₁
         simp [h₂] at h₅

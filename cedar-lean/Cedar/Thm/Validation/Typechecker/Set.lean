@@ -147,11 +147,9 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     rename_i res h₇
     exists hdty
     apply And.intro
-    case left =>
-      exists res.snd
+    · exists res.snd
       simp [←h₅, h₇]
-    case right =>
-      exact foldlM_of_lub_is_LUB h₃
+    · exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
     have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
@@ -161,8 +159,8 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     exists tyᵢ
     have ⟨cᵢ, h₇⟩ := h₇
     apply And.intro
-    case left  => exists cᵢ
-    case right => apply lub_lub_fixed h₈ h₆
+    · exists cᵢ
+    . exact lub_lub_fixed h₈ h₆
 
 theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → TypeOfIsSound xᵢ) :
@@ -273,19 +271,17 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
 := by
   have ⟨h₆, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ h₄
-  apply And.intro
-  case left => exact empty_guarded_capabilities_invariant
-  case right =>
-    simp [EvaluatesTo, evaluate, List.mapM₁, List.attach, List.mapM_pmap_subtype (evaluate · request entities)]
-    cases h₆ : xs.mapM fun x => evaluate x request entities <;>
-    simp [h₆]
-    case error err =>
-      simp [type_is_inhabited]
-      exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆
-    case ok vs =>
-      apply InstanceOfType.instance_of_set
-      intro v h₇
-      rw [←Set.make_mem] at h₇
-      exact type_of_set_is_sound_ok ih h₁ h₂ h₅ h₆ h₇
+  apply And.intro empty_guarded_capabilities_invariant
+  simp [EvaluatesTo, evaluate, List.mapM₁, List.attach, List.mapM_pmap_subtype (evaluate · request entities)]
+  cases h₆ : xs.mapM fun x => evaluate x request entities <;>
+  simp [h₆]
+  case error err =>
+    simp [type_is_inhabited]
+    exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆
+  case ok vs =>
+    apply InstanceOfType.instance_of_set
+    intro v h₇
+    rw [←Set.make_mem] at h₇
+    exact type_of_set_is_sound_ok ih h₁ h₂ h₅ h₆ h₇
 
 end Cedar.Thm

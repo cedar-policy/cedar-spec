@@ -163,8 +163,8 @@ theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
     apply List.not_mem_nil
   case mpr =>
     intro h₁
-    cases s
-    case mk xs =>
+    match s with
+    | mk xs =>
       rw [mk.injEq]
       rw [List.eq_nil_iff_forall_not_mem]
       intro x
@@ -187,8 +187,8 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
   simp only [List.Equiv, List.subset_def] at h₁
   have ⟨h₁, h₂⟩ := h₁
   constructor <;> intro h₃
-  case mp => apply h₁ h₃
-  case mpr => apply h₂ h₃
+  case mp => exact h₁ h₃
+  case mpr => exact h₂ h₃
 
 theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
@@ -219,11 +219,9 @@ theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
 := by
   simp only [List.Equiv, List.subset_def]
   constructor <;> intro a h₁
-  case left =>
-    rw [make_mem, ← in_list_iff_in_set]
+  · rw [make_mem, ← in_list_iff_in_set]
     exact h₁
-  case right =>
-    rw [in_list_iff_in_set, ← make_mem]
+  · rw [in_list_iff_in_set, ← make_mem]
     exact h₁
 
 theorem elts_make_nil [LT α] [DecidableLT α] [StrictLT α] :
