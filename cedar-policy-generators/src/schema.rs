@@ -1694,7 +1694,7 @@ mod tests {
     fn generate_hierarchy_from_schema(
         rng: &mut ThreadRng,
         fragment: &SchemaFragment,
-    ) -> cedar_policy_core::entities::Result<Entities> {
+    ) -> cedar_policy_core::entities::err::Result<Entities> {
         let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
         rng.fill_bytes(&mut bytes);
         let mut u = Unstructured::new(&bytes);
