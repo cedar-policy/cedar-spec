@@ -37,8 +37,8 @@ theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {ent
   intro h₁
   unfold hasError at h₁
   split at h₁
-  case h_1 => simp at h₁
-  case h_2 err h₂ => exact Exists.intro err h₂
+  · simp at h₁
+  · exists err
 
 theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policies : Policies) (request : Request) (entities : Entities) :
   (∃ policy,
@@ -389,9 +389,9 @@ theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {
       beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.principal uid entities) = b₁
     generalize (ety == request.principal.ty) = b₂
-    split
-    case h_1 => trivial
-    case h_2 h => split at h <;> simp at h
+    split <;> rename_i h
+    · trivial
+    · split at h <;> simp at h
 
 /--
   Lemma: evaluating the actionScope of any policy produces a boolean (and does not error)
@@ -408,9 +408,9 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
       simp at h
       have h₁ := @action_in_set_of_euids_produces_boolean list request entities
       unfold producesBool at h₁
-      split at h₁
-      case h_1 _ b h₂ => simp [h₂] at h
-      case h_2 => simp at h₁
+      split at h₁ <;> rename_i h₂
+      · simp [h₂] at h
+      · simp at h₁
   case actionScope scope =>
     simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
     cases scope <;> simp [evaluate, apply₁, apply₂, Result.as]
@@ -419,9 +419,9 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
         ne_eq, ite_not]
       generalize (inₑ request.action uid entities) = b₁
       generalize (ety == request.action.ty) = b₂
-      split
-      case h_1 => trivial
-      case h_2 h => split at h <;> simp at h
+      split <;> rename_i h
+      · trivial
+      · split at h <;> simp at h
 
 /--
   Lemma: evaluating the resourceScope of any policy produces a boolean (and does not error)
@@ -437,9 +437,9 @@ theorem resource_scope_produces_boolean {policy : Policy} {request : Request} {e
       beq_eq_false_iff_ne, ne_eq, ite_not]
     generalize (inₑ request.resource uid entities) = b₁
     generalize (ety == request.resource.ty) = b₂
-    split
-    case h_1 => trivial
-    case h_2 h => split at h <;> simp at h
+    split <;> rename_i h
+    · trivial
+    · split at h <;> simp at h
 
 /--
   Lemma: if something produces a boolean, it does not produce a non-boolean

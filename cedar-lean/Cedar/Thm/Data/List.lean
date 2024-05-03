@@ -376,18 +376,14 @@ theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α 
         case cons_cons y ys h₄ h₅ =>
           specialize ih h₄
           simp only [insertCanonical, gt_iff_lt]
-          split
-          case inl h₆ =>
-            apply SortedBy.cons_cons h₃
+          split <;> rename_i h₆
+          · apply SortedBy.cons_cons h₃
             exact SortedBy.cons_cons h₆ h₄
-          case inr h₆ =>
-            split
-            case inl h₇ =>
-              apply SortedBy.cons_cons h₅
+          · split <;> rename_i h₇
+            · apply SortedBy.cons_cons h₅
               simp only [insertCanonical, h₆, ↓reduceIte, gt_iff_lt, h₇] at ih
               exact ih
-            case inr h₇ =>
-              have h₈ := StrictLT.if_not_lt_gt_then_eq (f x) (f y) h₆ h₇
+            · have h₈ := StrictLT.if_not_lt_gt_then_eq (f x) (f y) h₆ h₇
               apply SortedBy.cons_cons h₃
               cases h₄
               case cons_nil => exact SortedBy.cons_nil
@@ -457,8 +453,8 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
           simp only [id_eq, gt_iff_lt] at ih
           have h₃ := insertCanonical_cases id x hd' tl'
           simp only [id_eq] at h₃
-          cases h₃
-          case inl _ _ _ h₃ =>
+          cases h₃ <;> rename_i h₃
+          case inl =>
             simp only [h₃]
             unfold List.Equiv
             simp only [cons_subset, mem_cons, true_or, or_true, true_and]
@@ -468,9 +464,9 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               intro a h₄
               simp [h₄]
             }
-          case inr _ _ _ h₃ =>
-            cases h₃
-            case inr _ _ _ h₃ =>
+          case inr =>
+            cases h₃ <;> rename_i h₃
+            case inr =>
               replace ⟨h₃, h₄, h₅⟩ := h₃
               simp only [h₅]
               unfold GT.gt at h₄
@@ -479,7 +475,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               unfold List.Equiv
               simp only [cons_subset, mem_cons, true_or, or_true, Subset.refl, and_self,
                 subset_cons]
-            case inl _ _ _ h₃ =>
+            case inl =>
               replace ⟨h₃, h₄, h₅⟩ := h₃
               simp only [h₅]
               simp only [h₃, h₄] at ih
