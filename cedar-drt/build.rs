@@ -16,8 +16,11 @@
 
 use std::env;
 fn main() {
-    let lean_dir = env::var("LEAN_LIB_DIR").unwrap();
+    let lean_dir = env::var("LEAN_LIB_DIR").expect(
+        "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
+    );
     println!("cargo:rustc-link-search=native=../cedar-lean/.lake/build/lib");
     println!("cargo:rustc-link-search=native={lean_dir}");
     println!("cargo:rustc-link-search=native=../cedar-lean/.lake/packages/std/.lake/build/lib");
+    println!("cargo:rerun-if-changed=../cedar-lean/.lake/build/lib");
 }
