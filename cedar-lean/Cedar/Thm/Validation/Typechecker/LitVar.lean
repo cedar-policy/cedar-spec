@@ -40,9 +40,8 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
     rw [←h₃, ←h₄]
-    constructor
-    case left => exact empty_guarded_capabilities_invariant
-    case right => first |
+    apply And.intro empty_guarded_capabilities_invariant
+    first |
       exact true_is_instance_of_tt |
       exact false_is_instance_of_ff |
       apply InstanceOfType.instance_of_int |

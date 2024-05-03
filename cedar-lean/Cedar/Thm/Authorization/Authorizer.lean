@@ -145,13 +145,12 @@ theorem sound_policy_slice_is_equierror (request : Request) (entities : Entities
   simp [List.mem_filter] <;>
   intro h₄ h₅ <;>
   apply And.intro
-  case left.left => exact h₁ h₄
-  case left.right => exact h₅
-  case right.left =>
-    by_contra h₆
+  · exact h₁ h₄
+  · exact h₅
+  · by_contra h₆
     specialize h₂ policy h₄ h₆
     exact h₂.right h₅
-  case right.right => exact h₅
+  · exact h₅
 
 /--
   an alternate, proved-equivalent, definition of errorPolicies that's easier to prove things about
@@ -170,24 +169,21 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
     intro pid p h₁ h₂
     exists p
     unfold errored hasError at h₂
-    split at h₂
-    case inl h₃ =>
-      unfold hasError
+    split at h₂ <;> rename_i h₃
+    · unfold hasError
       apply And.intro
-      case left => simp [h₃, h₁, List.mem_filter]
-      case right => simp at h₂; exact h₂
-    case inr => contradiction
+      · simp [h₃, h₁, List.mem_filter]
+      · simp at h₂; exact h₂
+    · contradiction
   case right =>
     intro p h₁
     exists p
     simp [List.mem_filter] at h₁
-    apply And.intro
-    case left => exact h₁.left
-    case right =>
-      unfold errored
-      split
-      case inl => rfl
-      case inr h₃ => simp [h₃] at h₁
+    apply And.intro h₁.left
+    unfold errored
+    split <;> rename_i h₃
+    · rfl
+    · simp [h₃] at h₁
 
 theorem errorPolicies_eq_for_sound_policy_slice (request : Request) (entities : Entities) (slice policies : Policies) :
   IsSoundPolicySlice request entities slice policies →
@@ -357,12 +353,10 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} 
     repeat rw [List.subset_def] at *
     constructor <;> intro a h₃ <;>
     replace h₃ := List.mem_map_of_mem (Value.prim ∘ Prim.entityUID) h₃
-    case left =>
-      specialize h₁ h₃
+    · specialize h₁ h₃
       simp at h₁
       exact h₁
-    case right =>
-      specialize h₂ h₃
+    · specialize h₂ h₃
       simp at h₂
       exact h₂
   case h_2 err h =>
@@ -459,8 +453,8 @@ theorem produces_boolean_means_not_non_boolean {e : Expr} {request : Request} {e
   unfold producesNonBool at h₂
   generalize (evaluate e request entities) = res at h₁ h₂
   split at h₁
-  case h_1 => simp at h₂
-  case h_2 => split at h₂ <;> simp at h₁
+  · simp at h₂
+  · split at h₂ <;> simp at h₁
 
 theorem principal_scope_does_not_throw {policy : Policy} {request : Request} {entities : Entities} {err : Error} :
   ¬ (evaluate policy.principalScope.toExpr request entities = .error err)

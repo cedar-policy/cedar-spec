@@ -153,10 +153,8 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     have ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩ := ih₃
     subst ht hc
     apply And.intro
-    case left =>
-      simp [GuardedCapabilitiesInvariant] at ih₃₁
+    · simp [GuardedCapabilitiesInvariant] at ih₃₁
       exact ih₃₁
-    case right =>
-      exists v₃
+    · exists v₃
 
 end Cedar.Thm

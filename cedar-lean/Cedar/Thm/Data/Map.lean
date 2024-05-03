@@ -363,9 +363,9 @@ theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α
   Map.contains m k = Map.contains (Map.mapOnValues f m) k
 := by
   simp only [contains, Option.isSome]
-  split
-  case h_1 h => simp [find?_mapOnValues_some f h]
-  case h_2 h => simp [find?_mapOnValues_none f h]
+  split <;> rename_i h
+  · simp [find?_mapOnValues_some f h]
+  · simp [find?_mapOnValues_none f h]
 
 theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
@@ -657,9 +657,8 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
       simp only [mapMOnValues_cons h₃, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
       intro yhd h₄ ytl h₅
       rcases h₁ with h₁ | h₁
-      case inl => subst h₁ ; simp [h₂] at h₄
-      case inr =>
-        replace h₅ := mapMOnValues_some_implies_all_some h₅
+      · subst h₁ ; simp [h₂] at h₄
+      · replace h₅ := mapMOnValues_some_implies_all_some h₅
         replace ⟨k', h₁⟩ := in_values_exists_key h₁
         replace ⟨y, _, h₅⟩ := h₅ (k', v) h₁
         simp [h₂] at h₅

@@ -68,9 +68,9 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
       exists BoolType.anyBool, res₂.snd
       cases bty₂ <;> simp at *
       simp [←hty₂, hc₁, lubBool]
-      split
-      case inl h₆ => simp [h₆]
-      case inr => rfl
+      split <;> rename_i h₆
+      · simp [h₆]
+      · rfl
 
 theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -91,43 +91,39 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
     subst h₆
     have ⟨hty, hc⟩ := h₅
     subst hty hc
-    apply And.intro
-    case left => exact empty_guarded_capabilities_invariant
-    case right =>
-      have h₇ := instance_of_ff_is_false ih₁₃
-      simp at h₇ ; subst h₇
-      simp [EvaluatesTo] at ih₁₂
-      rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
-      simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-      try exact type_is_inhabited (CedarType.bool BoolType.ff)
-      exact false_is_instance_of_ff
+    apply And.intro empty_guarded_capabilities_invariant
+    have h₇ := instance_of_ff_is_false ih₁₃
+    simp at h₇ ; subst h₇
+    simp [EvaluatesTo] at ih₁₂
+    rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
+    try exact type_is_inhabited (CedarType.bool BoolType.ff)
+    exact false_is_instance_of_ff
   case inr h₆ =>
     have ⟨bty₂, rc₂, hₜ, h₇⟩ := h₅
     split at h₇ <;> have ⟨hty, hc⟩ := h₇ <;> subst hty hc
     case inl h₈ =>
       subst h₈
-      apply And.intro
-      case left => exact empty_guarded_capabilities_invariant
-      case right =>
-        exists false ; simp [false_is_instance_of_ff]
-        cases b₁
-        case false =>
-          rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
-          simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool]
-        case true =>
-          rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
-          simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool]
-          simp [GuardedCapabilitiesInvariant] at ih₁₁
-          specialize ih₁₁ ih₁₂
-          have h₇ := capability_union_invariant h₁ ih₁₁
-          specialize ih₂ h₇ h₂ hₜ
-          have ⟨_, v₂, ih₂₂, ih₂₃⟩ := ih₂
-          simp [EvaluatesTo] at ih₂₂
-          rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
-          simp [Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure]
-          have h₈ := instance_of_ff_is_false ih₂₃
-          subst h₈
-          simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
+      apply And.intro empty_guarded_capabilities_invariant
+      exists false ; simp [false_is_instance_of_ff]
+      cases b₁
+      case false =>
+        rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+        simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool]
+      case true =>
+        rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
+        simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool]
+        simp [GuardedCapabilitiesInvariant] at ih₁₁
+        specialize ih₁₁ ih₁₂
+        have h₇ := capability_union_invariant h₁ ih₁₁
+        specialize ih₂ h₇ h₂ hₜ
+        have ⟨_, v₂, ih₂₂, ih₂₃⟩ := ih₂
+        simp [EvaluatesTo] at ih₂₂
+        rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
+        simp [Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure]
+        have h₈ := instance_of_ff_is_false ih₂₃
+        subst h₈
+        simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
     case inr h₈ =>
       cases b₁
       case false =>
@@ -156,11 +152,9 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
           apply instance_of_lubBool ; simp [ih₂₃]
         case true =>
           apply And.intro
-          case left =>
-            simp [GuardedCapabilitiesInvariant] at ih₂₁
+          · simp [GuardedCapabilitiesInvariant] at ih₂₁
             specialize ih₂₁ ih₂₂
             exact capability_union_invariant ih₁₁ ih₂₁
-          case right =>
-            apply instance_of_lubBool ; simp [ih₁₃]
+          · apply instance_of_lubBool ; simp [ih₁₃]
 
 end Cedar.Thm

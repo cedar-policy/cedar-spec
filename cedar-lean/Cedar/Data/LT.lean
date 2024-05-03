@@ -170,12 +170,10 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
         have h₆ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₄ h₅
         subst h₆
         simp at h₁
-        cases (List.lt_conn h₁)
-        case inl _ _ h₆ =>
-          have h₇ := List.cons_lt_cons xhd xtl ytl h₆
+        cases (List.lt_conn h₁) <;> rename_i h₆
+        · have h₇ := List.cons_lt_cons xhd xtl ytl h₆
           contradiction
-        case inr _ _ h₆ =>
-          have h₇ := List.cons_lt_cons xhd ytl xtl h₆
+        · have h₇ := List.cons_lt_cons xhd ytl xtl h₆
           contradiction
 
 instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where
