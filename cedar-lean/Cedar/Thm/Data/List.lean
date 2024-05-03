@@ -1053,6 +1053,13 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
         specialize @ih ytl h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
 
+/-- Deprecated alias for the forward direction of `mapM'_ok_iff_forall₂` -/
+@[deprecated]
+theorem mapM'_ok_implies_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .ok ys →
+  List.Forall₂ (λ x y => f x = .ok y) xs ys
+:= mapM'_ok_iff_forall₂.mp
+
 theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
@@ -1177,6 +1184,13 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
         simp only [h₁, Option.some.injEq] at h₂
         subst y'
         simp [@ih ytl h₃]
+
+/-- Deprecated alias for the forward direction of `mapM'_some_iff_forall₂` -/
+@[deprecated]
+theorem mapM'_some_implies_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
+  List.mapM' f xs = .some ys →
+  List.Forall₂ (λ x y => f x = .some y) xs ys
+:= mapM'_some_iff_forall₂.mp
 
 theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys ↔
