@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaFragment};
 
@@ -115,12 +115,12 @@ fn either_empty(spec: &ApplySpec) -> bool {
         || matches!(spec.principal_types.as_ref(), Some(ts) if ts.is_empty())
 }
 
-/// Just compare entity attribute types are equivalent
-pub fn validator_schema_entity_attr_equivalent(
+/// Just compare entity attribute types and context types are equivalent
+pub fn validator_schema_attr_types_equivalent(
     schema1: &cedar_policy_validator::ValidatorSchema,
     schema2: &cedar_policy_validator::ValidatorSchema,
 ) -> bool {
-    let attr_tys1: HashMap<
+    let entity_attr_tys1: HashMap<
         &cedar_drt::ast::Name,
         HashMap<&smol_str::SmolStr, &cedar_policy_validator::types::AttributeType>,
     > = HashMap::from_iter(
@@ -128,10 +128,24 @@ pub fn validator_schema_entity_attr_equivalent(
             .entity_types()
             .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
     );
-    let attr_tys2 = HashMap::from_iter(
+    let entity_attr_tys2 = HashMap::from_iter(
         schema2
             .entity_types()
             .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
     );
-    attr_tys1 == attr_tys2
+    let context_ty1: HashSet<cedar_policy_validator::types::Type> = HashSet::from_iter(
+        schema1
+            .action_entities()
+            .unwrap()
+            .iter()
+            .map(|e| schema1.get_action_id(e.uid()).unwrap().context_type()),
+    );
+    let context_ty2: HashSet<cedar_policy_validator::types::Type> = HashSet::from_iter(
+        schema2
+            .action_entities()
+            .unwrap()
+            .iter()
+            .map(|e| schema1.get_action_id(e.uid()).unwrap().context_type()),
+    );
+    entity_attr_tys1 == entity_attr_tys2 && context_ty1 == context_ty2
 }

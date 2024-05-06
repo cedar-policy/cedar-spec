@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt_inner::{schemas::validator_schema_entity_attr_equivalent, *};
+use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -80,7 +80,7 @@ fuzz_target!(|i: Input| {
     match (validator_schema1, validator_schema2) {
         (Ok(s1), Ok(s2)) => {
             assert!(
-                validator_schema_entity_attr_equivalent(&s1, &s2),
+                validator_schema_attr_types_equivalent(&s1, &s2),
                 "reduced to different validator schemas: {:?}\n{:?}\n",
                 s1,
                 s2
