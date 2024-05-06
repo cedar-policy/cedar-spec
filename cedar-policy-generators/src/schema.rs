@@ -513,6 +513,14 @@ impl Bindings {
     // Replace attribute types in an entity type with common types
     fn rewrite_entity_type(&self, u: &mut Unstructured<'_>, et: &EntityType) -> Result<EntityType> {
         let ty = &et.shape.0;
+        Ok(EntityType {
+            member_of_types: et.member_of_types.clone(),
+            shape: AttributesOrContext(self.rewrite_record_type(u, ty)?),
+        })
+    }
+
+    // Replace attribute types in a record type with common types
+    fn rewrite_record_type(&self, u: &mut Unstructured<'_>, ty: &SchemaType) -> Result<SchemaType> {
         let new_ty = if let Some(ids) = self.bindings.get(ty) {
             SchemaType::TypeDef {
                 type_name: Name::unqualified_name(u.choose(ids)?.clone()),
@@ -520,10 +528,7 @@ impl Bindings {
         } else {
             self.rewrite_type(u, ty)?
         };
-        Ok(EntityType {
-            member_of_types: et.member_of_types.clone(),
-            shape: AttributesOrContext(new_ty),
-        })
+        Ok(new_ty)
     }
 
     // Generate common types based on the bindings
@@ -602,11 +607,35 @@ impl Schema {
                 .map(|(id, et)| Ok((id.clone(), bindings.rewrite_entity_type(u, et)?)))
                 .collect::<Result<Vec<_>>>()?,
         );
-        let actions = self.schema.actions.clone();
+        let actions = HashMap::from_iter(
+            self.schema
+                .actions
+                .iter()
+                .map(|(id, ty)| {
+                    Ok((
+                        id.to_owned(),
+                        ActionType {
+                            attributes: ty.attributes.to_owned(),
+                            member_of: ty.member_of.clone(),
+                            applies_to: match &ty.applies_to {
+                                Some(applies) => Some(ApplySpec {
+                                    resource_types: applies.resource_types.clone(),
+                                    principal_types: applies.principal_types.clone(),
+                                    context: AttributesOrContext(
+                                        bindings.rewrite_record_type(u, &applies.context.0)?,
+                                    ),
+                                }),
+                                None => None,
+                            },
+                        },
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?,
+        );
         Ok(cedar_policy_validator::NamespaceDefinition {
             common_types: common_types.into(),
             entity_types: entity_types.into(),
-            actions,
+            actions: actions.into(),
         })
     }
     /// Get a slice of all of the entity types in this schema
