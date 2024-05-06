@@ -38,7 +38,7 @@ theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {ent
   unfold hasError at h₁
   split at h₁
   · simp at h₁
-  · exists err
+  · rename_i err _ ; exists err
 
 theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policies : Policies) (request : Request) (entities : Entities) :
   (∃ policy,
