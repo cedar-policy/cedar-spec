@@ -103,17 +103,23 @@ decreasing_by
     omega
 
 /--
+  `Prop` that a given `Result Partial.Value` is either a concrete value or an
+  error, not a residual
+-/
+def isValueOrError : Result Partial.Value → Prop
+  | .ok (.value _) => true
+  | .ok (.residual _) => false
+  | .error _ => true
+
+/--
   Corollary to the above: partial evaluation with concrete inputs gives a
   concrete value (or an error)
 -/
 theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
-  match Partial.evaluate expr request entities with
-  | .ok (.value _) => true
-  | .ok (.residual _) => false
-  | .error _ => true
+  isValueOrError (Partial.evaluate expr request entities)
 := by
-  simp only [on_concrete_eqv_concrete_eval expr request entities wf, Except.map]
+  simp only [on_concrete_eqv_concrete_eval expr request entities wf, Except.map, isValueOrError]
   split
   <;> rename_i h
   <;> split at h
