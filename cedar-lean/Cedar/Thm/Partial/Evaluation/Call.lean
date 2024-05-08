@@ -18,6 +18,7 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Partial.Evaluation.Basic
 import Cedar.Thm.Partial.Evaluation.Set
 
 namespace Cedar.Thm.Partial.Evaluation.Call
@@ -41,11 +42,13 @@ theorem evaluateCall_on_concrete_eqv_concrete {vs : List Spec.Value} {xfn : ExtF
   with the same subexpressions
 -/
 theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {xfn : ExtFun} :
-  (∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value) →
-  Partial.evaluate (Partial.Expr.call xfn (xs.map₁ λ x => Spec.Expr.asPartialExpr x.val)) request entities = (Spec.evaluate (Spec.Expr.call xfn xs) request entities).map Partial.Value.value
+  (∀ x ∈ xs, PartialEvalEquivConcreteEval x request entities) →
+  PartialEvalEquivConcreteEval (Spec.Expr.call xfn xs) request entities
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁
-  unfold Partial.evaluate Spec.evaluate
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  simp only
   rw [List.map₁_eq_map Spec.Expr.asPartialExpr]
   rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
   rw [List.mapM₁_eq_mapM (Spec.evaluate · request entities)]

@@ -30,12 +30,13 @@ open Cedar.Spec (Result)
   with the same subexpressions
 -/
 theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
-  Partial.evaluate x₁ request entities = (Spec.evaluate x₁ request entities).map Partial.Value.value →
-  Partial.evaluate x₂ request entities = (Spec.evaluate x₂ request entities).map Partial.Value.value →
-  Partial.evaluate (Partial.Expr.and x₁ x₂) request entities = (Spec.evaluate (Spec.Expr.and x₁ x₂) request entities).map Partial.Value.value
+  PartialEvalEquivConcreteEval x₁ request entities →
+  PartialEvalEquivConcreteEval x₂ request entities →
+  PartialEvalEquivConcreteEval (Spec.Expr.and x₁ x₂) request entities
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁ ih₂
-  unfold Partial.evaluate Spec.evaluate
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁, ih₂]
   simp only [Except.map, pure, Except.pure, Result.as, Coe.coe]
   cases h₁ : Spec.evaluate x₁ request entities <;> simp only [Bool.not_eq_true', Except.bind_err, Except.bind_ok]

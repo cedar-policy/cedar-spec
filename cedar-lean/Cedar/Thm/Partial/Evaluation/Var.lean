@@ -79,9 +79,9 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
 -/
 theorem on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
-  Partial.evaluate (Partial.Expr.var v) request entities = (Spec.evaluate (Spec.Expr.var v) request entities).map Partial.Value.value
+  PartialEvalEquivConcreteEval (Spec.Expr.var v) request entities
 := by
-  unfold Partial.evaluate
+  unfold PartialEvalEquivConcreteEval Spec.Expr.asPartialExpr Partial.evaluate
   exact partialEvaluateVar_on_concrete_eqv_concrete_eval v request entities wf
 
 end Cedar.Thm.Partial.Evaluation.Var

@@ -113,11 +113,12 @@ theorem evaluateGetAttr_on_concrete_eqv_concrete {v : Spec.Value} {a : Attr} {en
   `Spec.Expr.getAttr` with the same subexpressions
 -/
 theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {attr : Attr} :
-  Partial.evaluate x₁ request entities = (Spec.evaluate x₁ request entities).map Partial.Value.value →
-  Partial.evaluate (Partial.Expr.getAttr x₁ attr) request entities = (Spec.evaluate (Spec.Expr.getAttr x₁ attr) request entities).map Partial.Value.value
+  PartialEvalEquivConcreteEval x₁ request entities →
+  PartialEvalEquivConcreteEval (Spec.Expr.getAttr x₁ attr) request entities
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁
-  unfold Partial.evaluate Spec.evaluate
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁]
   cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
   case error e => simp [Except.map]

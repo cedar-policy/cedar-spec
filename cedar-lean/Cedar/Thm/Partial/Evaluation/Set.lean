@@ -34,9 +34,10 @@ open Cedar.Spec (Result)
   exprs
 -/
 theorem mapM_partial_eval_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
-  (∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value) →
+  (∀ x ∈ xs, PartialEvalEquivConcreteEval x request entities) →
   xs.mapM (λ x => Partial.evaluate x.asPartialExpr request entities) = (xs.mapM (Spec.evaluate · request entities)).map λ vs => vs.map Partial.Value.value
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁
   induction xs
   case nil => simp [Except.map, pure, Except.pure]
@@ -71,11 +72,13 @@ theorem mapM_partial_eval_eqv_concrete_eval {xs : List Spec.Expr} {request : Spe
   with the same subexpressions
 -/
 theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
-  (∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value) →
-  Partial.evaluate (Partial.Expr.set (xs.map₁ λ x => Spec.Expr.asPartialExpr x.val)) request entities = (Spec.evaluate (Spec.Expr.set xs) request entities).map Partial.Value.value
+  (∀ x ∈ xs, PartialEvalEquivConcreteEval x request entities) →
+  PartialEvalEquivConcreteEval (Spec.Expr.set xs) request entities
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁
-  unfold Partial.evaluate Spec.evaluate
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  simp only
   rw [List.map₁_eq_map Spec.Expr.asPartialExpr]
   rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
   rw [List.mapM₁_eq_mapM (Spec.evaluate · request entities)]

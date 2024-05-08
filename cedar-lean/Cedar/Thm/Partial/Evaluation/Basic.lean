@@ -15,8 +15,12 @@
 -/
 
 import Cedar.Partial.Entities
+import Cedar.Partial.Evaluator
+import Cedar.Partial.Expr
 import Cedar.Partial.Request
 import Cedar.Partial.Value
+import Cedar.Spec.Evaluator
+import Cedar.Spec.Expr
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 import Cedar.Thm.Data.Map
@@ -78,3 +82,14 @@ def Entities.AllWellFormed (entities : Partial.Entities) : Prop :=
   entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed
 
 end Cedar.Partial
+
+namespace Cedar.Thm.Partial
+
+/--
+  Prop that partial evaluation and concrete evaluation of the same concrete
+  expression produce the same result
+-/
+def PartialEvalEquivConcreteEval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities) : Prop :=
+  Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
+
+end Cedar.Thm.Partial

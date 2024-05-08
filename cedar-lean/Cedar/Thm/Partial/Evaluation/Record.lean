@@ -101,11 +101,13 @@ private theorem mapM₂_eq_mapM_partial_bindAttr [SizeOf β]
   with the same subexpressions
 -/
 theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {request : Spec.Request} {entities : Spec.Entities} :
-  (∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value) →
-  Partial.evaluate (Partial.Expr.record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asPartialExpr))) request entities = (Spec.evaluate (Spec.Expr.record attrs) request entities).map Partial.Value.value
+  (∀ kv ∈ attrs, PartialEvalEquivConcreteEval kv.snd request entities) →
+  PartialEvalEquivConcreteEval (Spec.Expr.record attrs) request entities
 := by
+  unfold PartialEvalEquivConcreteEval
   intro ih₁
-  unfold Partial.evaluate Spec.evaluate
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  simp only
   rw [List.map_attach₂_snd Spec.Expr.asPartialExpr]
   rw [mapM₂_eq_mapM_spec_bindAttr (Spec.evaluate · request entities)]
   rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)]

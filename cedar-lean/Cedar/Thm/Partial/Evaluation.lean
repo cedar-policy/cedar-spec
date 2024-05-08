@@ -44,11 +44,14 @@ open Cedar.Spec (Error Result)
 -/
 theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
-  Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
+  PartialEvalEquivConcreteEval expr request entities
 := by
-  cases expr <;> simp only [Spec.Expr.asPartialExpr]
-  case lit p => simp [Partial.evaluate, Spec.evaluate, Except.map]
-  case var v => exact Var.on_concrete_eqv_concrete_eval v request entities wf
+  unfold PartialEvalEquivConcreteEval
+  cases expr
+  case lit p => simp [Partial.evaluate, Spec.evaluate, Spec.Expr.asPartialExpr, Except.map]
+  case var v =>
+    have h := Var.on_concrete_eqv_concrete_eval v request entities wf
+    unfold PartialEvalEquivConcreteEval at h ; exact h
   case and x₁ x₂ =>
     have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
     have ih₂ := on_concrete_eqv_concrete_eval x₂ request entities wf
@@ -76,19 +79,19 @@ theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request
     have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
     exact HasAttr.on_concrete_eqv_concrete_eval ih₁
   case set xs =>
-    have ih : ∀ x ∈ xs, Partial.evaluate x request entities = (Spec.evaluate x request entities).map Partial.Value.value := by
+    have ih : ∀ x ∈ xs, PartialEvalEquivConcreteEval x request entities := by
       intro x h₁
       have := List.sizeOf_lt_of_mem h₁
       apply on_concrete_eqv_concrete_eval x request entities wf
     exact Set.on_concrete_eqv_concrete_eval ih
   case record attrs =>
-    have ih : ∀ kv ∈ attrs, Partial.evaluate kv.snd request entities = (Spec.evaluate kv.snd request entities).map Partial.Value.value := by
+    have ih : ∀ kv ∈ attrs, PartialEvalEquivConcreteEval kv.snd request entities := by
       intro kv h₁
       have := List.sizeOf_lt_of_mem h₁
       apply on_concrete_eqv_concrete_eval kv.snd request entities wf
     exact Record.on_concrete_eqv_concrete_eval ih
   case call xfn args =>
-    have ih : ∀ arg ∈ args, Partial.evaluate arg request entities = (Spec.evaluate arg request entities).map Partial.Value.value := by
+    have ih : ∀ arg ∈ args, PartialEvalEquivConcreteEval arg request entities := by
       intro arg h₁
       have := List.sizeOf_lt_of_mem h₁
       apply on_concrete_eqv_concrete_eval arg request entities wf
@@ -119,7 +122,8 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
   (wf : request.WellFormed) :
   isValueOrError (Partial.evaluate expr request entities)
 := by
-  simp only [on_concrete_eqv_concrete_eval expr request entities wf, Except.map, isValueOrError]
+  rw [on_concrete_eqv_concrete_eval expr request entities wf]
+  simp only [Except.map, isValueOrError]
   split
   <;> rename_i h
   <;> split at h
