@@ -1358,8 +1358,7 @@ impl<'a> ExprGenerator<'a> {
                     gen!(u,
                     // UID literal
                     13 => {
-                        let entity_type_name =
-                            name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
+                        let entity_type_name = name.prefix_namespace_if_unqualified(self.schema.namespace());
                         Ok(ast::Expr::val(self.arbitrary_uid_with_type(
                             &entity_type_name, u,
                         )?))
@@ -1813,7 +1812,7 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
-                    name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
+                    name.prefix_namespace_if_unqualified(self.schema.namespace());
                 Ok(AttrValue::UIDLit(
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
@@ -2021,7 +2020,7 @@ impl<'a> ExprGenerator<'a> {
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name =
-                    name.prefix_namespace_if_unqualified(self.schema.namespace().cloned());
+                    name.prefix_namespace_if_unqualified(self.schema.namespace());
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::from(euid))
             }
@@ -2130,7 +2129,7 @@ impl<'a> ExprGenerator<'a> {
             .choose(&self.schema.actions_eids)
             .map_err(|e| while_doing("choosing an action".into(), e))?;
         Ok(uid_for_action_name(
-            self.schema.namespace.clone(),
+            self.schema.namespace.as_ref(),
             action.clone(),
         ))
     }
