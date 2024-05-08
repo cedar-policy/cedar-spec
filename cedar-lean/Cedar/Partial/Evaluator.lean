@@ -125,9 +125,9 @@ def evaluateVar (v : Var) (req : Partial.Request) : Result Partial.Value :=
   | .principal => .ok req.principal
   | .action    => .ok req.action
   | .resource  => .ok req.resource
-  | .context   => match req.context.kvs.mapM λ (k, v) => match v with | .value v => some (k, v) | .residual _ => none with
-    | some kvs => .ok (.value (Map.make kvs))
-    | none     => .ok (.residual (Partial.Expr.record (req.context.kvs.map fun (k, v) => (k, v.asPartialExpr))))
+  | .context   => match req.context.mapMOnValues λ v => match v with | .value v => some v | .residual _ => none with
+    | some m   => .ok (.value m)
+    | none     => .ok (.residual (Partial.Expr.record (req.context.mapOnValues Partial.Value.asPartialExpr).kvs))
 
 /-- Call an extension function with partial values as arguments -/
 def evaluateCall (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Value :=

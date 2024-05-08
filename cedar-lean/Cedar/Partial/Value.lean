@@ -34,4 +34,7 @@ def Value.asPartialExpr (v : Partial.Value) : Partial.Expr :=
   | .value v    => v.asPartialExpr
   | .residual r => r
 
+instance : Coe Spec.Value Partial.Value where
+  coe := Partial.Value.value
+
 end Cedar.Partial
