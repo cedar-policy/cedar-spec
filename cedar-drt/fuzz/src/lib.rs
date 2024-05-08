@@ -21,17 +21,18 @@ pub use dump::*;
 pub use prt::*;
 pub mod schemas;
 
-pub use cedar_drt::cedar_test_impl::{
-    time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
-};
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::PolicyId;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
-use cedar_policy_core::evaluator::{EvaluationErrorKind, Evaluator};
+use cedar_policy_core::evaluator::Evaluator;
 use cedar_policy_core::extensions::Extensions;
 pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
+pub use cedar_testing::cedar_test_impl::{
+    time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
+    ValidationComparisonMode,
+};
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 use std::collections::HashSet;
@@ -58,11 +59,6 @@ pub fn run_eval_test(
     let eval = Evaluator::new(request.clone(), entities, &exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
-        Err(e) if matches!(e.error_kind(), EvaluationErrorKind::IntegerOverflow(_)) => {
-            // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
-            // overflow error. Once we migrate to Lean this should be unnecessary.
-            return;
-        }
         Err(_) => None,
     };
 
@@ -110,17 +106,6 @@ pub fn run_auth_test(
     let (rust_res, rust_auth_dur) =
         time_function(|| authorizer.is_authorized(request.clone(), policies, entities));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
-
-    // TODO(#172): For now, we ignore tests where `cedar-policy` returns an integer
-    // overflow error. Once we migrate to Lean this should be unnecessary.
-    if rust_res
-        .diagnostics
-        .errors
-        .iter()
-        .any(|e| e.to_string().contains("integer overflow"))
-    {
-        return rust_res;
-    }
 
     let definitional_res = custom_impl.is_authorized(&request, policies, entities);
 
@@ -193,37 +178,27 @@ pub fn run_val_test(
 
     let definitional_res = custom_impl.validate(&schema, policies, mode);
 
-    // If `cedar-policy` does not return an error, then the spec should not return an error.
-    // This implies type soundness of the `cedar-policy` validator since type soundness of the
-    // spec is formally proven.
-    //
-    // In particular, we have proven that if the spec validator does not return an error (B),
-    // then there are no authorization-time errors modulo some restrictions (C). So (B) ==> (C).
-    // DRT checks that if the `cedar-policy` validator does not return an error (A), then neither
-    // does the spec validator (B). So (A) ==> (B). By transitivity then, (A) ==> (C).
-
-    if rust_res.validation_passed() {
-        match definitional_res {
-            TestResult::Failure(err) => {
-                // TODO(#175): For now, ignore cases where the Lean code returned an error due to
-                // an unknown extension function.
-                if !err.contains("jsonToExtFun: unknown extension function") {
-                    panic!(
-                        "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
-                        &policies, schema
-                    );
-                }
+    match definitional_res {
+        TestResult::Failure(err) => {
+            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+            // an unknown extension function.
+            if !err.contains("jsonToExtFun: unknown extension function") {
+                panic!(
+                    "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
+                    &policies, schema
+                );
             }
-            TestResult::Success(definitional_res) => {
-                // Even if the Rust validator succeeds, the definitional validator may
-                // return "impossiblePolicy" due to greater precision. In this case, the
-                // input policy is well-typed, although it is guaranteed to always evaluate
-                // to false.
-                if definitional_res.errors == vec!["impossiblePolicy".to_string()] {
-                    return;
-                }
-
-                // But the definitional validator should not return any other error.
+        }
+        TestResult::Success(definitional_res) => {
+            if rust_res.validation_passed() {
+                // If `cedar-policy` does not return an error, then the spec should not return an error.
+                // This implies type soundness of the `cedar-policy` validator since type soundness of the
+                // spec is formally proven.
+                //
+                // In particular, we have proven that if the spec validator does not return an error (B),
+                // then there are no authorization-time errors modulo some restrictions (C). So (B) ==> (C).
+                // DRT checks that if the `cedar-policy` validator does not return an error (A), then neither
+                // does the spec validator (B). So (A) ==> (B). By transitivity then, (A) ==> (C).
                 assert!(
                     definitional_res.validation_passed(),
                     "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
@@ -232,10 +207,22 @@ pub fn run_val_test(
                     rust_res,
                     definitional_res,
                 );
-
-                // TODO(#69): We currently don't check for a relationship between validation errors.
-                // E.g., the error reported by the definitional validator should be in the list
-                // of errors reported by the production validator, but we don't check this.
+            } else {
+                // If `cedar-policy` returns an error, then only check the spec response
+                // if the validation comparison mode is `AgreeOnAll`.
+                match custom_impl.validation_comparison_mode() {
+                    ValidationComparisonMode::AgreeOnAll => {
+                        assert!(
+                            !definitional_res.validation_passed(),
+                            "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                            &policies,
+                            schema,
+                            rust_res,
+                            definitional_res,
+                        );
+                    }
+                    ValidationComparisonMode::AgreeOnValid => {} // ignore
+                };
             }
         }
     }

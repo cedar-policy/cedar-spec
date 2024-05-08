@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-use cedar_policy::integration_testing::{JsonRequest, JsonTest};
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{
     Context, EntityType, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
 };
 use cedar_policy_core::authorizer::Response;
+use cedar_policy_core::entities;
 use cedar_policy_core::entities::{Entities, TypeAndId};
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
+use cedar_policy_core::parser;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_testing::cedar_test_impl::RustEngine;
+use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
@@ -53,18 +57,19 @@ pub fn dump(
     let dirname = dirname.as_ref();
     std::fs::create_dir_all(dirname)?;
 
-    let schema_filename = dirname.join(format!("{testcasename}.cedarschema.json"));
+    let schema_filename = dirname.join(format!("{testcasename}.cedarschema"));
     let policies_filename = dirname.join(format!("{testcasename}.cedar"));
     let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
     let testcase_filename = dirname.join(format!("{testcasename}.json"));
 
-    let schema_file = std::fs::OpenOptions::new()
+    let mut schema_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .append(false)
         .truncate(true)
         .open(&schema_filename)?;
-    serde_json::to_writer_pretty(schema_file, &schema)?;
+    let schema_text = schema.as_natural_schema().unwrap();
+    writeln!(schema_file, "{schema_text}")?;
 
     let mut policies_file = std::fs::OpenOptions::new()
         .create(true)
@@ -76,7 +81,8 @@ pub fn dump(
         .static_policies()
         .map(ToString::to_string)
         .collect();
-    writeln!(policies_file, "{}", static_policies.join("\n"))?;
+    let policy_text = static_policies.join("\n");
+    writeln!(policies_file, "{policy_text}")?;
 
     let entities_file = std::fs::OpenOptions::new()
         .create(true)
@@ -86,50 +92,103 @@ pub fn dump(
         .open(&entities_filename)?;
     entities.write_to_json(entities_file).unwrap();
 
+    let requests: Vec<JsonRequest> = requests
+        .into_iter()
+        .enumerate()
+        .map(|(i, (q, a))| JsonRequest {
+            desc: format!("Request {i}"),
+            principal: dump_request_var(q.principal()),
+            action: dump_request_var(q.action()),
+            resource: dump_request_var(q.resource()),
+            context: dump_context(
+                q.context()
+                    .expect("`dump` does not support requests missing context"),
+            ),
+            enable_request_validation: true,
+            decision: a.decision,
+            reason: cedar_policy::Response::from(a.clone())
+                .diagnostics()
+                .reason()
+                .cloned()
+                .collect(),
+            errors: cedar_policy::Response::from(a)
+                .diagnostics()
+                .errors()
+                .map(AuthorizationError::id)
+                .cloned()
+                .collect(),
+        })
+        .collect();
+
+    let should_validate = passes_validation(schema.clone(), policies);
+
+    let testcase = JsonTest {
+        schema: schema_filename.display().to_string(),
+        policies: policies_filename.display().to_string(),
+        entities: entities_filename.display().to_string(),
+        should_validate,
+        requests: requests.clone(),
+    };
+
     let testcase_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .append(false)
         .truncate(true)
         .open(testcase_filename)?;
-    serde_json::to_writer_pretty(
-        testcase_file,
-        &JsonTest {
-            schema: schema_filename.display().to_string(),
-            policies: policies_filename.display().to_string(),
-            entities: entities_filename.display().to_string(),
-            should_validate: passes_validation(schema.clone(), policies),
-            requests: requests
-                .into_iter()
-                .enumerate()
-                .map(|(i, (q, a))| JsonRequest {
-                    desc: format!("Request {i}"),
-                    principal: dump_request_var(q.principal()),
-                    action: dump_request_var(q.action()),
-                    resource: dump_request_var(q.resource()),
-                    context: dump_context(
-                        q.context()
-                            .expect("`dump` does not support requests missing context"),
-                    ),
-                    enable_request_validation: true,
-                    decision: a.decision,
-                    reason: cedar_policy::Response::from(a.clone())
-                        .diagnostics()
-                        .reason()
-                        .cloned()
-                        .collect(),
-                    errors: cedar_policy::Response::from(a)
-                        .diagnostics()
-                        .errors()
-                        .map(AuthorizationError::id)
-                        .cloned()
-                        .collect(),
-                })
-                .collect(),
-        },
-    )?;
+    serde_json::to_writer_pretty(testcase_file, &testcase)?;
+
+    // The generated test case should successfully run
+    check_test(
+        policy_text,
+        schema_text,
+        entities,
+        should_validate,
+        requests,
+        testcasename,
+    );
 
     Ok(())
+}
+
+// Check that the generated test passes the `perform_integration_test` function
+fn check_test(
+    formatted_policies: String,
+    formatted_schema: String,
+    entities: &Entities,
+    should_validate: bool,
+    requests: Vec<JsonRequest>,
+    test_name: &str,
+) {
+    let parsed_policies = parser::parse_policyset(&formatted_policies)
+        .unwrap_or_else(|e| panic!("error re-parsing policy file: {e}"));
+
+    let parsed_schema =
+        ValidatorSchema::from_str_natural(&formatted_schema, Extensions::all_available())
+            .unwrap_or_else(|e| panic!("error re-parsing schema: {e}"))
+            .0;
+
+    let core_schema = cedar_policy_validator::CoreSchema::new(&parsed_schema);
+    let eparser = entities::EntityJsonParser::new(
+        Some(&core_schema),
+        Extensions::all_available(),
+        entities::TCComputation::ComputeNow,
+    );
+    let parsed_entities = eparser
+        .from_json_value(entities.to_json_value().unwrap())
+        .unwrap_or_else(|e| panic!("error re-parsing entities: {e}"));
+
+    let rust_impl = RustEngine::new();
+
+    perform_integration_test(
+        parsed_policies,
+        parsed_entities,
+        parsed_schema,
+        should_validate,
+        requests,
+        test_name,
+        &rust_impl,
+    );
 }
 
 /// Check whether a policy set can be successfully parsed

@@ -25,12 +25,11 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::sync::Once;
 
-use crate::cedar_test_impl::*;
 use crate::definitional_request_types::*;
-use cedar_policy::integration_testing::{CustomCedarImpl, IntegrationTestValidationResult};
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
+use cedar_testing::cedar_test_impl::*;
 pub use entities::Entities;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
@@ -110,6 +109,7 @@ type AuthorizationResponse = ResultDef<TimedDef<AuthorizationResponseInner>>;
 type EvaluationResponse = ResultDef<TimedDef<bool>>;
 type ValidationResponse = ResultDef<TimedDef<ValidationResponseInner>>;
 
+#[derive(Default)]
 pub struct LeanDefinitionalEngine {}
 
 fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
@@ -332,40 +332,25 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             ValidationMode::Strict,
             "Lean definitional validator only supports `Strict` mode"
         );
-        self.validate(schema, policies)
+        let result = self.validate(schema, policies);
+        result.map(|res| {
+            // `impossiblePolicy` is considered a warning rather than an error,
+            // so it's safe to drop here (although this means it can't be used
+            // for differential testing, see #254)
+            let errors = res
+                .errors
+                .into_iter()
+                .filter(|x| x != "impossiblePolicy")
+                .collect();
+            TestValidationResult { errors, ..res }
+        })
     }
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::PolicyIds
     }
-}
 
-/// Implementation of the trait used for integration testing. The integration
-/// tests expect the calls to `is_authorized` and `validate` to succeed.
-impl CustomCedarImpl for LeanDefinitionalEngine {
-    fn is_authorized(
-        &self,
-        request: &ast::Request,
-        policies: &ast::PolicySet,
-        entities: &Entities,
-    ) -> InterfaceResponse {
-        let response = self
-            .is_authorized(request, policies, entities)
-            .expect("Unexpected error from the Lean implementation of `is_authorized`");
-        response.response
-    }
-
-    fn validate(
-        &self,
-        schema: cedar_policy_validator::ValidatorSchema,
-        policies: &ast::PolicySet,
-    ) -> IntegrationTestValidationResult {
-        let response = self
-            .validate(&schema, policies)
-            .expect("Unexpected error from the Lean implementation of `validate`");
-        IntegrationTestValidationResult {
-            validation_passed: response.validation_passed(),
-            validation_errors_debug: format!("{:?}", response.errors),
-        }
+    fn validation_comparison_mode(&self) -> ValidationComparisonMode {
+        ValidationComparisonMode::AgreeOnValid
     }
 }

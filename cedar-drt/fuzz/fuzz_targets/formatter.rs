@@ -179,11 +179,11 @@ fuzz_target!(|input: FuzzTargetInput| {
             );
             assert!(
                 roundtripped
-                    .non_head_constraints()
-                    .eq_shape(t.non_head_constraints()),
+                    .non_scope_constraints()
+                    .eq_shape(t.non_scope_constraints()),
                 "\nnew policy condition: {}\nold policy condition: {}\n",
-                roundtripped.non_head_constraints(),
-                t.non_head_constraints(),
+                roundtripped.non_scope_constraints(),
+                t.non_scope_constraints(),
             );
         }
         Err(err) => panic!(

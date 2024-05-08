@@ -52,3 +52,20 @@ If you run into weird build issues,
 3. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 
 If everything builds, but the integration tests are failing, then it may be helpful to set `RUST_BACKTRACE=1` and run `cargo test -- --nocapture` to print additional test information.
+
+## Running integration tests
+
+The integration tests are run by default in CI (e.g., as a part of each pull request), but you can also run them locally.
+In order to do this, you need to have the [`cedar-integration-tests`](https://github.com/cedar-policy/cedar-integration-tests) repository cloned in the `cedar` directory (`../cedar`).
+Then, run `cargo test --features "integration-testing"`.
+
+```bash
+# starting in the top-level directory (..)
+cd cedar
+rm -rf cedar-integration-tests
+git clone https://github.com/cedar-policy/cedar-integration-tests
+cd cedar-integration-tests
+tar xzf corpus-tests.tar.gz
+cd ../../cedar-drt
+cargo test --features "integration-testing"
+```

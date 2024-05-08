@@ -37,13 +37,14 @@ open Cedar.Spec.Ext
 open Cedar.Validation
 
 def jsonToName (json : Lean.Json) : ParseResult Name := do
-  let id ← getJsonField json "id" >>= jsonToString
-  let path_json ← getJsonField json "path" >>= jsonToArray
-  let path ← List.mapM jsonToString path_json.toList
-  .ok {
-    id := id,
-    path := path
-  }
+  let name ← jsonToString json
+  match List.reverse (name.splitOn "::") with
+  | [] => .error "jsonToName: empty name"
+  | [id] => .ok { id := id, path := [] }
+  | id :: rest => .ok {
+      id := id,
+      path := rest.reverse
+    }
 
 def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
   let (tag, body) ← unpackJsonSum json
@@ -347,7 +348,7 @@ def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?principal"
   let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
   let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?resource"
-  let condition ← getJsonField json "non_head_constraints" >>= jsonToExpr
+  let condition ← getJsonField json "non_scope_constraints" >>= jsonToExpr
   .ok {
     effect := effect,
     principalScope := .principalScope principalConstraint,

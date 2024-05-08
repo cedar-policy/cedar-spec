@@ -1,11 +1,11 @@
-name: Build cedar-spec
+name: Build and test cedar-spec
 
 on:
   pull_request:
 
 jobs:
   build_and_test_lean:
-    name: Build and Test Lean
+    name: Build and test Lean
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -13,7 +13,7 @@ jobs:
           - stable
     steps:
       - name: Checkout cedar-spec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Lean
@@ -31,7 +31,7 @@ jobs:
         run: source ~/.profile && lake exe CedarUnitTests
 
   build_and_test_drt:
-    name: Build and Test DRT
+    name: Build and test DRT
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,7 +39,7 @@ jobs:
           - stable
     steps:
       - name: Checkout cedar-spec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Lean
@@ -47,7 +47,7 @@ jobs:
         run: |
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
-      - name: rustup
+      - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
@@ -64,6 +64,11 @@ jobs:
       - name: cargo test (cedar-policy-generators)
         working-directory: ./cedar-policy-generators
         run: cargo test --verbose
-      - name: build.sh
+      - name: Build Lean libraries, and build & test cedar-drt/
         shell: bash
         run: source ~/.profile && ./build.sh
+
+  run-integration-tests:
+    uses: ./.github/workflows/run_integration_tests_reusable.yml
+    with:
+      cedar_spec_ref: ${{ github.ref }}

@@ -1,7 +1,6 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::expr::name_with_default_namespace;
 use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_name, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
@@ -95,8 +94,14 @@ impl Hierarchy {
         }
     }
 
-    /// generate an arbitrary uid based on the hierarchy
-    pub fn arbitrary_uid(&self, u: &mut Unstructured<'_>) -> Result<EntityUID> {
+    /// Generate an arbitrary uid based on the hierarchy. If `request_field`
+    /// is `Some(var)` then the generated uid may be unspecified with eid `var`.
+    /// Otherwise, the uid is guaranteed to be specified.
+    pub fn arbitrary_uid(
+        &self,
+        u: &mut Unstructured<'_>,
+        request_field: Option<ast::Var>,
+    ) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
         if u.ratio::<u8>(9, 10)? {
             let uid = u
@@ -104,8 +109,19 @@ impl Hierarchy {
                 .map_err(|e| while_doing("getting an arbitrary uid".into(), e))?;
             Ok(uid.clone())
         } else {
-            // Note: may generate an unspecified entity
-            u.arbitrary().map_err(Into::into)
+            match request_field {
+                Some(var) => {
+                    // generate an arbitrary uid, but replace the eid if it's unspecified
+                    let uid: EntityUID = u.arbitrary()?;
+                    match uid.entity_type() {
+                        ast::EntityType::Specified(_) => Ok(uid),
+                        ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
+                            ast::Eid::new(var.to_string()),
+                        )),
+                    }
+                }
+                None => arbitrary_specified_uid(u).map_err(Into::into),
+            }
         }
     }
     /// size hint for arbitrary_uid()
@@ -115,7 +131,7 @@ impl Hierarchy {
             arbitrary::size_hint::or(
                 // exists case
                 size_hint_for_choose(None),
-                // not-exists case
+                // not-exists case; both branches should lead to a similar cost
                 <EntityUID as Arbitrary>::size_hint(depth),
             ),
         )
@@ -139,7 +155,11 @@ impl Hierarchy {
             )?;
             Ok(uid.clone())
         } else {
-            Ok(EntityUID::from_components(typename.clone(), u.arbitrary()?))
+            Ok(EntityUID::from_components(
+                typename.clone(),
+                u.arbitrary()?,
+                None,
+            ))
         }
     }
     /// size hint for arbitrary_uid_with_type()
@@ -380,6 +400,16 @@ pub enum AttributesMode {
     // schema-based mode.
 }
 
+/// Helper function to generate an arbitrary UID (but not Unspecified), without
+/// regard to an existing schema or hierarchy
+pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
+    Ok(ast::EntityUID::from_components(
+        u.arbitrary::<ast::Name>()?,
+        u.arbitrary::<ast::Eid>()?,
+        None,
+    ))
+}
+
 /// Helper function that generates a new UID with the given type.
 /// Unlike `Hierarchy::arbitrary_uid_with_type()`, this doesn't take a
 /// `Hierarchy` parameter and doesn't make any effort to generate a UID that
@@ -396,7 +426,7 @@ pub(crate) fn generate_uid_with_type(
             Eid::new(nanoid!(n))
         }
     };
-    Ok(ast::EntityUID::from_components(ty, eid))
+    Ok(ast::EntityUID::from_components(ty, eid, None))
 }
 
 impl<'a, 'u> HierarchyGenerator<'a, 'u> {
@@ -423,7 +453,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .map(|name| {
                 let name = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name_with_default_namespace(schema.namespace(), name)
+                        name.prefix_namespace_if_unqualified(schema.namespace().cloned())
                     }
                     HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
                 };
@@ -479,9 +509,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             (
                                 build_qualified_entity_type_name(
                                     schema.namespace.clone(),
-                                    name.parse().unwrap_or_else(|e| {
-                                        panic!("invalid entity type {name:?}: {e}")
-                                    }),
+                                    ast::Name::unqualified_name(name.clone()),
                                 ),
                                 et,
                             )
@@ -515,17 +543,13 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         {
                             let allowed_parent_typename = build_qualified_entity_type_name(
                                 schema.namespace.clone(),
-                                allowed_parent_typename.parse().unwrap_or_else(|e| {
-                                    panic!(
-                                        "invalid parent typename {allowed_parent_typename:?}: {e}"
-                                    )
-                                }),
+                                allowed_parent_typename.clone(),
                             );
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
                                 // It should be very unlikely where loops involving multiple entity types occur in the schemas
                                 hierarchy_no_attrs
-                                    .uids_for_type(&allowed_parent_typename, &uid)
+                                    .uids_for_type(&allowed_parent_typename, uid)
                             {
                                 if self.u.ratio::<u8>(1, 2)? {
                                     parents.insert(possible_parent_uid.clone());
@@ -550,7 +574,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             }
                         }
                         // assert there is no self-edge
-                        assert!(!parents.contains(&uid));
+                        assert!(!parents.contains(uid));
                     }
                 }
                 // generate appropriate attributes for this entity
