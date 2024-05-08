@@ -271,9 +271,9 @@ fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
 }
 
 /// internal helper function, get the EntityUID corresponding to the given action
-pub fn uid_for_action_name(namespace: Option<ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
+pub fn uid_for_action_name(namespace: Option<&ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
     let entity_type =
-        build_qualified_entity_type_name(namespace, "Action".parse().expect("valid id"));
+        build_qualified_entity_type_name(namespace, &"Action".parse().expect("valid id"));
     ast::EntityUID::from_components(entity_type, action_name, None)
 }
 
@@ -317,8 +317,8 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
 /// Given an (optional) namespace and a type base name, build a fully
 /// qualified `Name`.
 pub(crate) fn build_qualified_entity_type_name(
-    namespace: Option<ast::Name>,
-    name: ast::Name,
+    namespace: Option<&ast::Name>,
+    name: &ast::Name,
 ) -> ast::Name {
     match build_qualified_entity_type(namespace, Some(name)) {
         ast::EntityType::Specified(type_name) => type_name,
@@ -359,8 +359,8 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
 /// If `basename` is `None`, then this builds an unspecified entity type. Use
 /// `build_qualified_entity_type_name` if `basename` is not `None`.
 fn build_qualified_entity_type(
-    namespace: Option<ast::Name>,
-    basename: Option<ast::Name>,
+    namespace: Option<&ast::Name>,
+    basename: Option<&ast::Name>,
 ) -> ast::EntityType {
     match basename {
         Some(basename) => {
@@ -418,7 +418,7 @@ fn build_attributes_by_type<'a>(
         .into_iter()
         .map(|(name, et)| {
             (
-                build_qualified_entity_type_name(namespace.cloned(), name.clone().into()),
+                build_qualified_entity_type_name(namespace, &name.clone().into()),
                 attrs_from_attrs_or_context(schema, &et.shape),
             )
         })
@@ -551,7 +551,7 @@ impl Schema {
         // types.
         let entity_type_names: Vec<ast::Name> = entity_type_ids
             .iter()
-            .map(|id| build_qualified_entity_type_name(namespace.clone(), id.clone().into()))
+            .map(|id| build_qualified_entity_type_name(namespace.as_ref(), &id.clone().into()))
             .collect();
 
         // now turn each of those names into an EntityType, no
@@ -619,8 +619,8 @@ impl Schema {
                         .filter_map(|(name, _)| match u.ratio::<u8>(1, 2) {
                             Ok(true) => {
                                 tys.insert(build_qualified_entity_type_name(
-                                    namespace.clone(),
-                                    name.clone().into(),
+                                    namespace.as_ref(),
+                                    &name.clone().into(),
                                 ));
                                 Some(name.clone().into())
                             }
@@ -803,12 +803,12 @@ impl Schema {
 
     fn arbitrary_uid_with_optional_type(
         &self,
-        ty_name: Option<ast::Name>,
+        ty_name: Option<&ast::Name>,
         hierarchy: Option<&Hierarchy>,
         request_field: ast::Var,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
-        let ty = build_qualified_entity_type(self.namespace().cloned(), ty_name);
+        let ty = build_qualified_entity_type(self.namespace(), ty_name);
         match ty {
             ast::EntityType::Specified(ty) => self
                 .exprgenerator(hierarchy)
@@ -908,10 +908,7 @@ impl Schema {
             .iter()
             .map(|(name, et)| {
                 (
-                    build_qualified_entity_type_name(
-                        self.namespace().cloned(),
-                        name.clone().into(),
-                    ),
+                    build_qualified_entity_type_name(self.namespace(), &name.clone().into()),
                     attrs_from_attrs_or_context(&self.schema, &et.shape),
                 )
             })
@@ -1128,14 +1125,17 @@ impl Schema {
                         while_doing("choosing one of the action principal types".into(), e)
                     })?;
                     self.arbitrary_uid_with_optional_type(
-                        Some(ty.clone()),
+                        Some(ty),
                         Some(hierarchy),
                         ast::Var::Principal,
                         u,
                     )?
                 }
             },
-            action: uid_for_action_name(self.namespace.clone(), ast::Eid::new(action_name.clone())),
+            action: uid_for_action_name(
+                self.namespace.as_ref(),
+                ast::Eid::new(action_name.clone()),
+            ),
             resource: match action
                 .applies_to
                 .as_ref()
@@ -1154,7 +1154,7 @@ impl Schema {
                         while_doing("choosing one of the action resource types".into(), e)
                     })?;
                     self.arbitrary_uid_with_optional_type(
-                        Some(ty.clone()),
+                        Some(ty),
                         Some(hierarchy),
                         ast::Var::Resource,
                         u,

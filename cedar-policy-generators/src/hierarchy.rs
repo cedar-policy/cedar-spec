@@ -469,7 +469,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .map(|name| {
                 let name = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name.prefix_namespace_if_unqualified(schema.namespace().cloned())
+                        name.prefix_namespace_if_unqualified(schema.namespace())
                     }
                     HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
                 };
@@ -529,8 +529,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         .map(|(name, et)| {
                             (
                                 build_qualified_entity_type_name(
-                                    schema.namespace.clone(),
-                                    ast::Name::unqualified_name(name.clone()),
+                                    schema.namespace.as_ref(),
+                                    &name.clone().into(),
                                 ),
                                 et,
                             )
@@ -563,8 +563,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .member_of_types
                         {
                             let allowed_parent_typename = build_qualified_entity_type_name(
-                                schema.namespace.clone(),
-                                allowed_parent_typename.clone(),
+                                schema.namespace.as_ref(),
+                                allowed_parent_typename,
                             );
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
