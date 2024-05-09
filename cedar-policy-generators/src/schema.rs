@@ -32,8 +32,8 @@ use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Id, Name, PolicyID};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, SchemaError, SchemaFragment, SchemaType,
-    TypeOfAttribute, ValidatorSchema,
+    ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
+    SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
 };
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
@@ -177,7 +177,6 @@ pub fn arbitrary_schematype_with_bounded_depth(
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<cedar_policy_validator::SchemaType> {
-    use cedar_policy_validator::SchemaTypeVariant;
     Ok(SchemaType::Type(uniform!(
         u,
         SchemaTypeVariant::String,
@@ -283,7 +282,6 @@ fn schematype_to_type(
     schema: &cedar_policy_validator::NamespaceDefinition,
     schematy: &cedar_policy_validator::SchemaType,
 ) -> Type {
-    use cedar_policy_validator::SchemaTypeVariant;
     match schematy {
         SchemaType::TypeDef { type_name } => schematype_to_type(
             schema,
@@ -341,7 +339,6 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
     schema: &'a cedar_policy_validator::NamespaceDefinition,
     attrsorctx: &'a AttributesOrContext,
 ) -> Attributes<'a> {
-    use cedar_policy_validator::SchemaTypeVariant;
     match &attrsorctx.0 {
         SchemaType::TypeDef { type_name } => match schema.common_types.get(&type_name.clone().try_into().unwrap()).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
             SchemaType::TypeDef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
@@ -376,28 +373,25 @@ fn attrs_in_schematype(
     schematype: &cedar_policy_validator::SchemaType,
 ) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType)>> {
     match schematype {
-        cedar_policy_validator::SchemaType::Type(variant) => {
-            use cedar_policy_validator::SchemaTypeVariant;
-            match variant {
-                SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Long => Box::new(std::iter::empty()),
-                SchemaTypeVariant::String => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
-                SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
-                SchemaTypeVariant::Record { attributes, .. } => {
-                    let toplevel = attributes
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.ty.clone()))
-                        .collect::<Vec<_>>();
-                    let recursed = toplevel
-                        .iter()
-                        .flat_map(|(_, v)| attrs_in_schematype(schema, v))
-                        .collect::<Vec<_>>();
-                    Box::new(toplevel.into_iter().chain(recursed))
-                }
+        cedar_policy_validator::SchemaType::Type(variant) => match variant {
+            SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Long => Box::new(std::iter::empty()),
+            SchemaTypeVariant::String => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
+            SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
+            SchemaTypeVariant::Record { attributes, .. } => {
+                let toplevel = attributes
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.ty.clone()))
+                    .collect::<Vec<_>>();
+                let recursed = toplevel
+                    .iter()
+                    .flat_map(|(_, v)| attrs_in_schematype(schema, v))
+                    .collect::<Vec<_>>();
+                Box::new(toplevel.into_iter().chain(recursed))
             }
-        }
+        },
         cedar_policy_validator::SchemaType::TypeDef { type_name } => attrs_in_schematype(
             schema,
             schema
@@ -437,7 +431,213 @@ fn build_attributes_by_type<'a>(
     hm
 }
 
+// Common type bindings
+#[derive(Debug)]
+struct Bindings {
+    // Bindings from `SchemaType` to a list of `Id`
+    // The `ids` field ensures that `Id`s are unique
+    // Note that `SchemaType`s should not contain any common type references
+    bindings: BTreeMap<SchemaType, Vec<Id>>,
+    // The set of `Id`s used in the bindings
+    ids: HashSet<Id>,
+}
+
+impl Bindings {
+    fn new() -> Self {
+        Self {
+            bindings: BTreeMap::new(),
+            ids: HashSet::new(),
+        }
+    }
+
+    // Add a `SchemaType` and `Id` binding
+    // Note that this function always succeeds even if the `Id` already exists
+    // Under that situation, we create a new `Id` based on the existing `Id`
+    fn add_binding(&mut self, binding: (SchemaType, Id)) {
+        let (ty, id) = binding;
+        // create a new id when the provided id has been used
+        let mut new_id = id;
+        while self.ids.contains(&new_id) {
+            new_id = format!("_{new_id}").parse().unwrap();
+        }
+        self.ids.insert(new_id.clone());
+        if let Some(binding_for_ty) = self.bindings.get_mut(&ty) {
+            binding_for_ty.push(new_id);
+        } else {
+            self.bindings.insert(ty, vec![new_id]);
+        }
+    }
+
+    // Replace types with common type references
+    // We only replace smaller types in composite types like sets and records
+    // to avoid circularity
+    // This function is a no-op for other types
+    fn rewrite_type(&self, u: &mut Unstructured<'_>, ty: &SchemaType) -> Result<SchemaType> {
+        match ty {
+            SchemaType::TypeDef { .. } => unreachable!("common type references shouldn't be here"),
+            SchemaType::Type(SchemaTypeVariant::Set { element }) => {
+                Ok(SchemaType::Type(SchemaTypeVariant::Set {
+                    element: Box::new(if let Some(ids) = self.bindings.get(element) {
+                        SchemaType::TypeDef {
+                            type_name: Name::unqualified_name(u.choose(ids)?.clone()),
+                        }
+                    } else {
+                        self.rewrite_type(u, element)?
+                    }),
+                }))
+            }
+            SchemaType::Type(SchemaTypeVariant::Record {
+                attributes,
+                additional_attributes,
+            }) => Ok(SchemaType::Type(SchemaTypeVariant::Record {
+                attributes: BTreeMap::from_iter(
+                    attributes
+                        .iter()
+                        .map(|(attr, attr_ty)| {
+                            Ok((
+                                attr.to_owned(),
+                                TypeOfAttribute {
+                                    ty: self.rewrite_type(u, &attr_ty.ty)?,
+                                    required: attr_ty.required.to_owned(),
+                                },
+                            ))
+                        })
+                        .collect::<Result<Vec<_>>>()?,
+                ),
+                additional_attributes: additional_attributes.to_owned(),
+            })),
+            _ => Ok(ty.clone()),
+        }
+    }
+
+    // Replace attribute types in an entity type with common types
+    fn rewrite_entity_type(&self, u: &mut Unstructured<'_>, et: &EntityType) -> Result<EntityType> {
+        let ty = &et.shape.0;
+        Ok(EntityType {
+            member_of_types: et.member_of_types.clone(),
+            shape: AttributesOrContext(self.rewrite_record_type(u, ty)?),
+        })
+    }
+
+    // Replace attribute types in a record type with common types
+    fn rewrite_record_type(&self, u: &mut Unstructured<'_>, ty: &SchemaType) -> Result<SchemaType> {
+        let new_ty = if let Some(ids) = self.bindings.get(ty) {
+            SchemaType::TypeDef {
+                type_name: Name::unqualified_name(u.choose(ids)?.clone()),
+            }
+        } else {
+            self.rewrite_type(u, ty)?
+        };
+        Ok(new_ty)
+    }
+
+    // Generate common types based on the bindings
+    // For a binding `ty` to `[id_1, id_2, ..., id_n]`
+    // We create common types as follows
+    // ```
+    // type id_1 = id_2;
+    // type id_2 = id_3;
+    // ...
+    // type id_n = rewrite_type(ty)
+    // ```
+    fn to_common_types(&self, u: &mut Unstructured<'_>) -> Result<HashMap<Id, SchemaType>> {
+        let mut common_types = HashMap::new();
+        for (ty, ids) in &self.bindings {
+            if ids.len() == 1 {
+                common_types.insert(ids.first().unwrap().clone(), self.rewrite_type(u, ty)?);
+            } else if ids.len() > 1 {
+                // ids[0] -> ids[1] -> ... -> ids[n]
+                for i in 0..(ids.len() - 1) {
+                    common_types.insert(
+                        ids[i].clone(),
+                        SchemaType::TypeDef {
+                            type_name: Name::unqualified_name(ids[i + 1].clone()),
+                        },
+                    );
+                    common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
+                }
+            }
+        }
+        Ok(common_types)
+    }
+}
+
+// Bind types to random ids recursively
+fn bind_type(ty: &SchemaType, u: &mut Unstructured<'_>, bindings: &mut Bindings) -> Result<()> {
+    // flip a coin to decide if we should create a binding for the top-level type
+    if u.ratio(1, 2)? {
+        bindings.add_binding((ty.clone(), u.arbitrary()?));
+    }
+    match ty {
+        SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Set { element }) => {
+            bind_type(element, u, bindings)?;
+        }
+        SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Record {
+            attributes,
+            additional_attributes: _,
+        }) => {
+            attributes
+                .iter()
+                .map(|(_, attr_ty)| bind_type(&attr_ty.ty, u, bindings))
+                .collect::<Result<Vec<()>>>()?;
+        }
+        SchemaType::TypeDef { .. } => unreachable!("common type references shouldn't exist here"),
+        _ => {}
+    };
+    Ok(())
+}
+
 impl Schema {
+    /// Add common types to the existing schema and return a new schema
+    pub fn add_common_types(
+        &self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<cedar_policy_validator::NamespaceDefinition> {
+        let attribute_types = &self.attributes;
+        let mut bindings = Bindings::new();
+        for (_, ty) in attribute_types {
+            bind_type(ty, u, &mut bindings)?;
+        }
+
+        let common_types = bindings.to_common_types(u)?;
+        let entity_types: HashMap<Id, EntityType> = HashMap::from_iter(
+            self.schema
+                .entity_types
+                .iter()
+                .map(|(id, et)| Ok((id.clone(), bindings.rewrite_entity_type(u, et)?)))
+                .collect::<Result<Vec<_>>>()?,
+        );
+        let actions = HashMap::from_iter(
+            self.schema
+                .actions
+                .iter()
+                .map(|(id, ty)| {
+                    Ok((
+                        id.to_owned(),
+                        ActionType {
+                            attributes: ty.attributes.to_owned(),
+                            member_of: ty.member_of.clone(),
+                            applies_to: match &ty.applies_to {
+                                Some(applies) => Some(ApplySpec {
+                                    resource_types: applies.resource_types.clone(),
+                                    principal_types: applies.principal_types.clone(),
+                                    context: AttributesOrContext(
+                                        bindings.rewrite_record_type(u, &applies.context.0)?,
+                                    ),
+                                }),
+                                None => None,
+                            },
+                        },
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?,
+        );
+        Ok(cedar_policy_validator::NamespaceDefinition {
+            common_types: common_types.into(),
+            entity_types: entity_types.into(),
+            actions: actions.into(),
+        })
+    }
     /// Get a slice of all of the entity types in this schema
     pub fn entity_types(&self) -> &[ast::Name] {
         &self.entity_types
@@ -485,9 +685,9 @@ impl Schema {
                 .keys()
                 .map(|k| k.clone().into())
                 .collect(),
-            principal_types: principal_types.into_iter().map(|p| p.clone()).collect(),
+            principal_types: principal_types.into_iter().cloned().collect(),
             actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
-            resource_types: resource_types.into_iter().map(|r| r.clone()).collect(),
+            resource_types: resource_types.into_iter().cloned().collect(),
             attributes,
             attributes_by_type,
             schema: nsdef,
@@ -561,7 +761,7 @@ impl Schema {
             .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
             .map(|id| {
                 Ok((
-                    id.clone().into(),
+                    id.clone(),
                     cedar_policy_validator::EntityType {
                         member_of_types: vec![],
                         shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
@@ -825,7 +1025,6 @@ impl Schema {
         ty: &Type,
         u: &mut Unstructured<'_>,
     ) -> Result<Option<cedar_policy_validator::SchemaType>> {
-        use cedar_policy_validator::SchemaTypeVariant;
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
             Type::Long => Some(SchemaTypeVariant::Long),
@@ -1215,7 +1414,7 @@ impl Schema {
 
 impl From<Schema> for SchemaFragment {
     fn from(schema: Schema) -> SchemaFragment {
-        SchemaFragment(HashMap::from_iter([(schema.namespace, schema.schema)].into_iter()).into())
+        SchemaFragment(HashMap::from_iter([(schema.namespace, schema.schema)]).into())
     }
 }
 
@@ -1707,7 +1906,7 @@ mod tests {
             ValidatorSchema::try_from(schema).expect("failed to convert to ValidatorSchema");
         let coreschema = CoreSchema::new(&vschema);
         Entities::from_entities(
-            h.entities().into_iter().map(|e| e.clone()),
+            h.entities().cloned(),
             Some(&coreschema),
             cedar_policy_core::entities::TCComputation::ComputeNow,
             Extensions::all_available(),

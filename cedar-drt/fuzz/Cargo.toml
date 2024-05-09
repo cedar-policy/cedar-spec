@@ -134,3 +134,9 @@ name = "json-schema-roundtrip"
 path = "fuzz_targets/json-schema-roundtrip.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "common-type-resolution"
+path = "fuzz_targets/common-type-resolution.rs"
+test = false
+doc = false

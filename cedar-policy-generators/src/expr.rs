@@ -1056,8 +1056,7 @@ impl<'a> ExprGenerator<'a> {
                             Type::IPAddr => "ipaddr".parse::<Id>().unwrap(),
                             Type::Decimal => "decimal".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
-                        }
-                        .into();
+                        };
                         gen!(u,
                         // if-then-else expression, where both arms are extension types
                         2 => Ok(ast::Expr::ite(
