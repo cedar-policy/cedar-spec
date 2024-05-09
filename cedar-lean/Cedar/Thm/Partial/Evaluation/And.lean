@@ -49,9 +49,10 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
       case bool b =>
         cases b <;> csimp
         case true =>
-          split <;> csimp <;> rename_i h₂ <;> rw [h₂]
-          · csimp
-          · rename_i v
+          split <;> csimp
+          case h_1 e h₂ => rw [h₂] ; csimp
+          case h_2 v h₂ =>
+            rw [h₂]
             cases v <;> try csimp
             case prim p => cases p <;> csimp
 
