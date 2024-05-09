@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Validation.Typechecker.Basic
 
@@ -59,7 +60,7 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         have ⟨hl₁, hr₁⟩ := h₁
         rw [eq_comm] at hl₁ hr₁ ; subst hl₁ hr₁
         simp [requiredAttr, Except.map] at h₂
-        split at h₂ <;> simp at h₂
+        split at h₂ <;> csimp at h₂
         subst h₂
         rename_i _ r _
         simp [AttrExprHasAttrType]
@@ -200,14 +201,10 @@ theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities}
     subst h₄
     rename_i vhd vtl
     apply List.Forall₂.cons
-    {
-      apply head_of_vals_instance_of_head_of_types _ h₁ h₂ h₅ h₇
-      apply ih ; simp only [List.mem_cons, true_or]
-    }
-    {
-      apply @vals_instance_of_types xtl c₁ env request entities rtl vtl _ h₁ h₂ h₆ h₈
+    · apply head_of_vals_instance_of_head_of_types _ h₁ h₂ h₅ h₇
+      apply ih ; csimp
+    · apply @vals_instance_of_types xtl c₁ env request entities rtl vtl _ h₁ h₂ h₆ h₈
       intro ax h₉ ; apply ih ; simp [h₉]
-    }
 
 theorem type_of_record_is_sound_ok {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rty : List (Attr × QualifiedType)} {avs : List (Attr × Value)}
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd)
@@ -244,10 +241,11 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       cases h₆ : evaluate hd.snd request entities <;> simp [h₆] at h₅
       subst h₄ h₅
       specialize ih hd
-      simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih
+      unfold TypeOfIsSound at ih
+      csimp at ih
       have ⟨ty', c', _, hh₃⟩ := hh₃
       specialize ih h₁ h₂ hh₃
-      have ⟨_, v, ih, _⟩ := ih
+      replace ⟨_, v, ih, _⟩ := ih
       simp [EvaluatesTo, h₆] at ih
       exact ih
     case ok vhd =>

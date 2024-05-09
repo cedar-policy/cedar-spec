@@ -48,7 +48,7 @@ theorem typecheck_is_sound (policy : Policy) (env : Environment) (t : CedarType)
   intro h₁ h₂
   simp [typecheck] at h₂
   cases h₃ : typeOf (Policy.toExpr policy) [] env <;> simp [h₃] at h₂
-  split at h₂ <;> simp at h₂
+  split at h₂ <;> csimp at h₂
   rename_i ht
   have hc := empty_capabilities_invariant request entities
   have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃

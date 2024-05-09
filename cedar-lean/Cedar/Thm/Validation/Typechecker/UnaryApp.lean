@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Validation.Typechecker.Basic
 
 /-!
@@ -112,18 +113,14 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
-  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
+  rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> rw [h₆] <;> csimp
   case inr.inr.inr =>
     have ⟨i, h₈⟩ := instance_of_int_is_int h₇
     subst h₈
     simp [apply₁, intOrErr]
-    cases __ : i.neg?
-    case none =>
-      simp only [or_false, or_true, true_and]
-      exact type_is_inhabited CedarType.int
-    case some i' =>
-      simp only [Except.ok.injEq, false_or, exists_eq_left']
-      apply InstanceOfType.instance_of_int
+    cases i.neg? <;> csimp
+    case none => exact type_is_inhabited CedarType.int
+    case some i' => exact InstanceOfType.instance_of_int
   all_goals {
     exact type_is_inhabited CedarType.int
   }
@@ -207,9 +204,7 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
   case inr.inr.inr =>
     have ⟨uid, h₈, h₉⟩ := instance_of_entity_type_is_entity h₇
     simp [apply₁, h₉, h₈]
-    cases h₁₀ : ety == ety' <;>
-    simp at h₁₀ <;>
-    simp [h₁₀]
+    cases h₁₀ : ety == ety' <;> csimp at h₁₀ <;> simp [h₁₀]
     case false => exact false_is_instance_of_ff
     case true => exact true_is_instance_of_tt
   all_goals {

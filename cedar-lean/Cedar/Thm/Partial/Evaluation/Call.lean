@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Partial.Evaluation.Basic
@@ -33,8 +34,8 @@ theorem evaluateCall_on_concrete_eqv_concrete {vs : List Spec.Value} {xfn : ExtF
   Partial.evaluateCall xfn (vs.map Partial.Value.value) = (Spec.call xfn vs).map Partial.Value.value
 := by
   unfold Partial.evaluateCall
-  simp only [List.mapM_map, List.mapM_some, Except.map]
-  cases Spec.call xfn vs <;> simp
+  simp only [List.mapM_map, List.mapM_some]
+  cases Spec.call xfn vs <;> simp [Except.map]
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.call`
@@ -54,7 +55,7 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   rw [List.mapM₁_eq_mapM (Spec.evaluate · request entities)]
   rw [List.mapM_map]
   rw [Set.mapM_partial_eval_eqv_concrete_eval ih₁]
-  cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.bind_ok, Except.bind_err]
+  cases xs.mapM (Spec.evaluate · request entities) <;> csimp
   case error e => simp [Except.map]
   case ok vs => exact evaluateCall_on_concrete_eqv_concrete
 

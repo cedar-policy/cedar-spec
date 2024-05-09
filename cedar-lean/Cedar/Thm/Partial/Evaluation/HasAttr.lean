@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
@@ -45,7 +46,7 @@ theorem Partial.attrsOf_on_concrete_eqv_attrsOf {v : Spec.Value} {entities : Spe
     case entityUID uid =>
       unfold Partial.Entities.attrsOrEmpty Spec.Entities.attrsOrEmpty Spec.Entities.asPartialEntities
       cases h₁ : (entities.mapOnValues Spec.EntityData.asPartialEntityData).find? uid
-      <;> simp only [Except.ok.injEq]
+      <;> csimp
       <;> cases h₂ : entities.find? uid <;> simp only
       <;> unfold Spec.EntityData.asPartialEntityData at h₁
       <;> simp only [← Map.find?_mapOnValues, Option.map_eq_none', Option.map_eq_some'] at h₁
@@ -54,7 +55,8 @@ theorem Partial.attrsOf_on_concrete_eqv_attrsOf {v : Spec.Value} {entities : Spe
       case some.none => simp [h₂] at h₁
       case some.some edata₁ edata₂ =>
         replace ⟨edata₁, ⟨h₁, h₃⟩⟩ := h₁
-        simp only [h₂, Option.some.injEq] at h₁
+        rw [h₂] at h₁
+        csimp at h₁
         subst h₁ h₃
         simp [Map.mapOnValues]
 
@@ -67,8 +69,7 @@ theorem Partial.hasAttr_on_concrete_eqv_hasAttr {v : Spec.Value} {entities : Spe
 := by
   unfold Partial.hasAttr Spec.hasAttr
   simp only [Partial.attrsOf_on_concrete_eqv_attrsOf, Except.map]
-  cases Spec.attrsOf v λ uid => .ok (entities.attrsOrEmpty uid)
-  <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
+  cases Spec.attrsOf v λ uid => .ok (entities.attrsOrEmpty uid) <;> csimp
   case ok m => simp [← Map.mapOnValues_contains]
 
 /--
@@ -93,7 +94,7 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   intro ih₁
   unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁]
-  cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
+  cases Spec.evaluate x₁ request entities <;> csimp
   case error e => simp [Except.map]
   case ok v₁ => exact Partial.evaluateHasAttr_on_concrete_eqv_hasAttr
 

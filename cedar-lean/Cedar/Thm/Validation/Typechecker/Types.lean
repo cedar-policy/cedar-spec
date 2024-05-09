@@ -16,6 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Validation
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Validation.Typechecker.LUB
@@ -144,7 +145,7 @@ theorem instance_of_ff_is_false {v₁ : Value} :
   cases h₁ with
   | instance_of_bool b _ h₁ =>
     simp [InstanceOfBoolType] at h₁
-    cases b <;> simp at h₁
+    cases b <;> csimp at h₁
     rfl
 
 theorem instance_of_tt_is_true {v₁ : Value} :
@@ -155,7 +156,7 @@ theorem instance_of_tt_is_true {v₁ : Value} :
   cases h₁ with
   | instance_of_bool b _ h₁ =>
     simp [InstanceOfBoolType] at h₁
-    cases b <;> simp at h₁
+    cases b <;> csimp at h₁
     rfl
 
 theorem instance_of_anyBool_is_bool {v₁ : Value} :
@@ -460,7 +461,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
       apply @Nat.lt_trans _ (sizeOf rty)
       case h₁ =>
         simp [Map.find?, Map.kvs] at h₂
-        split at h₂ <;> simp at h₂
+        split at h₂ <;> csimp at h₂
         rename_i a' qty' h₃ ; rw [eq_comm] at h₂ ; subst h₂
         have h₄ := List.mem_of_find?_eq_some h₃
         apply @Nat.lt_trans _ (sizeOf (a', qty))
@@ -485,7 +486,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
   simp [hty₁, hty₂] at h₂
   split at h₁
   case h_1 =>
-    simp at h₁ ; subst h₁ hty₁ hty₂
+    csimp at h₁ ; subst h₁ hty₁ hty₂
     exact instance_of_lubBool_left h₂
   case h_2 _ _ sty₁ sty₂ =>
     cases h₃ : sty₁ ⊔ sty₂ <;> simp [h₃] at h₁
@@ -521,7 +522,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
       apply h₆ a qty₁ h₉
       simp [h₁₀, h₈]
   case h_4 =>
-    split at h₁ <;> simp at h₁
+    split at h₁ <;> csimp at h₁
     rename_i h₃
     subst h₁ h₃ hty₁ hty₂
     exact h₂

@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Map
@@ -39,13 +40,12 @@ theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID}
   unfold Partial.Entities.attrs Partial.Entities.AllWellFormed Partial.EntityData.WellFormed
   intro wf h₁
   cases h₂ : entities.findOrErr uid Error.entityDoesNotExist
-  <;> simp only [h₂, Except.bind_err, Except.bind_ok, Except.ok.injEq] at h₁
+  <;> rw [h₂] at h₁ <;> csimp at h₁
   case ok attrs =>
     subst h₁
     have ⟨wf_m, wf_edata⟩ := wf ; clear wf
     apply (wf_edata _ _).left
-    have h₃ := Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m
-    simp only [h₃]
+    rw [Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m]
     exists uid
 
 /--
@@ -60,9 +60,9 @@ theorem attrsOf_wf {entities : Partial.Entities} {v : Spec.Value} {attrs : Map S
 := by
   intro wf_e wf_v
   unfold Partial.attrsOf
-  cases v <;> try simp only [false_implies, Except.ok.injEq]
+  cases v <;> try csimp
   case prim p =>
-    cases p <;> simp only [false_implies]
+    cases p <;> csimp
     case entityUID uid => exact partialEntities_attrs_wf wf_e
   case record r =>
     intro h₁
@@ -94,7 +94,7 @@ theorem getAttr_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entit
 := by
   unfold Partial.getAttr Spec.getAttr
   simp only [attrsOf_on_concrete_eqv_concrete, Except.map]
-  cases Spec.attrsOf v entities.attrs <;> simp only [Except.bind_err, Except.bind_ok]
+  cases Spec.attrsOf v entities.attrs <;> csimp
   case ok m => simp [Map.findOrErr_mapOnValues, Except.map]
 
 /--
@@ -104,8 +104,8 @@ theorem getAttr_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entit
 theorem evaluateGetAttr_on_concrete_eqv_concrete {v : Spec.Value} {a : Attr} {entities : Spec.Entities} :
   Partial.evaluateGetAttr v a entities = Spec.getAttr v a entities
 := by
-  simp only [Partial.evaluateGetAttr, getAttr_on_concrete_eqv_concrete, pure, Except.pure, Except.map]
-  cases h : Spec.getAttr v a entities <;> simp [h]
+  simp only [Partial.evaluateGetAttr, getAttr_on_concrete_eqv_concrete, pure, Except.pure]
+  cases h : Spec.getAttr v a entities <;> simp [h, Except.map]
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.getAttr`
@@ -120,7 +120,7 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   intro ih₁
   unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁]
-  cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
+  cases Spec.evaluate x₁ request entities <;> csimp
   case error e => simp [Except.map]
   case ok v₁ => exact evaluateGetAttr_on_concrete_eqv_concrete
 

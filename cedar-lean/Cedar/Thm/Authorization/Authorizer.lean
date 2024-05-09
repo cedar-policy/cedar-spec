@@ -16,6 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Spec.Authorizer
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Authorization.Slicing
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Data.LT
@@ -37,7 +38,7 @@ theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {ent
   intro h₁
   unfold hasError at h₁
   split at h₁
-  · simp at h₁
+  · csimp at h₁
   · rename_i err _ ; exists err
 
 theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policies : Policies) (request : Request) (entities : Entities) :
@@ -73,7 +74,7 @@ theorem if_satisfiedPolicies_non_empty_then_satisfied (effect : Effect) (policie
   unfold satisfiedWithEffect at h₂
   exists policy
   simp [h₁]
-  cases h₃ : (policy.effect == effect) <;> simp at h₃
+  cases h₃ : (policy.effect == effect) <;> csimp at h₃
   case false => simp [h₃] at h₂
   case true =>
     simp [h₃]
@@ -173,7 +174,7 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
     · unfold hasError
       apply And.intro
       · simp [h₃, h₁, List.mem_filter]
-      · simp at h₂; exact h₂
+      · csimp at h₂; exact h₂
     · contradiction
   case right =>
     intro p h₁
@@ -206,7 +207,7 @@ theorem principal_eval_ok_means_principal_in_uid {policy : Policy} {request : Re
   simp [Scope.bound, PrincipalScope.scope] at h₂
   generalize h₃ : policy.principalScope.1 = x
   rw [h₃] at h₁ h₂
-  cases x <;> simp at h₁ h₂ <;>
+  cases x <;> csimp at h₁ h₂ <;>
   rw [h₂] at h₁
   case eq =>
     simp [evaluate, Var.eqEntityUID, apply₂] at h₁
@@ -229,7 +230,7 @@ theorem resource_eval_ok_means_resource_in_uid {policy : Policy} {request : Requ
   simp [Scope.bound, ResourceScope.scope] at h₂
   generalize h₃ : policy.resourceScope.1 = x
   rw [h₃] at h₁ h₂
-  cases x <;> simp at h₁ h₂ <;>
+  cases x <;> csimp at h₁ h₂ <;>
   rw [h₂] at h₁
   case eq =>
     simp [evaluate, Var.eqEntityUID, apply₂] at h₁
@@ -272,7 +273,7 @@ theorem mapM_over_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : 
   List.mapM g (list.map f) = list.mapM fun x => g (f x)
 := by
   induction list
-  case nil => simp
+  case nil => csimp
   case cons x xs h => simp [h]
 
 theorem mapM_evaluate_uids_produces_uids {list : List EntityUID} {request : Request} {entities : Entities} :
@@ -286,8 +287,8 @@ theorem asEntityUID_of_uid {uid : EntityUID} :
   Value.asEntityUID (.prim (.entityUID uid)) = .ok uid
 := by
   unfold Value.asEntityUID
-  split <;> simp
-  case h_1 uid' h => simp at h; simp [h]
+  split <;> csimp
+  case h_1 uid' h => csimp at h; simp [h]
 
 theorem mapM_asEntityUID_of_uid {uids : List EntityUID} :
   List.mapM Value.asEntityUID (uids.map (Value.prim ∘ Prim.entityUID)) = .ok uids
@@ -315,7 +316,7 @@ theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Decidable
   intro h₁
   replace ⟨bs, h₁⟩ := Except.isOk_iff_exists.mp h₁
   replace h₁ := List.mapM_ok_implies_all_ok h₁
-  cases as <;> simp at h₁
+  cases as <;> csimp at h₁
   case nil => simp [Set.elts_make_nil, pure, Except.pure, Except.isOk, Except.toBool]
   case cons ahd atl =>
     replace ⟨⟨b, _, h₁⟩, h₂⟩ := h₁
@@ -335,14 +336,14 @@ theorem mapM_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
 := by
   apply if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set
   unfold Except.isOk Except.toBool
-  split <;> simp
+  split <;> csimp
   case a.h_2 e h => simp [mapM_asEntityUID_of_uid] at h
 
 theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} {err : Error} :
   Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err = .ok (Set.make list)
 := by
   unfold Set.mapOrErr
-  split <;> simp
+  split <;> csimp
   case h_1 list' h =>
     -- in this case, mapping Value.asEntityUID over the set returns .ok
     rw [← List.mapM'_eq_mapM] at h
@@ -368,7 +369,7 @@ theorem action_in_set_of_euids_produces_boolean {list : List EntityUID} {request
   producesBool (Expr.binaryApp BinaryOp.mem (Expr.var .action) (Expr.set (list.map fun uid => Expr.lit (.entityUID uid)))) request entities
 := by
   unfold producesBool
-  split <;> simp
+  split <;> csimp
   case h_2 _ h =>
     simp [evaluate, apply₂, inₛ] at h
     rw [List.mapM₁_eq_mapM (evaluate · request entities)] at h
@@ -385,13 +386,12 @@ theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {
   cases policy.principalScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
-      beq_eq_false_iff_ne, ne_eq, ite_not]
+    csimp
     generalize (inₑ request.principal uid entities) = b₁
     generalize (ety == request.principal.ty) = b₂
     split <;> rename_i h
     · trivial
-    · split at h <;> simp at h
+    · split at h <;> csimp at h
 
 /--
   Lemma: evaluating the actionScope of any policy produces a boolean (and does not error)
@@ -405,23 +405,22 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
     split
     case h_1 => trivial
     case h_2 res h =>
-      simp at h
+      csimp at h
       have h₁ := @action_in_set_of_euids_produces_boolean list request entities
       unfold producesBool at h₁
       split at h₁ <;> rename_i h₂
       · simp [h₂] at h
-      · simp at h₁
+      · csimp at h₁
   case actionScope scope =>
     simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
     cases scope <;> simp [evaluate, apply₁, apply₂, Result.as]
     case isMem ety uid =>
-      simp only [Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok, beq_eq_false_iff_ne,
-        ne_eq, ite_not]
+      csimp
       generalize (inₑ request.action uid entities) = b₁
       generalize (ety == request.action.ty) = b₂
       split <;> rename_i h
       · trivial
-      · split at h <;> simp at h
+      · split at h <;> csimp at h
 
 /--
   Lemma: evaluating the resourceScope of any policy produces a boolean (and does not error)
@@ -433,13 +432,12 @@ theorem resource_scope_produces_boolean {policy : Policy} {request : Request} {e
   cases policy.resourceScope.1 <;>
   simp [evaluate, Var.eqEntityUID, Var.inEntityUID, Var.isEntityType, apply₁, apply₂]
   case isMem ety uid =>
-    simp only [Result.as, Coe.coe, Value.asBool, pure, Except.pure, Except.bind_ok,
-      beq_eq_false_iff_ne, ne_eq, ite_not]
+    csimp
     generalize (inₑ request.resource uid entities) = b₁
     generalize (ety == request.resource.ty) = b₂
     split <;> rename_i h
     · trivial
-    · split at h <;> simp at h
+    · split at h <;> csimp at h
 
 /--
   Lemma: if something produces a boolean, it does not produce a non-boolean
@@ -453,8 +451,8 @@ theorem produces_boolean_means_not_non_boolean {e : Expr} {request : Request} {e
   unfold producesNonBool at h₂
   generalize (evaluate e request entities) = res at h₁ h₂
   split at h₁
-  · simp at h₂
-  · split at h₂ <;> simp at h₁
+  · csimp at h₂
+  · split at h₂ <;> csimp at h₁
 
 theorem principal_scope_does_not_throw {policy : Policy} {request : Request} {entities : Entities} {err : Error} :
   ¬ (evaluate policy.principalScope.toExpr request entities = .error err)
@@ -528,7 +526,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
       clear h₂
       unfold producesNonBool at h₅
       have h₄ := @and_produces_bool_or_error policy.resourceScope.toExpr policy.condition request entities
-      split at h₄ <;> simp at h₄
+      split at h₄ <;> csimp at h₄
       case _ h₆ => simp [h₆] at h₅
       case _ h₆ => simp [h₆] at h₅
   case _ =>
@@ -542,7 +540,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
     unfold producesNonBool at h₄
     generalize (Expr.and policy.resourceScope.toExpr policy.condition) = resource_and_condition at h₂ h₄
     have h₅ := @and_produces_bool_or_error policy.actionScope.toExpr resource_and_condition request entities
-    split at h₅ <;> simp at h₅
+    split at h₅ <;> csimp at h₅
     case _ h₆ => simp [h₆] at h₄
     case _ h₆ => simp [h₆] at h₄
 

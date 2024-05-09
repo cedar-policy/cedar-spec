@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
@@ -36,7 +37,7 @@ theorem ancestorsOrEmpty_on_concrete_eqv_concrete {entities : Spec.Entities} {ui
   unfold Partial.Entities.ancestorsOrEmpty Spec.Entities.ancestorsOrEmpty
   unfold Spec.Entities.asPartialEntities Spec.EntityData.asPartialEntityData
   rw [← Map.find?_mapOnValues]
-  cases entities.find? uid <;> simp
+  cases entities.find? uid <;> csimp
 
 /--
   `Partial.inₑ` on concrete arguments is the same as `Spec.inₑ` on those arguments
@@ -45,7 +46,7 @@ theorem partialInₑ_on_concrete_eqv_concrete {uid₁ uid₂ : EntityUID} {entit
   Partial.inₑ uid₁ uid₂ entities = Spec.inₑ uid₁ uid₂ entities
 := by
   unfold Partial.inₑ Spec.inₑ
-  cases uid₁ == uid₂ <;> simp only [Bool.true_or, Bool.false_or]
+  cases uid₁ == uid₂ <;> csimp
   case false => simp [ancestorsOrEmpty_on_concrete_eqv_concrete]
 
 /--
@@ -66,13 +67,13 @@ theorem partialApply₂_on_concrete_eqv_concrete {op : BinaryOp} {v₁ v₂ : Sp
 := by
   unfold Partial.apply₂ Spec.apply₂ Except.map
   cases op <;> split <;> rename_i h
-  <;> simp only [false_implies, forall_const] at h
-  <;> try simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
+  <;> csimp at h
+  <;> try simp only
   case add | sub | mul => split <;> rename_i h <;> simp [h]
-  case mem.h_10 uid₁ uid₂ => simp [partialInₑ_on_concrete_eqv_concrete]
+  case mem.h_10 uid₁ uid₂ => simp only [partialInₑ_on_concrete_eqv_concrete]
   case mem.h_11 uid vs =>
     simp only [partialInₛ_on_concrete_eqv_concrete]
-    cases Spec.inₛ uid vs entities <;> simp
+    cases Spec.inₛ uid vs entities <;> csimp
   case mem.h_12 =>
     split <;> rename_i h₂ <;> split at h₂ <;> simp at *
     assumption
@@ -100,9 +101,9 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
   intro ih₁ ih₂
   unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁, ih₂, Except.map]
-  cases h₁ : Spec.evaluate x₁ request entities <;> simp only [h₁, Except.bind_err, Except.bind_ok]
+  cases h₁ : Spec.evaluate x₁ request entities <;> simp only [h₁] <;> csimp
   case ok v₁ =>
-    cases h₂ : Spec.evaluate x₂ request entities <;> simp only [h₂, Except.bind_err, Except.bind_ok]
+    cases h₂ : Spec.evaluate x₂ request entities <;> simp only [h₂] <;> csimp
     case ok v₂ => simp [evaluateBinaryApp_on_concrete_eqv_concrete, Except.map]
 
 end Cedar.Thm.Partial.Evaluation.Binary

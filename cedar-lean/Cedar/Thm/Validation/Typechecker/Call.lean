@@ -41,7 +41,7 @@ theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {e
   simp [typeOfCall, typeOfConstructor] at h₁
   split at h₁ <;> simp [ok, err] at h₁
   rename_i s
-  split at h₁ <;> simp at h₁
+  split at h₁ <;> csimp at h₁
   simp [h₁]
   rename_i h₃
   simp [h₃]
@@ -77,7 +77,7 @@ theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : 
   simp [typeOfCall, typeOfConstructor] at h₁
   split at h₁ <;> simp [ok, err] at h₁
   rename_i s
-  split at h₁ <;> simp at h₁
+  split at h₁ <;> csimp at h₁
   simp [h₁]
   rename_i h₃
   simp [h₃]
@@ -122,14 +122,14 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         rw [List.attach, List.pmap, List.mapM, List.mapM.loop, justType, Except.map] at h₁
         split at h₁ <;> simp at h₁
         rw [List.mapM.loop, justType, Except.map] at h₁
-        split at h₁ <;> simp at h₁
+        split at h₁ <;> csimp at h₁
         simp [List.mapM.loop, pure, Except.pure] at h₁
         rename_i res₁ h₂ _ res₂ h₃
         exists hd₁, hd₂, res₁.2, res₂.2
         simp [ok]
         have ⟨hl₁, hr₁⟩ := h₁
         subst hl₁ hr₁
-        simp at h₂ h₃
+        csimp at h₂ h₃
         simp [h₂, h₃]
       case cons hd₃ tl₃ =>
         simp [List.attach] at h₁
@@ -290,7 +290,7 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       simp [justType, Except.map] at h₂
       simp [pure, Except.pure] at h₁
       subst h₁
-      split at h₂ <;> simp at h₂
+      split at h₂ <;> csimp at h₂
       rename_i res₁ h₃
       exists hd₁, res₁.snd
       simp [ok, h₃, ←h₂]
@@ -302,7 +302,7 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       rw [justType, Except.map] at h₁
       split at h₁ <;> simp at h₁
       rename_i res₁ _ _ res₂ _
-      simp [pure, Except.pure] at h₁
+      csimp at h₁
       cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₂ <;> simp [h₂] at h₁
 
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}

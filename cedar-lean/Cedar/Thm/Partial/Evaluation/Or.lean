@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Basic
 
@@ -37,21 +38,20 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
   intro ih₁ ih₂
   unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁, ih₂]
-  simp only [Except.map, pure, Except.pure, Result.as, Coe.coe]
-  cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
+  unfold Except.map
+  cases Spec.evaluate x₁ request entities <;> csimp
   case ok v₁ =>
-    simp only [Spec.Value.asBool]
-    cases v₁ <;> try simp only [Except.bind_err]
+    cases v₁ <;> try csimp
     case prim p =>
-      cases p <;> simp only [Except.bind_ok, Except.bind_err]
+      cases p <;> csimp
       case bool b =>
-        cases b <;> simp only [ite_true, ite_false]
+        cases b <;> csimp
         case false =>
-          split <;> simp only [Except.bind_ok, Except.bind_err]
-          case h_1 e h₂ => simp only [h₂, Except.bind_err]
+          split <;> csimp
+          case h_1 e h₂ => simp [h₂]
           case h_2 v h₂ =>
-            simp only [h₂]
-            cases v <;> try simp only [Except.bind_err]
-            case prim p => cases p <;> simp
+            rw [h₂]
+            cases v <;> try csimp
+            case prim p => cases p <;> csimp
 
 end Cedar.Thm.Partial.Evaluation.Or

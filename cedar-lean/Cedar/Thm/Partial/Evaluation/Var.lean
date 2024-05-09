@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Basic
@@ -33,9 +34,9 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
   (wf : request.WellFormed) :
   Partial.evaluateVar v request = (Spec.evaluate (Spec.Expr.var v) request entities).map Partial.Value.value
 := by
-  unfold Partial.evaluateVar Spec.evaluate
+  unfold Partial.evaluateVar Spec.evaluate Except.map Spec.Request.asPartialRequest
   unfold Spec.Request.WellFormed at wf
-  cases v <;> simp only [Spec.Request.asPartialRequest, Except.map]
+  cases v <;> simp only
   case context =>
     split
     case h_1 m h₁ =>
@@ -49,7 +50,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
         unfold Map.toList at h₁
         replace ⟨pv, h₁, h₃⟩ := Map.mapMOnValues_some_implies_all_from_some h₁ (k, v) h₂
         replace h₁ := Map.make_mem_list_mem h₁
-        cases pv <;> simp only [Option.some.injEq] at h₃
+        cases pv <;> csimp at h₃
         case value v =>
           subst v
           rw [List.mem_map] at h₁
@@ -61,7 +62,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
       case right =>
         intro (k, v) h₂
         have ⟨v', h₃, h₄⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, v) (Map.in_kvs_in_mapOnValues h₂)
-        simp only [Option.some.injEq] at h₄
+        csimp at h₄
         subst h₄
         simp [h₃]
     case h_2 h₁ =>

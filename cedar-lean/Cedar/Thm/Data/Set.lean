@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Set
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 
@@ -68,14 +69,15 @@ theorem in_list_iff_in_mk {α : Type u} (v : α) (xs : List α) :
 theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
   hd ∈ Set.mk (hd :: tl)
 := by
-  simp only [Membership.mem]
-  apply List.mem_cons_self hd tl
+  unfold Membership.mem
+  exact List.mem_cons_self hd tl
 
 theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
   a ∈ Set.mk tl → a ∈ Set.mk (hd :: tl)
 := by
-  simp only [Membership.mem] ; intro h₁
-  apply List.mem_cons_of_mem hd h₁
+  unfold Membership.mem
+  intro h₁
+  exact List.mem_cons_of_mem hd h₁
 
 theorem mem_cons {a : α} {hd : α} {tl : List α} :
   a ∈ Set.mk (hd :: tl) → a = hd ∨ a ∈ tl
@@ -97,7 +99,7 @@ theorem empty_no_elts {α : Type u} (v : α) :
 := by
   intro h
   simp only [Membership.mem, Set.elts, Set.empty] at h
-  have _ := List.ne_nil_of_mem h
+  have := List.ne_nil_of_mem h
   contradiction
 
 theorem empty_wf {α : Type u} [LT α] [DecidableLT α] :
@@ -115,10 +117,10 @@ theorem make_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) :
   constructor
   case mp =>
     intro h₁ ; subst h₁
-    simp only [beq_iff_eq, mk.injEq]
+    csimp
     apply List.canonicalize_nil
   case mpr =>
-    intro h₁ ; simp only [beq_iff_eq, mk.injEq] at h₁
+    intro h₁ ; csimp at h₁
     apply (List.canonicalize_nil' id xs).mpr
     assumption
 
@@ -126,7 +128,7 @@ theorem make_non_empty [DecidableEq α] [LT α] [DecidableLT α] (xs : List α) 
   xs ≠ [] ↔ (Set.make xs).isEmpty = false
 := by
   unfold isEmpty; unfold empty; unfold make
-  simp only [beq_eq_false_iff_ne, ne_eq, mk.injEq]
+  csimp
   apply List.canonicalize_not_nil
 
 theorem non_empty_iff_exists [DecidableEq α] (s : Set α) :
@@ -148,7 +150,7 @@ theorem non_empty_iff_exists [DecidableEq α] (s : Set α) :
     intro h₂
     rw [← in_list_iff_in_set] at h₁
     cases s
-    simp only [mk.injEq] at h₂
+    csimp at h₂
     subst h₂
     simp [elts] at h₁
 
@@ -193,25 +195,24 @@ theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) 
 theorem make_mk_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.mk ys → xs ≡ ys
 := by
-  simp only [make, mk.injEq] ; intro h₁
-  have h₂ := List.canonicalize_equiv xs
+  simp only [make, mk.injEq]
+  intro h₁
   subst h₁
-  exact h₂
+  exact List.canonicalize_equiv xs
 
 theorem make_make_eqv [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
   Set.make xs = Set.make ys ↔ xs ≡ ys
 := by
+  simp only [make, mk.injEq]
   constructor <;> intro h
   case mp =>
-    simp only [make, mk.injEq] at h
     have h₁ := List.canonicalize_equiv xs
     have h₂ := List.canonicalize_equiv ys
     unfold id at h₁ h₂
     rw [← h] at h₂
-    have h₃ := List.Equiv.symm h₂; clear h₂
-    exact List.Equiv.trans (a := xs) (b := List.canonicalize (fun x => x) xs) (c := ys) h₁ h₃
+    replace h₂ := List.Equiv.symm h₂
+    exact List.Equiv.trans h₁ h₂
   case mpr =>
-    simp only [make, mk.injEq]
     apply List.equiv_implies_canonical_eq _ _ h
 
 theorem elts_make_equiv [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
@@ -259,16 +260,16 @@ theorem make_any_iff_any [LT α] [DecidableLT α] [StrictLT α] (f : α → Bool
   cases h₃ : List.any xs f
   case false =>
     by_contra h₄
-    simp only [Bool.not_eq_false, List.any_eq_true] at h₄
+    csimp at h₄
     have ⟨x, h₄, h₅⟩ := h₄
     specialize hr₁ h₄
     simp [List.any_of_mem hr₁ h₅] at h₃
   case true =>
-    simp only [List.any_eq_true] at *
+    csimp at *
     have ⟨x, h₃, h₄⟩ := h₃
     exists x
     simp only [h₄, and_true]
-    apply hl₁ h₃
+    exact hl₁ h₃
 
 theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
   Set.make (Set.elts (Set.make xs)) = Set.make xs
@@ -312,9 +313,8 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
  WellFormed (s₁ ∩ s₂)
 := by
   unfold WellFormed
-  simp only [Inter.inter, intersect]
+  simp only [Inter.inter, List.inter, intersect]
   simp only [make, toList, elts, mk.injEq] at *
-  simp only [List.inter]
   rename_i iLT iSLT iDecLT iDecEq
   have h₃ := @List.canonicalize_id_filter α iLT iSLT iDecLT (fun x => decide (x ∈ s₂.1)) s₁.1
   rw (config := {occs := .pos [1]}) [h₁]
@@ -336,7 +336,7 @@ theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [Decidabl
   xs ⊆ ys → Set.make xs ⊆ Set.make ys
 := by
   unfold HasSubset.Subset instHasSubsetSet List.instHasSubsetList subset
-  simp only [List.all_eq_true]
+  csimp
   intro h₁ x h₂
   rw [contains_prop_bool_equiv]
   rw [in_list_iff_in_set] at h₂
@@ -351,7 +351,7 @@ theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
 := by
   unfold HasSubset.Subset instHasSubsetSet subset
-  simp only [List.all_eq_true]
+  csimp
   constructor <;> intro h₁ a h₂ <;> specialize h₁ a
   case mp =>
     rw [in_list_iff_in_set] at h₁

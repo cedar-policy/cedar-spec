@@ -111,7 +111,7 @@ theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {reques
   rw [List.map_attach₂_snd Spec.Expr.asPartialExpr]
   rw [mapM₂_eq_mapM_spec_bindAttr (Spec.evaluate · request entities)]
   rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)]
-  simp only [List.mapM_map]
+  rw [List.mapM_map]
   induction attrs
   case nil => simp [Except.map, pure, Except.pure]
   case cons kv tl ih =>
@@ -122,30 +122,31 @@ theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {reques
     cases h₁ : Spec.bindAttr kv.fst (Spec.evaluate kv.snd request entities)
     <;> cases h₂ : Partial.bindAttr kv.fst (Partial.evaluate kv.snd request entities)
     <;> cases h₃ : Spec.evaluate kv.snd request entities
-    <;> simp only [h₁, h₂, List.mapM_cons, Except.bind_err, Except.bind_ok, bind_assoc, pure_bind, Option.pure_def, Option.bind_eq_bind, List.map_cons, List.mapM_cons]
+    <;> simp only [h₁, h₂, List.mapM_cons, bind_assoc]
+    <;> csimp
     <;> simp only [ih₁ kv, Except.map, true_or, List.mem_cons] at h₂
-    <;> simp only [h₃, Spec.bindAttr, Partial.bindAttr, Except.bind_ok, Except.bind_err, Except.error.injEq, Except.ok.injEq] at h₁ h₂
+    <;> simp only [h₃, Spec.bindAttr, Partial.bindAttr] at h₁ h₂
+    <;> csimp at h₁ h₂
     case error.error.error e₁ e₂ e₃ =>
       simp only [Except.map, Except.error.injEq]
       subst h₁ h₂
       rfl
     case ok.ok.ok val' pval val =>
       subst h₁ h₂
-      simp only [Option.some_bind]
+      csimp
       -- the remaning goal is just a statement about `tl`, not `kv` itself
       -- so we can dispatch it using `ih`
       generalize h₃ : (tl.mapM λ x => Partial.bindAttr x.fst (Partial.evaluate x.snd.asPartialExpr request entities)) = pres at *
       generalize h₄ : (tl.mapM λ x => Spec.bindAttr x.fst (Spec.evaluate x.snd request entities)) = sres at *
-      cases pres <;> cases sres
-      <;> simp only [Except.map, List.mem_cons, forall_eq_or_imp, Except.bind_ok, Except.bind_err, Except.error.injEq] at *
+      unfold Except.map at *
+      cases pres <;> cases sres <;> csimp at *
       case error.error e₁ e₂ => exact ih
-      case ok.error pvals e => split at ih <;> simp at ih
+      case ok.error pvals e => split at ih <;> csimp at ih
       case ok.ok pvals vals =>
-        split at ih <;> simp only [Except.ok.injEq, Partial.Value.value.injEq,
-          Spec.Value.record.injEq] at ih
+        split at ih
+        <;> simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq] at ih
         case h_1 vals' h₂ =>
-          simp only [h₂, Option.some_bind, Except.ok.injEq, Partial.Value.value.injEq,
-            Spec.Value.record.injEq]
+          simp only [h₂, Option.some_bind, Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
           exact Map.make_cons ih
 
 end Cedar.Thm.Partial.Evaluation.Record

@@ -16,6 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
@@ -48,21 +49,18 @@ theorem mapM_partial_eval_eqv_concrete_eval {xs : List Spec.Expr} {request : Spe
     )
     cases h₁ : Spec.evaluate hd request entities
     <;> cases h₂ : Partial.evaluate hd request entities
-    <;> simp only [h₁, h₂, List.mapM_cons, Except.bind_err, Except.bind_ok]
-    case error.error e₁ e₂ =>
-      simp only [ih₁ hd, h₁, Except.map, List.mem_cons, true_or, Except.error.injEq] at h₂
-      simp [h₂, Except.map]
-    case ok.error val e | error.ok e pval =>
-      simp [ih₁ hd, h₁, Except.map] at h₂
+    <;> simp only [h₁, h₂, List.mapM_cons]
+    <;> csimp
+    <;> simp only [ih₁ hd, h₁, Except.map, List.mem_cons, true_or, Except.error.injEq, Except.ok.injEq] at h₂
+    case error.error e₁ e₂ => simp [h₂, Except.map]
     case ok.ok val pval =>
-      simp only [ih₁, h₁, Except.map, List.mem_cons, true_or, Except.ok.injEq] at h₂
       subst h₂
       -- the remaining goal is just a statement about `tl`, not `hd` itself
       -- so we can dispatch it using `ih`
       generalize h₃ : (tl.mapM λ x => Partial.evaluate x.asPartialExpr request entities) = pres at *
       generalize h₄ : (tl.mapM λ x => Spec.evaluate x request entities) = sres at *
-      cases pres <;> cases sres
-      <;> simp only [Except.map, pure, Except.pure, List.mem_cons, Except.error.injEq, Except.ok.injEq, Except.bind_ok, Except.bind_err, List.cons.injEq, List.map_cons, forall_eq_or_imp, true_and] at *
+      unfold Except.map at *
+      cases pres <;> cases sres <;> csimp at *
       case error.error e₁ e₂ => exact ih
       case ok.ok pvals vals => exact ih
 
@@ -84,7 +82,8 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   rw [List.mapM₁_eq_mapM (Spec.evaluate · request entities)]
   rw [List.mapM_map]
   rw [mapM_partial_eval_eqv_concrete_eval ih₁]
-  cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.map, Except.bind_err, Except.bind_ok]
+  unfold Except.map
+  cases xs.mapM (Spec.evaluate · request entities) <;> csimp
   case ok vs => simp [List.mapM_map, List.mapM_some]
 
 end Cedar.Thm.Partial.Evaluation.Set

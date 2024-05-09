@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Validation.Typechecker.Basic
 
 /-!
@@ -44,7 +45,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
   cases h₂ : typeOf x₁ c env <;> simp [h₂, typeOfIf] at *
   rename_i res₁
   split at h₁ <;> try { simp [ok, err] at h₁ } <;>
-  rename_i c₁ hr₁ <;> simp at hr₁ <;> have ⟨ht₁, hc₁⟩ := hr₁
+  rename_i c₁ hr₁ <;> csimp at hr₁ <;> have ⟨ht₁, hc₁⟩ := hr₁
   case ok.h_1 =>
     exists BoolType.tt, res₁.snd ; simp [←ht₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
@@ -65,7 +66,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     have ⟨ht, hc⟩ := h₁
     subst ht hc hc₁
     exists res₂.fst, res₂.snd
-    simp only [Except.ok.injEq, true_and]
+    csimp
     exists res₃.fst, res₃.snd
 
 theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
@@ -83,7 +84,7 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
   have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃
   subst hb₁
-  cases bty₁ <;> simp at h₅
+  cases bty₁ <;> csimp at h₅
   case anyBool =>
     have ⟨h₅, h₆, ht, hc⟩ := h₅
     cases b₁
@@ -131,7 +132,7 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
     try exact type_is_inhabited ty
     have hb₁ := instance_of_tt_is_true ih₁₃
-    simp at hb₁ ; subst hb₁ ; simp only [ite_true]
+    csimp at hb₁ ; subst hb₁ ; csimp
     simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
     have h₆ := capability_union_invariant h₁ ih₁₁
     specialize ih₂ h₆ h₂ h₅
@@ -148,7 +149,7 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
     try exact type_is_inhabited ty
     have hb₁ := instance_of_ff_is_false ih₁₃
-    simp at hb₁ ; simp [hb₁]
+    csimp at hb₁ ; simp [hb₁]
     specialize ih₃ h₁ h₂ h₅
     have ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩ := ih₃
     subst ht hc

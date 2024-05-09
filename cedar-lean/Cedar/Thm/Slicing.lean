@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Authorization.Authorizer
 import Cedar.Thm.Authorization.Slicing
 
@@ -79,7 +80,7 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
     rw [List.mem_filter] at h₃
     simp [h₂] at h₃
     by_contra h₄
-    simp at h₄
+    csimp at h₄
     unfold IsSoundPolicyBound at h₁
     specialize h₁ request entities
     have ⟨h₅, h₆⟩ := h₁; clear h₁
@@ -111,30 +112,30 @@ theorem scope_bound_is_sound (policy : Policy) :
   unfold satisfiedBound
   unfold Scope.bound
   unfold inSomeOrNone
-  simp only [decide_eq_true_eq]
+  rw [decide_eq_true_eq]
   apply And.intro <;>
   intro h₁ <;>
   apply And.intro
   case left.left =>
     generalize h₂ : policy.principalScope.scope = s
-    cases s <;> simp <;>
+    cases s <;> csimp <;>
     apply satisfied_implies_principal_scope h₁ <;>
     simp only [Scope.bound, h₂]
   case left.right =>
     generalize h₂ : policy.resourceScope.scope = s
-    cases s <;> simp <;>
+    cases s <;> csimp <;>
     apply satisfied_implies_resource_scope h₁ <;>
     simp only [Scope.bound, h₂]
   case right.left =>
     generalize h₂ : policy.principalScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
-    cases s <;> simp <;>
+    cases s <;> csimp <;>
     apply error_implies_principal_scope_in h₁ <;>
     simp only [Scope.bound, h₂]
   case right.right =>
     generalize h₂ : policy.resourceScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
-    cases s <;> simp <;>
+    cases s <;> csimp <;>
     apply error_implies_resource_scope_in h₁ <;>
     simp only [Scope.bound, h₂]
 

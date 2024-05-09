@@ -37,7 +37,7 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
-    simp at h₁
+    csimp at h₁
     split at h₁
     <;> simp [err, ok, hasAttrInRecord] at h₁
     <;> split at h₁
@@ -71,16 +71,16 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     have ⟨hₜ, _⟩ := h₂ <;> simp [←hₜ] <;>
     apply InstanceOfType.instance_of_bool <;>
     simp [InstanceOfBoolType]
-    cases h₆ : (Map.contains r a) <;> simp
+    cases h₆ : (Map.contains r a) <;> csimp
     rename_i h₇ _
     cases h₇
-    case inl.h₁.false.inl _ h₇ =>
+    case inl _ h₇ =>
       simp [CapabilitiesInvariant] at h₁
       specialize h₁ x₁ a h₇
       simp [EvaluatesTo, evaluate, h₄, hasAttr, attrsOf, h₆] at h₁
-    case inl.h₁.false.inr h₇ _ h₈ =>
+    case inr h₇ _ h₈ =>
       simp [Qualified.isRequired] at h₈
-      split at h₈ <;> simp at h₈
+      split at h₈ <;> csimp at h₈
       have h₉ := required_attribute_is_present h₅ h₇
       simp [←Map.contains_iff_some_find?, h₆] at h₉
   case h_2 =>
@@ -89,7 +89,7 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     simp [←h₂]
     apply InstanceOfType.instance_of_bool
     simp [InstanceOfBoolType]
-    cases h₆ : (Map.contains r a) <;> simp
+    cases h₆ : (Map.contains r a) <;> csimp
     rename_i _ h₇ _ _
     have h₇ := absent_attribute_is_absent h₅ h₇
     simp [Map.contains_iff_some_find?, h₇] at h₆
@@ -120,7 +120,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     split at h₃ <;> rcases h₃ with ⟨h₃, _⟩ <;>
     apply InstanceOfType.instance_of_bool <;>
     simp [InstanceOfBoolType]
-    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> simp
+    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> csimp
     rename_i _ _ _ _  h₉
     simp [CapabilitiesInvariant] at h₁
     specialize h₁ x₁ a h₉
@@ -131,7 +131,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp [←h₃]
     apply InstanceOfType.instance_of_bool
     simp [InstanceOfBoolType]
-    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> simp
+    cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> csimp
     rename_i _ _ h₉ _ _
     simp [Entities.attrsOrEmpty] at h₈
     split at h₈
@@ -152,7 +152,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     rename_i _ h₇ _ _
     simp [EntitySchema.attrs?] at h₇
     replace ⟨_, h₂, _⟩ := h₂
-    cases h₈ : Map.find? entities uid <;> simp
+    cases h₈ : Map.find? entities uid <;> csimp
     simp [Map.not_contains_of_empty, InstanceOfBoolType]
     replace ⟨_, h₈, _⟩ := h₂ uid _ h₈
     rw [h₇] at h₈

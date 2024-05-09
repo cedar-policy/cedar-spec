@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.Control
 
 /-!
@@ -39,15 +40,16 @@ theorem and_true_implies_left_true {e₁ e₂ : Expr} {request : Request} {entit
   case ok v₁ =>
     generalize h₃ : (Coe.coe v₁ : Result Bool) = rb
     simp [h₃] at h₁
-    cases rb <;> simp at h₁
+    cases rb <;> csimp at h₁
     case ok b =>
-      cases b <;> simp at h₁
+      cases b <;> csimp at h₁
       simp [Coe.coe, Value.asBool] at h₃
-      cases v₁ <;> try simp at h₃
-      case _ p₁ =>
-        cases p₁ <;> simp at h₃
+      cases v₁ <;> try csimp at h₃
+      case prim p₁ =>
+        cases p₁ <;> csimp at h₃
         simp [h₃]
 
+set_option trace.Elab.syntax true in
 theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
   evaluate (Expr.and e₁ e₂) request entities = .ok true →
   evaluate e₂ request entities = .ok true
@@ -57,15 +59,14 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
   simp [evaluate, h₂, Result.as, Coe.coe, Value.asBool] at h₁
   generalize h₃ : (evaluate e₂ request entities) = r₂
   simp [h₃] at h₁
-  cases r₂ <;> simp only [Except.bind_err] at h₁
+  cases r₂ <;> csimp at h₁
   case ok v₂ =>
-    cases v₂ <;> try simp only [Except.bind_err] at h₁
+    cases v₂ <;> try csimp at h₁
     case _ p₂ =>
-      cases p₂ <;> simp only [Except.bind_ok, Except.bind_err] at h₁
+      cases p₂ <;> csimp at h₁
       case _ b =>
         cases b
-        case false =>
-          simp only [pure, Except.pure, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at h₁
+        case false => csimp at h₁
         case true => rfl
 
 /- some shorthand to make things easier to read and write -/
@@ -112,7 +113,7 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
       case bool b =>
         cases b with
         | true =>
-          simp only [true_and]
+          csimp
           simp only [h_e₁] at h₁
           cases h_e₂ : (evaluate e₂ request entities) with
           | ok val =>
@@ -121,14 +122,17 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
             simp [h₁]
             case prim prim =>
               cases prim <;>
-              simp [h_e₂] at h₁ <;>
+              simp only [h_e₂] at h₁ <;>
+              csimp at h₁ <;>
               simp [h₁]
           | error e =>
-            simp only [h_e₂, ↓reduceIte, Except.bind_err, Except.error.injEq] at h₁
+            simp only [h_e₂] at h₁
+            csimp at h₁
             simp [h₁]
         | false => simp [h_e₁] at h₁
   case error e =>
-    simp [h_e₁, evaluate, Result.as, Coe.coe, Value.asBool] at h₁
+    simp only [h_e₁, evaluate] at h₁
+    csimp at h₁
     simp [h₁]
 
 /--
@@ -140,31 +144,32 @@ theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entit
   | .error _ => true
   | _ => false
 := by
-  cases h : evaluate (Expr.and e₁ e₂) request entities <;> simp
+  cases h : evaluate (Expr.and e₁ e₂) request entities <;> csimp
   case ok val =>
     cases val
-    <;> simp only [evaluate, Result.as, Coe.coe, Value.asBool, Bool.not_eq_true', pure, Except.pure] at h
+    <;> unfold evaluate at h
+    <;> csimp at h
     <;> generalize (evaluate e₁ request entities) = r₁ at h
     <;> generalize (evaluate e₂ request entities) = r₂ at h
     case prim prim =>
-      cases prim <;> simp
+      cases prim <;> csimp
       case int | string | entityUID =>
-        split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
+        split at h <;> split at h <;> csimp at h
         split at h
-        case _ => simp only [Except.ok.injEq, Value.prim.injEq] at h
+        case _ => csimp at h
         case _ =>
           split at h
-          case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Value.prim.injEq] at h
-          case _ => simp only [Except.bind_err] at h
+          case _ => split at h <;> csimp at h
+          case _ => csimp at h
     case set | record | ext =>
       exfalso
-      split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
+      split at h <;> split at h <;> csimp at h
       split at h
-      case _ => simp only [Except.ok.injEq] at h
+      case _ => csimp at h
       case _ =>
         split at h
-        case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
-        case _ => simp only [Except.bind_err] at h
+        case _ => split at h <;> csimp at h
+        case _ => csimp at h
 
 
 end Cedar.Thm

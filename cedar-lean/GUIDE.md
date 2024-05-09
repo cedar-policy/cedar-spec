@@ -65,7 +65,10 @@ Main theorems should have a docstring comment `/-- ... -/` explaining what is pr
 ## Proof stability
 To make version upgrades easier, strive to follow these guidelines:
 
-- Use `simp only` instead of `simp`. It's okay to use `simp` to close a goal.
-- Use `have` to deconstruct values. Use `rcases` only to split disjunctions.
-- Use `exact` instead of `apply` whenever possible.
+- Use `simp only` or `csimp` instead of `simp`. As an exception to this, it's
+    okay to use `simp` to close a goal (but if `csimp` works, you're still
+    encouraged to use that instead).
+- Use `have` or `replace` to deconstruct values. Use `rcases` only to split
+    disjunctions.
+- Use `exact` instead of `apply` or `assumption` whenever possible.
 - Fully spell out types in function and theorem declarations.

@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Validation.Typechecker.Basic
 
@@ -50,15 +51,15 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   rename_i tc₁ tc₂
   split at h₁
   case h_1 p₁ p₂ =>
-    split at h₁ <;> simp at h₁ <;> simp [h₁] <;>
+    split at h₁ <;> csimp at h₁ <;> simp [h₁] <;>
     rename_i h₄ <;> simp [h₄]
   case h_2 h₄ =>
     split at h₁
     case h_1 h₅ =>
-      simp at h₁ ; simp [h₁]
+      csimp at h₁ ; simp [h₁]
       split
       case h_1 p₁ p₂ _ =>
-        specialize h₄ p₁ p₂ ; simp at h₄
+        specialize h₄ p₁ p₂ ; csimp at h₄
       case h_2 =>
         exists tc₁.fst
         constructor
@@ -68,10 +69,10 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
           · exists tc₂.snd
           · simp [h₅]
     case h_2 h₅ =>
-      split at h₁ <;> simp at h₁ ; simp [h₁]
+      split at h₁ <;> csimp at h₁ ; simp [h₁]
       split
       case h_1 p₁ p₂ _ =>
-        specialize h₄ p₁ p₂ ; simp at h₄
+        specialize h₄ p₁ p₂ ; csimp at h₄
       case h_2 ety₁ ety₂ _ true_is_instance_of_tt _ _ _ _ =>
         exists tc₁.fst
         constructor
@@ -136,16 +137,13 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
     simp [apply₂]
-    split at hty
-    case h_1 =>
-      rw [hty]
+    split at hty <;> rename_i heq
+    · rw [hty]
       apply bool_is_instance_of_anyBool
-    case h_2 heq =>
-      have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
+    · have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
       subst hty₀ hty₁ hty₂
       have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
-      cases h₇ : v₁ == v₂ <;>
-      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₇
+      cases h₇ : v₁ == v₂ <;> csimp at h₇
       case false => exact false_is_instance_of_ff
       case true  => contradiction
 
@@ -165,7 +163,7 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
     subst h₁
     simp [typeOfBinaryApp, err, ok] at h₂
     split at h₂ <;> try contradiction
-    simp at h₂ ; simp [h₂]
+    csimp at h₂ ; simp [h₂]
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     constructor
     · exists tc₁.snd ; simp [←h₅]
@@ -222,7 +220,7 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     subst h₁
     simp [typeOfBinaryApp, err, ok] at h₂
     split at h₂ <;> try contradiction
-    simp at h₂ ; simp [h₂]
+    csimp at h₂ ; simp [h₂]
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     replace ⟨h₂, _⟩ := h₂
     constructor
@@ -286,7 +284,7 @@ theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env
   simp [typeOfBinaryApp, err, ok] at h₁
   split at h₁ <;> try contradiction
   simp [ifLubThenBool, err, ok] at h₁
-  split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
+  split at h₁ <;> csimp at h₁
   simp [h₁]
   rename_i tc₁ tc₂ _ ty₁ ty₂ ty₃ _ h₄ _ _ h₅
   exists ty₃, tc₂.fst
@@ -343,7 +341,7 @@ theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     simp [typeOfBinaryApp, err, ok] at h₂
     split at h₂ <;> try contradiction
     simp [ifLubThenBool, err, ok] at h₂
-    split at h₂ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₂
+    split at h₂ <;> csimp at h₂
     simp [h₂]
     rename_i tc₁ tc₂ _ _ _ ty₁ ty₂ _ h₅ h₆ _ _ h₇
     exists ty₁, ty₂
@@ -405,8 +403,8 @@ theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
   simp [typeOfBinaryApp, ok] at h₁
   split at h₁ <;> try { contradiction }
   all_goals {
-    simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
-    simp [h₁]
+    csimp at h₁
+    simp only [List.empty_eq, h₁, Except.ok.injEq, exists_and_left, true_and]
     rename_i tc₁ tc₂ _ _ _ ety₁ ety₂ _ h₄ h₅
     exists ety₁
     constructor
@@ -419,7 +417,7 @@ theorem entityUID?_some_implies_entity_lit {x : Expr} {euid : EntityUID}
   x = Expr.lit (.entityUID euid)
 := by
   simp [entityUID?] at h₁
-  split at h₁ <;> simp at h₁ ; subst h₁ ; rfl
+  split at h₁ <;> csimp at h₁ ; subst h₁ ; rfl
 
 
 theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts : ActionSchema}
@@ -440,14 +438,10 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
   x = Expr.set ((List.map (Expr.lit ∘ Prim.entityUID) euids))
 := by
   simp [entityUIDs?] at h₁
-  split at h₁ <;> try simp at h₁
+  split at h₁ <;> try csimp at h₁
   rw [←List.mapM'_eq_mapM] at h₁ ; rename_i xs
-  cases euids
-  case nil =>
-    cases hxs : xs <;> subst xs <;> simp at *
-  case cons hd tl =>
-    cases hxs : xs <;> subst xs <;> simp [pure, Except.pure] at *
-    rename_i hd' tl'
+  cases euids <;> cases hxs : xs <;> subst xs <;> csimp at *
+  case cons.cons hd tl hd' tl' =>
     cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
     cases h₃ : List.mapM' entityUID? tl' <;> simp [h₃] at h₁
     have ⟨hhd, htl⟩ := h₁ ; clear h₁ ; rw [eq_comm] at hhd htl ; subst hhd htl
@@ -464,9 +458,9 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   inₑ euid₁ euid₂ entities = false
 := by
   simp [EntitySchema.descendentOf] at h₂
-  simp [inₑ] ; by_contra h₃ ; simp at h₃
+  simp [inₑ] ; by_contra h₃ ; csimp at h₃
   rcases h₃ with h₃ | h₃
-  case inl => subst h₃ ; simp at h₂
+  case inl => subst h₃ ; csimp at h₂
   case inr =>
   simp [Entities.ancestorsOrEmpty] at h₃
   split at h₃
@@ -489,7 +483,7 @@ theorem action_type_in_eq_action_inₑ (euid₁ euid₂ : EntityUID) {env : Envi
   rename_i entry
   have ⟨data, h₁₁, h₁₂⟩ := h₁ euid₁ entry h₃
   simp [inₑ, ActionSchema.descendentOf, h₃, Entities.ancestorsOrEmpty, h₁₁]
-  rcases h₄ : euid₁ == euid₂ <;> simp at h₄ <;> simp [h₄, h₁₂]
+  rcases h₄ : euid₁ == euid₂ <;> csimp at h₄ <;> simp [h₄, h₁₂]
 
 theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -553,17 +547,15 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     ∀ euid, euid ∈ euids → euid.ty = ety
 := by
   rw [←List.mapM'_eq_mapM]
-  cases vs
-  case nil =>
-    simp [pure, Except.pure]
+  cases vs <;> csimp
   case cons hd tl =>
-    simp only [List.mapM'_cons]
     cases h₁ ; rename_i h₁
     have h₂ := h₁ hd
     simp [Set.mem_cons_self] at h₂
     replace ⟨heuid, hdty, h₂⟩ := instance_of_entity_type_is_entity h₂
     subst h₂
-    rw [Value.asEntityUID] ; simp only [Except.bind_ok]
+    rw [Value.asEntityUID]
+    csimp
     rw [List.mapM'_eq_mapM]
     have h₃ : InstanceOfType (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety)) := by
       apply InstanceOfType.instance_of_set
@@ -585,7 +577,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
   simp [InstanceOfEntitySchema] at h₁
   simp [EntitySchema.descendentOf] at h₂
   rw [Set.make_any_iff_any]
-  by_contra h₄ ; simp at h₄
+  by_contra h₄ ; csimp at h₄
   replace ⟨euid', h₄, h₅⟩ := h₄
   simp [inₑ] at h₅
   rcases h₅ with h₅ | h₅
@@ -648,7 +640,7 @@ theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
     simp [List.map]
     constructor
     · simp [Value.asEntityUID] at h₂
-      split at h₂ <;> simp at h₂
+      split at h₂ <;> csimp at h₂
       rw [eq_comm] at h₂ ; subst h₂
       rfl
     · exact mapM'_asEntityUID_eq_entities h₃
@@ -754,7 +746,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp [h₇]
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
-  split <;> try simp
+  split <;> try csimp
   rename_i h₈ h₉ h₁₀
   have ⟨_, hents, hacts⟩ := h₂ ; clear h₂
   simp [typeOfInₛ] at *

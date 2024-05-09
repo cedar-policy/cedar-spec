@@ -123,9 +123,9 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
   isValueOrError (Partial.evaluate expr request entities)
 := by
   rw [on_concrete_eqv_concrete_eval expr request entities wf]
-  simp only [Except.map, isValueOrError]
+  unfold Except.map isValueOrError
   split
   <;> rename_i h
   <;> split at h
-  <;> simp only [Except.ok.injEq, Except.error.injEq, Partial.Value.value.injEq] at h
+  <;> injection h
   <;> trivial

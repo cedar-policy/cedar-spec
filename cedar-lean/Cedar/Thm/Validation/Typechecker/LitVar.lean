@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Validation.Typechecker.Basic
 import Std.Tactic.Case
 
@@ -36,7 +37,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   split at h₃ <;> simp [ok] at h₃
   case h_5;
   split at h₃ <;> try { simp [err] at h₃ }
-  simp at h₃
+  csimp at h₃
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
     rw [←h₃, ←h₄]

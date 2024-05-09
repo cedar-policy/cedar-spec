@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Tactic.Csimp
 import Cedar.Thm.Authorization.Authorizer
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
@@ -60,9 +61,9 @@ theorem allowed_if_explicitly_permitted (request : Request) (entities : Entities
   unfold isAuthorized
   generalize (satisfiedPolicies forbid policies request entities) = forbids
   generalize hp : (satisfiedPolicies permit policies request entities) = permits
-  simp only [Bool.and_eq_true, Bool.not_eq_true']
-  cases forbids.isEmpty <;> simp
-  cases h0 : permits.isEmpty <;> simp
+  csimp
+  cases forbids.isEmpty <;> csimp
+  cases h0 : permits.isEmpty <;> csimp
   unfold IsExplicitlyPermitted
   apply if_satisfiedPolicies_non_empty_then_satisfied permit policies
   simp [hp, h0]

@@ -37,7 +37,7 @@ theorem lub_lub_fixed {ty₁ ty₂ ty₃ ty₄ : CedarType}
   have h₄ := lub_left_subty h₂
   have h₅ := subty_trans h₃ h₄
   simp [subty] at h₅
-  split at h₅ <;> simp at h₅ ; subst h₅
+  split at h₅ <;> csimp at h₅ ; subst h₅
   assumption
 
 theorem foldlM_of_lub_is_LUB {ty lubTy : CedarType } {tys : List CedarType}
@@ -94,20 +94,17 @@ theorem type_of_set_tail
       have h₁ := List.mapM_head_tail h₁
       rw [←List.mapM₁_eq_mapM] at h₁
       simp [h₁, typeOfSet]
-      cases h₄ : List.foldlM lub? hd' tl' <;>
-      simp [h₄, err, ok]
-      case none =>
-        have h₅ := foldlM_of_lub_assoc hd hd' tl'
-        rw [h₂, h₄] at h₅
-        simp at h₅
+      cases h₄ : List.foldlM lub? hd' tl'
+      <;> simp [h₄, err, ok]
+      <;> have h₅ := foldlM_of_lub_assoc hd hd' tl'
+      <;> rw [h₂, h₄] at h₅
+      <;> csimp at h₅
       case some ty' =>
-        have h₅ := foldlM_of_lub_assoc hd hd' tl'
-        rw [h₂, h₄] at h₅
-        simp at h₅ ; rw [eq_comm, lub_comm] at h₅
-        have h₆ := lub_left_subty h₅
-        simp [subty] at h₆
-        split at h₆ <;> simp at h₆
-        subst h₆
+        rw [eq_comm, lub_comm] at h₅
+        replace h₅ := lub_left_subty h₅
+        simp [subty] at h₅
+        split at h₅ <;> csimp at h₅
+        subst h₅
         assumption
 
 theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : CedarType}
@@ -124,11 +121,11 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
   simp [h₂] at h₁
   simp [typeOfSet] at h₁
-  split at h₁ <;> simp [ok, err] at h₁
+  split at h₁ <;> simp only [ok, err] at h₁
   rename_i hd tl
-  split at h₁ <;> simp at h₁
+  split at h₁ <;> csimp at h₁
   rename_i ty h₃
-  have ⟨hl₁, hr₁⟩ := h₁
+  have ⟨hl₁, hr₁⟩ := h₁ ; clear h₁
   subst hl₁ hr₁
   simp only [List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and]
   intro x h₄
@@ -143,7 +140,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
     simp [justType, Except.map] at h₅
-    split at h₅ <;> simp at h₅
+    split at h₅ <;> csimp at h₅
     rename_i res h₇
     exists hdty
     apply And.intro
@@ -155,9 +152,8 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
     simp [h₅] at h₇
     specialize h₇ x h₄
-    have ⟨tyᵢ, h₇, h₈⟩ := h₇
+    replace ⟨tyᵢ, ⟨cᵢ, h₇⟩, h₈⟩ := h₇
     exists tyᵢ
-    have ⟨cᵢ, h₇⟩ := h₇
     apply And.intro
     · exists cᵢ
     . exact lub_lub_fixed h₈ h₆
@@ -198,9 +194,9 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
     simp only [h₆, List.mem_cons, true_or, forall_const] at h₄
     have ⟨tyᵢ, cᵢ, h₇, _⟩ := h₄
     have h₉ := ih hd ; simp [h₆, TypeOfIsSound] at h₉
-    specialize (h₉ h₁ h₂ h₇) ; have ⟨_, v, h₉⟩ := h₉
+    specialize h₉ h₁ h₂ h₇ ; replace ⟨_, v, h₉⟩ := h₉
     simp [EvaluatesTo] at h₉
-    have ⟨h₉, _⟩ := h₉
+    replace ⟨h₉, _⟩ := h₉
     rcases h₉ with h₉ | h₉ | h₉ | h₉ <;>
     simp [h₉] at h₅ <;>
     try { simp [h₅] }

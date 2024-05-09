@@ -45,25 +45,25 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
   split at h₁ <;> simp [ok, err] at h₁
   case ok.h_1 h₃ =>
     exists BoolType.ff, res₁.snd ; simp [h₁]
-    simp at h₃
+    csimp at h₃
     have ⟨h₁, _⟩ := h₁ ; subst h₁
     have ⟨h₃, _⟩ := h₃
     simp [←h₃]
   case ok.h_2 bty₁ c₁ h₃ h₄ =>
     exists bty₁, c₁
-    simp at h₄
+    csimp at h₄
     have ⟨hty₁, hc₁⟩ := h₄
     simp [←hty₁, ←hc₁]
     split ; contradiction
     cases h₄ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₄] at *
     rename_i res₂
-    split at h₁ <;> simp at h₁ <;>
+    split at h₁ <;> csimp at h₁ <;>
     have ⟨hty, hc⟩ := h₁ <;> subst hty hc
     case inr.ok.h_1 hty₂ =>
       exists BoolType.ff, res₂.snd ; simp [←hty₂]
     case inr.ok.h_2 hty₂ =>
       exists BoolType.tt, res₂.snd ; simp [←hty₂, hc₁]
-      cases bty₁ <;> simp at h₃ <;> simp [lubBool]
+      cases bty₁ <;> csimp at h₃ <;> simp [lubBool]
     case inr.ok.h_3 bty₂ h₄ h₅ hty₂ =>
       exists BoolType.anyBool, res₂.snd
       cases bty₂ <;> simp at *
@@ -93,7 +93,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
     subst hty hc
     apply And.intro empty_guarded_capabilities_invariant
     have h₇ := instance_of_ff_is_false ih₁₃
-    simp at h₇ ; subst h₇
+    csimp at h₇ ; subst h₇
     simp [EvaluatesTo] at ih₁₂
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
