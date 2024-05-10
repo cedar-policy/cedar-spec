@@ -38,6 +38,22 @@ theorem if_wellformed_then_exists_make [LT α] [DecidableLT α] (s : Set α) :
   intro h₁
   exists s.elts
 
+theorem wf_iff_sorted {α} [LT α] [DecidableLT α] [StrictLT α]  (s : Set α) :
+  s.WellFormed ↔ s.elts.Sorted
+:= by
+  simp only [WellFormed, make, toList, elts]
+  have hid : (fun x => x) = @id α := by
+    apply funext ; simp only [id_eq, implies_true]
+  rw [hid]
+  constructor <;>
+  intro h
+  case mp =>
+    rw [h]
+    simp only [List.Sorted, List.canonicalize_sortedBy id s.1]
+  case mpr =>
+    rw [← (List.sortedBy_implies_canonicalize_eq h),
+      List.canonicalize_idempotent, List.sortedBy_implies_canonicalize_eq h]
+
 /-! ### contains and mem -/
 
 theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
@@ -91,6 +107,10 @@ theorem in_set_means_list_non_empty {α : Type u} (v : α) (s : Set α) :
   contradiction
 
 /-! ### empty -/
+
+theorem empty_eq_mk_empty {α} :
+  (Set.empty : Set α) = Set.mk []
+:= by simp only [empty]
 
 theorem empty_no_elts {α : Type u} (v : α) :
   ¬ v ∈ Set.empty
@@ -178,6 +198,14 @@ theorem make_wf [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
   WellFormed (Set.make xs)
 := by
   simp only [WellFormed, make, toList, elts, List.canonicalize_idempotent]
+
+theorem make_sorted {α} [LT α] [DecidableLT α] [StrictLT α] {xs : List α} :
+  xs.Sorted → Set.make xs = Set.mk xs
+:= by
+  intro h
+  have hid : (fun x => x) = @id α := by
+    apply funext ; simp only [id_eq, implies_true]
+  simp only [make, hid, List.sortedBy_implies_canonicalize_eq h]
 
 theorem make_mem [LT α] [DecidableLT α] [StrictLT α] (x : α) (xs : List α) :
   x ∈ xs ↔ x ∈ Set.make xs
@@ -298,6 +326,10 @@ theorem make_cons [LT α] [DecidableLT α] {xs ys : List α} {a : α} :
 
 /-! ### inter and union -/
 
+theorem inter_def {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+  s₁ ∩ s₂ = s₁.intersect s₂
+:= by simp only [Inter.inter]
+
 open BEq LawfulBEq in
 theorem mem_inter_iff {α} [DecidableEq α] {x : α} {s₁ s₂ : Set α} :
   x ∈ s₁ ∩ s₂ ↔ x ∈ s₁ ∧ x ∈ s₂
@@ -320,6 +352,74 @@ theorem inter_wf {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s
   rw (config := {occs := .pos [1]}) [h₁]
   simp only [List.elem_eq_mem]
   exact h₃
+
+theorem inter_empty_left {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
+ Set.empty ∩ s = Set.empty
+:= by
+  cases s ; rename_i xs
+  simp only [Inter.inter, intersect, List.inter, elts, List.elem_eq_mem, empty, List.filter_nil]
+
+theorem inter_empty_right {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
+ s ∩ Set.empty = Set.empty
+:= by
+  cases s ; rename_i xs
+  simp only [Inter.inter, intersect, List.inter, elts, empty, List.elem_eq_mem, List.not_mem_nil,
+    decide_False, mk.injEq, List.filter_eq_nil, not_false_eq_true, implies_true]
+
+theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
+ s ∩ s = s
+:= by
+  simp only [Inter.inter, intersect, List.inter, elts, List.elem_eq_mem]
+  cases s ; rename_i xs
+  simp only [mk.injEq]
+  induction xs
+  case nil =>
+    simp only [List.not_mem_nil, decide_False, List.filter_nil]
+  case cons hd tl ih =>
+    simp only [List.mem_cons, true_or, decide_True, List.filter_cons_of_pos, List.cons.injEq, true_and]
+    rw [eq_comm]
+    rw (config := {occs := .pos [1]}) [← ih]
+    rw [List.filter_congr']
+    simp only [decide_eq_true_eq]
+    intro _ h
+    simp only [h, or_true]
+
+theorem intersects_def {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+ s₁.intersects s₂ = ¬ (s₁ ∩ s₂).isEmpty
+:= by
+  simp only [Bool.not_eq_true, eq_iff_iff]
+  simp only [intersects, List.any_eq_true, in_list_iff_in_set, contains_prop_bool_equiv]
+  constructor
+  case mp =>
+    intro h
+    replace ⟨x, h⟩ := h
+    by_contra hc
+    simp only [ne_eq, Bool.not_eq_false] at hc
+    simp only [empty_iff_not_exists, not_exists] at hc
+    specialize hc x
+    have _ := mem_inter_iff.mpr h
+    contradiction
+  case mpr =>
+    intro h
+    replace h : ¬ isEmpty (s₁ ∩ s₂) = true := by
+      simp only [h, not_false_eq_true]
+    rw [non_empty_iff_exists] at h
+    replace ⟨x, h⟩ := h
+    rw [mem_inter_iff] at h
+    exists x
+
+theorem intersects_iff_exists {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+ s₁.intersects s₂ ↔ ∃ a, a ∈ s₁ ∧ a ∈ s₂
+:= by
+  constructor <;> intro h
+  case mp =>
+    simp only [Set.intersects_def, Set.non_empty_iff_exists, Set.mem_inter_iff] at h
+    exact h
+  case mpr =>
+    replace ⟨a, h⟩ := h
+    rw [← Set.mem_inter_iff] at h
+    simp only [Set.intersects_def, Set.non_empty_iff_exists]
+    exists a
 
 theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   WellFormed (s₁ ∪ s₂)

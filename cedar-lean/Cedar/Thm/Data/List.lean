@@ -919,6 +919,27 @@ theorem forall₂_implies_all_right {α β} {R : α → β → Prop} {xs : List 
       exists x
       simp only [mem_cons, ih, or_true, and_self]
 
+theorem forall₂_iff_map_eq {α β γ} {f : α → γ} {g : β → γ} {xs : List α} {ys : List β} :
+  List.Forall₂ (λ x y => f x = g y) xs ys ↔
+  xs.map f = ys.map g
+:= by
+  constructor <;> intro h
+  case mp =>
+    induction h <;> simp only [map_nil, map_cons, cons.injEq]
+    constructor <;> assumption
+  case mpr =>
+    induction ys generalizing xs <;>
+    simp only [map_nil, map_eq_nil, map_cons] at h
+    case nil =>
+      subst h
+      simp only [Forall₂.nil]
+    case cons yhd ytl ih =>
+      cases xs <;> simp only [map_nil, map_cons, cons.injEq] at h
+      rename_i xhd xtl
+      rw [forall₂_cons_right_iff]
+      exists xhd, xtl
+      simp only [h.left, ih h.right, and_self]
+
 /-! ### mapM, mapM', and mapM₁ -/
 
 /--
@@ -1031,13 +1052,6 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
         specialize @ih ytl h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
 
-/-- Deprecated alias for the forward direction of `mapM'_ok_iff_forall₂` -/
-@[deprecated]
-theorem mapM'_ok_implies_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
-  List.mapM' f xs = .ok ys →
-  List.Forall₂ (λ x y => f x = .ok y) xs ys
-:= mapM'_ok_iff_forall₂.mp
-
 theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
@@ -1129,6 +1143,41 @@ theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : L
   rw [List.mapM'_eq_mapM] at h₂
   exists xs
 
+/--
+  The converse is not true:
+  counterexample `xs` is `[1, 2]` and `f` is `Except.error`.
+  In that case, `f 2 = .error 2` but `xs.mapM' f = .error 1`.
+-/
+theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
+  List.mapM' f xs = .error e → ∃ x ∈ xs, f x = .error e
+:= by
+  intro h₁
+  cases xs
+  case nil =>
+    simp only [mapM'_nil, pure, Except.pure] at h₁
+  case cons xhd xtl =>
+    simp only [mapM'_cons] at h₁
+    cases h₂ : f xhd <;>
+    simp only [h₂, Except.bind_ok, Except.bind_err, Except.error.injEq] at h₁
+    case error =>
+      subst h₁
+      exists xhd
+      simp only [mem_cons, true_or, h₂, and_self]
+    case ok =>
+      cases h₃ : mapM' f xtl <;>
+      simp only [h₃, Except.bind_ok, Except.bind_err, Except.error.injEq, pure, Except.pure] at h₁
+      subst h₁
+      replace h₃ := mapM'_error_implies_exists_error h₃
+      replace ⟨x, h₃⟩ := h₃
+      exists x
+      simp only [mem_cons, h₃, or_true, and_self]
+
+theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
+  List.mapM f xs = .error e → ∃ x ∈ xs, f x = .error e
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact mapM'_error_implies_exists_error
+
 theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys
@@ -1162,13 +1211,6 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
         simp only [h₁, Option.some.injEq] at h₂
         subst y'
         simp [@ih ytl h₃]
-
-/-- Deprecated alias for the forward direction of `mapM'_some_iff_forall₂` -/
-@[deprecated]
-theorem mapM'_some_implies_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
-  List.mapM' f xs = .some ys →
-  List.Forall₂ (λ x y => f x = .some y) xs ys
-:= mapM'_some_iff_forall₂.mp
 
 theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys ↔
