@@ -8,7 +8,7 @@ publish = false
 env_logger = "0.10"
 log = "0.4"
 libfuzzer-sys = "0.4"
-cedar-policy = { path = "../cedar/cedar-policy", version = "4.*", features = ["integration_testing"] }
+cedar-policy = { path = "../cedar/cedar-policy", version = "4.*" }
 cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "4.*" }
