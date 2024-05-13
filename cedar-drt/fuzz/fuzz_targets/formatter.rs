@@ -27,6 +27,7 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
+use similar_asserts::SimpleDiff;
 use smol_str::SmolStr;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -104,12 +105,31 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
         line_width: 80,
     };
     let mut uuids = Vec::new();
+    let commented = attach_comment(&p.to_string(), &mut uuids);
     let formatted_policy_str =
-        &policies_str_to_pretty(&attach_comment(&p.to_string(), &mut uuids), &config)
-            .expect("pretty-printing should not fail");
+        &policies_str_to_pretty(&commented, &config).expect("pretty-printing should not fail");
     // check if pretty-printing drops any comment
+    let mut formatted_policy_tail: &str = formatted_policy_str.as_str();
     for u in &uuids {
-        assert!(formatted_policy_str.contains(u), "missing comment: {}\n", u);
+        match formatted_policy_tail.split_once(u) {
+            Some((_, after_uuid)) => formatted_policy_tail = after_uuid,
+            None => {
+                println!(
+                    "{}",
+                    SimpleDiff::from_str(
+                        &commented,
+                        formatted_policy_str,
+                        "Commented Policy",
+                        "Commented and formatted"
+                    )
+                );
+                if formatted_policy_str.contains(u) {
+                    panic!("It looks like we skipped over comment `{u}`. The formatter might have reordered the comment")
+                } else {
+                    panic!("Failed to find comment `{u}` anywhere. The formatter might have dropped the comment")
+                }
+            }
+        }
     }
     parse_policy(None, formatted_policy_str)
 }
