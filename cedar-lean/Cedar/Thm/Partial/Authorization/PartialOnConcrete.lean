@@ -38,136 +38,77 @@ open Cedar.Partial (Residual)
 open Cedar.Spec (Effect Policies PolicyID)
 
 /--
-  on concrete inputs, Partial.Response.mayBeSatisfied is empty iff
-  Spec.satisfiedPolicies is empty
+  on concrete inputs, `Partial.Response.mayBeSatisfied` is equal to
+  `Spec.satisfiedPolicies`
 -/
-theorem mayBeSatisfied_empty_iff_no_satisfied {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
+theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
   (wf : req.WellFormed) :
-  ((Partial.isAuthorized req entities policies).mayBeSatisfied eff).isEmpty ↔
-  (Spec.satisfiedPolicies eff policies req entities).isEmpty
+  (Partial.isAuthorized req entities policies).mayBeSatisfied eff = Spec.satisfiedPolicies eff policies req entities
 := by
-  unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies
-  repeat rw [← Set.make_empty]
-  repeat rw [List.filterMap_empty_iff_all_none]
-  simp only [Spec.satisfiedWithEffect, Spec.satisfied, Bool.and_eq_true, beq_iff_eq,
-    decide_eq_true_eq, ite_eq_right_iff, and_imp]
-  constructor
-  case mp =>
-    intro h₁ policy h₂ h₃ h₄
-    subst h₃
-    simp only [Partial.isAuthorized, List.mem_filterMap, forall_exists_index, and_imp] at h₁
-    simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map] at h₁
-    rw [forall_comm] at h₁
-    specialize h₁ policy
-    simp only [Residual.mayBeSatisfied] at h₁
-    cases h₃ : Spec.evaluate policy.toExpr req entities <;> simp only [h₃, Except.ok.injEq] at *
-    case ok v =>
-      subst h₄
-      simp only [Option.some.injEq, forall_apply_eq_imp_iff] at h₁
-      specialize h₁ h₂
-      split at h₁ <;> simp only [Spec.Value.asPartialExpr, Residual.residual.injEq,
-        Partial.Expr.lit.injEq, Spec.Prim.bool.injEq, and_false, imp_self, forall_const, and_imp,
-        forall_apply_eq_imp_iff₂, forall_apply_eq_imp_iff, forall_eq'] at *
-      case h_2 pid eff cond h₄ h₅ =>
-        replace ⟨h₅, h₅', h₅''⟩ := h₅
-        subst pid eff cond
-        simp only [↓reduceIte] at h₁
-  case mpr =>
-    intro h₁ r h₂
-    simp [Partial.isAuthorized, List.mem_filterMap] at h₂
-    replace ⟨policy, h₂, h₃⟩ := h₂
-    simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map] at h₃
-    simp only [Residual.mayBeSatisfied]
-    split <;> simp only [ite_eq_right_iff]
-    case h_2 r pid eff' cond h₄ =>
-      intro h₅ ; subst h₅
-      split at h₃
-      <;> simp only [Option.some.injEq, Residual.residual.injEq] at h₃
-      <;> replace ⟨h₃, h₅, h₆⟩ := h₃
-      <;> subst h₃ h₆
-      <;> specialize h₁ policy h₂ h₅
-      <;> apply h₁ <;> clear h₁
-      case h_3 x h₁ => split at h₁ <;> simp at h₁
-      case h_2 v h₁ h₃ =>
-        split at h₃ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₃
-        case h_2 v' h₅ =>
-          subst h₃
-          simp only [h₅, Except.ok.injEq]
-          have h₃ := policy_produces_bool_or_error policy req entities
-          simp only [h₅] at h₃
-          split at h₃ <;> rename_i h₆
-          · rename_i b
-            cases b
-            case true => simp at h₆ ; assumption
-            case false => simp at h₆ ; exfalso ; apply h₁ ; assumption
-          · simp at h₆
-          · contradiction
+  unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
+  simp [List.filterMap_filterMap]
+  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
+  simp only [Set.make_make_eqv, List.Equiv, List.subset_def]
+  simp only [List.mem_filterMap, Option.bind_eq_some, ite_some_none_eq_some, forall_exists_index, and_imp]
+  constructor <;> intro pid policy h₁
+  case left =>
+    intro r h₂ h₃
+    exists policy
+    apply And.intro h₁
+    split at h₂ <;> simp only [Option.some.injEq] at h₂
+    <;> subst h₂
+    <;> simp only [Residual.mayBeSatisfied] at h₃
+    <;> split at h₃ <;> simp only [ite_some_none_eq_some] at h₃
+    <;> rename_i pid' eff' cond _ h₄
+    <;> replace ⟨h₃, h₃'⟩ := h₃
+    <;> subst eff' pid'
+    <;> simp only [Residual.residual.injEq] at h₄
+    <;> replace ⟨h₄, h₄', h₄''⟩ := h₄
+    <;> subst pid eff cond
+    <;> rename_i h₂ _ _
+    <;> split at h₂ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₂
+    subst h₂
+    rename_i v h₂ _ _
+    simp only [h₂, Except.ok.injEq, true_and, and_true]
+    have h₃ := policy_produces_bool_or_error policy req entities
+    simp only [h₂] at h₃
+    split at h₃ <;> rename_i h₄ <;> simp only [Except.ok.injEq, imp_self, implies_true] at h₄
+    <;> try contradiction
+    subst h₄ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
+    rename_i h₄ _ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq] at h₄
+    by_contra h₅ ; simp only [ne_eq, Bool.not_eq_true] at h₅ ; exact h₄ h₅
+  case right =>
+    intro h₂ h₃ h₄
+    subst h₂ h₄
+    exists policy
+    apply And.intro h₁
+    simp only [h₃, Residual.mayBeSatisfied, Option.some.injEq, exists_eq_left']
+    split <;> rename_i h₂ <;> simp only [Residual.residual.injEq, and_imp,
+      forall_apply_eq_imp_iff, forall_eq', forall_apply_eq_imp_iff₂, ite_some_none_eq_some] at *
+    <;> replace ⟨h₂', h₂'', h₂⟩ := h₂
+    <;> subst h₂' h₂''
+    · simp only [Spec.Value.asPartialExpr, Partial.Expr.lit.injEq, Spec.Prim.bool.injEq] at h₂
+    · simp only [and_self]
 
 /--
   corollary of the above
 -/
-theorem permits_empty_iff_no_satisfied_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+theorem permits_eq_satisfied_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
   (wf : req.WellFormed) :
-  (Partial.isAuthorized req entities policies).permits.isEmpty ↔
-  (Spec.satisfiedPolicies .permit policies req entities).isEmpty
+  (Partial.isAuthorized req entities policies).permits = Spec.satisfiedPolicies .permit policies req entities
 := by
   unfold Partial.Response.permits
-  apply mayBeSatisfied_empty_iff_no_satisfied (eff := .permit) wf
+  simp [mayBeSatisfied_eq_satisfiedPolicies (eff := .permit) wf]
 
 /--
   corollary of the above
 -/
-theorem forbids_empty_iff_no_satisfied_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+theorem forbids_eq_satisfied_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
   (wf : req.WellFormed) :
-  (Partial.isAuthorized req entities policies).forbids.isEmpty ↔
-  (Spec.satisfiedPolicies .forbid policies req entities).isEmpty
+  (Partial.isAuthorized req entities policies).forbids = Spec.satisfiedPolicies .forbid policies req entities
 := by
   unfold Partial.Response.forbids
-  apply mayBeSatisfied_empty_iff_no_satisfied (eff := .forbid) wf
-
-/--
-  another corollary, for the nonempty case
--/
-theorem mayBeSatisfied_nonempty_iff_satisfied_nonempty {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
-  (wf : req.WellFormed) :
-  ((Partial.isAuthorized req entities policies).mayBeSatisfied eff).isEmpty = false ↔
-  (Spec.satisfiedPolicies eff policies req entities).isEmpty = false
-:= by
-  constructor
-  case mp =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [mayBeSatisfied_empty_iff_no_satisfied wf] at h₁
-    exact h₁
-  case mpr =>
-    intro h₁
-    apply eq_false_of_ne_true
-    replace h₁ := ne_true_of_eq_false h₁
-    rw [← mayBeSatisfied_empty_iff_no_satisfied wf] at h₁
-    exact h₁
-
-/--
-  corollary of the above
--/
-theorem permits_nonempty_iff_satisfied_permits_nonempty {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
-  (Partial.isAuthorized req entities policies).permits.isEmpty = false ↔
-  (Spec.satisfiedPolicies .permit policies req entities).isEmpty = false
-:= by
-  unfold Partial.Response.permits
-  apply mayBeSatisfied_nonempty_iff_satisfied_nonempty (eff := .permit) wf
-
-/--
-  corollary of the above
--/
-theorem forbids_nonempty_iff_satisfied_forbids_nonempty {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
-  (Partial.isAuthorized req entities policies).forbids.isEmpty = false ↔
-  (Spec.satisfiedPolicies .forbid policies req entities).isEmpty = false
-:= by
-  unfold Partial.Response.forbids
-  apply mayBeSatisfied_nonempty_iff_satisfied_nonempty (eff := .forbid) wf
+  simp [mayBeSatisfied_eq_satisfiedPolicies (eff := .forbid) wf]
 
 /--
   on concrete inputs, the `cond` of all residuals is literal `true`

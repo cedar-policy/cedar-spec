@@ -42,16 +42,15 @@ theorem partial_authz_decision_eqv_authz_decision_on_concrete {policies : Polici
   simp only [Spec.isAuthorized, Partial.Response.decision, Bool.and_eq_true, Bool.not_eq_true',
     Bool.not_eq_true, Bool.decide_eq_false, ite_eq_left_iff, Bool.not_eq_false]
   simp only [PartialOnConcrete.knownForbids_eq_forbids wf]
-  simp only [PartialOnConcrete.forbids_empty_iff_no_satisfied_forbids wf]
-  simp only [PartialOnConcrete.forbids_nonempty_iff_satisfied_forbids_nonempty wf]
+  simp only [PartialOnConcrete.forbids_eq_satisfied_forbids wf]
   cases h₁ : (Spec.satisfiedPolicies .forbid policies req entities).isEmpty
   <;> simp only [false_and, true_and, and_self, or_true, false_implies, forall_const, reduceIte]
   case true =>
-    simp only [PartialOnConcrete.permits_empty_iff_no_satisfied_permits wf]
+    simp only [PartialOnConcrete.permits_eq_satisfied_permits wf]
     simp only [PartialOnConcrete.knownPermits_eq_permits wf]
     cases h₂ : (Spec.satisfiedPolicies .permit policies req entities).isEmpty
-    case false => simp [h₂, PartialOnConcrete.permits_empty_iff_no_satisfied_permits wf]
-    case true => simp [h₁, h₂, PartialOnConcrete.permits_nonempty_iff_satisfied_permits_nonempty wf]
+    case false => simp [h₂, PartialOnConcrete.permits_eq_satisfied_permits wf]
+    case true => simp [h₁, h₂, PartialOnConcrete.permits_eq_satisfied_permits wf]
 
 /--
   Corollary to the above: partial-authorizing with concrete inputs gives a
