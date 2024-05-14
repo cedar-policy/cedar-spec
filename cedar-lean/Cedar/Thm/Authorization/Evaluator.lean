@@ -134,7 +134,7 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
 /--
   Every `and` expression produces either .ok bool or .error
 -/
-theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entities : Entities} :
+theorem and_produces_bool_or_error (e₁ e₂ : Expr) (request : Request) (entities : Entities) :
   match (evaluate (Expr.and e₁ e₂) request entities) with
   | .ok (.prim (.bool _)) => true
   | .error _ => true
