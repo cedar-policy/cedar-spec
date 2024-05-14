@@ -53,4 +53,19 @@ theorem partial_authz_decision_eqv_authz_decision_on_concrete {policies : Polici
     case false => simp [h₂, PartialOnConcrete.permits_empty_iff_no_satisfied_permits wf]
     case true => simp [h₁, h₂, PartialOnConcrete.permits_nonempty_iff_satisfied_permits_nonempty wf]
 
+/--
+  Corollary to the above: partial-authorizing with concrete inputs gives a
+  concrete decision.
+-/
+theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).decision ≠ .unknown
+:= by
+  intro h₁
+  have h₂ := partial_authz_decision_eqv_authz_decision_on_concrete (policies := policies) (req := req) (entities := entities) (presp := Partial.isAuthorized req entities policies) (resp := Spec.isAuthorized req entities policies) wf
+  simp only [forall_const] at h₂
+  cases h₃ : (Spec.isAuthorized req entities policies).decision
+  <;> simp only [h₃, true_and, false_and, or_false, false_or] at h₂
+  <;> simp only [h₂] at h₁
+
 end Cedar.Thm.Partial.Authorization
