@@ -42,7 +42,7 @@ open Cedar.Spec (Error Result)
   Partial evaluation with concrete inputs gives the same output as
   concrete evaluation with those inputs
 -/
-theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
+theorem on_concrete_eqv_concrete_eval' (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.WellFormed) :
   PartialEvalEquivConcreteEval expr request entities
 := by
@@ -53,48 +53,48 @@ theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request
     have h := Var.on_concrete_eqv_concrete_eval v request entities wf
     unfold PartialEvalEquivConcreteEval at h ; exact h
   case and x₁ x₂ =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
-    have ih₂ := on_concrete_eqv_concrete_eval x₂ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
+    have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
     exact And.on_concrete_eqv_concrete_eval ih₁ ih₂
   case or x₁ x₂ =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
-    have ih₂ := on_concrete_eqv_concrete_eval x₂ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
+    have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
     exact Or.on_concrete_eqv_concrete_eval ih₁ ih₂
   case ite x₁ x₂ x₃ =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
-    have ih₂ := on_concrete_eqv_concrete_eval x₂ request entities wf
-    have ih₃ := on_concrete_eqv_concrete_eval x₃ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
+    have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
+    have ih₃ := on_concrete_eqv_concrete_eval' x₃ request entities wf
     exact Ite.on_concrete_eqv_concrete_eval ih₁ ih₂ ih₃
   case unaryApp op x₁ =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
     exact Unary.on_concrete_eqv_concrete_eval ih₁
   case binaryApp op x₁ x₂ =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
-    have ih₂ := on_concrete_eqv_concrete_eval x₂ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
+    have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
     exact Binary.on_concrete_eqv_concrete_eval ih₁ ih₂
   case getAttr x₁ attr =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
     exact GetAttr.on_concrete_eqv_concrete_eval ih₁
   case hasAttr x₁ attr =>
-    have ih₁ := on_concrete_eqv_concrete_eval x₁ request entities wf
+    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
     exact HasAttr.on_concrete_eqv_concrete_eval ih₁
   case set xs =>
     have ih : ∀ x ∈ xs, PartialEvalEquivConcreteEval x request entities := by
       intro x h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply on_concrete_eqv_concrete_eval x request entities wf
+      apply on_concrete_eqv_concrete_eval' x request entities wf
     exact Set.on_concrete_eqv_concrete_eval ih
   case record attrs =>
     have ih : ∀ kv ∈ attrs, PartialEvalEquivConcreteEval kv.snd request entities := by
       intro kv h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply on_concrete_eqv_concrete_eval kv.snd request entities wf
+      apply on_concrete_eqv_concrete_eval' kv.snd request entities wf
     exact Record.on_concrete_eqv_concrete_eval ih
   case call xfn args =>
     have ih : ∀ arg ∈ args, PartialEvalEquivConcreteEval arg request entities := by
       intro arg h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply on_concrete_eqv_concrete_eval arg request entities wf
+      apply on_concrete_eqv_concrete_eval' arg request entities wf
     exact Call.on_concrete_eqv_concrete_eval ih
 termination_by expr
 decreasing_by
@@ -104,6 +104,18 @@ decreasing_by
     have h₂ : sizeOf kv.snd < sizeOf kv := by simp only [sizeOf, Prod._sizeOf_1] ; omega
     apply Nat.lt_trans h₂
     omega
+
+/--
+  Corollary, written with `PartialEvalEquivConcreteEval` spelled out, which is
+  easier for consumers
+-/
+theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
+  (wf : request.WellFormed) :
+  Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
+:= by
+  have h := on_concrete_eqv_concrete_eval' expr request entities wf
+  unfold PartialEvalEquivConcreteEval at h
+  exact h
 
 /--
   `Prop` that a given `Result Partial.Value` is either a concrete value or an
