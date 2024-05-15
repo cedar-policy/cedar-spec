@@ -126,6 +126,15 @@ theorem map_attach₂_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x
 := by
   simp [attach₂, map_pmap_subtype_snd]
 
+/--
+  same as `map_attach₂_snd` but for `attach₃`
+-/
+theorem map_attach₃_snd [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
+  xs.attach₃.map (λ x : {x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
+  xs.map λ (a, b) => (a, f b)
+:= by
+  simp [attach₃, map_pmap_subtype_snd]
+
 /-! ### Forall₂ -/
 
 /--

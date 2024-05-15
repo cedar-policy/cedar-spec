@@ -22,7 +22,7 @@ import Cedar.Thm.Data.List
 
 /-! ## Lemmas about `subst` operations -/
 
-namespace Cedar.Thm.Partial
+namespace Cedar.Thm.Partial.Subst
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
@@ -65,3 +65,46 @@ theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Map Unknown Partial.Va
     have := List.sizeOf_snd_lt_sizeOf_list h₁
     exact subst_concrete_expr x subsmap
 termination_by expr
+
+/--
+  subst on a concrete value is that value
+-/
+theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial.Value) :
+  value.asPartialExpr.subst subsmap = value.asPartialExpr
+:= by
+  unfold Partial.Expr.subst Spec.Value.asPartialExpr
+  cases value
+  case prim => simp only
+  case set vs =>
+    simp only [Partial.Expr.set.injEq]
+    rw [List.map₁_eq_map, List.map₁_eq_map]
+    rw [List.map_map]
+    apply List.map_congr
+    intro v _
+    exact subst_concrete_value v subsmap
+  case record attrs =>
+    simp only [Partial.Expr.record.injEq]
+    rw [List.map_attach₂_snd]
+    rw [List.map_attach₃_snd]
+    rw [List.map_map]
+    apply List.map_congr
+    intro (k, v) _
+    simp only [Function.comp_apply, Prod.mk.injEq, true_and]
+    exact subst_concrete_value v subsmap
+  case ext x =>
+    cases x <;> simp only [Partial.Expr.call.injEq, true_and]
+    <;> rw [List.map₁_eq_map]
+    <;> simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true]
+    <;> unfold Partial.Expr.subst
+    <;> rfl
+termination_by value
+decreasing_by
+  all_goals simp_wf
+  case _ h₁ => -- set
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    have h₂ := Map.sizeOf_lt_of_value h₁
+    have h₃ := Map.sizeOf_lt_of_kvs m
+    simp [Map.kvs] at h₂ h₃
+    omega
