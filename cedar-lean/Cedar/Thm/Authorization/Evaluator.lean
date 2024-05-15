@@ -166,5 +166,17 @@ theorem and_produces_bool_or_error {e₁ e₂ : Expr} {request : Request} {entit
         case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
         case _ => simp only [Except.bind_err] at h
 
+/--
+  Corollary of the above:
+  Evaluating a policy produces either .ok bool or .error
+-/
+theorem policy_produces_bool_or_error (p : Policy) (request : Request) (entities : Entities) :
+  match (evaluate p.toExpr request entities) with
+  | .ok (.prim (.bool _)) => true
+  | .error _ => true
+  | _ => false
+:= by
+  unfold Policy.toExpr
+  apply and_produces_bool_or_error
 
 end Cedar.Thm

@@ -1,0 +1,203 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Cedar.Spec.Authorizer
+import Cedar.Spec.Entities
+import Cedar.Spec.Request
+import Cedar.Partial.Authorizer
+import Cedar.Partial.Response
+import Cedar.Thm.Authorization.Evaluator
+import Cedar.Thm.Partial.Evaluation
+import Cedar.Thm.Partial.Evaluation.Basic
+
+/-!
+  This file contains lemmas about the behavior of partial authorization on
+  concrete inputs.
+
+  The toplevel theorems (proved using these lemmas) are in
+  Thm/Partial/Authorization.lean, not this file.
+-/
+
+namespace Cedar.Thm.Partial.Authorization.PartialOnConcrete
+
+open Cedar.Data
+open Cedar.Partial (Residual)
+open Cedar.Spec (Effect Policies PolicyID)
+
+/--
+  on concrete inputs, `Partial.Response.mayBeSatisfied` is equal to
+  `Spec.satisfiedPolicies`
+-/
+theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).mayBeSatisfied eff = Spec.satisfiedPolicies eff policies req entities
+:= by
+  unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
+  simp [List.filterMap_filterMap]
+  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
+  simp only [Set.make_make_eqv, List.Equiv, List.subset_def]
+  simp only [List.mem_filterMap, Option.bind_eq_some, ite_some_none_eq_some, forall_exists_index, and_imp]
+  constructor <;> intro pid policy h₁
+  case left =>
+    intro r h₂ h₃
+    exists policy
+    apply And.intro h₁
+    split at h₂ <;> simp only [Option.some.injEq] at h₂
+    <;> subst h₂
+    <;> simp only [Residual.mayBeSatisfied] at h₃
+    <;> split at h₃ <;> simp only [ite_some_none_eq_some] at h₃
+    <;> rename_i pid' eff' cond _ h₄
+    <;> replace ⟨h₃, h₃'⟩ := h₃
+    <;> subst eff' pid'
+    <;> simp only [Residual.residual.injEq] at h₄
+    <;> replace ⟨h₄, h₄', h₄''⟩ := h₄
+    <;> subst pid eff cond
+    <;> rename_i h₂ _ _
+    <;> split at h₂ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₂
+    subst h₂
+    rename_i v h₂ _ _
+    simp only [h₂, Except.ok.injEq, true_and, and_true]
+    have h₃ := policy_produces_bool_or_error policy req entities
+    simp only [h₂] at h₃
+    split at h₃ <;> rename_i h₄ <;> simp only [Except.ok.injEq, imp_self, implies_true] at h₄
+    <;> try contradiction
+    subst h₄ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
+    rename_i h₄ _ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq] at h₄
+    by_contra h₅ ; simp only [ne_eq, Bool.not_eq_true] at h₅ ; exact h₄ h₅
+  case right =>
+    intro h₂ h₃ h₄
+    subst h₂ h₄
+    exists policy
+    apply And.intro h₁
+    simp only [h₃, Residual.mayBeSatisfied, Option.some.injEq, exists_eq_left']
+    split <;> rename_i h₂ <;> simp only [Residual.residual.injEq, and_imp,
+      forall_apply_eq_imp_iff, forall_eq', forall_apply_eq_imp_iff₂, ite_some_none_eq_some] at *
+    <;> replace ⟨h₂', h₂'', h₂⟩ := h₂
+    <;> subst h₂' h₂''
+    · simp only [Spec.Value.asPartialExpr, Partial.Expr.lit.injEq, Spec.Prim.bool.injEq] at h₂
+    · simp only [and_self]
+
+/--
+  corollary of the above
+-/
+theorem permits_eq_satisfied_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).permits = Spec.satisfiedPolicies .permit policies req entities
+:= by
+  unfold Partial.Response.permits
+  simp [mayBeSatisfied_eq_satisfiedPolicies (eff := .permit) wf]
+
+/--
+  corollary of the above
+-/
+theorem forbids_eq_satisfied_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).forbids = Spec.satisfiedPolicies .forbid policies req entities
+:= by
+  unfold Partial.Response.forbids
+  simp [mayBeSatisfied_eq_satisfiedPolicies (eff := .forbid) wf]
+
+/--
+  on concrete inputs, the `cond` of all residuals is literal `true`
+-/
+theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {id : PolicyID} {eff : Effect} {cond : Partial.Expr}
+  (wf : req.WellFormed) :
+  (Residual.residual id eff cond) ∈ (Partial.isAuthorized req entities policies).residuals →
+  cond = .lit (.bool true)
+:= by
+  intro h₁
+  unfold Partial.isAuthorized at h₁
+  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map,
+    List.mem_filterMap] at h₁
+  replace ⟨policy, _, h₁⟩ := h₁
+  have h₂ := policy_produces_bool_or_error (p := policy) (request := req) (entities := entities)
+  split at h₂ <;> simp only at h₂
+  · rename_i b h₃
+    simp only [h₃] at h₁
+    split at h₁ <;> simp only [Option.some.injEq, Residual.residual.injEq] at h₁
+    case h_2 v h₄ h₅ =>
+      replace ⟨h₁, _, h₆⟩ := h₁
+      subst h₁ h₆
+      simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₅
+      subst h₅
+      simp only [Spec.Value.asPartialExpr, Partial.Expr.lit.injEq, Spec.Prim.bool.injEq]
+      match b with
+      | true => rfl
+      | false => simp only [forall_const] at h₄
+    case h_3 cond' h₄ =>
+      replace ⟨h₁, _, h₅⟩ := h₁
+      subst h₁ h₅
+      simp only [Except.ok.injEq] at h₄
+  · rename_i e h₃ ; simp [h₃] at h₁
+
+/--
+  on concrete inputs, `mustBeSatisfied` and `mayBeSatisfied` are the same
+-/
+theorem mustBeSatisfied_eq_mayBeSatisfied {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).mustBeSatisfied eff =
+  (Partial.isAuthorized req entities policies).mayBeSatisfied eff
+:= by
+  simp only [Partial.Response.mustBeSatisfied, Partial.Response.mayBeSatisfied]
+  rw [Set.make_make_eqv]
+  unfold List.Equiv
+  simp only [Residual.mustBeSatisfied, Residual.mayBeSatisfied, List.subset_def,
+    List.mem_filterMap, forall_exists_index, and_imp]
+  constructor <;> intro pid r h₁ h₂
+  case left =>
+    exists r
+    apply And.intro h₁
+    split at h₂ <;> simp only [ite_some_none_eq_some] at h₂
+    case h_1 r pid' eff' =>
+      replace ⟨h₂, h₂'⟩ := h₂
+      subst pid' eff'
+      simp only [reduceIte]
+  case right =>
+    exists r
+    apply And.intro h₁
+    split at h₂ <;> simp only [ite_some_none_eq_some] at h₂
+    case h_2 r pid' eff' cond h₃ =>
+      replace ⟨h₂, h₂'⟩ := h₂
+      subst pid' eff'
+      split <;> simp only [ite_some_none_eq_some] <;> rename_i h₄
+      · simp at h₄
+        exact And.intro h₄.right.left h₄.left.symm
+      · apply h₄ pid eff ; clear h₄
+        have h₂ := all_residuals_are_true_residuals wf h₁
+        subst h₂
+        rfl
+
+/--
+  corollary of the above
+-/
+theorem knownPermits_eq_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).knownPermits = (Partial.isAuthorized req entities policies).permits
+:= by
+  unfold Partial.Response.knownPermits Partial.Response.permits
+  apply mustBeSatisfied_eq_mayBeSatisfied (eff := .permit) wf
+
+/--
+  corollary of the above
+-/
+theorem knownForbids_eq_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+  (wf : req.WellFormed) :
+  (Partial.isAuthorized req entities policies).knownForbids = (Partial.isAuthorized req entities policies).forbids
+:= by
+  unfold Partial.Response.knownForbids Partial.Response.forbids
+  apply mustBeSatisfied_eq_mayBeSatisfied (eff := .forbid) wf
+
+end Cedar.Thm.Partial.Authorization.PartialOnConcrete
