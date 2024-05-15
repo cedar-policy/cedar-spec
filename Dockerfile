@@ -35,4 +35,8 @@ RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && elan default
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
 RUN source /root/.profile && source ./set_env_vars.sh && cargo build
 
+# Initialize corpus for all targets. No-op for target that don't need initilization.
+WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
+RUN source /root/.profile &&  ./initialize_corpus.sh --all
+
 ENTRYPOINT ["/usr/bin/bash", "--rcfile", "../rcfile"]

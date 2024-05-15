@@ -15,9 +15,11 @@
  */
 
 mod dump;
+mod policy_equiv;
 mod prt;
 
 pub use dump::*;
+pub use policy_equiv::*;
 pub use prt::*;
 pub mod schemas;
 
