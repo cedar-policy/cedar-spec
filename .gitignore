@@ -20,3 +20,7 @@ cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
 
 .vscode
+
+# We expect a copy of `cedar-policy/cedar` present in this directory, but do
+# not track it in version control.
+cedar/
