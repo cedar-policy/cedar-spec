@@ -18,7 +18,9 @@ import Cedar.Partial.Authorizer
 import Cedar.Partial.Response
 import Cedar.Spec.Authorizer
 import Cedar.Spec.Response
+import Cedar.Thm.Authorization.Authorizer
 import Cedar.Thm.Partial.Authorization.PartialOnConcrete
+import Cedar.Thm.Partial.Authorization.PartialResponse
 
 /-! This file contains toplevel theorems about Cedar's partial authorizer. -/
 
@@ -66,5 +68,104 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Sp
   cases h₃ : (Spec.isAuthorized req entities policies).decision
   <;> simp only [h₃, true_and, false_and, or_false, false_or] at h₂
   <;> simp only [h₂] at h₁
+
+/--
+  On concrete inputs, partial authorization's `overapproximateDeterminingPolicies`
+  are identical to concrete authorization's `determiningPolicies`
+-/
+theorem overapproximate_determining_eqv_determining_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+  (wf : req.WellFormed) :
+  Spec.isAuthorized req entities policies = resp →
+  Partial.isAuthorized req entities policies = presp →
+  presp.overapproximateDeterminingPolicies = resp.determiningPolicies
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  rw [← Set.eq_means_eqv Partial.Response.overapproximateDeterminingPolicies_wf determiningPolicies_wf]
+  simp only [List.Equiv, List.subset_def]
+  simp only [Partial.Response.overapproximateDeterminingPolicies, Spec.isAuthorized]
+  simp only [Partial.Response.decision]
+  simp only [PartialOnConcrete.knownForbids_eq_forbids wf]
+  simp only [PartialOnConcrete.knownPermits_eq_permits wf]
+  simp only [PartialOnConcrete.forbids_eq_satisfied_forbids wf]
+  simp only [PartialOnConcrete.permits_eq_satisfied_permits wf]
+  constructor <;> intro pid h₁
+  <;> rw [Set.in_list_iff_in_set] at *
+  <;> cases h₂ : (Spec.satisfiedPolicies .forbid policies req entities).isEmpty
+  <;> simp only [not_true_eq_false, ↓reduceIte, Bool.not_eq_true, Bool.decide_eq_false,
+    Bool.true_and, Bool.false_and, Bool.not_eq_true']
+  <;> simp only [h₂] at h₁
+  case left.false | right.false => simpa using h₁
+  case left.true | right.true =>
+    cases h₃ : (Spec.satisfiedPolicies .permit policies req entities).isEmpty
+    <;> simpa [h₃] using h₁
+
+/--
+  On concrete inputs, partial authorization's `underapproximateDeterminingPolicies`
+  are identical to concrete authorization's `determiningPolicies`
+-/
+theorem underapproximate_determining_eqv_determining_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+  (wf : req.WellFormed) :
+  Spec.isAuthorized req entities policies = resp →
+  Partial.isAuthorized req entities policies = presp →
+  presp.underapproximateDeterminingPolicies = resp.determiningPolicies
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  rw [← Set.eq_means_eqv Partial.Response.underapproximateDeterminingPolicies_wf determiningPolicies_wf]
+  simp only [List.Equiv, List.subset_def]
+  simp only [Partial.Response.underapproximateDeterminingPolicies, Spec.isAuthorized]
+  simp only [Partial.Response.decision]
+  simp only [PartialOnConcrete.knownForbids_eq_forbids wf]
+  simp only [PartialOnConcrete.knownPermits_eq_permits wf]
+  simp only [PartialOnConcrete.forbids_eq_satisfied_forbids wf]
+  simp only [PartialOnConcrete.permits_eq_satisfied_permits wf]
+  constructor <;> intro pid h₁
+  <;> rw [Set.in_list_iff_in_set] at *
+  <;> cases h₂ : (Spec.satisfiedPolicies .forbid policies req entities).isEmpty
+  <;> simp only [not_true_eq_false, ↓reduceIte, Bool.not_eq_true, Bool.decide_eq_false,
+    Bool.true_and, Bool.false_and, Bool.not_eq_true']
+  <;> simp only [h₂] at h₁
+  case left.false | right.false => simpa using h₁
+  case left.true | right.true =>
+    cases h₃ : (Spec.satisfiedPolicies .permit policies req entities).isEmpty
+    <;> simpa [h₃] using h₁
+
+/--
+  On concrete inputs, partial authorization's `errorPolicies` are the same
+  policies as concrete authorization's `erroringPolicies`
+-/
+theorem partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+  (wf : req.WellFormed) :
+  Spec.isAuthorized req entities policies = resp →
+  Partial.isAuthorized req entities policies = presp →
+  presp.errorPolicies = resp.erroringPolicies
+:= by
+  intro h₁ h₂
+  subst h₁ h₂
+  simp only [Spec.isAuthorized, Bool.and_eq_true, Bool.not_eq_true']
+  cases (Spec.satisfiedPolicies .forbid policies req entities).isEmpty <;>
+  cases (Spec.satisfiedPolicies .permit policies req entities).isEmpty <;>
+  simp only [and_true, and_false, ite_true, ite_false] <;>
+  exact PartialOnConcrete.errorPolicies_eq_errorPolicies wf
+
+/--
+  Partial-authorizing with concrete inputs gives the same concrete outputs as
+  concrete-authorizing with those inputs.
+-/
+theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+  (wf : req.WellFormed) :
+  Spec.isAuthorized req entities policies = resp →
+  Partial.isAuthorized req entities policies = presp →
+  (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
+  presp.overapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
+  presp.errorPolicies = resp.erroringPolicies
+:= by
+  intro h₁ h₂
+  apply And.intro (partial_authz_decision_eqv_authz_decision_on_concrete wf h₁ h₂)
+  apply And.intro (overapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
+  apply And.intro (underapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
+  exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf h₁ h₂
 
 end Cedar.Thm.Partial.Authorization

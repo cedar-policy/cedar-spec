@@ -30,6 +30,20 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Data
 
+theorem determiningPolicies_wf {policies : Policies} {request : Request} {entities : Entities} :
+  (isAuthorized request entities policies).determiningPolicies.WellFormed
+:= by
+  simp only [Set.WellFormed, isAuthorized, Set.toList, Bool.and_eq_true, Bool.not_eq_true']
+  cases (satisfiedPolicies .forbid policies request entities).isEmpty <;>
+  cases (satisfiedPolicies .permit policies request entities).isEmpty <;>
+  simp only [and_true, and_false, and_self, ite_true, ite_false]
+  all_goals {
+    unfold satisfiedPolicies
+    simp only [Set.make_make_eqv]
+    apply List.Equiv.symm
+    exact Set.elts_make_equiv
+  }
+
 theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {entities : Entities} :
   hasError policy request entities →
   ∃ err, evaluate policy.toExpr request entities = .error err

@@ -124,10 +124,11 @@ def Response.forbids (resp : Partial.Response) : Set PolicyID :=
   All policies which definitely produce errors (for all possible substitutions
   of the unknowns)
 -/
-def Response.errors (resp : Partial.Response) : List (PolicyID × Error) :=
-  resp.residuals.filterMap λ residual => match residual with
-    | .error id error => some (id, error)
+def Response.errorPolicies (resp : Partial.Response) : Set PolicyID :=
+  Set.make (resp.residuals.filterMap λ residual => match residual with
+    | .error id _ => some id
     | _ => none
+  )
 
 inductive Decision where
   /-- definitely Allow, for any substitution of the unknowns -/
