@@ -20,7 +20,7 @@ use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
 use cedar_policy_core::entities::Entities;
-use cedar_policy_core::evaluator::EvaluationErrorKind;
+use cedar_policy_core::evaluator::EvaluationError;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     hierarchy::{Hierarchy, HierarchyGenerator},
@@ -142,29 +142,27 @@ fuzz_target!(|input: FuzzTargetInput| {
                         .iter()
                         .filter_map(|error| match error {
                             AuthorizationError::PolicyEvaluationError { error, .. } => {
-                                match error.error_kind() {
+                                match error {
                                     // Evaluation errors the validator should prevent.
-                                    EvaluationErrorKind::UnspecifiedEntityAccess(_)
-                                    | EvaluationErrorKind::RecordAttrDoesNotExist(_, _)
-                                    | EvaluationErrorKind::EntityAttrDoesNotExist { .. }
-                                    | EvaluationErrorKind::FailedExtensionFunctionLookup(_)
-                                    | EvaluationErrorKind::TypeError { .. }
-                                    | EvaluationErrorKind::WrongNumArguments { .. } => {
+                                    EvaluationError::UnspecifiedEntityAccess(_)
+                                    | EvaluationError::RecordAttrDoesNotExist(_)
+                                    | EvaluationError::EntityAttrDoesNotExist(_)
+                                    | EvaluationError::FailedExtensionFunctionLookup(_)
+                                    | EvaluationError::TypeError(_)
+                                    | EvaluationError::WrongNumArguments(_) => {
                                         Some(error.to_string())
                                     }
                                     // Evaluation errors it shouldn't prevent. Not
                                     // written with a catch all so that we must
                                     // consider if a new error type should cause
                                     // this target to fail.
-                                    EvaluationErrorKind::EntityDoesNotExist(_)
-                                    | EvaluationErrorKind::IntegerOverflow(_)
-                                    | EvaluationErrorKind::InvalidRestrictedExpression(_)
-                                    | EvaluationErrorKind::UnlinkedSlot(_)
-                                    | EvaluationErrorKind::FailedExtensionFunctionApplication {
-                                        ..
-                                    }
-                                    | EvaluationErrorKind::NonValue(_)
-                                    | EvaluationErrorKind::RecursionLimit => None,
+                                    EvaluationError::EntityDoesNotExist(_)
+                                    | EvaluationError::IntegerOverflow(_)
+                                    | EvaluationError::InvalidRestrictedExpression(_)
+                                    | EvaluationError::UnlinkedSlot(_)
+                                    | EvaluationError::FailedExtensionFunctionExecution(_)
+                                    | EvaluationError::NonValue(_)
+                                    | EvaluationError::RecursionLimit(_) => None,
                                 }
                             }
                         })
