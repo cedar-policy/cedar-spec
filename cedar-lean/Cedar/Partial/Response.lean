@@ -205,6 +205,21 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
 
 /--
   Re-evaluate with the given substitution for unknowns, giving a new
+  `Residual`, or `none` if the residual is now `false`.
+
+  Assumes that `req` and `entities` have already been substituted.
+-/
+def Residual.reEvaluateWithSubst (subsmap : Map String Partial.Value) (req : Partial.Request) (entities : Partial.Entities) : Residual → Option Residual
+  | .error id e => some (.error id e)
+  | .residual id effect cond =>
+    match Partial.evaluate (cond.subst subsmap) req entities with
+    | .ok (.value (.prim (.bool false))) => none
+    | .ok (.value v) => some (.residual id effect v.asPartialExpr)
+    | .ok (.residual r) => some (.residual id effect r)
+    | .error e => some (.error id e)
+
+/--
+  Re-evaluate with the given substitution for unknowns, giving a new
   `Partial.Response`.
 
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
@@ -223,16 +238,11 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
 def Response.reEvaluateWithSubst (subsmap : Map String Partial.Value) : Partial.Response → Option Partial.Response
   | { residuals, req, entities } => do
   let req' ← req.subst subsmap
+  let entities' := entities.subst subsmap
   some {
-    residuals := residuals.filterMap λ residual => match residual with
-      | .error id e => some (.error id e)
-      | .residual id effect cond => match Partial.evaluate (cond.subst subsmap) req' (entities.subst subsmap) with
-        | .ok (.value (.prim (.bool false))) => none
-        | .ok (.value v) => some (.residual id effect v.asPartialExpr)
-        | .ok (.residual r) => some (.residual id effect r)
-        | .error e => some (.error id e)
+    residuals := residuals.filterMap (Residual.reEvaluateWithSubst subsmap req' entities')
     req := req'
-    entities := entities.subst subsmap
+    entities := entities'
   }
 
 end Cedar.Partial
