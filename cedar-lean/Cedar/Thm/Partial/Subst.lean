@@ -67,9 +67,20 @@ theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Map Unknown Partial.Va
 termination_by expr
 
 /--
-  subst on a concrete value is that value
+  Partial.Value.subst on a concrete value is that value
 -/
 theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial.Value) :
+  (Partial.Value.value value).subst subsmap = value
+:= by
+  unfold Partial.Value.subst
+  split <;> rename_i h <;> simp only [Partial.Value.value.injEq] at h
+  subst h
+  rfl
+
+/--
+  Partial.Expr.subst on a concrete value is that value
+-/
+theorem subst_concrete_value' (value : Spec.Value) (subsmap : Map Unknown Partial.Value) :
   value.asPartialExpr.subst subsmap = value.asPartialExpr
 := by
   unfold Partial.Expr.subst Spec.Value.asPartialExpr
@@ -81,7 +92,7 @@ theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial
     rw [List.map_map]
     apply List.map_congr
     intro v _
-    exact subst_concrete_value v subsmap
+    exact subst_concrete_value' v subsmap
   case record attrs =>
     simp only [Partial.Expr.record.injEq]
     rw [List.map_attach₂_snd]
@@ -90,7 +101,7 @@ theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial
     apply List.map_congr
     intro (k, v) _
     simp only [Function.comp_apply, Prod.mk.injEq, true_and]
-    exact subst_concrete_value v subsmap
+    exact subst_concrete_value' v subsmap
   case ext x =>
     cases x <;> simp only [Partial.Expr.call.injEq, true_and]
     <;> rw [List.map₁_eq_map]
