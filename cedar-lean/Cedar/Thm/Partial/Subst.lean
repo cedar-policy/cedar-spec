@@ -46,7 +46,7 @@ theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Map Unknown Partial.Va
     · exact subst_concrete_expr x₂ subsmap
   case ite x₁ x₂ x₃ =>
     simp only [Partial.Expr.ite.injEq]
-    repeat any_goals apply And.intro
+    and_intros
     · exact subst_concrete_expr x₁ subsmap
     · exact subst_concrete_expr x₂ subsmap
     · exact subst_concrete_expr x₃ subsmap
