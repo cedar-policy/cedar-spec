@@ -210,6 +210,12 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.Response` will still contain some (nontrivial) residuals.
 
+  Respects the invariant documented on `Partial.Response.residuals` that:
+    - `.residuals` will not include policies that are definitely not satisfied
+        (residual `false`).
+    - `.residuals` will include policies that are definitely satisfied (residual
+        `true`).
+
   Returns `none` if:
     - the substitution is invalid (e.g., if trying to substitute a
         non-`EntityUID` into `UidOrUnknown`)
