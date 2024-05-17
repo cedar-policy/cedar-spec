@@ -46,7 +46,7 @@ theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Re
   (Partial.isAuthorized req entities policies).mayBeSatisfied eff = Spec.satisfiedPolicies eff policies req entities
 := by
   unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
-  simp [List.filterMap_filterMap]
+  simp only [List.filterMap_filterMap, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq]
   simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
   simp only [Set.make_make_eqv, List.Equiv, List.subset_def]
   simp only [List.mem_filterMap, Option.bind_eq_some, ite_some_none_eq_some, forall_exists_index, and_imp]
@@ -141,7 +141,7 @@ theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Reque
       replace ⟨h₁, _, h₅⟩ := h₁
       subst h₁ h₅
       simp only [Except.ok.injEq] at h₄
-  · rename_i e h₃ ; simp [h₃] at h₁
+  · rename_i e h₃ ; simp only [h₃, Option.some.injEq] at h₁
 
 /--
   on concrete inputs, `mustBeSatisfied` and `mayBeSatisfied` are the same
@@ -173,7 +173,7 @@ theorem mustBeSatisfied_eq_mayBeSatisfied {policies : Policies} {req : Spec.Requ
       replace ⟨h₂, h₂'⟩ := h₂
       subst pid' eff'
       split <;> simp only [ite_some_none_eq_some] <;> rename_i h₄
-      · simp at h₄
+      · simp only [Residual.residual.injEq] at h₄
         exact And.intro h₄.right.left h₄.left.symm
       · apply h₄ pid eff ; clear h₄
         have h₂ := all_residuals_are_true_residuals wf h₁
@@ -201,26 +201,24 @@ theorem knownForbids_eq_forbids {policies : Policies} {req : Spec.Request} {enti
   apply mustBeSatisfied_eq_mayBeSatisfied (eff := .forbid) wf
 
 /--
-  on concrete inputs, `Partial.Response.errors` and `Spec.errorPolicies` are equal
+  on concrete inputs, `Partial.Response.errorPolicies` and `Spec.errorPolicies` are equal
 -/
-theorem errors_eq_errorPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
+theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
   (wf : req.WellFormed) :
-  Set.make ((Partial.isAuthorized req entities policies).errors.map Prod.fst) =
+  (Partial.isAuthorized req entities policies).errorPolicies =
   Spec.errorPolicies policies req entities
 := by
-  unfold Spec.errorPolicies Partial.Response.errors
+  unfold Spec.errorPolicies Partial.Response.errorPolicies
   rw [Set.make_make_eqv]
   simp only [List.Equiv, List.map_filterMap, List.subset_def, List.mem_filterMap,
     Option.map_eq_some', forall_exists_index, and_imp]
   constructor
   case left =>
-    intro pid r h₁ pair h₂ h₃
-    split at h₂ <;> simp only [Option.some.injEq] at h₂
-    case h_1 r pid' e =>
-      subst pair
-      simp only at h₃
+    intro pid r h₁ h₂
+    cases r <;> simp only [Option.some.injEq] at h₂
+    case error pid' e =>
       subst pid'
-      simp only [Partial.isAuthorized, List.mem_filterMap, Spec.errored, Spec.hasError,
+      simp only [Partial.isAuthorized, Spec.errored, Spec.hasError, List.mem_filterMap,
         ite_some_none_eq_some] at *
       replace ⟨policy, h₁, h₂⟩ := h₁
       exists policy
@@ -229,19 +227,20 @@ theorem errors_eq_errorPolicies {policies : Policies} {req : Spec.Request} {enti
       split <;> split at h₂
       <;> simp only [Option.some.injEq, Residual.error.injEq] at h₂
       <;> try simp only [h₂, and_true, and_self]
-      case h_1.h_4 h₃ _ e' h₄ => simp [h₃, Except.map] at h₄
+      case h_1.h_4 h₃ _ e' h₄ => simp only [h₃, Except.map] at h₄
   case right =>
     intro pid policy h₁ h₂
     unfold Spec.errored Spec.hasError at h₂
     simp only [ite_some_none_eq_some] at h₂
     replace ⟨h₂, h₂'⟩ := h₂
-    subst h₂'
+    subst pid
     split at h₂ <;> simp only at h₂
     case h_2 e h₃ =>
       exists (.error policy.id e)
-      apply And.intro _ (by exists (policy.id, e))
+      simp only [and_true]
       unfold Partial.isAuthorized
-      simp [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf]
+      simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf,
+        List.mem_filterMap]
       exists policy
       apply And.intro h₁
       split <;> simp only [Option.some.injEq, Residual.error.injEq, true_and]

@@ -132,14 +132,14 @@ theorem underapproximate_determining_eqv_determining_on_concrete {policies : Pol
     <;> simpa [h₃] using h₁
 
 /--
-  On concrete inputs, partial authorization's `errors` are the same policies as
-  concrete authorization's `erroringPolicies`
+  On concrete inputs, partial authorization's `errorPolicies` are the same
+  policies as concrete authorization's `erroringPolicies`
 -/
-theorem partial_authz_errors_eqv_erroringPolicies_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+theorem partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
   (wf : req.WellFormed) :
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
-  Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
+  presp.errorPolicies = resp.erroringPolicies
 := by
   intro h₁ h₂
   subst h₁ h₂
@@ -147,7 +147,7 @@ theorem partial_authz_errors_eqv_erroringPolicies_on_concrete {policies : Polici
   cases (Spec.satisfiedPolicies .forbid policies req entities).isEmpty <;>
   cases (Spec.satisfiedPolicies .permit policies req entities).isEmpty <;>
   simp only [and_true, and_false, ite_true, ite_false] <;>
-  exact PartialOnConcrete.errors_eq_errorPolicies wf
+  exact PartialOnConcrete.errorPolicies_eq_errorPolicies wf
 
 /--
   Partial-authorizing with concrete inputs gives the same concrete outputs as
@@ -160,12 +160,12 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Re
   (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
   presp.overapproximateDeterminingPolicies = resp.determiningPolicies ∧
   presp.underapproximateDeterminingPolicies = resp.determiningPolicies ∧
-  Set.make (presp.errors.map Prod.fst) = resp.erroringPolicies
+  presp.errorPolicies = resp.erroringPolicies
 := by
   intro h₁ h₂
   apply And.intro (partial_authz_decision_eqv_authz_decision_on_concrete wf h₁ h₂)
   apply And.intro (overapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
   apply And.intro (underapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
-  exact partial_authz_errors_eqv_erroringPolicies_on_concrete wf h₁ h₂
+  exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf h₁ h₂
 
 end Cedar.Thm.Partial.Authorization
