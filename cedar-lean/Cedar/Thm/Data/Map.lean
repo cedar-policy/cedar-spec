@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Map
+import Cedar.Data.SizeOf
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 
@@ -26,43 +27,6 @@ This file proves useful properties of canonical list-based maps defined in
 -/
 
 namespace Cedar.Data.Map
-
-/-! ### sizeOf -/
-
-theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v : β}
-  (h : (k, v) ∈ m.1) :
-  sizeOf v < sizeOf m
-:= by
-  simp only [Membership.mem] at h
-  replace h := List.sizeOf_lt_of_mem h
-  have v_lt_kv : sizeOf v < sizeOf (k, v) := by
-    simp only [sizeOf, Prod._sizeOf_1]
-    omega
-  have m1_lt_m : sizeOf m.1 < sizeOf m := by
-    simp only [sizeOf, _sizeOf_1]
-    omega
-  let a := sizeOf v
-  let c := sizeOf m.1
-  let d := sizeOf m
-  have v_lt_m1 : a < c := by apply Nat.lt_trans v_lt_kv h
-  have v_lt_m : a < d := by apply Nat.lt_trans v_lt_m1 m1_lt_m
-  have ha : a = sizeOf v := by simp
-  have hd : d = sizeOf m := by simp
-  rw [ha, hd] at v_lt_m
-  exact v_lt_m
-
-theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
-  (h : m.kvs = (k, v) :: tl) :
-  1 + sizeOf tl < sizeOf m
-:= by
-  conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1
-  simp only
-  unfold kvs at h
-  simp only [h, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
-  generalize sizeOf k = kn
-  generalize sizeOf v = vn
-  generalize sizeOf tl = tn
-  omega
 
 /-! ### Well-formed maps -/
 
@@ -230,7 +194,7 @@ theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α ×
   simp only [and_true]
   have h₂ := List.canonicalize_subseteq Prod.fst xs
   simp only [List.subset_def] at h₂
-  exact @h₂ (k, v) h₁
+  exact h₂ h₁
 
 theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty

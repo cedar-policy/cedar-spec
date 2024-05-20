@@ -126,6 +126,15 @@ theorem map_attach₂_snd {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x
 := by
   simp [attach₂, map_pmap_subtype_snd]
 
+/--
+  same as `map_attach₂_snd` but for `attach₃`
+-/
+theorem map_attach₃_snd [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : β → γ) :
+  xs.attach₃.map (λ x : {x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } => match x with | ⟨(a, b), _⟩ => (a, f b)) =
+  xs.map λ (a, b) => (a, f b)
+:= by
+  simp [attach₃, map_pmap_subtype_snd]
+
 /-! ### Forall₂ -/
 
 /--
@@ -379,7 +388,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
       case ok y' =>
         simp only [h₁, Except.ok.injEq] at h₂
         subst y'
-        specialize @ih ytl h₃
+        specialize ih h₃
         simp only [ih, Except.bind_err, Except.bind_ok]
 
 theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
@@ -540,7 +549,7 @@ theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {
       case some y' =>
         simp only [h₁, Option.some.injEq] at h₂
         subst y'
-        simp [@ih ytl h₃]
+        simp [ih h₃]
 
 theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM f xs = .some ys ↔

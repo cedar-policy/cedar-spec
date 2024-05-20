@@ -22,7 +22,6 @@ import Cedar.Spec.Ext
 namespace Cedar.Spec
 
 open Cedar.Data
-open Cedar.Spec.Ext
 
 ----- Definitions -----
 

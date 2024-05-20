@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data
+import Cedar.Data.SizeOf
 import Cedar.Spec.ExtFun
 import Cedar.Spec.Wildcard
 
@@ -137,5 +138,21 @@ def decExprList (xs ys : List Expr) : Decidable (xs = ys) :=
 end
 
 instance : DecidableEq Expr := decExpr
+
+def Value.asExpr : Value → Expr
+  | .prim p => .lit p
+  | .set vs => .set (vs.elts.map₁ λ ⟨v, _⟩ => v.asExpr)
+  | .record attrs => .record (attrs.kvs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asExpr))
+  | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string (toString d))]
+  | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (toString ip))]
+decreasing_by
+  all_goals simp_wf
+  case _ h₁ => -- set
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    simp only at h₁
+    have := Map.sizeOf_lt_of_kvs attrs
+    omega
 
 end Cedar.Spec

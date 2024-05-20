@@ -44,7 +44,7 @@ structure EntityData where
 Represents the information about all entities.
 
 Currently, this does not allow it to be unknown whether an entity exists.
-Either it exists (and we have a Partial.EntityData) or it does not.
+Either it exists (and we have a `Partial.EntityData`) or it does not.
 -/
 abbrev Entities := Map EntityUID Partial.EntityData
 
@@ -72,10 +72,10 @@ end Cedar.Partial
 
 namespace Cedar.Spec
 
-def EntityData.asPartialEntityData (d : Spec.EntityData) : Partial.EntityData :=
-  {
-    attrs := d.attrs.mapOnValues Partial.Value.value,
-    ancestors := d.ancestors,
+def EntityData.asPartialEntityData : Spec.EntityData → Partial.EntityData
+  | { attrs, ancestors } => {
+      attrs := attrs.mapOnValues Partial.Value.value,
+      ancestors,
   }
 
 instance : Coe Spec.EntityData Partial.EntityData where
@@ -88,3 +88,30 @@ instance : Coe Spec.Entities Partial.Entities where
   coe := Spec.Entities.asPartialEntities
 
 end Cedar.Spec
+
+namespace Cedar.Partial
+
+open Cedar.Data
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing a new `Partial.EntityData`.
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `Partial.EntityData` will still contain some unknowns.
+-/
+def EntityData.subst (subsmap : Map Unknown Partial.Value) : Partial.EntityData → Partial.EntityData
+  | { attrs, ancestors } => {
+      attrs := attrs.mapOnValues (Partial.Value.subst subsmap),
+      ancestors,
+    }
+
+/--
+  Given a map of unknown-name to value, substitute all unknowns with the
+  corresponding values, producing a new `Partial.Entities`.
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `Partial.Entities` will still contain some unknowns.
+-/
+def Entities.subst (es : Partial.Entities) (subsmap : Map Unknown Partial.Value) : Partial.Entities :=
+  es.mapOnValues (Partial.EntityData.subst subsmap)
+
+end Cedar.Partial

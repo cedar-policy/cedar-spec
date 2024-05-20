@@ -71,6 +71,14 @@ structure Response where
     Does include policies that are definitely satisfied (residual `true`).
   -/
   residuals : List Residual
+  /--
+    The `Partial.Request` that was used to compute this `Partial.Response`
+  -/
+  req : Partial.Request
+  /--
+    The `Partial.Entities` that was used to compute this `Partial.Response`
+  -/
+  entities : Partial.Entities
 
 /--
   Get the IDs of all policies which must be satisfied (for all possible
@@ -195,5 +203,47 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
   | .unknown =>
     -- when the decision is Unknown, nothing is guaranteed to be determining.
     Set.empty
+
+/--
+  Re-evaluate with the given substitution for unknowns, giving a new
+  `Residual`, or `none` if the residual is now `false`.
+
+  Assumes that `req` and `entities` have already been substituted.
+-/
+def Residual.reEvaluateWithSubst (subsmap : Map String Partial.Value) (req : Partial.Request) (entities : Partial.Entities) : Residual → Option Residual
+  | .error id e => some (.error id e)
+  | .residual id effect cond =>
+    match Partial.evaluate (cond.subst subsmap) req entities with
+    | .ok (.value (.prim (.bool false))) => none
+    | .ok (.value v) => some (.residual id effect v.asPartialExpr)
+    | .ok (.residual r) => some (.residual id effect r)
+    | .error e => some (.error id e)
+
+/--
+  Re-evaluate with the given substitution for unknowns, giving a new
+  `Partial.Response`.
+
+  It's fine for some unknowns to not be in `subsmap`, in which case the returned
+  `Partial.Response` will still contain some (nontrivial) residuals.
+
+  Respects the invariant documented on `Partial.Response.residuals` that:
+    - `.residuals` will not include policies that are definitely not satisfied
+        (residual `false`).
+    - `.residuals` will include policies that are definitely satisfied (residual
+        `true`).
+
+  Returns `none` if:
+    - the substitution is invalid (e.g., if trying to substitute a
+        non-`EntityUID` into `UidOrUnknown`)
+-/
+def Response.reEvaluateWithSubst (subsmap : Map String Partial.Value) : Partial.Response → Option Partial.Response
+  | { residuals, req, entities } => do
+  let req' ← req.subst subsmap
+  let entities' := entities.subst subsmap
+  some {
+    residuals := residuals.filterMap (Residual.reEvaluateWithSubst subsmap req' entities')
+    req := req'
+    entities := entities'
+  }
 
 end Cedar.Partial
