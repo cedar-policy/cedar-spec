@@ -18,6 +18,7 @@
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_validator::SchemaFragment;
+use similar_asserts::SimpleDiff;
 
 // Natural String -> SchemaFragment -> JSON String -> SchemaFragment
 // Assert that schema fragments are equivalent. By starting with a Natural
@@ -28,12 +29,21 @@ fuzz_target!(|src: String| {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let json = serde_json::to_value(parsed.clone()).unwrap();
-        let json_parsed = SchemaFragment::from_json_value(json).unwrap();
+        let json = serde_json::to_value(parsed.clone())
+            .expect("Failed to convert human readable schema to JSON");
+        let json_parsed =
+            SchemaFragment::from_json_value(json).expect("Failed to parse converted JSON schema");
         if let Err(msg) = equivalence_check(parsed.clone(), json_parsed.clone()) {
             println!("Schema: {src}");
-            println!("LHS:\n{:?}", parsed);
-            println!("RHS:\n{:?}", json_parsed);
+            println!(
+                "{}",
+                SimpleDiff::from_str(
+                    &format!("{:#?}", parsed),
+                    &format!("{:#?}", json_parsed),
+                    "Parsed human readable",
+                    "JSON round-tripped"
+                )
+            );
             panic!("{msg}");
         }
     }
