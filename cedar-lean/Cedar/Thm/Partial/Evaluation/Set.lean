@@ -24,6 +24,7 @@ import Cedar.Thm.Partial.Evaluation.Basic
 namespace Cedar.Thm.Partial.Evaluation.Set
 
 open Cedar.Data
+open Cedar.Partial (Unknown)
 open Cedar.Spec (Result)
 
 /--
@@ -86,5 +87,106 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   rw [mapM_partial_eval_eqv_concrete_eval ih₁]
   cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.map, Except.bind_err, Except.bind_ok]
   case ok vs => simp [List.mapM_map, List.mapM_some]
+
+/--
+  If partial-evaluating a `Partial.Expr.set` produces `ok` with a concrete
+  value, then so would partial-evaluating any of the elements
+-/
+theorem evals_to_concrete_then_elts_eval_to_concrete {xs : List Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToConcrete (Partial.Expr.set xs) request entities →
+  ∀ x ∈ xs, EvaluatesToConcrete x request entities
+:= by
+  unfold EvaluatesToConcrete
+  intro h₁ x h₂
+  unfold Partial.evaluate at h₁
+  replace ⟨v, h₁⟩ := h₁
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)] at h₁
+  cases h₃ : xs.mapM (Partial.evaluate · request entities) <;> simp [h₃] at h₁
+  case ok pvals =>
+    replace ⟨pval, h₃, h₄⟩ := List.mapM_ok_implies_all_ok h₃ x h₂
+    split at h₁ <;> simp at h₁
+    subst h₁
+    rename_i vs h₁
+    replace ⟨v, _, h₁⟩ := List.mapM_some_implies_all_some h₁ pval h₃
+    cases pval <;> simp at h₁
+    case value v' => subst v' ; exists v
+
+/--
+  Lemma (used for both the Set and Call cases):
+
+  Inductive argument that if `mapM` on a list of partial exprs produces `.ok`
+  with a list of concrete vals, then it produces the same list of concrete vals
+  after any substitution of unknowns
+-/
+theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+  (ih : ∀ x ∈ xs, SubstPreservesEvaluationToConcrete x req req' entities subsmap) :
+  req.subst subsmap = some req' →
+  ∀ (pvals : List Partial.Value),
+    xs.mapM (Partial.evaluate · req entities) = .ok pvals →
+    is_all_concrete pvals →
+    (xs.map (Partial.Expr.subst subsmap)).mapM (Partial.evaluate · req' (entities.subst subsmap)) = .ok pvals
+:= by
+  intro h_req pvals h₁ h₂
+  cases xs <;> simp [pure, Except.pure] at *
+  case nil => exact h₁
+  case cons hd tl =>
+    have ⟨ih_hd, ih_tl⟩ := ih ; clear ih
+    cases h₃ : Partial.evaluate hd req entities <;> simp [h₃] at h₁
+    case ok hd_pval =>
+      unfold is_all_concrete at h₂
+      replace ⟨vs, h₂⟩ := h₂
+      replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
+      cases h₅ : tl.mapM (Partial.evaluate · req entities) <;> simp [h₅] at h₁
+      case ok tl_pvals =>
+        subst h₁
+        cases h₄ : Partial.evaluate (hd.subst subsmap) req' (entities.subst subsmap)
+        <;> simp [h₄]
+        case error e =>
+          replace ⟨v, _, h₂⟩ := h₂ hd_pval (by simp)
+          cases hd_pval <;> simp at h₂
+          case value v' =>
+            subst v'
+            unfold SubstPreservesEvaluationToConcrete at ih_hd
+            simp [ih_hd h_req v h₃] at h₄
+        case ok hd'_pval =>
+          have ih₂ := mapM_subst_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
+            unfold is_all_concrete
+            apply List.all_some_implies_mapM_some
+            intro tl_pval h₆
+            replace ⟨v, _, h₂⟩ := h₂ tl_pval (by simp [h₆])
+            exists v
+          )
+          simp [ih₂]
+          cases hd_pval <;> simp at h₂
+          case value hd_val =>
+            unfold SubstPreservesEvaluationToConcrete at ih_hd
+            simp [ih_hd h_req hd_val h₃] at h₄
+            exact h₄.symm
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.set` returns
+  a concrete value, then it returns the same value after any substitution of
+  unknowns
+-/
+theorem subst_preserves_evaluation_to_value {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+  (ih : ∀ x ∈ xs, SubstPreservesEvaluationToConcrete x req req' entities subsmap) :
+  SubstPreservesEvaluationToConcrete (Partial.Expr.set xs) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToConcrete
+  unfold Partial.evaluate Spec.Value.asBool
+  intro h_req v
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · req entities)]
+  cases h₁ : xs.mapM (Partial.evaluate · req entities) <;> simp [h₁]
+  case ok pvals =>
+    split <;> simp
+    rename_i vs h₂
+    -- vs are the concrete values produced by evaluating the set elements pre-subst
+    intro h ; subst h
+    unfold Partial.Expr.subst
+    rw [List.map₁_eq_map]
+    simp
+    rw [List.mapM₁_eq_mapM (Partial.evaluate · req' (entities.subst subsmap))]
+    rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold is_all_concrete ; exists vs)]
+    simp [h₂]
 
 end Cedar.Thm.Partial.Evaluation.Set

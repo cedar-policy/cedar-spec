@@ -17,12 +17,15 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Var
 
 open Cedar.Data
+open Cedar.Partial (Unknown)
 open Cedar.Spec (Var)
 
 /--
@@ -83,5 +86,131 @@ theorem on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entiti
 := by
   unfold PartialEvalEquivConcreteEval Spec.Expr.asPartialExpr Partial.evaluate
   exact partialEvaluateVar_on_concrete_eqv_concrete_eval v request entities wf
+
+/--
+  Lemma: If `context` has only concrete values before substitution, then it has
+  only concrete values after substitution
+-/
+theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value}
+  (wf : req.AllWellFormed) :
+  req.subst subsmap = some req' →
+  req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
+  (k, pval') ∈ req'.context.kvs →
+  ∃ v, pval' = .value v ∧ (k, .value v) ∈ req.context.kvs
+:= by
+  intro h_req h₁ h₂
+  have wf_req' : req'.AllWellFormed := Partial.Subst.req_subst_preserves_wf wf h_req
+  unfold Partial.Request.AllWellFormed at wf wf_req'
+  have h_keys := Partial.Subst.req_subst_preserves_keys_of_context h_req
+  have wf_keys := Map.keys_wf req.context wf.left
+  have ⟨keys, h₃⟩ := Set.if_wellformed_then_exists_make req.context.keys wf_keys
+  rw [h₃] at h_keys
+  unfold Map.keys at h_keys h₃
+  replace h_keys := Set.make_mk_eqv h_keys
+  replace h₃ := Set.make_mk_eqv h₃.symm
+  simp [List.Equiv, List.subset_def] at h_keys h₃
+  replace ⟨_, h_keys⟩ := h_keys
+  replace ⟨h₃, _⟩ := h₃
+  specialize h_keys (k, pval') h₂
+  simp only at h_keys
+  replace ⟨(k', pval), h₃, h₃'⟩ := h₃ h_keys
+  simp only at h₃' ; subst k'
+  cases pval
+  case value v =>
+    have h₄ := Partial.Subst.req_subst_preserves_concrete_context_vals h₃ h_req
+    have h₅ := Map.key_maps_to_one_value k _ _ _ wf_req'.left h₂ h₄
+    exists v
+  case residual r =>
+    replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₃
+    simp at h₁
+
+/--
+  If evaluating a request context returns a concrete value, then it returns the
+  same value after any substitution of unknowns
+-/
+theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value}
+  (wf : req.AllWellFormed) :
+  req.subst subsmap = some req' →
+  req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
+  req'.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m
+:= by
+  intro h_req h₁
+  suffices req.context = req'.context by simp [← this] ; exact h₁
+  have wf_req' : req'.AllWellFormed := Partial.Subst.req_subst_preserves_wf wf h_req
+  unfold Partial.Request.AllWellFormed at wf_req'
+  apply (Map.eq_iff_kvs_equiv wf.left wf_req'.left).mp
+  simp [List.Equiv, List.subset_def]
+  constructor <;> intro (k, pval') h₄
+  · cases pval'
+    case value v =>
+      exact Partial.Subst.req_subst_preserves_concrete_context_vals h₄ h_req
+    case residual r =>
+      exfalso
+      replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₄
+      simp at h₁
+  · have ⟨v, h₃, h₅⟩ := subst_preserves_all_concrete wf h_req h₁ h₄
+    subst pval'
+    exact h₅
+
+/--
+  If `Partial.evaluateVar` returns a concrete value, then it returns the same
+  value after any substitution of unknowns
+-/
+theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Request} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
+  (wf : req.AllWellFormed) :
+  req.subst subsmap = some req' →
+  Partial.evaluateVar var req = .ok (.value v) →
+  Partial.evaluateVar var req' = .ok (.value v)
+:= by
+  unfold Partial.evaluateVar
+  intro h_req h₁
+  cases var <;> simp only at h₁
+  case principal =>
+    cases h₂ : req.principal <;> simp [h₂] at h₁
+    case known uid =>
+      subst h₁
+      simp [Partial.Subst.req_subst_preserves_known_principal h₂ h_req]
+  case action =>
+    cases h₂ : req.action <;> simp [h₂] at h₁
+    case known uid =>
+      subst h₁
+      simp [Partial.Subst.req_subst_preserves_known_action h₂ h_req]
+  case resource =>
+    cases h₂ : req.resource <;> simp [h₂] at h₁
+    case known uid =>
+      subst h₁
+      simp [Partial.Subst.req_subst_preserves_known_resource h₂ h_req]
+  case context =>
+    simp only
+    split at h₁ <;> simp at h₁ ; subst h₁
+    rename_i m h₁
+    -- `m` is the `Spec.Value`-valued version of `req.context` (which we know has only concrete values from h₁)
+    split <;> simp
+    · rename_i m' h₂
+      -- `m'` is the `Spec.Value`-valued version of `req'.context` (which we know has only concrete values from h₂)
+      replace h₁ := subst_preserves_evaluate_req_context_to_value wf h_req h₁
+      suffices some m = some m' by simpa using this.symm
+      rw [← h₁, ← h₂]
+      rfl
+    · rename_i h₂
+      replace ⟨pval, h₂, h₃⟩ := Map.mapMOnValues_none_iff_exists_none.mp h₂
+      cases pval <;> simp at h₃
+      case residual r =>
+        replace ⟨k, h₂⟩ := Map.in_values_exists_key h₂
+        have ⟨v, h₄⟩ := subst_preserves_all_concrete wf h_req h₁ h₂
+        simp at h₄
+
+/--
+  If partial-evaluation of a `Var` returns a concrete value, then it returns the
+  same value after any substitution of unknowns
+-/
+theorem subst_preserves_evaluation_to_value {var : Var} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
+  (wf : req.AllWellFormed) :
+  req.subst subsmap = some req' →
+  Partial.evaluate (Partial.Expr.var var) req entities = .ok (.value v) →
+  Partial.evaluate ((Partial.Expr.var var).subst substmap) req' (entities.subst subsmap) = .ok (.value v)
+:= by
+  unfold Partial.Expr.subst Partial.evaluate
+  exact subst_preserves_evaluateVar_to_value wf
 
 end Cedar.Thm.Partial.Evaluation.Var

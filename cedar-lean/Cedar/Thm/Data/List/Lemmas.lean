@@ -561,6 +561,8 @@ theorem mapM_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {y
 /--
   Note that the converse is not true:
   counterexample `xs` is `[1]`, `ys` is `[1, 2]`, `f` is `Option.some`
+
+  But for a limited converse, see `all_some_implies_mapM'_some`
 -/
 theorem mapM'_some_implies_all_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
@@ -576,9 +578,32 @@ theorem mapM_some_implies_all_some {α β} {f : α → Option β} {xs : List α}
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_some
 
+theorem all_some_implies_mapM'_some {α β} {f : α → Option β} {xs : List α} :
+  (∀ x ∈ xs, ∃ y, f x = some y) →
+  ∃ ys, List.mapM' f xs = some ys
+:= by
+  intro h₁
+  induction xs
+  case nil => exists []
+  case cons xhd xtl ih =>
+    simp only [mem_cons, forall_eq_or_imp] at h₁
+    replace ⟨⟨yhd, h₁⟩, h₂⟩ := h₁
+    replace ⟨ytl, ih⟩ := ih h₂
+    exists yhd :: ytl
+    simp [h₁, ih, pure, Except.pure]
+
+theorem all_some_implies_mapM_some {α β} {f : α → Option β} {xs : List α} :
+  (∀ x ∈ xs, ∃ y, f x = some y) →
+  ∃ ys, List.mapM f xs = some ys
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact all_some_implies_mapM'_some
+
 /--
   Note that the converse is not true:
   counterexample `ys` is `[1]`, `xs` is `[1, 2]`, `f` is `Option.some`
+
+  But for a limited converse, see `all_from_some_implies_mapM'_some`
 -/
 theorem mapM'_some_implies_all_from_some {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys →
@@ -593,6 +618,29 @@ theorem mapM_some_implies_all_from_some {α β} {f : α → Option β} {xs : Lis
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_some_implies_all_from_some
+
+theorem all_from_some_implies_mapM'_some {α β} {f : α → Option β} {ys : List β} :
+  (∀ y ∈ ys, ∃ x, f x = some y) →
+  ∃ xs, List.mapM' f xs = some ys
+:= by
+  intro h₁
+  induction ys
+  case nil => exists []
+  case cons yhd ytl ih =>
+    simp only [mem_cons, forall_eq_or_imp] at h₁
+    replace ⟨⟨xhd, h₁⟩, h₂⟩ := h₁
+    replace ⟨xtl, ih⟩ := ih h₂
+    exists xhd :: xtl
+    simp [h₁, ih, pure, Except.pure]
+
+theorem all_from_some_implies_mapM_some {α β} {f : α → Option β} {ys : List β} :
+  (∀ y ∈ ys, ∃ x, f x = some y) →
+  ∃ xs, List.mapM f xs = some ys
+:= by
+  intro h
+  have ⟨xs, h₂⟩ := all_from_some_implies_mapM'_some h
+  rw [List.mapM'_eq_mapM] at h₂
+  exists xs
 
 theorem mapM'_none_iff_exists_none {α β} {f : α → Option β} {xs : List α} :
   List.mapM' f xs = none ↔ ∃ x ∈ xs, f x = none

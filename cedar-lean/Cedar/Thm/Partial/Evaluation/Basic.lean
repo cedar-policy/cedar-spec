@@ -85,11 +85,33 @@ end Cedar.Partial
 
 namespace Cedar.Thm.Partial
 
+open Cedar.Data
+open Cedar.Partial (Unknown)
+
 /--
   Prop that partial evaluation and concrete evaluation of the same concrete
   expression produce the same result
 -/
 def PartialEvalEquivConcreteEval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities) : Prop :=
   Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
+
+/--
+  Prop that partial evaluation returns a concrete value
+-/
+def EvaluatesToConcrete (expr : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
+  ∃ v, Partial.evaluate expr request entities = .ok (.value v)
+
+/--
+  Prop that .subst preserves evaluation to a concrete value
+-/
+def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Map Unknown Partial.Value) : Prop :=
+  req.subst subsmap = some req' →
+  ∀ v, Partial.evaluate expr req entities = .ok (.value v) → Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .ok (.value v)
+
+/--
+  Prop that a list of partial values is actually a list of concrete values
+-/
+def is_all_concrete (pvals : List Partial.Value) : Prop :=
+  ∃ vs, pvals.mapM (λ x => match x with | .value v => some v | .residual _ => none) = some vs
 
 end Cedar.Thm.Partial
