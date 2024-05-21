@@ -21,6 +21,7 @@ use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
+use similar_asserts::SimpleDiff;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
@@ -63,12 +64,19 @@ impl<'a> Arbitrary<'a> for Input {
 }
 
 fuzz_target!(|i: Input| {
-    let src = i.schema.as_natural_schema().unwrap();
-    let (parsed, _) = SchemaFragment::from_str_natural(&src).unwrap();
+    let src = i.schema.as_natural_schema().expect("Failed to convert schema into a human readable schema");
+    let (parsed, _) = SchemaFragment::from_str_natural(&src).expect("Failed to parse converted human readable schema");
     if let Err(msg) = equivalence_check(i.schema.clone(), parsed.clone()) {
         println!("Schema: {src}");
-        println!("LHS:\n{:?}", i.schema);
-        println!("RHS:\n{:?}", parsed);
+        println!(
+            "{}",
+            SimpleDiff::from_str(
+                &format!("{:#?}", i.schema),
+                &format!("{:#?}", parsed),
+                "Initial Schema",
+                "Human Round tripped"
+            )
+        );
         panic!("{msg}");
     }
 });
