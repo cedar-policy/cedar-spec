@@ -29,8 +29,10 @@ fuzz_target!(|src: String| {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let json = serde_json::to_value(parsed.clone()).expect("Failed to convert human readable schema to JSON");
-        let json_parsed = SchemaFragment::from_json_value(json).expect("Failed to parse converted JSON schema");
+        let json = serde_json::to_value(parsed.clone())
+            .expect("Failed to convert human readable schema to JSON");
+        let json_parsed =
+            SchemaFragment::from_json_value(json).expect("Failed to parse converted JSON schema");
         if let Err(msg) = equivalence_check(parsed.clone(), json_parsed.clone()) {
             println!("Schema: {src}");
             println!(

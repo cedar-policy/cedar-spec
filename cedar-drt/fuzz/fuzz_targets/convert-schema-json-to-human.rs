@@ -29,8 +29,11 @@ fuzz_target!(|src: String| {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let natural_src = parsed.as_natural_schema().expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = SchemaFragment::from_str_natural(&natural_src).expect("Failed to parse converted human readable schema");
+        let natural_src = parsed
+            .as_natural_schema()
+            .expect("Failed to convert the JSON schema into a human readable schema");
+        let (natural_parsed, _) = SchemaFragment::from_str_natural(&natural_src)
+            .expect("Failed to parse converted human readable schema");
         if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
             println!("Schema: {src}");
             println!(
