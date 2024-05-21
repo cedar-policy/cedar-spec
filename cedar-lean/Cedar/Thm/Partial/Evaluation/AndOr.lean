@@ -46,28 +46,34 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
     unfold Partial.Expr.subst
     cases hx₁ : Partial.evaluate x₁ req entities
     <;> cases hx₂ : Partial.evaluate x₂ req entities
-    <;> simp [hx₁, hx₂] at *
+    <;> simp only [hx₁, false_implies, forall_const, hx₂, Except.ok.injEq, Bool.not_eq_true',
+      Except.bind_ok, Except.bind_err] at *
     case ok.ok pval₁ pval₂ =>
-      cases pval₁ <;> cases pval₂ <;> simp at *
+      cases pval₁ <;> cases pval₂
+      <;> simp only [Partial.Value.value.injEq, Except.ok.injEq, forall_eq', false_implies, forall_const] at *
       case value.value v₁ v₂ =>
-        simp [ih₁, ih₂]
+        simp only [ih₁, ih₂, Except.bind_ok, imp_self]
       case value.residual v₁ r₂ =>
-        simp [ih₁]
+        simp only [ih₁, Except.bind_ok]
         cases v₁
         case prim p₁ =>
-          cases p₁ <;> simp
+          cases p₁ <;> simp only [Except.bind_ok, Except.bind_err, imp_self]
           case bool b₁ => cases b₁ <;> simp
         case set s | record m => simp
         case ext x => cases x <;> simp
     case ok.error pval₁ e₂ =>
-      cases pval₁ <;> simp at *
+      cases pval₁
+      case residual r₁ => simp only [false_implies, forall_const, Except.ok.injEq]
       case value v₁ =>
+        simp only [Partial.Value.value.injEq, forall_eq'] at *
         cases v₁
         case prim p₁ =>
-          cases p₁ <;> simp
+          cases p₁ <;> simp only [Except.bind_ok, Except.bind_err, false_implies]
           case bool b₁ =>
-            cases b₁ <;> simp <;> intro h₁ <;> subst v
-            simp [ih₁]
+            cases b₁
+            <;> simp only [reduceIte, Except.ok.injEq, Partial.Value.value.injEq, false_implies]
+            <;> intro h₁ <;> subst v
+            simp only [ih₁, Except.bind_ok, reduceIte]
         case set s | record m => simp
         case ext x => cases x <;> simp
   }

@@ -158,11 +158,13 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
   cases expr
   case lit p =>
     unfold Partial.evaluate
-    simp
+    simp only [Except.ok.injEq, Partial.Value.value.injEq, Bool.not_eq_true']
     intro _ h₁ ; subst h₁
-    simp [Partial.Expr.subst]
+    simp only [Partial.Expr.subst]
   case var v => exact Var.subst_preserves_evaluation_to_value wf_r
-  case unknown u => unfold Partial.evaluate ; simp
+  case unknown u =>
+    unfold Partial.evaluate
+    simp only [Except.ok.injEq, Bool.not_eq_true', false_implies, implies_true]
   case and x₁ x₂ =>
     intro h_req h₁
     have h₂ := And.evals_to_concrete_then_operands_eval_to_concrete (by
@@ -173,20 +175,24 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     rcases h₂ with h₂ | ⟨⟨v₁, hx₁⟩, ⟨v₂, hx₂⟩⟩
     · have ih := subst_preserves_evaluation_to_value wf_r wf_e h_req h₂
       unfold Partial.Expr.subst Partial.evaluate Spec.Value.asBool
-      simp [ih]
       unfold Partial.evaluate Spec.Value.asBool at h₁
-      simp [h₂] at h₁
+      simp only [Bool.not_eq_true', Except.bind_ok, reduceIte, Except.ok.injEq,
+        Partial.Value.value.injEq] at *
+      simp only [ih]
+      simp only [h₂] at h₁
       exact h₁
     · have ih₁ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₁
       have ih₂ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₂
       apply (AndOr.subst_preserves_evaluation_to_value _ _).left h_req v h₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₁' hx₁'
-        simp [hx₁'] at hx₁ ; subst v₁'
+        simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+        subst v₁'
         exact ih₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₂' hx₂'
-        simp [hx₂'] at hx₂ ; subst v₂'
+        simp only [hx₂', Except.ok.injEq, Partial.Value.value.injEq] at hx₂
+        subst v₂'
         exact ih₂
   case or x₁ x₂ =>
     intro h_req h₁
@@ -198,20 +204,24 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     rcases h₂ with h₂ | ⟨⟨v₁, hx₁⟩, ⟨v₂, hx₂⟩⟩
     · have ih := subst_preserves_evaluation_to_value wf_r wf_e h_req h₂
       unfold Partial.Expr.subst Partial.evaluate Spec.Value.asBool
-      simp [ih]
       unfold Partial.evaluate Spec.Value.asBool at h₁
-      simp [h₂] at h₁
+      simp only [Bool.not_eq_true', Except.bind_ok, reduceIte, Except.ok.injEq,
+        Partial.Value.value.injEq] at *
+      simp only [ih]
+      simp only [h₂] at h₁
       exact h₁
     · have ih₁ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₁
       have ih₂ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₂
       apply (AndOr.subst_preserves_evaluation_to_value _ _).right h_req v h₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₁' hx₁'
-        simp [hx₁'] at hx₁ ; subst v₁'
+        simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+        subst v₁'
         exact ih₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₂' hx₂'
-        simp [hx₂'] at hx₂ ; subst v₂'
+        simp only [hx₂', Except.ok.injEq, Partial.Value.value.injEq] at hx₂
+        subst v₂'
         exact ih₂
   case binaryApp op x₁ x₂ =>
     intro h_req h₁
@@ -226,11 +236,13 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     apply Binary.subst_preserves_evaluation_to_value _ _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp [hx₁'] at hx₁ ; subst v₁'
+      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+      subst v₁'
       exact ih₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₂' hx₂'
-      simp [hx₂'] at hx₂ ; subst v₂'
+      simp only [hx₂', Except.ok.injEq, Partial.Value.value.injEq] at hx₂
+      subst v₂'
       exact ih₂
   case unaryApp op x₁ =>
     intro h_req h₁
@@ -244,7 +256,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     apply Unary.subst_preserves_evaluation_to_value _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp [hx₁'] at hx₁ ; subst v₁'
+      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+      subst v₁'
       exact ih₁
   case ite x₁ x₂ x₃ =>
     intro h_req h₁
@@ -259,26 +272,30 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
       apply Ite.subst_preserves_evaluation_to_value _ _ h_req v h₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₁' hx₁'
-        simp [hx₁'] at hx₁ ; subst v₁'
+        simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+        subst v₁'
         exact ih₁
       · unfold SubstPreservesEvaluationToConcrete
         left
         apply And.intro hx₁
         intro _ v₂' hx₂'
-        simp [hx₂'] at hx₂ ; subst v₂'
+        simp only [hx₂', Except.ok.injEq, Partial.Value.value.injEq] at hx₂
+        subst v₂'
         exact ih₂
     · have ih₁ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₁
       have ih₃ := subst_preserves_evaluation_to_value wf_r wf_e h_req hx₃
       apply Ite.subst_preserves_evaluation_to_value _ _ h_req v h₁
       · unfold SubstPreservesEvaluationToConcrete
         intro _ v₁' hx₁'
-        simp [hx₁'] at hx₁ ; subst v₁'
+        simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+        subst v₁'
         exact ih₁
       · unfold SubstPreservesEvaluationToConcrete
         right
         apply And.intro hx₁
         intro _ v₃' hx₃'
-        simp [hx₃'] at hx₃ ; subst v₃'
+        simp only [hx₃', Except.ok.injEq, Partial.Value.value.injEq] at hx₃
+        subst v₃'
         exact ih₃
   case getAttr x₁ attr =>
     intro h_req h₁
@@ -292,7 +309,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     apply GetAttr.subst_preserves_evaluation_to_value wf_e _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp [hx₁'] at hx₁ ; subst v₁'
+      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+      subst v₁'
       exact ih₁
   case hasAttr x₁ attr =>
     intro h_req h₁
@@ -306,7 +324,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     apply HasAttr.subst_preserves_evaluation_to_value wf_e _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp [hx₁'] at hx₁ ; subst v₁'
+      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
+      subst v₁'
       exact ih₁
   case set xs =>
     intro h_req h₁
@@ -319,7 +338,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
       unfold SubstPreservesEvaluationToConcrete
       intro x h₂ _ v' hx'
       replace ⟨v, hx⟩ := hx x h₂
-      simp [hx] at hx' ; subst v'
+      simp only [hx, Except.ok.injEq, Partial.Value.value.injEq] at hx'
+      subst v'
       have := List.sizeOf_lt_of_mem h₂
       exact subst_preserves_evaluation_to_value wf_r wf_e h_req hx
     exact Set.subst_preserves_evaluation_to_value ih h_req v h₁
@@ -334,7 +354,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
       unfold SubstPreservesEvaluationToConcrete
       intro (k, x) h₂ _ v' hx'
       replace ⟨v, hx⟩ := hx (k, x) h₂
-      simp [hx] at hx' ; subst v'
+      simp only [hx, Except.ok.injEq, Partial.Value.value.injEq] at hx'
+      subst v'
       have := Map.sizeOf_lt_of_value h₂
       exact subst_preserves_evaluation_to_value wf_r wf_e h_req hx
     exact Record.subst_preserves_evaluation_to_value ih h_req v h₁
@@ -349,7 +370,8 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
       unfold SubstPreservesEvaluationToConcrete
       intro x h₂ _ v' hx'
       replace ⟨v, hx⟩ := hx x h₂
-      simp [hx] at hx' ; subst v'
+      simp only [hx, Except.ok.injEq, Partial.Value.value.injEq] at hx'
+      subst v'
       have := List.sizeOf_lt_of_mem h₂
       exact subst_preserves_evaluation_to_value wf_r wf_e h_req hx
     exact Call.subst_preserves_evaluation_to_value ih h_req v h₁

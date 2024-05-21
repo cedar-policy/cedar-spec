@@ -64,24 +64,24 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Parti
   unfold Partial.evaluate at h₁
   replace ⟨v, h₁⟩ := h₁
   cases hx₁ : Partial.evaluate x₁ request entities
-  <;> simp [hx₁, Spec.Value.asBool] at h₁
+  <;> simp only [hx₁, Spec.Value.asBool, Except.bind_err, Except.bind_ok] at h₁
   case ok pval₁ =>
-    cases pval₁ <;> simp at h₁
+    cases pval₁ <;> simp only [Except.ok.injEq] at h₁
     case value v₁ =>
       cases v₁
       case prim p₁ =>
-        cases p₁ <;> simp at h₁
+        cases p₁ <;> simp only [Except.bind_ok, Except.bind_err] at h₁
         case bool b₁ =>
-          cases b₁ <;> simp at h₁
+          cases b₁ <;> simp only [reduceIte] at h₁
           case true =>
             left
             cases hx₂ : Partial.evaluate x₂ request entities
-            <;> simp [hx₂] at h₁
+            <;> simp only [hx₂, Except.ok.injEq] at h₁
             case ok v₂ => subst h₁ ; simp
           case false =>
             right
             cases hx₃ : Partial.evaluate x₃ request entities
-            <;> simp [hx₃] at h₁
+            <;> simp only [hx₃, Except.ok.injEq] at h₁
             case ok v₃ => subst h₁ ; simp
       case set s | record m => simp at h₁
       case ext x => cases x <;> simp at h₁
@@ -106,16 +106,16 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req
   · specialize ih₂ h_req
     specialize ih₁ (.prim (.bool true)) hx₁
     unfold Partial.Expr.subst
-    simp [hx₁]
+    simp only [hx₁, Except.bind_ok, reduceIte]
     intro h₁
-    simp [ih₁]
+    simp only [ih₁, Except.bind_ok, reduceIte]
     exact ih₂ v h₁
   · specialize ih₃ h_req
     specialize ih₁ (.prim (.bool false)) hx₁
     unfold Partial.Expr.subst
-    simp [hx₁]
+    simp only [hx₁, Except.bind_ok, reduceIte]
     intro h₁
-    simp [ih₁]
+    simp only [ih₁, Except.bind_ok, reduceIte]
     exact ih₃ v h₁
 
 end Cedar.Thm.Partial.Evaluation.Ite

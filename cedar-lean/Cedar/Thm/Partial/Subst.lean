@@ -134,15 +134,12 @@ theorem val_subst_preserves_wf {v v' : Partial.Value} {subsmap : Map Unknown Par
   v'.WellFormed
 := by
   unfold Partial.Value.WellFormed Partial.Value.subst
-  cases v <;> simp
+  cases v <;> simp only [Option.some.injEq, forall_const]
   case value v =>
-    intro h₁ h₂
-    subst h₂
-    simp [h₁]
+    intro h₁ h₂ ; subst h₂
+    simp only [h₁]
   case residual r =>
-    intro h₁
-    subst h₁
-    simp
+    intro h₁ ; subst h₁ ; simp only
 
 /--
   Partial.Request.subst preserves well-formedness
@@ -155,10 +152,9 @@ theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Map Unkno
   unfold Partial.Request.AllWellFormed Partial.Request.subst
   intro wf h₁
   have ⟨wf_c, wf_vals⟩ := wf ; clear wf
-  simp at h₁
+  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
   replace ⟨principal, _, ⟨action, _, ⟨resource, _, h₁⟩⟩⟩ := h₁
-  subst h₁
-  simp
+  subst h₁ ; simp only
   apply And.intro (Map.mapOnValues_wf.mp wf_c)
   intro pval' h₁
   rw [Map.values_mapOnValues] at h₁
@@ -176,11 +172,11 @@ theorem req_subst_preserves_known_principal {req req' : Partial.Request} {uid : 
   req'.principal = .known uid
 := by
   intro h₁ h_req
-  simp [Partial.Request.subst] at h_req
+  simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h_req
   replace ⟨principal, h_p, ⟨action, _, ⟨resource, _, h_req⟩⟩⟩ := h_req
   subst req'
   simp only
-  simp [h₁, Partial.UidOrUnknown.subst] at h_p
+  simp only [Partial.UidOrUnknown.subst, h₁, Option.some.injEq] at h_p
   exact h_p.symm
 
 /--
@@ -192,11 +188,11 @@ theorem req_subst_preserves_known_action {req req' : Partial.Request} {uid : Ent
   req'.action = .known uid
 := by
   intro h₁ h_req
-  simp [Partial.Request.subst] at h_req
+  simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h_req
   replace ⟨principal, _, ⟨action, h_a, ⟨resource, _, h_req⟩⟩⟩ := h_req
   subst req'
   simp only
-  simp [h₁, Partial.UidOrUnknown.subst] at h_a
+  simp only [Partial.UidOrUnknown.subst, h₁, Option.some.injEq] at h_a
   exact h_a.symm
 
 /--
@@ -208,11 +204,11 @@ theorem req_subst_preserves_known_resource {req req' : Partial.Request} {uid : E
   req'.resource = .known uid
 := by
   intro h₁ h_req
-  simp [Partial.Request.subst] at h_req
+  simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h_req
   replace ⟨principal, _, ⟨action, _, ⟨resource, h_r, h_req⟩⟩⟩ := h_req
   subst req'
   simp only
-  simp [h₁, Partial.UidOrUnknown.subst] at h_r
+  simp only [Partial.UidOrUnknown.subst, h₁, Option.some.injEq] at h_r
   exact h_r.symm
 
 /--
@@ -238,10 +234,10 @@ theorem req_subst_preserves_concrete_context_vals {req req' : Partial.Request} {
   (k, .value v) ∈ req'.context.kvs
 := by
   unfold Partial.Request.subst
-  simp
+  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, forall_exists_index,
+    and_imp]
   intro h₁ p _ a _ r _ h₂
-  subst req'
-  simp
+  subst req' ; simp only
   rw [← subst_concrete_value v subsmap]
   exact Map.in_kvs_in_mapOnValues h₁
 
@@ -269,7 +265,7 @@ theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Map
   constructor
   · exact Map.mapOnValues_wf.mp h₁.left
   · intro ed' h₂
-    simp [Map.values_mapOnValues] at h₂
+    simp only [Map.values_mapOnValues, List.mem_map] at h₂
     replace ⟨ed, h₂, h₃⟩ := h₂
     subst ed'
     exact entitydata_subst_preserves_wf subsmap (h₁.right ed h₂)
@@ -289,21 +285,21 @@ theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (
   (wf : ed.WellFormed) :
   ed.attrs.contains attr = (ed.subst subsmap).attrs.contains attr
 := by
-  simp [Partial.EntityData.subst]
+  unfold Partial.EntityData.subst
   unfold Partial.EntityData.WellFormed at wf
   apply Eq.symm
   cases h₁ : ed.attrs.contains attr
   case false =>
     rw [← Bool.not_eq_true] at *
     rw [Map.contains_iff_some_find?] at *
-    simp at *
+    simp only [not_exists] at *
     intro pval h₂
     conv at h₁ => intro pval ; rw [← Map.in_list_iff_find?_some wf.left]
     rw [← Map.in_list_iff_find?_some (Map.mapOnValues_wf.mp wf.left)] at h₂
-    simp [Map.mapOnValues, Map.kvs] at h₂
+    simp only [Map.kvs, Map.mapOnValues, List.mem_map, Prod.mk.injEq] at h₂
     replace ⟨(attr', pval'), h₂, h₃, h₄⟩ := h₂
     subst h₃ h₄
-    simp [Map.kvs] at h₁
+    simp only [Map.kvs] at h₁
     exact h₁ pval' h₂
   case true =>
     rw [Map.contains_iff_some_find?] at *
@@ -311,7 +307,7 @@ theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (
     rw [← Map.in_list_iff_find?_some wf.left] at h₁
     exists (pval.subst subsmap)
     rw [← Map.in_list_iff_find?_some (Map.mapOnValues_wf.mp wf.left)]
-    simp [Map.mapOnValues, Map.kvs]
+    simp only [Map.kvs, Map.mapOnValues, List.mem_map, Prod.mk.injEq]
     exists (attr, pval)
 
 /--
@@ -320,7 +316,7 @@ theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (
 theorem entitydata_subst_preserves_concrete_attrs {ed : Partial.EntityData} (subsmap : Map Unknown Partial.Value) :
   (k, .value v) ∈ ed.attrs.kvs → (k, .value v) ∈ (ed.subst subsmap).attrs.kvs
 := by
-  simp [Partial.EntityData.subst]
+  unfold Partial.EntityData.subst
   intro h₁
   rw [← subst_concrete_value v subsmap]
   exact Map.in_kvs_in_mapOnValues h₁
@@ -333,9 +329,9 @@ theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) 
 := by
   unfold Partial.Entities.subst Partial.Entities.ancestorsOrEmpty
   cases h₁ : entities.find? uid
-  case none => simp [Map.find?_mapOnValues_none _ h₁]
+  case none => simp only [Map.find?_mapOnValues_none _ h₁]
   case some ed =>
-    simp [Map.find?_mapOnValues_some _ h₁]
+    simp only [Map.find?_mapOnValues_some _ h₁]
     exact entitydata_subst_preserves_ancestors ed subsmap
 
 /--
@@ -347,14 +343,16 @@ theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {u
   ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ (k, .value v) ∈ attrs'.kvs
 := by
   unfold Partial.Entities.subst Partial.Entities.attrs
-  cases h₁ : entities.findOrErr uid Spec.Error.entityDoesNotExist <;> simp
+  cases h₁ : entities.findOrErr uid Spec.Error.entityDoesNotExist
+  case error e => simp only [Except.bind_err, false_implies]
   case ok ed =>
+    simp only [Except.bind_ok, Except.ok.injEq]
     intro h h₂ ; subst h
     have h₃ := entitydata_subst_preserves_concrete_attrs subsmap h₂
     exists (ed.subst subsmap).attrs
     apply And.intro _ h₃
-    simp [Map.findOrErr_mapOnValues]
-    simp [h₁, Except.map]
+    simp only [Map.findOrErr_mapOnValues]
+    simp only [h₁, Except.map, Except.bind_ok]
 
 /--
   Partial.Entities.subst preserves `Map.contains` for the attrs maps
@@ -365,11 +363,11 @@ theorem entities_subst_preserves_contains_on_attrsOrEmpty (entities : Partial.En
 := by
   unfold Partial.Entities.subst Partial.Entities.attrsOrEmpty
   cases h₁ : entities.find? uid
-  case none => simp [Map.find?_mapOnValues_none _ h₁]
+  case none => simp only [Map.find?_mapOnValues_none _ h₁]
   case some ed =>
-    simp [Map.find?_mapOnValues_some _ h₁]
+    simp only [Map.find?_mapOnValues_some _ h₁]
     apply entitydata_subst_preserves_contains_on_attrs ed attr subsmap
     unfold Partial.Entities.AllWellFormed at wf
     apply wf.right
-    simp [← Map.in_list_iff_find?_some wf.left] at h₁
+    simp only [← Map.in_list_iff_find?_some wf.left] at h₁
     exact Map.in_list_in_values h₁

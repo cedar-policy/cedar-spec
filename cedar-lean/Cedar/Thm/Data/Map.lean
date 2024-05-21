@@ -349,7 +349,7 @@ theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
   (m.mapOnValues f).keys = m.keys
 := by
   unfold mapOnValues keys kvs
-  simp
+  simp only [List.map_map, Set.mk.injEq]
   induction m.1
   case nil => simp only [List.map_nil]
   case cons hd tl ih =>

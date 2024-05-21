@@ -108,7 +108,8 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map
   unfold Map.keys at h_keys h₃
   replace h_keys := Set.make_mk_eqv h_keys
   replace h₃ := Set.make_mk_eqv h₃.symm
-  simp [List.Equiv, List.subset_def] at h_keys h₃
+  simp only [List.Equiv, List.subset_def, List.mem_map, forall_exists_index, and_imp,
+    forall_apply_eq_imp_iff₂] at h_keys h₃
   replace ⟨_, h_keys⟩ := h_keys
   replace ⟨h₃, _⟩ := h₃
   specialize h_keys (k, pval') h₂
@@ -122,7 +123,7 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map
     exists v
   case residual r =>
     replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₃
-    simp at h₁
+    simp only [and_false, exists_const] at h₁
 
 /--
   If evaluating a request context returns a concrete value, then it returns the
@@ -135,11 +136,11 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
   req'.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m
 := by
   intro h_req h₁
-  suffices req.context = req'.context by simp [← this] ; exact h₁
+  suffices req.context = req'.context by rw [← this] ; exact h₁
   have wf_req' : req'.AllWellFormed := Partial.Subst.req_subst_preserves_wf wf h_req
   unfold Partial.Request.AllWellFormed at wf_req'
   apply (Map.eq_iff_kvs_equiv wf.left wf_req'.left).mp
-  simp [List.Equiv, List.subset_def]
+  simp only [List.Equiv, List.subset_def]
   constructor <;> intro (k, pval') h₄
   · cases pval'
     case value v =>
@@ -147,7 +148,7 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
     case residual r =>
       exfalso
       replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₄
-      simp at h₁
+      simp only [and_false, exists_const] at h₁
   · have ⟨v, h₃, h₅⟩ := subst_preserves_all_concrete wf h_req h₁ h₄
     subst pval'
     exact h₅
@@ -166,26 +167,26 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
   intro h_req h₁
   cases var <;> simp only at h₁
   case principal =>
-    cases h₂ : req.principal <;> simp [h₂] at h₁
+    cases h₂ : req.principal <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
       simp [Partial.Subst.req_subst_preserves_known_principal h₂ h_req]
   case action =>
-    cases h₂ : req.action <;> simp [h₂] at h₁
+    cases h₂ : req.action <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
       simp [Partial.Subst.req_subst_preserves_known_action h₂ h_req]
   case resource =>
-    cases h₂ : req.resource <;> simp [h₂] at h₁
+    cases h₂ : req.resource <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
       simp [Partial.Subst.req_subst_preserves_known_resource h₂ h_req]
   case context =>
     simp only
-    split at h₁ <;> simp at h₁ ; subst h₁
+    split at h₁ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₁ ; subst h₁
     rename_i m h₁
     -- `m` is the `Spec.Value`-valued version of `req.context` (which we know has only concrete values from h₁)
-    split <;> simp
+    split <;> simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
     · rename_i m' h₂
       -- `m'` is the `Spec.Value`-valued version of `req'.context` (which we know has only concrete values from h₂)
       replace h₁ := subst_preserves_evaluate_req_context_to_value wf h_req h₁
@@ -194,7 +195,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
       rfl
     · rename_i h₂
       replace ⟨pval, h₂, h₃⟩ := Map.mapMOnValues_none_iff_exists_none.mp h₂
-      cases pval <;> simp at h₃
+      cases pval <;> simp only at h₃
       case residual r =>
         replace ⟨k, h₂⟩ := Map.in_values_exists_key h₂
         have ⟨v, h₄⟩ := subst_preserves_all_concrete wf h_req h₁ h₂

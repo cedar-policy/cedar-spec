@@ -63,7 +63,7 @@ theorem partialApply₁_returns_concrete_then_operand_evals_to_concrete {pval₁
   intro h₁
   cases pval₁
   case value v₁ => exists v₁
-  case residual r₁ => simp at h₁
+  case residual r₁ => simp only [Except.ok.injEq] at h₁
 
 /--
   If partial-evaluating a `Partial.Expr.unaryApp` produces `ok` with a concrete
@@ -78,7 +78,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   unfold Partial.evaluate at h₁
   replace ⟨v, h₁⟩ := h₁
   cases hx₁ : Partial.evaluate x₁ request entities
-  <;> simp [hx₁] at h₁
+  <;> simp only [hx₁, Except.bind_err, Except.bind_ok] at h₁
   case ok pval₁ =>
     have ⟨v₁, hv₁⟩ := partialApply₁_returns_concrete_then_operand_evals_to_concrete h₁
     subst pval₁
@@ -99,10 +99,10 @@ theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {op : UnaryOp}
   specialize ih₁ h_req
   unfold Partial.Expr.subst
   cases hx₁ : Partial.evaluate x₁ req entities
-  <;> simp [hx₁] at *
+  <;> simp only [hx₁, Except.ok.injEq, Except.bind_ok, Except.bind_err, false_implies, forall_const] at *
   case ok pval₁ =>
-    cases pval₁ <;> simp at *
-    case value v₁ => simp [ih₁]
+    cases pval₁
+    case value v₁ => simp only [Partial.Value.value.injEq, forall_eq'] at * ; simp [ih₁]
     case residual r₁ => simp [Partial.apply₁]
 
 end Cedar.Thm.Partial.Evaluation.Unary

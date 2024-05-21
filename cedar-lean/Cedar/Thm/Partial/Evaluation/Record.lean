@@ -163,21 +163,23 @@ theorem evals_to_concrete_then_vals_eval_to_concrete {attrs : List (Attr × Part
   replace ⟨v, h₁⟩ := h₁
   rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)] at h₁
   cases h₃ : attrs.mapM (λ kv => match kv with | (k, v) => Partial.bindAttr k (Partial.evaluate v request entities))
-  <;> simp [h₃] at h₁
+  <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
   case ok pvals =>
     replace ⟨(k', pval), h₃, h₄⟩ := List.mapM_ok_implies_all_ok h₃ (k, x) h₂
-    split at h₁ <;> simp at h₁
+    split at h₁ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₁
     subst h₁
     rename_i vs h₁
     replace ⟨(k'', v), _, h₁⟩ := List.mapM_some_implies_all_some h₁ (k', pval) h₃
-    split at h₁ <;> simp at h₁
+    split at h₁ <;> simp only [Option.some.injEq, Prod.mk.injEq] at h₁
     replace ⟨h₁, h₁'⟩ := h₁ ; rename_i v' h₅ ; subst k'' v'
-    simp at h₅ ; subst pval
-    simp [Partial.bindAttr] at h₄
-    cases h₅ : Partial.evaluate x request entities <;> simp [h₅] at h₄
+    simp only at h₅ ; subst pval
+    simp only [Partial.bindAttr] at h₄
+    cases h₅ : Partial.evaluate x request entities
+    <;> simp only [h₅, Except.bind_ok, Except.bind_err, Except.ok.injEq, Prod.mk.injEq] at h₄
     case ok pval =>
       replace ⟨h₄, h₄'⟩ := h₄ ; subst k' pval
       exists v
+
 /--
   Lemma:
 
@@ -194,29 +196,36 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
     (attrs.map (λ kv => (kv.fst, kv.snd.subst subsmap))).mapM (λ kv => do let v ← Partial.evaluate kv.snd req' (entities.subst subsmap) ; .ok (kv.fst, v)) = .ok pvals
 := by
   intro h_req pvals h₁ h₂
-  cases attrs <;> simp [pure, Except.pure] at *
-  case nil => exact h₁
+  cases attrs
+  case nil =>
+    simp only [List.not_mem_nil, false_implies, forall_const, List.mapM_nil, pure, Except.pure,
+      Except.ok.injEq, List.map_nil] at *
+    exact h₁
   case cons hd tl =>
+    simp only [List.mem_cons, forall_eq_or_imp, List.mapM_cons, pure, Except.pure, bind_assoc,
+      Except.bind_ok, List.map_cons] at *
     have ⟨ih_hd, ih_tl⟩ := ih ; clear ih
     have (khd, xhd) := hd ; clear hd
     simp only at *
-    cases h₃ : Partial.evaluate xhd req entities <;> simp [h₃] at h₁
+    cases h₃ : Partial.evaluate xhd req entities
+    <;> simp only [h₃, Except.bind_err, Except.bind_ok] at h₁
     case ok hd_pval =>
       unfold is_all_concrete at h₂
       replace ⟨vs, h₂⟩ := h₂
       replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
-      cases h₅ : tl.mapM (λ kv => do let v ← Partial.evaluate kv.snd req entities ; .ok (kv.fst, v)) <;> simp [h₅] at h₁
+      cases h₅ : tl.mapM (λ kv => do let v ← Partial.evaluate kv.snd req entities ; .ok (kv.fst, v))
+      <;> simp only [h₅, Except.bind_ok, Except.ok.injEq, Except.bind_err] at h₁
       case ok tl_pvals =>
         subst h₁
         cases h₄ : Partial.evaluate (xhd.subst subsmap) req' (entities.subst subsmap)
-        <;> simp [h₄]
+        <;> simp only [Except.bind_err, Except.bind_ok]
         case error e =>
           replace ⟨v, _, h₂⟩ := h₂ hd_pval (by simp)
-          cases hd_pval <;> simp at h₂
+          cases hd_pval <;> simp only [Option.some.injEq] at h₂
           case value v' =>
             subst v'
             unfold SubstPreservesEvaluationToConcrete at ih_hd
-            simp [ih_hd h_req v h₃] at h₄
+            simp only [ih_hd h_req v h₃] at h₄
         case ok hd'_pval =>
           have ih₂ := mapM_subst_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
             unfold is_all_concrete
@@ -225,11 +234,14 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
             replace ⟨v, _, h₂⟩ := h₂ tl_pval (by simp [h₆])
             exists v
           )
-          simp [ih₂]
-          cases hd_pval <;> simp at h₂
+          simp only [ih₂, Except.bind_ok, Except.ok.injEq, List.cons.injEq, Prod.mk.injEq,
+            true_and, and_true]
+          cases hd_pval <;> simp only [List.map_cons, List.mem_cons, List.mem_map, forall_eq_or_imp,
+            and_false, false_and, exists_const, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂,
+            Option.some.injEq] at h₂
           case value hd_val =>
             unfold SubstPreservesEvaluationToConcrete at ih_hd
-            simp [ih_hd h_req hd_val h₃] at h₄
+            simp only [ih_hd h_req hd_val h₃, Except.ok.injEq] at h₄
             exact h₄.symm
 
 private theorem lemma {pvals : List (Attr × Partial.Value)} {pairs : List (Attr × Spec.Value)}:
@@ -243,18 +255,19 @@ private theorem lemma {pvals : List (Attr × Partial.Value)} {pairs : List (Attr
     = some (pairs.map Prod.snd)
 := by
   intro h₁
-  cases pvals <;> simp at *
-  case nil => subst h₁ ; simp
+  cases pvals <;> simp only [List.mapM_nil, List.mapM_cons, Option.pure_def,
+    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at *
+  case nil => subst h₁ ; simp only [List.map_nil]
   case cons hd tl =>
     have (khd, vhd) := hd ; clear hd
     simp only at *
     replace ⟨(khd', vhd'), h₁, h₂⟩ := h₁
-    cases vhd <;> simp at *
+    cases vhd <;> simp only [Option.some.injEq, Prod.mk.injEq, exists_eq_left'] at *
     replace ⟨h₁, h₁'⟩ := h₁ ; subst khd' vhd' ; rename_i vhd
     replace ⟨tl', h₂, h₃⟩ := h₂
     subst h₃
     exists (tl'.map Prod.snd)
-    simp
+    simp only [List.map_cons, and_true]
     exact lemma h₂
 
 /--
@@ -271,23 +284,23 @@ theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)
   intro h_req v
   rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req entities)]
   cases h₁ : attrs.mapM (λ kv => match kv with | (k, v) => Partial.bindAttr k (Partial.evaluate v req entities))
-  <;> simp
+  <;> simp only [Except.bind_err, Except.bind_ok, Bool.not_eq_true', false_implies]
   case ok pvals =>
-    split <;> simp
+    split <;> simp only [Except.ok.injEq, Partial.Value.value.injEq, false_implies]
     rename_i avs h₂
     -- avs are the concrete values produced by evaluating the record values pre-subst
     intro h ; subst h
     unfold Partial.Expr.subst
     rw [List.map_attach₂_snd]
-    simp
+    simp only
     rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req' (entities.subst subsmap))]
-    simp [Partial.bindAttr] at *
+    simp only [Partial.bindAttr] at *
     rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by
       unfold is_all_concrete
       exists (avs.map Prod.snd)
-      simp [List.mapM_map]
+      simp only [List.mapM_map]
       exact lemma h₂
     )]
-    simp [h₂]
+    simp only [Except.bind_ok, h₂]
 
 end Cedar.Thm.Partial.Evaluation.Record
