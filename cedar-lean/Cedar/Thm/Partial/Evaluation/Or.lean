@@ -81,7 +81,7 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Partial.Ex
       case prim p =>
         cases p <;> simp only [Except.bind_ok, Except.bind_err] at h₁
         case bool b => cases b <;> simp at *
-      case set s | record m => simp at h₁
+      case set | record => simp at h₁
       case ext x => cases x <;> simp at h₁
   case ok.error pval e =>
     cases pval <;> simp only [Except.ok.injEq] at h₁
@@ -93,7 +93,7 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Partial.Ex
           cases b
           <;> simp only [reduceIte, Except.ok.injEq, Partial.Value.value.injEq] at h₁
           <;> simp [h₁]
-      case set s | record m => simp at h₁
+      case set | record => simp at h₁
       case ext x => cases x <;> simp at h₁
 
 end Cedar.Thm.Partial.Evaluation.Or

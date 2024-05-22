@@ -59,7 +59,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
         case prim p₁ =>
           cases p₁ <;> simp only [Except.bind_ok, Except.bind_err, imp_self]
           case bool b₁ => cases b₁ <;> simp
-        case set s | record m => simp
+        case set | record => simp
         case ext x => cases x <;> simp
     case ok.error pval₁ e₂ =>
       cases pval₁
@@ -74,7 +74,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
             <;> simp only [reduceIte, Except.ok.injEq, Partial.Value.value.injEq, false_implies]
             <;> intro h₁ <;> subst v
             simp only [ih₁, Except.bind_ok, reduceIte]
-        case set s | record m => simp
+        case set | record => simp
         case ext x => cases x <;> simp
   }
 

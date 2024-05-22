@@ -188,7 +188,7 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
         apply (Map.in_list_iff_find?_some _).mp h₄
         have wf' := Partial.Subst.entities_subst_preserves_wf subsmap wf
         exact partialEntities_attrs_wf wf' h₃
-  case set s | record m => simp
+  case set | record => simp
   case ext x => cases x <;> simp
 
 /--

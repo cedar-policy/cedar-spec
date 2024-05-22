@@ -83,7 +83,7 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Parti
             cases hx₃ : Partial.evaluate x₃ request entities
             <;> simp only [hx₃, Except.ok.injEq] at h₁
             case ok v₃ => subst h₁ ; simp
-      case set s | record m => simp at h₁
+      case set | record => simp at h₁
       case ext x => cases x <;> simp at h₁
 
 /--
