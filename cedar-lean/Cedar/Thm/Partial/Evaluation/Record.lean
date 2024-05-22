@@ -244,7 +244,8 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
             simp only [ih_hd h_req hd_val h₃, Except.ok.injEq] at h₄
             exact h₄.symm
 
-private theorem lemma {pvals : List (Attr × Partial.Value)} {pairs : List (Attr × Spec.Value)}:
+/-- Helper lemma proved by induction -/
+private theorem mapM_pairs_snd {pvals : List (Attr × Partial.Value)} {pairs : List (Attr × Spec.Value)}:
   pvals.mapM (λ kv => match kv.snd with
       | .value v => some (kv.fst, v)
       | .residual _ => none)
@@ -268,7 +269,7 @@ private theorem lemma {pvals : List (Attr × Partial.Value)} {pairs : List (Attr
     subst h₃
     exists (tl'.map Prod.snd)
     simp only [List.map_cons, and_true]
-    exact lemma h₂
+    exact mapM_pairs_snd h₂
 
 /--
   Inductive argument that if partial-evaluation of a `Partial.Expr.record`
@@ -299,7 +300,7 @@ theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)
       unfold is_all_concrete
       exists (avs.map Prod.snd)
       simp only [List.mapM_map]
-      exact lemma h₂
+      exact mapM_pairs_snd h₂
     )]
     simp only [Except.bind_ok, h₂]
 
