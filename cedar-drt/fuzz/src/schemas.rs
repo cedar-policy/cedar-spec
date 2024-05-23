@@ -37,7 +37,12 @@ use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaF
 /// used. Whether or not there are applicable resources is useless.
 ///
 pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(), String> {
-    if lhs.0.len() == rhs.0.len() {
+    // We need to special-case two schemas both being trivial because both `{}`
+    // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
+    // in the human-readable schema format
+    if is_trivial(&lhs) && is_trivial(&rhs) {
+        Ok(())
+    } else if lhs.0.len() == rhs.0.len() {
         lhs.0
             .into_iter()
             .map(|(name, lhs_namespace)| {
@@ -50,6 +55,18 @@ pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(),
             .fold(Ok(()), Result::and)
     } else {
         Err("schema differ in number of namespaces".to_string())
+    }
+}
+
+// A schema fragment is trivial if it is empty or it's the empty namespace with
+// all declarations being empty
+fn is_trivial(schema: &SchemaFragment) -> bool {
+    if schema.0.len() == 0 {
+        true
+    } else if let Some(def) = schema.0.get(&None) {
+        def.entity_types.is_empty() && def.common_types.is_empty() && def.common_types.is_empty()
+    } else {
+        false
     }
 }
 
