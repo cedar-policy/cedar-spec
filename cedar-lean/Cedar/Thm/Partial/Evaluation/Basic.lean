@@ -111,7 +111,7 @@ def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial
 /--
   Prop that a list of partial values is actually a list of concrete values
 -/
-def is_all_concrete (pvals : List Partial.Value) : Prop :=
+def IsAllConcrete (pvals : List Partial.Value) : Prop :=
   ∃ vs, pvals.mapM (λ x => match x with | .value v => some v | .residual _ => none) = some vs
 
 end Cedar.Thm.Partial

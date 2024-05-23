@@ -124,7 +124,7 @@ theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req 
   req.subst subsmap = some req' →
   ∀ (pvals : List Partial.Value),
     xs.mapM (Partial.evaluate · req entities) = .ok pvals →
-    is_all_concrete pvals →
+    IsAllConcrete pvals →
     (xs.map (Partial.Expr.subst subsmap)).mapM (Partial.evaluate · req' (entities.subst subsmap)) = .ok pvals
 := by
   intro h_req pvals h₁ h₂
@@ -140,7 +140,7 @@ theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req 
     cases h₃ : Partial.evaluate hd req entities
     <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
     case ok hd_pval =>
-      unfold is_all_concrete at h₂
+      unfold IsAllConcrete at h₂
       replace ⟨vs, h₂⟩ := h₂
       replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
       cases h₅ : tl.mapM (Partial.evaluate · req entities)
@@ -158,7 +158,7 @@ theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req 
             simp only [ih_hd h_req v h₃] at h₄
         case ok hd'_pval =>
           have ih₂ := mapM_subst_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
-            unfold is_all_concrete
+            unfold IsAllConcrete
             apply List.all_some_implies_mapM_some
             intro tl_pval h₆
             replace ⟨v, _, h₂⟩ := h₂ tl_pval (by simp [h₆])
@@ -196,7 +196,7 @@ theorem subst_preserves_evaluation_to_value {xs : List Partial.Expr} {req req' :
     rw [List.map₁_eq_map]
     simp only
     rw [List.mapM₁_eq_mapM (Partial.evaluate · req' (entities.subst subsmap))]
-    rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold is_all_concrete ; exists vs)]
+    rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold IsAllConcrete ; exists vs)]
     simp only [h₂, Except.bind_ok]
 
 end Cedar.Thm.Partial.Evaluation.Set

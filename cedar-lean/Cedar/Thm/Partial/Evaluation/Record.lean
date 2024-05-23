@@ -192,7 +192,7 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
   req.subst subsmap = some req' →
   ∀ (pvals : List (Attr × Partial.Value)),
     attrs.mapM (λ kv => do let v ← Partial.evaluate kv.snd req entities ; .ok (kv.fst, v)) = .ok pvals →
-    is_all_concrete (pvals.map Prod.snd) →
+    IsAllConcrete (pvals.map Prod.snd) →
     (attrs.map (λ kv => (kv.fst, kv.snd.subst subsmap))).mapM (λ kv => do let v ← Partial.evaluate kv.snd req' (entities.subst subsmap) ; .ok (kv.fst, v)) = .ok pvals
 := by
   intro h_req pvals h₁ h₂
@@ -210,7 +210,7 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
     cases h₃ : Partial.evaluate xhd req entities
     <;> simp only [h₃, Except.bind_err, Except.bind_ok] at h₁
     case ok hd_pval =>
-      unfold is_all_concrete at h₂
+      unfold IsAllConcrete at h₂
       replace ⟨vs, h₂⟩ := h₂
       replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
       cases h₅ : tl.mapM (λ kv => do let v ← Partial.evaluate kv.snd req entities ; .ok (kv.fst, v))
@@ -228,7 +228,7 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
             simp only [ih_hd h_req v h₃] at h₄
         case ok hd'_pval =>
           have ih₂ := mapM_subst_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
-            unfold is_all_concrete
+            unfold IsAllConcrete
             apply List.all_some_implies_mapM_some
             intro tl_pval h₆
             replace ⟨v, _, h₂⟩ := h₂ tl_pval (by simp [h₆])
@@ -297,7 +297,7 @@ theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)
     rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req' (entities.subst subsmap))]
     simp only [Partial.bindAttr] at *
     rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by
-      unfold is_all_concrete
+      unfold IsAllConcrete
       exists (avs.map Prod.snd)
       simp only [List.mapM_map]
       exact mapM_pairs_snd h₂

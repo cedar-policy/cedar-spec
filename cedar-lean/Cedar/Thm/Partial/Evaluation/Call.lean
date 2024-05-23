@@ -124,7 +124,7 @@ theorem subst_preserves_evaluation_to_value {args : List Partial.Expr} {req req'
       rw [List.map₁_eq_map]
       simp only
       rw [List.mapM₁_eq_mapM (Partial.evaluate · req' (entities.subst subsmap))]
-      rw [Set.mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold is_all_concrete ; exists vs)]
+      rw [Set.mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold IsAllConcrete ; exists vs)]
       cases h₃ : Spec.call xfn vs
       <;> simp only [Except.bind_err, Except.bind_ok, false_implies, Except.ok.injEq, Partial.Value.value.injEq]
       case ok v' =>
