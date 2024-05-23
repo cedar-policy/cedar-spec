@@ -161,7 +161,11 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
     simp only [Except.ok.injEq, Partial.Value.value.injEq, Bool.not_eq_true']
     intro _ h₁ ; subst h₁
     simp only [Partial.Expr.subst]
-  case var v => exact Var.subst_preserves_evaluation_to_value wf_r
+  case var var =>
+    have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r
+    unfold SubstPreservesEvaluationToConcrete at h₁
+    intro h_req
+    exact h₁ h_req v
   case unknown u =>
     unfold Partial.evaluate
     simp only [Except.ok.injEq, Bool.not_eq_true', false_implies, implies_true]
