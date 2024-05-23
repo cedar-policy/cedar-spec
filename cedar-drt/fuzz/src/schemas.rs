@@ -64,7 +64,7 @@ fn is_trivial(schema: &SchemaFragment) -> bool {
     if schema.0.len() == 0 {
         true
     } else if let Some(def) = schema.0.get(&None) {
-        def.entity_types.is_empty() && def.common_types.is_empty() && def.common_types.is_empty()
+        def.entity_types.is_empty() && def.actions.is_empty() && def.common_types.is_empty()
     } else {
         false
     }
