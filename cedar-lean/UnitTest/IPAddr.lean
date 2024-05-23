@@ -32,11 +32,11 @@ theorem test6 : toString ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:07
 theorem test7 : toString ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by decide
 theorem test8 : toString ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by decide
 
-private def ipv4 (a₀ a₁ a₂ a₃ : UInt8) (pre : Nat) : IPNet :=
-  IPNet.V4 (IPv4Addr.mk a₀ a₁ a₂ a₃) (Fin.ofNat pre)
+private def ipv4 (a₀ a₁ a₂ a₃ : BitVec 8) (pre : Nat) : IPNet :=
+  IPNet.V4 ⟨IPv4Addr.mk a₀ a₁ a₂ a₃, pre⟩
 
-private def ipv6 (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : UInt16) (pre : Nat) : IPNet :=
-  IPNet.V6 (IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇) (Fin.ofNat pre)
+private def ipv6 (a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇ : BitVec 16) (pre : Nat) : IPNet :=
+  IPNet.V6 ⟨IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇, pre⟩
 
 private def testValid (str : String) (ip : IPNet) : TestCase IO :=
   test str ⟨λ _ => checkEq (parse str) ip⟩
@@ -90,8 +90,6 @@ private def parse! (str : String) : IPNet :=
 private def testIsLoopback (str : String) (expected : Bool) : TestCase IO :=
   test s!"isLoopback {str}" ⟨λ _ => checkEq (parse! str).isLoopback expected⟩
 
-private def testToUInt128 (str : String) (expected : UInt128) : TestCase IO :=
-  test s!"toUInt128 {str}" ⟨λ _ => checkEq (parse! str).toUInt128 expected⟩
 
 def testsForIsLoopback :=
   suite "IPAddr.isLoopback"
@@ -101,13 +99,6 @@ def testsForIsLoopback :=
     testIsLoopback "::1" true,
     -- As in Rust, IPv4 embedded in IPv6 only uses IPv6 loopback:
     testIsLoopback "::ffff:ff00:0001" false
-  ]
-
-def testsForUInt128Conversion :=
-  suite "IPAddr.toUInt128"
-  [
-    testToUInt128 "192.0.2.235" 3221226219,
-    testToUInt128 "::1:2" (0x10000 + 0x2)
   ]
 
 def ip! (str : String) : IPNet :=
@@ -170,7 +161,6 @@ def tests := [
   testsForValidStrings,
   testsForInvalidStrings,
   testsForIsLoopback,
-  testsForUInt128Conversion,
   testsForInRange,
   testsForIpNetEquality]
 
