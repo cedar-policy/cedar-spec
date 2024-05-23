@@ -51,8 +51,9 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Spec.Expr} {request : Sp
 
 /--
   If partial-evaluating a `Partial.Expr.ite` produces `ok` with a concrete
-  value, then so would partial-evaluating any of the operands, unless the `ite`
-  short-circuits
+  value, then partial-evaluating the guard produces either concrete `true` or
+  `false`, and partial-evaluating whichever operand isn't short-circuited out
+  produces `ok` with a concrete value
 -/
 theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} :
   EvaluatesToConcrete (Partial.Expr.ite x₁ x₂ x₃) request entities →
