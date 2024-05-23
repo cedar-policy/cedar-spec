@@ -18,11 +18,14 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Basic
 import Cedar.Thm.Partial.Evaluation.Set
 
 namespace Cedar.Thm.Partial.Evaluation.Call
 
+open Cedar.Data
+open Cedar.Partial (Unknown)
 open Cedar.Spec (Error ExtFun Result)
 
 /--
@@ -55,7 +58,81 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   rw [List.mapM_map]
   rw [Set.mapM_partial_eval_eqv_concrete_eval ih₁]
   cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.bind_ok, Except.bind_err]
-  case error e => simp [Except.map]
+  case error e => simp only [Except.map, Except.bind_err]
   case ok vs => exact evaluateCall_on_concrete_eqv_concrete
+
+/--
+  If `Partial.evaluateCall` produces `ok` with a concrete value, then all of the
+  arguments are concrete
+-/
+theorem partialEvaluateCall_concrete_then_args_concrete {args : List Partial.Value} {xfn : ExtFun} :
+  Partial.evaluateCall xfn args = .ok (.value v) →
+  ∀ arg ∈ args, ∃ v, arg = .value v
+:= by
+  unfold Partial.evaluateCall
+  split <;> intro h₁ arg h₂
+  · rename_i vs h₃
+    replace ⟨v, h₃, h₄⟩ := List.mapM_some_implies_all_some h₃ arg h₂
+    cases arg <;> simp only [Option.some.injEq] at h₄
+    subst v ; rename_i v
+    exists v
+  · rename_i h₃
+    replace ⟨arg', h₃, h₄⟩ := List.mapM_none_iff_exists_none.mp h₃
+    cases arg' <;> simp only [Except.ok.injEq] at h₁ h₄
+
+/--
+  If partial-evaluating a `Partial.Expr.call` produces `ok` with a concrete
+  value, then so would partial-evaluating any of the arguments
+-/
+theorem evals_to_concrete_then_args_eval_to_concrete {xs : List Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} {xfn : ExtFun} :
+  EvaluatesToConcrete (Partial.Expr.call xfn xs) request entities →
+  ∀ x ∈ xs, EvaluatesToConcrete x request entities
+:= by
+  unfold EvaluatesToConcrete
+  intro h₁ x h₂
+  unfold Partial.evaluate at h₁
+  replace ⟨v, h₁⟩ := h₁
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)] at h₁
+  cases h₃ : xs.mapM (Partial.evaluate · request entities)
+  <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
+  case ok pvals =>
+    replace ⟨pval, h₃, h₄⟩ := List.mapM_ok_implies_all_ok h₃ x h₂
+    replace ⟨v, h₁⟩ := partialEvaluateCall_concrete_then_args_concrete h₁ pval h₃
+    subst pval
+    exists v
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.call` returns
+  a concrete value, then it returns the same value after any substitution of
+  unknowns
+-/
+theorem subst_preserves_evaluation_to_value {args : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} {xfn : ExtFun}
+  (ih : ∀ arg ∈ args, SubstPreservesEvaluationToConcrete arg req req' entities subsmap) :
+  SubstPreservesEvaluationToConcrete (Partial.Expr.call xfn args) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToConcrete
+  unfold Partial.evaluate Partial.evaluateCall Spec.Value.asBool
+  intro h_req v
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · req entities)]
+  cases h₁ : args.mapM (Partial.evaluate · req entities)
+  <;> simp only [Except.bind_ok, Except.bind_err, Bool.not_eq_true', false_implies]
+  case ok pvals =>
+    split
+    · rename_i vs h₂
+      -- vs are the concrete values produced by evaluating the args pre-subst
+      unfold Partial.Expr.subst
+      rw [List.map₁_eq_map]
+      simp only
+      rw [List.mapM₁_eq_mapM (Partial.evaluate · req' (entities.subst subsmap))]
+      rw [Set.mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold IsAllConcrete ; exists vs)]
+      cases h₃ : Spec.call xfn vs
+      <;> simp only [Except.bind_err, Except.bind_ok, false_implies, Except.ok.injEq, Partial.Value.value.injEq]
+      case ok v' =>
+        intro h ; subst v'
+        simp only [h₂, h₃, Except.bind_ok]
+    · rename_i h₂
+      replace ⟨pval, h₂, h₃⟩ := List.mapM_none_iff_exists_none.mp h₂
+      cases pval <;> simp only at h₃
+      case residual r => simp only [Except.ok.injEq, false_implies]
 
 end Cedar.Thm.Partial.Evaluation.Call

@@ -18,6 +18,7 @@ import Cedar.Data.Map
 import Cedar.Data.SizeOf
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Set
 
 /-!
 # Map properties
@@ -103,7 +104,20 @@ theorem eq_iff_kvs_equiv [LT α] [DecidableLT α] [StrictLT α] {m₁ m₂ : Map
     subst h₁
     exact List.Equiv.refl
 
-/-! ### contains, mem, kvs, values -/
+/-! ### contains, mem, kvs, keys, values -/
+
+theorem keys_wf [LT α] [DecidableLT α] [StrictLT α] (m : Map α β) :
+  m.WellFormed → m.keys.WellFormed
+:= by
+  unfold keys
+  intro wf
+  simp only [wf_iff_sorted, toList] at wf
+  simp only [Set.wf_iff_sorted]
+  simp only [Set.elts]
+  apply (List.map_eq_implies_sortedBy _).mp wf
+  simp only [List.map_map]
+  apply List.map_congr
+  simp only [Function.comp_apply, id_eq, implies_true]
 
 theorem kvs_nil_iff_empty {m : Map α β} :
   m.kvs = [] ↔ m = Map.empty
@@ -331,6 +345,17 @@ theorem mapOnValues_contains {α β γ} [LT α] [DecidableLT α] [DecidableEq α
   · simp [find?_mapOnValues_some f h]
   · simp [find?_mapOnValues_none f h]
 
+theorem keys_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) :
+  (m.mapOnValues f).keys = m.keys
+:= by
+  unfold mapOnValues keys kvs
+  simp only [List.map_map, Set.mk.injEq]
+  induction m.1
+  case nil => simp only [List.map_nil]
+  case cons hd tl ih =>
+    simp only [List.map_cons, Function.comp_apply, List.cons.injEq, true_and]
+    exact ih
+
 theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} :
   (m.mapOnValues f).values = m.values.map f
 := by
@@ -339,7 +364,7 @@ theorem values_mapOnValues [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
   case nil => simp only [List.map_nil]
   case cons hd tl ih =>
     simp only [List.map_cons, List.cons.injEq, true_and]
-    trivial
+    exact ih
 
 theorem findOrErr_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {e : Error} :
   (m.mapOnValues f).findOrErr k e = (m.findOrErr k e).map f

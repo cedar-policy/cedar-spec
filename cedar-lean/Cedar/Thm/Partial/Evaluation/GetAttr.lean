@@ -21,10 +21,12 @@ import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.GetAttr
 
 open Cedar.Data
+open Cedar.Partial (Unknown)
 open Cedar.Spec (Attr EntityUID Error Result)
 
 /--
@@ -83,7 +85,8 @@ theorem attrsOf_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entit
     case entityUID uid =>
       unfold Partial.Entities.attrs Spec.Entities.attrs Spec.Entities.asPartialEntities
       cases h₁ : entities.findOrErr uid Error.entityDoesNotExist
-      <;> simp [h₁, Map.findOrErr_mapOnValues, Except.map, Spec.EntityData.asPartialEntityData]
+      <;> simp only [h₁, Map.findOrErr_mapOnValues, Except.map, Spec.EntityData.asPartialEntityData,
+        Except.bind_ok, Except.bind_err]
 
 /--
   `Partial.getAttr` on concrete arguments is the same as `Spec.getAttr` on those
@@ -95,7 +98,7 @@ theorem getAttr_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entit
   unfold Partial.getAttr Spec.getAttr
   simp only [attrsOf_on_concrete_eqv_concrete, Except.map]
   cases Spec.attrsOf v entities.attrs <;> simp only [Except.bind_err, Except.bind_ok]
-  case ok m => simp [Map.findOrErr_mapOnValues, Except.map]
+  case ok m => simp only [Map.findOrErr_mapOnValues, Except.map]
 
 /--
   `Partial.evaluateGetAttr` on concrete arguments is the same as `Spec.getAttr`
@@ -105,7 +108,7 @@ theorem evaluateGetAttr_on_concrete_eqv_concrete {v : Spec.Value} {a : Attr} {en
   Partial.evaluateGetAttr v a entities = Spec.getAttr v a entities
 := by
   simp only [Partial.evaluateGetAttr, getAttr_on_concrete_eqv_concrete, pure, Except.pure, Except.map]
-  cases h : Spec.getAttr v a entities <;> simp [h]
+  cases Spec.getAttr v a entities <;> simp only [Except.bind_ok, Except.bind_err]
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.getAttr`
@@ -121,7 +124,109 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
   simp only [ih₁]
   cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
-  case error e => simp [Except.map]
+  case error e => simp only [Except.map, Except.bind_err]
   case ok v₁ => exact evaluateGetAttr_on_concrete_eqv_concrete
+
+/--
+  If `Partial.evaluateGetAttr` produces `ok` with a concrete value, then so
+  would partial-evaluating its operand
+-/
+theorem evaluateGetAttr_returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+  Partial.evaluateGetAttr pval₁ attr entities = .ok (.value v) →
+  ∃ v₁, pval₁ = .value v₁
+:= by
+  unfold Partial.evaluateGetAttr
+  intro h₁
+  cases pval₁
+  case value v₁ => exists v₁
+  case residual r₁ => simp only [Except.ok.injEq] at h₁
+
+/--
+  If partial-evaluating a `Partial.Expr.getAttr` produces `ok` with a concrete
+  value, then so would partial-evaluating its operand
+-/
+theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {attr : Attr} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToConcrete (Partial.Expr.getAttr x₁ attr) request entities →
+  EvaluatesToConcrete x₁ request entities
+:= by
+  unfold EvaluatesToConcrete
+  intro h₁
+  unfold Partial.evaluate at h₁
+  replace ⟨v, h₁⟩ := h₁
+  cases hx₁ : Partial.evaluate x₁ request entities
+  <;> simp only [hx₁, Except.bind_ok, Except.bind_err] at h₁
+  case ok pval₁ =>
+    have ⟨v₁, hv₁⟩ := evaluateGetAttr_returns_concrete_then_operand_evals_to_concrete h₁
+    subst pval₁
+    exists v₁
+
+/--
+  If `Partial.getAttr` returns a concrete value, then it returns the same value
+  after any substitution of unknowns in `entities`
+-/
+theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+  (wf : entities.AllWellFormed) :
+  Partial.getAttr v₁ attr entities = .ok (.value v) →
+  Partial.getAttr v₁ attr (entities.subst subsmap) = .ok (.value v)
+:= by
+  unfold Partial.getAttr
+  unfold Partial.attrsOf
+  cases v₁
+  case prim p₁ =>
+    cases p₁ <;> simp only [Except.bind_err, imp_self]
+    case entityUID uid₁ =>
+      cases h₁ : entities.attrs uid₁
+      <;> simp only [Except.bind_ok, Except.bind_err, false_implies]
+      case ok attrs =>
+        intro h₂
+        replace h₂ := Map.findOrErr_ok_iff_find?_some.mp h₂
+        replace h₂ := Map.find?_mem_toList h₂
+        unfold Map.toList at h₂
+        have ⟨attrs', h₃, h₄⟩ := Partial.Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
+        simp only [h₃, Except.bind_ok]
+        simp only [Map.findOrErr_ok_iff_find?_some]
+        apply (Map.in_list_iff_find?_some _).mp h₄
+        have wf' := Partial.Subst.entities_subst_preserves_wf subsmap wf
+        exact partialEntities_attrs_wf wf' h₃
+  case set | record => simp
+  case ext x => cases x <;> simp
+
+/--
+  If `Partial.evaluateGetAttr` returns a concrete value, then it returns the
+  same value after any substitution of unknowns in `entities`
+-/
+theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+  (wf : entities.AllWellFormed) :
+  Partial.evaluateGetAttr pval₁ attr entities = .ok (.value v) →
+  Partial.evaluateGetAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
+:= by
+  unfold Partial.evaluateGetAttr
+  cases pval₁ <;> simp only [Except.ok.injEq, imp_self]
+  case value v₁ => exact getAttr_subst_preserves_evaluation_to_value wf
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.getAttr`
+  returns a concrete value, then it returns the same value after any
+  substitution of unknowns
+-/
+theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+  (wf : entities.AllWellFormed)
+  (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
+  SubstPreservesEvaluationToConcrete (Partial.Expr.getAttr x₁ attr) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToConcrete at *
+  unfold Partial.evaluate Spec.Value.asBool
+  intro h_req v
+  specialize ih₁ h_req
+  unfold Partial.Expr.subst
+  cases hx₁ : Partial.evaluate x₁ req entities
+  <;> simp only [hx₁, false_implies, forall_const, Except.bind_ok, Except.bind_err, Except.ok.injEq] at *
+  case ok pval₁  =>
+    cases pval₁
+    case value v₁ =>
+      simp only [Partial.Value.value.injEq, forall_eq'] at *
+      simp only [ih₁, Except.bind_ok]
+      exact evaluateGetAttr_subst_preserves_evaluation_to_value wf
+    case residual r₁ => simp only [Partial.evaluateGetAttr, Except.ok.injEq, false_implies]
 
 end Cedar.Thm.Partial.Evaluation.GetAttr
