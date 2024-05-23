@@ -187,7 +187,7 @@ theorem evals_to_concrete_then_vals_eval_to_concrete {attrs : List (Attr × Part
   list of concrete vals, then it produces the same list of concrete vals after
   any substitution of unknowns
 -/
-theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem mapM_subst_snd_preserves_evaluation_to_values {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
   (ih : ∀ kv ∈ attrs, SubstPreservesEvaluationToConcrete kv.snd req req' entities subsmap) :
   req.subst subsmap = some req' →
   ∀ (pvals : List (Attr × Partial.Value)),
@@ -227,7 +227,7 @@ theorem mapM_subst_preserves_evaluation_to_values {attrs : List (Attr × Partial
             unfold SubstPreservesEvaluationToConcrete at ih_hd
             simp only [ih_hd h_req v h₃] at h₄
         case ok hd'_pval =>
-          have ih₂ := mapM_subst_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
+          have ih₂ := mapM_subst_snd_preserves_evaluation_to_values ih_tl h_req tl_pvals h₅ (by
             unfold IsAllConcrete
             apply List.all_some_implies_mapM_some
             intro tl_pval h₆
@@ -296,7 +296,7 @@ theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)
     simp only
     rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req' (entities.subst subsmap))]
     simp only [Partial.bindAttr] at *
-    rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by
+    rw [mapM_subst_snd_preserves_evaluation_to_values ih h_req pvals h₁ (by
       unfold IsAllConcrete
       exists (avs.map Prod.snd)
       simp only [List.mapM_map]
