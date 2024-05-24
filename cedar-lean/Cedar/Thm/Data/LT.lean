@@ -34,73 +34,97 @@ namespace Decide
 @[simp] theorem not_decide_eq_true {h : Decidable p} : ((!decide p) = true) = ¬ p := by cases h <;> simp [decide, *]
 end Decide
 
+----- `<` is strict on `IPNetPrefix` -----
+
+instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
+  asymmetric a b  := by
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
+    cases a <;> cases b <;>
+    simp only [Nat.lt_irrefl, decide_False, not_false_eq_true,
+      false_implies, decide_eq_true_eq, Nat.not_lt]
+    all_goals { omega }
+  transitive a b c := by
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
+    cases a <;> cases b <;> cases c <;>
+    simp only [Nat.lt_irrefl, decide_False, imp_self,
+      decide_eq_true_eq, false_implies, implies_true]
+    all_goals { omega }
+  connected  a b   := by
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
+    cases a <;> cases b <;>
+    simp only [ne_eq, not_true_eq_false, Nat.lt_irrefl, decide_eq_true_eq,
+      decide_False, or_self, imp_self, not_false_eq_true, forall_const, Option.some.injEq]
+    · apply Or.inr ; omega
+    · apply Or.inl ; omega
+    · bv_omega
+
+----- `<` is strict on `CIDR` -----
+
+instance CIDR.strictLT {w} : StrictLT (Ext.IPAddr.CIDR w) where
+  asymmetric a b   := by
+    simp only [LT.lt]
+    simp only [Ext.IPAddr.CIDR.lt, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
+    intro h₁
+    by_contra h₂
+    rcases h₁ with h₁ | ⟨h₁, h₃⟩
+    · bv_omega
+    · simp only [h₁, true_and] at h₂
+      rcases h₂ with h₂ | h₂
+      · have _ : ¬ b.addr < b.addr := by bv_omega
+        contradiction
+      · have _ := IPNetPrefix.strictLT.asymmetric _ _ h₃
+        contradiction
+  transitive a b c := by
+    simp only [LT.lt]
+    simp only [Ext.IPAddr.CIDR.lt, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
+    intro h₁ h₂
+    rcases h₁ with h₁ | ⟨h₁, h₃⟩ <;>
+    rcases h₂ with h₂ | ⟨h₂, h₄⟩ <;>
+    try bv_omega
+    simp only [h₁, h₂, true_and]
+    apply Or.inr
+    exact IPNetPrefix.strictLT.transitive _ _ _ h₃ h₄
+  connected  a b   := by
+    simp only [LT.lt]
+    simp only [Ext.IPAddr.CIDR.lt, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
+    intro h₁
+    have h₂ : a.addr < b.addr ∨ a.addr = b.addr ∨ b.addr < a.addr := by bv_omega
+    rcases h₂ with h₂ | h₂ | h₂ <;>
+    simp only[h₂, true_or, or_true, true_and]
+    have h₃ : a = ⟨a.addr, a.pre⟩ := by simp only
+    have h₄ : b = ⟨b.addr, b.pre⟩ := by simp only
+    rw [h₃, h₄, h₂] at h₁
+    simp only [ne_eq, Ext.IPAddr.CIDR.mk.injEq, true_and] at h₁
+    have h₅ := IPNetPrefix.strictLT.connected _ _ h₁
+    rcases h₅ with h₅ | h₅ <;> simp only [h₅, or_true, true_or]
 
 ----- `<` is strict on `IPNet` -----
 
-theorem IPNet.lt_asymm {a₁ a₂ p₁ p₂ : Nat} :
-  a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂ → ¬(a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁)
-:= by omega
-
-theorem IPNet.lt_trans {a₁ a₂ a₃ p₁ p₂ p₃ : Nat}
-  (h₁ : a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂)
-  (h₂ : a₂ < a₃ ∨ a₂ = a₃ ∧ p₂ < p₃) :
-  a₁ < a₃ ∨ a₁ = a₃ ∧ p₁ < p₃
-:= by omega
-
-theorem IPNet.lt_conn {a₁ a₂ p₁ p₂ : Nat}
-  (h₁ : a₁ = a₂ → ¬p₁ = p₂) :
-  (a₁ < a₂ ∨ a₁ = a₂ ∧ p₁ < p₂) ∨ a₂ < a₁ ∨ a₂ = a₁ ∧ p₂ < p₁
-:= by omega
-
 instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
   asymmetric a b   := by
-    cases a <;> cases b <;> simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.lt, UInt32.val_val_eq_toNat, Nat.lt_eq, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, not_false_eq_true, not_true_eq_false, imp_self]
-    case V4 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases p₁ ; cases p₂
-      simp only [Fin.mk.injEq]
-      exact IPNet.lt_asymm
-    case V6 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      exact IPNet.lt_asymm
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNet.lt
+    cases a <;> cases b <;>
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false] <;>
+    exact CIDR.strictLT.asymmetric _ _
   transitive a b c := by
-    intro h₁ h₂
-    simp only [LT.lt] at h₁ h₂
-    simp only [Ext.IPAddr.IPNet.lt, Nat.lt_eq] at h₁ h₂
-    split at h₁ <;> split at h₂ <;>
-    simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.V6.injEq, Nat.lt_eq, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, Ext.IPAddr.IPNet.V4.injEq, Ext.IPAddr.IPNet.lt, UInt32.val_val_eq_toNat] at * <;>
-    rename_i h₃ <;>
-    have ⟨h₃, h₄⟩ := h₃ <;> subst h₃ h₄
-    case h_3 a₁ p₁ a₂ p₂ _ _ a₃ p₃ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases a₃ ; rename_i a₃ ; cases a₃
-      cases p₁ ; cases p₂ ; cases p₃
-      simp only [Fin.mk.injEq] at *
-      exact IPNet.lt_trans h₁ h₂
-    case h_4 a₁ p₁ a₂ p₂ _ _ a₃ p₃ =>
-      cases a₁ ; cases a₂ ; cases a₃ ; cases p₁ ; cases p₂ ; cases p₃
-      simp only at *
-      exact IPNet.lt_trans h₁ h₂
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNet.lt
+    cases a <;> cases b <;> cases c <;>
+    simp only [decide_eq_true_eq, imp_self, implies_true,
+      false_implies, forall_const] <;>
+    exact CIDR.strictLT.transitive _ _ _
   connected  a b   := by
-    cases a <;> cases b <;> simp only [LT.lt] <;> simp only [Ext.IPAddr.IPNet.lt, ne_eq, Bool.or_eq_true, or_false, UInt32.val_val_eq_toNat, not_and, not_false_eq_true, imp_self, Bool.and_eq_true, Ext.IPAddr.IPNet.V6.injEq, Ext.IPAddr.IPNet.V4.injEq, decide_eq_true_eq, or_true, Nat.lt_eq] <;> intro h₁
-    case V4 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; rename_i a₁ ; cases a₁
-      cases a₂ ; rename_i a₂ ; cases a₂
-      cases p₁ ; cases p₂
-      simp only [Fin.mk.injEq] at *
-      rename_i a₁ _ a₂ _ p₁ _ p₂ _
-      apply IPNet.lt_conn
-      intro h₂
-      simp only [UInt32.toNat] at h₂
-      simp only [h₂, forall_const] at h₁
-      exact h₁
-    case V6 a₁ p₁ a₂ p₂ =>
-      cases a₁ ; cases a₂ ; cases p₁ ; cases p₂
-      simp only [Fin.mk.injEq] at *
-      exact IPNet.lt_conn h₁
-
+    simp only [LT.lt]
+    unfold Ext.IPAddr.IPNet.lt
+    cases a <;> cases b <;>
+    simp only [ne_eq, Ext.IPAddr.IPNet.V4.injEq, Ext.IPAddr.IPNet.V6.injEq,
+      decide_eq_true_eq, not_false_eq_true, or_false, or_true, imp_self] <;>
+    exact CIDR.strictLT.connected _ _
 
 ----- `<` is strict on `Ext` -----
 
