@@ -19,7 +19,7 @@ import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Props
 
 namespace Cedar.Thm.Partial.Evaluation.Set
 

@@ -17,7 +17,7 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Props
 
 namespace Cedar.Thm.Partial.Evaluation.Ite
 
