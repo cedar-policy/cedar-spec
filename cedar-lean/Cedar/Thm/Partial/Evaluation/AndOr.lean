@@ -23,9 +23,43 @@ namespace Cedar.Thm.Partial.Evaluation.AndOr
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Prim)
+open Cedar.Spec (Prim Result)
 
 /- ## Lemmas shared by And.lean and Or.lean -/
+
+/--
+  Inductive argument that partial evaluating a concrete `Partial.Expr.and` or
+  `Partial.Expr.or` gives the same output as concrete-evaluating the
+  `Spec.Expr.and` or `Spec.Expr.or` with the same subexpressions
+-/
+theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+  PartialEvalEquivConcreteEval x₁ request entities →
+  PartialEvalEquivConcreteEval x₂ request entities →
+  PartialEvalEquivConcreteEval (Spec.Expr.and x₁ x₂) request entities ∧
+  PartialEvalEquivConcreteEval (Spec.Expr.or x₁ x₂) request entities
+:= by
+  unfold PartialEvalEquivConcreteEval
+  intro ih₁ ih₂
+  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  simp only [ih₁, ih₂]
+  simp only [Except.map, pure, Except.pure, Result.as, Coe.coe]
+  constructor
+  all_goals {
+    cases h₁ : Spec.evaluate x₁ request entities <;> simp only [Bool.not_eq_true', Except.bind_err, Except.bind_ok]
+    case ok v₁ =>
+      simp only [Spec.Value.asBool]
+      cases v₁ <;> try simp only [Except.bind_err]
+      case prim p =>
+        cases p <;> simp only [Except.bind_ok, Except.bind_err]
+        case bool b =>
+          cases b <;> simp only [ite_true, ite_false]
+          split <;> simp only [Except.bind_ok, Except.bind_err]
+          case h_1 e h₂ => simp only [h₂, Except.bind_err]
+          case h_2 v h₂ =>
+            simp only [h₂]
+            cases v <;> try simp only [Except.bind_err]
+            case prim p => cases p <;> simp
+  }
 
 /--
   If partial-evaluating a `Partial.Expr.and` or `Partial.Expr.or` produces `ok`
