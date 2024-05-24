@@ -54,14 +54,11 @@ theorem on_concrete_eqv_concrete_eval' (expr : Spec.Expr) (request : Spec.Reques
   case var v =>
     have h := Var.on_concrete_eqv_concrete_eval v request entities wf
     unfold PartialEvalEquivConcreteEval at h ; exact h
-  case and x₁ x₂ =>
+  case and x₁ x₂ | or x₁ x₂ =>
     have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
     have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
-    exact And.on_concrete_eqv_concrete_eval ih₁ ih₂
-  case or x₁ x₂ =>
-    have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
-    have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
-    exact Or.on_concrete_eqv_concrete_eval ih₁ ih₂
+    have := AndOr.on_concrete_eqv_concrete_eval ih₁ ih₂
+    first | exact this.left | exact this.right
   case ite x₁ x₂ x₃ =>
     have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
     have ih₂ := on_concrete_eqv_concrete_eval' x₂ request entities wf
