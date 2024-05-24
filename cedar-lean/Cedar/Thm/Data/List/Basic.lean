@@ -391,6 +391,10 @@ theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β
 /-! ### Forallᵥ -/
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
-  List.Forall₂ (fun kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
+  List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
+
+theorem forallᵥ_def {α β γ} {p : β → γ → Prop} {kvs₁ : List (α × β)} {kvs₂ : List (α × γ)} :
+  List.Forallᵥ p kvs₁ kvs₂ = List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
+:= by simp only [Forallᵥ]
 
 end List
