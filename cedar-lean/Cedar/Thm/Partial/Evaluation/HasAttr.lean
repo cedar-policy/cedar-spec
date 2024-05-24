@@ -27,7 +27,7 @@ namespace Cedar.Thm.Partial.Evaluation.HasAttr
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Attr Error Result)
+open Cedar.Spec (Attr Error Prim Result)
 
 /--
   `Partial.attrsOf` on concrete arguments is the same as `Spec.attrsOf` on those
@@ -101,6 +101,45 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   case ok v₁ => exact evaluateHasAttr_on_concrete_eqv_concrete
 
 /--
+  if `Partial.hasAttr` returns `ok` with some value, that is a well-formed value
+-/
+theorem partialHasAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} :
+  ∀ v, Partial.hasAttr v₁ attr entities = .ok v → v.WellFormed
+:= by
+  unfold Partial.hasAttr
+  cases Partial.attrsOf v₁ λ uid => .ok (entities.attrsOrEmpty uid) <;> simp
+  case ok m => simp [Spec.Value.WellFormed, Prim.WellFormed]
+
+
+/--
+  if `Partial.evaluateHasAttr` returns `ok` with some value, that is a
+  well-formed value
+-/
+theorem partialEvaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+  ∀ pval, Partial.evaluateHasAttr pval₁ attr entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluateHasAttr
+  split
+  · rename_i v
+    cases h₁ : Partial.hasAttr v attr entities <;> simp
+    case ok v =>
+      simp [Partial.Value.WellFormed]
+      exact partialHasAttr_wf v h₁
+  · intro pval h₁ ; simp at h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
+
+/--
+  if partial-evaluating a `Partial.Expr.hasAttr` returns `ok` with some value,
+  that is a well-formed value
+-/
+theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request} :
+  ∀ pval, Partial.evaluate (Partial.Expr.hasAttr x₁ attr) request entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluate
+  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
+  case ok pval₁ =>
+    exact HasAttr.partialEvaluateHasAttr_wf
+
+/--
   If `Partial.evaluateHasAttr` produces `ok` with a concrete value, then so
   would partial-evaluating its operand
 -/
@@ -147,7 +186,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
     cases p₁
     <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
     case entityUID uid =>
-      exact Partial.Subst.entities_subst_preserves_contains_on_attrsOrEmpty entities uid attr subsmap wf
+      exact Subst.entities_subst_preserves_contains_on_attrsOrEmpty entities uid attr subsmap wf
 
 /--
   If `Partial.evaluateHasAttr` returns a concrete value, then it returns the

@@ -42,7 +42,7 @@ open Cedar.Spec (Effect Policies PolicyID)
   `Spec.satisfiedPolicies`
 -/
 theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).mayBeSatisfied eff = Spec.satisfiedPolicies eff policies req entities
 := by
   unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
@@ -94,7 +94,7 @@ theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Re
   corollary of the above
 -/
 theorem permits_eq_satisfied_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).permits = Spec.satisfiedPolicies .permit policies req entities
 := by
   unfold Partial.Response.permits
@@ -104,7 +104,7 @@ theorem permits_eq_satisfied_permits {policies : Policies} {req : Spec.Request} 
   corollary of the above
 -/
 theorem forbids_eq_satisfied_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).forbids = Spec.satisfiedPolicies .forbid policies req entities
 := by
   unfold Partial.Response.forbids
@@ -114,7 +114,7 @@ theorem forbids_eq_satisfied_forbids {policies : Policies} {req : Spec.Request} 
   on concrete inputs, the `cond` of all residuals is literal `true`
 -/
 theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {id : PolicyID} {eff : Effect} {cond : Partial.Expr}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Residual.residual id eff cond) ∈ (Partial.isAuthorized req entities policies).residuals →
   cond = .lit (.bool true)
 := by
@@ -147,7 +147,7 @@ theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Reque
   on concrete inputs, `mustBeSatisfied` and `mayBeSatisfied` are the same
 -/
 theorem mustBeSatisfied_eq_mayBeSatisfied {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {eff : Effect}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).mustBeSatisfied eff =
   (Partial.isAuthorized req entities policies).mayBeSatisfied eff
 := by
@@ -184,7 +184,7 @@ theorem mustBeSatisfied_eq_mayBeSatisfied {policies : Policies} {req : Spec.Requ
   corollary of the above
 -/
 theorem knownPermits_eq_permits {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).knownPermits = (Partial.isAuthorized req entities policies).permits
 := by
   unfold Partial.Response.knownPermits Partial.Response.permits
@@ -194,7 +194,7 @@ theorem knownPermits_eq_permits {policies : Policies} {req : Spec.Request} {enti
   corollary of the above
 -/
 theorem knownForbids_eq_forbids {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).knownForbids = (Partial.isAuthorized req entities policies).forbids
 := by
   unfold Partial.Response.knownForbids Partial.Response.forbids
@@ -204,7 +204,7 @@ theorem knownForbids_eq_forbids {policies : Policies} {req : Spec.Request} {enti
   on concrete inputs, `Partial.Response.errorPolicies` and `Spec.errorPolicies` are equal
 -/
 theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).errorPolicies =
   Spec.errorPolicies policies req entities
 := by

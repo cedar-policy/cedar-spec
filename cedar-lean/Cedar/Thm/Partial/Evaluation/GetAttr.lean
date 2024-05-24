@@ -31,48 +31,6 @@ open Cedar.Partial (Unknown)
 open Cedar.Spec (Attr EntityUID Error Result)
 
 /--
-  if `entities.attrs uid` is `ok` with some attrs, those attrs are a
-  well-formed `Map`
--/
-theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID} {attrs: Map String Partial.Value} :
-  entities.AllWellFormed →
-  entities.attrs uid = .ok attrs →
-  attrs.WellFormed
-:= by
-  unfold Partial.Entities.attrs Partial.Entities.AllWellFormed Partial.EntityData.WellFormed
-  intro wf h₁
-  cases h₂ : entities.findOrErr uid Error.entityDoesNotExist
-  <;> simp only [h₂, Except.bind_err, Except.bind_ok, Except.ok.injEq] at h₁
-  case ok attrs =>
-    subst h₁
-    have ⟨wf_m, wf_edata⟩ := wf ; clear wf
-    apply (wf_edata _ _).left
-    have h₃ := Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m
-    simp only [h₃]
-    exists uid
-
-/--
-  if `Partial.attrsOf` returns `ok` with some attrs, those attrs are a
-  well-formed `Map`
--/
-theorem attrsOf_wf {entities : Partial.Entities} {v : Spec.Value} {attrs : Map String Partial.Value} :
-  entities.AllWellFormed →
-  v.WellFormed →
-  Partial.attrsOf v entities.attrs = .ok attrs →
-  attrs.WellFormed
-:= by
-  intro wf_e wf_v
-  unfold Partial.attrsOf
-  cases v <;> try simp only [false_implies, Except.ok.injEq]
-  case prim p =>
-    cases p <;> simp only [false_implies]
-    case entityUID uid => exact partialEntities_attrs_wf wf_e
-  case record r =>
-    intro h₁
-    subst h₁
-    apply Map.mapOnValues_wf.mp wf_v
-
-/--
   `Partial.attrsOf` on concrete arguments is the same as `Spec.attrsOf` on those
   arguments
 -/
@@ -129,6 +87,107 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   case ok v₁ => exact evaluateGetAttr_on_concrete_eqv_concrete
 
 /--
+  if `entities.attrs uid` is `ok` with some attrs, those attrs are a
+  well-formed `Map`, and all the values in those attrs are well-formed
+-/
+theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID} {attrs: Map String Partial.Value}
+  (wf_e : entities.AllWellFormed) :
+  entities.attrs uid = .ok attrs →
+  attrs.WellFormed ∧ ∀ v ∈ attrs.values, v.WellFormed
+:= by
+  unfold Partial.Entities.attrs
+  intro h₁
+  cases h₂ : entities.findOrErr uid Error.entityDoesNotExist
+  <;> simp only [h₂, Except.bind_err, Except.bind_ok, Except.ok.injEq] at h₁
+  case ok attrs =>
+    subst h₁
+    unfold Partial.Entities.AllWellFormed Partial.EntityData.WellFormed at wf_e
+    have ⟨wf_m, wf_edata⟩ := wf_e ; clear wf_e
+    constructor
+    · apply (wf_edata _ _).left
+      have h₃ := Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m
+      simp only [h₃]
+      exists uid
+    · intro pval h₃
+      replace h₂ := Map.findOrErr_ok_implies_in_values h₂
+      exact (wf_edata attrs h₂).right.right pval h₃
+
+/--
+  if `Partial.attrsOf` returns `ok` with some attrs, those attrs are a
+  well-formed `Map`, and all the values in those attrs are well-formed
+-/
+theorem attrsOf_wf {entities : Partial.Entities} {v : Spec.Value} {attrs : Map String Partial.Value}
+  (wf₁ : v.WellFormed)
+  (wf_e : entities.AllWellFormed) :
+  Partial.attrsOf v entities.attrs = .ok attrs →
+  attrs.WellFormed ∧ ∀ v ∈ attrs.values, v.WellFormed
+:= by
+  unfold Partial.attrsOf
+  cases v <;> try simp only [false_implies, Except.ok.injEq]
+  case prim p =>
+    cases p <;> simp only [false_implies]
+    case entityUID uid => exact partialEntities_attrs_wf wf_e
+  case record m =>
+    intro h₁ ; subst h₁
+    unfold Spec.Value.WellFormed at wf₁
+    replace ⟨wf₁, wf_vs⟩ := wf₁
+    apply And.intro (Map.mapOnValues_wf.mp wf₁)
+    intro pval h₁
+    have ⟨k, h₁'⟩ := Map.in_values_exists_key h₁
+    rw [Map.values_mapOnValues] at h₁
+    replace ⟨v, _, h₃⟩ := List.mem_map.mp h₁
+    subst h₃
+    simp [Partial.Value.WellFormed]
+    apply wf_vs (k, v)
+    exact Map.in_mapOnValues_in_kvs wf₁ h₁' (by simp)
+
+/--
+  if `Partial.getAttr` on a well-formed value and well-formed entities returns
+  `ok` with some value, that is a well-formed value as well
+-/
+theorem getAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities}
+  (wf₁ : v₁.WellFormed)
+  (wf_e : entities.AllWellFormed) :
+  ∀ v, Partial.getAttr v₁ attr entities = .ok v → v.WellFormed
+:= by
+  unfold Partial.getAttr
+  cases h₁ : Partial.attrsOf v₁ entities.attrs <;> simp
+  case ok attrs =>
+    have ⟨_, wf_vs⟩ := attrsOf_wf wf₁ wf_e h₁
+    intro pval h₂
+    exact wf_vs pval (Map.findOrErr_ok_implies_in_values h₂)
+
+/--
+  if `Partial.evaluateGetAttr` on a well-formed value and well-formed entities
+  returns `ok` with some value, that is a well-formed value as well
+-/
+theorem evaluateGetAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities}
+  (wf₁ : pval₁.WellFormed)
+  (wf_e : entities.AllWellFormed) :
+  ∀ pval, Partial.evaluateGetAttr pval₁ attr entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluateGetAttr
+  cases pval₁ <;> simp
+  case residual r₁ => simp [Partial.Value.WellFormed]
+  case value v₁ =>
+    simp [Partial.Value.WellFormed] at wf₁
+    exact getAttr_wf wf₁ wf_e
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.getAttr` on
+  a well-formed value and well-formed entities returns `ok` with some value,
+  that is a well-formed value as well
+-/
+theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request}
+  (ih₁ : ∀ pval, Partial.evaluate x₁ request entities = .ok pval → pval.WellFormed)
+  (wf_e : entities.AllWellFormed) :
+  ∀ pval, Partial.evaluate (Partial.Expr.getAttr x₁ attr) request entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluate
+  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
+  case ok pval₁ => exact evaluateGetAttr_wf (ih₁ pval₁ hx₁) wf_e
+
+/--
   If `Partial.evaluateGetAttr` produces `ok` with a concrete value, then so
   would partial-evaluating its operand
 -/
@@ -183,12 +242,12 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
         replace h₂ := Map.findOrErr_ok_iff_find?_some.mp h₂
         replace h₂ := Map.find?_mem_toList h₂
         unfold Map.toList at h₂
-        have ⟨attrs', h₃, h₄⟩ := Partial.Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
+        have ⟨attrs', h₃, h₄⟩ := Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
         simp only [h₃, Except.bind_ok]
         simp only [Map.findOrErr_ok_iff_find?_some]
         apply (Map.in_list_iff_find?_some _).mp h₄
-        have wf' := Partial.Subst.entities_subst_preserves_wf subsmap wf
-        exact partialEntities_attrs_wf wf' h₃
+        have wf' := Subst.entities_subst_preserves_wf subsmap wf
+        exact (partialEntities_attrs_wf wf' h₃).left
   case set | record => simp
   case ext x => cases x <;> simp
 

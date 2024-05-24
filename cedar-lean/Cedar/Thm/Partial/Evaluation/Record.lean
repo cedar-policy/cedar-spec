@@ -19,6 +19,7 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Record
 
@@ -148,6 +149,38 @@ theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {reques
           simp only [h₂, Option.some_bind, Except.ok.injEq, Partial.Value.value.injEq,
             Spec.Value.record.injEq]
           exact Map.make_cons ih
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.record` produces
+  `ok` with some value, that value is well-formed
+-/
+theorem partial_eval_wf {attrs: List (Attr × Partial.Expr)} {request : Partial.Request} {entities : Partial.Entities}
+  (ih : ∀ kv ∈ attrs, ∀ pval, Partial.evaluate kv.snd request entities = .ok pval → pval.WellFormed) :
+  ∀ pval, Partial.evaluate (Partial.Expr.record attrs) request entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluate
+  rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)]
+  cases hkv : attrs.mapM (λ kv => match kv with | (k, v) => Partial.bindAttr k (Partial.evaluate v request entities))
+  <;> simp [hkv]
+  case ok pvals =>
+    replace hkv := List.mapM_ok_implies_all_from_ok hkv
+    simp [Partial.Value.WellFormed]
+    split <;> simp <;> simp [Spec.Value.WellFormed]
+    rename_i vs h₂
+    apply And.intro (Map.make_wf vs)
+    intro kv h₃
+    replace h₃ := Map.make_mem_list_mem h₃
+    replace ⟨(k', pval'), h₄, h₂⟩ := List.mapM_some_implies_all_from_some h₂ kv h₃
+    split at h₂ <;> simp at h₂ <;> subst h₂
+    replace ⟨(k, v), h₅, hkv⟩ := hkv (k', pval') h₄
+    rename_i v' h₆
+    simp at h₆ ; subst h₆
+    simp [Partial.bindAttr] at hkv
+    cases h₇ : Partial.evaluate v request entities <;> simp [h₇] at hkv
+    case ok pval' =>
+      replace ⟨hkv, hkv'⟩ := hkv
+      subst k' pval'
+      simpa [Partial.Value.WellFormed] using ih (k, v) h₅ (.value v') h₇
 
 /--
   If partial-evaluating a `Partial.Expr.record` produces `ok` with a concrete

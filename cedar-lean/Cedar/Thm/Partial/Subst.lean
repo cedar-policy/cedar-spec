@@ -128,28 +128,20 @@ decreasing_by
 /--
   Partial.Value.subst preserves well-formedness
 -/
-theorem val_subst_preserves_wf {v v' : Partial.Value} {subsmap : Map Unknown Partial.Value} :
-  v.WellFormed →
-  v.subst subsmap = some v' →
-  v'.WellFormed
+theorem val_subst_preserves_wf {v : Partial.Value} {subsmap : Map Unknown Partial.Value} :
+  v.WellFormed → (v.subst subsmap).WellFormed
 := by
-  unfold Partial.Value.WellFormed Partial.Value.subst
-  cases v <;> simp only [Option.some.injEq, forall_const]
-  case value v =>
-    intro h₁ h₂ ; subst h₂
-    simp only [h₁]
-  case residual r =>
-    intro h₁ ; subst h₁ ; simp only
+  cases v <;> simp [Partial.Value.WellFormed, Partial.Value.subst]
 
 /--
   Partial.Request.subst preserves well-formedness
 -/
 theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value} :
-  req.AllWellFormed →
+  req.WellFormed →
   req.subst subsmap = some req' →
-  req'.AllWellFormed
+  req'.WellFormed
 := by
-  unfold Partial.Request.AllWellFormed Partial.Request.subst
+  unfold Partial.Request.WellFormed Partial.Request.subst
   intro wf h₁
   have ⟨wf_c, wf_vals⟩ := wf ; clear wf
   simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
@@ -160,8 +152,7 @@ theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Map Unkno
   rw [Map.values_mapOnValues] at h₁
   replace ⟨pval, h₁, h₂⟩ := List.mem_map.mp h₁
   subst pval'
-  apply val_subst_preserves_wf (wf_vals pval h₁) (subsmap := subsmap)
-  rfl
+  exact val_subst_preserves_wf (wf_vals pval h₁)
 
 /--
   Partial.Request.subst preserves a known principal UID
@@ -249,10 +240,14 @@ theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Map U
 := by
   unfold Partial.EntityData.WellFormed Partial.EntityData.subst
   intro h₁
-  simp only
-  and_intros
+  and_intros <;> simp only
   · exact Map.mapOnValues_wf.mp h₁.left
-  · exact h₁.right
+  · exact h₁.right.left
+  · intro pval h₂
+    simp [Map.values_mapOnValues] at h₂
+    replace ⟨pval', h₂, h₃⟩ := h₂
+    subst h₃
+    exact val_subst_preserves_wf (h₁.right.right pval' h₂)
 
 /--
   Partial.Entities.subst preserves well-formedness

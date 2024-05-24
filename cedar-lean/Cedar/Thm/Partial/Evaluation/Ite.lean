@@ -18,6 +18,7 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Ite
 
@@ -48,6 +49,33 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Spec.Expr} {request : Sp
     case prim p =>
       cases p <;> simp only [Except.bind_ok, Except.bind_err]
       case bool b => cases b <;> simp
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.ite` expression
+  produces `ok` with some value, that value is well-formed as well
+-/
+theorem partial_eval_wf {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (ih₂ : ∀ pval, Partial.evaluate x₂ request entities = .ok pval → pval.WellFormed)
+  (ih₃ : ∀ pval, Partial.evaluate x₃ request entities = .ok pval → pval.WellFormed) :
+  ∀ pval, Partial.evaluate (Partial.Expr.ite x₁ x₂ x₃) request entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluate
+  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
+  case ok pval₁ =>
+    cases pval₁ <;> simp
+    case residual r₁ => simp [Partial.Value.WellFormed]
+    case value v₁ =>
+      cases v₁ <;> simp [Spec.Value.asBool]
+      case prim p₁ =>
+        cases p₁ <;> simp
+        case bool b₁ =>
+          cases b₁ <;> simp
+          case true =>
+            cases hx₂ : Partial.evaluate x₂ request entities <;> simp [hx₂]
+            case ok pval => exact ih₂ pval hx₂
+          case false =>
+            cases hx₃ : Partial.evaluate x₃ request entities <;> simp [hx₃]
+            case ok pval => exact ih₃ pval hx₃
 
 /--
   If partial-evaluating a `Partial.Expr.ite` produces `ok` with a concrete
