@@ -182,11 +182,11 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
         replace h₂ := Map.findOrErr_ok_iff_find?_some.mp h₂
         replace h₂ := Map.find?_mem_toList h₂
         unfold Map.toList at h₂
-        have ⟨attrs', h₃, h₄⟩ := Partial.Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
+        have ⟨attrs', h₃, h₄⟩ := Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
         simp only [h₃, Except.bind_ok]
         simp only [Map.findOrErr_ok_iff_find?_some]
         apply (Map.in_list_iff_find?_some _).mp h₄
-        have wf' := Partial.Subst.entities_subst_preserves_wf subsmap wf
+        have wf' := Subst.entities_subst_preserves_wf subsmap wf
         exact partialEntities_attrs_wf wf' h₃
   case set | record => simp
   case ext x => cases x <;> simp

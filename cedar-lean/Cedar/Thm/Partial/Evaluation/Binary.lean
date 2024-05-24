@@ -155,7 +155,7 @@ theorem partialInₑ_subst_const {uid₁ uid₂ : EntityUID} {entities : Partial
   unfold Partial.inₑ
   cases uid₁ == uid₂ <;> simp only [Bool.false_or, Bool.true_or]
   case false =>
-    rw [← Partial.Subst.entities_subst_preserves_ancestorsOrEmpty entities uid₁ subsmap]
+    rw [← Subst.entities_subst_preserves_ancestorsOrEmpty entities uid₁ subsmap]
 
 /--
   The return value of `Partial.inₛ` is not affected by substitution of unknowns

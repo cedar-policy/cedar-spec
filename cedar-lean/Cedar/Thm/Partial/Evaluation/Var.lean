@@ -99,9 +99,9 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map
   ∃ v, pval' = .value v ∧ (k, .value v) ∈ req.context.kvs
 := by
   intro h_req h₁ h₂
-  have wf_req' : req'.AllWellFormed := Partial.Subst.req_subst_preserves_wf wf h_req
+  have wf_req' : req'.AllWellFormed := Subst.req_subst_preserves_wf wf h_req
   unfold Partial.Request.AllWellFormed at wf wf_req'
-  have h_keys := Partial.Subst.req_subst_preserves_keys_of_context h_req
+  have h_keys := Subst.req_subst_preserves_keys_of_context h_req
   have wf_keys := Map.keys_wf req.context wf.left
   have ⟨keys, h₃⟩ := Set.if_wellformed_then_exists_make req.context.keys wf_keys
   rw [h₃] at h_keys
@@ -118,7 +118,7 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map
   simp only at h₃' ; subst k'
   cases pval
   case value v =>
-    have h₄ := Partial.Subst.req_subst_preserves_concrete_context_vals h₃ h_req
+    have h₄ := Subst.req_subst_preserves_concrete_context_vals h₃ h_req
     have h₅ := Map.key_maps_to_one_value k _ _ _ wf_req'.left h₂ h₄
     exists v
   case residual r =>
@@ -137,14 +137,14 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
 := by
   intro h_req h₁
   suffices req.context = req'.context by rw [← this] ; exact h₁
-  have wf_req' : req'.AllWellFormed := Partial.Subst.req_subst_preserves_wf wf h_req
+  have wf_req' : req'.AllWellFormed := Subst.req_subst_preserves_wf wf h_req
   unfold Partial.Request.AllWellFormed at wf_req'
   apply (Map.eq_iff_kvs_equiv wf.left wf_req'.left).mp
   simp only [List.Equiv, List.subset_def]
   constructor <;> intro (k, pval') h₄
   · cases pval'
     case value v =>
-      exact Partial.Subst.req_subst_preserves_concrete_context_vals h₄ h_req
+      exact Subst.req_subst_preserves_concrete_context_vals h₄ h_req
     case residual r =>
       exfalso
       replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₄
@@ -170,17 +170,17 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
     cases h₂ : req.principal <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
-      simp [Partial.Subst.req_subst_preserves_known_principal h₂ h_req]
+      simp [Subst.req_subst_preserves_known_principal h₂ h_req]
   case action =>
     cases h₂ : req.action <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
-      simp [Partial.Subst.req_subst_preserves_known_action h₂ h_req]
+      simp [Subst.req_subst_preserves_known_action h₂ h_req]
   case resource =>
     cases h₂ : req.resource <;> simp only [h₂, Except.ok.injEq, Partial.Value.value.injEq] at h₁
     case known uid =>
       subst h₁
-      simp [Partial.Subst.req_subst_preserves_known_resource h₂ h_req]
+      simp [Subst.req_subst_preserves_known_resource h₂ h_req]
   case context =>
     simp only
     split at h₁ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₁ ; subst h₁

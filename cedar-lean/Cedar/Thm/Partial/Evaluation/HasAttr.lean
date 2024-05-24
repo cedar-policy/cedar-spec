@@ -146,7 +146,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
     cases p₁
     <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
     case entityUID uid =>
-      exact Partial.Subst.entities_subst_preserves_contains_on_attrsOrEmpty entities uid attr subsmap wf
+      exact Subst.entities_subst_preserves_contains_on_attrsOrEmpty entities uid attr subsmap wf
 
 /--
   If `Partial.evaluateHasAttr` returns a concrete value, then it returns the

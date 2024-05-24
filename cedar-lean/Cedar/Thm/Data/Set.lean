@@ -59,13 +59,9 @@ theorem wf_iff_sorted {α} [LT α] [DecidableLT α] [StrictLT α]  (s : Set α) 
 theorem contains_prop_bool_equiv [DecidableEq α] {v : α} {s : Set α} :
   s.contains v = true ↔ v ∈ s
 := by
-  apply Iff.intro
-  intro h0
-  apply List.mem_of_elem_eq_true
-  assumption
-  intro h0
-  apply List.elem_eq_true_of_mem
-  assumption
+  constructor <;> intro h
+  · exact List.mem_of_elem_eq_true h
+  · exact List.elem_eq_true_of_mem h
 
 theorem in_list_iff_in_set {α : Type u} (v : α) (s : Set α) :
   v ∈ s.elts ↔ v ∈ s

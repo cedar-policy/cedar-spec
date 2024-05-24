@@ -46,7 +46,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
     unfold Partial.Expr.subst
     cases hx₁ : Partial.evaluate x₁ req entities
     <;> cases hx₂ : Partial.evaluate x₂ req entities
-    <;> simp only [hx₁, false_implies, forall_const, hx₂, Except.ok.injEq, Bool.not_eq_true',
+    <;> simp only [hx₁, hx₂, false_implies, forall_const, Except.ok.injEq, Bool.not_eq_true',
       Except.bind_ok, Except.bind_err] at *
     case ok.ok pval₁ pval₂ =>
       cases pval₁ <;> cases pval₂
