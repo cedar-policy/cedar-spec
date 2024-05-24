@@ -181,6 +181,35 @@ theorem forall₂_cons_right_iff {b l u} :
     match u, h with
     | _, ⟨_, _, h₁, h₂, rfl⟩ => Forall₂.cons h₁ h₂
 
+theorem forall₂_singleton_right_iff {α β} {R : α → β → Prop} {xs : List α} {y : β} :
+  Forall₂ R xs [y] ↔ ∃ x, R x y ∧ xs = [x]
+:= by
+  constructor <;> intro h
+  case mp =>
+    have ⟨xhd, xtl, hx, h, hxs⟩ := forall₂_cons_right_iff.mp h
+    rw [forall₂_nil_right_iff] at h
+    subst h hxs
+    exists xhd
+  case mpr =>
+    replace ⟨x, h, hxs⟩ := h
+    subst hxs
+    exact Forall₂.cons h Forall₂.nil
+
+theorem forall₂_pair_right_iff {α β} {R : α → β → Prop} {xs : List α} {y₁ y₂ : β} :
+  Forall₂ R xs [y₁, y₂] ↔ ∃ x₁ x₂, R x₁ y₁ ∧ R x₂ y₂ ∧ xs = [x₁, x₂]
+:= by
+  constructor <;> intro h
+  case mp =>
+    have ⟨x₁, xtl₁, _, h, _⟩ := forall₂_cons_right_iff.mp h
+    have ⟨x₂, xtl₂, _, h, _⟩ := forall₂_cons_right_iff.mp h
+    rw [forall₂_nil_right_iff] at h
+    subst xtl₂ xtl₁
+    exists x₁, x₂
+  case mpr =>
+    replace ⟨x₁, x₂, h₁, h₂, hxs⟩ := h
+    subst xs
+    exact Forall₂.cons h₁ (Forall₂.cons h₂ Forall₂.nil)
+
 /--
   Note the converse is not true:
   counterexample `R` is `=`, `xs` is `[1]`, `ys` is `[1, 2]`
