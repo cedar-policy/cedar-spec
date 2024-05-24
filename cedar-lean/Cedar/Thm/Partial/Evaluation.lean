@@ -19,17 +19,18 @@ import Cedar.Partial.Expr
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Partial.Evaluation.And
 import Cedar.Thm.Partial.Evaluation.AndOr
-import Cedar.Thm.Partial.Evaluation.Basic
 import Cedar.Thm.Partial.Evaluation.Binary
 import Cedar.Thm.Partial.Evaluation.Call
 import Cedar.Thm.Partial.Evaluation.GetAttr
 import Cedar.Thm.Partial.Evaluation.HasAttr
 import Cedar.Thm.Partial.Evaluation.Ite
 import Cedar.Thm.Partial.Evaluation.Or
+import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.Evaluation.Record
 import Cedar.Thm.Partial.Evaluation.Set
 import Cedar.Thm.Partial.Evaluation.Unary
 import Cedar.Thm.Partial.Evaluation.Var
+import Cedar.Thm.Partial.Evaluation.WellFormed
 import Cedar.Thm.Data.Control
 
 /-! This file contains theorems about Cedar's partial evaluator. -/

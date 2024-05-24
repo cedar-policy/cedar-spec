@@ -22,7 +22,7 @@ import Cedar.Partial.Value
 import Cedar.Spec.Expr
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 /-! ## Lemmas about `subst` operations -/
 
