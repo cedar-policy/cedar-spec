@@ -30,7 +30,7 @@ use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::Evaluator;
 use cedar_policy_core::extensions::Extensions;
-pub use cedar_policy_validator::{ValidationErrorKind, ValidationMode, Validator, ValidatorSchema};
+pub use cedar_policy_validator::{ValidationMode, Validator, ValidatorSchema};
 pub use cedar_testing::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
     ValidationComparisonMode,
