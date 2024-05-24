@@ -166,9 +166,7 @@ theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entit
     intro pval
     have := AndOr.partial_eval_wf x₁ x₂ request entities
     first | exact this.left pval | exact this.right pval
-  case unaryApp op x₁ =>
-    have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
-    exact Unary.partial_eval_wf ih₁
+  case unaryApp op x₁ => exact Unary.partial_eval_wf
   case binaryApp op x₁ x₂ =>
     have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
     have ih₂ := partial_eval_wf wf_r wf_e (expr := x₂) (request := request) (entities := entities)
