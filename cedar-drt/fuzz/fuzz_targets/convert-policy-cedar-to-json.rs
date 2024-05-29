@@ -18,8 +18,8 @@
 use thiserror::Error;
 
 use cedar_drt_inner::*;
-use cedar_policy::ParseErrors;
-use cedar_policy_core::{ast::PolicyID, est::FromJsonError};
+use cedar_policy::{ParseErrors, ParseError};
+use cedar_policy_core::{ast::PolicyID, est::FromJsonError, parser::err::ToASTErrorKind};
 
 #[derive(miette::Diagnostic, Error, Debug)]
 enum ESTParseError {
@@ -31,13 +31,28 @@ enum ESTParseError {
     ESTToAST(#[from] FromJsonError),
 }
 
+// Check that we don't see a few specific errors, which correspond to violations
+// of internal invariants.
+fn check_for_internal_errors(errs: ParseErrors) {
+    assert!(
+        !errs.iter().any(|e| matches!(
+        e,
+        ParseError::ToAST(e) if matches!(e.kind(),
+            ToASTErrorKind::AnnotationInvariantViolation
+                | ToASTErrorKind::MembershipInvariantViolation
+                | ToASTErrorKind::EmptyNodeInvariantViolation)
+        )),
+        "Parse errors included unexpected internal errors: {:?}",
+        miette::Report::new(errs).wrap_err("unexpected internal error")
+    )
+}
+
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
 // then converting CST to AST) gives the same result of parsing via EST (parsing
 // to CST, converting CST to EST, and then converting EST to AST).
 fuzz_target!(|src: String| {
     if let Ok(cst) = cedar_policy_core::parser::text_to_cst::parse_policy(&src) {
-        let mut ast_errors = ParseErrors::new();
-        let policy_ast = cst.to_policy_template(PolicyID::from_string("policy0"), &mut ast_errors);
+        let policy_ast = cst.to_policy_template(PolicyID::from_string("policy0"));
         if let Some(cst_node) = cst.node {
             let policy_est: Result<_, ESTParseError> = cst_node
                 .try_into()
@@ -48,22 +63,23 @@ fuzz_target!(|src: String| {
                 });
 
             match (policy_ast, policy_est) {
-                (Some(policy_ast), Ok(policy_est)) => {
+                (Ok(policy_ast), Ok(policy_est)) => {
                     check_policy_equivalence(&policy_ast, &policy_est);
                 }
-
-                (None, Ok(_)) => {
-                    println!("{:?}", miette::Report::new(ast_errors));
+                (Err(errs), Ok(_)) => {
+                    println!("{:?}", miette::Report::new(errs));
                     panic!("Policy parsed through cst->est->ast but not directly through cst->ast");
                 }
-                (Some(_), Err(e)) => {
-                    println!("{:?}", miette::Report::new(e));
+                (Ok(_), Err(errs)) => {
+                    println!("{:?}", miette::Report::new(errs));
                     panic!("Policy parsed directly through cst->ast but not through cst->est->ast");
                 }
-
-                // Both conversion error
-                (None, Err(_)) => (),
+                (Err(errs), Err(_)) => {
+                    check_for_internal_errors(errs);
+                }
             }
+        } else {
+            panic!("Unexpected empty cst node. The cst parser should have returned an error in this case, but did not.");
         }
     }
 });

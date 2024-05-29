@@ -32,12 +32,12 @@ fuzz_target!(|input: String| {
             // entirely clear when `MissingNodeData` might be returned, but I don't believe it
             // should be possible, and, practically, it doesn't make this target fail.
             assert!(
-                !errs.0.iter().any(|e| matches!(
+                !errs.iter().any(|e| matches!(
                 e,
                 ParseError::ToAST(e) if matches!(e.kind(),
                     ToASTErrorKind::AnnotationInvariantViolation
                         | ToASTErrorKind::MembershipInvariantViolation
-                        | ToASTErrorKind::MissingNodeData)
+                        | ToASTErrorKind::EmptyNodeInvariantViolation)
                 )),
                 "{:?}",
                 errs
