@@ -96,9 +96,9 @@ theorem partialApply₁_wf {pval : Partial.Value} {op : UnaryOp} :
   This theorem does not actually require that x₁ is WellFormed
 -/
 theorem partial_eval_wf {x₁ : Partial.Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
-  (∀ pval, Partial.evaluate (Partial.Expr.unaryApp op x₁) request entities = .ok pval → pval.WellFormed)
+  EvaluatesToWellFormed (Partial.Expr.unaryApp op x₁) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   intro pval
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ => exact partialApply₁_wf

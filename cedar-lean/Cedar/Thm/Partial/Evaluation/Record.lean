@@ -155,10 +155,10 @@ theorem on_concrete_eqv_concrete_eval {attrs : List (Attr × Spec.Expr)} {reques
   `ok` with some value, that value is well-formed
 -/
 theorem partial_eval_wf {attrs: List (Attr × Partial.Expr)} {request : Partial.Request} {entities : Partial.Entities}
-  (ih : ∀ kv ∈ attrs, ∀ pval, Partial.evaluate kv.snd request entities = .ok pval → pval.WellFormed) :
-  ∀ pval, Partial.evaluate (Partial.Expr.record attrs) request entities = .ok pval → pval.WellFormed
+  (ih : ∀ kv ∈ attrs, EvaluatesToWellFormed kv.snd request entities) :
+  EvaluatesToWellFormed (Partial.Expr.record attrs) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)]
   cases hkv : attrs.mapM (λ kv => match kv with | (k, v) => Partial.bindAttr k (Partial.evaluate v request entities))
   <;> simp [hkv]

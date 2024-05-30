@@ -107,10 +107,10 @@ theorem partialEvaluateCall_wf {pvals : List Partial.Value} {xfn : ExtFun}
   `ok` with some value, that value is well-formed
 -/
 theorem partial_eval_wf {xs : List Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} {xfn : ExtFun}
-  (ih : ∀ x ∈ xs, ∀ pval, Partial.evaluate x request entities = .ok pval → pval.WellFormed) :
-  ∀ pval, Partial.evaluate (Partial.Expr.call xfn xs) request entities = .ok pval → pval.WellFormed
+  (ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities) :
+  EvaluatesToWellFormed (Partial.Expr.call xfn xs) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
   cases hx : xs.mapM (Partial.evaluate · request entities) <;> simp [hx]
   case ok pvals =>

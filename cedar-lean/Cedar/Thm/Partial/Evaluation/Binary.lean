@@ -195,11 +195,11 @@ theorem partialEvaluateBinaryApp_wf {pval₁ pval₂ : Partial.Value} {op : Bina
   value as well
 -/
 theorem partial_eval_wf {x₁ x₂ : Partial.Expr} {op : BinaryOp} {request : Partial.Request} {entities : Partial.Entities}
-  (ih₁ : ∀ pval, Partial.evaluate x₁ request entities = .ok pval → pval.WellFormed)
-  (ih₂ : ∀ pval, Partial.evaluate x₂ request entities = .ok pval → pval.WellFormed) :
-  ∀ pval, Partial.evaluate (Partial.Expr.binaryApp op x₁ x₂) request entities = .ok pval → pval.WellFormed
+  (ih₁ : EvaluatesToWellFormed x₁ request entities)
+  (ih₂ : EvaluatesToWellFormed x₂ request entities) :
+  EvaluatesToWellFormed (Partial.Expr.binaryApp op x₁ x₂) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   intro pval
   cases hx₁ : Partial.evaluate x₁ request entities
   <;> cases hx₂ : Partial.evaluate x₂ request entities

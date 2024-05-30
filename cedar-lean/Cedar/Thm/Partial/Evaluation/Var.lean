@@ -124,9 +124,9 @@ theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
 -/
 theorem partial_eval_wf {v : Var} {request : Partial.Request} {entities : Partial.Entities}
   (wf_r : request.WellFormed) :
-  ∀ pval, Partial.evaluate (Partial.Expr.var v) request entities = .ok pval → pval.WellFormed
+  EvaluatesToWellFormed (Partial.Expr.var v) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   exact partialEvaluateVar_wf wf_r
 
 /--

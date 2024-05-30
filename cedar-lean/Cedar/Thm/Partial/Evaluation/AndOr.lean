@@ -66,10 +66,10 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
   with some value, that value is well-formed.
 -/
 theorem partial_eval_wf (x₁ x₂ : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) :
-  (∀ pval, Partial.evaluate (Partial.Expr.and x₁ x₂) request entities = .ok pval → pval.WellFormed) ∧
-  (∀ pval, Partial.evaluate (Partial.Expr.or x₁ x₂) request entities = .ok pval → pval.WellFormed)
+  EvaluatesToWellFormed (Partial.Expr.and x₁ x₂) request entities ∧
+  EvaluatesToWellFormed (Partial.Expr.or x₁ x₂) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   constructor
   all_goals {
     cases hx₁ : Partial.evaluate x₁ request entities

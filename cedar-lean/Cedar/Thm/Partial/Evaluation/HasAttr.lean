@@ -132,9 +132,9 @@ theorem partialEvaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entit
   that is a well-formed value
 -/
 theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request} :
-  ∀ pval, Partial.evaluate (Partial.Expr.hasAttr x₁ attr) request entities = .ok pval → pval.WellFormed
+  EvaluatesToWellFormed (Partial.Expr.hasAttr x₁ attr) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ =>
     exact HasAttr.partialEvaluateHasAttr_wf

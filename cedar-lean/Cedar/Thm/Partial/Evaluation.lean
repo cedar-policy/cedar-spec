@@ -148,16 +148,18 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
 theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
   (wf_r : request.WellFormed)
   (wf_e : entities.AllWellFormed) :
-  (∀ pval, Partial.evaluate expr request entities = .ok pval → pval.WellFormed)
+  EvaluatesToWellFormed expr request entities
 := by
   cases expr
   case lit p =>
+    unfold EvaluatesToWellFormed
     unfold Partial.evaluate
     intro pval
     intro h₁ ; simp at h₁ ; subst h₁
     simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
   case var v => exact Var.partial_eval_wf wf_r
   case unknown u =>
+    unfold EvaluatesToWellFormed
     unfold Partial.evaluate
     intro pval
     intro h₁ ; simp at h₁ ; subst h₁
@@ -180,19 +182,19 @@ theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entit
     have ih₃ := partial_eval_wf wf_r wf_e (expr := x₃) (request := request) (entities := entities)
     exact Ite.partial_eval_wf ih₂ ih₃
   case set xs =>
-    have ih : ∀ x ∈ xs, ∀ pval, Partial.evaluate x request entities = .ok pval → pval.WellFormed := by
+    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
       intro x h₁
       have := List.sizeOf_lt_of_mem h₁
       apply partial_eval_wf wf_r wf_e
     exact Set.partial_eval_wf ih
   case record attrs =>
-    have ih : ∀ kv ∈ attrs, ∀ pval, Partial.evaluate kv.snd request entities = .ok pval → pval.WellFormed := by
+    have ih : ∀ kv ∈ attrs, EvaluatesToWellFormed kv.snd request entities := by
       intro kv h₁
       have := List.sizeOf_lt_of_mem h₁
       apply partial_eval_wf wf_r wf_e
     exact Record.partial_eval_wf ih
   case call xfn xs =>
-    have ih : ∀ x ∈ xs, ∀ pval, Partial.evaluate x request entities = .ok pval → pval.WellFormed := by
+    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
       intro x h₁
       have := List.sizeOf_lt_of_mem h₁
       apply partial_eval_wf wf_r wf_e

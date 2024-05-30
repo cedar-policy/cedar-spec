@@ -179,11 +179,11 @@ theorem evaluateGetAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : P
   that is a well-formed value as well
 -/
 theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request}
-  (ih₁ : ∀ pval, Partial.evaluate x₁ request entities = .ok pval → pval.WellFormed)
+  (ih₁ : EvaluatesToWellFormed x₁ request entities)
   (wf_e : entities.AllWellFormed) :
-  ∀ pval, Partial.evaluate (Partial.Expr.getAttr x₁ attr) request entities = .ok pval → pval.WellFormed
+  EvaluatesToWellFormed (Partial.Expr.getAttr x₁ attr) request entities
 := by
-  unfold Partial.evaluate
+  unfold EvaluatesToWellFormed Partial.evaluate
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ => exact evaluateGetAttr_wf (ih₁ pval₁ hx₁) wf_e
 
