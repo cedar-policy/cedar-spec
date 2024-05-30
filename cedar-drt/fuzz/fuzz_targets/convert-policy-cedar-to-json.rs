@@ -37,9 +37,12 @@ enum ESTParseError {
 fuzz_target!(|src: String| {
     if let Ok(cst) = cedar_policy_core::parser::text_to_cst::parse_policy(&src) {
         let mut ast_errors = ParseErrors::new();
-        let policy_ast = cst.to_policy_template(PolicyID::from_string("policy0"), &mut ast_errors);
-        if let Some(cst_node) = cst.node {
-            let policy_est: Result<_, ESTParseError> = cst_node
+        if let Some(policy_ast) =
+            cst.to_policy_template(PolicyID::from_string("policy0"), &mut ast_errors)
+        {
+            let policy_est: Result<_, ESTParseError> = cst
+                .node
+                .expect("AST construction should fail for missing CST node")
                 .try_into()
                 .map_err(|e: ParseErrors| e.into())
                 .and_then(|est: cedar_policy_core::est::Policy| {
@@ -47,22 +50,15 @@ fuzz_target!(|src: String| {
                         .map_err(|e| e.into())
                 });
 
-            match (policy_ast, policy_est) {
-                (Some(policy_ast), Ok(policy_est)) => {
+            match policy_est {
+                Ok(policy_est) => {
                     check_policy_equivalence(&policy_ast, &policy_est);
                 }
 
-                (None, Ok(_)) => {
-                    println!("{:?}", miette::Report::new(ast_errors));
-                    panic!("Policy parsed through cst->est->ast but not directly through cst->ast");
-                }
-                (Some(_), Err(e)) => {
+                Err(e) => {
                     println!("{:?}", miette::Report::new(e));
                     panic!("Policy parsed directly through cst->ast but not through cst->est->ast");
                 }
-
-                // Both conversion error
-                (None, Err(_)) => (),
             }
         }
     }
