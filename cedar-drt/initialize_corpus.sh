@@ -33,7 +33,7 @@ print_usage() {
 }
 
 if [ $# -ne 1 ]; then
-    echo "Expected exactly one arguemtn, but $# arguments provided."
+    echo "Expected exactly one argument, but $# arguments provided."
     print_usage
 fi
 
