@@ -18,8 +18,10 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Policy
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Set
 
@@ -87,6 +89,31 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   rw [mapM_partial_eval_eqv_concrete_eval ih₁]
   cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.map, Except.bind_err, Except.bind_ok]
   case ok vs => simp [List.mapM_map, List.mapM_some]
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.set` produces
+  `ok` with some value, that value is well-formed
+-/
+theorem partial_eval_wf {xs : List Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities) :
+  EvaluatesToWellFormed (Partial.Expr.set xs) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
+  cases hx : xs.mapM (Partial.evaluate · request entities) <;> simp [hx]
+  case ok pvals =>
+    replace hx := List.mapM_ok_implies_all_from_ok hx
+    simp [Partial.Value.WellFormed]
+    split <;> simp <;> simp [Spec.Value.WellFormed]
+    rename_i vs h₂
+    apply And.intro (Set.make_wf vs)
+    intro v h₃
+    replace h₃ := (Set.make_mem _ _).mpr h₃
+    replace ⟨pval, h₄, h₂⟩ := List.mapM_some_implies_all_from_some h₂ v h₃
+    replace ⟨x, h₅, hx⟩ := hx pval h₄
+    split at h₂ <;> simp at h₂
+    rename_i v' ; subst v'
+    simpa [Partial.Value.WellFormed] using ih x h₅ (.value v) hx
 
 /--
   If partial-evaluating a `Partial.Expr.set` produces `ok` with a concrete

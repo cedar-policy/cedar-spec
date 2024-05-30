@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Partial.Evaluator
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 /-!
   This file contains definitions of `Prop`s used by multiple files in the
@@ -53,5 +54,11 @@ def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial
 -/
 def IsAllConcrete (pvals : List Partial.Value) : Prop :=
   ∃ vs, pvals.mapM (λ x => match x with | .value v => some v | .residual _ => none) = some vs
+
+/--
+  Prop that partial evaluation returns a well-formed value
+-/
+def EvaluatesToWellFormed (expr : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
+  ∀ pval, Partial.evaluate expr request entities = .ok pval → pval.WellFormed
 
 end Cedar.Thm.Partial

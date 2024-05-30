@@ -232,7 +232,7 @@ theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α
   unfold id at h₁
   exact h₁
 
-/-! ### find? and mapOnValues -/
+/-! ### find?, findOrErr, and mapOnValues -/
 
 theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
   (h₁ : m.find? k = .some v) :
@@ -379,13 +379,27 @@ theorem findOrErr_ok_iff_find?_some [LT α] [DecidableLT α] [DecidableEq α] {m
   unfold findOrErr
   cases m.find? k <;> simp only [Except.ok.injEq, Option.some.injEq]
 
+theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
+  m.findOrErr k e = .ok v → v ∈ m.values
+:= by
+  intro h₁
+  simp [values]
+  simp [findOrErr_ok_iff_find?_some] at h₁
+  exists (k, v)
+  have h₂ := find?_mem_toList h₁ ; simp [toList] at h₂
+  simp [h₁, h₂, and_true]
+
+/--
+  The `mpr` direction of this does not need the `wf` precondition and, in fact,
+  is available separately as `findOrErr_ok_implies_in_values` above
+-/
 theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
   (wf : m.WellFormed) :
   v ∈ m.values ↔ ∃ k, m.findOrErr k e = .ok v
 := by
-  simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
   constructor
   case mp =>
+    simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
     intro h₁
     replace ⟨⟨k, v'⟩, ⟨h₁, h₂⟩⟩ := h₁
     simp only at h₂
@@ -393,11 +407,13 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [Decid
     exists k
     simp [h₁, ← in_list_iff_find?_some wf]
   case mpr =>
-    intro h₁
-    replace ⟨k, h₁⟩ := h₁
-    exists (k, v)
-    simp [h₁, in_list_iff_find?_some wf, and_true]
+    intro ⟨k, h₁⟩
+    exact findOrErr_ok_implies_in_values h₁
 
+/--
+  The converse requires two extra preconditions (`m` is `WellFormed` and `f` is
+  injective) and is available as `in_mapOnValues_in_kvs`
+-/
 theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β} :
   (k, v) ∈ m.kvs → (k, f v) ∈ (m.mapOnValues f).kvs
 := by
@@ -405,6 +421,28 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   intro h₁
   simp only [kvs, List.mem_map, Prod.mk.injEq]
   exists (k, v)
+
+/--
+  Converse of `in_kvs_in_mapOnValues`; requires the extra preconditions that `m`
+  is `WellFormed` and `f` is injective
+-/
+theorem in_mapOnValues_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {f : β → γ} {m : Map α β} {k : α} {v : β}
+  (wf : m.WellFormed) :
+  (k, f v) ∈ (m.mapOnValues f).kvs →
+  (∀ v', f v = f v' → v = v') → -- require f to be injective
+  (k, v) ∈ m.kvs
+:= by
+  rw [mapOnValues_eq_make_map f wf]
+  unfold toList
+  intro h₁ h_inj
+  replace h₁ := make_mem_list_mem h₁
+  replace ⟨(k', v'), h₁, h₂⟩ := List.mem_map.mp h₁
+  simp at h₂
+  replace ⟨h₂', h₂⟩ := h₂
+  subst k'
+  specialize h_inj v' h₂.symm
+  subst h_inj
+  exact h₁
 
 /-! ### mapMOnValues -/
 
