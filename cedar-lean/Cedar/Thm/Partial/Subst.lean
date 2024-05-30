@@ -240,7 +240,7 @@ theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Map U
 := by
   unfold Partial.EntityData.WellFormed Partial.EntityData.subst
   intro h₁
-  and_intros <;> simp only
+  and_intros
   · exact Map.mapOnValues_wf.mp h₁.left
   · exact h₁.right.left
   · intro pval h₂
@@ -253,9 +253,9 @@ theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Map U
   Partial.Entities.subst preserves well-formedness
 -/
 theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Map Unknown Partial.Value) :
-  entities.AllWellFormed → (entities.subst subsmap).AllWellFormed
+  entities.WellFormed → (entities.subst subsmap).WellFormed
 := by
-  unfold Partial.Entities.AllWellFormed Partial.Entities.subst
+  unfold Partial.Entities.WellFormed Partial.Entities.subst
   intro h₁
   constructor
   · exact Map.mapOnValues_wf.mp h₁.left
@@ -323,7 +323,7 @@ theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) 
   entities.ancestorsOrEmpty uid = (entities.subst subsmap).ancestorsOrEmpty uid
 := by
   unfold Partial.Entities.subst Partial.Entities.ancestorsOrEmpty
-  cases h₁ : entities.find? uid
+  cases h₁ : entities.es.find? uid
   case none => simp only [Map.find?_mapOnValues_none _ h₁]
   case some ed =>
     simp only [Map.find?_mapOnValues_some _ h₁]
@@ -338,7 +338,7 @@ theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {u
   ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ (k, .value v) ∈ attrs'.kvs
 := by
   unfold Partial.Entities.subst Partial.Entities.attrs
-  cases h₁ : entities.findOrErr uid Spec.Error.entityDoesNotExist
+  cases h₁ : entities.es.findOrErr uid Spec.Error.entityDoesNotExist
   case error e => simp only [Except.bind_err, false_implies]
   case ok ed =>
     simp only [Except.bind_ok, Except.ok.injEq]
@@ -353,16 +353,16 @@ theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {u
   Partial.Entities.subst preserves `Map.contains` for the attrs maps
 -/
 theorem entities_subst_preserves_contains_on_attrsOrEmpty (entities : Partial.Entities) (uid : EntityUID) (attr : Attr) (subsmap : Map Unknown Partial.Value)
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   (entities.attrsOrEmpty uid).contains attr = ((entities.subst subsmap).attrsOrEmpty uid).contains attr
 := by
   unfold Partial.Entities.subst Partial.Entities.attrsOrEmpty
-  cases h₁ : entities.find? uid
+  cases h₁ : entities.es.find? uid
   case none => simp only [Map.find?_mapOnValues_none _ h₁]
   case some ed =>
     simp only [Map.find?_mapOnValues_some _ h₁]
     apply entitydata_subst_preserves_contains_on_attrs ed attr subsmap
-    unfold Partial.Entities.AllWellFormed at wf
+    unfold Partial.Entities.WellFormed at wf
     apply wf.right
     simp only [← Map.in_list_iff_find?_some wf.left] at h₁
     exact Map.in_list_in_values h₁

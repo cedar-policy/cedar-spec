@@ -147,7 +147,7 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
 -/
 theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
   (wf_r : request.WellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   EvaluatesToWellFormed expr request entities
 := by
   cases expr
@@ -214,7 +214,7 @@ decreasing_by
 -/
 theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
   (wf_r : req.WellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   req.subst subsmap = some req' →
   Partial.evaluate expr req entities = .ok (.value v) →
   Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .ok (.value v)

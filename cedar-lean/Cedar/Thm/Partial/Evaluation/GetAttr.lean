@@ -91,17 +91,17 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   well-formed `Map`, and all the values in those attrs are well-formed
 -/
 theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID} {attrs: Map String Partial.Value}
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   entities.attrs uid = .ok attrs →
   attrs.WellFormed ∧ ∀ v ∈ attrs.values, v.WellFormed
 := by
   unfold Partial.Entities.attrs
   intro h₁
-  cases h₂ : entities.findOrErr uid Error.entityDoesNotExist
+  cases h₂ : entities.es.findOrErr uid Error.entityDoesNotExist
   <;> simp only [h₂, Except.bind_err, Except.bind_ok, Except.ok.injEq] at h₁
   case ok attrs =>
     subst h₁
-    unfold Partial.Entities.AllWellFormed Partial.EntityData.WellFormed at wf_e
+    unfold Partial.Entities.WellFormed Partial.EntityData.WellFormed at wf_e
     have ⟨wf_m, wf_edata⟩ := wf_e ; clear wf_e
     constructor
     · apply (wf_edata _ _).left
@@ -118,7 +118,7 @@ theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID}
 -/
 theorem attrsOf_wf {entities : Partial.Entities} {v : Spec.Value} {attrs : Map String Partial.Value}
   (wf₁ : v.WellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   Partial.attrsOf v entities.attrs = .ok attrs →
   attrs.WellFormed ∧ ∀ v ∈ attrs.values, v.WellFormed
 := by
@@ -147,7 +147,7 @@ theorem attrsOf_wf {entities : Partial.Entities} {v : Spec.Value} {attrs : Map S
 -/
 theorem getAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities}
   (wf₁ : v₁.WellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   ∀ v, Partial.getAttr v₁ attr entities = .ok v → v.WellFormed
 := by
   unfold Partial.getAttr
@@ -163,7 +163,7 @@ theorem getAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entitie
 -/
 theorem evaluateGetAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities}
   (wf₁ : pval₁.WellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   ∀ pval, Partial.evaluateGetAttr pval₁ attr entities = .ok pval → pval.WellFormed
 := by
   unfold Partial.evaluateGetAttr
@@ -180,7 +180,7 @@ theorem evaluateGetAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : P
 -/
 theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request}
   (ih₁ : EvaluatesToWellFormed x₁ request entities)
-  (wf_e : entities.AllWellFormed) :
+  (wf_e : entities.WellFormed) :
   EvaluatesToWellFormed (Partial.Expr.getAttr x₁ attr) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
@@ -225,7 +225,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   after any substitution of unknowns in `entities`
 -/
 theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.getAttr v₁ attr entities = .ok (.value v) →
   Partial.getAttr v₁ attr (entities.subst subsmap) = .ok (.value v)
 := by
@@ -256,7 +256,7 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
   same value after any substitution of unknowns in `entities`
 -/
 theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.evaluateGetAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateGetAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
 := by
@@ -270,7 +270,7 @@ theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed)
+  (wf : entities.WellFormed)
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.getAttr x₁ attr) req req' entities subsmap
 := by

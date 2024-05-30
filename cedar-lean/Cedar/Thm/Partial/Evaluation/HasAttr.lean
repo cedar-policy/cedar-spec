@@ -177,7 +177,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   unknowns in `entities`
 -/
 theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.hasAttr v₁ attr entities = Partial.hasAttr v₁ attr (entities.subst subsmap)
 := by
   unfold Partial.hasAttr Partial.attrsOf
@@ -193,7 +193,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
   same value after any substitution of unknowns in `entities`
 -/
 theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.evaluateHasAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
 := by
@@ -207,7 +207,7 @@ theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed)
+  (wf : entities.WellFormed)
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap
 := by

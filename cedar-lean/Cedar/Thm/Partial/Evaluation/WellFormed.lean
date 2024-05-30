@@ -56,8 +56,8 @@ decreasing_by
     simp [Map.kvs] at *
     omega
 
-def Request.WellFormed (req : Spec.Request) : Prop :=
-  req.context.WellFormed ∧ ∀ val ∈ req.context.values, val.WellFormed
+def Request.WellFormed : Spec.Request → Prop
+  | { context, .. } => context.WellFormed ∧ ∀ val ∈ context.values, val.WellFormed
 
 end Cedar.Spec
 
@@ -67,15 +67,16 @@ def Value.WellFormed : Partial.Value → Prop
   | .value v => v.WellFormed
   | .residual _ => true
 
-def Request.WellFormed (preq : Partial.Request) : Prop :=
-  preq.context.WellFormed ∧ ∀ pval ∈ preq.context.values, pval.WellFormed
+def Request.WellFormed : Partial.Request → Prop
+  | { context, .. } => context.WellFormed ∧ ∀ pval ∈ context.values, pval.WellFormed
 
-def EntityData.WellFormed (edata : Partial.EntityData) : Prop :=
-  edata.attrs.WellFormed ∧
-  edata.ancestors.WellFormed ∧
-  ∀ pval ∈ edata.attrs.values, pval.WellFormed
+def EntityData.WellFormed : Partial.EntityData → Prop
+  | { attrs, ancestors } =>
+      attrs.WellFormed ∧
+      ancestors.WellFormed ∧
+      ∀ pval ∈ attrs.values, pval.WellFormed
 
-def Entities.AllWellFormed (entities : Partial.Entities) : Prop :=
-  entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed
+def Entities.WellFormed : Partial.Entities → Prop
+  | { es } => es.WellFormed ∧ ∀ edata ∈ es.values, edata.WellFormed
 
 end Cedar.Partial
