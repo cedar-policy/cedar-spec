@@ -166,3 +166,9 @@ name = "convert-policy-cedar-to-json"
 path = "fuzz_targets/convert-policy-cedar-to-json.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "convert-policy-json-to-cedar"
+path = "fuzz_targets/convert-policy-json-to-cedar.rs"
+test = false
+doc = false
