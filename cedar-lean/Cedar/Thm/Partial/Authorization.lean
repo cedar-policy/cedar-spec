@@ -154,11 +154,7 @@ theorem partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete {policies :
   concrete-authorizing with those inputs.
 -/
 theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
-<<<<<<< HEAD
-  (wf_r : req.WellFormed) :
-=======
   (wf : req.context.WellFormed) : -- interestingly, this theorem only requires that the context is a WellFormed map, not that the entities are well-formed or that the context values are well-formed
->>>>>>> origin/main
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧
@@ -168,9 +164,9 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Re
 := by
   intro h₁ h₂
   and_intros
-  · exact partial_authz_decision_eqv_authz_decision_on_concrete wf_r h₁ h₂
-  · exact overapproximate_determining_eqv_determining_on_concrete wf_r h₁ h₂
-  · exact underapproximate_determining_eqv_determining_on_concrete wf_r h₁ h₂
-  · exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf_r h₁ h₂
+  · exact partial_authz_decision_eqv_authz_decision_on_concrete wf h₁ h₂
+  · exact overapproximate_determining_eqv_determining_on_concrete wf h₁ h₂
+  · exact underapproximate_determining_eqv_determining_on_concrete wf h₁ h₂
+  · exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf h₁ h₂
 
 end Cedar.Thm.Partial.Authorization
