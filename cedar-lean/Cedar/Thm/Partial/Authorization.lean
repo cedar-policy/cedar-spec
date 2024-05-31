@@ -34,7 +34,7 @@ open Cedar.Spec (Policies PolicyID)
   concrete-authorizing with those inputs.
 -/
 theorem partial_authz_decision_eqv_authz_decision_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   (resp.decision = .allow ∧ presp.decision = .allow) ∨ (resp.decision = .deny ∧ presp.decision = .deny)
@@ -59,7 +59,7 @@ theorem partial_authz_decision_eqv_authz_decision_on_concrete {policies : Polici
   concrete decision.
 -/
 theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   (Partial.isAuthorized req entities policies).decision ≠ .unknown
 := by
   intro h₁
@@ -74,7 +74,7 @@ theorem partial_authz_on_concrete_gives_concrete {policies : Policies} {req : Sp
   are identical to concrete authorization's `determiningPolicies`
 -/
 theorem overapproximate_determining_eqv_determining_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   presp.overapproximateDeterminingPolicies = resp.determiningPolicies
@@ -105,7 +105,7 @@ theorem overapproximate_determining_eqv_determining_on_concrete {policies : Poli
   are identical to concrete authorization's `determiningPolicies`
 -/
 theorem underapproximate_determining_eqv_determining_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   presp.underapproximateDeterminingPolicies = resp.determiningPolicies
@@ -136,7 +136,7 @@ theorem underapproximate_determining_eqv_determining_on_concrete {policies : Pol
   policies as concrete authorization's `erroringPolicies`
 -/
 theorem partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
-  (wf : req.WellFormed) :
+  (wf : req.context.WellFormed) :
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   presp.errorPolicies = resp.erroringPolicies
@@ -154,7 +154,11 @@ theorem partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete {policies :
   concrete-authorizing with those inputs.
 -/
 theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {presp : Partial.Response} {resp : Spec.Response}
+<<<<<<< HEAD
   (wf_r : req.WellFormed) :
+=======
+  (wf : req.context.WellFormed) : -- interestingly, this theorem only requires that the context is a WellFormed map, not that the entities are well-formed or that the context values are well-formed
+>>>>>>> origin/main
   Spec.isAuthorized req entities policies = resp →
   Partial.isAuthorized req entities policies = presp →
   (resp.decision = .allow ∧ presp.decision = .allow ∨ resp.decision = .deny ∧ presp.decision = .deny) ∧

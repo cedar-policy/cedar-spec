@@ -19,14 +19,15 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.Evaluation.Set
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Call
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Error ExtFun Result)
+open Cedar.Spec (Error Ext ExtFun Prim Result)
 
 /--
   `Partial.evaluateCall` on concrete arguments gives the same output as
@@ -60,6 +61,64 @@ theorem on_concrete_eqv_concrete_eval {xs : List Spec.Expr} {request : Spec.Requ
   cases xs.mapM (Spec.evaluate · request entities) <;> simp only [Except.bind_ok, Except.bind_err]
   case error e => simp only [Except.map, Except.bind_err]
   case ok vs => exact evaluateCall_on_concrete_eqv_concrete
+
+/--
+  if `Spec.call` returns `ok` with some value, that is a well-formed value
+-/
+theorem specCall_wf {vs : List Spec.Value} {xfn : ExtFun}
+  (wf : ∀ v ∈ vs, v.WellFormed) :
+  ∀ v, Spec.call xfn vs = .ok v → v.WellFormed
+:= by
+  unfold Spec.Value.WellFormed
+  intro v
+  cases v <;> simp
+  case prim p => simp [Prim.WellFormed]
+  case set | record =>
+    unfold Spec.call Spec.res
+    split <;> simp at * <;> split <;> simp
+  case ext x => cases x <;> simp [Ext.WellFormed]
+
+/--
+  if `Partial.evaluateCall` on well-formed arguments returns `ok` with some
+  value, that is a well-formed value as well
+-/
+theorem partialEvaluateCall_wf {pvals : List Partial.Value} {xfn : ExtFun}
+  (wf : ∀ pval ∈ pvals, pval.WellFormed) :
+  ∀ pval, Partial.evaluateCall xfn pvals = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluateCall Partial.Value.WellFormed
+  intro pval h₁
+  split at h₁
+  · rename_i vs h₂
+    cases h₃ : Spec.call xfn vs <;> simp [h₃] at h₁
+    subst pval
+    rename_i v'
+    apply specCall_wf _ v' h₃
+    intro v h₅
+    replace ⟨pval, h₄, h₂⟩ := List.mapM_some_implies_all_from_some h₂ v h₅
+    specialize wf pval h₄
+    unfold Partial.Value.WellFormed at wf
+    cases pval <;> simp at wf h₂
+    case value v' => subst v' ; exact wf
+  · simp at h₁ ; subst h₁ ; simp
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.Call` returns
+  `ok` with some value, that value is well-formed
+-/
+theorem partial_eval_wf {xs : List Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} {xfn : ExtFun}
+  (ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities) :
+  EvaluatesToWellFormed (Partial.Expr.call xfn xs) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
+  cases hx : xs.mapM (Partial.evaluate · request entities) <;> simp [hx]
+  case ok pvals =>
+    replace hx := List.mapM_ok_implies_all_from_ok hx
+    apply partialEvaluateCall_wf _
+    intro pval h₂
+    replace ⟨x, h₃, hx⟩ := hx pval h₂
+    exact ih x h₃ pval hx
 
 /--
   If `Partial.evaluateCall` produces `ok` with a concrete value, then all of the

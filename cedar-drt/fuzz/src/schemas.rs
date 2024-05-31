@@ -37,6 +37,13 @@ use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaF
 /// used. Whether or not there are applicable resources is useless.
 ///
 pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(), String> {
+    // We need to remove trivial empty namespaces because both `{}`
+    // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
+    // in the human-readable schema format
+    let mut lhs = lhs;
+    let mut rhs = rhs;
+    remove_trivial_empty_namespace(&mut lhs);
+    remove_trivial_empty_namespace(&mut rhs);
     if lhs.0.len() == rhs.0.len() {
         lhs.0
             .into_iter()
@@ -50,6 +57,19 @@ pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(),
             .fold(Ok(()), Result::and)
     } else {
         Err("schema differ in number of namespaces".to_string())
+    }
+}
+
+fn remove_trivial_empty_namespace(schema: &mut SchemaFragment) {
+    match schema.0.get(&None) {
+        Some(def)
+            if def.entity_types.is_empty()
+                && def.actions.is_empty()
+                && def.common_types.is_empty() =>
+        {
+            schema.0.remove(&None);
+        }
+        _ => {}
     }
 }
 

@@ -19,14 +19,15 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Binary
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (BinaryOp EntityUID intOrErr Result)
+open Cedar.Spec (BinaryOp EntityUID intOrErr Prim Result)
 
 /--
   `Partial.Entities.ancestorsOrEmpty` on concrete entities is the same as
@@ -109,6 +110,102 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
   case ok v₁ =>
     cases h₂ : Spec.evaluate x₂ request entities <;> simp only [h₂, Except.bind_err, Except.bind_ok]
     case ok v₂ => simp only [evaluateBinaryApp_on_concrete_eqv_concrete, Except.map]
+
+/--
+  if `Partial.inₛ` returns `ok` with some value, that is a well-formed value
+-/
+theorem partialInₛ_wf {uid : EntityUID} {vs : Set Spec.Value} :
+  ∀ pval, Partial.inₛ uid vs entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.inₛ
+  intro pval
+  cases vs.mapOrErr Spec.Value.asEntityUID Spec.Error.typeError <;> simp
+  case ok uids =>
+    intro h ; subst h ; simp [Spec.Value.WellFormed, Prim.WellFormed]
+
+/--
+  if `Partial.apply₂` on two well-formed values and well-formed entities
+  returns `ok` with some value, that is a well-formed value as well
+-/
+theorem partialApply₂_wf {v₁ v₂ : Spec.Value} {op : BinaryOp} {entities : Partial.Entities}
+  (wf₁ : v₁.WellFormed)
+  (wf₂ : v₂.WellFormed) :
+  ∀ pval, Partial.apply₂ op v₁ v₂ entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.apply₂
+  intro pval
+  split <;> intro h₁ <;> try simp at h₁ <;> subst h₁
+  all_goals try {
+    simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  }
+  · rename_i i j
+    cases h₂ : intOrErr (i.add? j) <;> simp [h₂] at h₁
+    case ok v =>
+      subst h₁
+      unfold intOrErr at h₂
+      split at h₂ <;> simp at h₂
+      subst h₂
+      simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  · rename_i i j
+    cases h₂ : intOrErr (i.sub? j) <;> simp [h₂] at h₁
+    case ok v =>
+      subst h₁
+      unfold intOrErr at h₂
+      split at h₂ <;> simp at h₂
+      subst h₂
+      simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  · rename_i i j
+    cases h₂ : intOrErr (i.mul? j) <;> simp [h₂] at h₁
+    case ok v =>
+      subst h₁
+      unfold intOrErr at h₂
+      split at h₂ <;> simp at h₂
+      subst h₂
+      simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  · rename_i uid vs
+    cases h₂ : Partial.inₛ uid vs entities <;> simp [h₂] at h₁
+    case ok v =>
+      subst h₁
+      simp [Partial.Value.WellFormed]
+      exact partialInₛ_wf v h₂
+
+/--
+  if `Partial.evaluateBinaryApp` on two well-formed values and well-formed
+  entities returns `ok` with some value, that is a well-formed value as well
+-/
+theorem partialEvaluateBinaryApp_wf {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities}
+  (wf₁ : pval₁.WellFormed)
+  (wf₂ : pval₂.WellFormed) :
+  ∀ pval, Partial.evaluateBinaryApp op pval₁ pval₂ entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluateBinaryApp
+  split
+  · rename_i v₁ v₂ h₁
+    simp at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst h₁ h₁'
+    simp [Partial.Value.WellFormed] at wf₁ wf₂
+    exact partialApply₂_wf wf₁ wf₂
+  all_goals {
+    intro pval h₁ ; simp at h₁ ; subst h₁
+    simp [Partial.Value.WellFormed]
+  }
+
+/--
+  Inductive argument that if evaluating a `Partial.Expr.binaryApp` on
+  well-formed arguments produces `ok` with some value, that is a well-formed
+  value as well
+-/
+theorem partial_eval_wf {x₁ x₂ : Partial.Expr} {op : BinaryOp} {request : Partial.Request} {entities : Partial.Entities}
+  (ih₁ : EvaluatesToWellFormed x₁ request entities)
+  (ih₂ : EvaluatesToWellFormed x₂ request entities) :
+  EvaluatesToWellFormed (Partial.Expr.binaryApp op x₁ x₂) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  intro pval
+  cases hx₁ : Partial.evaluate x₁ request entities
+  <;> cases hx₂ : Partial.evaluate x₂ request entities
+  <;> simp [hx₁, hx₂]
+  case ok.ok pval₁ pval₂ =>
+    exact partialEvaluateBinaryApp_wf (ih₁ pval₁ hx₁) (ih₂ pval₂ hx₂) pval
 
 /--
   If `Partial.evaluateBinaryApp` produces `ok` with a concrete value, then so

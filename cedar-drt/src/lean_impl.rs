@@ -307,6 +307,26 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         self.is_authorized(request, policies, entities)
     }
 
+    fn partial_evaluate(
+        &self,
+        _request: &ast::Request,
+        _entities: &Entities,
+        _expr: &Expr,
+        _enable_extensions: bool,
+        _expected: Option<ExprOrValue>,
+    ) -> TestResult<bool> {
+        unimplemented!()
+    }
+
+    fn partial_is_authorized(
+        &self,
+        _request: &ast::Request,
+        _entities: &Entities,
+        _policies: &ast::PolicySet,
+    ) -> TestResult<partial::FlatPartialResponse> {
+        unimplemented!()
+    }
+
     fn interpret(
         &self,
         request: &ast::Request,

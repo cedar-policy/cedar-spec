@@ -19,14 +19,15 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.Evaluation.Basic
+import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.HasAttr
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Attr Error Result)
+open Cedar.Spec (Attr Error Prim Result)
 
 /--
   `Partial.attrsOf` on concrete arguments is the same as `Spec.attrsOf` on those
@@ -100,6 +101,45 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   case ok v₁ => exact evaluateHasAttr_on_concrete_eqv_concrete
 
 /--
+  if `Partial.hasAttr` returns `ok` with some value, that is a well-formed value
+-/
+theorem partialHasAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} :
+  ∀ v, Partial.hasAttr v₁ attr entities = .ok v → v.WellFormed
+:= by
+  unfold Partial.hasAttr
+  cases Partial.attrsOf v₁ λ uid => .ok (entities.attrsOrEmpty uid) <;> simp
+  case ok m => simp [Spec.Value.WellFormed, Prim.WellFormed]
+
+
+/--
+  if `Partial.evaluateHasAttr` returns `ok` with some value, that is a
+  well-formed value
+-/
+theorem partialEvaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+  ∀ pval, Partial.evaluateHasAttr pval₁ attr entities = .ok pval → pval.WellFormed
+:= by
+  unfold Partial.evaluateHasAttr
+  split
+  · rename_i v
+    cases h₁ : Partial.hasAttr v attr entities <;> simp
+    case ok v =>
+      simp [Partial.Value.WellFormed]
+      exact partialHasAttr_wf v h₁
+  · intro pval h₁ ; simp at h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
+
+/--
+  if partial-evaluating a `Partial.Expr.hasAttr` returns `ok` with some value,
+  that is a well-formed value
+-/
+theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request} :
+  EvaluatesToWellFormed (Partial.Expr.hasAttr x₁ attr) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
+  case ok pval₁ =>
+    exact HasAttr.partialEvaluateHasAttr_wf
+
+/--
   If `Partial.evaluateHasAttr` produces `ok` with a concrete value, then so
   would partial-evaluating its operand
 -/
@@ -137,7 +177,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   unknowns in `entities`
 -/
 theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.hasAttr v₁ attr entities = Partial.hasAttr v₁ attr (entities.subst subsmap)
 := by
   unfold Partial.hasAttr Partial.attrsOf
@@ -153,7 +193,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
   same value after any substitution of unknowns in `entities`
 -/
 theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed) :
+  (wf : entities.WellFormed) :
   Partial.evaluateHasAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
 := by
@@ -167,7 +207,7 @@ theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
-  (wf : entities.AllWellFormed)
+  (wf : entities.WellFormed)
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap
 := by

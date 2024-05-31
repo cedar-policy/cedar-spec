@@ -14,74 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Partial.Entities
 import Cedar.Partial.Evaluator
-import Cedar.Partial.Expr
-import Cedar.Partial.Request
-import Cedar.Partial.Value
-import Cedar.Spec.Evaluator
-import Cedar.Spec.Expr
-import Cedar.Spec.Request
-import Cedar.Spec.Value
-import Cedar.Thm.Data.Map
-import Cedar.Thm.Data.Set
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 /-!
-  This file contains definitions used by multiple files in the Thm/Partial
-  folder
+  This file contains definitions of `Prop`s used by multiple files in the
+  Thm/Partial/Evaluation folder
 -/
-
-namespace Cedar.Spec
-
-/--
-  We define `WellFormed` for `Value` in the obvious way
--/
-def Value.WellFormed (v : Value) : Prop :=
-  match v with
-  | .set s => s.WellFormed
-  | .record r => r.WellFormed
-  | _ => true
-
-/--
-  `Request`s are `WellFormed` if the context is `WellFormed`
--/
-def Request.WellFormed (req : Request) : Prop :=
-  req.context.WellFormed
-
-end Cedar.Spec
-
-namespace Cedar.Partial
-
-/--
-  We define `WellFormed` for `Partial.Value` using `Spec.Value.WellFormed`
--/
-def Value.WellFormed (pval : Partial.Value) : Prop :=
-  match pval with
-  | .value v => v.WellFormed
-  | .residual _ => true
-
-/--
-  `Partial.Request`s are `AllWellFormed` if the context is `WellFormed` and
-  all the context's constituent `Partial.RestrictedValue`s are also `WellFormed`.
-  (principal, action, and resource are always well-formed)
--/
-def Request.AllWellFormed (preq : Partial.Request) : Prop :=
-  preq.context.WellFormed ∧ ∀ rpval ∈ preq.context.values, rpval.WellFormed
-
-/--
-  We define `WellFormed` for `Partial.EntityData` in the obvious way
--/
-def EntityData.WellFormed (edata : Partial.EntityData) : Prop :=
-  edata.attrs.WellFormed ∧ edata.ancestors.WellFormed
-
-/--
-  `Partial.Entities` are `AllWellFormed` if they are `WellFormed` and all the
-  constituent `Partial.EntityData` are also `WellFormed`
--/
-def Entities.AllWellFormed (entities : Partial.Entities) : Prop :=
-  entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed
-
-end Cedar.Partial
 
 namespace Cedar.Thm.Partial
 
@@ -115,5 +54,11 @@ def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial
 -/
 def IsAllConcrete (pvals : List Partial.Value) : Prop :=
   ∃ vs, pvals.mapM (λ x => match x with | .value v => some v | .residual _ => none) = some vs
+
+/--
+  Prop that partial evaluation returns a well-formed value
+-/
+def EvaluatesToWellFormed (expr : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
+  ∀ pval, Partial.evaluate expr request entities = .ok pval → pval.WellFormed
 
 end Cedar.Thm.Partial

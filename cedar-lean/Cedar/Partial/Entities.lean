@@ -46,23 +46,24 @@ Represents the information about all entities.
 Currently, this does not allow it to be unknown whether an entity exists.
 Either it exists (and we have a `Partial.EntityData`) or it does not.
 -/
-abbrev Entities := Map EntityUID Partial.EntityData
+structure Entities where
+  es : Map EntityUID Partial.EntityData
 
 def Entities.ancestors (es : Partial.Entities) (uid : EntityUID) : Result (Set EntityUID) := do
-  let d ← es.findOrErr uid .entityDoesNotExist
+  let d ← es.es.findOrErr uid .entityDoesNotExist
   .ok d.ancestors
 
 def Entities.ancestorsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Set EntityUID :=
-  match es.find? uid with
+  match es.es.find? uid with
   | some d => d.ancestors
   | none   => Set.empty
 
 def Entities.attrs (es : Partial.Entities) (uid : EntityUID) : Result (Map Attr Partial.Value) := do
-  let d ← es.findOrErr uid .entityDoesNotExist
+  let d ← es.es.findOrErr uid .entityDoesNotExist
   .ok d.attrs
 
 def Entities.attrsOrEmpty (es : Partial.Entities) (uid : EntityUID) : Map Attr Partial.Value :=
-  match es.find? uid with
+  match es.es.find? uid with
   | some d => d.attrs
   | none   => Map.empty
 
@@ -82,7 +83,7 @@ instance : Coe Spec.EntityData Partial.EntityData where
   coe := Spec.EntityData.asPartialEntityData
 
 def Entities.asPartialEntities (es : Spec.Entities) : Partial.Entities :=
-  es.mapOnValues Spec.EntityData.asPartialEntityData
+  { es := es.mapOnValues Spec.EntityData.asPartialEntityData }
 
 instance : Coe Spec.Entities Partial.Entities where
   coe := Spec.Entities.asPartialEntities
@@ -111,7 +112,9 @@ def EntityData.subst (subsmap : Map Unknown Partial.Value) : Partial.EntityData 
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.Entities` will still contain some unknowns.
 -/
-def Entities.subst (es : Partial.Entities) (subsmap : Map Unknown Partial.Value) : Partial.Entities :=
-  es.mapOnValues (Partial.EntityData.subst subsmap)
+def Entities.subst (subsmap : Map Unknown Partial.Value) : Partial.Entities → Partial.Entities
+  | { es } => {
+      es := es.mapOnValues (Partial.EntityData.subst subsmap)
+  }
 
 end Cedar.Partial
