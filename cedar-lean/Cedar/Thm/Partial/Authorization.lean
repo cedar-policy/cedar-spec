@@ -163,9 +163,10 @@ theorem partial_authz_eqv_authz_on_concrete {policies : Policies} {req : Spec.Re
   presp.errorPolicies = resp.erroringPolicies
 := by
   intro h₁ h₂
-  apply And.intro (partial_authz_decision_eqv_authz_decision_on_concrete wf h₁ h₂)
-  apply And.intro (overapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
-  apply And.intro (underapproximate_determining_eqv_determining_on_concrete wf h₁ h₂)
-  exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf h₁ h₂
+  and_intros
+  · exact partial_authz_decision_eqv_authz_decision_on_concrete wf h₁ h₂
+  · exact overapproximate_determining_eqv_determining_on_concrete wf h₁ h₂
+  · exact underapproximate_determining_eqv_determining_on_concrete wf h₁ h₂
+  · exact partial_authz_errorPolicies_eqv_erroringPolicies_on_concrete wf h₁ h₂
 
 end Cedar.Thm.Partial.Authorization

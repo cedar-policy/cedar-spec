@@ -49,12 +49,9 @@ theorem isAuthorized_eq_for_sound_policy_slice (req : Request) (entities : Entit
   isAuthorized req entities slice = isAuthorized req entities policies
 := by
   intro h₀
-  have hf :=
-    satisfiedPolicies_eq_for_sound_policy_slice .forbid req entities slice policies h₀
-  have hp :=
-    satisfiedPolicies_eq_for_sound_policy_slice .permit req entities slice policies h₀
-  have he :=
-    errorPolicies_eq_for_sound_policy_slice req entities slice policies h₀
+  have hf := satisfiedPolicies_eq_for_sound_policy_slice .forbid h₀
+  have hp := satisfiedPolicies_eq_for_sound_policy_slice .permit h₀
+  have he := errorPolicies_eq_for_sound_policy_slice h₀
   simp [isAuthorized, hf, hp, he]
 
 /--

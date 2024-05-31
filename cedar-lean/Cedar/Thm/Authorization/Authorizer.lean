@@ -54,7 +54,7 @@ theorem if_hasError_then_exists_error {policy : Policy} {request : Request} {ent
   · simp at h₁
   · rename_i err _ ; exists err
 
-theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policies : Policies) (request : Request) (entities : Entities) :
+theorem if_satisfied_then_satisfiedPolicies_non_empty {effect : Effect} {policies : Policies} {request : Request} {entities : Entities} :
   (∃ policy,
     policy ∈ policies ∧
     policy.effect = effect ∧
@@ -71,7 +71,7 @@ theorem if_satisfied_then_satisfiedPolicies_non_empty (effect : Effect) (policie
   unfold satisfiedWithEffect
   simp [h₀]
 
-theorem if_satisfiedPolicies_non_empty_then_satisfied (effect : Effect) (policies : Policies) (request : Request) (entities : Entities) :
+theorem if_satisfiedPolicies_non_empty_then_satisfied {effect : Effect} {policies : Policies} {request : Request} {entities : Entities} :
   (satisfiedPolicies effect policies request entities).isEmpty = false →
   ∃ policy,
     policy ∈ policies ∧
@@ -95,7 +95,7 @@ theorem if_satisfiedPolicies_non_empty_then_satisfied (effect : Effect) (policie
     | true => rfl
     | false => simp [h₃, h₄] at h₂
 
-theorem satisfiedPolicies_order_and_dup_independent (effect : Effect) (request : Request) (entities : Entities) (policies₁ policies₂ : Policies) :
+theorem satisfiedPolicies_order_and_dup_independent {policies₁ policies₂ : Policies} (effect : Effect) (request : Request) (entities : Entities) :
   policies₁ ≡ policies₂ →
   satisfiedPolicies effect policies₁ request entities = satisfiedPolicies effect policies₂ request entities
 := by
@@ -104,7 +104,7 @@ theorem satisfiedPolicies_order_and_dup_independent (effect : Effect) (request :
   rw [Set.make_make_eqv]
   exact List.filterMap_equiv (satisfiedWithEffect effect · request entities) policies₁ policies₂ h₁
 
-theorem errorPolicies_order_and_dup_independent (request : Request) (entities : Entities) (policies₁ policies₂ : Policies) :
+theorem errorPolicies_order_and_dup_independent {policies₁ policies₂ : Policies} (request : Request) (entities : Entities) :
   policies₁ ≡ policies₂ →
   errorPolicies policies₁ request entities = errorPolicies policies₂ request entities
 := by
@@ -113,7 +113,7 @@ theorem errorPolicies_order_and_dup_independent (request : Request) (entities : 
   rw [Set.make_make_eqv]
   exact List.filterMap_equiv (errored · request entities) policies₁ policies₂ h₁
 
-theorem sound_policy_slice_is_equisatisfied (effect : Effect) (request : Request) (entities : Entities) (slice policies : Policies) :
+theorem sound_policy_slice_is_equisatisfied (effect : Effect) {request : Request} {entities : Entities} {slice policies : Policies} :
   IsSoundPolicySlice request entities slice policies →
   slice.filterMap (satisfiedWithEffect effect · request entities) ≡
   policies.filterMap (satisfiedWithEffect effect · request entities)
@@ -136,16 +136,16 @@ theorem sound_policy_slice_is_equisatisfied (effect : Effect) (request : Request
     specialize h₂ policy h₃ h₅
     simp [h₂, satisfiedWithEffect] at h₄
 
-theorem satisfiedPolicies_eq_for_sound_policy_slice (effect : Effect) (request : Request) (entities : Entities) (slice policies : Policies) :
+theorem satisfiedPolicies_eq_for_sound_policy_slice (effect : Effect) {request : Request} {entities : Entities} {slice policies : Policies} :
   IsSoundPolicySlice request entities slice policies →
   satisfiedPolicies effect slice request entities = satisfiedPolicies effect policies request entities
 := by
   intro h
   unfold satisfiedPolicies
   rw [Set.make_make_eqv]
-  exact sound_policy_slice_is_equisatisfied effect request entities slice policies h
+  exact sound_policy_slice_is_equisatisfied effect h
 
-theorem sound_policy_slice_is_equierror (request : Request) (entities : Entities) (slice policies : Policies) :
+theorem sound_policy_slice_is_equierror {request : Request} {entities : Entities} {slice policies : Policies} :
   IsSoundPolicySlice request entities slice policies →
   slice.filter (hasError · request entities) ≡ policies.filter (hasError · request entities)
 := by
@@ -172,7 +172,7 @@ theorem sound_policy_slice_is_equierror (request : Request) (entities : Entities
 def alternateErrorPolicies (policies : Policies) (request : Request) (entities : Entities) : Set PolicyID :=
   Set.make (List.map Policy.id (policies.filter (hasError · request entities)))
 
-theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {request : Request} {entities : Entities} :
+theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (request : Request) (entities : Entities) :
   errorPolicies policies request entities = alternateErrorPolicies policies request entities
 := by
   unfold errorPolicies alternateErrorPolicies
@@ -199,7 +199,7 @@ theorem alternate_errorPolicies_equiv_errorPolicies {policies : Policies} {reque
     · rfl
     · simp [h₃] at h₁
 
-theorem errorPolicies_eq_for_sound_policy_slice (request : Request) (entities : Entities) (slice policies : Policies) :
+theorem errorPolicies_eq_for_sound_policy_slice {request : Request} {entities : Entities} {slice policies : Policies} :
   IsSoundPolicySlice request entities slice policies →
   errorPolicies slice request entities = errorPolicies policies request entities
 := by
@@ -208,7 +208,7 @@ theorem errorPolicies_eq_for_sound_policy_slice (request : Request) (entities : 
   unfold alternateErrorPolicies
   rw [Set.make_make_eqv]
   apply List.map_equiv
-  exact sound_policy_slice_is_equierror request entities slice policies h
+  exact sound_policy_slice_is_equierror h
 
 theorem principal_eval_ok_means_principal_in_uid {policy : Policy} {request : Request} {entities : Entities} {uid: EntityUID} :
   evaluate policy.principalScope.toExpr request entities = .ok true →
@@ -279,31 +279,22 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
         (and_true_implies_right_true h₁))
   exact resource_eval_ok_means_resource_in_uid h₁ h₂
 
-/--
-  A generic lemma about composing List.mapM with List.map. Not in Std AFAICT.
--/
-theorem mapM_over_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {list : List α} :
-  List.mapM g (list.map f) = list.mapM fun x => g (f x)
+theorem mapM_evaluate_uids_produces_uids (list : List EntityUID) (request : Request) (entities : Entities) :
+  List.mapM (evaluate · request entities) (list.map fun uid => Expr.lit (.entityUID uid)) =
+  .ok (list.map (Value.prim ∘ Prim.entityUID))
 := by
-  induction list
-  case nil => simp
-  case cons x xs h => simp [h]
-
-theorem mapM_evaluate_uids_produces_uids {list : List EntityUID} {request : Request} {entities : Entities} :
-  List.mapM (evaluate · request entities) (list.map fun uid => Expr.lit (.entityUID uid)) = .ok (list.map (Value.prim ∘ Prim.entityUID))
-:= by
-  rw [mapM_over_map]
+  rw [List.mapM_map]
   unfold evaluate
   exact List.mapM_pure
 
-theorem asEntityUID_of_uid {uid : EntityUID} :
+theorem asEntityUID_of_uid (uid : EntityUID) :
   Value.asEntityUID (.prim (.entityUID uid)) = .ok uid
 := by
   unfold Value.asEntityUID
   split <;> simp
   case h_1 uid' h => simp at h; simp [h]
 
-theorem mapM_asEntityUID_of_uid {uids : List EntityUID} :
+theorem mapM_asEntityUID_of_uid (uids : List EntityUID) :
   List.mapM Value.asEntityUID (uids.map (Value.prim ∘ Prim.entityUID)) = .ok uids
 := by
   induction uids
@@ -344,16 +335,19 @@ theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Decidable
       replace ⟨b, _, h₄⟩ := h₂ a h₃
       exists b
 
-theorem mapM_asEntityUID_on_set_uids_produces_ok {uids : List EntityUID} :
-  Except.isOk (List.mapM Value.asEntityUID (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
+theorem mapM_asEntityUID_on_set_uids_produces_ok (uids : List EntityUID) :
+  Except.isOk (List.mapM
+    Value.asEntityUID
+    (Set.elts (Set.make (uids.map (Value.prim ∘ Prim.entityUID)))))
 := by
   apply if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set
   unfold Except.isOk Except.toBool
   split <;> simp
   case a.h_2 e h => simp [mapM_asEntityUID_of_uid] at h
 
-theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} {err : Error} :
-  Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err = .ok (Set.make list)
+theorem mapOrErr_value_asEntityUID_on_uids_produces_set (list : List EntityUID) (err : Error) :
+  Set.mapOrErr Value.asEntityUID (Set.make (list.map (Value.prim ∘ Prim.entityUID))) err =
+  .ok (Set.make list)
 := by
   unfold Set.mapOrErr
   split <;> simp
@@ -375,11 +369,17 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set {list : List EntityUID} 
       exact h₂
   case h_2 err h =>
     -- in this case, mapping Value.asEntityUID over the set returns .error
-    have h₁ := @mapM_asEntityUID_on_set_uids_produces_ok list
+    have h₁ := mapM_asEntityUID_on_set_uids_produces_ok list
     simp [h, Except.isOk, Except.toBool] at h₁
 
-theorem action_in_set_of_euids_produces_boolean {list : List EntityUID} {request : Request} {entities : Entities} :
-  producesBool (Expr.binaryApp BinaryOp.mem (Expr.var .action) (Expr.set (list.map fun uid => Expr.lit (.entityUID uid)))) request entities
+theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request : Request) (entities : Entities) :
+  producesBool
+    (Expr.binaryApp
+      BinaryOp.mem
+      (Expr.var .action)
+      (Expr.set (list.map fun uid => Expr.lit (.entityUID uid))))
+    request
+    entities
 := by
   unfold producesBool
   split <;> simp
@@ -392,7 +392,7 @@ theorem action_in_set_of_euids_produces_boolean {list : List EntityUID} {request
 /--
   Lemma: evaluating the principalScope of any policy produces a boolean (and does not error)
 -/
-theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {entities : Entities} :
+theorem principal_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.principalScope.toExpr request entities
 := by
   simp [producesBool, evaluate, PrincipalScope.toExpr, Scope.toExpr]
@@ -410,7 +410,7 @@ theorem principal_scope_produces_boolean {policy : Policy} {request : Request} {
 /--
   Lemma: evaluating the actionScope of any policy produces a boolean (and does not error)
 -/
-theorem action_scope_produces_boolean {policy : Policy} {request : Request} {entities : Entities} :
+theorem action_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.actionScope.toExpr request entities
 := by
   simp [producesBool, evaluate, ActionScope.toExpr, Scope.toExpr]
@@ -420,7 +420,7 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
     case h_1 => trivial
     case h_2 res h =>
       simp at h
-      have h₁ := @action_in_set_of_euids_produces_boolean list request entities
+      have h₁ := action_in_set_of_euids_produces_boolean list request entities
       unfold producesBool at h₁
       split at h₁ <;> rename_i h₂
       · simp [h₂] at h
@@ -440,7 +440,7 @@ theorem action_scope_produces_boolean {policy : Policy} {request : Request} {ent
 /--
   Lemma: evaluating the resourceScope of any policy produces a boolean (and does not error)
 -/
-theorem resource_scope_produces_boolean {policy : Policy} {request : Request} {entities : Entities} :
+theorem resource_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.resourceScope.toExpr request entities
 := by
   simp [producesBool, evaluate, ResourceScope.toExpr, Scope.toExpr]
@@ -470,25 +470,25 @@ theorem produces_boolean_means_not_non_boolean {e : Expr} {request : Request} {e
   · simp at h₂
   · split at h₂ <;> simp at h₁
 
-theorem principal_scope_does_not_throw {policy : Policy} {request : Request} {entities : Entities} {err : Error} :
+theorem principal_scope_does_not_throw (policy : Policy) (request : Request) (entities : Entities) (err : Error) :
   ¬ (evaluate policy.principalScope.toExpr request entities = .error err)
 := by
   by_contra h
-  have h₁ := @principal_scope_produces_boolean policy request entities
+  have h₁ := principal_scope_produces_boolean policy request entities
   simp [producesBool, h] at h₁
 
-theorem action_scope_does_not_throw {policy : Policy} {request : Request} {entities : Entities} {err : Error}:
+theorem action_scope_does_not_throw (policy : Policy) (request : Request) (entities : Entities) (err : Error) :
   ¬ (evaluate policy.actionScope.toExpr request entities = .error err)
 := by
   by_contra h
-  have h₁ := @action_scope_produces_boolean policy request entities
+  have h₁ := action_scope_produces_boolean policy request entities
   simp [producesBool, h] at h₁
 
-theorem resource_scope_does_not_throw {policy : Policy} {request : Request} {entities : Entities} {err : Error}:
+theorem resource_scope_does_not_throw (policy : Policy) (request : Request) (entities : Entities) (err : Error) :
   ¬ (evaluate policy.resourceScope.toExpr request entities = .error err)
 := by
   by_contra h
-  have h₁ := @resource_scope_produces_boolean policy request entities
+  have h₁ := resource_scope_produces_boolean policy request entities
   simp [producesBool, h] at h₁
 
 /--
@@ -526,7 +526,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
         -- in this case, evaluating resource produced a non-boolean
         exfalso
         clear h₂
-        have h := @resource_scope_produces_boolean policy request entities
+        have h := resource_scope_produces_boolean policy request entities
         apply produces_boolean_means_not_non_boolean (e := policy.resourceScope.toExpr) h h₇
       case _ =>
         -- in this case, evaluating condition produced a non-boolean
@@ -534,28 +534,28 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
     case _ =>
       -- in this case, evaluating action produced a non-boolean
       exfalso
-      have h := @action_scope_produces_boolean policy request entities
+      have h := action_scope_produces_boolean policy request entities
       apply produces_boolean_means_not_non_boolean (e := policy.actionScope.toExpr) h h₅
     case _ =>
       -- in this case, evaluating (resource ∧ condition) produced a non-boolean
       exfalso
       clear h₂
       unfold producesNonBool at h₅
-      have h₄ := @and_produces_bool_or_error policy.resourceScope.toExpr policy.condition request entities
+      have h₄ := and_produces_bool_or_error policy.resourceScope.toExpr policy.condition request entities
       split at h₄ <;> simp at h₄
       case _ h₆ => simp [h₆] at h₅
       case _ h₆ => simp [h₆] at h₅
   case _ =>
     -- in this case, evaluating principal produced a non-boolean
     exfalso
-    have h := @principal_scope_produces_boolean policy request entities
+    have h := principal_scope_produces_boolean policy request entities
     apply produces_boolean_means_not_non_boolean (e := policy.principalScope.toExpr) h h₃
   case _ =>
     -- in this case, evaluating (action ∧ resource ∧ condition) produced a non-boolean
     exfalso
     unfold producesNonBool at h₄
     generalize (Expr.and policy.resourceScope.toExpr policy.condition) = resource_and_condition at h₂ h₄
-    have h₅ := @and_produces_bool_or_error policy.actionScope.toExpr resource_and_condition request entities
+    have h₅ := and_produces_bool_or_error policy.actionScope.toExpr resource_and_condition request entities
     split at h₅ <;> simp at h₅
     case _ h₆ => simp [h₆] at h₄
     case _ h₆ => simp [h₆] at h₄
