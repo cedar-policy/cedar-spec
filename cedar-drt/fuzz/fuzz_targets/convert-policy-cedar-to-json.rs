@@ -18,8 +18,8 @@
 use thiserror::Error;
 
 use cedar_drt_inner::*;
-use cedar_policy::{ParseError, ParseErrors};
-use cedar_policy_core::{ast::PolicyID, est::FromJsonError, parser::err::ToASTErrorKind};
+use cedar_policy::ParseErrors;
+use cedar_policy_core::{ast::PolicyID, est::FromJsonError};
 
 #[derive(miette::Diagnostic, Error, Debug)]
 enum ESTParseError {
@@ -29,22 +29,6 @@ enum ESTParseError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ESTToAST(#[from] FromJsonError),
-}
-
-// Check that we don't see a few specific errors, which correspond to violations
-// of internal invariants.
-fn check_for_internal_errors(errs: ParseErrors) {
-    assert!(
-        !errs.iter().any(|e| matches!(
-        e,
-        ParseError::ToAST(e) if matches!(e.kind(),
-            ToASTErrorKind::AnnotationInvariantViolation
-                | ToASTErrorKind::MembershipInvariantViolation
-                | ToASTErrorKind::EmptyNodeInvariantViolation)
-        )),
-        "Parse errors included unexpected internal errors: {:?}",
-        miette::Report::new(errs).wrap_err("unexpected internal error")
-    )
 }
 
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
@@ -68,17 +52,15 @@ fuzz_target!(|src: String| {
                     Ok(policy_est) => {
                         check_policy_equivalence(&policy_ast, &policy_est);
                     }
-                    Err(errs) => {
-                        println!("{:?}", miette::Report::new(errs));
+                    Err(e) => {
+                        println!("{:?}", miette::Report::new(e));
                         panic!(
                             "Policy parsed directly through cst->ast but not through cst->est->ast"
                         );
                     }
                 }
             }
-            Err(errs) => {
-                check_for_internal_errors(errs);
-            }
+            Err(errs) => check_for_internal_errors(errs),
         }
     }
 });
