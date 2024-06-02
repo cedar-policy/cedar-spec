@@ -18,12 +18,13 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Unary
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (UnaryOp)
+open Cedar.Spec (Prim UnaryOp)
 
 /--
   `Partial.apply₁` on concrete arguments gives the same output as `Spec.apply₁`
@@ -50,6 +51,57 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request
   cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
   case error e => simp [Except.map]
   case ok v₁ => rfl
+
+/--
+  if `Spec.apply₁` returns `ok` with some value, that is a well-formed value as
+  well
+
+  This theorem does not actually require that the input value is WellFormed
+-/
+theorem specApply₁_wf {v : Spec.Value} {op : UnaryOp} :
+  Spec.apply₁ op v = .ok v' → v'.WellFormed
+:= by
+  unfold Spec.apply₁
+  intro h
+  split at h <;> try simp at h <;> subst h
+  · simp [Spec.Value.WellFormed, Prim.WellFormed]
+  · unfold Spec.intOrErr at h
+    split at h <;> simp at h
+    subst h ; simp [Spec.Value.WellFormed, Prim.WellFormed]
+  · simp [Spec.Value.WellFormed, Prim.WellFormed]
+  · simp [Spec.Value.WellFormed, Prim.WellFormed]
+
+/--
+  if `Partial.apply₁` on a well-formed value returns `ok` with some value, that is
+  a well-formed value as well
+
+  This theorem does not actually require that the input value is WellFormed
+-/
+theorem partialApply₁_wf {pval : Partial.Value} {op : UnaryOp} :
+  Partial.apply₁ op pval = .ok pval' → pval'.WellFormed
+:= by
+  unfold Partial.apply₁
+  cases pval <;> simp
+  case residual r => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
+  case value v =>
+    cases h₁ : Spec.apply₁ op v <;> simp
+    case ok v' =>
+      intro h ; subst h ; simp [Partial.Value.WellFormed] at *
+      exact specApply₁_wf h₁
+
+/--
+  Inductive argument that if partial-evaluating a `Partial.Expr.unaryApp`
+  produces `ok` with some value, that value is well-formed
+
+  This theorem does not actually require that x₁ is WellFormed
+-/
+theorem partial_eval_wf {x₁ : Partial.Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToWellFormed (Partial.Expr.unaryApp op x₁) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  intro pval
+  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
+  case ok pval₁ => exact partialApply₁_wf
 
 /--
   If `Partial.apply₁` produces `ok` with a concrete value, then so would

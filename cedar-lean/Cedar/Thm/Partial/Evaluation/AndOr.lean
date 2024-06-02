@@ -17,12 +17,13 @@
 import Cedar.Partial.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Evaluation.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.AndOr
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Result)
+open Cedar.Spec (Prim Result)
 
 /- ## Lemmas shared by And.lean and Or.lean -/
 
@@ -61,6 +62,44 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Spec.Expr} {request : Spec.Re
   }
 
 /--
+  If partial-evaluating a `Partial.Expr.and` or `Partial.Expr.or` produces `ok`
+  with some value, that value is well-formed.
+-/
+theorem partial_eval_wf (x₁ x₂ : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) :
+  EvaluatesToWellFormed (Partial.Expr.and x₁ x₂) request entities ∧
+  EvaluatesToWellFormed (Partial.Expr.or x₁ x₂) request entities
+:= by
+  unfold EvaluatesToWellFormed Partial.evaluate
+  constructor
+  all_goals {
+    cases hx₁ : Partial.evaluate x₁ request entities
+    case error => simp
+    case ok pval₁ =>
+      cases pval₁ <;> simp
+      case residual r₁ => simp [Partial.Value.WellFormed]
+      case value v₁ =>
+        cases v₁ <;> simp [Spec.Value.asBool]
+        case prim p₁ =>
+          cases p₁ <;> simp
+          case bool b₁ =>
+            cases b₁ <;> simp
+            all_goals try {
+              -- this dispatches the `false` case for `and`, and the `true` case for `or`
+              simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+            }
+            intro pval
+            cases hx₂ : Partial.evaluate x₂ request entities <;> simp [hx₂]
+            case ok pval₂ =>
+              cases pval₂ <;> simp
+              case residual r₂ => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
+              case value v₂ =>
+                cases v₂ <;> try simp
+                case prim p₂ =>
+                  cases p₂ <;> simp
+                  case bool b₂ => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  }
+
+/--
   Inductive argument that if partial-evaluation of a `Partial.Expr.and` or
   `Partial.Expr.or` returns a concrete value, then it returns the same value
   after any substitution of unknowns
@@ -81,7 +120,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
     unfold Partial.Expr.subst
     cases hx₁ : Partial.evaluate x₁ req entities
     <;> cases hx₂ : Partial.evaluate x₂ req entities
-    <;> simp only [hx₁, false_implies, forall_const, hx₂, Except.ok.injEq, Bool.not_eq_true',
+    <;> simp only [hx₁, hx₂, false_implies, forall_const, Except.ok.injEq, Bool.not_eq_true',
       Except.bind_ok, Except.bind_err] at *
     case ok.ok pval₁ pval₂ =>
       cases pval₁ <;> cases pval₂

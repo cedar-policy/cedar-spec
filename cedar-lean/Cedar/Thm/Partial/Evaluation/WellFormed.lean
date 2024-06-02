@@ -28,52 +28,55 @@ import Cedar.Thm.Data.Set
 
 namespace Cedar.Spec
 
-/--
-  We define `WellFormed` for `Value` in the obvious way
--/
-def Value.WellFormed (v : Value) : Prop :=
-  match v with
-  | .set s => s.WellFormed
-  | .record r => r.WellFormed
+open Cedar.Data
+
+/-- All `Prim`s are structurally WellFormed. -/
+def Prim.WellFormed : Spec.Prim → Prop
   | _ => true
 
-/--
-  `Request`s are `WellFormed` if the context is `WellFormed`
--/
-def Request.WellFormed (req : Request) : Prop :=
-  req.context.WellFormed
+/-- All `Ext`s are structurally WellFormed. -/
+def Ext.WellFormed : Ext → Prop
+  | .decimal _ => true
+  | .ipaddr _  => true
+
+def Value.WellFormed : Spec.Value → Prop
+  | .prim p => p.WellFormed
+  | .set s => s.WellFormed ∧ ∀ elt ∈ s, elt.WellFormed
+  | .record r => r.WellFormed ∧ ∀ kv ∈ r.kvs, kv.snd.WellFormed
+  | .ext x => x.WellFormed
+decreasing_by
+  all_goals simp_wf
+  case _ h₁ => -- set
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    have h₂ := Map.sizeOf_lt_of_value h₁
+    apply Nat.lt_trans h₂
+    have h₃ := Map.sizeOf_lt_of_kvs r
+    simp [Map.kvs] at *
+    omega
+
+def Request.WellFormed : Spec.Request → Prop
+  | { context, .. } => context.WellFormed ∧ ∀ val ∈ context.values, val.WellFormed
 
 end Cedar.Spec
 
 namespace Cedar.Partial
 
-/--
-  We define `WellFormed` for `Partial.Value` using `Spec.Value.WellFormed`
--/
-def Value.WellFormed (pval : Partial.Value) : Prop :=
-  match pval with
+def Value.WellFormed : Partial.Value → Prop
   | .value v => v.WellFormed
   | .residual _ => true
 
-/--
-  `Partial.Request`s are `AllWellFormed` if the context is `WellFormed` and
-  all the context's constituent `Partial.RestrictedValue`s are also `WellFormed`.
-  (principal, action, and resource are always well-formed)
--/
-def Request.AllWellFormed (preq : Partial.Request) : Prop :=
-  preq.context.WellFormed ∧ ∀ rpval ∈ preq.context.values, rpval.WellFormed
+def Request.WellFormed : Partial.Request → Prop
+  | { context, .. } => context.WellFormed ∧ ∀ pval ∈ context.values, pval.WellFormed
 
-/--
-  We define `WellFormed` for `Partial.EntityData` in the obvious way
--/
-def EntityData.WellFormed (edata : Partial.EntityData) : Prop :=
-  edata.attrs.WellFormed ∧ edata.ancestors.WellFormed
+def EntityData.WellFormed : Partial.EntityData → Prop
+  | { attrs, ancestors } =>
+      attrs.WellFormed ∧
+      ancestors.WellFormed ∧
+      ∀ pval ∈ attrs.values, pval.WellFormed
 
-/--
-  `Partial.Entities` are `AllWellFormed` if they are `WellFormed` and all the
-  constituent `Partial.EntityData` are also `WellFormed`
--/
-def Entities.AllWellFormed (entities : Partial.Entities) : Prop :=
-  entities.WellFormed ∧ ∀ edata ∈ entities.values, edata.WellFormed
+def Entities.WellFormed : Partial.Entities → Prop
+  | { es } => es.WellFormed ∧ ∀ edata ∈ es.values, edata.WellFormed
 
 end Cedar.Partial

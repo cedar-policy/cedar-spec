@@ -33,7 +33,7 @@ print_usage() {
 }
 
 if [ $# -ne 1 ]; then
-    echo "Expected exactly one arguemtn, but $# arguments provided."
+    echo "Expected exactly one argument, but $# arguments provided."
     print_usage
 fi
 
@@ -44,6 +44,11 @@ initialize_corpus() {
   simple-parser|formatter-bytes|convert-policy-cedar-to-json)
     for f in ../cedar/**/*.cedar; do
       # Rename with a uuid because there are multiple `policy.cedar` files
+      cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
+    done ;;
+
+  convert-policy-json-to-cedar)
+    for f in ../cedar/**/*.cedar.json; do
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
 

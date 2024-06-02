@@ -39,14 +39,14 @@ namespace Cedar.Thm.Partial.Evaluation
 
 open Cedar.Data
 open Cedar.Partial (Unknown)
-open Cedar.Spec (Error Result)
+open Cedar.Spec (Error Prim Result)
 
 /--
   Partial evaluation with concrete inputs gives the same output as
   concrete evaluation with those inputs
 -/
 theorem on_concrete_eqv_concrete_eval' (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
-  (wf : request.WellFormed) :
+  (wf : request.context.WellFormed) :
   PartialEvalEquivConcreteEval expr request entities
 := by
   unfold PartialEvalEquivConcreteEval
@@ -110,7 +110,7 @@ decreasing_by
   easier for consumers
 -/
 theorem on_concrete_eqv_concrete_eval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
-  (wf : request.WellFormed) :
+  (wf : request.context.WellFormed) :
   Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
 := by
   have h := on_concrete_eqv_concrete_eval' expr request entities wf
@@ -131,7 +131,7 @@ def isValueOrError : Result Partial.Value → Prop
   concrete value (or an error)
 -/
 theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities)
-  (wf : request.WellFormed) :
+  (wf : request.context.WellFormed) :
   isValueOrError (Partial.evaluate expr request entities)
 := by
   rw [on_concrete_eqv_concrete_eval expr request entities wf]
@@ -143,12 +143,78 @@ theorem on_concrete_gives_concrete (expr : Spec.Expr) (request : Spec.Request) (
   <;> trivial
 
 /--
+  Partial evaluation always returns well-formed results
+-/
+theorem partial_eval_wf {expr : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (wf_r : request.WellFormed)
+  (wf_e : entities.WellFormed) :
+  EvaluatesToWellFormed expr request entities
+:= by
+  cases expr
+  case lit p =>
+    unfold EvaluatesToWellFormed
+    unfold Partial.evaluate
+    intro pval
+    intro h₁ ; simp at h₁ ; subst h₁
+    simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+  case var v => exact Var.partial_eval_wf wf_r
+  case unknown u =>
+    unfold EvaluatesToWellFormed
+    unfold Partial.evaluate
+    intro pval
+    intro h₁ ; simp at h₁ ; subst h₁
+    simp [Partial.Value.WellFormed]
+  case and x₁ x₂ | or x₁ x₂ =>
+    intro pval
+    have := AndOr.partial_eval_wf x₁ x₂ request entities
+    first | exact this.left pval | exact this.right pval
+  case unaryApp op x₁ => exact Unary.partial_eval_wf
+  case binaryApp op x₁ x₂ =>
+    have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
+    have ih₂ := partial_eval_wf wf_r wf_e (expr := x₂) (request := request) (entities := entities)
+    exact Binary.partial_eval_wf ih₁ ih₂
+  case hasAttr x₁ attr => exact HasAttr.partial_eval_wf
+  case getAttr x₁ attr =>
+    have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
+    exact GetAttr.partial_eval_wf ih₁ wf_e
+  case ite x₁ x₂ x₃ =>
+    have ih₂ := partial_eval_wf wf_r wf_e (expr := x₂) (request := request) (entities := entities)
+    have ih₃ := partial_eval_wf wf_r wf_e (expr := x₃) (request := request) (entities := entities)
+    exact Ite.partial_eval_wf ih₂ ih₃
+  case set xs =>
+    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
+      intro x h₁
+      have := List.sizeOf_lt_of_mem h₁
+      apply partial_eval_wf wf_r wf_e
+    exact Set.partial_eval_wf ih
+  case record attrs =>
+    have ih : ∀ kv ∈ attrs, EvaluatesToWellFormed kv.snd request entities := by
+      intro kv h₁
+      have := List.sizeOf_lt_of_mem h₁
+      apply partial_eval_wf wf_r wf_e
+    exact Record.partial_eval_wf ih
+  case call xfn xs =>
+    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
+      intro x h₁
+      have := List.sizeOf_lt_of_mem h₁
+      apply partial_eval_wf wf_r wf_e
+    exact Call.partial_eval_wf ih
+termination_by expr
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ => -- record
+    conv at this => lhs ; unfold sizeOf Prod._sizeOf_inst Prod._sizeOf_1
+    simp at this
+    omega
+
+/--
   If partial evaluation returns a concrete value, then it returns the same value
   after any substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
-  (wf_r : req.AllWellFormed)
-  (wf_e : entities.AllWellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed) :
   req.subst subsmap = some req' →
   Partial.evaluate expr req entities = .ok (.value v) →
   Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .ok (.value v)
