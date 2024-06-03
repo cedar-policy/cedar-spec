@@ -172,7 +172,7 @@ fn partial_response_correctness(partial: &PartialResponse, concrete: &Response) 
         .may_be_determining()
         .map(|p| p.id().clone())
         .collect::<HashSet<_>>();
-    assert!(over_approx.is_superset(&determining));
+    assert!(over_approx.is_superset(determining));
     // Ensure that `must_be_determining` produces an under approximation of policies in the
     // reasons set
     let under_approx = partial
