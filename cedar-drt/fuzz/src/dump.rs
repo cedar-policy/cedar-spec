@@ -96,7 +96,7 @@ pub fn dump(
         .into_iter()
         .enumerate()
         .map(|(i, (q, a))| JsonRequest {
-            desc: format!("Request {i}"),
+            description: format!("Request {i}"),
             principal: dump_request_var(q.principal()),
             action: dump_request_var(q.action()),
             resource: dump_request_var(q.resource()),
@@ -104,7 +104,7 @@ pub fn dump(
                 q.context()
                     .expect("`dump` does not support requests missing context"),
             ),
-            enable_request_validation: true,
+            validate_request: true,
             decision: a.decision,
             reason: cedar_policy::Response::from(a.clone())
                 .diagnostics()

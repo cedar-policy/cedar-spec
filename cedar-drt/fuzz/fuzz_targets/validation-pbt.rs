@@ -379,7 +379,6 @@ fuzz_target!(|input: FuzzTargetInput| {
                                     // this target to fail.
                                     EvaluationError::EntityDoesNotExist(_)
                                     | EvaluationError::IntegerOverflow(_)
-                                    | EvaluationError::InvalidRestrictedExpression(_)
                                     | EvaluationError::UnlinkedSlot(_)
                                     | EvaluationError::FailedExtensionFunctionExecution(_)
                                     | EvaluationError::NonValue(_)
