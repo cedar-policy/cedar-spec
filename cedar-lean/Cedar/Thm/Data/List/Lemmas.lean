@@ -761,6 +761,26 @@ theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β
   simp only [← mapM'_eq_mapM]
   exact mapM'_some_subset
 
+/--
+  our own variant of map_congr, for mapM'
+-/
+theorem mapM'_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → mapM' f l = mapM' g l
+  | [], _ => rfl
+  | a :: l, h => by
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
+    rw [mapM', mapM', h₁, mapM'_congr h₂]
+
+/--
+  our own variant of map_congr, for mapM
+-/
+theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → mapM f l = mapM g l
+:= by
+  intro l
+  rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
+  exact mapM'_congr
+
 /-! ### foldlM -/
 
 theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)

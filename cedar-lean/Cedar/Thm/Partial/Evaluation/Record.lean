@@ -182,6 +182,93 @@ theorem partial_eval_wf {attrs: List (Attr × Partial.Expr)} {request : Partial.
       subst k' pval'
       simpa [Partial.Value.WellFormed] using ih (k, v) h₅ (.value v') h₇
 
+private theorem mapM_Except_on_snd_preserves_sortedBy_fst [LT α] {abs: List (α × β)} {f : β → Except ε γ} :
+  abs.SortedBy Prod.fst →
+  abs.mapM (λ (a, b) => do let b' ← f b ; .ok (a, b')) = .ok ags →
+  ags.SortedBy Prod.fst
+:= by
+  sorry
+
+private theorem mapM_Option_on_snd_preserves_sortedBy_fst [LT α] {abs : List (α × β)} {f : β → Option γ} :
+  abs.SortedBy Prod.fst →
+  abs.mapM (λ (a, b) => do let b' ← f b ; some (a, b')) = some ags →
+  ags.SortedBy Prod.fst
+:= by
+  sorry
+
+/--
+  Inductive argument that partial evaluation of a `Spec.Value.record` always
+  succeeds and returns the same value
+-/
+theorem eval_spec_value (m : Map Attr Spec.Value) (request : Partial.Request) (entities : Partial.Entities)
+  (wf_m : m.WellFormed)
+  (ih : ∀ v ∈ m.values, Partial.evaluate v.asPartialExpr request entities = .ok (.value v)) :
+  Partial.evaluate (Spec.Value.record m).asPartialExpr request entities = .ok (.value (.record m))
+:= by
+  unfold Partial.evaluate Spec.Value.asPartialExpr
+  simp only
+  rw [List.map_attach₃_snd]
+  rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · request entities)]
+  rw [List.mapM_map]
+  cases h₁ : m.kvs.mapM (λ kv => match match kv with | (k, v) => (k, v.asPartialExpr) with | (k, v) => Partial.bindAttr k (Partial.evaluate v request entities)) <;> simp
+  case error e =>
+    replace ⟨(k, v), h₁, h₂⟩ := List.mapM_error_implies_exists_error h₁
+    specialize ih v (Map.in_list_in_values h₁)
+    simp [ih, Partial.bindAttr] at h₂
+  case ok pvals =>
+    -- m is the input map. pvals is the output list of (attr, pval) pairs.
+    simp [Partial.bindAttr] at h₁
+    have h_sorted : pvals.SortedBy Prod.fst := by
+      apply mapM_Except_on_snd_preserves_sortedBy_fst (Map.wf_iff_sorted.mp wf_m) (f := λ v => Partial.evaluate v.asPartialExpr request entities)
+      unfold Map.toList
+      rw [← h₁]
+    replace ⟨h₁, h₁'⟩ := And.intro (List.mapM_ok_implies_all_ok h₁) (List.mapM_ok_implies_all_from_ok h₁)
+    conv at h₁' => intro pval h ; simp
+    split <;> simp
+    · -- pvals has no residuals
+      rename_i avs h₂
+      -- avs is the output list of (attr, value) pairs
+      have h_sorted' : avs.SortedBy Prod.fst := by
+        apply mapM_Option_on_snd_preserves_sortedBy_fst h_sorted (f := λ v => match v with | .value v => some v | .residual _ => none)
+        rw [← h₂] ; clear h₂
+        apply List.mapM_congr
+        intro (k, v)
+        cases v <;> simp
+      replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
+      apply (Map.eq_iff_kvs_equiv (Map.make_wf avs) wf_m).mp
+      simp [List.Equiv, List.subset_def]
+      constructor <;> intro kv h₃
+      · replace ⟨(k, pval), h₂', h₄⟩ := h₂' kv (Map.make_mem_list_mem h₃)
+        cases pval <;> simp at h₄
+        case value v =>
+          subst kv
+          replace ⟨(k', v'), h₁', h₄⟩ := h₁' (k, .value v) h₂'
+          specialize ih v' (Map.in_list_in_values h₁')
+          simp [ih, Partial.bindAttr] at h₄
+          replace ⟨h₄, h₄'⟩ := h₄
+          subst k' v'
+          exact h₁'
+      · replace ⟨(k, pval), h₁, h₄⟩ := h₁ kv h₃
+        have ⟨k', v⟩ := kv ; clear kv
+        specialize ih v (Map.in_list_in_values h₃)
+        replace ⟨(k'', v'), h₂, h₅⟩ := h₂ (k, pval) h₁
+        cases pval <;> simp at h₅
+        case value v'' =>
+          replace ⟨h₅, h₅'⟩ := h₅
+          subst k'' v''
+          simp [ih, Partial.bindAttr] at h₄
+          replace ⟨h₄, h₄'⟩ := h₄
+          subst k' v'
+          exact Map.mem_list_mem_make h_sorted' h₂
+    · -- pvals has a residual
+      rename_i h₂
+      replace ⟨(k, pval), h₂, h₃⟩ := List.mapM_none_iff_exists_none.mp h₂
+      cases pval <;> simp at h₃
+      case residual r =>
+        replace ⟨(k', v), h₁', h₄⟩ := h₁' (k, .residual r) h₂
+        specialize ih v (Map.in_list_in_values h₁')
+        simp [ih] at h₄
+
 /--
   If partial-evaluating a `Partial.Expr.record` produces `ok` with a concrete
   value, then so would partial-evaluating any of the values it contains

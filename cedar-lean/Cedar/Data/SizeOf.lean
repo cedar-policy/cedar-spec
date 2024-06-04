@@ -16,6 +16,7 @@
 
 import Cedar.Data.Map
 import Cedar.Data.Set
+import Cedar.Spec.Value
 
 /-!
   Lemmas involving `sizeOf`, which are located here rather than in `Cedar/Thm`
@@ -25,6 +26,8 @@ import Cedar.Data.Set
 -/
 
 namespace Cedar.Data.Map
+
+open Cedar.Spec (Attr)
 
 /-! ## Map -/
 
@@ -71,6 +74,12 @@ theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α �
   generalize sizeOf tl = tn
   omega
 
+theorem sizeOf_lt_of_val (m : Map Attr Spec.Value) :
+  sizeOf m < sizeOf (Spec.Value.record m)
+:= by
+  simp_wf
+  omega
+
 end Cedar.Data.Map
 
 namespace Cedar.Data.Set
@@ -93,6 +102,12 @@ theorem sizeOf_lt_of_elts [SizeOf α] {s : Set α} :
 := by
   simp only [elts]
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp
+  omega
+
+theorem sizeOf_lt_of_val (xs : Set Spec.Value) :
+  sizeOf xs < sizeOf (Spec.Value.set xs)
+:= by
+  simp_wf
   omega
 
 end Cedar.Data.Set

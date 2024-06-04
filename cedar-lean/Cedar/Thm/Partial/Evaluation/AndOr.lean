@@ -25,7 +25,7 @@ open Cedar.Data
 open Cedar.Partial (Unknown)
 open Cedar.Spec (Prim Result)
 
-/- ## Lemmas shared by And.lean and Or.lean -/
+/- ## Lemmas shared by `Partial.Expr.and` and `Partial.Expr.or` -/
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.and` or

@@ -129,6 +129,10 @@ theorem kvs_nil_iff_empty {m : Map α β} :
     | mk ((k, v) :: kvs) => trivial
   case mpr => simp [h]
 
+theorem mk_kvs_id (m : Map α β) :
+  mk m.kvs = m
+:= by simp only [kvs]
+
 theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
@@ -183,6 +187,13 @@ theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   rw [← h, WellFormed, make, toList, kvs]
   simp only [List.canonicalize_idempotent]
 
+/--
+  Note that the converse of this is not true:
+  counterexample `xs = [(1, false), (1, true)]`.
+  (The property here would not hold for either `x = (1, false)` or `x = (1, true)`.)
+
+  For a limited converse, see `mem_list_mem_make` below.
+-/
 theorem make_mem_list_mem [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   x ∈ (Map.make xs).kvs → x ∈ xs
 := by
@@ -209,6 +220,20 @@ theorem mem_values_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α ×
   have h₂ := List.canonicalize_subseteq Prod.fst xs
   simp only [List.subset_def] at h₂
   exact h₂ h₁
+
+/--
+  This limited converse of `make_mem_list_mem` requires that the input list is
+  SortedBy Prod.fst.
+-/
+theorem mem_list_mem_make [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  xs.SortedBy Prod.fst →
+  x ∈ xs → x ∈ (Map.make xs).kvs
+:= by
+  simp only [kvs, make]
+  intro h₁ h₂
+  have h₃ := List.sortedBy_implies_canonicalize_eq h₁
+  rw [← h₃] at h₂
+  exact h₂
 
 theorem make_nil_is_empty {α β} [LT α] [DecidableLT α] :
   (Map.make [] : Map α β) = Map.empty

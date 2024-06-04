@@ -14,9 +14,11 @@
  limitations under the License.
 -/
 
+import Cedar.Data.SizeOf
 import Cedar.Partial.Evaluator
 import Cedar.Partial.Expr
 import Cedar.Spec.Evaluator
+import Cedar.Thm.Ext
 import Cedar.Thm.Partial.Evaluation.And
 import Cedar.Thm.Partial.Evaluation.AndOr
 import Cedar.Thm.Partial.Evaluation.Binary
@@ -207,6 +209,76 @@ decreasing_by
     conv at this => lhs ; unfold sizeOf Prod._sizeOf_inst Prod._sizeOf_1
     simp at this
     omega
+
+/--
+  Partial evaluation of a Spec.Value always succeeds and returns the value
+-/
+theorem eval_spec_value (v : Spec.Value) (request : Partial.Request) (entities : Partial.Entities)
+  (wf : v.WellFormed) :
+  Partial.evaluate v.asPartialExpr request entities = .ok (.value v)
+:= by
+  cases v
+  case prim p => simp [Partial.evaluate, Spec.Value.asPartialExpr]
+  case set vs =>
+    unfold Spec.Value.WellFormed at wf
+    apply Set.eval_spec_value vs request entities wf.left wf.right
+    intro v h₁
+    exact eval_spec_value v request entities (wf.right v h₁)
+  case record attrs =>
+    unfold Spec.Value.WellFormed at wf
+    apply Record.eval_spec_value attrs request entities wf.left
+    intro v h₁
+    replace ⟨k, h₁⟩ := Map.in_values_exists_key h₁
+    exact eval_spec_value v request entities (wf.right (k, v) h₁)
+  case ext x =>
+    unfold Partial.evaluate Spec.Value.asPartialExpr
+    cases x <;> simp
+    <;> rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
+    case decimal d =>
+      simp [Partial.evaluate, Partial.evaluateCall]
+      simp [Ext.decimal_toString_inverse d]
+    case ipaddr ip =>
+      simp [Partial.evaluate, Partial.evaluateCall]
+      simp [Ext.ipaddr_toString_inverse ip]
+termination_by v
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ => -- set
+    rename_i h₂ ; subst h₂
+    exact Nat.lt_trans (Set.sizeOf_lt_of_mem h₁) (Set.sizeOf_lt_of_val _)
+  case _ => -- record
+    rename_i h₂ _ ; subst h₂
+    apply Nat.lt_trans (Map.sizeOf_lt_of_value h₁)
+    rw [Map.mk_kvs_id]
+    apply Map.sizeOf_lt_of_val
+
+/--
+  Corollary: partial evaluation of a Prim always succeeds and returns the value
+  (no WF precondition needed from caller)
+-/
+theorem eval_spec_prim (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
+  Partial.evaluate (Spec.Value.prim p).asPartialExpr request entities = .ok (.value (.prim p))
+:= by
+  exact eval_spec_value (.prim p) request entities (by simp [Spec.Value.WellFormed, Prim.WellFormed])
+
+/--
+  Another way to state `eval_spec_value`
+-/
+theorem eval_spec_value' (v : Spec.Value) (request : Partial.Request) (entities : Partial.Entities)
+  (wf : v.WellFormed) :
+  Partial.evaluate (Partial.Value.value v).asPartialExpr request entities = .ok (.value v)
+:= by
+  apply eval_spec_value v request entities wf
+
+/--
+  Corollary: partial evaluation of a Prim always succeeds and returns the value
+  (no WF precondition needed from caller)
+-/
+theorem eval_spec_prim' (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
+  Partial.evaluate (Partial.Value.value (Spec.Value.prim p)).asPartialExpr request entities = .ok (.value (.prim p))
+:= by
+  exact eval_spec_value' (.prim p) request entities (by simp [Spec.Value.WellFormed, Prim.WellFormed])
 
 /--
   If partial evaluation returns a concrete value, then it returns the same value
