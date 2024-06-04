@@ -25,7 +25,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 
 /--
   Prop that partial evaluation and concrete evaluation of the same concrete
@@ -43,7 +43,7 @@ def EvaluatesToConcrete (expr : Partial.Expr) (request : Partial.Request) (entit
 /--
   Prop that .subst preserves evaluation to a concrete value
 -/
-def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Map Unknown Partial.Value) : Prop :=
+def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
   req.subst subsmap = some req' →
   ∀ v,
     Partial.evaluate expr req entities = .ok (.value v) →

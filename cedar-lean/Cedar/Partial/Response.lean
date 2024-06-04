@@ -26,6 +26,7 @@ This file defines Cedar partial responses.
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Partial (Subsmap)
 open Cedar.Spec (Effect Error PolicyID)
 
 /-- The result of partial-evaluating a policy -/
@@ -210,7 +211,7 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
 
   Assumes that `req` and `entities` have already been substituted.
 -/
-def Residual.reEvaluateWithSubst (subsmap : Map String Partial.Value) (req : Partial.Request) (entities : Partial.Entities) : Residual → Option Residual
+def Residual.reEvaluateWithSubst (subsmap : Subsmap) (req : Partial.Request) (entities : Partial.Entities) : Residual → Option Residual
   | .error id e => some (.error id e)
   | .residual id effect cond =>
     match Partial.evaluate (cond.subst subsmap) req entities with
@@ -236,7 +237,7 @@ def Residual.reEvaluateWithSubst (subsmap : Map String Partial.Value) (req : Par
     - the substitution is invalid (e.g., if trying to substitute a
         non-`EntityUID` into `UidOrUnknown`)
 -/
-def Response.reEvaluateWithSubst (subsmap : Map String Partial.Value) : Partial.Response → Option Partial.Response
+def Response.reEvaluateWithSubst (subsmap : Subsmap) : Partial.Response → Option Partial.Response
   | { residuals, req, entities } => do
   let req' ← req.subst subsmap
   let entities' := entities.subst subsmap

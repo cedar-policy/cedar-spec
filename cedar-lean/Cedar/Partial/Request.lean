@@ -78,9 +78,9 @@ open Cedar.Spec (EntityUID)
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-`EntityUID` into `UidOrUnknown`.
 -/
-def UidOrUnknown.subst (subsmap : Map Unknown Partial.Value) : UidOrUnknown → Option UidOrUnknown
+def UidOrUnknown.subst (subsmap : Subsmap) : UidOrUnknown → Option UidOrUnknown
   | .known uid => some (.known uid)
-  | .unknown unk => match subsmap.find? unk with
+  | .unknown unk => match subsmap.m.find? unk with
     | some (.value (.prim (.entityUID uid))) => some (.known uid)
     | some (.residual (.unknown unk')) => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
     | none => some (.unknown unk) -- no substitution available, return `unk` unchanged
@@ -95,7 +95,7 @@ def UidOrUnknown.subst (subsmap : Map Unknown Partial.Value) : UidOrUnknown → 
   Returns `none` if the substitution is invalid -- e.g., if trying to substitute
   a non-`EntityUID` into `UidOrUnknown`.
 -/
-def Request.subst (subsmap : Map Unknown Partial.Value) : Partial.Request → Option Partial.Request
+def Request.subst (subsmap : Subsmap) : Partial.Request → Option Partial.Request
   | { principal, action, resource, context } => do
     let principal ← principal.subst subsmap
     let action ← action.subst subsmap

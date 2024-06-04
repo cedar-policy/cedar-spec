@@ -26,7 +26,7 @@ import Cedar.Thm.Partial.Subst
 namespace Cedar.Thm.Partial.Evaluation.Binary
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (BinaryOp EntityUID intOrErr Prim Result)
 
 /--
@@ -246,7 +246,7 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Partial.Ex
   The return value of `Partial.inₑ` is not affected by substitution of unknowns
   in `entities`
 -/
-theorem partialInₑ_subst_const {uid₁ uid₂ : EntityUID} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} :
+theorem partialInₑ_subst_const {uid₁ uid₂ : EntityUID} {entities : Partial.Entities} {subsmap : Subsmap} :
   Partial.inₑ uid₁ uid₂ entities = Partial.inₑ uid₁ uid₂ (entities.subst subsmap)
 := by
   unfold Partial.inₑ
@@ -258,7 +258,7 @@ theorem partialInₑ_subst_const {uid₁ uid₂ : EntityUID} {entities : Partial
   The return value of `Partial.inₛ` is not affected by substitution of unknowns
   in `entities`
 -/
-theorem partialInₛ_subst_const {uid₁ : EntityUID} {s₂ : Set Spec.Value} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} :
+theorem partialInₛ_subst_const {uid₁ : EntityUID} {s₂ : Set Spec.Value} {entities : Partial.Entities} {subsmap : Subsmap} :
   Partial.inₛ uid₁ s₂ entities = Partial.inₛ uid₁ s₂ (entities.subst subsmap)
 := by
   unfold Partial.inₛ
@@ -270,7 +270,7 @@ theorem partialInₛ_subst_const {uid₁ : EntityUID} {s₂ : Set Spec.Value} {e
   If `Partial.apply₂` returns a concrete value, then it returns the same value
   after any substitution of unknowns in `entities`
 -/
-theorem partialApply₂_subst_preserves_evaluation_to_value {v₁ v₂ : Spec.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} :
+theorem partialApply₂_subst_preserves_evaluation_to_value {v₁ v₂ : Spec.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Subsmap} :
   Partial.apply₂ op v₁ v₂ entities = .ok (.value v) →
   Partial.apply₂ op v₁ v₂ (entities.subst subsmap) = .ok (.value v)
 := by
@@ -303,7 +303,7 @@ theorem partialApply₂_subst_preserves_evaluation_to_value {v₁ v₂ : Spec.Va
   If `Partial.evaluateBinaryApp` returns a concrete value, then it returns
   the same value after any substitution of unknowns in `entities`
 -/
-theorem evaluateBinaryApp_subst_preserves_evaluation_to_value {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} :
+theorem evaluateBinaryApp_subst_preserves_evaluation_to_value {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Subsmap} :
   Partial.evaluateBinaryApp op pval₁ pval₂ entities = .ok (.value v) →
   Partial.evaluateBinaryApp op pval₁ pval₂ (entities.subst subsmap) = .ok (.value v)
 := by
@@ -316,7 +316,7 @@ theorem evaluateBinaryApp_subst_preserves_evaluation_to_value {pval₁ pval₂ :
   returns a concrete value, then it returns the same value after any
   substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {op : BinaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {op : BinaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap)
   (ih₂ : SubstPreservesEvaluationToConcrete x₂ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.binaryApp op x₁ x₂) req req' entities subsmap
