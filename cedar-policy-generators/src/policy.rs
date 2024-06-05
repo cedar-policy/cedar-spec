@@ -27,6 +27,7 @@ use cedar_policy_core::{ast, est};
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::fmt::Display;
+use std::sync::Arc;
 
 /// Data structure representing a generated policy (or template)
 #[derive(Debug, Clone, Serialize)]
@@ -232,18 +233,22 @@ impl From<PrincipalOrResourceConstraint> for ast::PrincipalConstraint {
     fn from(val: PrincipalOrResourceConstraint) -> Self {
         match val {
             PrincipalOrResourceConstraint::NoConstraint => ast::PrincipalConstraint::any(),
-            PrincipalOrResourceConstraint::Eq(euid) => ast::PrincipalConstraint::is_eq(euid),
+            PrincipalOrResourceConstraint::Eq(euid) => {
+                ast::PrincipalConstraint::is_eq(Arc::new(euid))
+            }
             PrincipalOrResourceConstraint::EqSlot => ast::PrincipalConstraint::is_eq_slot(),
-            PrincipalOrResourceConstraint::In(euid) => ast::PrincipalConstraint::is_in(euid),
+            PrincipalOrResourceConstraint::In(euid) => {
+                ast::PrincipalConstraint::is_in(Arc::new(euid))
+            }
             PrincipalOrResourceConstraint::InSlot => ast::PrincipalConstraint::is_in_slot(),
             PrincipalOrResourceConstraint::IsType(ty) => {
-                ast::PrincipalConstraint::is_entity_type(ty)
+                ast::PrincipalConstraint::is_entity_type(Arc::new(ty))
             }
             PrincipalOrResourceConstraint::IsTypeIn(ty, euid) => {
-                ast::PrincipalConstraint::is_entity_type_in(ty, euid)
+                ast::PrincipalConstraint::is_entity_type_in(Arc::new(ty), Arc::new(euid))
             }
             PrincipalOrResourceConstraint::IsTypeInSlot(ty) => {
-                ast::PrincipalConstraint::is_entity_type_in_slot(ty)
+                ast::PrincipalConstraint::is_entity_type_in_slot(Arc::new(ty))
             }
         }
     }
@@ -253,18 +258,22 @@ impl From<PrincipalOrResourceConstraint> for ast::ResourceConstraint {
     fn from(val: PrincipalOrResourceConstraint) -> Self {
         match val {
             PrincipalOrResourceConstraint::NoConstraint => ast::ResourceConstraint::any(),
-            PrincipalOrResourceConstraint::Eq(euid) => ast::ResourceConstraint::is_eq(euid),
+            PrincipalOrResourceConstraint::Eq(euid) => {
+                ast::ResourceConstraint::is_eq(Arc::new(euid))
+            }
             PrincipalOrResourceConstraint::EqSlot => ast::ResourceConstraint::is_eq_slot(),
-            PrincipalOrResourceConstraint::In(euid) => ast::ResourceConstraint::is_in(euid),
+            PrincipalOrResourceConstraint::In(euid) => {
+                ast::ResourceConstraint::is_in(Arc::new(euid))
+            }
             PrincipalOrResourceConstraint::InSlot => ast::ResourceConstraint::is_in_slot(),
             PrincipalOrResourceConstraint::IsType(ty) => {
-                ast::ResourceConstraint::is_entity_type(ty)
+                ast::ResourceConstraint::is_entity_type(Arc::new(ty))
             }
             PrincipalOrResourceConstraint::IsTypeIn(ty, euid) => {
-                ast::ResourceConstraint::is_entity_type_in(ty, euid)
+                ast::ResourceConstraint::is_entity_type_in(Arc::new(ty), Arc::new(euid))
             }
             PrincipalOrResourceConstraint::IsTypeInSlot(ty) => {
-                ast::ResourceConstraint::is_entity_type_in_slot(ty)
+                ast::ResourceConstraint::is_entity_type_in_slot(Arc::new(ty))
             }
         }
     }
