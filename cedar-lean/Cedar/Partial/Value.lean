@@ -39,10 +39,11 @@ instance : Coe Spec.Value Partial.Value where
   coe := Partial.Value.value
 
 /--
-  Defines a mapping from unknowns to values, for use in a substitution.
+  Defines a mapping from unknowns to the `Partial.Expr`s to replace them with
+  during a substitution.
 -/
 structure Subsmap where
-  m : Map Unknown Partial.Value
+  m : Map Unknown Partial.Expr
 
 /--
   Given a map of unknown-name to value, substitute all unknowns with the
@@ -66,7 +67,7 @@ def Expr.subst (subsmap : Subsmap) : Partial.Expr → Partial.Expr
   | .record pairs => .record (pairs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.subst subsmap))
   | .call xfn xs => .call xfn (xs.map₁ λ ⟨x, _⟩ => x.subst subsmap)
   | .unknown u => match subsmap.m.find? u with
-    | some val => val.asPartialExpr
+    | some x => x
     | none => .unknown u -- no substitution available
 
 /--
