@@ -26,7 +26,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Evaluation.Call
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Error Ext ExtFun Prim Result)
 
 /--
@@ -165,7 +165,7 @@ theorem evals_to_concrete_then_args_eval_to_concrete {xs : List Partial.Expr} {r
   a concrete value, then it returns the same value after any substitution of
   unknowns
 -/
-theorem subst_preserves_evaluation_to_value {args : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value} {xfn : ExtFun}
+theorem subst_preserves_evaluation_to_value {args : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap} {xfn : ExtFun}
   (ih : ∀ arg ∈ args, SubstPreservesEvaluationToConcrete arg req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.call xfn args) req req' entities subsmap
 := by

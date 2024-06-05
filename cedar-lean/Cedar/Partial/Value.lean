@@ -18,7 +18,7 @@ import Cedar.Partial.Expr
 import Cedar.Spec.Value
 
 /-!
-This file defines Cedar partial values.
+  This file defines Cedar partial values and substitutions.
 -/
 
 namespace Cedar.Partial
@@ -39,6 +39,12 @@ instance : Coe Spec.Value Partial.Value where
   coe := Partial.Value.value
 
 /--
+  Defines a mapping from unknowns to values, for use in a substitution.
+-/
+structure Subsmap where
+  m : Map Unknown Partial.Value
+
+/--
   Given a map of unknown-name to value, substitute all unknowns with the
   corresponding values, producing a new `Partial.Expr`.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
@@ -46,7 +52,7 @@ instance : Coe Spec.Value Partial.Value where
 -/
 -- NB: this function can't live in Partial/Expr.lean because it needs Partial.Value, and
 -- Partial/Expr.lean can't import Partial/Value.lean, cyclic dependency
-def Expr.subst (subsmap : Map Unknown Partial.Value) : Partial.Expr → Partial.Expr
+def Expr.subst (subsmap : Subsmap) : Partial.Expr → Partial.Expr
   | .lit p => .lit p -- no unknowns, nothing to substitute
   | .var v => .var v -- no unknowns, nothing to substitute
   | .ite x₁ x₂ x₃ => .ite (x₁.subst subsmap) (x₂.subst subsmap) (x₃.subst subsmap)
@@ -59,7 +65,7 @@ def Expr.subst (subsmap : Map Unknown Partial.Value) : Partial.Expr → Partial.
   | .set xs => .set (xs.map₁ λ ⟨x, _⟩ => x.subst subsmap)
   | .record pairs => .record (pairs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.subst subsmap))
   | .call xfn xs => .call xfn (xs.map₁ λ ⟨x, _⟩ => x.subst subsmap)
-  | .unknown u => match subsmap.find? u with
+  | .unknown u => match subsmap.m.find? u with
     | some val => val.asPartialExpr
     | none => .unknown u -- no substitution available
 
@@ -69,7 +75,7 @@ def Expr.subst (subsmap : Map Unknown Partial.Value) : Partial.Expr → Partial.
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.Value` will still contain some unknowns.
 -/
-def Value.subst (subsmap : Map Unknown Partial.Value) : Partial.Value → Partial.Value
+def Value.subst (subsmap : Subsmap) : Partial.Value → Partial.Value
   | .residual r => .residual (r.subst subsmap)
   | .value v    => .value v -- doesn't contain unknowns, nothing to substitute
 

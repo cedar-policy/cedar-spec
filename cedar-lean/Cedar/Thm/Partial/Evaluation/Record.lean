@@ -24,7 +24,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Evaluation.Record
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr Error Result)
 
 /--
@@ -220,7 +220,7 @@ theorem evals_to_concrete_then_vals_eval_to_concrete {attrs : List (Attr × Part
   list of concrete vals, then it produces the same list of concrete vals after
   any substitution of unknowns
 -/
-theorem mapM_subst_snd_preserves_evaluation_to_values {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem mapM_subst_snd_preserves_evaluation_to_values {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih : ∀ kv ∈ attrs, SubstPreservesEvaluationToConcrete kv.snd req req' entities subsmap) :
   req.subst subsmap = some req' →
   ∀ (pvals : List (Attr × Partial.Value)),
@@ -309,7 +309,7 @@ private theorem mapM_pairs_snd {pvals : List (Attr × Partial.Value)} {pairs : L
   returns a concrete value, then it returns the same value after any
   substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih : ∀ kv ∈ attrs, SubstPreservesEvaluationToConcrete kv.snd req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.record attrs) req req' entities subsmap
 := by

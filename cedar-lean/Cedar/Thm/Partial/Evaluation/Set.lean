@@ -26,7 +26,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Evaluation.Set
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Result)
 
 /--
@@ -146,7 +146,7 @@ theorem evals_to_concrete_then_elts_eval_to_concrete {xs : List Partial.Expr} {r
   with a list of concrete vals, then it produces the same list of concrete vals
   after any substitution of unknowns
 -/
-theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih : ∀ x ∈ xs, SubstPreservesEvaluationToConcrete x req req' entities subsmap) :
   req.subst subsmap = some req' →
   ∀ (pvals : List Partial.Value),
@@ -204,7 +204,7 @@ theorem mapM_subst_preserves_evaluation_to_values {xs : List Partial.Expr} {req 
   a concrete value, then it returns the same value after any substitution of
   unknowns
 -/
-theorem subst_preserves_evaluation_to_value {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih : ∀ x ∈ xs, SubstPreservesEvaluationToConcrete x req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.set xs) req req' entities subsmap
 := by

@@ -22,7 +22,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Evaluation.AndOr
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Prim Result)
 
 /- ## Lemmas shared by And.lean and Or.lean -/
@@ -104,7 +104,7 @@ theorem partial_eval_wf (x₁ x₂ : Partial.Expr) (request : Partial.Request) (
   `Partial.Expr.or` returns a concrete value, then it returns the same value
   after any substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap)
   (ih₂ : SubstPreservesEvaluationToConcrete x₂ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.and x₁ x₂) req req' entities subsmap ∧
