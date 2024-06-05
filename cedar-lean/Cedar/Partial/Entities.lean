@@ -100,7 +100,7 @@ open Cedar.Data
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.EntityData` will still contain some unknowns.
 -/
-def EntityData.subst (subsmap : Map Unknown Partial.Value) : Partial.EntityData → Partial.EntityData
+def EntityData.subst (subsmap : Subsmap) : Partial.EntityData → Partial.EntityData
   | { attrs, ancestors } => {
       attrs := attrs.mapOnValues (Partial.Value.subst subsmap),
       ancestors,
@@ -112,7 +112,7 @@ def EntityData.subst (subsmap : Map Unknown Partial.Value) : Partial.EntityData 
   It's fine for some unknowns to not be in `subsmap`, in which case the returned
   `Partial.Entities` will still contain some unknowns.
 -/
-def Entities.subst (subsmap : Map Unknown Partial.Value) : Partial.Entities → Partial.Entities
+def Entities.subst (subsmap : Subsmap) : Partial.Entities → Partial.Entities
   | { es } => {
       es := es.mapOnValues (Partial.EntityData.subst subsmap)
   }

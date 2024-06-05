@@ -40,7 +40,7 @@ import Cedar.Thm.Data.Control
 namespace Cedar.Thm.Partial.Evaluation
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Error Prim Result)
 
 /--
@@ -284,7 +284,7 @@ theorem eval_spec_prim' (p : Prim) (request : Partial.Request) (entities : Parti
   If partial evaluation returns a concrete value, then it returns the same value
   after any substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Subsmap}
   (wf_r : req.WellFormed)
   (wf_e : entities.WellFormed) :
   req.subst subsmap = some req' →

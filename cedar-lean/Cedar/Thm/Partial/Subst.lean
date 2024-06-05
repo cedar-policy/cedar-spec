@@ -29,13 +29,13 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Subst
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr EntityUID)
 
 /--
   subst on a concrete expression is that expression
 -/
-theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Map Unknown Partial.Value) :
+theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Subsmap) :
   expr.asPartialExpr.subst subsmap = expr.asPartialExpr
 := by
   unfold Partial.Expr.subst Spec.Expr.asPartialExpr
@@ -74,7 +74,7 @@ termination_by expr
 /--
   Partial.Value.subst on a concrete value is that value
 -/
-theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial.Value) :
+theorem subst_concrete_value (value : Spec.Value) (subsmap : Subsmap) :
   (Partial.Value.value value).subst subsmap = value
 := by
   unfold Partial.Value.subst
@@ -85,7 +85,7 @@ theorem subst_concrete_value (value : Spec.Value) (subsmap : Map Unknown Partial
 /--
   Partial.Expr.subst on a concrete value is that value
 -/
-theorem subst_concrete_value' (value : Spec.Value) (subsmap : Map Unknown Partial.Value) :
+theorem subst_concrete_value' (value : Spec.Value) (subsmap : Subsmap) :
   value.asPartialExpr.subst subsmap = value.asPartialExpr
 := by
   unfold Partial.Expr.subst Spec.Value.asPartialExpr
@@ -128,7 +128,7 @@ decreasing_by
 /--
   Partial.Value.subst preserves well-formedness
 -/
-theorem val_subst_preserves_wf {v : Partial.Value} {subsmap : Map Unknown Partial.Value} :
+theorem val_subst_preserves_wf {v : Partial.Value} {subsmap : Subsmap} :
   v.WellFormed → (v.subst subsmap).WellFormed
 := by
   cases v <;> simp [Partial.Value.WellFormed, Partial.Value.subst]
@@ -136,7 +136,7 @@ theorem val_subst_preserves_wf {v : Partial.Value} {subsmap : Map Unknown Partia
 /--
   Partial.Request.subst preserves well-formedness
 -/
-theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Subsmap} :
   req.WellFormed →
   req.subst subsmap = some req' →
   req'.WellFormed
@@ -157,7 +157,7 @@ theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Map Unkno
 /--
   Partial.Request.subst preserves a known principal UID
 -/
-theorem req_subst_preserves_known_principal {req req' : Partial.Request} {uid : EntityUID} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_known_principal {req req' : Partial.Request} {uid : EntityUID} {subsmap : Subsmap} :
   req.principal = .known uid →
   req.subst subsmap = some req' →
   req'.principal = .known uid
@@ -173,7 +173,7 @@ theorem req_subst_preserves_known_principal {req req' : Partial.Request} {uid : 
 /--
   Partial.Request.subst preserves a known action UID
 -/
-theorem req_subst_preserves_known_action {req req' : Partial.Request} {uid : EntityUID} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_known_action {req req' : Partial.Request} {uid : EntityUID} {subsmap : Subsmap} :
   req.action = .known uid →
   req.subst subsmap = some req' →
   req'.action = .known uid
@@ -189,7 +189,7 @@ theorem req_subst_preserves_known_action {req req' : Partial.Request} {uid : Ent
 /--
   Partial.Request.subst preserves a known resource UID
 -/
-theorem req_subst_preserves_known_resource {req req' : Partial.Request} {uid : EntityUID} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_known_resource {req req' : Partial.Request} {uid : EntityUID} {subsmap : Subsmap} :
   req.resource = .known uid →
   req.subst subsmap = some req' →
   req'.resource = .known uid
@@ -205,7 +205,7 @@ theorem req_subst_preserves_known_resource {req req' : Partial.Request} {uid : E
 /--
   Partial.Request.subst preserves the keyset of `context`
 -/
-theorem req_subst_preserves_keys_of_context {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_keys_of_context {req req' : Partial.Request} {subsmap : Subsmap} :
   req.subst subsmap = some req' →
   req.context.keys = req'.context.keys
 := by
@@ -219,7 +219,7 @@ theorem req_subst_preserves_keys_of_context {req req' : Partial.Request} {subsma
 /--
   Partial.Request.subst preserves concrete values in the `context`
 -/
-theorem req_subst_preserves_concrete_context_vals {req req' : Partial.Request} {k : Attr} {subsmap : Map Unknown Partial.Value} :
+theorem req_subst_preserves_concrete_context_vals {req req' : Partial.Request} {k : Attr} {subsmap : Subsmap} :
   (k, .value v) ∈ req.context.kvs →
   req.subst subsmap = some req' →
   (k, .value v) ∈ req'.context.kvs
@@ -235,7 +235,7 @@ theorem req_subst_preserves_concrete_context_vals {req req' : Partial.Request} {
 /--
   Partial.EntityData.subst preserves well-formedness
 -/
-theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Map Unknown Partial.Value) :
+theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Subsmap) :
   ed.WellFormed → (ed.subst subsmap).WellFormed
 := by
   unfold Partial.EntityData.WellFormed Partial.EntityData.subst
@@ -252,7 +252,7 @@ theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Map U
 /--
   Partial.Entities.subst preserves well-formedness
 -/
-theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Map Unknown Partial.Value) :
+theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Subsmap) :
   entities.WellFormed → (entities.subst subsmap).WellFormed
 := by
   unfold Partial.Entities.WellFormed Partial.Entities.subst
@@ -268,7 +268,7 @@ theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Map
 /--
   Partial.EntityData.subst preserves .ancestors
 -/
-theorem entitydata_subst_preserves_ancestors (ed : Partial.EntityData) (subsmap : Map Unknown Partial.Value) :
+theorem entitydata_subst_preserves_ancestors (ed : Partial.EntityData) (subsmap : Subsmap) :
   ed.ancestors = (ed.subst subsmap).ancestors
 := by
   simp [Partial.EntityData.subst]
@@ -276,7 +276,7 @@ theorem entitydata_subst_preserves_ancestors (ed : Partial.EntityData) (subsmap 
 /--
   Partial.EntityData.subst preserves .contains on .attrs
 -/
-theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (attr : Attr) (subsmap : Map Unknown Partial.Value)
+theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (attr : Attr) (subsmap : Subsmap)
   (wf : ed.WellFormed) :
   ed.attrs.contains attr = (ed.subst subsmap).attrs.contains attr
 := by
@@ -308,7 +308,7 @@ theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (
 /--
   Partial.EntityData.subst preserves concrete attribute values
 -/
-theorem entitydata_subst_preserves_concrete_attrs {ed : Partial.EntityData} (subsmap : Map Unknown Partial.Value) :
+theorem entitydata_subst_preserves_concrete_attrs {ed : Partial.EntityData} (subsmap : Subsmap) :
   (k, .value v) ∈ ed.attrs.kvs → (k, .value v) ∈ (ed.subst subsmap).attrs.kvs
 := by
   unfold Partial.EntityData.subst
@@ -319,7 +319,7 @@ theorem entitydata_subst_preserves_concrete_attrs {ed : Partial.EntityData} (sub
 /--
   Partial.Entities.subst preserves .ancestorsOrEmpty
 -/
-theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) (uid : EntityUID) (subsmap : Map Unknown Partial.Value) :
+theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) (uid : EntityUID) (subsmap : Subsmap) :
   entities.ancestorsOrEmpty uid = (entities.subst subsmap).ancestorsOrEmpty uid
 := by
   unfold Partial.Entities.subst Partial.Entities.ancestorsOrEmpty
@@ -332,7 +332,7 @@ theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) 
 /--
   Partial.Entities.subst preserves concrete attribute values
 -/
-theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Map Unknown Partial.Value) :
+theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
   entities.attrs uid = .ok attrs →
   (k, .value v) ∈ attrs.kvs →
   ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ (k, .value v) ∈ attrs'.kvs
@@ -352,7 +352,7 @@ theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {u
 /--
   Partial.Entities.subst preserves `Map.contains` for the attrs maps
 -/
-theorem entities_subst_preserves_contains_on_attrsOrEmpty (entities : Partial.Entities) (uid : EntityUID) (attr : Attr) (subsmap : Map Unknown Partial.Value)
+theorem entities_subst_preserves_contains_on_attrsOrEmpty (entities : Partial.Entities) (uid : EntityUID) (attr : Attr) (subsmap : Subsmap)
   (wf : entities.WellFormed) :
   (entities.attrsOrEmpty uid).contains attr = ((entities.subst subsmap).attrsOrEmpty uid).contains attr
 := by

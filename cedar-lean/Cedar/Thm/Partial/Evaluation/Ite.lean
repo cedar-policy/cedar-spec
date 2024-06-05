@@ -23,7 +23,7 @@ import Cedar.Thm.Partial.Evaluation.WellFormed
 namespace Cedar.Thm.Partial.Evaluation.Ite
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Result)
 
 /--
@@ -120,7 +120,7 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Parti
   a concrete value, then it returns the same value after any substitution of
   unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap)
   (ih₂₃ :
     (Partial.evaluate x₁ req entities = .ok (.value (.prim (.bool true))) ∧ SubstPreservesEvaluationToConcrete x₂ req req' entities subsmap) ∨

@@ -27,7 +27,7 @@ import Cedar.Thm.Partial.Subst
 namespace Cedar.Thm.Partial.Evaluation.GetAttr
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr EntityUID Error Result)
 
 /--
@@ -224,7 +224,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   If `Partial.getAttr` returns a concrete value, then it returns the same value
   after any substitution of unknowns in `entities`
 -/
-theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed) :
   Partial.getAttr v₁ attr entities = .ok (.value v) →
   Partial.getAttr v₁ attr (entities.subst subsmap) = .ok (.value v)
@@ -255,7 +255,7 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
   If `Partial.evaluateGetAttr` returns a concrete value, then it returns the
   same value after any substitution of unknowns in `entities`
 -/
-theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed) :
   Partial.evaluateGetAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateGetAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
@@ -269,7 +269,7 @@ theorem evaluateGetAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   returns a concrete value, then it returns the same value after any
   substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed)
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.getAttr x₁ attr) req req' entities subsmap

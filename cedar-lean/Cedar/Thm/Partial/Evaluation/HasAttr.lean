@@ -26,7 +26,7 @@ import Cedar.Thm.Partial.Subst
 namespace Cedar.Thm.Partial.Evaluation.HasAttr
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr Error Prim Result)
 
 /--
@@ -176,7 +176,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   The return value of `Partial.hasAttr` is not affected by substitution of
   unknowns in `entities`
 -/
-theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed) :
   Partial.hasAttr v₁ attr entities = Partial.hasAttr v₁ attr (entities.subst subsmap)
 := by
@@ -192,7 +192,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
   If `Partial.evaluateHasAttr` returns a concrete value, then it returns the
   same value after any substitution of unknowns in `entities`
 -/
-theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed) :
   Partial.evaluateHasAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
@@ -206,7 +206,7 @@ theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   returns a concrete value, then it returns the same value after any
   substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed)
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap

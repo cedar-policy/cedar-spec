@@ -26,7 +26,7 @@ import Cedar.Thm.Partial.Subst
 namespace Cedar.Thm.Partial.Evaluation.Var
 
 open Cedar.Data
-open Cedar.Partial (Unknown)
+open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Prim Var)
 
 /--
@@ -133,7 +133,7 @@ theorem partial_eval_wf {v : Var} {request : Partial.Request} {entities : Partia
   Lemma: If `context` has only concrete values before substitution, then it has
   only concrete values after substitution
 -/
-theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Subsmap}
   (wf : req.WellFormed) :
   req.subst subsmap = some req' →
   req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
@@ -171,7 +171,7 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Map
   If evaluating a request context returns a concrete value, then it returns the
   same value after any substitution of unknowns
 -/
-theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Request} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Request} {subsmap : Subsmap}
   (wf : req.WellFormed) :
   req.subst subsmap = some req' →
   req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
@@ -199,7 +199,7 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
   If `Partial.evaluateVar` returns a concrete value, then it returns the same
   value after any substitution of unknowns
 -/
-theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Request} {v : Spec.Value} {subsmap : Map Unknown Partial.Value}
+theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Request} {v : Spec.Value} {subsmap : Subsmap}
   (wf : req.WellFormed) :
   req.subst subsmap = some req' →
   Partial.evaluateVar var req = .ok (.value v) →
@@ -247,7 +247,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
   If partial-evaluation of a `Var` returns a concrete value, then it returns the
   same value after any substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value (var : Var) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Map Unknown Partial.Value)
+theorem subst_preserves_evaluation_to_value (var : Var) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap)
   (wf : req.WellFormed) :
   SubstPreservesEvaluationToConcrete (Partial.Expr.var var) req req' entities subsmap
 := by
