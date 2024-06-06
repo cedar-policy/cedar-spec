@@ -15,9 +15,9 @@
 -/
 
 import Init.Classical
-import Std.Tactic.Init
-import Std.Data.String
-import Std.Data.UInt
+import Batteries.Tactic.Init
+import Batteries.Data.String
+import Batteries.Data.UInt
 
 /-!
 This file contains utilities for working with strict and decidable LT relations.
@@ -216,9 +216,6 @@ instance Int.strictLT : StrictLT Int where
 
 theorem UInt32.lt_iff {x y : UInt32} : x < y ↔ x.1.1 < y.1.1 := by
   cases x; cases y; simp only [LT.lt]
-
-theorem UInt32.ext_iff {x y : UInt32} : x = y ↔ x.1.1 = y.1.1 :=
-  ⟨by simp_all, UInt32.ext⟩
 
 instance UInt32.strictLT : StrictLT UInt32 where
   asymmetric a b   := by apply Nat.strictLT.asymmetric

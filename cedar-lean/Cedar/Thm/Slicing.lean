@@ -74,18 +74,15 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
     specialize h₁ policy
     intro h₂ h₃
     rw [List.mem_filter] at h₃
-    simp [h₂] at h₃
+    simp only [h₂, true_and, Bool.not_eq_true] at h₃
     by_contra h₄
-    simp at h₄
+    simp only [Bool.not_eq_true, not_and, Bool.not_eq_false] at h₄
     unfold IsSoundPolicyBound at h₁
     specialize h₁ request entities
     have ⟨h₅, h₆⟩ := h₁; clear h₁
-    simp [h₃] at h₅ h₆
-    cases h : (satisfied policy request entities)
-    case false =>
-      simp [h] at h₄
-      simp [h₄] at h₆
-    case true => exact h₅ h
+    simp only [h₃, Bool.false_eq_true, imp_false, Bool.not_eq_true] at h₅ h₆
+    specialize h₄ h₅
+    simp only [h₄, Bool.true_eq_false] at h₆
 
 /--
 Scope-based bound analysis extracts the bound from the policy scope.

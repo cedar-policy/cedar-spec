@@ -79,23 +79,24 @@ theorem type_of_set_tail
     have _ := List.not_mem_nil x
     contradiction
   case cons xhd' xtl' =>
-    simp [typeOf]
+    simp only [typeOf]
     cases tl
     case nil =>
-      simp [List.mapM₁, List.attach] at h₁
-      simp [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
+      simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+        bind_assoc, pure_bind] at h₁
+      simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
       cases h₄ : justType (typeOf xhd c env) <;> simp [h₄] at h₁
       cases h₅ : justType (typeOf xhd' c env) <;> simp [h₅] at h₁
       cases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl' <;> simp [h₆] at h₁
       simp [pure, Except.pure] at h₁
     case cons hd' tl' =>
-      simp [List.mapM₁] at h₁ ; unfold List.attach at h₁
+      simp only [List.mapM₁, List.attach_def] at h₁
       rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
       have h₁ := List.mapM_head_tail h₁
       rw [←List.mapM₁_eq_mapM] at h₁
-      simp [h₁, typeOfSet]
+      simp only [h₁, typeOfSet, List.empty_eq, Except.bind_ok]
       cases h₄ : List.foldlM lub? hd' tl' <;>
-      simp [h₄, err, ok]
+      simp only [err, ok, false_and, exists_const, Except.ok.injEq, Prod.mk.injEq, CedarType.set.injEq, and_true, exists_eq_left']
       case none =>
         have h₅ := foldlM_of_lub_assoc hd hd' tl'
         rw [h₂, h₄] at h₅
@@ -103,9 +104,10 @@ theorem type_of_set_tail
       case some ty' =>
         have h₅ := foldlM_of_lub_assoc hd hd' tl'
         rw [h₂, h₄] at h₅
-        simp at h₅ ; rw [eq_comm, lub_comm] at h₅
+        simp only [Option.bind_some_fun] at h₅
+        rw [eq_comm, lub_comm] at h₅
         have h₆ := lub_left_subty h₅
-        simp [subty] at h₆
+        simp only [subty] at h₆
         split at h₆ <;> simp at h₆
         subst h₆
         assumption
@@ -134,15 +136,15 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   intro x h₄
   cases h₄
   case head xtl =>
-    simp [List.mapM₁, List.attach] at h₂
+    simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons] at h₂
     rcases h₅ : justType (typeOf x c env) <;>
-    simp [h₅] at h₂
-    simp [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₂
+    simp only [h₅, Except.bind_err] at h₂
+    simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), Except.bind_ok] at h₂
     rcases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl <;>
-    simp [h₆, pure, Except.pure] at h₂
+    simp only [h₆, pure, Except.pure, Except.bind_err, Except.bind_ok, Except.ok.injEq, List.cons.injEq] at h₂
     have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
-    simp [justType, Except.map] at h₅
+    simp only [justType, Except.map] at h₅
     split at h₅ <;> simp at h₅
     rename_i res h₇
     exists hdty
@@ -153,7 +155,8 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
     have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
-    simp [h₅] at h₇
+    simp only [h₅, List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and,
+      true_implies] at h₇
     specialize h₇ x h₄
     have ⟨tyᵢ, h₇, h₈⟩ := h₇
     exists tyᵢ
@@ -272,11 +275,12 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   have ⟨h₆, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ h₄
   apply And.intro empty_guarded_capabilities_invariant
-  simp [EvaluatesTo, evaluate, List.mapM₁, List.attach, List.mapM_pmap_subtype (evaluate · request entities)]
+  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def,
+    List.mapM_pmap_subtype (evaluate · request entities)]
   cases h₆ : xs.mapM fun x => evaluate x request entities <;>
   simp [h₆]
   case error err =>
-    simp [type_is_inhabited]
+    simp only [type_is_inhabited, and_true]
     exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆
   case ok vs =>
     apply InstanceOfType.instance_of_set

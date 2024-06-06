@@ -193,20 +193,21 @@ instance Name.strictLT : StrictLT Name where
 theorem EntityUID.lt_asymm {a b : EntityUID} :
   a < b → ¬ b < a
 := by
-  simp [LT.lt, EntityUID.lt]
+  simp only [LT.lt] -- keep this separate so as not to over-simplify
+  simp only [EntityUID.lt, decide_eq_true_eq, not_or, Bool.not_eq_true, not_and]
   intro h₁
   by_contra h₂
+  simp only [not_and, not_imp, Classical.not_not] at h₂
   have h₃ := Name.strictLT.asymmetric a.ty b.ty
-  simp [LT.lt] at h₃
-  rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  · simp only [h₁, h₂, forall_const] at h₃
-  · have ⟨h₂, _⟩ := h₂
-    rw [h₂] at h₁ h₃
-    simp [h₁] at h₃
-  · have h₄ := StrictLT.not_eq b.ty a.ty h₂
-    simp [h₁] at h₄
-  · have h₄ := String.strictLT.asymmetric a.eid b.eid
-    simp [LT.lt, h₁, h₂] at h₄
+  simp only [Bool.not_eq_true] at h₃
+  rcases h₁ with h₁ | h₁
+  · simp only [h₁, true_implies] at h₃
+    simp only [h₃, not_false_eq_true, true_implies] at h₂
+    rw [h₂.left] at h₁ h₃
+    simp only [h₁, not_true_eq_false] at h₃
+  · simp only [h₁.left, StrictLT.irreflexive b.ty, not_false_eq_true, true_and, true_implies] at h₂
+    have _ := String.strictLT.asymmetric a.eid b.eid h₁.right
+    contradiction
 
 theorem EntityUID.lt_trans {a b c : EntityUID} :
   a < b → b < c → a < c
@@ -310,28 +311,23 @@ theorem Value.lt_irrefl (v : Value) :
 theorem Values.lt_irrefl (vs : List Value) :
   ¬ Values.lt vs vs
 := by
-  cases vs ; simp [Values.lt] ; rename_i hd tl ; simp [Values.lt]
-  by_contra h₁
-  rcases h₁ with h₁ | h₁
-  · have h₂ := Value.lt_irrefl hd
-    simp [h₁] at h₂
-  · have h₂ := Values.lt_irrefl tl
-    simp [h₁] at h₂
+  cases vs <;>
+  simp only [Values.lt, decide_True, Bool.false_eq_true, not_false_eq_true,
+    Bool.true_and, Bool.or_eq_true, not_or, Bool.not_eq_true]
+  rename_i hd tl
+  simp only [Value.lt_irrefl hd, Values.lt_irrefl tl, and_self]
 
 theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   ¬ ValueAttrs.lt vs vs
 := by
-  cases vs ; simp [ValueAttrs.lt] ; rename_i hd tl
-  cases hd ; rename_i a v ; simp [ValueAttrs.lt]
-  by_contra h₁
-  rcases h₁ with h₁ | h₁
-  · rcases h₁ with h₁ | h₁
-    · have h₂ := StrictLT.irreflexive a
-      contradiction
-    · have h₂ := Value.lt_irrefl v
-      contradiction
-  · have h₂ := ValueAttrs.lt_irrefl tl
-    contradiction
+  cases vs <;>
+  simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true, Bool.not_eq_true]
+  rename_i hd tl
+  cases hd ; rename_i a v ;
+  simp only [ValueAttrs.lt, StrictLT.irreflexive a,
+    Value.lt_irrefl v, ValueAttrs.lt_irrefl tl,
+    decide_False, decide_True, Bool.and_false,
+    Bool.or_self, Bool.and_self]
 
 end
 
