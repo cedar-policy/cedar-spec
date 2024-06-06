@@ -21,5 +21,7 @@ fn main() {
     );
     println!("cargo:rustc-link-search=native=../../cedar-lean/.lake/build/lib");
     println!("cargo:rustc-link-search=native={lean_dir}");
-    println!("cargo:rustc-link-search=native=../../cedar-lean/.lake/packages/std/.lake/build/lib");
+    println!(
+        "cargo:rustc-link-search=native=../../cedar-lean/.lake/packages/batteries/.lake/build/lib"
+    );
 }
