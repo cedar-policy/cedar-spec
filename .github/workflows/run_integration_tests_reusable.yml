@@ -59,7 +59,7 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: Build Lean libraries
         working-directory: ./cedar-spec/cedar-lean
-        run: source ~/.profile && lake build Cedar:static DiffTest:static Std:static
+        run: source ~/.profile && lake build Cedar:static DiffTest:static Batteries:static
       - name: Run integration tests
         working-directory: ./cedar-spec/cedar-drt
         shell: bash

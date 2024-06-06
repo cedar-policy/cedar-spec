@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 
-import Std.Data.HashMap
+import Batteries.Data.HashMap
 
 namespace Cedar.Spec
 
-open Std
+open Batteries
 
 inductive PatElem where
   | star

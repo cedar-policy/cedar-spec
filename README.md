@@ -38,7 +38,7 @@ If you'd rather not use Docker, here are the full instructions for a local build
 * Install Lean, following the instructions above.
 * Clone the `cedar` repository in the current (`cedar-spec`) repository.
 * `source cedar-drt/set_env_vars.sh`
-* `cd cedar-lean && lake build Cedar:static DiffTest:static Std:static`
+* `cd cedar-lean && lake build Cedar:static DiffTest:static Batteries:static`
 * `cd ../cedar-drt && cargo build`
 
 The build has only been tested on **Amazon Linux 2**.

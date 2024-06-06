@@ -17,7 +17,7 @@
 import Cedar.Data.List
 import Cedar.Data.LT
 import Cedar.Thm.Data.Control
-import Std.Logic
+import Batteries.Logic
 
 /-!
 

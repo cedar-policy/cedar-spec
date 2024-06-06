@@ -431,13 +431,11 @@ theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
 theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
   xs ⊆ ys → Set.make xs ⊆ Set.make ys
 := by
-  unfold HasSubset.Subset instHasSubsetSet List.instHasSubsetList subset
-  simp only [List.all_eq_true]
+  simp only [Subset, List.Subset, subset, List.all_eq_true]
   intro h₁ x h₂
   rw [contains_prop_bool_equiv]
   rw [in_list_iff_in_set] at h₂
   rw [← make_mem] at *
-  unfold List.Subset at h₁
   apply h₁ h₂
 
 /--
@@ -446,8 +444,7 @@ theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [Decidabl
 theorem subset_def [DecidableEq α] {s₁ s₂ : Set α} :
   s₁ ⊆ s₂ ↔ ∀ a, a ∈ s₁ → a ∈ s₂
 := by
-  unfold HasSubset.Subset instHasSubsetSet subset
-  simp only [List.all_eq_true]
+  simp only [Subset, List.Subset, subset, List.all_eq_true]
   constructor <;> intro h₁ a h₂ <;> specialize h₁ a
   case mp =>
     rw [in_list_iff_in_set] at h₁
