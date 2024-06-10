@@ -54,8 +54,7 @@ pub fn check_for_internal_errors(errs: ParseErrors) {
         !errs.iter().any(|e| matches!(
         e,
         ParseError::ToAST(e) if matches!(e.kind(),
-            ToASTErrorKind::AnnotationInvariantViolation
-                | ToASTErrorKind::MembershipInvariantViolation
+            ToASTErrorKind::MembershipInvariantViolation
                 | ToASTErrorKind::EmptyNodeInvariantViolation)
         )),
         "Parse errors included unexpected internal errors: {:?}",
