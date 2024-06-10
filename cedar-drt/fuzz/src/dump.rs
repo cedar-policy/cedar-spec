@@ -114,7 +114,9 @@ pub fn dump(
             errors: cedar_policy::Response::from(a)
                 .diagnostics()
                 .errors()
-                .map(AuthorizationError::id)
+                .map(|e| match e {
+                    AuthorizationError::PolicyEvaluationError(e) => e.policy_id(),
+                })
                 .cloned()
                 .collect(),
         })
