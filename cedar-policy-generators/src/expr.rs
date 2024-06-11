@@ -268,7 +268,11 @@ impl<'a> ExprGenerator<'a> {
         if self.should_generate_unknown(max_depth, u)? {
             let v = self.generate_value_for_type(target_type, max_depth, u)?;
             let name = self.unknown_pool.alloc(target_type.clone(), v);
-            Ok(ast::Expr::unknown(ast::Unknown::new_untyped(name)))
+            let unknown_type: Option<ast::Type> = target_type.clone().try_into().ok();
+            match unknown_type {
+                Some(ty) => Ok(ast::Expr::unknown(ast::Unknown::new_with_type(name, ty))),
+                None => Ok(ast::Expr::unknown(ast::Unknown::new_untyped(name))),
+            }
         } else {
             match target_type {
                 Type::Bool => {
