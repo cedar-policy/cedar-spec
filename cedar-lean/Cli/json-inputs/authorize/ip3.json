@@ -120,7 +120,7 @@
                         }
                     }
                 },
-                "non_head_constraints": {
+                "non_scope_constraints": {
                     "expr_kind": {
                         "ExtensionFunctionApp": {
                             "fn_name": "isInRange",

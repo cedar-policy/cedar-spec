@@ -64,7 +64,7 @@
                 "resource_constraint": {
                     "constraint": "Any"
                 },
-                "non_head_constraints": {
+                "non_scope_constraints": {
                     "expr_kind": {
                         "And": {
                             "left": {
@@ -271,7 +271,7 @@
                         }
                     }
                 },
-                "non_head_constraints": {
+                "non_scope_constraints": {
                     "expr_kind": {
                         "Lit": {
                             "Bool": true
@@ -307,7 +307,7 @@
                         }
                     }
                 },
-                "non_head_constraints": {
+                "non_scope_constraints": {
                     "expr_kind": {
                         "BinaryApp": {
                             "op": "Eq",
@@ -377,7 +377,7 @@
                 "resource_constraint": {
                     "constraint": "Any"
                 },
-                "non_head_constraints": {
+                "non_scope_constraints": {
                     "expr_kind": {
                         "UnaryApp": {
                             "op": "Not",
