@@ -34,6 +34,10 @@ jobs:
         run: |
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
+      - name: Download doc-gen4
+        working-director: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && sed -i '/meta if get_config? env = some "dev" then/d' lakefile.lean && lake update doc-gen4
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
