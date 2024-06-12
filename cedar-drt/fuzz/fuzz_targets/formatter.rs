@@ -20,12 +20,14 @@ use cedar_drt::initialize_log;
 use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{AnyId, EntityType, ExprKind, Literal, StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
-use cedar_policy_formatter::{lexer, policies_str_to_pretty, Config};
+use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
+use cedar_policy_formatter::{policies_str_to_pretty, Config};
 use cedar_policy_generators::{
     abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
+use logos::Logos;
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
 use smol_str::SmolStr;
@@ -78,21 +80,23 @@ fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
 
 // Attach each token two uuids as leading comment and one uuid as trailing comment
 fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
-    let mut tokens = lexer::get_token_stream(p).expect("tokens should exist");
-    for t in tokens.iter_mut() {
-        let mut ids: Vec<String> = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]
-            .iter()
-            .map(|u| u.to_string())
-            .collect();
-        let leading_comment = format!("\n//{}\n//{}\n", ids[0], ids[1]);
-        let trailing_comment = format!("//{}\n", ids[2]);
-        t.add_leading_comment(&leading_comment);
-        t.add_trailing_comment(&trailing_comment);
-        uuids.append(&mut ids);
-    }
-    tokens
-        .iter()
-        .map(|t| t.to_string())
+    Token::lexer(p)
+        .spanned()
+        .map(|t| {
+            let mut ids: Vec<String> = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]
+                .iter()
+                .map(|u| u.to_string())
+                .collect();
+            let leading_comment = format!("\n//{}\n//{}\n", ids[0], ids[1]);
+            let trailing_comment = format!("//{}\n", ids[2]);
+            uuids.append(&mut ids);
+            WrappedToken::new(
+                t.0.unwrap(),
+                t.1,
+                Comment::new(&leading_comment, &trailing_comment),
+            )
+            .to_string()
+        })
         .collect::<Vec<_>>()
         .join("")
 }
