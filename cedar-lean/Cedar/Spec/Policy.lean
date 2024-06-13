@@ -54,13 +54,24 @@ inductive ActionScope where
 
 abbrev PolicyID := String
 
+inductive ConditionKind where
+  | When
+  | Unless
+
+structure Condition where
+  kind : ConditionKind
+  body : Expr
+
+abbrev Conditions := List Condition
+
 structure Policy where
   id : PolicyID
   effect : Effect
   principalScope : PrincipalScope
   actionScope : ActionScope
   resourceScope : ResourceScope
-  condition : Expr
+  condition : Conditions
+
 
 abbrev Policies := List Policy
 
@@ -99,6 +110,15 @@ def ActionScope.toExpr : ActionScope → Expr
     let exprs := es.map (fun e => .lit (.entityUID e))
     .binaryApp (.mem) (.var .action) (.set exprs)
 
+def Condition.toExpr (c : Condition) : Expr :=
+  match c.kind with
+  | .When => c.body
+  | .Unless => Expr.unaryApp .not c.body
+
+-- Conditions are evaluated top to bottom, and short circuit
+def conditionsToExpr (cs : Conditions) : Expr :=
+  List.foldr (λ c expr => .and (c.toExpr) expr ) (Expr.lit $ Prim.bool true ) cs
+
 def Policy.toExpr (p : Policy) : Expr :=
   .and
     p.principalScope.toExpr
@@ -106,7 +126,7 @@ def Policy.toExpr (p : Policy) : Expr :=
       p.actionScope.toExpr
       (.and
         p.resourceScope.toExpr
-        p.condition))
+        (conditionsToExpr p.condition)))
 
 def Scope.bound : Scope → Option EntityUID
   | .eq uid      => .some uid
@@ -117,6 +137,8 @@ def Scope.bound : Scope → Option EntityUID
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, Inhabited for Effect
+deriving instance Repr, DecidableEq, Inhabited for ConditionKind
+deriving instance Repr, DecidableEq, Inhabited for Condition
 deriving instance Repr, DecidableEq, Inhabited for Scope
 deriving instance Repr, DecidableEq, Inhabited for PrincipalScope
 deriving instance Repr, DecidableEq, Inhabited for ResourceScope

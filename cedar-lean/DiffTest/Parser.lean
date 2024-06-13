@@ -399,12 +399,25 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
     .ok (.actionScope (.eq euid))
   | tag => .error s!"jsonToActionScope: unknown tag {tag}"
 
+def jsonToCondition (json : Lean.Json) : ParseResult Condition := do
+  let kind ← json.getObjVal? "kind"
+  let expr ← json.getObjVal? "body" >>= jsonToExpr
+  match kind with
+  | "when" => .ok $ { kind := .When, body := expr  }
+  | "unless" => .ok $ { kind := .Unless, body := expr }
+  | _ => .error s!"Bad condition tag. Expected either `when` or `unless`"
+
+def jsonToConditions (json : Lean.Json) : ParseResult Conditions := do
+  let members ← jsonToArray json
+  let arr' ← members.sequenceMap jsonToCondition
+  .ok $ arr'.toList
+
 def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect
   let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?principal"
   let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
   let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?resource"
-  let condition ← getJsonField json "non_scope_constraints" >>= jsonToExpr
+  let condition ← getJsonField json "non_scope_constraints" >>= jsonToConditions
   .ok {
     effect := effect,
     principalScope := .principalScope principalConstraint,
