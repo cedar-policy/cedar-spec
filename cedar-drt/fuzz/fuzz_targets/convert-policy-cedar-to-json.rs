@@ -18,33 +18,34 @@
 use thiserror::Error;
 
 use cedar_drt_inner::*;
-use cedar_policy::ParseErrors;
-use cedar_policy_core::{ast::PolicyID, est::FromJsonError};
+use cedar_policy_core::ast;
+use cedar_policy_core::est;
+use cedar_policy_core::parser;
 
 #[derive(miette::Diagnostic, Error, Debug)]
 enum ESTParseError {
     #[error(transparent)]
     #[diagnostic(transparent)]
-    CSTToEST(#[from] ParseErrors),
+    CSTToEST(#[from] parser::err::ParseErrors),
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ESTToAST(#[from] FromJsonError),
+    ESTToAST(#[from] est::FromJsonError),
 }
 
 // Given some Cedar source, assert that parsing it directly (parsing to CST,
 // then converting CST to AST) gives the same result of parsing via EST (parsing
 // to CST, converting CST to EST, and then converting EST to AST).
 fuzz_target!(|src: String| {
-    if let Ok(cst) = cedar_policy_core::parser::text_to_cst::parse_policy(&src) {
-        match cst.to_policy_template(PolicyID::from_string("policy0")) {
+    if let Ok(cst) = parser::text_to_cst::parse_policy(&src) {
+        match cst.to_policy_template(ast::PolicyID::from_string("policy0")) {
             Ok(policy_ast) => {
                 let policy_est: Result<_, ESTParseError> = cst
                     .node
                     .expect("AST construction should fail for missing CST node")
                     .try_into()
-                    .map_err(|e: ParseErrors| e.into())
-                    .and_then(|est: cedar_policy_core::est::Policy| {
-                        est.try_into_ast_template(Some(PolicyID::from_string("policy0")))
+                    .map_err(|e: parser::err::ParseErrors| e.into())
+                    .and_then(|est: est::Policy| {
+                        est.try_into_ast_template(Some(ast::PolicyID::from_string("policy0")))
                             .map_err(|e| e.into())
                     });
 
