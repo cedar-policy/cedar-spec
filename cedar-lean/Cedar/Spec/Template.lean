@@ -55,7 +55,7 @@ structure Template where
   principalScope : PrincipalScopeTemplate
   actionScope : ActionScope
   resourceScope : ResourceScopeTemplate
-  condition : Expr
+  condition : Conditions
 
 abbrev Templates := Map TemplateID Template
 
