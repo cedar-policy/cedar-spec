@@ -541,7 +541,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
       exfalso
       clear h₂
       unfold producesNonBool at h₅
-      have h₄ := and_produces_bool_or_error policy.resourceScope.toExpr (conditionsToExpr policy.condition) request entities
+      have h₄ := and_produces_bool_or_error policy.resourceScope.toExpr policy.condition.toExpr request entities
       split at h₄ <;> simp at h₄
       case _ h₆ => simp [h₆] at h₅
       case _ h₆ => simp [h₆] at h₅
@@ -554,7 +554,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
     -- in this case, evaluating (action ∧ resource ∧ condition) produced a non-boolean
     exfalso
     unfold producesNonBool at h₄
-    generalize (Expr.and policy.resourceScope.toExpr (conditionsToExpr policy.condition)) = resource_and_condition at h₂ h₄
+    generalize (Expr.and policy.resourceScope.toExpr policy.condition.toExpr) = resource_and_condition at h₂ h₄
     have h₅ := and_produces_bool_or_error policy.actionScope.toExpr resource_and_condition request entities
     split at h₅ <;> simp at h₅
     case _ h₆ => simp [h₆] at h₄

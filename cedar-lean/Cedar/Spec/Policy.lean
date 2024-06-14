@@ -116,7 +116,7 @@ def Condition.toExpr (c : Condition) : Expr :=
   | .unless => Expr.unaryApp .not c.body
 
 -- Conditions are evaluated top to bottom, and short circuit
-def conditionsToExpr (cs : Conditions) : Expr :=
+def Conditions.toExpr (cs : Conditions) : Expr :=
   List.foldr (λ c expr => .and (c.toExpr) expr ) (Expr.lit $ Prim.bool true ) cs
 
 def Policy.toExpr (p : Policy) : Expr :=
@@ -126,7 +126,7 @@ def Policy.toExpr (p : Policy) : Expr :=
       p.actionScope.toExpr
       (.and
         p.resourceScope.toExpr
-        (conditionsToExpr p.condition)))
+        p.condition.toExpr))
 
 def Scope.bound : Scope → Option EntityUID
   | .eq uid      => .some uid
