@@ -257,7 +257,7 @@ decreasing_by
   Corollary: partial evaluation of a Prim always succeeds and returns the value
   (no WF precondition needed from caller)
 -/
-theorem eval_spec_prim (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
+theorem eval_prim (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
   Partial.evaluate (Spec.Value.prim p).asPartialExpr request entities = .ok (.value (.prim p))
 := by
   exact eval_spec_value (.prim p) request entities (by simp [Spec.Value.WellFormed, Prim.WellFormed])
@@ -275,7 +275,7 @@ theorem eval_spec_value' (v : Spec.Value) (request : Partial.Request) (entities 
   Corollary: partial evaluation of a Prim always succeeds and returns the value
   (no WF precondition needed from caller)
 -/
-theorem eval_spec_prim' (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
+theorem eval_prim' (p : Prim) (request : Partial.Request) (entities : Partial.Entities) :
   Partial.evaluate (Partial.Value.value (Spec.Value.prim p)).asPartialExpr request entities = .ok (.value (.prim p))
 := by
   exact eval_spec_value' (.prim p) request entities (by simp [Spec.Value.WellFormed, Prim.WellFormed])

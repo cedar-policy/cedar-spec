@@ -132,7 +132,7 @@ def IPNet.isMulticast : IPNet → Bool
   | .V4 cidr => cidr.inRange MULTICAST_CIDR_V4
   | .V6 cidr => cidr.inRange MULTICAST_CIDR_V6
 
-private def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (Fin (size + 1)) :=
+def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (Fin (size + 1)) :=
   let len := str.length
   if 0 < len && len ≤ digits && (str.startsWith "0" → str = "0")
   then do
@@ -140,7 +140,7 @@ private def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (
     if n ≤ size then .some (Fin.ofNat n) else .none
   else .none
 
-private def parseNumV4 (str : String) : Option (BitVec 8) :=
+def parseNumV4 (str : String) : Option (BitVec 8) :=
   let len := str.length
   if 0 < len && len ≤ 3 && (str.startsWith "0" → str = "0")
   then do
@@ -148,7 +148,7 @@ private def parseNumV4 (str : String) : Option (BitVec 8) :=
     if n ≤ 0xff then .some n#8 else .none
   else .none
 
-private def parseSegsV4 (str : String) : Option IPv4Addr :=
+def parseSegsV4 (str : String) : Option IPv4Addr :=
   match str.split (· = '.') with
   | [s₀, s₁, s₂, s₃] => do
     let a₀ ← parseNumV4 s₀
@@ -158,7 +158,7 @@ private def parseSegsV4 (str : String) : Option IPv4Addr :=
     .some (IPv4Addr.mk a₀ a₁ a₂ a₃)
   | _ => .none
 
-private def parseIPv4Net (str : String) : Option IPNet :=
+def parseIPv4Net (str : String) : Option IPNet :=
   match str.split (· = '/') with
   | strV4 :: rest => do
     let pre ←
@@ -170,10 +170,10 @@ private def parseIPv4Net (str : String) : Option IPNet :=
     .some (IPNet.V4 ⟨v4, pre⟩)
   | _ => .none
 
-private def isHexDigit (c : Char) : Bool :=
+def isHexDigit (c : Char) : Bool :=
   c.isDigit || ('a' ≤ c && c ≤ 'f') || ('A' ≤ c && c ≤ 'F')
 
-private def toHexNat (c : Char) : Nat :=
+def toHexNat (c : Char) : Nat :=
   if c.isDigit
   then c.toNat - '0'.toNat
   else if 'a' ≤ c && c ≤ 'f'
@@ -182,7 +182,7 @@ private def toHexNat (c : Char) : Nat :=
   then c.toNat - 'A'.toNat + 10
   else c.toNat
 
-private def parseNumV6 (str : String) : Option (BitVec 16) :=
+def parseNumV6 (str : String) : Option (BitVec 16) :=
   let len := str.length
   if 0 < len && len ≤ 4 && str.all isHexDigit
   then
@@ -190,12 +190,12 @@ private def parseNumV6 (str : String) : Option (BitVec 16) :=
     if n ≤ 0xffff then .some n#16 else .none
   else .none
 
-private def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=
+def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=
   if str.isEmpty
   then .some []
   else (str.split (· = ':')).mapM parseNumV6
 
-private def parseSegsV6 (str : String) : Option IPv6Addr := do
+def parseSegsV6 (str : String) : Option IPv6Addr := do
   let segs ←
     match str.splitOn "::" with
     | [s₁] => parseNumSegsV6 s₁
@@ -212,7 +212,7 @@ private def parseSegsV6 (str : String) : Option IPv6Addr := do
     .some (IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇)
   | _ => .none
 
-private def parseIPv6Net (str : String) : Option IPNet :=
+def parseIPv6Net (str : String) : Option IPNet :=
   match str.split (· = '/') with
   | strV6 :: rest => do
     let pre ←
@@ -266,7 +266,7 @@ instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
   if h : IPNet.lt d₁ d₂ then isTrue h else isFalse h
 
 -- as of this writing, only handles nats up to 0xffff
-private def toHex (n : Nat) : String :=
+def toHex (n : Nat) : String :=
   let a0 := hexDigitRepr ((n % 0x10000) / 0x1000)
   let a1 := hexDigitRepr ((n % 0x1000) / 0x100)
   let a2 := hexDigitRepr ((n % 0x100) / 0x10)

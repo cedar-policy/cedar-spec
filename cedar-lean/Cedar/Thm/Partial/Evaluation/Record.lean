@@ -182,19 +182,36 @@ theorem partial_eval_wf {attrs: List (Attr × Partial.Expr)} {request : Partial.
       subst k' pval'
       simpa [Partial.Value.WellFormed] using ih (k, v) h₅ (.value v') h₇
 
-private theorem mapM_Except_on_snd_preserves_sortedBy_fst [LT α] {abs: List (α × β)} {f : β → Except ε γ} :
+private theorem mapM_Option_on_snd_preserves_sortedBy_fst [LT α] [DecidableLT α] [StrictLT α] {abs : List (α × β)} {f : β → Option γ} :
+  abs.SortedBy Prod.fst →
+  abs.mapM (λ (a, b) => do some (a, ← f b)) = some ags →
+  ags.SortedBy Prod.fst
+:= by
+  intro h₁ h₂
+  replace h₂ := List.mapM_some_eq_filterMap h₂
+  subst h₂
+  apply List.filterMap_sortedBy _ h₁
+  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, forall_exists_index,
+    and_imp, forall_apply_eq_imp_iff₂, implies_true]
+
+private theorem mapM_Except_on_snd_preserves_sortedBy_fst [LT α] [DecidableLT α] [StrictLT α] {abs: List (α × β)} {f : β → Except ε γ} :
   abs.SortedBy Prod.fst →
   abs.mapM (λ (a, b) => do let b' ← f b ; .ok (a, b')) = .ok ags →
   ags.SortedBy Prod.fst
 := by
-  sorry
-
-private theorem mapM_Option_on_snd_preserves_sortedBy_fst [LT α] {abs : List (α × β)} {f : β → Option γ} :
-  abs.SortedBy Prod.fst →
-  abs.mapM (λ (a, b) => do let b' ← f b ; some (a, b')) = some ags →
-  ags.SortedBy Prod.fst
-:= by
-  sorry
+  intro h₁ h₂
+  replace h₂ := List.mapM_ok_eq_filterMap h₂
+  subst h₂
+  apply List.filterMap_sortedBy _ h₁
+  intro (a, b) (a', g)
+  split <;> rename_i h₂ <;> split at h₂ <;> rename_i h₃
+  <;> simp only [Prod.mk.injEq] at h₃ <;> replace ⟨h₃, h₃'⟩ := h₃ <;> subst h₃ h₃'
+  · simp only [Option.some.injEq]
+    cases hb : f b <;> simp only [hb, Except.bind_err, Except.bind_ok, Except.ok.injEq] at h₂
+    subst h₂
+    simp only [Prod.mk.injEq, and_imp]
+    intro _ ; subst a' ; simp only [implies_true]
+  · simp only [false_implies]
 
 /--
   Inductive argument that partial evaluation of a `Spec.Value.record` always

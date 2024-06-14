@@ -546,6 +546,33 @@ theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs
   rw [← List.mapM'_eq_mapM]
   exact mapM'_error_implies_exists_error
 
+theorem mapM'_ok_eq_filterMap {α β} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  xs.mapM' f = .ok ys →
+  xs.filterMap (λ a => match f a with | .ok b => some b | .error _ => none) = ys
+:= by
+  intro h
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM'_nil, pure, Except.pure, Except.ok.injEq] at h
+    simp only [h, filterMap_nil]
+  case cons hd tl ih =>
+    simp only [filterMap_cons]
+    simp only [mapM'_cons, pure, Except.pure] at h
+    cases hhd : f hd <;> simp only [hhd, Except.bind_err, Except.bind_ok] at *
+    case ok hd' =>
+      cases htl : tl.mapM' f
+      <;> simp only [htl, Except.ok.injEq, false_implies, forall_const, forall_eq', Except.bind_ok, Except.bind_err] at *
+      case ok tl' =>
+        subst ys
+        simp only [ih, cons.injEq, true_and]
+
+theorem mapM_ok_eq_filterMap {α β} {f : α → Except γ β} {xs : List α} {ys : List β} :
+  xs.mapM f = .ok ys →
+  xs.filterMap (λ a => match f a with | .ok b => some b | .error _ => none) = ys
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact mapM'_ok_eq_filterMap
+
 theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
   List.Forall₂ (λ x y => f x = .some y) xs ys

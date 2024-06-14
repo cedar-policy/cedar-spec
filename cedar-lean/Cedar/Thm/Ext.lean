@@ -36,6 +36,34 @@ theorem decimal_toString_inverse (d : Decimal) :
     simp [Decimal.decimal, Decimal.parse] at h₁
     sorry
 
+/--
+  If parsing the string representation of an `ip` as IPv4 succeeds, it gives you
+  exactly that `ip` back
+-/
+theorem parseIPv4net_roundtrip {ip ip' : Spec.IPAddr} :
+  IPAddr.parseIPv4Net (toString ip) = some ip' → ip = ip'
+:= by
+  sorry
+
+/--
+  If parsing the string representation of an `ip` as IPv6 succeeds, it gives you
+  exactly that `ip` back
+-/
+theorem parseIPv6net_roundtrip {ip ip' : Spec.IPAddr} :
+  IPAddr.parseIPv6Net (toString ip) = some ip' → ip = ip'
+:= by
+  sorry
+
+/--
+  The string representation of an `ip` is always parseable, either as an IPv4 or
+  an IPv6
+-/
+theorem ipaddr_toString_is_parseable (ip : Spec.IPAddr) :
+  (IPAddr.parseIPv4Net (toString ip)).isSome ∨
+  (IPAddr.parseIPv6Net (toString ip)).isSome
+:= by
+  sorry
+
 theorem ipaddr_toString_inverse (ip : Spec.IPAddr) :
   Spec.call Spec.ExtFun.ip [.prim (.string (toString ip))] = .ok (.ext (.ipaddr ip))
 := by
@@ -48,14 +76,16 @@ theorem ipaddr_toString_inverse (ip : Spec.IPAddr) :
     · replace ⟨ipnet, h₂⟩ := Option.isSome_iff_exists.mp h₂
       simp [h₂] at h₁
     · simp only [Option.not_isSome, Option.isNone_iff_eq_none, Bool.not_eq_true] at h₂
-      sorry -- can't unfold these private definitions; can we make them not private?
+      rcases ipaddr_toString_is_parseable ip with h₃ | h₃
+      · simp [Option.isSome, h₂] at h₃
+      · simp [Option.isSome, h₁] at h₃
   case some ipnet =>
     simp [IPAddr.ip, IPAddr.parse] at h₁
     split at h₁ <;> rename_i h₂
     · replace ⟨ipnet', h₂⟩ := Option.isSome_iff_exists.mp h₂
       simp [h₂] at h₁ ; subst ipnet'
-      sorry
+      exact (parseIPv4net_roundtrip h₂).symm
     · simp only [Option.not_isSome, Option.isNone_iff_eq_none, Bool.not_eq_true] at h₂
-      sorry -- can't unfold these private definitions; can we make them not private?
+      exact (parseIPv6net_roundtrip h₁).symm
 
 end Cedar.Thm.Ext
