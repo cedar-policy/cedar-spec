@@ -15,8 +15,8 @@
 -/
 
 import Cedar.Data.List
-import Std.Data.List.Basic
-import Std.Data.List.Lemmas
+import Batteries.Data.List.Basic
+import Batteries.Data.List.Lemmas
 
 /-!
 # Canonical list-based sets

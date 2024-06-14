@@ -306,7 +306,7 @@ theorem mapM_asEntityUID_of_uid (uids : List EntityUID) :
     simp [pure, Except.pure, asEntityUID_of_uid, ih]
 
 /--
-  Std has `Option.isSome_iff_exists`, but not this analogue for `Except`
+  Batteries has `Option.isSome_iff_exists`, but not this analogue for `Except`
 -/
 theorem Except.isOk_iff_exists {x : Except ε α} :
   Except.isOk x ↔ ∃ a, x = .ok a

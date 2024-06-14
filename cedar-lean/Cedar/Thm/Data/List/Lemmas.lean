@@ -45,7 +45,7 @@ theorem any_of_mem {f : α → Bool} {x : α} {xs : List α}
 /-! ### all -/
 
 /--
-  Copied from Mathlib. We can delete this if it gets added to Std.
+  Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
 theorem all_pmap_subtype
   {p : α → Prop}
@@ -61,7 +61,7 @@ theorem all_pmap_subtype
 /-! ### map and map₁ -/
 
 /--
-  Copied from Mathlib. We can delete this if it gets added to Std.
+  Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
 theorem map_congr {f g : α → β} : ∀ {l : List α},
   (∀ x ∈ l, f x = g x) → map f l = map g l
@@ -71,7 +71,7 @@ theorem map_congr {f g : α → β} : ∀ {l : List α},
     rw [map, map, h₁, map_congr h₂]
 
 /--
-  Copied from Mathlib. We can delete this if it gets added to Std.
+  Copied from Mathlib. We can delete this if it gets added to Batteries.
 -/
 theorem map_pmap_subtype
   {p : α → Prop}
@@ -102,11 +102,17 @@ theorem map_pmap_subtype_snd
 := by
   induction xs <;> simp [*]
 
+theorem attach_def {as : List α} :
+  as.attach = pmap Subtype.mk as λ _ => id
+:= by
+  simp [attach, attachWith]
+
 theorem map₁_eq_map (f : α → β) (as : List α) :
   as.map₁ (λ x : {x // x ∈ as} => f x.val) =
   as.map f
 := by
-  simp [map₁, attach, map_pmap_subtype]
+  simp [map₁, attach_def, map_pmap_subtype]
+
 
 theorem map_attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
   xs.attach₂.map (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
@@ -354,7 +360,7 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM₁ as (λ x : { x // x ∈ as } => f x.val) =
   List.mapM f as
 := by
-  simp [mapM₁, attach, mapM_pmap_subtype]
+  simp [mapM₁, attach_def, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :

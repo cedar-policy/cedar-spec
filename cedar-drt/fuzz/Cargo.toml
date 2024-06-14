@@ -29,6 +29,7 @@ clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
 thiserror = "1.0.61"
+logos = "0.14.0"
 
 [dependencies.uuid]
 version = "1.3.1"
@@ -69,6 +70,12 @@ doc = false
 name = "partial-eval"
 path = "fuzz_targets/partial-eval.rs"
 test = false
+doc = false
+
+[[bin]]
+name = "partial-auth"
+path = "fuzz_targets/partial-auth.rs"
+test = false 
 doc = false
 
 [[bin]]

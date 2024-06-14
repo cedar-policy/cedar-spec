@@ -16,18 +16,23 @@
 
 #![no_main]
 
-use cedar_drt_inner::fuzz_target;
+use cedar_drt_inner::{check_for_internal_errors, fuzz_target};
 use cedar_policy_core::parser::parse_policyset;
 use cedar_policy_formatter::{policies_str_to_pretty, Config};
 
 fuzz_target!(|input: String| {
-    if parse_policyset(&input).is_ok_and(|ps| !ps.is_empty()) {
-        let config = Config {
-            indent_width: 2,
-            line_width: 80,
-        };
-        // `policies_str_to_pretty` applies soundness checks, so we will panic
-        // if the policy definitions changed in any way.
-        policies_str_to_pretty(&input, &config).expect("pretty-printing should not fail");
+    match parse_policyset(&input) {
+        Ok(policy_set) => {
+            if !policy_set.is_empty() {
+                let config = Config {
+                    indent_width: 2,
+                    line_width: 80,
+                };
+                // `policies_str_to_pretty` applies soundness checks, so we will panic
+                // if the policy definitions changed in any way.
+                policies_str_to_pretty(&input, &config).expect("pretty-printing should not fail");
+            }
+        }
+        Err(errs) => check_for_internal_errors(errs),
     }
 });

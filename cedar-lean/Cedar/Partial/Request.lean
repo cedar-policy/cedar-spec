@@ -81,8 +81,8 @@ open Cedar.Spec (EntityUID)
 def UidOrUnknown.subst (subsmap : Subsmap) : UidOrUnknown → Option UidOrUnknown
   | .known uid => some (.known uid)
   | .unknown unk => match subsmap.m.find? unk with
-    | some (.lit (.entityUID uid)) => some (.known uid)
-    | some (.unknown unk') => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
+    | some (.value (.prim (.entityUID uid))) => some (.known uid)
+    | some (.residual (.unknown unk')) => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
     | none => some (.unknown unk) -- no substitution available, return `unk` unchanged
     | _ => none -- substitution is not for a literal UID or literal unknown. Not valid, return none
 

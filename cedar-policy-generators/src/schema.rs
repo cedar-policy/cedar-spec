@@ -32,8 +32,8 @@ use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Id, Name, PolicyID};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
-    schema_error::SchemaError, ActionType, ApplySpec, AttributesOrContext, EntityType,
-    SchemaFragment, SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
+    ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
+    SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
 };
 use smol_str::SmolStr;
 use std::collections::BTreeMap;

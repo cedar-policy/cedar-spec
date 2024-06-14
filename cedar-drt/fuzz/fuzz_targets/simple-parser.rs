@@ -16,8 +16,7 @@
 
 #![no_main]
 
-use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::parser::err::{ParseError, ToASTErrorKind};
+use cedar_drt_inner::{check_for_internal_errors, fuzz_target};
 use cedar_policy_core::parser::parse_policyset;
 
 fuzz_target!(|input: String| {
@@ -25,23 +24,6 @@ fuzz_target!(|input: String| {
     #[allow(clippy::single_match)]
     match parse_policyset(&input) {
         Ok(_) => (),
-        Err(errs) => {
-            // Also check that we don't see a few specific errors.
-            // `AnnotationInvariantViolation` and `MembershipInvariantViolation`
-            // are documented as only being returned for internal invariant violations.  It's not
-            // entirely clear when `MissingNodeData` might be returned, but I don't believe it
-            // should be possible, and, practically, it doesn't make this target fail.
-            assert!(
-                !errs.0.iter().any(|e| matches!(
-                e,
-                ParseError::ToAST(e) if matches!(e.kind(),
-                    ToASTErrorKind::AnnotationInvariantViolation
-                        | ToASTErrorKind::MembershipInvariantViolation
-                        | ToASTErrorKind::MissingNodeData)
-                )),
-                "{:?}",
-                errs
-            )
-        }
+        Err(errs) => check_for_internal_errors(errs),
     };
 });

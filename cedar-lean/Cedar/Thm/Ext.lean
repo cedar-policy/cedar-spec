@@ -21,6 +21,25 @@ namespace Cedar.Thm.Ext
 
 open Cedar.Spec.Ext
 
+/--
+  If parsing the string representation of a `decimal` succeeds, it gives you
+  exactly that `decimal` back
+-/
+theorem decimal_parse_roundtrip {d d' : Decimal} :
+  Decimal.decimal (toString d) = some d' → d = d'
+:= by
+  simp [toString, Decimal.decimal, Decimal.parse]
+  sorry
+
+/--
+  The string representation of a `decimal` is always parseable
+-/
+theorem decimal_toString_is_parseable (d : Decimal) :
+  (Decimal.decimal (toString d)).isSome
+:= by
+  simp [toString, Decimal.decimal, Decimal.parse]
+  sorry
+
 theorem decimal_toString_inverse (d : Decimal) :
   Spec.call Spec.ExtFun.decimal [.prim (.string (toString d))] = .ok (.ext (.decimal d))
 := by
@@ -28,13 +47,10 @@ theorem decimal_toString_inverse (d : Decimal) :
   cases h₁ : Decimal.decimal (toString d)
   <;> simp only [Except.ok.injEq, Spec.Value.ext.injEq, decimal.injEq]
   case none =>
-    simp [toString, Decimal.instToStringDecimal] at h₁
-    simp [Decimal.decimal, Decimal.parse] at h₁
-    sorry
+    rw [← Option.not_isSome_iff_eq_none] at h₁
+    simp [decimal_toString_is_parseable d] at h₁
   case some d' =>
-    simp [toString, Decimal.instToStringDecimal] at h₁
-    simp [Decimal.decimal, Decimal.parse] at h₁
-    sorry
+    exact (decimal_parse_roundtrip h₁).symm
 
 /--
   If parsing the string representation of an `ip` as IPv4 succeeds, it gives you

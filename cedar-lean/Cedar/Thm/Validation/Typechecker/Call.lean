@@ -119,7 +119,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     case cons hd₂ tl₂ =>
       cases tl₂
       case nil =>
-        rw [List.attach, List.pmap, List.mapM, List.mapM.loop, justType, Except.map] at h₁
+        rw [List.attach_def, List.pmap, List.mapM, List.mapM.loop, justType, Except.map] at h₁
         split at h₁ <;> simp at h₁
         rw [List.mapM.loop, justType, Except.map] at h₁
         split at h₁ <;> simp at h₁
@@ -132,8 +132,8 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         simp at h₂ h₃
         simp [h₂, h₃]
       case cons hd₃ tl₃ =>
-        simp [List.attach] at h₁
-        simp [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
+        simp only [List.attach_def, List.pmap, List.mapM_cons,
+          List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
         rw [justType, Except.map] at h₁
         split at h₁ <;> simp at h₁
         rw [justType, Except.map] at h₁
@@ -141,7 +141,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         rw [justType, Except.map] at h₁
         split at h₁ <;> simp at h₁
         rename_i res₁ _ _ res₂ _ _ res₃ _
-        simp [pure, Except.pure] at h₁
+        simp only [pure, Except.pure] at h₁
         cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₃ <;> simp [h₂] at h₁
 
 def IsDecimalComparator : ExtFun → Prop
@@ -189,7 +189,8 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_decimal_comparator_inversion h₀ h₃
   subst h₄ h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp [EvaluatesTo, evaluate, List.mapM₁, List.attach]
+  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   have ih₂ := ih x₂
   simp [TypeOfIsSound] at ih₁ ih₂
@@ -211,6 +212,7 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   all_goals {
     apply bool_is_instance_of_anyBool
   }
+
 
 theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.call .isInRange xs) c env = Except.ok (ty, c')) :
@@ -244,7 +246,8 @@ theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ :
   have ⟨h₄, h₅, x₁, x₂, c₁', c₂', h₆, h₇, h₈⟩ := type_of_call_isInRange_inversion h₃
   subst h₄ h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp [EvaluatesTo, evaluate, List.mapM₁, List.attach]
+  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   have ih₂ := ih x₂
   simp [TypeOfIsSound] at ih₁ ih₂
@@ -295,8 +298,8 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       exists hd₁, res₁.snd
       simp [ok, h₃, ←h₂]
     case cons hd₂ tl₂ =>
-      simp [List.attach] at h₁
-      simp [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
+      simp only [List.attach_def, List.pmap, List.mapM_cons,
+        List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
       rw [justType, Except.map] at h₁
       split at h₁ <;> simp at h₁
       rw [justType, Except.map] at h₁
@@ -342,7 +345,8 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
   have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_ipAddr_recognizer_inversion h₀ h₃
   subst h₄ h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp [EvaluatesTo, evaluate, List.mapM₁, List.attach]
+  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   simp [TypeOfIsSound] at ih₁
   have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
