@@ -399,18 +399,12 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
     .ok (.actionScope (.eq euid))
   | tag => .error s!"jsonToActionScope: unknown tag {tag}"
 
-def jsonToCondition (json : Lean.Json) : ParseResult Condition := do
-  let kind ← json.getObjVal? "kind"
-  let expr ← json.getObjVal? "body" >>= jsonToExpr
-  match kind with
-  | "when" => .ok $ { kind := .When, body := expr  }
-  | "unless" => .ok $ { kind := .Unless, body := expr }
-  | _ => .error s!"Bad condition tag. Expected either `when` or `unless`"
-
+-- This is a hack, as the current JSON loses this information.
+-- When we switch this interface to use the EST, we will get the actual
+-- conditions structure
 def jsonToConditions (json : Lean.Json) : ParseResult Conditions := do
-  let members ← jsonToArray json
-  let arr' ← members.sequenceMap jsonToCondition
-  .ok $ arr'.toList
+  let expr ← jsonToExpr json
+  .ok $ [{ kind := .When,  body := expr }]
 
 def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect
