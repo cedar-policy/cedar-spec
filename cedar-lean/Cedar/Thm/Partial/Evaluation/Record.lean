@@ -196,7 +196,7 @@ private theorem mapM_Option_on_snd_preserves_sortedBy_fst [LT α] [DecidableLT �
 
 private theorem mapM_Except_on_snd_preserves_sortedBy_fst [LT α] [DecidableLT α] [StrictLT α] {abs: List (α × β)} {f : β → Except ε γ} :
   abs.SortedBy Prod.fst →
-  abs.mapM (λ (a, b) => do let b' ← f b ; .ok (a, b')) = .ok ags →
+  abs.mapM (λ (a, b) => do .ok (a, ← f b)) = .ok ags →
   ags.SortedBy Prod.fst
 := by
   intro h₁ h₂
