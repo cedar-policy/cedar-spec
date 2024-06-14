@@ -55,8 +55,8 @@ inductive ActionScope where
 abbrev PolicyID := String
 
 inductive ConditionKind where
-  | When
-  | Unless
+  | when
+  | unless
 
 structure Condition where
   kind : ConditionKind
@@ -112,8 +112,8 @@ def ActionScope.toExpr : ActionScope → Expr
 
 def Condition.toExpr (c : Condition) : Expr :=
   match c.kind with
-  | .When => c.body
-  | .Unless => Expr.unaryApp .not c.body
+  | .when => c.body
+  | .unless => Expr.unaryApp .not c.body
 
 -- Conditions are evaluated top to bottom, and short circuit
 def conditionsToExpr (cs : Conditions) : Expr :=

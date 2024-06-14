@@ -404,7 +404,7 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
 -- conditions structure
 def jsonToConditions (json : Lean.Json) : ParseResult Conditions := do
   let expr ← jsonToExpr json
-  .ok $ [{ kind := .When,  body := expr }]
+  .ok $ [{ kind := .when,  body := expr }]
 
 def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect
