@@ -48,6 +48,6 @@ notation together with `Except` and `Option`.
 := by rfl
 
 theorem do_error {res : Except ε α} {e : ε} {f : α → β} :
-  (do let v ← res ; .ok (f v)) = .error e →
+  (do let v ← res ; .ok (f v)) = .error e ↔
   res = .error e
 := by cases res <;> simp

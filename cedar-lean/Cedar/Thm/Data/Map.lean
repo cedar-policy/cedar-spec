@@ -909,9 +909,9 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
 := by
   simp only [mapMOnValues, pure, Except.pure]
   intro h₁
-  replace h₁ := do_error h₁
+  rw [do_error] at h₁
   replace ⟨(k, v), hkv, h₁⟩ := List.mapM_error_implies_exists_error h₁
-  replace h₁ := do_error h₁
+  rw [do_error] at h₁
   have h_values := in_list_in_values hkv
   exists v
 
