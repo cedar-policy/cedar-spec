@@ -25,7 +25,7 @@ open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Prim Result)
 
-/- ## Lemmas shared by And.lean and Or.lean -/
+/- ## Lemmas shared by `Partial.Expr.and` and `Partial.Expr.or` -/
 
 /--
   Inductive argument that partial evaluating a concrete `Partial.Expr.and` or
@@ -150,6 +150,54 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {req req'
             simp only [ih₁, Except.bind_ok, reduceIte]
         case set | record => simp
         case ext x => cases x <;> simp
+  }
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.and` or
+  `Partial.Expr.or` returns an error, then it also returns an error (not
+  necessarily the same error) after any substitution of unknowns
+
+  The proof of `subst_preserves_evaluation_to_value` for this
+  request/entities/subsmap is passed in as an argument, because this file can't
+  import `Thm/Partial/Evaluation.lean` to access it.
+  Alternately, this entire inductive proof could live in its own set of files,
+  all of which could depend on `Thm/Partial/Evaluation.lean` and its theorems
+  like `subst_preserves_evaluation_to_value`.
+-/
+theorem subst_preserves_errors {x₁ x₂ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
+  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap)
+  (ih₂ : SubstPreservesEvaluationToError x₂ req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.and x₁ x₂) req req' entities subsmap ∧
+  SubstPreservesEvaluationToError (Partial.Expr.or x₁ x₂) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  unfold Partial.evaluate Partial.Expr.subst
+  constructor
+  all_goals {
+    intro h_req ; specialize ih₁ h_req ; specialize ih₂ h_req
+    exact match hx₁ : Partial.evaluate x₁ req entities with
+    | .error e₁ => by
+      replace ⟨e₁', ih₁⟩ := ih₁ e₁ hx₁
+      simp only [ih₁, Bool.not_eq_true', Except.bind_err, Except.error.injEq, exists_eq', implies_true]
+    | .ok (.residual r₁) => by simp [hx₁]
+    | .ok (.value v₁) => by
+      simp only [h_spetv x₁ h_req v₁ hx₁, Except.bind_ok]
+      cases v₁ <;> simp [hx₁, Spec.Value.asBool]
+      case prim p₁ =>
+        cases p₁ <;> simp at *
+        case bool b₁ =>
+          cases b₁ <;> simp at *
+          all_goals {
+            exact match hx₂ : Partial.evaluate x₂ req entities with
+            | .error e₂ => by
+              replace ⟨e₂', ih₂⟩ := ih₂ e₂ hx₂
+              simp only [ih₂, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
+            | .ok (.residual r₂) => by simp [hx₂]
+            | .ok (.value v₂) => by
+              simp only [h_spetv x₂ h_req v₂ hx₂, Except.bind_ok]
+              intro e _ ; exists e
+          }
   }
 
 end Cedar.Thm.Partial.Evaluation.AndOr

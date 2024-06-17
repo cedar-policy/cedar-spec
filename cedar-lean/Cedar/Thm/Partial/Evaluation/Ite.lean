@@ -147,4 +147,51 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req
     simp only [ih₁, Except.bind_ok, reduceIte]
     exact ih₃ v h₁
 
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.ite` returns
+  an error, then it also returns an error (not necessarily the same error) after
+  any substitution of unknowns
+
+  The proof of `subst_preserves_evaluation_to_value` for this
+  request/entities/subsmap is passed in as an argument, because this file can't
+  import `Thm/Partial/Evaluation.lean` to access it.
+  Alternately, this entire inductive proof could live in its own set of files,
+  all of which could depend on `Thm/Partial/Evaluation.lean` and its theorems
+  like `subst_preserves_evaluation_to_value`.
+-/
+theorem subst_preserves_errors {x₁ x₂ x₃ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
+  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap)
+  (ih₂ : SubstPreservesEvaluationToError x₂ req req' entities subsmap)
+  (ih₃ : SubstPreservesEvaluationToError x₃ req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.ite x₁ x₂ x₃) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  unfold Partial.evaluate Partial.Expr.subst
+  intro h_req ; specialize ih₁ h_req ; specialize ih₂ h_req ; specialize ih₃ h_req
+  exact match hx₁ : Partial.evaluate x₁ req entities with
+  | .error e₁ => by
+    replace ⟨e₁', ih₁⟩ := ih₁ e₁ hx₁
+    simp only [ih₁, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
+  | .ok (.residual r₁) => by simp [hx₁]
+  | .ok (.value v₁) => by
+    simp only [h_spetv x₁ h_req v₁ hx₁, Except.bind_ok]
+    cases v₁
+    <;> simp only [Spec.Value.asBool, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
+    case prim p₁ =>
+      cases p₁
+      <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq, exists_eq', implies_true] at *
+      case bool b₁ =>
+        cases b₁ <;> simp only [Bool.false_eq_true, reduceIte] at *
+        case true =>
+          exact match hx₂ : Partial.evaluate x₂ req entities with
+          | .error e' => by simp [hx₂, ih₂ e']
+          | .ok (.residual r₂) => by simp [hx₂]
+          | .ok (.value v₂) => by simp [h_spetv x₂ h_req v₂ hx₂, hx₂]
+        case false =>
+          exact match hx₃ : Partial.evaluate x₃ req entities with
+          | .error e' => by simp [hx₃, ih₃ e']
+          | .ok (.residual r₃) => by simp [hx₃]
+          | .ok (.value v₃) => by simp [h_spetv x₃ h_req v₃ hx₃, hx₃]
+
 end Cedar.Thm.Partial.Evaluation.Ite
