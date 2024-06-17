@@ -208,6 +208,17 @@ theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   rw [← h, WellFormed, make, toList, kvs]
   simp only [List.canonicalize_idempotent]
 
+theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  xs.SortedBy Prod.fst ↔ Map.make xs = Map.mk xs
+:= by
+  constructor <;> intro h
+  case mp =>
+    simp only [make, List.sortedBy_implies_canonicalize_eq h]
+  case mpr =>
+    simp only [make, mk.injEq] at h
+    rw [← h]
+    exact List.canonicalize_sortedBy _ _
+
 /--
   Note that the converse of this is not true:
   counterexample `xs = [(1, false), (1, true)]`.
