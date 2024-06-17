@@ -314,7 +314,7 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
   · exact forall₂_fun_subset_implies ha ha' hf heqv
   · exact forall₂_fun_subset_implies ha' ha hf heqv'
 
-/-! ### mapM, mapM', and mapM₁ -/
+/-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 /--
   `mapM` with a function that always produces `pure`
@@ -361,6 +361,14 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM f as
 := by
   simp [mapM₁, attach_def, mapM_pmap_subtype]
+
+theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
+  (f : (α × β) → m γ)
+  (as : List (α × β)) :
+  List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
+  List.mapM f as
+:= by
+  simp [mapM₂, attach₂, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :
@@ -521,6 +529,8 @@ theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : L
   The converse is not true:
   counterexample `xs` is `[1, 2]` and `f` is `Except.error`.
   In that case, `f 2 = .error 2` but `xs.mapM' f = .error 1`.
+
+  But for a limited converse, see `element_error_implies_mapM_error`
 -/
 theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
   List.mapM' f xs = .error e → ∃ x ∈ xs, f x = .error e
@@ -551,6 +561,57 @@ theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_error_implies_exists_error
+
+/--
+  If applying `f` to any of `xs` produces an error, then `xs.mapM' f` must also
+  produce an error (not necessarily the same error)
+
+  Limited converse of `mapM'_error_implies_exists_error`
+-/
+theorem element_error_implies_mapM'_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+  x ∈ xs →
+  f x = .error e →
+  ∃ e', xs.mapM' f = .error e'
+:= by
+  intro h₁ h₂
+  cases h₃ : xs.mapM' f <;> simp
+  case ok pvals =>
+    replace ⟨pval, _, h₃⟩ := mapM'_ok_implies_all_ok h₃ x h₁
+    simp [h₂] at h₃
+
+theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+  x ∈ xs →
+  f x = .error e →
+  ∃ e', xs.mapM f = .error e'
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact element_error_implies_mapM'_error
+
+theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
+  xs.mapM' f = .ok ys →
+  xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
+:= by
+  intro h
+  induction xs generalizing ys
+  case nil =>
+    simpa [mapM'_nil, pure, Except.pure] using h
+  case cons hd tl ih =>
+    simp only [filterMap_cons]
+    simp only [mapM'_cons, pure, Except.pure] at h
+    cases h₂ : f hd <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h
+    case ok hd' =>
+      simp only
+      cases h₃ : tl.mapM' f <;> simp only [h₃, Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
+      case ok tl' =>
+        subst ys
+        simp only [ih h₃]
+
+theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
+  xs.mapM f = .ok ys →
+  xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact mapM'_ok_eq_filterMap
 
 theorem mapM'_some_iff_forall₂ {α β} {f : α → Option β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .some ys ↔
@@ -766,6 +827,26 @@ theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β
 := by
   simp only [← mapM'_eq_mapM]
   exact mapM'_some_subset
+
+/--
+  our own variant of map_congr, for mapM'
+-/
+theorem mapM'_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → mapM' f l = mapM' g l
+  | [], _ => rfl
+  | a :: l, h => by
+    let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
+    rw [mapM', mapM', h₁, mapM'_congr h₂]
+
+/--
+  our own variant of map_congr, for mapM
+-/
+theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List α},
+  (∀ x ∈ l, f x = g x) → mapM f l = mapM g l
+:= by
+  intro l
+  rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
+  exact mapM'_congr
 
 /-! ### foldlM -/
 
