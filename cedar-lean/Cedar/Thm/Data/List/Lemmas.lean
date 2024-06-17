@@ -767,6 +767,22 @@ theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β
   simp only [← mapM'_eq_mapM]
   exact mapM'_some_subset
 
+/-! ### foldl -/
+
+theorem foldl_pmap_subtype
+  {p : α → Prop}
+  (f : β → α → β)
+  (as : List α)
+  (init : β)
+  (h : ∀ a, a ∈ as → p a) :
+  List.foldl (λ b (x : { a : α // p a }) => f b x.val) init (List.pmap Subtype.mk as h)
+  =
+  List.foldl f init as
+:= by
+  induction as generalizing init
+  case nil => simp only [pmap, foldl_nil]
+  case cons ih => apply ih
+
 /-! ### foldlM -/
 
 theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)
@@ -936,6 +952,44 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       exists x
       simp only [Prod.map, id_eq] at heq
       simp [find?_cons, heq, ih]
+
+theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
+  (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none
+:= by
+  rw [List.find?_eq_none]
+  constructor
+  case mp =>
+    intro h x hx
+    induction xs generalizing x
+    case nil =>
+      simp only [not_mem_nil] at hx
+    case cons hd tl ih =>
+      simp only [mem_cons] at hx
+      rcases hx with hx | hx
+      case inl =>
+        by_contra hc
+        subst hx
+        specialize h x
+        simp only [mem_cons, true_or, true_implies] at h
+        simp only [find?_cons, hc, not_true_eq_false] at h
+      case inr =>
+        apply ih _ _ hx
+        intro y hy
+        simp only [mem_cons, forall_eq_or_imp] at h
+        replace ⟨hnf, h⟩ := h
+        specialize h y hy
+        simp only [find?_cons] at h hnf
+        split at h
+        · rename_i heq
+          simp only [heq, not_true_eq_false] at hnf
+        · exact h
+  case mpr =>
+    intro h x hx
+    by_contra hc
+    replace hc := List.find?_some hc
+    specialize h x hx
+    contradiction
+
 
 /-! ### filterMap -/
 
