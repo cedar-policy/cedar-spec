@@ -481,15 +481,34 @@ theorem findOrErr_err_iff_find?_none [LT α] [DecidableLT α] [DecidableEq α] {
   unfold findOrErr
   cases m.find? k <;> simp only
 
+/--
+  The converse requires the `wf` precondition, and is available in
+  `findOrErr_ok_iff_in_kvs` below
+-/
+theorem findOrErr_ok_implies_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
+  m.findOrErr k e = .ok v → (k, v) ∈ m.kvs
+:= by
+  simp only [findOrErr_ok_iff_find?_some]
+  exact find?_mem_toList
+
+/--
+  The `mp` direction of this does not need the `wf` precondition and, in fact,
+  is available separately as `findOrErr_ok_implies_in_kvs` above
+-/
 theorem findOrErr_ok_iff_in_kvs [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error}
   (wf : m.WellFormed) :
   m.findOrErr k e = .ok v ↔ (k, v) ∈ m.kvs
 := by
-  simp [findOrErr_ok_iff_find?_some]
   constructor
-  case mp => exact find?_mem_toList
-  case mpr => exact (in_list_iff_find?_some wf).mp
+  case mp => exact findOrErr_ok_implies_in_kvs
+  case mpr =>
+    simp only [findOrErr_ok_iff_find?_some]
+    exact (in_list_iff_find?_some wf).mp
 
+/--
+  The converse requires the `wf` precondition, and is available in
+  `findOrErr_ok_iff_in_values` below
+-/
 theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
   m.findOrErr k e = .ok v → v ∈ m.values
 := by
@@ -501,15 +520,18 @@ theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α]
   simp [h₁, h₂, and_true]
 
 /--
-  The `mpr` direction of this does not need the `wf` precondition and, in fact,
+  The `mp` direction of this does not need the `wf` precondition and, in fact,
   is available separately as `findOrErr_ok_implies_in_values` above
 -/
-theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
+theorem findOrErr_ok_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β} {e : Error}
   (wf : m.WellFormed) :
-  v ∈ m.values ↔ ∃ k, m.findOrErr k e = .ok v
+  (∃ k, m.findOrErr k e = .ok v) ↔ v ∈ m.values
 := by
   constructor
   case mp =>
+    intro ⟨k, h₁⟩
+    exact findOrErr_ok_implies_in_values h₁
+  case mpr =>
     simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
     intro h₁
     replace ⟨⟨k, v'⟩, ⟨h₁, h₂⟩⟩ := h₁
@@ -517,9 +539,6 @@ theorem in_values_iff_findOrErr_ok [LT α] [DecidableLT α] [StrictLT α] [Decid
     subst v'
     exists k
     simp [h₁, ← in_list_iff_find?_some wf]
-  case mpr =>
-    intro ⟨k, h₁⟩
-    exact findOrErr_ok_implies_in_values h₁
 
 theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error}
   (wf : m.WellFormed) :

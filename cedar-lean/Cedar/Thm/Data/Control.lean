@@ -51,3 +51,8 @@ theorem do_error {res : Except ε α} {e : ε} {f : α → β} :
   (do let v ← res ; .ok (f v)) = .error e ↔
   res = .error e
 := by cases res <;> simp
+
+theorem do_ok {res : Except ε α} {f : α → β} :
+  (do let v ← res ; .ok (f v)) = .ok b ↔
+  ∃ a, res = .ok a ∧ f a = b
+:= by cases res <;> simp
