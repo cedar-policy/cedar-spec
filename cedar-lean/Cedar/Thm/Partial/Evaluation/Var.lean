@@ -43,7 +43,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
     split
     case h_1 m h₁ =>
       simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
-      rw [← Map.eq_iff_kvs_equiv (wf₁ := Map.mapMOnValues_wf (Map.mapOnValues_wf.mp wf) h₁) (wf₂ := wf)]
+      rw [← Map.eq_iff_kvs_equiv (wf₁ := Map.mapMOnValues_some_wf (Map.mapOnValues_wf.mp wf) h₁) (wf₂ := wf)]
       simp only [List.Equiv, List.subset_def]
       constructor
       case left =>
@@ -109,7 +109,7 @@ theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
     unfold Partial.Request.WellFormed at wf_r
     split <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed]
     · rename_i m h₁
-      apply And.intro (Map.mapMOnValues_wf wf_r.left h₁)
+      apply And.intro (Map.mapMOnValues_some_wf wf_r.left h₁)
       intro (k, v) h₂
       replace wf_r := wf_r.right (.value v)
       simp [Partial.Value.WellFormed] at wf_r

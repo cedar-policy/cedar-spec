@@ -105,8 +105,7 @@ theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID}
     have ⟨wf_m, wf_edata⟩ := wf_e ; clear wf_e
     constructor
     · apply (wf_edata _ _).left
-      have h₃ := Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m
-      simp only [h₃]
+      simp only [← Map.findOrErr_ok_iff_in_values (v := attrs) (e := Error.entityDoesNotExist) wf_m]
       exists uid
     · intro pval h₃
       replace h₂ := Map.findOrErr_ok_implies_in_values h₂
@@ -239,13 +238,11 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
       <;> simp only [Except.bind_ok, Except.bind_err, false_implies]
       case ok attrs =>
         intro h₂
-        replace h₂ := Map.findOrErr_ok_iff_find?_some.mp h₂
-        replace h₂ := Map.find?_mem_toList h₂
+        replace h₂ := Map.findOrErr_ok_implies_in_kvs h₂
         unfold Map.toList at h₂
         have ⟨attrs', h₃, h₄⟩ := Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
         simp only [h₃, Except.bind_ok]
-        simp only [Map.findOrErr_ok_iff_find?_some]
-        apply (Map.in_list_iff_find?_some _).mp h₄
+        apply (Map.findOrErr_ok_iff_in_kvs _).mpr h₄
         have wf' := Subst.entities_subst_preserves_wf subsmap wf
         exact (partialEntities_attrs_wf wf' h₃).left
   case set | record => simp

@@ -46,3 +46,13 @@ notation together with `Except` and `Option`.
 @[simp] theorem Option.bind_none_fun (f : α → Option β) :
   (bind Option.none f : Option β) = Option.none
 := by rfl
+
+theorem do_error {res : Except ε α} {e : ε} {f : α → β} :
+  (do let v ← res ; .ok (f v)) = .error e ↔
+  res = .error e
+:= by cases res <;> simp
+
+theorem do_ok {res : Except ε α} {f : α → β} :
+  (do let v ← res ; .ok (f v)) = .ok b ↔
+  ∃ a, res = .ok a ∧ f a = b
+:= by cases res <;> simp
