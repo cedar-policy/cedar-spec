@@ -56,29 +56,29 @@ pub struct Schema {
     /// list of all entity types that are declared in the schema. Note that this
     /// may contain an entity type that is not in `principal_types` or
     /// `resource_types`.
-    pub entity_types: Vec<ast::Name>,
+    pub entity_types: Vec<ast::EntityType>,
     /// list of entity types that occur as a valid principal for at least one
     /// action in the `schema`
-    pub principal_types: Vec<ast::Name>,
+    pub principal_types: Vec<ast::EntityType>,
     /// list of Eids that exist as a non-`None` actions name for an action in
     /// the schema.
     pub actions_eids: Vec<ast::Eid>,
     /// list of entity types that occur as a valid resource for at least one
     /// action in the `schema`
-    pub resource_types: Vec<ast::Name>,
+    pub resource_types: Vec<ast::EntityType>,
     /// list of (attribute, type) pairs that occur in the `schema`
     attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)>,
     /// map from type to (entity type, attribute name) pairs indicating
     /// attributes in the `schema` that have that type.
     /// note that we can't make a similar map for SchemaType because it isn't
     /// Hash or Ord
-    attributes_by_type: HashMap<Type, Vec<(ast::Name, SmolStr)>>,
+    attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
 }
 
 /// internal helper function, basically `impl Arbitrary for AttributesOrContext`
 fn arbitrary_attrspec(
     settings: &ABACSettings,
-    entity_types: &[ast::Name],
+    entity_types: &[ast::EntityType],
     u: &mut Unstructured<'_>,
 ) -> Result<AttributesOrContext> {
     let attr_names: Vec<ast::Id> = u
@@ -142,7 +142,7 @@ fn arbitrary_attrspec_size_hint(depth: usize) -> (usize, Option<usize>) {
 /// `false`).
 fn arbitrary_typeofattribute_with_bounded_depth(
     settings: &ABACSettings,
-    entity_types: &[ast::Name],
+    entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<TypeOfAttribute> {
@@ -173,7 +173,7 @@ fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
 /// `false`).
 pub fn arbitrary_schematype_with_bounded_depth(
     settings: &ABACSettings,
-    entity_types: &[ast::Name],
+    entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<cedar_policy_validator::SchemaType> {
@@ -252,14 +252,16 @@ pub fn arbitrary_schematype_with_bounded_depth(
 /// Convert a `Name` representing an entity type into the corresponding
 /// `SchemaTypeVariant` for an entity reference with that entity type.
 pub fn entity_type_name_to_schema_type_variant(
-    name: &ast::Name,
+    name: &ast::EntityType,
 ) -> cedar_policy_validator::SchemaTypeVariant {
     cedar_policy_validator::SchemaTypeVariant::Entity { name: name.clone() }
 }
 
 /// Convert a `Name` representing an entity type into the corresponding
 /// SchemaType for an entity reference with that entity type.
-pub fn entity_type_name_to_schema_type(name: &ast::Name) -> cedar_policy_validator::SchemaType {
+pub fn entity_type_name_to_schema_type(
+    name: &ast::EntityType,
+) -> cedar_policy_validator::SchemaType {
     SchemaType::Type(entity_type_name_to_schema_type_variant(name))
 }
 
@@ -316,14 +318,9 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
 /// qualified `Name`.
 pub(crate) fn build_qualified_entity_type_name(
     namespace: Option<&ast::Name>,
-    name: &ast::Name,
-) -> ast::Name {
-    match build_qualified_entity_type(namespace, Some(name)) {
-        ast::EntityType::Specified(type_name) => type_name,
-        ast::EntityType::Unspecified => {
-            panic!("Should not have built an unspecified type from `Some(name)`.")
-        }
-    }
+    name: &ast::EntityType,
+) -> ast::EntityType {
+    build_qualified_entity_type(namespace, name)
 }
 
 /// Information about attributes from the schema
@@ -357,14 +354,9 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
 /// `build_qualified_entity_type_name` if `basename` is not `None`.
 fn build_qualified_entity_type(
     namespace: Option<&ast::Name>,
-    basename: Option<&ast::Name>,
+    basename: &ast::EntityType,
 ) -> ast::EntityType {
-    match basename {
-        Some(basename) => {
-            ast::EntityType::Specified(basename.prefix_namespace_if_unqualified(namespace))
-        }
-        None => ast::EntityType::Unspecified,
-    }
+    basename.prefix_namespace_if_unqualified(namespace)
 }
 
 /// Given a `SchemaType`, return all (attribute, type) pairs that occur inside it
@@ -407,12 +399,12 @@ fn build_attributes_by_type<'a>(
     schema: &cedar_policy_validator::NamespaceDefinition,
     entity_types: impl IntoIterator<Item = (&'a Id, &'a cedar_policy_validator::EntityType)>,
     namespace: Option<&ast::Name>,
-) -> HashMap<Type, Vec<(ast::Name, SmolStr)>> {
+) -> HashMap<Type, Vec<(ast::EntityType, SmolStr)>> {
     let triples = entity_types
         .into_iter()
         .map(|(name, et)| {
             (
-                build_qualified_entity_type_name(namespace, &name.clone().into()),
+                build_qualified_entity_type_name(namespace, &ast::Name::from(name.clone()).into()),
                 attrs_from_attrs_or_context(schema, &et.shape),
             )
         })
@@ -424,7 +416,7 @@ fn build_attributes_by_type<'a>(
                 )
             })
         });
-    let mut hm: HashMap<Type, Vec<(ast::Name, SmolStr)>> = HashMap::new();
+    let mut hm: HashMap<Type, Vec<(ast::EntityType, SmolStr)>> = HashMap::new();
     for (ty, pair) in triples {
         hm.entry(ty).or_default().push(pair);
     }
@@ -644,7 +636,7 @@ impl Schema {
         })
     }
     /// Get a slice of all of the entity types in this schema
-    pub fn entity_types(&self) -> &[ast::Name] {
+    pub fn entity_types(&self) -> &[ast::EntityType] {
         &self.entity_types
     }
 
@@ -659,12 +651,8 @@ impl Schema {
         let mut resource_types = HashSet::new();
         for atype in nsdef.actions.values() {
             if let Some(applyspec) = atype.applies_to.as_ref() {
-                if let Some(ptypes) = applyspec.principal_types.as_ref() {
-                    principal_types.extend(ptypes.iter());
-                }
-                if let Some(rtypes) = applyspec.resource_types.as_ref() {
-                    resource_types.extend(rtypes.iter());
-                }
+                principal_types.extend(applyspec.principal_types.iter());
+                resource_types.extend(applyspec.resource_types.iter());
             }
         }
         let mut attributes = Vec::new();
@@ -688,7 +676,7 @@ impl Schema {
             entity_types: nsdef
                 .entity_types
                 .keys()
-                .map(|k| k.clone().into())
+                .map(|k| ast::EntityType::from(ast::Name::from(k.clone())))
                 .collect(),
             principal_types: principal_types.into_iter().cloned().collect(),
             actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
@@ -754,9 +742,14 @@ impl Schema {
         // namespace will not be included, but we want to know it when
         // constructing schema types for attributes based on the declared entity
         // types.
-        let entity_type_names: Vec<ast::Name> = entity_type_ids
+        let entity_type_names: Vec<ast::EntityType> = entity_type_ids
             .iter()
-            .map(|id| build_qualified_entity_type_name(namespace.as_ref(), &id.clone().into()))
+            .map(|id| {
+                build_qualified_entity_type_name(
+                    namespace.as_ref(),
+                    &ast::Name::from(id.clone()).into(),
+                )
+            })
             .collect();
 
         // now turn each of those names into an EntityType, no
@@ -780,7 +773,8 @@ impl Schema {
         for i in 0..entity_types.len() {
             for name in &entity_type_ids[(i + 1)..] {
                 if u.ratio::<u8>(1, 2)? {
-                    entity_types[i].1.member_of_types.push(name.clone().into());
+                    let etype = ast::Name::from(name.clone()).into();
+                    entity_types[i].1.member_of_types.push(etype);
                 }
             }
         }
@@ -806,10 +800,12 @@ impl Schema {
         } else {
             action_names
         };
-        let mut principal_types: HashSet<Name> = HashSet::new();
+        let mut principal_types: HashSet<ast::EntityType> = HashSet::new();
         let mut resource_types = HashSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
-        let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
+        let pick_entity_types = |tys: &mut HashSet<ast::EntityType>,
+                                 u: &mut Unstructured<'_>|
+         -> Result<Vec<ast::EntityType>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
             let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
@@ -820,21 +816,18 @@ impl Schema {
                 selected_indices.push(indices.swap_remove(index));
             }
 
-            Result::Ok(Some(
+            Result::Ok(
                 selected_indices
                     .iter()
                     .map(|&i| {
                         let (name, _) = &entity_types[i];
-                        tys.insert(build_qualified_entity_type_name(
-                            namespace.as_ref(),
-                            &name.clone().into(),
-                        ));
-                        name.clone().into()
+                        let etyp: ast::EntityType = ast::Name::from(name.clone()).into();
+                        tys.insert(build_qualified_entity_type_name(namespace.as_ref(), &etyp));
+                        etyp
                     })
-                    .collect::<Vec<Name>>(),
-            ))
+                    .collect::<Vec<ast::EntityType>>(),
+            )
         };
-        let mut principal_and_resource_types_exist = false;
         let mut actions: Vec<(SmolStr, ActionType)> = action_names
             .iter()
             .map(|name| {
@@ -842,27 +835,15 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let mut picked_resource_types =
-                                pick_entity_types(&mut resource_types, u)?;
-                            let mut picked_principal_types =
+                            let picked_resource_types = pick_entity_types(&mut resource_types, u)?;
+                            let picked_principal_types =
                                 pick_entity_types(&mut principal_types, u)?;
                             // If we already have resource_types and principal_types, randomly make them empty
-                            if principal_and_resource_types_exist {
-                                if u.ratio(1, 8)? {
-                                    picked_resource_types = None;
-                                }
-                                if u.ratio(1, 8)? {
-                                    picked_principal_types = None;
-                                }
-                            } else {
-                                principal_and_resource_types_exist = true;
-                            }
-                            let apply_spec = Some(ApplySpec {
+                            Some(ApplySpec {
                                 resource_types: picked_resource_types,
                                 principal_types: picked_principal_types,
                                 context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                            });
-                            apply_spec
+                            })
                         },
                         member_of: if settings.enable_action_groups_and_attrs {
                             Some(vec![])
@@ -982,20 +963,13 @@ impl Schema {
 
     fn arbitrary_uid_with_optional_type(
         &self,
-        ty_name: Option<&ast::Name>,
+        ty_name: &ast::EntityType,
         hierarchy: Option<&Hierarchy>,
-        request_field: ast::Var,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         let ty = build_qualified_entity_type(self.namespace(), ty_name);
-        match ty {
-            ast::EntityType::Specified(ty) => self
-                .exprgenerator(hierarchy)
-                .arbitrary_uid_with_type(&ty, u),
-            ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
-                ast::Eid::new(request_field.to_string()),
-            )),
-        }
+        self.exprgenerator(hierarchy)
+            .arbitrary_uid_with_type(&ty, u)
     }
 
     /// internal helper function, try to convert `Type` into `SchemaType`
@@ -1021,15 +995,7 @@ impl Schema {
             }),
             Type::Entity => {
                 let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
-                // not possible for Schema::arbitrary_uid to generate an unspecified entity
-                match entity_type {
-                    ast::EntityType::Unspecified => {
-                        panic!("should not be possible to generate an unspecified entity")
-                    }
-                    ast::EntityType::Specified(name) => {
-                        Some(entity_type_name_to_schema_type_variant(&name))
-                    }
-                }
+                Some(entity_type_name_to_schema_type_variant(&entity_type))
             }
             Type::IPAddr => Some(SchemaTypeVariant::Extension {
                 name: "ipaddr".parse().unwrap(),
@@ -1057,7 +1023,7 @@ impl Schema {
         &self,
         target_type: &Type,
         u: &mut Unstructured<'_>,
-    ) -> Result<&(ast::Name, SmolStr)> {
+    ) -> Result<&(ast::EntityType, SmolStr)> {
         match self.attributes_by_type.get(target_type) {
             Some(vec) => u.choose(vec).map_err(|e| {
                 while_doing(
@@ -1078,15 +1044,18 @@ impl Schema {
         &self,
         target_type: impl Into<cedar_policy_validator::SchemaType>,
         u: &mut Unstructured<'_>,
-    ) -> Result<(ast::Name, SmolStr)> {
+    ) -> Result<(ast::EntityType, SmolStr)> {
         let target_type: cedar_policy_validator::SchemaType = target_type.into();
-        let pairs: Vec<(ast::Name, SmolStr)> = self
+        let pairs: Vec<(ast::EntityType, SmolStr)> = self
             .schema
             .entity_types
             .iter()
             .map(|(name, et)| {
                 (
-                    build_qualified_entity_type_name(self.namespace(), &name.clone().into()),
+                    {
+                        let etype = ast::Name::from(name.clone()).into();
+                        build_qualified_entity_type_name(self.namespace(), &etype)
+                    },
                     attrs_from_attrs_or_context(&self.schema, &et.shape),
                 )
             })
@@ -1274,70 +1243,35 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ABACRequest> {
         // first pick one of the valid Actions
-        let (action_name, action) = self
+        let applicable_actions: Vec<_> = self
             .schema
             .actions
             .iter()
-            .nth(
-                u.choose_index(self.schema.actions.len())
-                    .expect("Failed to select action index."),
-            )
-            .expect("Failed to select action from map.");
+            .filter(|(_, action)| action.applies_to.is_some())
+            .collect();
+        let (action_name, action) = applicable_actions[u.choose_index(applicable_actions.len())?];
+        // This is safe as we checked above
+        let applies_to: &ApplySpec = action.applies_to.as_ref().unwrap();
         // now generate a valid request for that Action
         Ok(ABACRequest(Request {
-            principal: match action
-                .applies_to
-                .as_ref()
-                .and_then(|at| at.principal_types.as_ref())
-            {
-                None => self.arbitrary_uid_with_optional_type(
-                    None,
-                    Some(hierarchy),
-                    ast::Var::Principal,
-                    u,
-                )?, // unspecified principal
-                Some(types) => {
-                    // Assert that these are vec, so it's safe to draw from directly
-                    let types: &Vec<_> = types;
-                    let ty = u.choose(types).map_err(|e| {
-                        while_doing("choosing one of the action principal types".into(), e)
-                    })?;
-                    self.arbitrary_uid_with_optional_type(
-                        Some(ty),
-                        Some(hierarchy),
-                        ast::Var::Principal,
-                        u,
-                    )?
-                }
+            principal: {
+                let types = &applies_to.principal_types;
+                let ty = u.choose(types).map_err(|e| {
+                    while_doing("choosing one of the action principal types".into(), e)
+                })?;
+                self.arbitrary_uid_with_optional_type(ty, Some(hierarchy), u)?
             },
             action: uid_for_action_name(
                 self.namespace.as_ref(),
                 ast::Eid::new(action_name.clone()),
             ),
-            resource: match action
-                .applies_to
-                .as_ref()
-                .and_then(|at| at.resource_types.as_ref())
-            {
-                None => self.arbitrary_uid_with_optional_type(
-                    None,
-                    Some(hierarchy),
-                    ast::Var::Resource,
-                    u,
-                )?, // unspecified resource
-                Some(types) => {
-                    // Assert that these are vec, so it's safe to draw from directly
-                    let types: &Vec<_> = types;
-                    let ty = u.choose(types).map_err(|e| {
-                        while_doing("choosing one of the action resource types".into(), e)
-                    })?;
-                    self.arbitrary_uid_with_optional_type(
-                        Some(ty),
-                        Some(hierarchy),
-                        ast::Var::Resource,
-                        u,
-                    )?
-                }
+            resource: {
+                // Assert that these are vec, so it's safe to draw from directly
+                let types = &applies_to.resource_types;
+                let ty = u.choose(types).map_err(|e| {
+                    while_doing("choosing one of the action resource types".into(), e)
+                })?;
+                self.arbitrary_uid_with_optional_type(ty, Some(hierarchy), u)?
             },
             context: {
                 let mut attributes: Vec<_> = action

@@ -14,14 +14,21 @@
 # limitations under the License.
 
 FUZZ_TARGET="${FUZZ_TARGET:-abac}"
-TIMEOUT="${TIMEOUT:-15m}" # 15m = 900s
+TIMEOUT_MINS="${TIMEOUT:-15}" # 15m = 900s
 JOBS="${JOBS:-4}"
-DUMP_DIR="${DUMP_DIR:-corpus_tests}"
+DUMP_DIR="${DUMP_DIR:-corpus-tests}"
 
 # Assumes cedar-drt is already correctly built and configured
 rm -rf $DUMP_DIR
 source set_env_vars.sh
 export FUZZ_TARGET
 export DUMP_DIR
-timeout $TIMEOUT cargo fuzz run -s none $FUZZ_TARGET -j $JOBS -- -rss_limit_mb=8196
+echo "Running fuzzer for $TIMEOUT_MINS minutes ..."
+TIMEOUT=$(( $TIMEOUT_MINS * 60 ))
+cargo fuzz run -s none $FUZZ_TARGET -j $JOBS -- -rss_limit_mb=8196 -max_total_time=$TIMEOUT
+echo "Fuzzer done!"
+# Minimize corpus to remove redundant seeds
+echo "Minimizing corpus..."
+cargo fuzz cmin "$FUZZ_TARGET" -s none
+echo "Minimization done"
 ./synthesize_tests.sh
