@@ -314,7 +314,7 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
   · exact forall₂_fun_subset_implies ha ha' hf heqv
   · exact forall₂_fun_subset_implies ha' ha hf heqv'
 
-/-! ### mapM, mapM', and mapM₁ -/
+/-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 /--
   `mapM` with a function that always produces `pure`
@@ -361,6 +361,14 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM f as
 := by
   simp [mapM₁, attach_def, mapM_pmap_subtype]
+
+theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
+  (f : (α × β) → m γ)
+  (as : List (α × β)) :
+  List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
+  List.mapM f as
+:= by
+  simp [mapM₂, attach₂, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :
@@ -521,6 +529,8 @@ theorem all_from_ok_implies_mapM_ok {α β γ} {f : α → Except γ β} {ys : L
   The converse is not true:
   counterexample `xs` is `[1, 2]` and `f` is `Except.error`.
   In that case, `f 2 = .error 2` but `xs.mapM' f = .error 1`.
+
+  But for a limited converse, see `element_error_implies_mapM_error`
 -/
 theorem mapM'_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs : List α} {e : γ} :
   List.mapM' f xs = .error e → ∃ x ∈ xs, f x = .error e
@@ -552,29 +562,53 @@ theorem mapM_error_implies_exists_error {α β γ} {f : α → Except γ β} {xs
   rw [← List.mapM'_eq_mapM]
   exact mapM'_error_implies_exists_error
 
-theorem mapM'_ok_eq_filterMap {α β} {f : α → Except γ β} {xs : List α} {ys : List β} :
+/--
+  If applying `f` to any of `xs` produces an error, then `xs.mapM' f` must also
+  produce an error (not necessarily the same error)
+
+  Limited converse of `mapM'_error_implies_exists_error`
+-/
+theorem element_error_implies_mapM'_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+  x ∈ xs →
+  f x = .error e →
+  ∃ e', xs.mapM' f = .error e'
+:= by
+  intro h₁ h₂
+  cases h₃ : xs.mapM' f <;> simp
+  case ok pvals =>
+    replace ⟨pval, _, h₃⟩ := mapM'_ok_implies_all_ok h₃ x h₁
+    simp [h₂] at h₃
+
+theorem element_error_implies_mapM_error {x : α} {xs : List α} {f : α → Except ε β} {e : ε} :
+  x ∈ xs →
+  f x = .error e →
+  ∃ e', xs.mapM f = .error e'
+:= by
+  rw [← List.mapM'_eq_mapM]
+  exact element_error_implies_mapM'_error
+
+theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM' f = .ok ys →
-  xs.filterMap (λ a => match f a with | .ok b => some b | .error _ => none) = ys
+  xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
 := by
   intro h
   induction xs generalizing ys
   case nil =>
-    simp only [mapM'_nil, pure, Except.pure, Except.ok.injEq] at h
-    simp only [h, filterMap_nil]
+    simpa [mapM'_nil, pure, Except.pure] using h
   case cons hd tl ih =>
     simp only [filterMap_cons]
     simp only [mapM'_cons, pure, Except.pure] at h
-    cases hhd : f hd <;> simp only [hhd, Except.bind_err, Except.bind_ok] at *
+    cases h₂ : f hd <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h
     case ok hd' =>
-      cases htl : tl.mapM' f
-      <;> simp only [htl, Except.ok.injEq, false_implies, forall_const, forall_eq', Except.bind_ok, Except.bind_err] at *
+      simp only
+      cases h₃ : tl.mapM' f <;> simp only [h₃, Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
       case ok tl' =>
         subst ys
-        simp only [ih, cons.injEq, true_and]
+        simp only [ih h₃]
 
-theorem mapM_ok_eq_filterMap {α β} {f : α → Except γ β} {xs : List α} {ys : List β} :
+theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM f = .ok ys →
-  xs.filterMap (λ a => match f a with | .ok b => some b | .error _ => none) = ys
+  xs.filterMap (λ x => match f x with | .ok y => some y | .error _ => none) = ys
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_eq_filterMap
@@ -983,6 +1017,44 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       exists x
       simp only [Prod.map, id_eq] at heq
       simp [find?_cons, heq, ih]
+
+theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
+  (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none
+:= by
+  rw [List.find?_eq_none]
+  constructor
+  case mp =>
+    intro h x hx
+    induction xs generalizing x
+    case nil =>
+      simp only [not_mem_nil] at hx
+    case cons hd tl ih =>
+      simp only [mem_cons] at hx
+      rcases hx with hx | hx
+      case inl =>
+        by_contra hc
+        subst hx
+        specialize h x
+        simp only [mem_cons, true_or, true_implies] at h
+        simp only [find?_cons, hc, not_true_eq_false] at h
+      case inr =>
+        apply ih _ _ hx
+        intro y hy
+        simp only [mem_cons, forall_eq_or_imp] at h
+        replace ⟨hnf, h⟩ := h
+        specialize h y hy
+        simp only [find?_cons] at h hnf
+        split at h
+        · rename_i heq
+          simp only [heq, not_true_eq_false] at hnf
+        · exact h
+  case mpr =>
+    intro h x hx
+    by_contra hc
+    replace hc := List.find?_some hc
+    specialize h x hx
+    contradiction
+
 
 /-! ### filterMap -/
 

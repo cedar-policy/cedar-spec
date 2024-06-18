@@ -120,6 +120,10 @@ instance [LT α] : LT (Set α) where
 instance decLt [LT α] [DecidableLT α] : (n m : Set α) → Decidable (n < m)
   | .mk nelts, .mk melts => List.hasDecidableLt nelts melts
 
+-- enables ∅
+instance : EmptyCollection (Set α) where
+  emptyCollection := Set.empty
+
 -- enables ∈
 instance : Membership α (Set α) where
   mem v s := v ∈ s.elts
