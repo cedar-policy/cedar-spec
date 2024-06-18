@@ -4,6 +4,16 @@ on:
   pull_request:
 
 jobs:
+  get-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get branch name
+        shell: bash
+        # The workflow is triggered by pull_request so we use `GITHUB_BASE_REF`
+        run: echo "branch_name=${GITHUB_BASE_REF}" >> $GITHUB_OUTPUT
+        id: get_branch_name
+    outputs:
+      branch_name: ${{ steps.get_branch_name.outputs.branch_name }}
   build_and_test_lean:
     name: Build and test Lean
     runs-on: ubuntu-latest
@@ -69,6 +79,8 @@ jobs:
         run: source ~/.profile && ./build.sh
 
   run-integration-tests:
+    needs: get-branch-name
     uses: ./.github/workflows/run_integration_tests_reusable.yml
     with:
-      cedar_spec_ref: ${{ github.ref }}
+      cedar_spec_ref: ${{ github.href }}
+      cedar_integration_tests_ref: ${{ needs.get-branch-name.outputs.branch_name }}
