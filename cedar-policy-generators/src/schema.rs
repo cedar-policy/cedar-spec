@@ -466,9 +466,7 @@ impl Bindings {
             id
         };
 
-        self.ids.insert(
-            new_id.clone().to_smolstr()
-        );
+        self.ids.insert(new_id.clone().to_smolstr());
         if let Some(binding_for_ty) = self.bindings.get_mut(&ty) {
             binding_for_ty.push(new_id);
         } else {
