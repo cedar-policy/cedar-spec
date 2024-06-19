@@ -28,8 +28,11 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Id};
+use cedar_policy_validator::{ActionType, AttributesOrContext};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 /// Struct for generating expressions
 #[derive(Debug)]
@@ -867,7 +870,8 @@ impl<'a> ExprGenerator<'a> {
                 }
                 Type::Record => {
                     if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed
+                        // no recursion allowed, stop and generate an empty record
+                        // TODO(vasu): generate default record
                         Err(Error::TooDeep)
                     } else {
                         gen!(u,
@@ -1235,7 +1239,8 @@ impl<'a> ExprGenerator<'a> {
                 additional_attributes,
             }) => {
                 if max_depth == 0 || u.len() < 10 {
-                    // no recursion allowed
+                    // no recursion allowed, return an empty record
+                    // TODO(vasu): generate default record
                     Err(Error::TooDeep)
                 } else {
                     gen!(u,
@@ -1290,7 +1295,15 @@ impl<'a> ExprGenerator<'a> {
                     // `context`, if `context` is an appropriate record type
                     // TODO: Check if the `context` is the appropriate type, and
                     // return it if it is.
-                    14 => Err(Error::TooDeep),
+                    14 => {
+                        if self.all_actions_have_context_of_target_type(target_type) {
+                            Ok(ast::Expr::var(ast::Var::Context))
+                        } else {
+                            Err(Error::IncorrectFormat {
+                                doing_what: "at least one context is not the appropriate type".to_string(),
+                            })
+                        }
+                    },
                     // if-then-else expression, where both arms are (appropriate) records
                     2 => Ok(ast::Expr::ite(
                         self.generate_expr_for_type(
@@ -1564,6 +1577,18 @@ impl<'a> ExprGenerator<'a> {
         }
     }
 
+    fn all_actions_have_context_of_target_type(
+        &self,
+        target_type: &cedar_policy_validator::SchemaType,
+    ) -> bool {
+        for (_, action) in self.schema.schema.actions.iter() {
+            if action.applies_to.clone().unwrap().context.into_inner() != *target_type {
+                return false;
+            }
+        }
+        true
+    }
+
     /// get an AttrValue of the given type which conforms to this schema
     ///
     /// If `hierarchy` is present, any literal UIDs included in the AttrValue
@@ -1602,6 +1627,7 @@ impl<'a> ExprGenerator<'a> {
             Type::IPAddr | Type::Decimal => {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
                 if max_depth == 0 {
+                    // TODO(vasu): generate default IPAddr / Decimal
                     return Err(Error::TooDeep);
                 }
                 let func = self
@@ -1761,7 +1787,8 @@ impl<'a> ExprGenerator<'a> {
             }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
-                    // no recursion allowed: quit here
+                    // no recursion allowed: return an empty record
+                    // TODO(vasu): generate default record
                     Err(Error::TooDeep)
                 } else {
                     let mut r = HashMap::new();
@@ -1970,7 +1997,8 @@ impl<'a> ExprGenerator<'a> {
             }) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
-                    // no recursion allowed: quit here
+                    // no recursion allowed: return an empty record
+                    // TODO(vasu): generate default record
                     Err(Error::TooDeep)
                 } else {
                     let mut r = HashMap::new();
