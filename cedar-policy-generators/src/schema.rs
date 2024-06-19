@@ -441,7 +441,6 @@ struct Bindings {
     // The set of `Id`s used in the bindings
     ids: HashSet<SmolStr>,
 }
-
 impl Bindings {
     fn new() -> Self {
         Self {
@@ -811,32 +810,31 @@ impl Schema {
         let mut resource_types = HashSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
         let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
-            Result::Ok(if u.ratio::<u8>(1, 4)? {
-                // The action applies to an unspecified
-                // resource and no other entity types.
-                None
-            } else {
-                // for each entity type, flip a coin to see
-                // whether to include it as a possible
-                // principal type for this action
-                Some(
-                    entity_types
-                        .iter()
-                        .filter_map(|(name, _)| match u.ratio::<u8>(1, 2) {
-                            Ok(true) => {
-                                tys.insert(build_qualified_entity_type_name(
-                                    namespace.as_ref(),
-                                    &name.clone().into(),
-                                ));
-                                Some(name.clone().into())
-                            }
-                            Ok(false) => None,
-                            Err(_) => None,
-                        })
-                        .collect::<Vec<Name>>(),
-                )
-            })
+            // Pre-select the number of entity types to select (minimum 1), then take a random selection of that size
+            let num = u.int_in_range(1..=entity_types.len()).unwrap() as usize;
+            let mut indices: Vec<usize> = (0..entity_types.len()).collect();
+            let mut selected_indices = Vec::with_capacity(num);
+
+            while selected_indices.len() < num {
+                let index = u.choose_index(indices.len()).unwrap();
+                selected_indices.push(indices.swap_remove(index));
+            }
+
+            Result::Ok(Some(
+                selected_indices
+                    .iter()
+                    .map(|&i| {
+                        let (name, _) = &entity_types[i];
+                        tys.insert(build_qualified_entity_type_name(
+                            namespace.as_ref(),
+                            &name.clone().into(),
+                        ));
+                        name.clone().into()
+                    })
+                    .collect::<Vec<Name>>(),
+            ))
         };
+        let mut principal_and_resource_types_exist = false;
         let mut actions: Vec<(SmolStr, ActionType)> = action_names
             .iter()
             .map(|name| {
@@ -844,47 +842,25 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let apply_spec = if u.ratio::<u8>(1, 8)? {
-                                // The action applies to an unspecified principal
-                                // and resource, and no other entity types.
-                                None
-                            } else {
-                                Some(ApplySpec {
-                                    resource_types: pick_entity_types(&mut resource_types, u)?,
-                                    principal_types: pick_entity_types(&mut principal_types, u)?,
-                                    context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                                })
-                            };
-                            if settings.enable_unspecified_apply_spec {
-                                apply_spec
-                            } else {
-                                match apply_spec {
-                                    Some(ApplySpec {
-                                        resource_types,
-                                        principal_types,
-                                        context,
-                                    }) if resource_types.is_some() || principal_types.is_some() => {
-                                        Some(ApplySpec {
-                                            resource_types: if resource_types.is_none() {
-                                                Some(vec![])
-                                            } else {
-                                                resource_types
-                                            },
-                                            principal_types: if principal_types.is_none() {
-                                                Some(vec![])
-                                            } else {
-                                                principal_types
-                                            },
-                                            context,
-                                        })
-                                    }
-                                    // `apply_spec` either is None or has both resource and principal types to be None
-                                    //  we fail early for these cases
-                                    _ => {
-                                        return Err(Error::NoValidPrincipalOrResourceTypes);
-                                    }
+                            let mut resource_types = pick_entity_types(&mut resource_types, u)?;
+                            let mut principal_types = pick_entity_types(&mut principal_types, u)?;
+                            // If we already have resource_types or principal_types, flip a coin to remove some
+                            if principal_and_resource_types_exist {
+                                if u.ratio(1, 8)? {
+                                    resource_types = None;
                                 }
+                                if u.ratio(1, 8)? {
+                                    principal_types = None;
+                                }
+                            } else {
+                                principal_and_resource_types_exist = true;
                             }
+                            let apply_spec = Some(ApplySpec {
+                                resource_types: resource_types,
+                                principal_types: principal_types,
+                                context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                            });
+                            apply_spec
                         },
                         member_of: if settings.enable_action_groups_and_attrs {
                             Some(vec![])
@@ -897,11 +873,6 @@ impl Schema {
                 ))
             })
             .collect::<Result<Vec<_>>>()?;
-        if principal_types.is_empty() || resource_types.is_empty() {
-            // rather than try to remediate this situation, we just fail-fast
-            // and start over
-            return Err(Error::NoValidPrincipalOrResourceTypes);
-        }
         // fill in member-relationships for actions; see notes for entity types
         if settings.enable_action_groups_and_attrs {
             for i in 0..actions.len() {
