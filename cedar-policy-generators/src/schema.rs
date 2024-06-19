@@ -810,7 +810,7 @@ impl Schema {
         let mut resource_types = HashSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
         let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
-            // Pre-select the number of entity types (minimum 1), then randomly select that many indices 
+            // Pre-select the number of entity types (minimum 1), then randomly select that many indices
             let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
@@ -842,8 +842,10 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let mut picked_resource_types = pick_entity_types(&mut resource_types, u)?;
-                            let mut picked_principal_types = pick_entity_types(&mut principal_types, u)?;
+                            let mut picked_resource_types =
+                                pick_entity_types(&mut resource_types, u)?;
+                            let mut picked_principal_types =
+                                pick_entity_types(&mut principal_types, u)?;
                             // If we already have resource_types and principal_types, randomly make them empty
                             if principal_and_resource_types_exist {
                                 if u.ratio(1, 8)? {
