@@ -810,8 +810,8 @@ impl Schema {
         let mut resource_types = HashSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
         let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
-            // Pre-select the number of entity types to select (minimum 1), then take a random selection of that size
-            let num = u.int_in_range(1..=entity_types.len()).unwrap() as usize;
+            // Pre-select the number of entity types (minimum 1), then randomly select that many indices 
+            let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
 
@@ -842,22 +842,22 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let mut resource_types = pick_entity_types(&mut resource_types, u)?;
-                            let mut principal_types = pick_entity_types(&mut principal_types, u)?;
-                            // If we already have resource_types or principal_types, flip a coin to remove some
+                            let mut picked_resource_types = pick_entity_types(&mut resource_types, u)?;
+                            let mut picked_principal_types = pick_entity_types(&mut principal_types, u)?;
+                            // If we already have resource_types and principal_types, randomly make them empty
                             if principal_and_resource_types_exist {
                                 if u.ratio(1, 8)? {
-                                    resource_types = None;
+                                    picked_resource_types = None;
                                 }
                                 if u.ratio(1, 8)? {
-                                    principal_types = None;
+                                    picked_principal_types = None;
                                 }
                             } else {
                                 principal_and_resource_types_exist = true;
                             }
                             let apply_spec = Some(ApplySpec {
-                                resource_types: resource_types,
-                                principal_types: principal_types,
+                                resource_types: picked_resource_types,
+                                principal_types: picked_principal_types,
                                 context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
                             });
                             apply_spec
