@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use cedar_policy_validator::{ActionType, NamespaceDefinition, SchemaFragment};
+use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaFragment};
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
@@ -104,7 +104,7 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                if rhs == lhs {
+                if (either_empty(&lhs) && either_empty(&rhs)) || rhs == lhs {
                     Ok(())
                 } else {
                     Err(format!(
@@ -121,6 +121,10 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
             )),
         }
     }
+}
+
+fn either_empty(spec: &ApplySpec) -> bool {
+    spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
 /// Just compare entity attribute types and context types are equivalent

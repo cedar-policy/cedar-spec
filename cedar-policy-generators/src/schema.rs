@@ -838,7 +838,6 @@ impl Schema {
                             let picked_resource_types = pick_entity_types(&mut resource_types, u)?;
                             let picked_principal_types =
                                 pick_entity_types(&mut principal_types, u)?;
-                            // If we already have resource_types and principal_types, randomly make them empty
                             Some(ApplySpec {
                                 resource_types: picked_resource_types,
                                 principal_types: picked_principal_types,
