@@ -807,7 +807,7 @@ impl Schema {
                                  u: &mut Unstructured<'_>|
          -> Result<Vec<ast::EntityType>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u.int_in_range(0..=entity_types.len()).unwrap();
+            let num = u.int_in_range(1..=entity_types.len()).unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
 
@@ -835,9 +835,16 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let picked_resource_types = pick_entity_types(&mut resource_types, u)?;
-                            let picked_principal_types =
+                            let mut picked_resource_types =
+                                pick_entity_types(&mut resource_types, u)?;
+                            if u.ratio(1, 8)? {
+                                picked_resource_types.clear();
+                            }
+                            let mut picked_principal_types =
                                 pick_entity_types(&mut principal_types, u)?;
+                            if u.ratio(1, 8)? {
+                                picked_principal_types.clear();
+                            }
                             Some(ApplySpec {
                                 resource_types: picked_resource_types,
                                 principal_types: picked_principal_types,
