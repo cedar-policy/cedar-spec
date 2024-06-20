@@ -828,6 +828,9 @@ impl Schema {
                     .collect::<Vec<ast::EntityType>>(),
             )
         };
+        let mut principal_and_resource_types_exist = false;
+        // Ensure on the first pass we always generate a principal/resource
+        // After that, flip a coin to optional delete the principal/resource type lists
         let mut actions: Vec<(SmolStr, ActionType)> = action_names
             .iter()
             .map(|name| {
@@ -837,13 +840,17 @@ impl Schema {
                         applies_to: {
                             let mut picked_resource_types =
                                 pick_entity_types(&mut resource_types, u)?;
-                            if u.ratio(1, 8)? {
-                                picked_resource_types.clear();
-                            }
                             let mut picked_principal_types =
                                 pick_entity_types(&mut principal_types, u)?;
-                            if u.ratio(1, 8)? {
-                                picked_principal_types.clear();
+                            if principal_and_resource_types_exist {
+                                if u.ratio(1, 8)? {
+                                    picked_principal_types.clear();
+                                }
+                                if u.ratio(1, 8)? {
+                                    picked_resource_types.clear();
+                                }
+                            } else {
+                                principal_and_resource_types_exist = true;
                             }
                             Some(ApplySpec {
                                 resource_types: picked_resource_types,
