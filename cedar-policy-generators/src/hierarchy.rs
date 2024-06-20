@@ -127,7 +127,6 @@ impl Hierarchy {
         } else {
             match request_field {
                 Some(_) => {
-                    // generate an arbitrary uid, but replace the eid if it's unspecified
                     let uid: EntityUID = u.arbitrary()?;
                     Ok(uid)
                 }

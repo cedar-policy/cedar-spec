@@ -104,7 +104,6 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                // Otherwise both of them must apply to unspecified entities or non-empty entity lists, which must be equal.
                 if rhs == lhs {
                     Ok(())
                 } else {

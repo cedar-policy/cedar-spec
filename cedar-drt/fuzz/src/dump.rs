@@ -213,7 +213,7 @@ fn passes_validation(schema: SchemaFragment, policies: &PolicySet) -> bool {
     }
 }
 
-/// Dump the entity uid to a json value if it is specified, otherwise return `None`
+/// Dump the entity uid to a json value
 fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
     match var {
         EntityUIDEntry::Unknown { .. } => {
