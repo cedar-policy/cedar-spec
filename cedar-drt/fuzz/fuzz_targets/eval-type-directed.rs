@@ -18,15 +18,18 @@
 use cedar_drt::utils::expr_to_est;
 use cedar_drt::*;
 use cedar_drt_inner::*;
+use cedar_policy_core::evaluator::Evaluator;
 use cedar_policy_core::{ast::Expr, entities::Entities};
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
+use extensions::Extensions;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
+use serde_json::Serializer;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
@@ -114,9 +117,32 @@ fuzz_target!(|input: FuzzTargetInput| {
     debug!("Entities: {}\n", input.entities);
     run_eval_test(
         &def_impl,
-        input.request.into(),
+        input.request.clone().into(),
         &input.expression,
         &input.entities,
         SETTINGS.enable_extensions,
-    )
+    );
+    if let Ok(test_name) = std::env::var("DUMP_TEST_NAME") {
+        let dump_dir = std::env::var("DUMP_TEST_DIR").unwrap_or_else(|_| ".".to_string());
+
+        let exts = if SETTINGS.enable_extensions {
+            Extensions::all_available()
+        } else {
+            Extensions::none()
+        };
+        let request: ast::Request = input.request.into();
+        let eval = Evaluator::new(request.clone(), &input.entities, &exts);
+        let response = eval.interpret(&input.expression, &std::collections::HashMap::default());
+
+        dump_eval(
+            dump_dir,
+            &test_name,
+            &input.schema.into(),
+            &input.expression,
+            &input.entities,
+            request,
+            response,
+        )
+        .expect("failed to dump test case");
+    }
 });

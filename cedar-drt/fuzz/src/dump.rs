@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-use cedar_policy::{AuthorizationError, Policy};
+use cedar_drt::ast::{Expr, Value};
+use cedar_policy::{AuthorizationError, EvaluationError, Policy};
 use cedar_policy_core::ast::{
     Context, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
 };
@@ -27,7 +28,10 @@ use cedar_policy_core::parser;
 use cedar_policy_generators::collections::HashMap;
 use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
 use cedar_testing::cedar_test_impl::RustEngine;
-use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
+use cedar_testing::integration_testing::{
+    perform_integration_test, JsonEvalRequest, JsonEvalTest, JsonRequest, JsonTest,
+};
+use std::fmt;
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
@@ -153,6 +157,77 @@ pub fn dump(
     Ok(())
 }
 
+/// Dump eval testcase to a directory.
+///
+/// `dirname`: directory in which to dump the data for the testcase. Will be
+/// created if it doesn't exist.
+///
+/// `testcasename`: a name to use for the testcase. Will be used in various
+/// filenames etc.
+pub fn dump_eval(
+    dirname: impl AsRef<Path>,
+    testcasename: &str,
+    schema: &SchemaFragment,
+    expression: &Expr,
+    entities: &Entities,
+    request: Request,
+    response: Result<Value, EvaluationError>,
+) -> std::io::Result<()> {
+    let dirname = dirname.as_ref();
+    std::fs::create_dir_all(dirname)?;
+
+    let schema_filename = dirname.join(format!("{testcasename}.cedarschema"));
+    let entities_filename = dirname.join(format!("{testcasename}.entities.json"));
+    let testcase_filename = dirname.join(format!("{testcasename}.json"));
+
+    let mut schema_file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(false)
+        .truncate(true)
+        .open(&schema_filename)?;
+    let schema_text = schema.as_natural_schema().unwrap();
+    writeln!(schema_file, "{schema_text}")?;
+
+    let entities_file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(false)
+        .truncate(true)
+        .open(&entities_filename)?;
+    entities.write_to_json(entities_file).unwrap();
+
+    let request = JsonEvalRequest {
+        description: "Request 1".to_string(),
+        principal: dump_request_var(request.principal()),
+        action: dump_request_var(request.action()),
+        resource: dump_request_var(request.resource()),
+        context: dump_context(
+            request
+                .context()
+                .expect("`dump` does not support requests missing context"),
+        ),
+        expression: dump_expression(expression),
+        output: dump_response(response),
+    };
+
+    let eval_testcase = JsonEvalTest {
+        schema: schema_filename.display().to_string(),
+        entities: entities_filename.display().to_string(),
+        request: request,
+    };
+
+    let testcase_file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(false)
+        .truncate(true)
+        .open(testcase_filename)?;
+    serde_json::to_writer_pretty(testcase_file, &eval_testcase)?;
+
+    Ok(())
+}
+
 // Check that the generated test passes the `perform_integration_test` function
 fn check_test(
     formatted_policies: String,
@@ -224,6 +299,33 @@ fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
                 .expect("failed to serialize euid")
                 .into();
             json
+        }
+    }
+}
+
+/// Dump the expression to a json value if it is specified, otherwise return `None`
+fn dump_expression(expression: &Expr) -> JsonValueWithNoDuplicateKeys {
+    let est: cedar_drt::est::Expr = expression.clone().into();
+    let json = serde_json::to_value(est)
+        .expect("failed to serialize expression")
+        .into();
+    json
+}
+
+/// Dump the response to a json value
+fn dump_response(response: Result<Value, EvaluationError>) -> Option<JsonValueWithNoDuplicateKeys> {
+    match response {
+        Ok(value) => {
+            let json = serde_json::to_value(value.to_string())
+                .expect("failed to serialize value")
+                .into();
+            Some(json)
+        }
+        Err(e) => {
+            let json = serde_json::to_value(e.to_string())
+                .expect("failed to serialize error")
+                .into();
+            Some(json)
         }
     }
 }
