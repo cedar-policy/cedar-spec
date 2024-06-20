@@ -566,7 +566,7 @@ impl<'a> ExprGenerator<'a> {
                                             // This does not use an explicit namespace because entity types
                                             // implicitly use the schema namespace if an explicit one is not
                                             // provided.
-                                            name: entity_name.clone().into(),
+                                            name: ast::Name::from(entity_name.clone()).into(),
                                         }
                                     ),
                                     max_depth - 1,
@@ -2156,7 +2156,7 @@ impl<'a> ExprGenerator<'a> {
     /// generate a UID with the given typename
     pub fn arbitrary_uid_with_type(
         &self,
-        ty: &ast::Name,
+        ty: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {

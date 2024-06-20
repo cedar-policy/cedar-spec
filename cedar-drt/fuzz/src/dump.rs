@@ -16,7 +16,7 @@
 
 use cedar_policy::{AuthorizationError, Policy};
 use cedar_policy_core::ast::{
-    Context, EntityType, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
+    Context, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
 };
 use cedar_policy_core::authorizer::Response;
 use cedar_policy_core::entities;
@@ -213,21 +213,18 @@ fn passes_validation(schema: SchemaFragment, policies: &PolicySet) -> bool {
     }
 }
 
-/// Dump the entity uid to a json value if it is specified, otherwise return `None`
-fn dump_request_var(var: &EntityUIDEntry) -> Option<JsonValueWithNoDuplicateKeys> {
+/// Dump the entity uid to a json value
+fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
     match var {
         EntityUIDEntry::Unknown { .. } => {
             panic!("`dump` does not support requests with unknown fields")
         }
-        EntityUIDEntry::Known { euid, .. } => match euid.entity_type() {
-            EntityType::Unspecified => None,
-            EntityType::Specified(_) => {
-                let json = serde_json::to_value(TypeAndId::from(euid as &EntityUID))
-                    .expect("failed to serialize euid")
-                    .into();
-                Some(json)
-            }
-        },
+        EntityUIDEntry::Known { euid, .. } => {
+            let json = serde_json::to_value(TypeAndId::from(euid as &EntityUID))
+                .expect("failed to serialize euid")
+                .into();
+            json
+        }
     }
 }
 

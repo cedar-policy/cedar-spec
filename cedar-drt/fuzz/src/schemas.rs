@@ -104,7 +104,6 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                // Otherwise both of them must apply to unspecified entities or non-empty entity lists, which must be equal.
                 if (either_empty(&lhs) && either_empty(&rhs)) || rhs == lhs {
                     Ok(())
                 } else {
@@ -114,8 +113,6 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
                     ))
                 }
             }
-            // if one of them has `appliesTo` being null, then the other must have both principal and resource types unspecified
-            (Some(spec), None) | (None, Some(spec)) if both_unspecified(&spec) => Ok(()),
             (Some(_), None) => Err(format!(
                 "Mismatched applies to in `{name}`, lhs was `Some`, `rhs` was `None`"
             )),
@@ -126,13 +123,8 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
     }
 }
 
-fn both_unspecified(spec: &ApplySpec) -> bool {
-    spec.resource_types.is_none() && spec.principal_types.is_none()
-}
-
 fn either_empty(spec: &ApplySpec) -> bool {
-    matches!(spec.resource_types.as_ref(), Some(ts) if ts.is_empty())
-        || matches!(spec.principal_types.as_ref(), Some(ts) if ts.is_empty())
+    spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
 /// Just compare entity attribute types and context types are equivalent
@@ -141,7 +133,7 @@ pub fn validator_schema_attr_types_equivalent(
     schema2: &cedar_policy_validator::ValidatorSchema,
 ) -> bool {
     let entity_attr_tys1: HashMap<
-        &cedar_drt::ast::Name,
+        &cedar_drt::ast::EntityType,
         HashMap<&smol_str::SmolStr, &cedar_policy_validator::types::AttributeType>,
     > = HashMap::from_iter(
         schema1

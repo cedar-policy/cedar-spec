@@ -20,7 +20,7 @@ use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{
-    Annotation, Annotations, AnyId, Effect, EntityUID, Expr, Name, Policy, PolicyID, PolicySet,
+    Annotation, Annotations, AnyId, Effect, EntityUID, Expr, Policy, PolicyID, PolicySet,
     StaticPolicy, Template,
 };
 use cedar_policy_core::{ast, est};
@@ -207,11 +207,11 @@ pub enum PrincipalOrResourceConstraint {
     /// Eg `principal in ?principal`
     InSlot,
     /// Eg `principal is User`
-    IsType(Name),
+    IsType(ast::EntityType),
     /// Eg `principal is User in Group::"123"`
-    IsTypeIn(Name, EntityUID),
+    IsTypeIn(ast::EntityType, EntityUID),
     /// Eg `principal is User in ?principal`
-    IsTypeInSlot(Name),
+    IsTypeInSlot(ast::EntityType),
 }
 
 impl PrincipalOrResourceConstraint {
