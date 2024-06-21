@@ -312,7 +312,7 @@ impl LeanDefinitionalEngine {
         request: &ast::Request,
         entities: &Entities,
         expr: &Expr,
-        expected: Option<Value>,
+        expected: Option<Expr>,
     ) -> TestResult<bool> {
         let expected_as_expr: Option<Expr> = expected.map(|v| v.into());
         let request: String = serde_json::to_string(&EvaluationRequest {
@@ -421,7 +421,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         entities: &Entities,
         expr: &Expr,
         enable_extensions: bool,
-        expected: Option<Value>,
+        expected: Option<Expr>,
     ) -> TestResult<bool> {
         assert!(
             enable_extensions,

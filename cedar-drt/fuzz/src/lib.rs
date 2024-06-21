@@ -119,7 +119,7 @@ pub fn run_eval_test(
     };
     let eval = Evaluator::new(request.clone(), entities, &exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
-        Ok(v) => Some(v),
+        Ok(v) => Some(v.into()),
         Err(_) => None,
     };
 

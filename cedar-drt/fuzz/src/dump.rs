@@ -31,6 +31,7 @@ use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{
     perform_integration_test, JsonEvalRequest, JsonEvalTest, JsonRequest, JsonTest,
 };
+use serde_json::json;
 use std::fmt;
 use std::io::Write;
 use std::path::Path;
@@ -313,20 +314,10 @@ fn dump_expression(expression: &Expr) -> JsonValueWithNoDuplicateKeys {
 }
 
 /// Dump the response to a json value
-fn dump_response(response: Result<Value, EvaluationError>) -> Option<JsonValueWithNoDuplicateKeys> {
+fn dump_response(response: Result<Value, EvaluationError>) -> Option<serde_json::Value> {
     match response {
-        Ok(value) => {
-            let json = serde_json::to_value(value.to_string())
-                .expect("failed to serialize value")
-                .into();
-            Some(json)
-        }
-        Err(e) => {
-            let json = serde_json::to_value(e.to_string())
-                .expect("failed to serialize error")
-                .into();
-            Some(json)
-        }
+        Ok(value) => Some(json!(value)),
+        Err(_) => None,
     }
 }
 
