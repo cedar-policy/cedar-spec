@@ -116,7 +116,7 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
             // An action w/ empty applies to list is equivalent to an action with _no_ applies to
             // section at all.
             // This is because neither action can be legally applied to any principal/resources.
-            (Some(applies_to), None) | (None, Some(applies_to)) if both_empty(&applies_to) => {
+            (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(&applies_to) => {
                 Ok(())
             }
             (Some(_), None) => Err(format!(
@@ -131,10 +131,6 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
 
 fn either_empty(spec: &ApplySpec) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
-}
-
-fn both_empty(spec: &ApplySpec) -> bool {
-    spec.principal_types.is_empty() && spec.resource_types.is_empty()
 }
 
 /// Just compare entity attribute types and context types are equivalent
