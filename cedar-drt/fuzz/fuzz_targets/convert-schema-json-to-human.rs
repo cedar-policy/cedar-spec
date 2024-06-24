@@ -25,14 +25,14 @@ use similar_asserts::SimpleDiff;
 // we test for the existence of schema that are valid in JSON but with an
 // invalid natural schema conversion.
 fuzz_target!(|src: String| {
-    if let Ok(parsed) = SchemaFragment::from_json_str(&src) {
+    if let Ok(parsed) = SchemaFragment::<RawName>::from_json_str(&src) {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
         let natural_src = parsed
             .as_natural_schema()
             .expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = SchemaFragment::from_str_natural(&natural_src)
+        let (natural_parsed, _) = SchemaFragment::<RawName>::from_str_natural(&natural_src)
             .expect("Failed to parse converted human readable schema");
         if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
             println!("Schema: {src}");

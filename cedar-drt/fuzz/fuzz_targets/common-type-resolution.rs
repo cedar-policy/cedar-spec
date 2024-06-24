@@ -17,7 +17,7 @@
 #![no_main]
 use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::{RawName, SchemaFragment};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use serde::Serialize;
@@ -25,8 +25,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment,
-    pub schema_with_common_types: SchemaFragment,
+    pub schema: SchemaFragment<RawName>,
+    pub schema_with_common_types: SchemaFragment<RawName>,
 }
 
 /// settings for this fuzz target

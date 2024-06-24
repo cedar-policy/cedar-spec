@@ -36,7 +36,7 @@ use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaF
 /// However, this is _equivalent_. An action that can't be applied to any principals can't ever be
 /// used. Whether or not there are applicable resources is useless.
 ///
-pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(), String> {
+pub fn equivalence_check<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(lhs: SchemaFragment<N>, rhs: SchemaFragment<N>) -> Result<(), String> {
     // We need to remove trivial empty namespaces because both `{}`
     // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
     // in the human-readable schema format
@@ -60,7 +60,7 @@ pub fn equivalence_check(lhs: SchemaFragment, rhs: SchemaFragment) -> Result<(),
     }
 }
 
-fn remove_trivial_empty_namespace(schema: &mut SchemaFragment) {
+fn remove_trivial_empty_namespace<N>(schema: &mut SchemaFragment<N>) {
     match schema.0.get(&None) {
         Some(def)
             if def.entity_types.is_empty()
@@ -73,7 +73,7 @@ fn remove_trivial_empty_namespace(schema: &mut SchemaFragment) {
     }
 }
 
-fn namespace_equivalence(lhs: NamespaceDefinition, rhs: NamespaceDefinition) -> Result<(), String> {
+fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(lhs: NamespaceDefinition<N>, rhs: NamespaceDefinition<N>) -> Result<(), String> {
     if lhs.common_types != rhs.common_types {
         Err("Common types differ".to_string())
     } else if lhs.entity_types != rhs.entity_types {
@@ -94,7 +94,7 @@ fn namespace_equivalence(lhs: NamespaceDefinition, rhs: NamespaceDefinition) -> 
     }
 }
 
-fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Result<(), String> {
+fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(name: &str, lhs: ActionType<N>, rhs: ActionType<N>) -> Result<(), String> {
     if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
     } else if lhs.member_of != rhs.member_of {
@@ -129,7 +129,7 @@ fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Resu
     }
 }
 
-fn either_empty(spec: &ApplySpec) -> bool {
+fn either_empty<N>(spec: &ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 

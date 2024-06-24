@@ -18,14 +18,14 @@
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::{RawName, SchemaFragment};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment,
+    pub schema: SchemaFragment<RawName>,
 }
 
 /// settings for this fuzz target
