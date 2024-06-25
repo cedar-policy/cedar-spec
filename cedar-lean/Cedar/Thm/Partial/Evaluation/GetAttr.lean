@@ -351,9 +351,7 @@ theorem evaluateGetAttr_subst_preserves_errors {pval₁ : Partial.Value} {attr :
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
   import `Thm/Partial/Evaluation.lean` to access it.
-  Alternately, this entire inductive proof could live in its own set of files,
-  all of which could depend on `Thm/Partial/Evaluation.lean` and its theorems
-  like `subst_preserves_evaluation_to_value`.
+  See #372.
 -/
 theorem subst_preserves_errors {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed)

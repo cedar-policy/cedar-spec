@@ -397,9 +397,7 @@ theorem evaluateBinaryApp_subst_preserves_errors {pval₁ pval₂ : Partial.Valu
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
   import `Thm/Partial/Evaluation.lean` to access it.
-  Alternately, this entire inductive proof could live in its own set of files,
-  all of which could depend on `Thm/Partial/Evaluation.lean` and its theorems
-  like `subst_preserves_evaluation_to_value`.
+  See #372.
 -/
 theorem subst_preserves_errors {x₁ x₂ : Partial.Expr} {op : BinaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
