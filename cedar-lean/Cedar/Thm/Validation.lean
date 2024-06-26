@@ -18,6 +18,8 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
 validate policies schema = .ok () →
 RequestAndEntitiesConsistentWithSchema schema request entities →
 AllEvaluateCorrectly policies request entities := by
-  sorry
+intro h₀ h₁
+unfold validate at h₀
 
-end Cedar.Thm
+
+-- end Cedar.Thm

@@ -30,10 +30,27 @@ def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities
 def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
 ∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
 
-theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
-∀ env : Environment, (env ∈ envs →
-RequestAndEntitiesMatchEnvironment env request entities) →
-typecheckPolicyWithEnvironments policy envs = .ok () →
+
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+RequestAndEntitiesMatchEnvironment env request entities →
+typecheckPolicy policy env = .ok t →
 ∃ b : Bool, EvaluatesTo policy.toExpr request entities b := by sorry
+
+
+theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
+∀ env : Environment, env ∈ envs →
+RequestAndEntitiesMatchEnvironment env request entities →
+typecheckPolicyWithEnvironments policy envs = .ok () →
+∃ b : Bool, EvaluatesTo policy.toExpr request entities b := by
+intro env h₀ h₁ h₂
+have hc := empty_capabilities_invariant request entities
+simp [typecheckPolicyWithEnvironments] at h₂
+cases h₃ : List.mapM (typecheckPolicy policy) envs with
+| error => simp [h₃] at h₂
+| ok ts =>
+  simp [h₃] at h₂
+  sorry
+
+
 
 end Cedar.Thm
