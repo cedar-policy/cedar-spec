@@ -25,7 +25,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment<RawName>,
+    pub schema: SchemaFragment<Name>,
 }
 
 /// settings for this fuzz target
