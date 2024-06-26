@@ -16,7 +16,11 @@
 
 #![no_main]
 use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
-use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
+use cedar_policy_core::ast;
+use cedar_policy_generators::{
+    schema::{downgrade_frag_to_raw, Schema},
+    settings::ABACSettings,
+};
 use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
@@ -25,8 +29,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment,
-    pub schema_with_common_types: SchemaFragment,
+    pub schema: SchemaFragment<ast::Name>,
+    pub schema_with_common_types: SchemaFragment<ast::Name>,
 }
 
 /// settings for this fuzz target
@@ -74,9 +78,10 @@ impl<'a> Arbitrary<'a> for Input {
 
 fuzz_target!(|i: Input| {
     info!("schemas: {i:?}");
-    let validator_schema1: Result<cedar_policy_validator::ValidatorSchema, _> = i.schema.try_into();
+    let validator_schema1: Result<cedar_policy_validator::ValidatorSchema, _> =
+        downgrade_frag_to_raw(i.schema).try_into();
     let validator_schema2: Result<cedar_policy_validator::ValidatorSchema, _> =
-        i.schema_with_common_types.try_into();
+        downgrade_frag_to_raw(i.schema_with_common_types).try_into();
     match (validator_schema1, validator_schema2) {
         (Ok(s1), Ok(s2)) => {
             assert!(
