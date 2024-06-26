@@ -1425,7 +1425,7 @@ impl From<Schema> for SchemaFragment<RawName> {
 /// fixed). However, we can't do any better, because there is currently no way
 /// for a `RawName` to unambiguously refer to a name in the empty namespace;
 /// solutions are discussed in RFC 64 (which is `pending` as of this writing).
-fn downgrade_frag_to_raw(frag: SchemaFragment<ast::Name>) -> SchemaFragment<RawName> {
+pub fn downgrade_frag_to_raw(frag: SchemaFragment<ast::Name>) -> SchemaFragment<RawName> {
     SchemaFragment(
         frag.0
             .into_iter()

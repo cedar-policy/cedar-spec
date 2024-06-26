@@ -75,9 +75,10 @@ impl<'a> Arbitrary<'a> for Input {
 
 fuzz_target!(|i: Input| {
     info!("schemas: {i:?}");
-    let validator_schema1: Result<cedar_policy_validator::ValidatorSchema, _> = i.schema.try_into();
+    let validator_schema1: Result<cedar_policy_validator::ValidatorSchema, _> =
+        downgrade_frag_to_raw(i.schema).try_into();
     let validator_schema2: Result<cedar_policy_validator::ValidatorSchema, _> =
-        i.schema_with_common_types.try_into();
+        downgrade_frag_to_raw(i.schema_with_common_types).try_into();
     match (validator_schema1, validator_schema2) {
         (Ok(s1), Ok(s2)) => {
             assert!(
