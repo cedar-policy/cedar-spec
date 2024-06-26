@@ -22,7 +22,7 @@ use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
 };
-use cedar_policy_validator::{Name, SchemaFragment};
+use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
