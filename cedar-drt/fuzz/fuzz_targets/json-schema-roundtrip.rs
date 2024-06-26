@@ -17,15 +17,16 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
+use cedar_policy_core::ast;
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::{RawName, SchemaFragment};
+use cedar_policy_validator::SchemaFragment;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment<Name>,
+    pub schema: SchemaFragment<ast::Name>,
 }
 
 /// settings for this fuzz target
