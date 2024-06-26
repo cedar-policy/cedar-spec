@@ -70,7 +70,10 @@ fuzz_target!(|i: Input| {
         json_ast
             .0
             .into_iter()
-            .map(|(namespace, nsdef)| let nsdef = nsdef.qualify_type_references(namespace.as_ref()); (namespace, nsdef))
+            .map(|(namespace, nsdef)| {
+                let nsdef = nsdef.qualify_type_references(namespace.as_ref());
+                (namespace, nsdef)
+            })
             .collect(),
     );
     assert_eq!(json_ast, i.schema, "JSON rountrip failed");
@@ -80,7 +83,10 @@ fuzz_target!(|i: Input| {
         final_ast
             .0
             .into_iter()
-            .map(|(namespace, nsdef)| let nsdef = nsdef.qualify_type_references(namespace.as_ref()); (namespace, nsdef))
+            .map(|(namespace, nsdef)| {
+                let nsdef = nsdef.qualify_type_references(namespace.as_ref());
+                (namespace, nsdef)
+            })
             .collect(),
     );
     if let Err(e) = equivalence_check(i.schema, final_ast) {
