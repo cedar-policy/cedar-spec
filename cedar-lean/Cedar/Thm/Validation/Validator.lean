@@ -30,13 +30,11 @@ def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities
 def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
 ∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
 
-
--- what is the relation between env.reqty.action
 theorem evaluates_subst (env : Environment) (policy : Policy) (req : Request) (entities : Entities) (v : Value) :
 RequestAndEntitiesMatchEnvironment env request entities →
 EvaluatesTo (substituteAction env.reqty.action policy.toExpr) request entities value →
  EvaluatesTo policy.toExpr request entities value := by
- sorry 
+ sorry
 
 
 theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
