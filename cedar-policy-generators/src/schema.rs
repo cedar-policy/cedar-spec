@@ -826,7 +826,7 @@ impl Schema {
         for i in 0..entity_types.len() {
             for name in &entity_type_ids[(i + 1)..] {
                 if u.ratio::<u8>(1, 2)? {
-                    let etype = ast::Name::from(name.clone()).into();
+                    let etype = ast::Name::from(name.clone());
                     entity_types[i].1.member_of_types.push(etype);
                 }
             }
