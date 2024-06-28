@@ -116,6 +116,72 @@ theorem partial_eval_wf {xs : List Partial.Expr} {request : Partial.Request} {en
     simpa [Partial.Value.WellFormed] using ih x h₅ (.value v) hx
 
 /--
+  Inductive argument that partial evaluation of a Spec.Value.set always succeeds
+  and returns the same value
+-/
+theorem eval_spec_value (vs : Set Spec.Value) (request : Partial.Request) (entities : Partial.Entities)
+  (wf_s : vs.WellFormed)
+  (wf_elts : ∀ v ∈ vs, v.WellFormed)
+  (ih : ∀ v ∈ vs, Partial.evaluate v.asPartialExpr request entities = .ok (.value v)) :
+  Partial.evaluate (Spec.Value.set vs).asPartialExpr request entities = .ok (.value (.set vs))
+:= by
+  unfold Partial.evaluate Spec.Value.asPartialExpr
+  simp only
+  rw [List.map₁_eq_map Spec.Value.asPartialExpr]
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · request entities)]
+  rw [List.mapM_map]
+  cases h₁ : vs.elts.mapM (λ x => Partial.evaluate x.asPartialExpr request entities) <;> simp
+  case error e =>
+    replace ⟨elt, h₁, h₂⟩ := List.mapM_error_implies_exists_error h₁
+    simp [ih elt h₁] at h₂
+  case ok pvals =>
+    -- vs is the input set of values. pvals is the output list of (partial) values.
+    replace ⟨h₁, h₁'⟩ := And.intro (List.mapM_ok_implies_all_ok h₁) (List.mapM_ok_implies_all_from_ok h₁)
+    conv at h₁' => intro pval h ; simp
+    split <;> simp
+    · -- pvals has no residuals
+      rename_i vs' h₂
+      -- vs' is the output list of values.
+      replace ⟨h₂, h₂'⟩ := And.intro (List.mapM_some_implies_all_some h₂) (List.mapM_some_implies_all_from_some h₂)
+      have ⟨vs'', h₃⟩ := Set.if_wellformed_then_exists_make vs wf_s
+      subst h₃
+      -- Set.make vs'' is the input set of values. Set.make vs' is the output set of values.
+      simp [Set.make_make_eqv, List.Equiv, List.subset_def]
+      constructor <;> intro v h₃
+      · replace ⟨pval, h₂', h₄⟩ := h₂' v h₃
+        cases pval <;> simp at h₄
+        case value v' =>
+          subst v'
+          replace ⟨v', h₁', h₄⟩ := h₁' (.value v) h₂'
+          rw [Set.in_list_iff_in_set] at h₁'
+          specialize ih v' h₁'
+          simp [ih] at h₄
+          subst v'
+          exact (Set.make_mem _ _).mpr h₁'
+      · have h₃' : v ∈ Set.elts (Set.make vs'') := by
+          rw [Set.in_list_iff_in_set]
+          rw [← Set.make_mem]
+          exact h₃
+        replace ⟨pval, h₁, h₄⟩ := h₁ v h₃'
+        specialize ih v h₃'
+        clear h₃'
+        replace ⟨v', h₂, h₅⟩ := h₂ pval h₁
+        cases pval <;> simp at h₅
+        case value v'' =>
+          subst v''
+          simp [ih] at h₄
+          subst v'
+          exact h₂
+    · -- pvals has a residual
+      rename_i h₂
+      replace ⟨pval, h₂, h₃⟩ := List.mapM_none_iff_exists_none.mp h₂
+      cases pval <;> simp at h₃
+      case residual r =>
+        replace ⟨v, h₁', h₄⟩ := h₁' (.residual r) h₂
+        specialize ih v (by simpa [Set.in_list_iff_in_set] using h₁')
+        simp [ih] at h₄
+
+/--
   If partial-evaluating a `Partial.Expr.set` produces `ok` with a concrete
   value, then so would partial-evaluating any of the elements
 -/

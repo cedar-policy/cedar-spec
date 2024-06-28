@@ -848,22 +848,6 @@ theorem mapM_congr [Monad m] [LawfulMonad m] {f g : α → m β} : ∀ {l : List
   rw [← mapM'_eq_mapM, ← mapM'_eq_mapM]
   exact mapM'_congr
 
-/-! ### foldl -/
-
-theorem foldl_pmap_subtype
-  {p : α → Prop}
-  (f : β → α → β)
-  (as : List α)
-  (init : β)
-  (h : ∀ a, a ∈ as → p a) :
-  List.foldl (λ b (x : { a : α // p a }) => f b x.val) init (List.pmap Subtype.mk as h)
-  =
-  List.foldl f init as
-:= by
-  induction as generalizing init
-  case nil => simp only [pmap, foldl_nil]
-  case cons ih => apply ih
-
 /-! ### foldlM -/
 
 theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)
