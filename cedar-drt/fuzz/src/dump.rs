@@ -102,7 +102,8 @@ pub fn dump(
             resource: dump_request_var(q.resource()),
             context: dump_context(
                 q.context()
-                    .expect("`dump` does not support requests missing context"),
+                    .expect("`dump` does not support requests missing context")
+                    .clone(),
             ),
             validate_request: true,
             decision: a.decision,
@@ -220,31 +221,27 @@ fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
             panic!("`dump` does not support requests with unknown fields")
         }
         EntityUIDEntry::Known { euid, .. } => {
-            let json = serde_json::to_value(TypeAndId::from(euid as &EntityUID))
+            serde_json::to_value(TypeAndId::from(euid as &EntityUID))
                 .expect("failed to serialize euid")
-                .into();
-            json
+                .into()
         }
     }
 }
 
 /// Dump the context to a "natural" json value
-fn dump_context(context: &Context) -> JsonValueWithNoDuplicateKeys {
+fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
     let context = context
-        .iter()
-        .map(|it| {
-            it.map(|(k, pval)| {
-                (
-                    k.clone(),
-                    RestrictedExpr::try_from(pval)
-                        .unwrap()
-                        .to_natural_json()
-                        .unwrap(),
-                )
-            })
-            .collect::<HashMap<_, _>>()
+        .into_iter()
+        .map(|(k, pval)| {
+            (
+                k,
+                RestrictedExpr::try_from(pval)
+                    .unwrap()
+                    .to_natural_json()
+                    .unwrap(),
+            )
         })
-        .unwrap_or_default();
+        .collect::<HashMap<_, _>>();
     serde_json::to_value(context)
         .expect("failed to serialize context")
         .into()

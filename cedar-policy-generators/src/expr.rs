@@ -566,7 +566,7 @@ impl<'a> ExprGenerator<'a> {
                                             // This does not use an explicit namespace because entity types
                                             // implicitly use the schema namespace if an explicit one is not
                                             // provided.
-                                            name: ast::Name::from(entity_name.clone()).into(),
+                                            name: ast::Name::from(entity_name.clone()),
                                         }
                                     ),
                                     max_depth - 1,
