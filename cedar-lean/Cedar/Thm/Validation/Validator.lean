@@ -79,13 +79,13 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
 | error => simp [h₃] at h₂
 | ok ts =>
   simp [h₃] at h₂
-  rw [List.mapM_ok_iff_forall₂] at h₃
   cases h₄ : envs with
   | nil =>
     simp [h₄, pure, Except.pure] at h₃
     subst h₃
     simp [allFalse] at h₂
   | cons h t =>
+      rw [List.mapM_ok_iff_forall₂] at h₃
       have h₆ : RequestAndEntitiesMatchEnvironment h request entities := by
         have h₇ : h ∈ envs := by simp [h₄]
         specialize h₀ h
@@ -96,7 +96,7 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
       obtain ⟨ b, _, _, _, _ ⟩ := h₃
       apply typecheck_policy_is_sound policy h b
       repeat assumption
--- somehow this worked withput me needing to reason about the tail end of the lists at all? 
+-- somehow this worked withput me needing to reason about the tail end of the lists at all?
 
     -- simp [h₄] at h₃
     -- simp [typecheckPolicy] at h₃
