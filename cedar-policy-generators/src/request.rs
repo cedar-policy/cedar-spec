@@ -58,7 +58,7 @@ impl std::fmt::Display for Request {
             "(principal : {}, action: {}, resource: {})",
             self.principal, self.action, self.resource
         )?;
-        let mut context = self.context.iter().unwrap().peekable();
+        let mut context = self.context.clone().into_iter().peekable();
         if context.peek().is_some() {
             writeln!(f, "\nWith context: {{")?;
             for (attr, val) in context {
