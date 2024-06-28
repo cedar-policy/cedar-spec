@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+extern crate prost_build;
 use std::env;
 fn main() {
     let lean_dir = env::var("LEAN_LIB_DIR").expect(
@@ -25,4 +26,10 @@ fn main() {
         "cargo:rustc-link-search=native=../cedar-lean/.lake/packages/batteries/.lake/build/lib"
     );
     println!("cargo:rerun-if-changed=../cedar-lean/.lake/build/lib");
+
+    let mut config = prost_build::Config::new();
+    config.extern_path(".cedar_policy_core", "::cedar_policy_core::ast::proto");
+    config.compile_protos(
+        &["./schema/AuthorizationRequest.proto"],
+        &["./schema", "../cedar/cedar-policy-core/schema"]).unwrap();
 }

@@ -19,14 +19,20 @@
 
 #![cfg(feature = "integration-testing")]
 
-use cedar_testing::cedar_test_impl::CedarTestImplementation;
+use cedar_testing::cedar_test_impl::{time_function, CedarTestImplementation};
 use cedar_testing::integration_testing::{
     perform_integration_test_from_json_custom, resolve_integration_test_path,
 };
 
 use cedar_drt::*;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use walkdir::WalkDir;
+
+use cedar_testing::integration_testing::*;
+use statrs::statistics::{Data, Distribution};
+use prost::Message;
+
 
 /// Path of the folder containing the (handwritten) integration tests
 fn integration_test_folder() -> &'static Path {
@@ -91,4 +97,124 @@ fn integration_tests_on_def_impl() {
     let lean_def_impl = LeanDefinitionalEngine::new();
     run_integration_tests(&lean_def_impl);
     run_corpus_tests(&lean_def_impl);
+}
+
+#[test]
+fn protobuf_roundtrip() {
+    let tests = get_corpus_tests();
+    let mut proto_serialize_durs: Vec<f64> = vec![];
+    let mut proto_serialize_sizes: Vec<f64> = vec![];
+    let mut proto_deserialize_durs: Vec<f64> = vec![];
+    let mut json_serialize_durs: Vec<f64> = vec![];
+    let mut json_serialize_sizes: Vec<f64> = vec![];
+
+    for test in tests {
+        let jsonfile = resolve_integration_test_path(test);
+        let test_name: String = jsonfile.display().to_string();
+        let jsonstr = std::fs::read_to_string(jsonfile.as_path())
+            .unwrap_or_else(|e| panic!("error reading from file {test_name}: {e}"));
+        let test: JsonTest =
+            serde_json::from_str(&jsonstr).unwrap_or_else(|e| panic!("error parsing {test_name}: {e}"));
+        let policies = parse_policies_from_test(&test);
+        let schema = parse_schema_from_test(&test);
+        let entities = parse_entities_from_test(&test, &schema);
+        let requests: Vec<ast::Request> = test
+            .requests
+            .into_iter()
+            .map(|json_request| parse_request_from_test(&json_request, &schema, &test_name))
+            .collect();
+
+        for request in requests {
+            let request_msg = AuthorizationRequestMsg {
+                request: request.clone(),
+                policies: policies.clone(),
+                entities: entities.clone()
+            };
+
+            // let _a = humans_serialize(&request_msg);
+
+            // Ensure Protobuf roundtrip property
+            let request_msg_proto = proto::AuthorizationRequestMsg::from(&request_msg);
+            let request_msg_rt = AuthorizationRequestMsg::from(&request_msg_proto);
+
+            // Checking request equality (ignores loc field)
+            assert_eq!(request_msg.request.principal().uid(), request_msg_rt.request.principal().uid());
+            assert_eq!(request_msg.request.action().uid(), request_msg_rt.request.action().uid());
+            assert_eq!(request_msg.request.resource().uid(), request_msg_rt.request.resource().uid());
+            assert_eq!(request_msg.request.context(), request_msg_rt.request.context());
+
+            // Checking policy set equality
+            assert_eq!(request_msg.policies, request_msg_rt.policies);
+            
+            // Checking entities equality
+            assert_eq!(request_msg.entities, request_msg_rt.entities);
+
+            // Timings for protobuf (de-)serialization
+            let mut request_msg_proto = vec![];
+            let (_, proto_serialize_dur) : ((), Duration) = time_function(
+                ||  {
+                    let protomsg = proto::AuthorizationRequestMsg::from(&request_msg);
+                    let mut buf: Vec<u8> = vec![];
+                    buf.reserve(protomsg.encoded_len());
+                    protomsg
+                    .encode(&mut request_msg_proto)
+                    .expect("Failed to serialize AuthorizationRequestMsg Proto")
+                }
+
+                
+            );
+            let (_request_msg_rt, proto_deserialize_dur) = time_function(
+                || AuthorizationRequestMsg::from(
+                    &proto::AuthorizationRequestMsg::decode(&request_msg_proto[..])
+                    .expect("Failed to deserialize AuthorizationRequestMsg proto")
+             ));
+
+            proto_serialize_durs.push(proto_serialize_dur.as_micros() as f64);
+            proto_serialize_sizes.push((std::mem::size_of::<Vec<u8>>() + request_msg_proto.capacity() * std::mem::size_of::<u8>()) as f64);
+            proto_deserialize_durs.push(proto_deserialize_dur.as_micros() as f64);
+
+            let (request_json, json_serialize_dur) = time_function(|| serde_json::to_string(&AuthorizationRequest {
+                request: &request,
+                policies: &policies,
+                entities: &entities,
+            }).expect("Failed to seralize Authorization request"));
+
+            // TODO: Time JSON deserialize
+            json_serialize_durs.push(json_serialize_dur.as_micros() as f64);
+            json_serialize_sizes.push(request_json.len() as f64);
+        }
+    }
+
+    let total_tests = proto_serialize_durs.len();
+    println!("Total Number of tests: {total_tests}\n");
+
+    let d_proto_serialize_dur = Data::new(proto_serialize_durs);
+    let mean_proto_serialize_dur = d_proto_serialize_dur.mean().unwrap();
+    let std_proto_serialize_dur = d_proto_serialize_dur.std_dev().unwrap();
+    println!("Protobuf Mean Serialization Time {mean_proto_serialize_dur} micros");
+    println!("Protobuf Std Serialization Time {std_proto_serialize_dur} micros\n");
+
+    let d_proto_serialize_sizes = Data::new(proto_serialize_sizes);
+    let mean_proto_serialize_size = d_proto_serialize_sizes.mean().unwrap();
+    let std_proto_serialize_size = d_proto_serialize_sizes.std_dev().unwrap();
+    println!("Protobuf Mean Serialization Size {mean_proto_serialize_size} bytes");
+    println!("Protobuf Std Serialization Size {std_proto_serialize_size} bytes\n");
+
+    let d_proto_deserialize_durs = Data::new(proto_deserialize_durs);
+    let mean_proto_deserialize_dur = d_proto_deserialize_durs.mean().unwrap();
+    let std_proto_deserialize_dur = d_proto_deserialize_durs.std_dev().unwrap();
+    println!("Protobuf Mean Deserialization Time {mean_proto_deserialize_dur} micros");
+    println!("Protobuf Std Deserialization Time {std_proto_deserialize_dur} micros\n");
+
+    let d_json_serialize_durs = Data::new(json_serialize_durs);
+    let mean_json_serialize_dur = d_json_serialize_durs.mean().unwrap();
+    let std_json_serialize_dur = d_json_serialize_durs.std_dev().unwrap();
+    println!("JSON Mean Serialization Time {mean_json_serialize_dur} micros");
+    println!("JSON Std Serialization Time {std_json_serialize_dur} micros\n");
+
+    let d_json_serialize_sizes = Data::new(json_serialize_sizes);
+    let mean_json_serialize_size = d_json_serialize_sizes.mean().unwrap();
+    let std_json_serialize_size = d_json_serialize_sizes.std_dev().unwrap();
+    println!("JSON Mean Serialization Size {mean_json_serialize_size} bytes");
+    println!("JSON Std Serialization Size {std_json_serialize_size} bytes");
 }
