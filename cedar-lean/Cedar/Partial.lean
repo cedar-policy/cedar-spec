@@ -17,7 +17,6 @@
 import Cedar.Partial.Authorizer
 import Cedar.Partial.Entities
 import Cedar.Partial.Evaluator
-import Cedar.Partial.Expr
 import Cedar.Partial.Request
 import Cedar.Partial.Response
 import Cedar.Partial.Value

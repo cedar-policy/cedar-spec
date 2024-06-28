@@ -17,7 +17,7 @@
 import Lean.Data.Json.FromToJson
 import Cedar.Data.Set
 import Cedar.Partial.Evaluator
-import Cedar.Partial.Expr
+import Cedar.Partial.Value
 import Cedar.Spec.Policy
 
 /-!
@@ -32,9 +32,11 @@ open Cedar.Spec (Effect Error PolicyID)
 
 /-- The result of partial-evaluating a policy -/
 inductive Residual where
-  /-- Some `Partial.Expr`, which may be constant `true` (definitely satisfied),
-  constant `false` (definitely not satisfied), or a nontrivial expression  -/
-  | residual (id : PolicyID) (effect : Effect) (condition : Partial.Expr)
+  /--
+    Some `Partial.Value`, which may be constant `true` (definitely satisfied),
+    constant `false` (definitely not satisfied), or a nontrivial expression
+  -/
+  | residual (id : PolicyID) (effect : Effect) (condition : Partial.Value)
   /-- definitely results in this error, for any substitution of the unknowns -/
   | error (id : PolicyID) (error : Error)
 
@@ -53,7 +55,7 @@ def Residual.effect : Residual → Option Effect
   has the specified effect, return the PolicyID
 -/
 def Residual.mustBeSatisfied (eff : Effect) : Residual → Option PolicyID
-  | .residual id eff' (.lit (.bool true)) => if eff = eff' then some id else none
+  | .residual id eff' (.value true) => if eff = eff' then some id else none
   | _ => none
 
 /--
@@ -61,7 +63,7 @@ def Residual.mustBeSatisfied (eff : Effect) : Residual → Option PolicyID
   has the specified effect, return the PolicyID
 -/
 def Residual.mayBeSatisfied (eff : Effect) : Residual → Option PolicyID
-  | .residual _ _ (.lit (.bool false)) => none
+  | .residual _ _ (.value false) => none
   | .residual id eff' _ => if eff = eff' then some id else none
   | _ => none
 
@@ -73,10 +75,6 @@ structure Response where
     Does include policies that are definitely satisfied (residual `true`).
   -/
   residuals : List Residual
-  /--
-    The `Partial.Request` that was used to compute this `Partial.Response`
-  -/
-  req : Partial.Request
   /--
     The `Partial.Entities` that was used to compute this `Partial.Response`
   -/
@@ -216,15 +214,15 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
   Re-evaluate with the given substitution for unknowns, giving a new
   `Residual`, or `none` if the residual is now `false`.
 
-  Assumes that `req` and `entities` have already been substituted.
+  Assumes that `entities` have already been substituted.
 -/
-def Residual.reEvaluateWithSubst (subsmap : Subsmap) (req : Partial.Request) (entities : Partial.Entities) : Residual → Option Residual
+def Residual.reEvaluateWithSubst (subsmap : Subsmap) (entities : Partial.Entities) : Residual → Option Residual
   | .error id e => some (.error id e)
   | .residual id effect cond =>
-    match Partial.evaluate (cond.subst subsmap) req entities with
-    | .ok (.value (.prim (.bool false))) => none
-    | .ok (.value v) => some (.residual id effect v.asPartialExpr)
-    | .ok (.residual r) => some (.residual id effect r)
+    match Partial.evaluateValue (cond.subst subsmap) entities with
+    | .ok (.value false) => none
+    | .ok (.value v) => some (.residual id effect v)
+    | .ok cond' => some (.residual id effect cond')
     | .error e => some (.error id e)
 
 /--
@@ -239,18 +237,12 @@ def Residual.reEvaluateWithSubst (subsmap : Subsmap) (req : Partial.Request) (en
         (residual `false`).
     - `.residuals` will include policies that are definitely satisfied (residual
         `true`).
-
-  Returns `none` if:
-    - the substitution is invalid (e.g., if trying to substitute a
-        non-`EntityUID` into `UidOrUnknown`)
 -/
-def Response.reEvaluateWithSubst (subsmap : Subsmap) : Partial.Response → Option Partial.Response
-  | { residuals, req, entities } => do
-  let req' ← req.subst subsmap
+def Response.reEvaluateWithSubst (subsmap : Subsmap) : Partial.Response → Partial.Response
+  | { residuals, entities } =>
   let entities' := entities.subst subsmap
-  some {
-    residuals := residuals.filterMap (Residual.reEvaluateWithSubst subsmap req' entities')
-    req := req'
+  {
+    residuals := residuals.filterMap (Residual.reEvaluateWithSubst subsmap entities')
     entities := entities'
   }
 

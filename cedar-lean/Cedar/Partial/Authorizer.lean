@@ -40,10 +40,8 @@ def isAuthorized (req : Partial.Request) (entities : Partial.Entities) (policies
   {
     residuals := policies.filterMap λ policy => match Partial.evaluate policy.toExpr req entities with
       | .ok (.value (.prim (.bool false))) => none
-      | .ok (.value v) => some (.residual policy.id policy.effect v.asPartialExpr)
-      | .ok (.residual r) => some (.residual policy.id policy.effect r)
-      | .error e => some (.error policy.id e)
-    req,
+      | .ok pv => some $ .residual policy.id policy.effect pv
+      | .error e => some $ .error policy.id e
     entities,
   }
 
