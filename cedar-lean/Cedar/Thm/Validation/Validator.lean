@@ -2,6 +2,7 @@ import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
+import Cedar.Thm.Data
 
 namespace Cedar.Thm
 
@@ -30,10 +31,13 @@ def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities
 def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
 ∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
 
+-- prove that policy and policy with "action" substituted for action uid are the same
+
 theorem evaluates_subst (env : Environment) (policy : Policy) (req : Request) (entities : Entities) (v : Value) :
 RequestAndEntitiesMatchEnvironment env request entities →
 EvaluatesTo (substituteAction env.reqty.action policy.toExpr) request entities value →
  EvaluatesTo policy.toExpr request entities value := by
+ intro h₀ h₁
  sorry
 
 
@@ -54,6 +58,16 @@ exists b
 apply evaluates_subst env policy request entities (Value.prim (Prim.bool b))
 repeat assumption
 
+theorem forall₂_cons_left_iff {a l u} :
+    List.Forall₂ R (a :: l) u ↔ ∃ b u', R a b ∧ List.Forall₂ R l u' ∧ u = b :: u' :=
+  Iff.intro
+    (fun h =>
+      match u, h with
+      | b :: u', List.Forall₂.cons h₁ h₂ => ⟨b, u', h₁, h₂, rfl⟩)
+    fun h =>
+    match u, h with
+    | _, ⟨_, _, h₁, h₂, rfl⟩ => List.Forall₂.cons h₁ h₂
+
 theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
 (∀ env : Environment, env ∈ envs →
 RequestAndEntitiesMatchEnvironment env request entities) →
@@ -65,6 +79,7 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
 | error => simp [h₃] at h₂
 | ok ts =>
   simp [h₃] at h₂
+  rw [List.mapM_ok_iff_forall₂] at h₃
   cases h₄ : envs with
   | nil =>
     simp [h₄, pure, Except.pure] at h₃
@@ -75,8 +90,13 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
         have h₇ : h ∈ envs := by simp [h₄]
         specialize h₀ h
         apply h₀ h₇
-      sorry
-
+      subst h₄
+      rw [forall₂_cons_left_iff] at h₃
+      simp at h₃
+      obtain ⟨ b, _, _, _, _ ⟩ := h₃
+      apply typecheck_policy_is_sound policy h b
+      repeat assumption
+-- somehow this worked withput me needing to reason about the tail end of the lists at all? 
 
     -- simp [h₄] at h₃
     -- simp [typecheckPolicy] at h₃
