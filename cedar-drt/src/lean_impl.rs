@@ -34,10 +34,10 @@ use cedar_testing::cedar_test_impl::*;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
 pub use lean_sys::string::lean_mk_string;
-use lean_sys::{lean_dec, lean_dec_ref, lean_io_result_is_ok, lean_io_result_show_error};
 use lean_sys::{
-    lean_initialize_runtime_module_locked, lean_io_mark_end_initialization, lean_io_mk_world,
-    lean_string_cstr,
+    lean_dec, lean_dec_ref, lean_finalize_thread, lean_initialize_runtime_module_locked,
+    lean_initialize_thread, lean_io_mark_end_initialization, lean_io_mk_world,
+    lean_io_result_is_ok, lean_io_result_show_error, lean_string_cstr,
 };
 use log::info;
 use miette::miette;
@@ -150,6 +150,7 @@ impl LeanDefinitionalEngine {
                 lean_io_mark_end_initialization();
             };
         });
+        unsafe { lean_initialize_thread() };
         Self {}
     }
 
@@ -371,6 +372,12 @@ impl LeanDefinitionalEngine {
         // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
+    }
+}
+
+impl Drop for LeanDefinitionalEngine {
+    fn drop(&mut self) {
+        unsafe { lean_finalize_thread() }
     }
 }
 

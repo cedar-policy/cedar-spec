@@ -566,7 +566,7 @@ impl<'a> ExprGenerator<'a> {
                                             // This does not use an explicit namespace because entity types
                                             // implicitly use the schema namespace if an explicit one is not
                                             // provided.
-                                            name: entity_name.clone().into(),
+                                            name: ast::Name::from(entity_name.clone()),
                                         }
                                     ),
                                     max_depth - 1,
@@ -847,13 +847,13 @@ impl<'a> ExprGenerator<'a> {
                         3 => {
                             let attr_name: SmolStr =
                                 self.constant_pool.arbitrary_string_constant(u)?;
-                            let attr_ty: cedar_policy_validator::SchemaType =
-                            match self.schema.try_into_schematype(target_type, u)? {
-                                Some(schematy) => schematy,
-                                None => return Err(Error::IncorrectFormat {
-                                    doing_what: format!("target_type {target_type:?} not supported in this position"),
-                                })
-                            };
+                            let attr_ty: cedar_policy_validator::SchemaType<ast::Name> =
+                                match self.schema.try_into_schematype(target_type, u)? {
+                                    Some(schematy) => schematy,
+                                    None => return Err(Error::IncorrectFormat {
+                                        doing_what: format!("target_type {target_type:?} not supported in this position"),
+                                    })
+                                };
                             Ok(ast::Expr::get_attr(
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(attr_name.clone(), attr_ty),
@@ -1132,7 +1132,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_expr_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -1357,7 +1357,7 @@ impl<'a> ExprGenerator<'a> {
                     gen!(u,
                     // UID literal
                     13 => {
-                        let entity_type_name = name.prefix_namespace_if_unqualified(self.schema.namespace());
+                        let entity_type_name = ast::EntityType::from(name.qualify_with(self.schema.namespace()));
                         Ok(ast::Expr::val(self.arbitrary_uid_with_type(
                             &entity_type_name, u,
                         )?))
@@ -1515,7 +1515,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     fn generate_ext_func_call_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -1710,7 +1710,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_attr_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
@@ -1811,7 +1811,7 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
-                    name.prefix_namespace_if_unqualified(self.schema.namespace());
+                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
                 Ok(AttrValue::UIDLit(
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
@@ -1922,7 +1922,7 @@ impl<'a> ExprGenerator<'a> {
     /// generate an arbitrary `Value` of the given `target_type`
     fn generate_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Value> {
@@ -2019,7 +2019,7 @@ impl<'a> ExprGenerator<'a> {
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name =
-                    name.prefix_namespace_if_unqualified(self.schema.namespace());
+                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::from(euid))
             }
@@ -2156,7 +2156,7 @@ impl<'a> ExprGenerator<'a> {
     /// generate a UID with the given typename
     pub fn arbitrary_uid_with_type(
         &self,
-        ty: &ast::Name,
+        ty: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {
@@ -2188,10 +2188,10 @@ impl<'a> ExprGenerator<'a> {
 
 /// internal helper function, get a SchemaType representing a Record with (at
 /// least) one attribute of the specified name and SchemaType.
-fn record_schematype_with_attr(
+fn record_schematype_with_attr<N>(
     attr_name: SmolStr,
-    attr_type: impl Into<cedar_policy_validator::SchemaType>,
-) -> cedar_policy_validator::SchemaType {
+    attr_type: impl Into<cedar_policy_validator::SchemaType<N>>,
+) -> cedar_policy_validator::SchemaType<N> {
     cedar_policy_validator::SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Record {
         attributes: [(
             attr_name,

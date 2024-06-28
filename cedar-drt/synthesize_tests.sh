@@ -22,8 +22,6 @@ source set_env_vars.sh
 
 set -u
 
-# Minimize corpus to remove redundant seeds
-cargo fuzz cmin "$FUZZ_TARGET" -s none
 
 run_single_test () {
     # We could use `cargo fuzz run "$FUZZ_TARGET" -s none "$1"`

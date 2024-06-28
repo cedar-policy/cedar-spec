@@ -18,7 +18,7 @@
 
 use cedar_drt::initialize_log;
 use cedar_drt_inner::fuzz_target;
-use cedar_policy_core::ast::{AnyId, EntityType, ExprKind, Literal, StaticPolicy, Template};
+use cedar_policy_core::ast::{AnyId, StaticPolicy, Template};
 use cedar_policy_core::parser::{self, parse_policy};
 use cedar_policy_formatter::token::{Comment, Token, WrappedToken};
 use cedar_policy_formatter::{policies_str_to_pretty, Config};
@@ -72,10 +72,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ])
     }
-}
-
-fn contains_unspecified_entities(p: &StaticPolicy) -> bool {
-    p.condition().subexpressions().any(|e| matches!(e.expr_kind(), ExprKind::Lit(Literal::EntityUID(euid)) if matches!(*euid.entity_type(), EntityType::Unspecified)))
 }
 
 // Attach each token two uuids as leading comment and one uuid as trailing comment
@@ -141,14 +137,6 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
     let p: StaticPolicy = input.policy.into();
-    // Version 1.2 introduces an unspecified entity type.
-    // An entity of such type prints to an invalid string,
-    // which further causes round-tripping to fail.
-    // The fix is to add a filter to the generated policies,
-    // so that we don't fuzz any policies with unspecified entities.
-    if contains_unspecified_entities(&p) {
-        return;
-    }
     let (t, _) = Template::link_static_policy(p.clone());
 
     debug!("Starting policy: {:?}", p);

@@ -144,8 +144,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             AuthorizationError::PolicyEvaluationError { error, .. } => {
                                 match error {
                                     // Evaluation errors the validator should prevent.
-                                    EvaluationError::UnspecifiedEntityAccess(_)
-                                    | EvaluationError::RecordAttrDoesNotExist(_)
+                                    EvaluationError::RecordAttrDoesNotExist(_)
                                     | EvaluationError::EntityAttrDoesNotExist(_)
                                     | EvaluationError::FailedExtensionFunctionLookup(_)
                                     | EvaluationError::TypeError(_)

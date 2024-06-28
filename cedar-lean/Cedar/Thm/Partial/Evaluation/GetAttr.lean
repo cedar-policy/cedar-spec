@@ -105,8 +105,7 @@ theorem partialEntities_attrs_wf {entities : Partial.Entities} {uid : EntityUID}
     have ⟨wf_m, wf_edata⟩ := wf_e ; clear wf_e
     constructor
     · apply (wf_edata _ _).left
-      have h₃ := Map.in_values_iff_findOrErr_ok (v := attrs) (e := Error.entityDoesNotExist) wf_m
-      simp only [h₃]
+      simp only [← Map.findOrErr_ok_iff_in_values (v := attrs) (e := Error.entityDoesNotExist) wf_m]
       exists uid
     · intro pval h₃
       replace h₂ := Map.findOrErr_ok_implies_in_values h₂
@@ -239,13 +238,11 @@ theorem getAttr_subst_preserves_evaluation_to_value {v₁ : Spec.Value} {attr : 
       <;> simp only [Except.bind_ok, Except.bind_err, false_implies]
       case ok attrs =>
         intro h₂
-        replace h₂ := Map.findOrErr_ok_iff_find?_some.mp h₂
-        replace h₂ := Map.find?_mem_toList h₂
+        replace h₂ := Map.findOrErr_ok_implies_in_kvs h₂
         unfold Map.toList at h₂
         have ⟨attrs', h₃, h₄⟩ := Subst.entities_subst_preserves_concrete_attrs subsmap h₁ h₂
         simp only [h₃, Except.bind_ok]
-        simp only [Map.findOrErr_ok_iff_find?_some]
-        apply (Map.in_list_iff_find?_some _).mp h₄
+        apply (Map.findOrErr_ok_iff_in_kvs _).mpr h₄
         have wf' := Subst.entities_subst_preserves_wf subsmap wf
         exact (partialEntities_attrs_wf wf' h₃).left
   case set | record => simp
@@ -288,5 +285,100 @@ theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} 
       simp only [ih₁, Except.bind_ok]
       exact evaluateGetAttr_subst_preserves_evaluation_to_value wf
     case residual r₁ => simp only [Partial.evaluateGetAttr, Except.ok.injEq, false_implies]
+
+/--
+  If `Partial.getAttr` returns an error, then it also returns an error (not
+  necessarily the same error) after any substitution of unknowns in `entities`
+-/
+theorem getAttr_subst_preserves_errors {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf : entities.WellFormed) :
+  Partial.getAttr v₁ attr entities = .error e →
+  ∃ e', Partial.getAttr v₁ attr (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.getAttr, Partial.attrsOf]
+  exact match v₁ with
+  | .prim (.entityUID uid) => match ha : entities.attrs uid with
+    | .ok attrs => match ha' : (entities.subst subsmap).attrs uid with
+      | .ok attrs' => match e with
+        | .attrDoesNotExist => by
+          simp only [ha, ha', Except.bind_ok]
+          have wf_attrs := partialEntities_attrs_wf wf ha
+          have wf_attrs' := partialEntities_attrs_wf (Subst.entities_subst_preserves_wf subsmap wf) ha'
+          intro h₁
+          exists .attrDoesNotExist
+          simp only [Map.findOrErr_err_iff_not_in_keys (wf_attrs.left)] at h₁
+          simp only [Map.findOrErr_err_iff_not_in_keys (wf_attrs'.left)]
+          replace ⟨attrs'', ha'', h₁⟩ := Subst.entities_subst_preserves_absent_attrs subsmap ha h₁
+          simp [ha'] at ha'' ; subst attrs''
+          exact h₁
+        | .entityDoesNotExist | .typeError | .arithBoundsError | .extensionError => by
+          simp only [ha, ha', Except.bind_ok]
+          intro h₁ ; rcases Map.findOrErr_returns attrs attr Error.attrDoesNotExist with h₂ | h₂
+          · simp only [h₁, exists_const] at h₂
+          · simp only [h₁, Except.error.injEq] at h₂
+      | .error e => by
+        simp only [ha, ha', Except.bind_ok, Except.bind_err, Except.error.injEq, exists_eq',
+          implies_true]
+    | .error e' => by
+      simp only [ha, Except.bind_err, Except.error.injEq]
+      intro h ; subst e'
+      simp [(Subst.entities_subst_preserves_error_attrs subsmap).mp ha]
+  | .record attrs => by
+    simp only [Except.bind_ok]
+    intro _ ; exists e
+  | .prim (.bool _) | .prim (.int _) | .prim (.string _) => by simp
+  | .set _ | .ext _ => by simp
+
+/--
+  If `Partial.evaluateGetAttr` returns an error, then it also returns an error
+  (not necessarily the same error) after any substitution of unknowns in
+  `entities`
+-/
+theorem evaluateGetAttr_subst_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} (subsmap : Subsmap)
+  (wf : entities.WellFormed) :
+  Partial.evaluateGetAttr pval₁ attr entities = .error e →
+  ∃ e', Partial.evaluateGetAttr pval₁ attr (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.evaluateGetAttr]
+  cases pval₁ <;> simp only [exists_false, imp_self]
+  case value v₁ => exact getAttr_subst_preserves_errors wf
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.getAttr`
+  returns an error, then it also returns an error (not necessarily the same
+  error) after any substitution of unknowns
+
+  The proof of `subst_preserves_evaluation_to_value` for this
+  request/entities/subsmap is passed in as an argument, because this file can't
+  import `Thm/Partial/Evaluation.lean` to access it.
+  See #372.
+-/
+theorem subst_preserves_errors {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf : entities.WellFormed)
+  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
+  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.getAttr x₁ attr) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  unfold Partial.evaluate Partial.Expr.subst
+  intro h_req ; specialize ih₁ h_req
+  cases hx₁ : Partial.evaluate x₁ req entities
+  <;> simp only [hx₁, false_implies, implies_true, Except.error.injEq] at ih₁
+  case error e₁ =>
+    replace ⟨e₁', ih₁⟩ := ih₁ e₁ rfl
+    simp [ih₁]
+  case ok pval₁ =>
+    simp only [Except.bind_ok]
+    intro e₁ h₁
+    cases hx₁' : Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
+    case error e₁' => exists e₁'
+    case ok pval₁' =>
+      simp only [Except.bind_ok]
+      cases pval₁
+      case value v₁ =>
+        simp only [h_spetv x₁ h_req v₁ hx₁, Except.ok.injEq] at hx₁' ; subst pval₁'
+        exact evaluateGetAttr_subst_preserves_errors subsmap wf h₁
+      case residual r₁ => exists e₁
+
 
 end Cedar.Thm.Partial.Evaluation.GetAttr

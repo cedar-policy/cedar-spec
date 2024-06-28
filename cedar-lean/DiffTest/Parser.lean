@@ -46,13 +46,7 @@ def jsonToName (json : Lean.Json) : ParseResult Name := do
     }
 
 def jsonToEntityType (json : Lean.Json) : ParseResult EntityType := do
-  let (tag, body) ← unpackJsonSum json
-  match tag with
-  | "Specified" => jsonToName body
-  | "Unspecified" =>
-    -- "Unspecified" entities are treated as normal entities with a unique name
-    .ok { id := "<Unspecified>", path := [] }
-  | tag => .error s!"jsonToEntityType: unknown tag {tag}"
+  jsonToName json
 
 def jsonToEuid (json : Lean.Json) : ParseResult EntityUID := do
   let eid ← getJsonField json "eid" >>= jsonToString
@@ -399,12 +393,19 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
     .ok (.actionScope (.eq euid))
   | tag => .error s!"jsonToActionScope: unknown tag {tag}"
 
+-- This is a hack, as the current JSON loses this information.
+-- When we switch this interface to use the EST, we will get the actual
+-- conditions structure
+def jsonToConditions (json : Lean.Json) : ParseResult Conditions := do
+  let expr ← jsonToExpr json
+  .ok $ [{ kind := .when,  body := expr }]
+
 def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect
   let principalConstraint ← getJsonField json "principal_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?principal"
   let actionConstraint ← getJsonField json "action_constraint" >>= jsonToActionScope
   let resourceConstraint ← getJsonField json "resource_constraint" >>= (getJsonField · "constraint") >>= jsonToScopeTemplate "?resource"
-  let condition ← getJsonField json "non_scope_constraints" >>= jsonToExpr
+  let condition ← getJsonField json "non_scope_constraints" >>= jsonToConditions
   .ok {
     effect := effect,
     principalScope := .principalScope principalConstraint,

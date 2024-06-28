@@ -188,6 +188,18 @@ theorem empty_iff_not_exists [DecidableEq α] (s : Set α) :
       rw [in_list_iff_in_mk]
       assumption
 
+
+/-! ### singleton -/
+
+theorem mem_singleton_iff_eq [DecidableEq α] (a b : α) :
+  a ∈ Set.singleton b ↔ a = b
+:= by
+  simp only [singleton, ← in_list_iff_in_mk, List.mem_singleton]
+
+theorem mem_singleton [DecidableEq α] (a : α) :
+  a ∈ Set.singleton a
+:= by simp only [mem_singleton_iff_eq]
+
 /-! ### make -/
 
 theorem make_wf [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
@@ -426,6 +438,96 @@ theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   apply List.Equiv.symm
   exact elts_make_equiv
 
+theorem mem_union_iff_mem_or [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
+  ∀ a, a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
+:= by
+  intro a
+  simp only [Union.union, union, make, ← in_list_iff_in_mk]
+  constructor <;> intro h
+  case mp =>
+    have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).right
+    simp only [List.subset_def, List.mem_append] at hc
+    replace hc := hc h
+    rcases hc with hc | hc <;>
+    simp only [(in_list_iff_in_set _ _).mp hc, true_or, or_true]
+  case mpr =>
+    have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).left
+    simp only [List.append_subset] at hc
+    simp only [List.subset_def] at hc
+    simp only [← in_list_iff_in_set] at h
+    rcases h with h | h
+    · exact hc.left h
+    · exact hc.right h
+
+theorem prop_union_iff_prop_and [LT α] [DecidableLT α] [StrictLT α] (p : α → Prop) (s₁ s₂ : Set α) :
+  ((∀ a ∈ s₁, p a) ∧ (∀ a ∈ s₂, p a)) ↔ ∀ a ∈ (s₁ ∪ s₂), p a
+:= by
+  constructor <;> intro h₁
+  case mp =>
+    intro a h₂
+    rw [mem_union_iff_mem_or] at h₂
+    rcases h₂ with h₂ | h₂
+    · exact h₁.left a h₂
+    · exact h₁.right a h₂
+  case mpr =>
+    constructor
+    all_goals {
+      intro a h₂
+      specialize h₁ a
+      simp only [mem_union_iff_mem_or, h₂, or_true, true_or, true_implies] at h₁
+      exact h₁
+    }
+
+theorem union_comm [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
+  s₁ ∪ s₂ = s₂ ∪ s₁
+:= by
+  simp only [Union.union, union, make, elts, mk.injEq]
+  apply List.equiv_implies_canonical_eq
+  simp only [List.Equiv, List.append_subset,
+    List.subset_append_right, List.subset_append_left, and_self]
+
+theorem union_assoc [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ s₃ : Set α) :
+  (s₁ ∪ s₂) ∪ s₃ = s₁ ∪ (s₂ ∪ s₃)
+:= by
+  rw [← eq_means_eqv (union_wf _ _) (union_wf _ _)]
+  simp only [Union.union, Set.union, Set.make, Set.elts]
+  have h₁ := List.Equiv.symm (List.canonicalize_equiv (List.canonicalize id (s₁.1 ++ s₂.1) ++ s₃.1))
+  have h₂ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ List.canonicalize id (s₂.1 ++ s₃.1)))
+  apply List.Equiv.trans h₁
+  apply List.Equiv.symm
+  apply List.Equiv.trans h₂
+  have h₃ := List.Equiv.symm (List.canonicalize_equiv (s₂.1 ++ s₃.1))
+  replace h₃ := List.append_right_equiv s₁.1 _ _ h₃
+  have h₄ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ s₂.1))
+  replace h₄ := List.append_left_equiv _ _ s₃.1 h₄
+  apply List.Equiv.trans h₃
+  apply List.Equiv.symm
+  apply List.Equiv.trans h₄
+  simp only [List.append_assoc]
+  exact List.append_right_equiv _ _ _ List.Equiv.refl
+
+theorem union_empty_right [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → s ∪ Set.empty = s
+:= by
+  intro h
+  simp only [WellFormed, toList, elts] at h
+  simp only [Union.union, union, elts, empty, List.append_nil, ← h]
+
+theorem union_empty_left [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → Set.empty ∪ s = s
+:= by
+  rw [union_comm]
+  exact union_empty_right
+
+theorem union_idempotent [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → s ∪ s = s
+:= by
+  intro h
+  rw [← eq_means_eqv (union_wf _ _) h]
+  simp only [Union.union, Set.union, Set.make, Set.elts]
+  apply List.Equiv.trans (List.Equiv.symm (List.canonicalize_equiv _))
+  simp only [List.Equiv, List.append_subset, List.Subset.refl, and_self, List.subset_append_left]
+
 /-! ### subset -/
 
 theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
@@ -477,5 +579,60 @@ theorem subset_iff_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s
 := by
   intro hw₁ hw₂
   simp only [← (eq_means_eqv hw₁ hw₂), elts, List.Equiv, subset_iff_subset_elts]
+
+theorem subset_trans [DecidableEq α] {s₁ s₂ s₃ : Set α} :
+  s₁ ⊆ s₂ → s₂ ⊆ s₃ → s₁ ⊆ s₃
+:= by
+  simp only [subset_def]
+  intro h₁ h₂ a ha
+  exact h₂ a (h₁ a ha)
+
+theorem subset_refl [DecidableEq α] {s : Set α} :
+  s ⊆ s
+:= by
+  simp only [subset_def, imp_self, implies_true]
+
+theorem mem_subset_mem [DecidableEq α] {a : α} {s₁ s₂ : Set α} :
+  a ∈ s₁ → s₁ ⊆ s₂ → a ∈ s₂
+:= by
+  simp only [subset_def]
+  intro h₁ h₂
+  exact h₂ a h₁
+
+theorem subset_union [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] (s₁ s₂ : Set α) :
+  s₁ ⊆ s₁ ∪ s₂
+:= by
+  simp only [subset_def, mem_union_iff_mem_or]
+  intro a hin
+  exact Or.inl hin
+
+theorem union_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ s₃ : Set α} :
+  s₁ ∪ s₂ ⊆ s₃ ↔ s₁ ⊆ s₃ ∧ s₂ ⊆ s₃
+:= by
+  simp only [subset_def, mem_union_iff_mem_or]
+  constructor
+  case mp =>
+    intro h
+    constructor
+    all_goals {
+      intro a hin
+      apply h a
+      simp only [hin, true_or, or_true]
+    }
+  case mpr =>
+    intro h a hor
+    rcases hor with hor | hor
+    · exact h.left a hor
+    · exact h.right a hor
+
+theorem union_subset_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+  s₂.WellFormed → s₁ ⊆ s₂ → s₁ ∪ s₂ = s₂
+:= by
+  intro h₁ h₂
+  rw [← subset_iff_eq (union_wf _ _) h₁]
+  constructor
+  · simp only [union_subset, h₂, subset_refl, and_self]
+  · rw [union_comm]
+    exact subset_union _ _
 
 end Cedar.Data.Set

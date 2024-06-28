@@ -17,7 +17,7 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_name, Schema};
+use crate::schema::{attrs_from_attrs_or_context, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -79,17 +79,17 @@ pub struct Hierarchy {
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: HashMap<ast::Name, EntityUIDs>,
+    uids_by_type: HashMap<ast::EntityType, EntityUIDs>,
     /// Vec of all entity types used by entities in the hierarchy, again kept in
     /// sync with the `entities` HashMap. Makes `arbitrary_entity_type()` fast.
-    entity_types: Vec<ast::Name>,
+    entity_types: Vec<ast::EntityType>,
 }
 
 impl Hierarchy {
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: HashMap<ast::Name, HashSet<EntityUID>>) -> Self {
+    pub fn from_uids_by_type(uids_by_type: HashMap<ast::EntityType, HashSet<EntityUID>>) -> Self {
         let uids: Vec<EntityUID> = uids_by_type
             .values()
             .flat_map(|uids_inner| uids_inner.iter().cloned())
@@ -126,15 +126,9 @@ impl Hierarchy {
             Ok(uid.clone())
         } else {
             match request_field {
-                Some(var) => {
-                    // generate an arbitrary uid, but replace the eid if it's unspecified
+                Some(_) => {
                     let uid: EntityUID = u.arbitrary()?;
-                    match uid.entity_type() {
-                        ast::EntityType::Specified(_) => Ok(uid),
-                        ast::EntityType::Unspecified => Ok(ast::EntityUID::unspecified_from_eid(
-                            ast::Eid::new(var.to_string()),
-                        )),
-                    }
+                    Ok(uid)
                 }
                 None => arbitrary_specified_uid(u).map_err(Into::into),
             }
@@ -156,7 +150,7 @@ impl Hierarchy {
     /// generate an arbitrary uid based on the hierarchy, with the given typename
     pub fn arbitrary_uid_with_type(
         &self,
-        typename: &ast::Name,
+        typename: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
@@ -191,7 +185,7 @@ impl Hierarchy {
 
     /// Generate an entity type, usually picking on that's used by some entity in
     /// the hierarchy.
-    pub fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<ast::Name> {
+    pub fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityType> {
         // entity type that is used by some entity or isn't. 90% of the time
         // pick one that is used.
         if u.ratio::<u8>(9, 10)? {
@@ -261,7 +255,7 @@ impl Hierarchy {
     /// Also ensure that the returned UIDs is lexicographically larger than the input `EntityUID` if its type is the same as the given typename
     pub fn uids_for_type(
         &self,
-        dst_ty: &ast::Name,
+        dst_ty: &ast::EntityType,
         entity: &EntityUID,
     ) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
         match self.uids_by_type.get(dst_ty) {
@@ -293,14 +287,9 @@ impl TryFrom<Hierarchy> for Entities {
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
         let mut uids = Vec::new();
-        let mut uids_by_type: HashMap<ast::Name, HashSet<&ast::EntityUID>> = HashMap::new();
+        let mut uids_by_type: HashMap<ast::EntityType, HashSet<&ast::EntityUID>> = HashMap::new();
         for e in entities.iter() {
-            let etype = match e.uid().entity_type() {
-                ast::EntityType::Specified(name) => name.clone(),
-                ast::EntityType::Unspecified => {
-                    panic!("didn't expect unspecified entity in Entities")
-                }
-            };
+            let etype = e.uid().entity_type().clone();
             uids_by_type.entry(etype).or_default().insert(e.uid());
             uids.push(e.uid().clone());
         }
@@ -420,7 +409,7 @@ pub enum AttributesMode {
 /// regard to an existing schema or hierarchy
 pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
     Ok(ast::EntityUID::from_components(
-        u.arbitrary::<ast::Name>()?,
+        u.arbitrary::<ast::EntityType>()?,
         u.arbitrary::<ast::Eid>()?,
         None,
     ))
@@ -431,7 +420,7 @@ pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::E
 /// `Hierarchy` parameter and doesn't make any effort to generate a UID that
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
-    ty: ast::Name,
+    ty: ast::EntityType,
     mode: &EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
@@ -453,23 +442,17 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             HierarchyGeneratorMode::Arbitrary { .. } => {
                 // generate a HashSet first to avoid duplicates
                 let entity_types: HashSet<ast::EntityType> = self.u.arbitrary()?;
-                // drop generated Unspecified types
-                entity_types
-                    .into_iter()
-                    .filter_map(|ty| match ty {
-                        ast::EntityType::Specified(name) => Some(name),
-                        ast::EntityType::Unspecified => None,
-                    })
-                    .collect()
+                // Collect into a vector
+                entity_types.into_iter().collect()
             }
         };
         // For each entity type, generate entity UIDs of that type
-        let uids_by_type: HashMap<ast::Name, HashSet<EntityUID>> = entity_types
+        let uids_by_type: HashMap<ast::EntityType, HashSet<EntityUID>> = entity_types
             .iter()
             .map(|name| {
                 let name = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name.prefix_namespace_if_unqualified(schema.namespace())
+                        name.qualify_with(schema.namespace())
                     }
                     HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
                 };
@@ -517,38 +500,33 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 };
                 Ok((name, uids))
             })
-            .collect::<Result<HashMap<ast::Name, HashSet<ast::EntityUID>>>>()?;
+            .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
-        let entitytypes_by_type: Option<HashMap<ast::Name, &cedar_policy_validator::EntityType>> =
-            match &self.mode {
-                HierarchyGeneratorMode::SchemaBased { schema } => Some(
-                    schema
-                        .schema
-                        .entity_types
-                        .iter()
-                        .map(|(name, et)| {
-                            (
-                                build_qualified_entity_type_name(
-                                    schema.namespace.as_ref(),
-                                    &name.clone().into(),
-                                ),
-                                et,
-                            )
-                        })
-                        .collect(),
-                ),
-                HierarchyGeneratorMode::Arbitrary { .. } => None,
-            };
+        let entitytypes_by_type: Option<
+            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::Name>>,
+        > = match &self.mode {
+            HierarchyGeneratorMode::SchemaBased { schema } => Some(
+                schema
+                    .schema
+                    .entity_types
+                    .iter()
+                    .map(|(name, et)| {
+                        (
+                            ast::EntityType::from(ast::Name::from(name.clone()))
+                                .qualify_with(schema.namespace.as_ref()),
+                            et,
+                        )
+                    })
+                    .collect(),
+            ),
+            HierarchyGeneratorMode::Arbitrary { .. } => None,
+        };
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
             .entities()
             .map(|e| e.uid())
             .map(|uid| {
-                let ast::EntityType::Specified(name) = uid.entity_type() else {
-                    // `entity_types` was generated in such a way as to never produce
-                    // unspecified entities
-                    panic!("should not be possible to generate an unspecified entity")
-                };
+                let name = uid.entity_type();
                 // choose parents for this entity
                 let mut parents = HashSet::new();
                 match &self.mode {
@@ -562,9 +540,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
-                            let allowed_parent_typename = build_qualified_entity_type_name(
-                                schema.namespace.as_ref(),
-                                allowed_parent_typename,
+                            let allowed_parent_typename = ast::EntityType::from(
+                                allowed_parent_typename.qualify_with(schema.namespace.as_ref()),
                             );
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph

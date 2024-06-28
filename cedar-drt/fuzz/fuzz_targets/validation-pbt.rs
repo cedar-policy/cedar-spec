@@ -94,8 +94,6 @@ const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
 const LOG_FILENAME_TOTAL_ENTITY_TYPES: &str = "./logs/schemastats/total_entity_types";
 const LOG_FILENAME_TOTAL_ACTIONS: &str = "./logs/schemastats/total_actions";
 const LOG_FILENAME_APPLIES_TO_NONE: &str = "./logs/schemastats/applies_to_none";
-const LOG_FILENAME_APPLIES_TO_PRINCIPAL_NONE: &str = "./logs/schemastats/applies_to_principal_none";
-const LOG_FILENAME_APPLIES_TO_RESOURCE_NONE: &str = "./logs/schemastats/applies_to_resource_none";
 const LOG_FILENAME_APPLIES_TO_PRINCIPAL_LEN: &str = "./logs/schemastats/applies_to_principal_len";
 const LOG_FILENAME_APPLIES_TO_RESOURCE_LEN: &str = "./logs/schemastats/applies_to_resource_len";
 const LOG_FILENAME_TOTAL_ENTITIES: &str = "./logs/hierarchystats/total_entities";
@@ -166,7 +164,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats(schema: Option<&NamespaceDefinition>, suffix: &str) {
+fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
@@ -191,30 +189,20 @@ fn maybe_log_schemastats(schema: Option<&NamespaceDefinition>, suffix: &str) {
                     resource_types,
                     ..
                 }) => {
-                    match principal_types.as_ref() {
-                        None => checkpoint(
-                            LOG_FILENAME_APPLIES_TO_PRINCIPAL_NONE.to_string() + "_" + suffix,
-                        ),
-                        Some(tys) => checkpoint(
-                            LOG_FILENAME_APPLIES_TO_PRINCIPAL_LEN.to_string()
-                                + "_"
-                                + suffix
-                                + "_"
-                                + &format!("{:03}", tys.len()),
-                        ),
-                    }
-                    match resource_types.as_ref() {
-                        None => checkpoint(
-                            LOG_FILENAME_APPLIES_TO_RESOURCE_NONE.to_string() + "_" + suffix,
-                        ),
-                        Some(tys) => checkpoint(
-                            LOG_FILENAME_APPLIES_TO_RESOURCE_LEN.to_string()
-                                + "_"
-                                + suffix
-                                + "_"
-                                + &format!("{:03}", tys.len()),
-                        ),
-                    }
+                    checkpoint(
+                        LOG_FILENAME_APPLIES_TO_PRINCIPAL_LEN.to_string()
+                            + "_"
+                            + suffix
+                            + "_"
+                            + &format!("{:03}", principal_types.len()),
+                    );
+                    checkpoint(
+                        LOG_FILENAME_APPLIES_TO_RESOURCE_LEN.to_string()
+                            + "_"
+                            + suffix
+                            + "_"
+                            + &format!("{:03}", resource_types.len()),
+                    );
                 }
             }
         }
@@ -365,8 +353,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                             AuthorizationError::PolicyEvaluationError { error, .. } => {
                                 match error {
                                     // Evaluation errors the validator should prevent.
-                                    EvaluationError::UnspecifiedEntityAccess(_)
-                                    | EvaluationError::RecordAttrDoesNotExist(_)
+                                    EvaluationError::RecordAttrDoesNotExist(_)
                                     | EvaluationError::EntityAttrDoesNotExist(_)
                                     | EvaluationError::FailedExtensionFunctionLookup(_)
                                     | EvaluationError::TypeError(_)

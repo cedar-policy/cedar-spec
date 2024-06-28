@@ -30,7 +30,7 @@ namespace Cedar.Thm.Partial.Subst
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Attr EntityUID)
+open Cedar.Spec (Attr EntityUID Error)
 
 /--
   subst on a concrete expression is that expression
@@ -306,15 +306,33 @@ theorem entitydata_subst_preserves_contains_on_attrs (ed : Partial.EntityData) (
     exists (attr, pval)
 
 /--
+  if an attr was present before Partial.EntityData.subst, then the substituted
+  version of that attr is present after Partial.EntityData.subst
+-/
+theorem entitydata_subst_preserves_attrs {ed : Partial.EntityData} (subsmap : Subsmap) :
+  (k, pval) ∈ ed.attrs.kvs → (k, pval.subst subsmap) ∈ (ed.subst subsmap).attrs.kvs
+:= by
+  unfold Partial.EntityData.subst
+  exact Map.in_kvs_in_mapOnValues
+
+/--
   Partial.EntityData.subst preserves concrete attribute values
 -/
 theorem entitydata_subst_preserves_concrete_attrs {ed : Partial.EntityData} (subsmap : Subsmap) :
   (k, .value v) ∈ ed.attrs.kvs → (k, .value v) ∈ (ed.subst subsmap).attrs.kvs
 := by
-  unfold Partial.EntityData.subst
   intro h₁
-  rw [← subst_concrete_value v subsmap]
-  exact Map.in_kvs_in_mapOnValues h₁
+  have h₂ := entitydata_subst_preserves_attrs subsmap h₁
+  rw [subst_concrete_value] at h₂
+  exact h₂
+
+/--
+  Partial.EntityData.subst preserves the absence of attribute values
+-/
+theorem entitydata_subst_preserves_absent_attrs {ed : Partial.EntityData} (subsmap : Subsmap) :
+  k ∉ ed.attrs.keys → k ∉ (ed.subst subsmap).attrs.keys
+:= by
+  simp only [Partial.EntityData.subst, Map.keys_mapOnValues, imp_self]
 
 /--
   Partial.Entities.subst preserves .ancestorsOrEmpty
@@ -330,6 +348,48 @@ theorem entities_subst_preserves_ancestorsOrEmpty (entities : Partial.Entities) 
     exact entitydata_subst_preserves_ancestors ed subsmap
 
 /--
+  Partial.Entities.subst preserves absent entities
+-/
+theorem entities_subst_preserves_absent_entities {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
+  entities.es.find? uid = none → (entities.subst subsmap).es.find? uid = none
+:= by
+  simp only [Partial.Entities.subst]
+  intro h
+  exact Map.find?_mapOnValues_none _ h
+
+/--
+  Partial.Entities.subst preserves present entities
+-/
+theorem entities_subst_preserves_present_entities {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
+  entities.es.find? uid = some ed → ∃ ed', (entities.subst subsmap).es.find? uid = some ed'
+:= by
+  simp only [Partial.Entities.subst]
+  intro h
+  exists (ed.subst subsmap)
+  exact Map.find?_mapOnValues_some _ h
+
+/--
+  if an attr was present before Partial.Entities.subst, then the substituted
+  version of that attr is present after Partial.Entities.subst
+-/
+theorem entities_subst_preserves_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
+  entities.attrs uid = .ok attrs →
+  (k, pval) ∈ attrs.kvs →
+  ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ (k, pval.subst subsmap) ∈ attrs'.kvs
+:= by
+  unfold Partial.Entities.subst Partial.Entities.attrs
+  cases h₁ : entities.es.findOrErr uid Error.entityDoesNotExist
+  case error e => simp only [Except.bind_err, false_implies]
+  case ok ed =>
+    simp only [Except.bind_ok, Except.ok.injEq]
+    intro h h₂ ; subst h
+    have h₃ := entitydata_subst_preserves_attrs subsmap h₂
+    exists (ed.subst subsmap).attrs
+    apply And.intro _ h₃
+    simp only [Map.findOrErr_mapOnValues]
+    simp only [h₁, Except.map, Except.bind_ok]
+
+/--
   Partial.Entities.subst preserves concrete attribute values
 -/
 theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
@@ -337,17 +397,74 @@ theorem entities_subst_preserves_concrete_attrs {entities : Partial.Entities} {u
   (k, .value v) ∈ attrs.kvs →
   ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ (k, .value v) ∈ attrs'.kvs
 := by
-  unfold Partial.Entities.subst Partial.Entities.attrs
-  cases h₁ : entities.es.findOrErr uid Spec.Error.entityDoesNotExist
+  intro h₁ h₂
+  have h₃ := entities_subst_preserves_attrs subsmap h₁ h₂
+  rw [subst_concrete_value] at h₃
+  exact h₃
+
+/--
+  Partial.Entities.subst preserves the absence of attribute values
+-/
+theorem entities_subst_preserves_absent_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
+  entities.attrs uid = .ok attrs →
+  k ∉ attrs.keys →
+  ∃ attrs', (entities.subst subsmap).attrs uid = .ok attrs' ∧ k ∉ attrs'.keys
+:= by
+  -- structure of this proof is extremely similar to the proof of
+  -- `entities_subst_preserves_attrs`, maybe they could be shared
+  simp only [Partial.Entities.subst, Partial.Entities.attrs]
+  cases h₁ : entities.es.findOrErr uid Error.entityDoesNotExist
   case error e => simp only [Except.bind_err, false_implies]
   case ok ed =>
     simp only [Except.bind_ok, Except.ok.injEq]
     intro h h₂ ; subst h
-    have h₃ := entitydata_subst_preserves_concrete_attrs subsmap h₂
+    have h₃ := entitydata_subst_preserves_absent_attrs subsmap h₂
     exists (ed.subst subsmap).attrs
     apply And.intro _ h₃
     simp only [Map.findOrErr_mapOnValues]
     simp only [h₁, Except.map, Except.bind_ok]
+
+/--
+  Partial.Entities.subst preserves errors returned by `Partial.Entities.attrs`
+-/
+theorem entities_subst_preserves_error_attrs {entities : Partial.Entities} {uid : EntityUID} (subsmap : Subsmap) :
+  entities.attrs uid = .error e ↔ (entities.subst subsmap).attrs uid = .error e
+:= by
+  unfold Partial.Entities.subst Partial.Entities.attrs
+  constructor
+  case mp =>
+    rcases Map.findOrErr_returns entities.es uid Error.entityDoesNotExist with h₁ | h₁
+    · replace ⟨edata, h₁⟩ := h₁ ; simp [h₁]
+    · simp [h₁]
+      intro h₂ ; subst e
+      rw [Map.findOrErr_err_iff_find?_none] at h₁
+      cases h₂ : (entities.es.mapOnValues (Partial.EntityData.subst subsmap)).findOrErr uid Error.entityDoesNotExist
+      case error e =>
+        rcases Map.findOrErr_returns (entities.es.mapOnValues (Partial.EntityData.subst subsmap)) uid Error.entityDoesNotExist with h₃ | h₃
+        <;> simp [h₂] at h₃
+        · simp [h₃]
+      case ok edata =>
+        rw [Map.findOrErr_ok_iff_find?_some] at h₂
+        simp [Map.find?_mapOnValues_none (Partial.EntityData.subst subsmap) h₁] at h₂
+  case mpr =>
+    rcases Map.findOrErr_returns (entities.subst subsmap).es uid Error.entityDoesNotExist with h₁ | h₁
+    · replace ⟨edata, h₁⟩ := h₁
+      unfold Partial.Entities.subst at h₁
+      simp [h₁]
+    · unfold Partial.Entities.subst at h₁
+      simp [h₁]
+      intro h₂ ; subst e
+      rw [Map.findOrErr_err_iff_find?_none] at h₁
+      cases h₂ : entities.es.findOrErr uid Error.entityDoesNotExist <;> simp
+      case error e =>
+        rcases Map.findOrErr_returns entities.es uid Error.entityDoesNotExist with h₃ | h₃
+        <;> simp [h₂] at h₃
+        · exact h₃
+      case ok edata =>
+        rw [Map.findOrErr_ok_iff_find?_some] at h₂
+        have ⟨ed', h₃⟩ := entities_subst_preserves_present_entities subsmap h₂
+        unfold Partial.Entities.subst at h₃
+        simp [h₃] at h₁
 
 /--
   Partial.Entities.subst preserves `Map.contains` for the attrs maps

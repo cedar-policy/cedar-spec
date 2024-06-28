@@ -27,7 +27,7 @@ namespace Cedar.Thm.Partial.Evaluation.Var
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Prim Var)
+open Cedar.Spec (Error Prim Var)
 
 /--
   `Partial.evaluateVar` on concrete arguments gives the same output as
@@ -43,7 +43,7 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
     split
     case h_1 m h₁ =>
       simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
-      rw [← Map.eq_iff_kvs_equiv (wf₁ := Map.mapMOnValues_wf (Map.mapOnValues_wf.mp wf) h₁) (wf₂ := wf)]
+      rw [← Map.eq_iff_kvs_equiv (wf₁ := Map.mapMOnValues_some_wf (Map.mapOnValues_wf.mp wf) h₁) (wf₂ := wf)]
       simp only [List.Equiv, List.subset_def]
       constructor
       case left =>
@@ -109,7 +109,7 @@ theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
     unfold Partial.Request.WellFormed at wf_r
     split <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed]
     · rename_i m h₁
-      apply And.intro (Map.mapMOnValues_wf wf_r.left h₁)
+      apply And.intro (Map.mapMOnValues_some_wf wf_r.left h₁)
       intro (k, v) h₂
       replace wf_r := wf_r.right (.value v)
       simp [Partial.Value.WellFormed] at wf_r
@@ -254,5 +254,28 @@ theorem subst_preserves_evaluation_to_value (var : Var) (req req' : Partial.Requ
   unfold SubstPreservesEvaluationToConcrete Partial.Expr.subst Partial.evaluate
   intro h_req v
   exact subst_preserves_evaluateVar_to_value wf h_req
+
+/--
+  If `Partial.evaluateVar` returns an error, then it returns the same error
+  after any substitution of unknowns
+-/
+theorem subst_preserves_evaluateVar_to_error {var : Var} {req req' : Partial.Request} {e : Error} {subsmap : Subsmap} :
+  req.subst subsmap = some req' →
+  Partial.evaluateVar var req = .error e → Partial.evaluateVar var req' = .error e
+:= by
+  cases var <;> simp only [Partial.evaluateVar, imp_self, implies_true]
+  case context => split <;> split <;> simp
+
+/--
+  If partial-evaluation of a `Var` returns an error, then it returns the same
+  error after any sustitution of unknowns
+-/
+theorem subst_preserves_errors {var : Var} {req req' : Partial.Request} {e : Error} {subsmap : Subsmap} :
+  req.subst subsmap = some req' →
+  Partial.evaluate (Partial.Expr.var var) req entities = .error e →
+  Partial.evaluate ((Partial.Expr.var var).subst subsmap) req' (entities.subst subsmap) = .error e
+:= by
+  simp only [Partial.evaluate, Partial.Expr.subst] at *
+  exact subst_preserves_evaluateVar_to_error
 
 end Cedar.Thm.Partial.Evaluation.Var
