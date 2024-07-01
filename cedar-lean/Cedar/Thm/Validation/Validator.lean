@@ -19,17 +19,18 @@ open Cedar.Validation
 --   | _ => False
 
 
-theorem evaluates_subst (policy : Policy) (req : Request) (entities : Entities) (v : Value) :
-EvaluatesTo (substituteAction request.action policy.toExpr) request entities value →
- EvaluatesTo policy.toExpr request entities value := by
+theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) (value : Value) :
+EvaluatesTo (substituteAction request.action expr) request entities value →
+ EvaluatesTo expr request entities value := by
  intro h₀
  simp [substituteAction] at h₀
- cases h₁ : policy.toExpr <;> simp [h₁, mapOnVars] at h₀
+ cases h₁ : expr <;> simp [h₁, mapOnVars] at h₀
  case lit =>
   assumption
  case var vr =>
   cases h₂ : vr <;> simp [h₂] at h₀ <;> try assumption
   case action => sorry
+ case unaryApp op e => sorry
  case ite i t e => sorry
  sorry
  sorry
@@ -42,7 +43,7 @@ EvaluatesTo (substituteAction request.action policy.toExpr) request entities val
  sorry
 
 
-theorem matchesEnv (env : Environment) (request : Request) (entities : Entities) :
+theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
 RequestAndEntitiesMatchEnvironment env request entities →
 request.action = env.reqty.action := by
 intro h₀
@@ -64,8 +65,8 @@ have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
 have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst h₅ ht
 subst h₆
 exists b
-apply evaluates_subst policy request entities (Value.prim (Prim.bool b))
-rw [matchesEnv]
+apply evaluates_subst policy.toExpr request entities (Value.prim (Prim.bool b))
+rw [action_matches_env]
 repeat assumption
 
 
