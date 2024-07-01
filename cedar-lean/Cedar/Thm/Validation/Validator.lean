@@ -40,7 +40,7 @@ EvaluatesTo (substituteAction request.action expr) request entities value →
  sorry
  sorry
  sorry
- sorry
+
 
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
