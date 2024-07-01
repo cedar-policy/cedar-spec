@@ -10,36 +10,45 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-def RequestConsistentWithSchema (schema : Schema) (request : Request) : Prop :=
-  match schema.acts.find? request.action with
-  | some e =>
-      request.principal.ty ∈ e.appliesToPrincipal ∧
-      request.resource.ty ∈ e.appliesToResource ∧
-      InstanceOfType request.context (.record e.context)
-  | _ => False
+-- def RequestConsistentWithSchema (schema : Schema) (request : Request) : Prop :=
+--   match schema.acts.find? request.action with
+--   | some e =>
+--       request.principal.ty ∈ e.appliesToPrincipal ∧
+--       request.resource.ty ∈ e.appliesToResource ∧
+--       InstanceOfType request.context (.record e.context)
+--   | _ => False
 
-def RequestAndEntitiesConsistentWithSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
-  InstanceOfEntitySchema entities schema.ets ∧
-  InstanceOfActionSchema entities schema.acts ∧
-  RequestConsistentWithSchema schema request
 
--- for a single expression, evaluates to a boolean value (or appropriate error)
-def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities) : Prop :=
-∃ (b : Bool), EvaluatesTo expr request entities b
-
--- every policy as an expression evaluates to a boolean value or appropriate error
-def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
-∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
-
--- prove that policy and policy with "action" substituted for action uid are the same
-
-theorem evaluates_subst (env : Environment) (policy : Policy) (req : Request) (entities : Entities) (v : Value) :
-RequestAndEntitiesMatchEnvironment env request entities →
-EvaluatesTo (substituteAction env.reqty.action policy.toExpr) request entities value →
+theorem evaluates_subst (policy : Policy) (req : Request) (entities : Entities) (v : Value) :
+EvaluatesTo (substituteAction request.action policy.toExpr) request entities value →
  EvaluatesTo policy.toExpr request entities value := by
- intro h₀ h₁
+ intro h₀
+ simp [substituteAction] at h₀
+ cases h₁ : policy.toExpr <;> simp [h₁, mapOnVars] at h₀
+ case lit =>
+  assumption
+ case var vr =>
+  cases h₂ : vr <;> simp [h₂] at h₀ <;> try assumption
+  case action => sorry
+ case ite i t e => sorry
+ sorry
+ sorry
+ sorry
+ sorry
+ sorry
+ sorry
+ sorry
+ sorry
  sorry
 
+
+theorem matchesEnv (env : Environment) (request : Request) (entities : Entities) :
+RequestAndEntitiesMatchEnvironment env request entities →
+request.action = env.reqty.action := by
+intro h₀
+simp [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
+obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
+assumption
 
 theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
 RequestAndEntitiesMatchEnvironment env request entities →
@@ -55,9 +64,12 @@ have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
 have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst h₅ ht
 subst h₆
 exists b
-apply evaluates_subst env policy request entities (Value.prim (Prim.bool b))
+apply evaluates_subst policy request entities (Value.prim (Prim.bool b))
+rw [matchesEnv]
 repeat assumption
 
+
+-- From Mathlib [https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/List/Forall2.html#List.forall%E2%82%82_cons_right_iff]
 theorem forall₂_cons_left_iff {a l u} :
     List.Forall₂ R (a :: l) u ↔ ∃ b u', R a b ∧ List.Forall₂ R l u' ∧ u = b :: u' :=
   Iff.intro
@@ -96,23 +108,5 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
       obtain ⟨ b, _, _, _, _ ⟩ := h₃
       apply typecheck_policy_is_sound policy h b
       repeat assumption
--- somehow this worked withput me needing to reason about the tail end of the lists at all?
-
-    -- simp [h₄] at h₃
-    -- simp [typecheckPolicy] at h₃
-    -- cases h₅ : typeOf (substituteAction h.reqty.action policy.toExpr) [] h <;> simp [h₅] at h₃
-    -- split at h₃ <;> simp at h₃
-    -- rename_i cp ht
-    -- have hc := empty_capabilities_invariant request entities
-    -- have h₆ : RequestAndEntitiesMatchEnvironment h request entities := by
-    --   have h₇ : h ∈ envs := by simp [h₄]
-    --   sorry
-    -- have ⟨_, v, h₈, h₉⟩ := type_of_is_sound hc h₆ h₅
-    -- have ⟨b, h₁₀⟩ := instance_of_type_bool_is_bool v cp.fst h₉ ht
-    -- subst h₁₀
-    -- exists b
-    -- apply evaluates_subst h policy request entities (Value.prim (Prim.bool b))
-    -- assumption
-
 
 end Cedar.Thm

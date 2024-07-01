@@ -16,7 +16,8 @@ If validation succeeds, then for any request consistent with the schema, either
 
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
 validate policies schema = .ok () →
-RequestAndEntitiesConsistentWithSchema schema request entities →
+(∀ env ∈ schema.toEnvironments,
+RequestAndEntitiesMatchEnvironment env request entities) →
 AllEvaluateCorrectly policies request entities := by
 intro h₀ h₁
 unfold validate at h₀
