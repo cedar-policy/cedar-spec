@@ -27,31 +27,78 @@ theorem evaluates_subst_ite {i t e : Expr} {request : Request} {entities : Entit
 (ih₃ : EvaluatesSubst e request entities) :
 evaluate (substituteAction request.action (Expr.ite i t e)) request entities =
 evaluate (Expr.ite i t e) request entities := by
-simp [EvaluatesSubst] at *
-simp [evaluate]
-cases h₀ : Result.as Bool (evaluate i request entities) <;> simp [h₀]
-case error =>
-  simp [Result.as] at h₀
-  cases h₁ : evaluate i request entities <;> simp [h₁] at h₀
-  rename_i e1 e2
-  simp [substituteAction]
-  sorry
-  sorry
-case ok => sorry
+simp [EvaluatesSubst, substituteAction, mapOnVars] at *
+simp [evaluate, ih₁, ih₂, ih₃]
+
+theorem evaluates_subst_getAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst e request entities) :
+evaluate (substituteAction request.action (Expr.getAttr e attr)) request entities =
+evaluate (Expr.getAttr e attr) request entities := by
+simp [EvaluatesSubst] at ih₁
+simp [substituteAction, mapOnVars] at *
+simp [evaluate, ih₁]
+
+theorem evaluates_subst_hasAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst e request entities) :
+evaluate (substituteAction request.action (Expr.hasAttr e attr)) request entities =
+evaluate (Expr.hasAttr e attr) request entities := by
+simp [EvaluatesSubst] at ih₁
+simp [substituteAction, mapOnVars] at *
+simp [evaluate, ih₁]
 
 theorem evaluates_subst_unaryApp {op : UnaryOp} {e : Expr} {request : Request} {entities : Entities}
 (ih₁ : EvaluatesSubst e request entities) :
 evaluate (substituteAction request.action (Expr.unaryApp op e)) request entities =
 evaluate (Expr.unaryApp op e) request entities := by
 simp [EvaluatesSubst] at ih₁
-simp [evaluate]
-cases h₀ : evaluate e request entities <;> simp [h₀]
-case error e₁ =>
-  simp [substituteAction, mapOnVars] at *
-  simp [evaluate] at *
-  -- cannot use evaluate (mapOnVars (fun var ....)) here
-  sorry
-case ok v => sorry
+simp [substituteAction, mapOnVars] at *
+simp [evaluate, ih₁]
+
+theorem evaluates_subst_binaryApp {op : BinaryOp} {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst a request entities)
+(ih₂ : EvaluatesSubst b request entities) :
+evaluate (substituteAction request.action (Expr.binaryApp op a b)) request entities =
+evaluate (Expr.binaryApp op a b) request entities := by
+simp [EvaluatesSubst] at *
+simp [substituteAction, mapOnVars] at *
+simp [evaluate, ih₁, ih₂]
+
+theorem evaluates_subst_and {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst a request entities)
+(ih₂ : EvaluatesSubst b request entities) :
+evaluate (substituteAction request.action (Expr.and a b)) request entities =
+evaluate (Expr.and a b) request entities := by
+simp [EvaluatesSubst, substituteAction, mapOnVars] at *
+simp [evaluate, ih₁, ih₂]
+
+theorem evaluates_subst_or {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst a request entities)
+(ih₂ : EvaluatesSubst b request entities) :
+evaluate (substituteAction request.action (Expr.or a b)) request entities =
+evaluate (Expr.or a b) request entities := by
+simp [EvaluatesSubst, substituteAction, mapOnVars] at *
+simp [evaluate, ih₁, ih₂]
+
+theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Entities}
+(ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
+evaluate (substituteAction request.action (Expr.set xs)) request entities =
+evaluate (Expr.set xs) request entities := by
+simp [EvaluatesSubst] at ih₁
+sorry
+
+theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
+(ih₁ : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities) :
+evaluate (substituteAction request.action (Expr.record axs)) request entities =
+evaluate (Expr.record axs) request entities := by
+simp [EvaluatesSubst] at ih₁
+sorry
+
+theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request} {entities : Entities}
+(ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
+evaluate (substituteAction request.action (Expr.call xfn xs)) request entities =
+evaluate (Expr.call xfn xs) request entities := by
+simp [EvaluatesSubst] at ih₁
+sorry
 
 theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) :
 evaluate (substituteAction request.action expr) request entities =
@@ -66,17 +113,45 @@ cases h₀ : expr with
   have ih₂ := evaluates_subst t request entities
   have ih₃ := evaluates_subst e request entities
   exact @evaluates_subst_ite i t e request entities ih₁ ih₂ ih₃
-| and a b => sorry
-| or a b => sorry
+| and a b =>
+  have ih₁ := evaluates_subst a request entities
+  have ih₂ := evaluates_subst b request entities
+  exact @evaluates_subst_and a b request entities ih₁ ih₂
+| or a b =>
+  have ih₁ := evaluates_subst a request entities
+  have ih₂ := evaluates_subst b request entities
+  exact @evaluates_subst_or a b request entities ih₁ ih₂
 | unaryApp op e =>
   have ih₁ := evaluates_subst e request entities
   exact @evaluates_subst_unaryApp op e request entities ih₁
-| binaryApp op a b => sorry
-| getAttr x => sorry
-| hasAttr x attr => sorry
-| set x => sorry
-| record x => sorry
-| call x args => sorry
+| binaryApp op a b =>
+  have ih₁ := evaluates_subst a request entities
+  have ih₂:= evaluates_subst b request entities
+  exact @evaluates_subst_binaryApp op a b request entities ih₁ ih₂
+| getAttr x attr =>
+  have ih₁ := evaluates_subst x request entities
+  exact @evaluates_subst_getAttr x attr request entities ih₁
+| hasAttr x attr =>
+  have ih₁ := evaluates_subst x request entities
+  exact @evaluates_subst_hasAttr x attr request entities ih₁
+| set xs =>
+  have ih : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities := by
+    intro xᵢ _
+    exact @evaluates_subst xᵢ request entities
+  exact @evaluates_subst_set xs request entities ih
+| record axs =>
+  have ih : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities := by
+    intro axᵢ hᵢ
+    have _ : sizeOf axᵢ.snd < 1 + sizeOf axs := by
+      apply List.sizeOf_snd_lt_sizeOf_list hᵢ
+    exact @evaluates_subst axᵢ.snd request entities
+  exact @evaluates_subst_record axs request entities ih
+| call xfn xs =>
+  have ih : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities := by
+    intro xᵢ _
+    exact @evaluates_subst xᵢ request entities
+  exact @evaluates_subst_call xfn xs request entities ih
+
 
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
@@ -109,6 +184,7 @@ sorry
 
 
 -- From Mathlib [https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/List/Forall2.html#List.forall%E2%82%82_cons_right_iff]
+-- should probably go in the helper lemmas file 
 theorem forall₂_cons_left_iff {a l u} :
     List.Forall₂ R (a :: l) u ↔ ∃ b u', R a b ∧ List.Forall₂ R l u' ∧ u = b :: u' :=
   Iff.intro
