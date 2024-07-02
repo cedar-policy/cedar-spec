@@ -24,7 +24,7 @@ miette = "7.1.0"
 smol_str = { version = "0.2", features = ["serde"] }
 regex = "1"
 rayon = { version = "1.5", optional = true }
-rand = { version = "0.8", optional = true }
+rand = { version = "0.8", features = ["small_rng"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
@@ -36,8 +36,8 @@ version = "1.3.1"
 features = ["v4", "fast-rng"]
 
 [features]
-prt = ["dep:rayon", "dep:rand", "dep:clap", "dep:rand_chacha"]
-log = ["dep:rand"]
+prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
+log = []
 
 [lib]
 path = "src/lib.rs"
