@@ -29,11 +29,12 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Effect, Id, Name, PolicyID};
+use cedar_policy_core::ast::{self, Effect, Id, PolicyID};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
-    SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
+    ActionEntityUID, ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition,
+    RawName, SchemaError, SchemaFragment, SchemaType, SchemaTypeVariant, TypeOfAttribute,
+    ValidatorSchema,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -42,7 +43,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    pub schema: cedar_policy_validator::NamespaceDefinition,
+    pub schema: cedar_policy_validator::NamespaceDefinition<ast::Name>,
     /// Namespace for the schema, as an `ast::Name`
     pub namespace: Option<ast::Name>,
     /// settings
@@ -67,7 +68,7 @@ pub struct Schema {
     /// action in the `schema`
     pub resource_types: Vec<ast::EntityType>,
     /// list of (attribute, type) pairs that occur in the `schema`
-    attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)>,
+    attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType<ast::Name>)>,
     /// map from type to (entity type, attribute name) pairs indicating
     /// attributes in the `schema` that have that type.
     /// note that we can't make a similar map for SchemaType because it isn't
@@ -76,11 +77,11 @@ pub struct Schema {
 }
 
 /// internal helper function, basically `impl Arbitrary for AttributesOrContext`
-fn arbitrary_attrspec(
+fn arbitrary_attrspec<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     u: &mut Unstructured<'_>,
-) -> Result<AttributesOrContext> {
+) -> Result<AttributesOrContext<N>> {
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
         .map_err(|e| while_doing("generating attribute names for an attrspec".into(), e))?;
@@ -89,7 +90,7 @@ fn arbitrary_attrspec(
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
-                    let mut ty = arbitrary_typeofattribute_with_bounded_depth(
+                    let mut ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
                         settings,
                         entity_types,
                         settings.max_depth,
@@ -98,7 +99,7 @@ fn arbitrary_attrspec(
                     if !settings.enable_extensions {
                         // can't have extension types. regenerate until morale improves
                         while ty.ty.is_extension().expect("DRT does not generate schema type using type defs, so `is_extension` should be `Some`") {
-                            ty = arbitrary_typeofattribute_with_bounded_depth(
+                            ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
                                 settings,
                                 entity_types,
                                 settings.max_depth,
@@ -140,14 +141,14 @@ fn arbitrary_attrspec_size_hint(depth: usize) -> (usize, Option<usize>) {
 /// settings.enable_additional_attributes; it always behaves as if that setting
 /// is `true` (ie, it may generate `additional_attributes` as either `true` or
 /// `false`).
-fn arbitrary_typeofattribute_with_bounded_depth(
+fn arbitrary_typeofattribute_with_bounded_depth<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<TypeOfAttribute> {
+) -> Result<TypeOfAttribute<N>> {
     Ok(TypeOfAttribute {
-        ty: arbitrary_schematype_with_bounded_depth(settings, entity_types, max_depth, u)?,
+        ty: arbitrary_schematype_with_bounded_depth::<N>(settings, entity_types, max_depth, u)?,
         required: u.arbitrary()?,
     })
 }
@@ -171,12 +172,12 @@ fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
 /// settings.enable_additional_attributes; it always behaves as if that setting
 /// is `true` (ie, it may generate `additional_attributes` as either `true` or
 /// `false`).
-pub fn arbitrary_schematype_with_bounded_depth(
+pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<cedar_policy_validator::SchemaType> {
+) -> Result<cedar_policy_validator::SchemaType<N>> {
     Ok(SchemaType::Type(uniform!(
         u,
         SchemaTypeVariant::String,
@@ -239,7 +240,7 @@ pub fn arbitrary_schematype_with_bounded_depth(
                 }
             }
         },
-        entity_type_name_to_schema_type_variant(u.choose(entity_types)?),
+        entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
         SchemaTypeVariant::Extension {
             name: "ipaddr".parse().unwrap(),
         },
@@ -251,38 +252,41 @@ pub fn arbitrary_schematype_with_bounded_depth(
 
 /// Convert a `Name` representing an entity type into the corresponding
 /// `SchemaTypeVariant` for an entity reference with that entity type.
-pub fn entity_type_name_to_schema_type_variant(
+pub fn entity_type_name_to_schema_type_variant<N: From<ast::Name>>(
     name: &ast::EntityType,
-) -> cedar_policy_validator::SchemaTypeVariant {
-    cedar_policy_validator::SchemaTypeVariant::Entity { name: name.clone() }
+) -> cedar_policy_validator::SchemaTypeVariant<N> {
+    cedar_policy_validator::SchemaTypeVariant::Entity {
+        name: N::from(name.as_ref().clone()),
+    }
 }
 
 /// Convert a `Name` representing an entity type into the corresponding
 /// SchemaType for an entity reference with that entity type.
 pub fn entity_type_name_to_schema_type(
     name: &ast::EntityType,
-) -> cedar_policy_validator::SchemaType {
+) -> cedar_policy_validator::SchemaType<ast::Name> {
     SchemaType::Type(entity_type_name_to_schema_type_variant(name))
 }
 
 /// size hint for arbitrary_schematype_with_bounded_depth
 fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     // assume it's similar to the unbounded-depth version
-    <cedar_policy_validator::SchemaType as Arbitrary>::size_hint(depth)
+    <cedar_policy_validator::SchemaType<RawName> as Arbitrary>::size_hint(depth)
 }
 
 /// internal helper function, get the EntityUID corresponding to the given action
 pub fn uid_for_action_name(namespace: Option<&ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
-    let entity_type =
-        build_qualified_entity_type_name(namespace, &"Action".parse().expect("valid id"));
+    let entity_type = ast::EntityType::from_normalized_str("Action")
+        .expect("valid id")
+        .qualify_with(namespace);
     ast::EntityUID::from_components(entity_type, action_name, None)
 }
 
 /// internal helper function, convert a SchemaType to a Type (loses some
 /// information)
 fn schematype_to_type(
-    schema: &cedar_policy_validator::NamespaceDefinition,
-    schematy: &cedar_policy_validator::SchemaType,
+    schema: &cedar_policy_validator::NamespaceDefinition<ast::Name>,
+    schematy: &cedar_policy_validator::SchemaType<ast::Name>,
 ) -> Type {
     match schematy {
         SchemaType::TypeDef { type_name } => schematype_to_type(
@@ -314,27 +318,18 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
         .map_err(|e| while_doing("generating namespace".into(), e))
 }
 
-/// Given an (optional) namespace and a type base name, build a fully
-/// qualified `Name`.
-pub(crate) fn build_qualified_entity_type_name(
-    namespace: Option<&ast::Name>,
-    name: &ast::EntityType,
-) -> ast::EntityType {
-    build_qualified_entity_type(namespace, name)
-}
-
 /// Information about attributes from the schema
 pub(crate) struct Attributes<'a> {
     /// the actual attributes
-    pub attrs: &'a BTreeMap<SmolStr, TypeOfAttribute>,
+    pub attrs: &'a BTreeMap<SmolStr, TypeOfAttribute<ast::Name>>,
     /// whether `additional_attributes` is set
     pub additional_attrs: bool,
 }
 
 /// Given an `AttributesOrContext`, get the actual attributes map from it, and whether it has `additional_attributes` set
 pub(crate) fn attrs_from_attrs_or_context<'a>(
-    schema: &'a cedar_policy_validator::NamespaceDefinition,
-    attrsorctx: &'a AttributesOrContext,
+    schema: &'a cedar_policy_validator::NamespaceDefinition<ast::Name>,
+    attrsorctx: &'a AttributesOrContext<ast::Name>,
 ) -> Attributes<'a> {
     match &attrsorctx.0 {
         SchemaType::TypeDef { type_name } => match schema.common_types.get(&type_name.clone().try_into().unwrap()).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
@@ -347,23 +342,11 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
     }
 }
 
-/// Given an (optional) namespace and a type base name, build a fully qualified
-/// `EntityType`.
-///
-/// If `basename` is `None`, then this builds an unspecified entity type. Use
-/// `build_qualified_entity_type_name` if `basename` is not `None`.
-fn build_qualified_entity_type(
-    namespace: Option<&ast::Name>,
-    basename: &ast::EntityType,
-) -> ast::EntityType {
-    basename.prefix_namespace_if_unqualified(namespace)
-}
-
 /// Given a `SchemaType`, return all (attribute, type) pairs that occur inside it
 fn attrs_in_schematype(
-    schema: &cedar_policy_validator::NamespaceDefinition,
-    schematype: &cedar_policy_validator::SchemaType,
-) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType)>> {
+    schema: &cedar_policy_validator::NamespaceDefinition<ast::Name>,
+    schematype: &cedar_policy_validator::SchemaType<ast::Name>,
+) -> Box<dyn Iterator<Item = (SmolStr, cedar_policy_validator::SchemaType<ast::Name>)>> {
     match schematype {
         cedar_policy_validator::SchemaType::Type(variant) => match variant {
             SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
@@ -396,15 +379,15 @@ fn attrs_in_schematype(
 
 /// Build `attributes_by_type` from other components of `Schema`
 fn build_attributes_by_type<'a>(
-    schema: &cedar_policy_validator::NamespaceDefinition,
-    entity_types: impl IntoIterator<Item = (&'a Id, &'a cedar_policy_validator::EntityType)>,
+    schema: &cedar_policy_validator::NamespaceDefinition<ast::Name>,
+    entity_types: impl IntoIterator<Item = (&'a Id, &'a cedar_policy_validator::EntityType<ast::Name>)>,
     namespace: Option<&ast::Name>,
 ) -> HashMap<Type, Vec<(ast::EntityType, SmolStr)>> {
     let triples = entity_types
         .into_iter()
         .map(|(name, et)| {
             (
-                build_qualified_entity_type_name(namespace, &ast::Name::from(name.clone()).into()),
+                ast::EntityType::from(ast::Name::from(name.clone())).qualify_with(namespace),
                 attrs_from_attrs_or_context(schema, &et.shape),
             )
         })
@@ -429,7 +412,7 @@ struct Bindings {
     // Bindings from `SchemaType` to a list of `Id`
     // The `ids` field ensures that `Id`s are unique
     // Note that `SchemaType`s should not contain any common type references
-    bindings: BTreeMap<SchemaType, Vec<Id>>,
+    bindings: BTreeMap<SchemaType<ast::Name>, Vec<Id>>,
     // The set of `Id`s used in the bindings
     ids: HashSet<SmolStr>,
 }
@@ -444,7 +427,7 @@ impl Bindings {
     // Add a `SchemaType` and `Id` binding
     // Note that this function always succeeds even if the `Id` already exists
     // Under that situation, we create a new `Id` based on the existing `Id`
-    fn add_binding(&mut self, binding: (SchemaType, Id)) {
+    fn add_binding(&mut self, binding: (SchemaType<ast::Name>, Id)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
         let new_id = if self.ids.contains(id.as_ref()) {
@@ -469,14 +452,18 @@ impl Bindings {
     // We only replace smaller types in composite types like sets and records
     // to avoid circularity
     // This function is a no-op for other types
-    fn rewrite_type(&self, u: &mut Unstructured<'_>, ty: &SchemaType) -> Result<SchemaType> {
+    fn rewrite_type(
+        &self,
+        u: &mut Unstructured<'_>,
+        ty: &SchemaType<ast::Name>,
+    ) -> Result<SchemaType<ast::Name>> {
         match ty {
             SchemaType::TypeDef { .. } => unreachable!("common type references shouldn't be here"),
             SchemaType::Type(SchemaTypeVariant::Set { element }) => {
                 Ok(SchemaType::Type(SchemaTypeVariant::Set {
                     element: Box::new(if let Some(ids) = self.bindings.get(element) {
                         SchemaType::TypeDef {
-                            type_name: Name::unqualified_name(u.choose(ids)?.clone()),
+                            type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()),
                         }
                     } else {
                         self.rewrite_type(u, element)?
@@ -508,7 +495,11 @@ impl Bindings {
     }
 
     // Replace attribute types in an entity type with common types
-    fn rewrite_entity_type(&self, u: &mut Unstructured<'_>, et: &EntityType) -> Result<EntityType> {
+    fn rewrite_entity_type(
+        &self,
+        u: &mut Unstructured<'_>,
+        et: &EntityType<ast::Name>,
+    ) -> Result<EntityType<ast::Name>> {
         let ty = &et.shape.0;
         Ok(EntityType {
             member_of_types: et.member_of_types.clone(),
@@ -517,10 +508,14 @@ impl Bindings {
     }
 
     // Replace attribute types in a record type with common types
-    fn rewrite_record_type(&self, u: &mut Unstructured<'_>, ty: &SchemaType) -> Result<SchemaType> {
+    fn rewrite_record_type(
+        &self,
+        u: &mut Unstructured<'_>,
+        ty: &SchemaType<ast::Name>,
+    ) -> Result<SchemaType<ast::Name>> {
         let new_ty = if let Some(ids) = self.bindings.get(ty) {
             SchemaType::TypeDef {
-                type_name: Name::unqualified_name(u.choose(ids)?.clone()),
+                type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()),
             }
         } else {
             self.rewrite_type(u, ty)?
@@ -537,7 +532,10 @@ impl Bindings {
     // ...
     // type id_n = rewrite_type(ty)
     // ```
-    fn to_common_types(&self, u: &mut Unstructured<'_>) -> Result<HashMap<Id, SchemaType>> {
+    fn to_common_types(
+        &self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<HashMap<Id, SchemaType<ast::Name>>> {
         let mut common_types = HashMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
@@ -548,7 +546,7 @@ impl Bindings {
                     common_types.insert(
                         ids[i].clone(),
                         SchemaType::TypeDef {
-                            type_name: Name::unqualified_name(ids[i + 1].clone()),
+                            type_name: ast::Name::unqualified_name(ids[i + 1].clone()),
                         },
                     );
                     common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
@@ -560,7 +558,11 @@ impl Bindings {
 }
 
 // Bind types to random ids recursively
-fn bind_type(ty: &SchemaType, u: &mut Unstructured<'_>, bindings: &mut Bindings) -> Result<()> {
+fn bind_type(
+    ty: &SchemaType<ast::Name>,
+    u: &mut Unstructured<'_>,
+    bindings: &mut Bindings,
+) -> Result<()> {
     // flip a coin to decide if we should create a binding for the top-level type
     if u.ratio(1, 2)? {
         bindings.add_binding((ty.clone(), u.arbitrary()?));
@@ -589,7 +591,7 @@ impl Schema {
     pub fn add_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<cedar_policy_validator::NamespaceDefinition> {
+    ) -> Result<cedar_policy_validator::NamespaceDefinition<ast::Name>> {
         let attribute_types = &self.attributes;
         let mut bindings = Bindings::new();
         for (_, ty) in attribute_types {
@@ -597,7 +599,7 @@ impl Schema {
         }
 
         let common_types = bindings.to_common_types(u)?;
-        let entity_types: HashMap<Id, EntityType> = HashMap::from_iter(
+        let entity_types: HashMap<Id, EntityType<ast::Name>> = HashMap::from_iter(
             self.schema
                 .entity_types
                 .iter()
@@ -641,9 +643,30 @@ impl Schema {
     }
 
     /// Create an arbitrary `Schema` based on (compatible with) the given Validator `NamespaceDefinition`.
+    ///
+    /// The input is `NamespaceDefinition<RawName>`, meaning that entity and
+    /// common type names may not yet be fully qualified.
+    pub fn from_raw_nsdef(
+        nsdef: cedar_policy_validator::NamespaceDefinition<RawName>,
+        namespace: Option<ast::Name>,
+        settings: ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Schema> {
+        Self::from_nsdef(
+            nsdef.qualify_type_references(namespace.as_ref()),
+            namespace,
+            settings,
+            u,
+        )
+    }
+
+    /// Create an arbitrary `Schema` based on (compatible with) the given Validator `NamespaceDefinition`.
+    ///
+    /// The input is `NamespaceDefinition<ast::Name>`, meaning that all entity
+    /// and common type names are expected to already be fully qualified.
     pub fn from_nsdef(
-        nsdef: cedar_policy_validator::NamespaceDefinition,
-        namespace: Option<Name>,
+        nsdef: cedar_policy_validator::NamespaceDefinition<ast::Name>,
+        namespace: Option<ast::Name>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
@@ -678,9 +701,17 @@ impl Schema {
                 .keys()
                 .map(|k| ast::EntityType::from(ast::Name::from(k.clone())))
                 .collect(),
-            principal_types: principal_types.into_iter().cloned().collect(),
+            principal_types: principal_types
+                .into_iter()
+                .cloned()
+                .map(Into::into)
+                .collect(),
             actions_eids: nsdef.actions.keys().cloned().map(ast::Eid::new).collect(),
-            resource_types: resource_types.into_iter().cloned().collect(),
+            resource_types: resource_types
+                .into_iter()
+                .cloned()
+                .map(Into::into)
+                .collect(),
             attributes,
             attributes_by_type,
             schema: nsdef,
@@ -688,8 +719,32 @@ impl Schema {
     }
 
     /// Create an arbitrary `Schema` based on (compatible with) the given Validator `SchemaFragment`.
+    ///
+    /// The input is `SchemaFragment<RawName>`, meaning that entity and common
+    /// type names may not yet be fully qualified.
+    pub fn from_raw_schemafrag(
+        schemafrag: cedar_policy_validator::SchemaFragment<RawName>,
+        settings: ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Schema> {
+        let mut nsdefs = schemafrag.0.into_iter();
+        match nsdefs.next() {
+            None => panic!("Empty SchemaFragment not supported in this method"),
+            Some((ns, nsdef)) => match nsdefs.next() {
+                Some(_) => unimplemented!(
+                    "SchemaFragment with multiple namespaces not yet supported in this method"
+                ),
+                None => Self::from_raw_nsdef(nsdef, ns, settings, u),
+            },
+        }
+    }
+
+    /// Create an arbitrary `Schema` based on (compatible with) the given Validator `SchemaFragment`.
+    ///
+    /// The input is `SchemaFragment<ast::Name>`, meaning that all entity and
+    /// common type names are expected to already be fully-qualified.
     pub fn from_schemafrag(
-        schemafrag: cedar_policy_validator::SchemaFragment,
+        schemafrag: cedar_policy_validator::SchemaFragment<ast::Name>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
@@ -745,35 +800,33 @@ impl Schema {
         let entity_type_names: Vec<ast::EntityType> = entity_type_ids
             .iter()
             .map(|id| {
-                build_qualified_entity_type_name(
-                    namespace.as_ref(),
-                    &ast::Name::from(id.clone()).into(),
-                )
+                ast::EntityType::from(ast::Name::from(id.clone())).qualify_with(namespace.as_ref())
             })
             .collect();
 
         // now turn each of those names into an EntityType, no
         // member-relationships yet
-        let mut entity_types: Vec<(Id, cedar_policy_validator::EntityType)> = entity_type_ids
-            .iter()
-            .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
-            .map(|id| {
-                Ok((
-                    id.clone(),
-                    cedar_policy_validator::EntityType {
-                        member_of_types: vec![],
-                        shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                    },
-                ))
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let mut entity_types: Vec<(Id, cedar_policy_validator::EntityType<ast::Name>)> =
+            entity_type_ids
+                .iter()
+                .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
+                .map(|id| {
+                    Ok((
+                        id.clone(),
+                        cedar_policy_validator::EntityType {
+                            member_of_types: vec![],
+                            shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                        },
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
         // fill in member-relationships. WLOG we only make edges from entities
         // earlier in the entity_types list to entities later in the list; this
         // ensures we get a DAG
         for i in 0..entity_types.len() {
             for name in &entity_type_ids[(i + 1)..] {
                 if u.ratio::<u8>(1, 2)? {
-                    let etype = ast::Name::from(name.clone()).into();
+                    let etype = ast::Name::from(name.clone());
                     entity_types[i].1.member_of_types.push(etype);
                 }
             }
@@ -800,38 +853,37 @@ impl Schema {
         } else {
             action_names
         };
-        let mut principal_types: HashSet<ast::EntityType> = HashSet::new();
-        let mut resource_types = HashSet::new();
+        let mut principal_types: HashSet<ast::Name> = HashSet::new();
+        let mut resource_types: HashSet<ast::Name> = HashSet::new();
         // optionally return a list of entity types and add them to `tys` at the same time
-        let pick_entity_types = |tys: &mut HashSet<ast::EntityType>,
-                                 u: &mut Unstructured<'_>|
-         -> Result<Vec<ast::EntityType>> {
-            // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u.int_in_range(1..=entity_types.len()).unwrap();
-            let mut indices: Vec<usize> = (0..entity_types.len()).collect();
-            let mut selected_indices = Vec::with_capacity(num);
+        let pick_entity_types =
+            |tys: &mut HashSet<ast::Name>, u: &mut Unstructured<'_>| -> Result<Vec<ast::Name>> {
+                // Pre-select the number of entity types (minimum 1), then randomly select that many indices
+                let num = u.int_in_range(1..=entity_types.len()).unwrap();
+                let mut indices: Vec<usize> = (0..entity_types.len()).collect();
+                let mut selected_indices = Vec::with_capacity(num);
 
-            while selected_indices.len() < num {
-                let index = u.choose_index(indices.len()).unwrap();
-                selected_indices.push(indices.swap_remove(index));
-            }
+                while selected_indices.len() < num {
+                    let index = u.choose_index(indices.len()).unwrap();
+                    selected_indices.push(indices.swap_remove(index));
+                }
 
-            Result::Ok(
-                selected_indices
-                    .iter()
-                    .map(|&i| {
-                        let (name, _) = &entity_types[i];
-                        let etyp: ast::EntityType = ast::Name::from(name.clone()).into();
-                        tys.insert(build_qualified_entity_type_name(namespace.as_ref(), &etyp));
-                        etyp
-                    })
-                    .collect::<Vec<ast::EntityType>>(),
-            )
-        };
+                Result::Ok(
+                    selected_indices
+                        .iter()
+                        .map(|&i| {
+                            let (name, _) = &entity_types[i];
+                            let etyp = ast::Name::from(name.clone());
+                            tys.insert(etyp.qualify_with(namespace.as_ref()));
+                            etyp
+                        })
+                        .collect::<Vec<ast::Name>>(),
+                )
+            };
         let mut principal_and_resource_types_exist = false;
         // Ensure on the first pass we always generate a principal/resource
         // After that, flip a coin to optional delete the principal/resource type lists
-        let mut actions: Vec<(SmolStr, ActionType)> = action_names
+        let mut actions: Vec<(SmolStr, ActionType<ast::Name>)> = action_names
             .iter()
             .map(|name| {
                 Ok((
@@ -896,7 +948,7 @@ impl Schema {
         };
         let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
-        let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType)> = attrsorcontexts
+        let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType<_>)> = attrsorcontexts
             .flat_map(|attributes| {
                 attributes.attrs.iter().map(|(s, ty)| {
                     (
@@ -923,9 +975,9 @@ impl Schema {
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
             entity_types: entity_type_names,
-            principal_types: principal_types.into_iter().collect(),
+            principal_types: principal_types.into_iter().map(Into::into).collect(),
             actions_eids,
-            resource_types: resource_types.into_iter().collect(),
+            resource_types: resource_types.into_iter().map(Into::into).collect(),
             attributes,
             attributes_by_type,
         })
@@ -974,13 +1026,26 @@ impl Schema {
         .generate()
     }
 
-    fn arbitrary_uid_with_optional_type(
+    #[allow(dead_code)]
+    fn arbitrary_uid_with_etype(
         &self,
         ty_name: &ast::EntityType,
         hierarchy: Option<&Hierarchy>,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
-        let ty = build_qualified_entity_type(self.namespace(), ty_name);
+        let ty = ty_name.qualify_with(self.namespace());
+        self.exprgenerator(hierarchy)
+            .arbitrary_uid_with_type(&ty, u)
+    }
+
+    /// Like `arbitrary_uid_with_etype`, but takes the entity type as `ast::Name`
+    fn arbitrary_uid_with_etype_as_name(
+        &self,
+        ty_name: &ast::Name,
+        hierarchy: Option<&Hierarchy>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::EntityUID> {
+        let ty = ty_name.qualify_with(self.namespace()).into();
         self.exprgenerator(hierarchy)
             .arbitrary_uid_with_type(&ty, u)
     }
@@ -990,7 +1055,7 @@ impl Schema {
         &self,
         ty: &Type,
         u: &mut Unstructured<'_>,
-    ) -> Result<Option<cedar_policy_validator::SchemaType>> {
+    ) -> Result<Option<cedar_policy_validator::SchemaType<ast::Name>>> {
         Ok(match ty {
             Type::Bool => Some(SchemaTypeVariant::Boolean),
             Type::Long => Some(SchemaTypeVariant::Long),
@@ -1024,7 +1089,7 @@ impl Schema {
     pub fn arbitrary_attr(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<&(SmolStr, cedar_policy_validator::SchemaType)> {
+    ) -> Result<&(SmolStr, cedar_policy_validator::SchemaType<ast::Name>)> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
     }
@@ -1055,20 +1120,18 @@ impl Schema {
     /// with the given schematype
     pub fn arbitrary_attr_for_schematype(
         &self,
-        target_type: impl Into<cedar_policy_validator::SchemaType>,
+        target_type: impl Into<cedar_policy_validator::SchemaType<ast::Name>>,
         u: &mut Unstructured<'_>,
     ) -> Result<(ast::EntityType, SmolStr)> {
-        let target_type: cedar_policy_validator::SchemaType = target_type.into();
+        let target_type: cedar_policy_validator::SchemaType<ast::Name> = target_type.into();
         let pairs: Vec<(ast::EntityType, SmolStr)> = self
             .schema
             .entity_types
             .iter()
             .map(|(name, et)| {
                 (
-                    {
-                        let etype = ast::Name::from(name.clone()).into();
-                        build_qualified_entity_type_name(self.namespace(), &etype)
-                    },
+                    ast::EntityType::from(ast::Name::from(name.clone()))
+                        .qualify_with(self.namespace()),
                     attrs_from_attrs_or_context(&self.schema, &et.shape),
                 )
             })
@@ -1264,7 +1327,7 @@ impl Schema {
             .collect();
         let (action_name, action) = applicable_actions[u.choose_index(applicable_actions.len())?];
         // This is safe as we checked above
-        let applies_to: &ApplySpec = action.applies_to.as_ref().unwrap();
+        let applies_to: &ApplySpec<ast::Name> = action.applies_to.as_ref().unwrap();
         // now generate a valid request for that Action
         Ok(ABACRequest(Request {
             principal: {
@@ -1272,7 +1335,7 @@ impl Schema {
                 let ty = u.choose(types).map_err(|e| {
                     while_doing("choosing one of the action principal types".into(), e)
                 })?;
-                self.arbitrary_uid_with_optional_type(ty, Some(hierarchy), u)?
+                self.arbitrary_uid_with_etype_as_name(ty, Some(hierarchy), u)?
             },
             action: uid_for_action_name(
                 self.namespace.as_ref(),
@@ -1284,7 +1347,7 @@ impl Schema {
                 let ty = u.choose(types).map_err(|e| {
                     while_doing("choosing one of the action resource types".into(), e)
                 })?;
-                self.arbitrary_uid_with_optional_type(ty, Some(hierarchy), u)?
+                self.arbitrary_uid_with_etype_as_name(ty, Some(hierarchy), u)?
             },
             context: {
                 let mut attributes: Vec<_> = action
@@ -1327,7 +1390,7 @@ impl Schema {
     }
 
     /// Get the underlying schema file, as a `NamespaceDefinition`
-    pub fn schemafile(&self) -> &cedar_policy_validator::NamespaceDefinition {
+    pub fn schemafile(&self) -> &cedar_policy_validator::NamespaceDefinition<ast::Name> {
         &self.schema
     }
 
@@ -1338,16 +1401,176 @@ impl Schema {
     }
 }
 
-impl From<Schema> for SchemaFragment {
-    fn from(schema: Schema) -> SchemaFragment {
+impl From<Schema> for SchemaFragment<ast::Name> {
+    fn from(schema: Schema) -> SchemaFragment<ast::Name> {
         SchemaFragment(HashMap::from_iter([(schema.namespace, schema.schema)]).into())
+    }
+}
+
+impl From<Schema> for SchemaFragment<RawName> {
+    fn from(schema: Schema) -> SchemaFragment<RawName> {
+        downgrade_frag_to_raw(SchemaFragment::<ast::Name>::from(schema))
+    }
+}
+
+/// Utility function to "downgrade" a [`SchemaFragment`] with fully-qualified
+/// names into one with [`RawName`]s.
+/// When this results in `RawName`s like `A::B`, this is unambiguous, because
+/// the `RawName` `A::B` is always translated back into the fully-qualified
+/// `A::B`.
+/// When this results in `RawName`s like `A` (because the fully-qualified name
+/// was in the empty namespace), this is potentially ambiguous, because this
+/// could be turned back into a fully-qualified `Name` like `C::A`, if the
+/// reference is part of `namespace C` and `C::A` exists (and once cedar#579 is
+/// fixed). However, we can't do any better, because there is currently no way
+/// for a `RawName` to unambiguously refer to a name in the empty namespace;
+/// solutions are discussed in RFC 64 (which is `pending` as of this writing).
+pub fn downgrade_frag_to_raw(frag: SchemaFragment<ast::Name>) -> SchemaFragment<RawName> {
+    SchemaFragment(
+        frag.0
+            .into_iter()
+            .map(|(k, nsdef)| (k, downgrade_nsdef_to_raw(nsdef)))
+            .collect(),
+    )
+}
+
+/// Utility function to "downgrade" a [`NamespaceDefinition`] with fully-qualified
+/// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_nsdef_to_raw(nsdef: NamespaceDefinition<ast::Name>) -> NamespaceDefinition<RawName> {
+    NamespaceDefinition {
+        common_types: nsdef
+            .common_types
+            .into_iter()
+            .map(|(k, v)| (k, downgrade_schematype_to_raw(v)))
+            .collect(),
+        entity_types: nsdef
+            .entity_types
+            .into_iter()
+            .map(|(k, v)| (k, downgrade_entitytype_to_raw(v)))
+            .collect(),
+        actions: nsdef
+            .actions
+            .into_iter()
+            .map(|(k, v)| (k, downgrade_action_to_raw(v)))
+            .collect(),
+    }
+}
+
+/// Utility function to "downgrade" a [`SchemaType`] with fully-qualified names
+/// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_schematype_to_raw(schematype: SchemaType<ast::Name>) -> SchemaType<RawName> {
+    match schematype {
+        SchemaType::TypeDef { type_name } => SchemaType::TypeDef {
+            type_name: RawName::from_name(type_name),
+        },
+        SchemaType::Type(stv) => SchemaType::Type(downgrade_schematypevariant_to_raw(stv)),
+    }
+}
+
+/// Utility function to "downgrade" a [`SchemaTypeVariant`] with fully-qualified
+/// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_schematypevariant_to_raw(
+    stv: SchemaTypeVariant<ast::Name>,
+) -> SchemaTypeVariant<RawName> {
+    match stv {
+        SchemaTypeVariant::Boolean => SchemaTypeVariant::Boolean,
+        SchemaTypeVariant::Long => SchemaTypeVariant::Long,
+        SchemaTypeVariant::String => SchemaTypeVariant::String,
+        SchemaTypeVariant::Extension { name } => SchemaTypeVariant::Extension { name },
+        SchemaTypeVariant::Set { element } => SchemaTypeVariant::Set {
+            element: Box::new(downgrade_schematype_to_raw(*element)),
+        },
+        SchemaTypeVariant::Entity { name } => SchemaTypeVariant::Entity {
+            name: RawName::from_name(name),
+        },
+        SchemaTypeVariant::Record {
+            attributes,
+            additional_attributes,
+        } => SchemaTypeVariant::Record {
+            attributes: attributes
+                .into_iter()
+                .map(|(k, v)| (k, downgrade_toa_to_raw(v)))
+                .collect(),
+            additional_attributes,
+        },
+    }
+}
+
+/// Utility function to "downgrade" a [`TypeOfAttribute`] with fully-qualified
+/// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_toa_to_raw(toa: TypeOfAttribute<ast::Name>) -> TypeOfAttribute<RawName> {
+    TypeOfAttribute {
+        ty: downgrade_schematype_to_raw(toa.ty),
+        required: toa.required,
+    }
+}
+
+/// Utility function to "downgrade" a [`cedar_policy_validator::EntityType`] with
+/// fully-qualified names into one with [`RawName`]s. See notes on
+/// [`downgrade_frag_to_raw()`].
+fn downgrade_entitytype_to_raw(
+    entitytype: cedar_policy_validator::EntityType<ast::Name>,
+) -> cedar_policy_validator::EntityType<RawName> {
+    cedar_policy_validator::EntityType {
+        member_of_types: entitytype
+            .member_of_types
+            .into_iter()
+            .map(RawName::from_name)
+            .collect(),
+        shape: downgrade_aoc_to_raw(entitytype.shape),
+    }
+}
+
+/// Utility function to "downgrade" a [`AttributesOrContext`] with
+/// fully-qualified names into one with [`RawName`]s. See notes on
+/// [`downgrade_frag_to_raw()`].
+fn downgrade_aoc_to_raw(aoc: AttributesOrContext<ast::Name>) -> AttributesOrContext<RawName> {
+    AttributesOrContext(downgrade_schematype_to_raw(aoc.0))
+}
+
+/// Utility function to "downgrade" an [`ActionType`] with fully-qualified names
+/// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_action_to_raw(action: ActionType<ast::Name>) -> ActionType<RawName> {
+    ActionType {
+        attributes: action.attributes,
+        applies_to: action.applies_to.map(downgrade_applyspec_to_raw),
+        member_of: action
+            .member_of
+            .map(|v| v.into_iter().map(downgrade_aeuid_to_raw).collect()),
+    }
+}
+
+/// Utility function to "downgrade" an [`ApplySpec`] with fully-qualified names
+/// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_applyspec_to_raw(applyspec: ApplySpec<ast::Name>) -> ApplySpec<RawName> {
+    ApplySpec {
+        principal_types: applyspec
+            .principal_types
+            .into_iter()
+            .map(RawName::from_name)
+            .collect(),
+        resource_types: applyspec
+            .resource_types
+            .into_iter()
+            .map(RawName::from_name)
+            .collect(),
+        context: downgrade_aoc_to_raw(applyspec.context),
+    }
+}
+
+/// Utility function to "downgrade" an [`ActionEntityUID`] with fully-qualified
+/// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
+fn downgrade_aeuid_to_raw(aeuid: ActionEntityUID<ast::Name>) -> ActionEntityUID<RawName> {
+    ActionEntityUID {
+        id: aeuid.id,
+        ty: aeuid.ty.map(RawName::from_name),
     }
 }
 
 impl TryFrom<Schema> for ValidatorSchema {
     type Error = SchemaError;
     fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
-        ValidatorSchema::try_from(SchemaFragment::from(schema))
+        ValidatorSchema::try_from(SchemaFragment::<RawName>::from(schema))
     }
 }
 
@@ -1358,7 +1581,7 @@ mod tests {
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
-    use cedar_policy_validator::{CoreSchema, SchemaFragment, ValidatorSchema};
+    use cedar_policy_validator::{CoreSchema, RawName, SchemaFragment, ValidatorSchema};
     use rand::{rngs::ThreadRng, thread_rng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
@@ -1802,7 +2025,7 @@ mod tests {
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
-            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+            assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
         }
     }
 
@@ -1812,18 +2035,18 @@ mod tests {
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
-            assert!(generate_hierarchy_from_schema(&mut rng, &fragment).is_ok());
+            assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
         }
     }
 
     fn generate_hierarchy_from_schema(
         rng: &mut ThreadRng,
-        fragment: &SchemaFragment,
+        fragment: SchemaFragment<RawName>,
     ) -> cedar_policy_core::entities::err::Result<Entities> {
         let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
         rng.fill_bytes(&mut bytes);
         let mut u = Unstructured::new(&bytes);
-        let schema = Schema::from_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
+        let schema = Schema::from_raw_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
             .expect("failed to generate schema!");
         let h = schema
             .arbitrary_hierarchy_with_nanoid_uids(EntityUIDGenMode::default_nanoid_len(), &mut u)

@@ -25,7 +25,7 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{CoreSchema, SchemaFragment, ValidatorSchema};
+use cedar_policy_validator::{CoreSchema, RawName, SchemaFragment, ValidatorSchema};
 use clap::{Args, Parser, Subcommand};
 use rand::{thread_rng, Rng};
 
@@ -84,12 +84,12 @@ impl From<&HierarchyArgs> for ABACSettings {
 
 fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> Result<Entities> {
     let f = File::open(&args.schema_file)?;
-    let fragment = SchemaFragment::from_file(f)?;
+    let fragment = SchemaFragment::<RawName>::from_file(f)?;
     let mut rng = thread_rng();
     let mut bytes = Vec::with_capacity(byte_length);
     bytes.resize_with(byte_length, || rng.gen());
     let mut u = Unstructured::new(&bytes);
-    let schema = Schema::from_schemafrag(fragment, args.into(), &mut u)
+    let schema = Schema::from_raw_schemafrag(fragment, args.into(), &mut u)
         .map_err(|err| anyhow!("failed to construct `Schema`: {err:#?}"))?;
     let h = HierarchyGenerator {
         mode: HierarchyGeneratorMode::SchemaBased { schema: &schema },

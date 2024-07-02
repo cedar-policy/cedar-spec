@@ -337,4 +337,36 @@ theorem subst_preserves_evaluation_to_value {attrs : List (Attr × Partial.Expr)
     )]
     simp only [Except.bind_ok, h₂]
 
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.record`
+  returns an error, then it also returns an error (not necessarily the same error)
+  after any substitution of unknowns
+-/
+theorem subst_preserves_errors {attrs : List (Attr × Partial.Expr)} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (ih : ∀ kv ∈ attrs, SubstPreservesEvaluationToError kv.snd req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.record attrs) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  simp only [Partial.evaluate, Partial.Expr.subst]
+  intro h_req e
+  rw [List.map_attach₂_snd]
+  rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req entities)]
+  rw [mapM₂_eq_mapM_partial_bindAttr (Partial.evaluate · req' (entities.subst subsmap))]
+  cases hattrs : attrs.mapM λ kv => Partial.bindAttr kv.fst (Partial.evaluate kv.snd req entities)
+  case error e' =>
+    simp only [Except.bind_err, Except.error.injEq, List.mapM_map]
+    intro _ ; subst e'
+    replace ⟨(k, x), hx, hattrs⟩ := List.mapM_error_implies_exists_error hattrs
+    simp only [Partial.bindAttr, do_error] at hattrs
+    replace ⟨e', ih⟩ := ih (k, x) hx h_req e hattrs
+    have ⟨e'', h₁⟩ := List.element_error_implies_mapM_error hx (f := λ kv => Partial.bindAttr kv.fst (Partial.evaluate (kv.snd.subst subsmap) req' (entities.subst subsmap))) (by
+      simp only [Partial.bindAttr, do_error]
+      exact ih
+    )
+    simp only [h₁, Except.bind_err, Except.error.injEq, exists_eq']
+  case ok pvals =>
+    simp only [Except.bind_ok]
+    intro h₁
+    split at h₁ <;> simp at h₁
+
 end Cedar.Thm.Partial.Evaluation.Record

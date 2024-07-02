@@ -226,4 +226,74 @@ theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} 
       exact evaluateHasAttr_subst_preserves_evaluation_to_value wf
     case residual r₁ => simp only [Partial.evaluateHasAttr, Except.ok.injEq, false_implies]
 
+/--
+  If `Partial.hasAttr` returns an error, then it also returns an error (not
+  necessarily the same error) after any substitution of unknowns in `entities`
+-/
+theorem hasAttr_subst_preserves_errors {v₁ : Spec.Value} {attr : Attr} {entities : Partial.Entities} (subsmap : Subsmap) :
+  Partial.hasAttr v₁ attr entities = .error e →
+  ∃ e', Partial.hasAttr v₁ attr (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.hasAttr, Partial.attrsOf]
+  exact match v₁ with
+  | .prim (.entityUID uid) => by simp only [Except.bind_ok, exists_false, imp_self]
+  | .record attrs => by simp only [Except.bind_ok, exists_false, imp_self]
+  | .prim (.bool _) | .prim (.int _) | .prim (.string _) => by simp
+  | .set _ | .ext _ => by simp
+
+/--
+  If `Partial.evaluateHasAttr` returns an error, then it also returns an error
+  (not necessarily the same error) after any substitution of unknowns in
+  `entities`
+-/
+theorem evaluateHasAttr_subst_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} (subsmap : Subsmap) :
+  Partial.evaluateHasAttr pval₁ attr entities = .error e →
+  ∃ e', Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.evaluateHasAttr]
+  cases pval₁ <;> simp only [exists_false, imp_self]
+  case value v₁ =>
+    intro h₁
+    rw [do_error] at h₁
+    have ⟨e', h₂⟩ := hasAttr_subst_preserves_errors subsmap h₁
+    exists e'
+    simp only [h₂, Except.bind_err]
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.hasAttr`
+  returns an error, then it also returns an error (not necessarily the same
+  error) after any substitution of unknowns
+
+  The proof of `subst_preserves_evaluation_to_value` for this
+  request/entities/subsmap is passed in as an argument, because this file can't
+  import `Thm/Partial/Evaluation.lean` to access it.
+  See #372.
+-/
+theorem subst_preserves_errors {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
+  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  unfold Partial.evaluate Partial.Expr.subst
+  intro h_req ; specialize ih₁ h_req
+  cases hx₁ : Partial.evaluate x₁ req entities
+  <;> simp only [hx₁, false_implies, implies_true, Except.error.injEq] at ih₁
+  case error e₁ =>
+    replace ⟨e₁', ih₁⟩ := ih₁ e₁ rfl
+    simp [ih₁]
+  case ok pval₁ =>
+    simp only [Except.bind_ok]
+    intro e₁ h₁
+    cases hx₁' : Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
+    case error e₁' => exists e₁'
+    case ok pval₁' =>
+      simp only [Except.bind_ok]
+      cases pval₁
+      case value v₁ =>
+        simp only [h_spetv x₁ h_req v₁ hx₁, Except.ok.injEq] at hx₁' ; subst pval₁'
+        exact evaluateHasAttr_subst_preserves_errors subsmap h₁
+      case residual r₁ => exists e₁
+
+
 end Cedar.Thm.Partial.Evaluation.HasAttr
