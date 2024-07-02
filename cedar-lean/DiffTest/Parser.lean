@@ -150,7 +150,7 @@ def mapMKeysAndValues [Monad m] (l : List (α × β)) (f : α → m γ) (g : β 
 Defined as partial to avoid writing the proof of termination, which isn't required
 since we don't prove correctness of the parser.
 -/
-partial def jsonToPartialExpr (json : Lean.Json) : ParseResult Cedar.Partial.Expr := do
+partial def jsonToPartialExpr (json : Lean.Json) : ParseResult Cedar.Spec.Expr := do
   let json ← getJsonField json "expr_kind"
   let (tag, body) ← unpackJsonSum json
   match tag with
@@ -259,7 +259,7 @@ def jsonToValue (json : Lean.Json) : ParseResult Value :=
 
 inductive ValueOrExpr where
   | value : Value → ValueOrExpr
-  | expr : Cedar.Partial.Expr  → ValueOrExpr
+  | expr : Cedar.Spec.Expr  → ValueOrExpr
 
 def jsonToValueOrExpr (json : Lean.Json) : ParseResult ValueOrExpr := do
   match json.getObjVal? "Value" with

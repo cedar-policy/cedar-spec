@@ -29,7 +29,7 @@ namespace Cedar.Data
 
 inductive Map (α : Type u) (β : Type v) where
 | mk : List (α × β) -> Map α β
-deriving Repr, DecidableEq, Repr, Inhabited
+deriving Repr, DecidableEq, Inhabited
 
 namespace Map
 
