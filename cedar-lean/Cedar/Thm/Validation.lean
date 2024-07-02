@@ -33,14 +33,17 @@ cases h₂ : schema.toEnvironments with
 | cons h t =>
   simp [AllEvaluateCorrectly]
   cases h₃ : policies with
-  | nil => simp
+  | nil => simp [h₃]
   | cons h' t' =>
     intro policy pin
     simp [OneEvaluatesCorrectly]
-    apply typecheck_policy_with_environments_is_sound policy (h :: t) request entities h
-    simp
+    apply typecheck_policy_with_environments_is_sound policy schema.toEnvironments request entities h₁
+    subst h₃
+    simp [List.forM_cons] at h₀
     sorry
-    sorry
+
+
+
 
 
 -- end Cedar.Thm

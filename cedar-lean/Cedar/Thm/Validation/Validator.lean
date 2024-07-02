@@ -10,37 +10,73 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
--- def RequestConsistentWithSchema (schema : Schema) (request : Request) : Prop :=
---   match schema.acts.find? request.action with
---   | some e =>
---       request.principal.ty ∈ e.appliesToPrincipal ∧
---       request.resource.ty ∈ e.appliesToResource ∧
---       InstanceOfType request.context (.record e.context)
---   | _ => False
+-- for a single expression, evaluates to a boolean value (or appropriate error)
+def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities) : Prop :=
+∃ (b : Bool), EvaluatesTo expr request entities b
 
+-- every policy as an expression evaluates to a boolean value or appropriate error
+def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
+∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
 
-theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) (value : Value) :
-EvaluatesTo (substituteAction request.action expr) request entities value →
- EvaluatesTo expr request entities value := by
- intro h₀
- simp [substituteAction] at h₀
- cases h₁ : expr <;> simp [h₁, mapOnVars] at h₀
- case lit =>
-  assumption
- case var vr =>
-  cases h₂ : vr <;> simp [h₂] at h₀ <;> try assumption
+def EvaluatesSubst (expr : Expr) (request : Request) (entities : Entities) : Prop :=
+evaluate (substituteAction request.action expr) request entities = evaluate expr request entities
+
+theorem evaluates_subst_ite {i t e : Expr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst i request entities)
+(ih₂ : EvaluatesSubst t request entities)
+(ih₃ : EvaluatesSubst e request entities) :
+evaluate (substituteAction request.action (Expr.ite i t e)) request entities =
+evaluate (Expr.ite i t e) request entities := by
+simp [EvaluatesSubst] at *
+simp [evaluate]
+cases h₀ : Result.as Bool (evaluate i request entities) <;> simp [h₀]
+case error =>
+  simp [Result.as] at h₀
+  cases h₁ : evaluate i request entities <;> simp [h₁] at h₀
+  rename_i e1 e2
+  simp [substituteAction]
+  sorry
+  sorry
+case ok => sorry
+
+theorem evaluates_subst_unaryApp {op : UnaryOp} {e : Expr} {request : Request} {entities : Entities}
+(ih₁ : EvaluatesSubst e request entities) :
+evaluate (substituteAction request.action (Expr.unaryApp op e)) request entities =
+evaluate (Expr.unaryApp op e) request entities := by
+simp [EvaluatesSubst] at ih₁
+simp [evaluate]
+cases h₀ : evaluate e request entities <;> simp [h₀]
+case error e₁ =>
+  simp [substituteAction, mapOnVars] at *
+  simp [evaluate] at *
+  -- cannot use evaluate (mapOnVars (fun var ....)) here
+  sorry
+case ok v => sorry
+
+theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) :
+evaluate (substituteAction request.action expr) request entities =
+evaluate expr request entities := by
+cases h₀ : expr with
+| lit p => simp [substituteAction, mapOnVars]
+| var vr =>
+  cases h₁ : vr <;> simp [substituteAction, mapOnVars] <;> try assumption
   case action => sorry
- case unaryApp op e => sorry
- case ite i t e => sorry
- sorry
- sorry
- sorry
- sorry
- sorry
- sorry
- sorry
- sorry
-
+| ite i t e =>
+  have ih₁ := evaluates_subst i request entities
+  have ih₂ := evaluates_subst t request entities
+  have ih₃ := evaluates_subst e request entities
+  exact @evaluates_subst_ite i t e request entities ih₁ ih₂ ih₃
+| and a b => sorry
+| or a b => sorry
+| unaryApp op e =>
+  have ih₁ := evaluates_subst e request entities
+  exact @evaluates_subst_unaryApp op e request entities ih₁
+| binaryApp op a b => sorry
+| getAttr x => sorry
+| hasAttr x attr => sorry
+| set x => sorry
+| record x => sorry
+| call x args => sorry
 
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
@@ -65,9 +101,11 @@ have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
 have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst h₅ ht
 subst h₆
 exists b
-apply evaluates_subst policy.toExpr request entities (Value.prim (Prim.bool b))
-rw [action_matches_env]
-repeat assumption
+simp [EvaluatesTo]
+sorry
+-- rw [← evaluates_subst policy.toExpr request entities]
+-- rw [action_matches_env]
+-- repeat assumption
 
 
 -- From Mathlib [https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/List/Forall2.html#List.forall%E2%82%82_cons_right_iff]
