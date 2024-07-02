@@ -152,8 +152,6 @@ cases h₀ : expr with
     exact @evaluates_subst xᵢ request entities
   exact @evaluates_subst_call xfn xs request entities ih
 
-
-
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
 RequestAndEntitiesMatchEnvironment env request entities →
 request.action = env.reqty.action := by
@@ -169,31 +167,42 @@ typecheckPolicy policy env = .ok t →
 intro h₁ h₂
 simp [typecheckPolicy] at h₂
 cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;> simp [h₃] at h₂
-split at h₂ <;> simp at h₂
+split at h₂ <;> simp only [Except.ok.injEq] at h₂
 rename_i cp ht
 have hc := empty_capabilities_invariant request entities
 have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
 have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst h₅ ht
 subst h₆
 exists b
-simp [EvaluatesTo]
-sorry
--- rw [← evaluates_subst policy.toExpr request entities]
--- rw [action_matches_env]
--- repeat assumption
-
-
--- From Mathlib [https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/List/Forall2.html#List.forall%E2%82%82_cons_right_iff]
--- should probably go in the helper lemmas file 
-theorem forall₂_cons_left_iff {a l u} :
-    List.Forall₂ R (a :: l) u ↔ ∃ b u', R a b ∧ List.Forall₂ R l u' ∧ u = b :: u' :=
-  Iff.intro
-    (fun h =>
-      match u, h with
-      | b :: u', List.Forall₂.cons h₁ h₂ => ⟨b, u', h₁, h₂, rfl⟩)
-    fun h =>
-    match u, h with
-    | _, ⟨_, _, h₁, h₂, rfl⟩ => List.Forall₂.cons h₁ h₂
+simp [EvaluatesTo] at *
+cases h₄ with
+| inl h₁ =>
+  left
+  rw [← evaluates_subst policy.toExpr request entities]
+  rw [action_matches_env]
+  repeat assumption
+| inr h₁ => cases h₁ with
+  | inl h₂ =>
+    right
+    left
+    rw [← evaluates_subst policy.toExpr request entities]
+    rw [action_matches_env]
+    repeat assumption
+  | inr h₂ => cases h₂ with
+    | inl h₃ =>
+      right
+      right
+      left
+      rw [← evaluates_subst policy.toExpr request entities]
+      rw [action_matches_env]
+      repeat assumption
+    | inr h₃ =>
+      right
+      right
+      right
+      rw [← evaluates_subst policy.toExpr request entities]
+      rw [action_matches_env]
+      repeat assumption
 
 theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
 (∀ env : Environment, env ∈ envs →
@@ -218,8 +227,8 @@ cases h₃ : List.mapM (typecheckPolicy policy) envs with
         specialize h₀ h
         apply h₀ h₇
       subst h₄
-      rw [forall₂_cons_left_iff] at h₃
-      simp at h₃
+      rw [List.forall₂_cons_left_iff] at h₃
+      simp only [exists_and_left] at h₃
       obtain ⟨ b, _, _, _, _ ⟩ := h₃
       apply typecheck_policy_is_sound policy h b
       repeat assumption
