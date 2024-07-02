@@ -1147,3 +1147,16 @@ theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
   exact h₁ a b h₃
 
 end List
+
+-- forM and mapM
+
+theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys : List PUnit) :
+xs.mapM f = Except.ok ys → xs.forM f = Except.ok () := by
+intro h₀
+rw [List.mapM_ok_iff_forall₂] at h₀
+sorry
+
+theorem forM_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) : xs.forM f = Except.ok () →
+(∀ x ∈ xs, f x = Except.ok ()) := by
+intro h₀ x xin
+sorry
