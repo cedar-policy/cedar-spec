@@ -65,26 +65,13 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
-        let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let toplevel_type = arbitrary_schematype_with_bounded_depth(
-            &SETTINGS,
-            schema.entity_types(),
-            SETTINGS.max_depth,
-            u,
-        )?;
-        let expr_gen = schema.exprgenerator(Some(&hierarchy));
-        let expression =
-            expr_gen.generate_expr_for_schematype(&toplevel_type, SETTINGS.max_depth, u)?;
+        let schema = Schema::arbitrary_derived(SETTINGS.clone(), u)?;
 
-        let request = schema.arbitrary_request(&hierarchy, u)?;
-        let all_entities = Entities::try_from(hierarchy).map_err(Error::EntitiesError)?;
-        let entities = drop_some_entities(all_entities, u)?;
         Ok(Self {
-            schema,
-            entities,
-            expression,
-            request,
+            schema: schema,
+            entities: u.arbitrary()?,
+            expression: u.arbitrary()?,
+            request: u.arbitrary()?,
         })
     }
 

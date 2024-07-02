@@ -39,7 +39,7 @@ use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 
 /// Contains the schema, but also pools of constants etc
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub struct Schema {
     /// actual underlying schema
     pub schema: cedar_policy_validator::NamespaceDefinition,
@@ -719,6 +719,24 @@ impl Schema {
             hierarchy,
             uid_gen_mode: EntityUIDGenMode::default(),
         }
+    }
+
+    /// Get an arbitrary `Schema`.
+    pub fn arbitrary_derived(settings: ABACSettings, u: &mut Unstructured<'_>) -> Result<Schema> {
+        Ok(Schema {
+            schema: u.arbitrary()?,
+            namespace: u.arbitrary()?,
+            constant_pool: u.arbitrary()?,
+            unknown_pool: UnknownPool::default(),
+            ext_funcs: AvailableExtensionFunctions::create(&settings),
+            settings,
+            entity_types: u.arbitrary()?,
+            principal_types: u.arbitrary()?,
+            actions_eids: u.arbitrary()?,
+            resource_types: u.arbitrary()?,
+            attributes: u.arbitrary()?,
+            attributes_by_type: u.arbitrary()?,
+        })
     }
 
     /// Get an arbitrary `Schema`.

@@ -49,7 +49,7 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 impl<'a> Arbitrary<'a> for Input {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let arb_schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let arb_schema = Schema::arbitrary_derived(SETTINGS.clone(), u)?;
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 

@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+use arbitrary::Arbitrary;
+
 /// Maximum length of a pattern string
 pub const MAX_PATTERN_LEN: usize = 6;
 
 /// Settings controlling the generation of ABAC hierarchies/policies/requests
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub struct ABACSettings {
     /// If true, generates well-typed hierarchies/policies/requests.
     /// Specifically:
