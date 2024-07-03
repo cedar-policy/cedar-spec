@@ -192,6 +192,7 @@ def decPartialValueList (xs ys : List Partial.Value) : Decidable (xs = ys) :=
 end
 
 instance : DecidableEq Partial.Value := decPartialValue
+instance : DecidableEq Partial.ResidualExpr := decResidualExpr
 
 /--
   Defines a mapping from unknowns to the `Partial.Value`s to replace them with

@@ -310,31 +310,22 @@ def jsonToValue (json : Lean.Json) : ParseResult Value :=
   jsonToExpr json >>= exprToValue
 
 
-inductive ValueOrExpr where
-  | value : Value → ValueOrExpr
-  | expr : Cedar.Spec.Expr  → ValueOrExpr
-
-def jsonToValueOrExpr (json : Lean.Json) : ParseResult ValueOrExpr := do
+def jsonToPartialValue' (json : Lean.Json) : ParseResult Cedar.Partial.Value := do
   match json.getObjVal? "Value" with
-    | .ok v => ValueOrExpr.value <$> (jsonToValue v)
+    | .ok v => Cedar.Partial.Value.value <$> (jsonToValue v)
     | .error _ => match json.getObjVal? "Expr" with
-      | .ok e => ValueOrExpr.expr <$> (jsonToExpr e)
-      | .error _ => .error "Expected either `expr` or `value`"
+      | .ok e => jsonToPartialValue e
+      | .error _ => .error "Expected either `Expr` or `Value`"
 
-def jsonToOptionalValueOrExpr (json : Lean.Json) : ParseResult (Option ValueOrExpr) := do
+def jsonToOptionalPartialValue (json : Lean.Json) : ParseResult (Option Cedar.Partial.Value) := do
   match json with
-  | Lean.Json.null => .ok .none
-  | _ => do
-    let v_or_e ← jsonToValueOrExpr json
-    .ok (.some v_or_e)
-
+  | Lean.Json.null => .ok none
+  | _ => do .ok $ some (← jsonToPartialValue' json)
 
 def jsonToOptionalValue (json : Lean.Json) : ParseResult (Option Value) :=
   match json with
   | Lean.Json.null => .ok .none
-  | _ => do
-    let v ← jsonToValue json
-    .ok (.some v)
+  | _ => do .ok $ some (← jsonToValue json)
 
 def jsonToPartialContext (json : Lean.Json) : (ParseResult (Map Attr Cedar.Partial.Value)) := do
   let value ← jsonToPartialValue json
