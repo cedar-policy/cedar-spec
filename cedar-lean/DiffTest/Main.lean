@@ -110,8 +110,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
       let { data, duration } := unsafeBaseIO result
       let test_passed := match data, expected with
         | .error _, .none => true
-        | .ok (.value v₁), .some (.value v₂) => v₁ == v₂
-        | .ok (.residual e₁), .some (.residual e₂) => e₁ == e₂
+        | .ok pv₁, .some pv₂ => pv₁ == pv₂
         | _, _ => false
       .ok { data := test_passed , duration }
   toString (Lean.toJson result)
