@@ -21,7 +21,7 @@ use cedar_drt_inner::*;
 use cedar_policy_core::{ast::Expr, entities::Entities};
 use cedar_policy_generators::abac::ABACRequest;
 use cedar_policy_generators::err::Error;
-use cedar_policy_generators::hierarchy::HierarchyGenerator;
+use cedar_policy_generators::hierarchy::{self, Hierarchy, HierarchyGenerator};
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
@@ -66,10 +66,12 @@ const SETTINGS: ABACSettings = ABACSettings {
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = Schema::arbitrary_derived(SETTINGS.clone(), u)?;
+        let hierarchy: Hierarchy = u.arbitrary()?;
+        let entities = Entities::try_from(hierarchy).map_err(Error::EntitiesError)?;
 
         Ok(Self {
             schema: schema,
-            entities: u.arbitrary()?,
+            entities: entities,
             expression: u.arbitrary()?,
             request: u.arbitrary()?,
         })

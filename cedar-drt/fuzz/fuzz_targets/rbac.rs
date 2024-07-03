@@ -33,7 +33,7 @@ use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An RBAC hierarchy, policy set, and 8 associated requests
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Arbitrary)]
 pub struct FuzzTargetInput {
     /// the hierarchy
     #[serde(skip)]
@@ -51,7 +51,7 @@ pub struct FuzzTargetInput {
     pub requests: [RBACRequest; 8],
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Arbitrary)]
 pub enum PolicyGroup {
     StaticPolicy(RBACPolicy),
     TemplateWithLinks {
@@ -129,57 +129,57 @@ impl PolicyGroup {
     }
 }
 
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let hierarchy = RBACHierarchy(
-            HierarchyGenerator {
-                mode: HierarchyGeneratorMode::Arbitrary {
-                    attributes_mode: AttributesMode::NoAttributes,
-                },
-                uid_gen_mode: EntityUIDGenMode::default(),
-                num_entities: cedar_policy_generators::hierarchy::NumEntities::RangePerEntityType(
-                    0..=4,
-                ),
-                u,
-                extensions: Extensions::all_available(),
-            }
-            .generate()?,
-        );
-        let policy_groups: Vec<PolicyGroup> = arbitrary_vec(u, Some(1), Some(2), |idx, u| {
-            Ok(PolicyGroup::arbitrary_for_hierarchy(idx, &hierarchy, u)?)
-        })?;
-        let requests = [
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-            RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
-        ];
-        Ok(Self {
-            hierarchy,
-            policy_groups,
-            requests,
-        })
-    }
+// impl<'a> Arbitrary<'a> for FuzzTargetInput {
+//     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+//         let hierarchy = RBACHierarchy(
+//             HierarchyGenerator {
+//                 mode: HierarchyGeneratorMode::Arbitrary {
+//                     attributes_mode: AttributesMode::NoAttributes,
+//                 },
+//                 uid_gen_mode: EntityUIDGenMode::default(),
+//                 num_entities: cedar_policy_generators::hierarchy::NumEntities::RangePerEntityType(
+//                     0..=4,
+//                 ),
+//                 u,
+//                 extensions: Extensions::all_available(),
+//             }
+//             .generate()?,
+//         );
+//         let policy_groups: Vec<PolicyGroup> = arbitrary_vec(u, Some(1), Some(2), |idx, u| {
+//             Ok(PolicyGroup::arbitrary_for_hierarchy(idx, &hierarchy, u)?)
+//         })?;
+//         let requests = [
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//             RBACRequest::arbitrary_for_hierarchy(&hierarchy, u)?,
+//         ];
+//         Ok(Self {
+//             hierarchy,
+//             policy_groups,
+//             requests,
+//         })
+//     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and_all(&[
-            HierarchyGenerator::size_hint(depth),
-            arbitrary_vec_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-            RBACRequest::arbitrary_size_hint(depth),
-        ])
-    }
-}
+//     fn size_hint(depth: usize) -> (usize, Option<usize>) {
+//         arbitrary::size_hint::and_all(&[
+//             HierarchyGenerator::size_hint(depth),
+//             arbitrary_vec_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//             RBACRequest::arbitrary_size_hint(depth),
+//         ])
+//     }
+// }
 
 // Fuzzing a single, pure-RBAC policy, with associated pure-RBAC hierarchy and
 // pure-RBAC requests.

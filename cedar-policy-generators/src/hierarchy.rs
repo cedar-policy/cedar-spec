@@ -27,7 +27,7 @@ use nanoid::nanoid;
 
 /// EntityUIDs with the mappings to their indices in the container.
 /// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 struct EntityUIDs {
     pub indices: HashMap<EntityUID, usize>,
     pub uids: Vec<EntityUID>,
@@ -67,7 +67,7 @@ impl EntityUIDs {
 }
 
 /// Contains data about an entity hierarchy
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub struct Hierarchy {
     /// maps EntityUID to the corresponding Entity
     entities: HashMap<EntityUID, Entity>,

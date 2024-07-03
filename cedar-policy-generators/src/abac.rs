@@ -739,7 +739,7 @@ impl From<ABACPolicy> for StaticPolicy {
 }
 
 /// Represents an ABAC request, i.e., fully general
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub struct ABACRequest(pub Request);
 
 impl std::fmt::Display for ABACRequest {

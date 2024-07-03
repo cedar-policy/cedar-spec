@@ -30,7 +30,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 /// Data structure representing a generated policy (or template)
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Arbitrary)]
 // `GeneratedPolicy` is now a bit of a misnomer: it may have slots depending on
 // how it is generated, e.g., the `allow_slots` parameter to
 // `arbitrary_for_hierarchy()`. But as of this writing, it feels like renaming
@@ -194,7 +194,7 @@ impl Display for GeneratedPolicy {
 }
 
 /// Represents the principal or resource constraint of the policy scope
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub enum PrincipalOrResourceConstraint {
     /// No constraint, eg, `principal,` or `resource,`
     NoConstraint,
@@ -361,7 +361,7 @@ impl PrincipalOrResourceConstraint {
 }
 
 /// Represents the action constraint of the policy scope
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Arbitrary)]
 pub enum ActionConstraint {
     /// No constraint, eg, `action,`
     NoConstraint,
@@ -459,7 +459,7 @@ impl ActionConstraint {
 }
 
 /// Data structure representing a generated linked policy
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Arbitrary)]
 pub struct GeneratedLinkedPolicy {
     /// ID of the linked policy
     pub id: PolicyID,
