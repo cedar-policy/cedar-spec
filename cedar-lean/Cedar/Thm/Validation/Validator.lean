@@ -97,11 +97,11 @@ theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Ent
   evaluate (substituteAction request.action (Expr.set xs)) request entities =
   evaluate (Expr.set xs) request entities
 := by
-  simp only [EvaluatesSubst] at *
+  simp only [EvaluatesSubst] at ih₁
   simp only [substituteAction, mapOnVars]
-  simp only [evaluate, ih₁]
-  simp only [List.mapM₁, List.attach_def, List.mapM_pmap_subtype (evaluate · request entities)]
-  sorry
+  simp only [evaluate, List.mapM₁]
+  simp only [List.attach_def]
+
 
 
 
@@ -181,7 +181,7 @@ theorem action_matches_env (env : Environment) (request : Request) (entities : E
   intro h₀
   simp only [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
-  assumption
+  exact h₁
 
 theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →

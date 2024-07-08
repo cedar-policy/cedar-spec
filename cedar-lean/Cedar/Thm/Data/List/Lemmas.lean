@@ -1176,30 +1176,40 @@ theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys
         assumption
 
 theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
-  ∃ ys, xs.forM f = Except.ok () → xs.mapM f = Except.ok ys
+  xs.forM f = Except.ok () → ∃ ys, xs.mapM f = Except.ok ys
 := by
-  exists xs.map (fun _ => ())
-  generalize h₀ : xs.map (fun _ => ()) = ys
   intro h₁
   rw [← List.mapM'_eq_mapM]
   induction xs
   case nil =>
     simp only [List.mapM'_nil, pure, Except.pure, Except.ok.injEq]
-    subst h₀
-    simp only [List.map_nil]
+    exists []
   case cons xh xt ih =>
-    simp only [List.mapM'_cons, pure, Except.pure]
-    simp only [forM_cons'] at h₁
     cases h₂ : f xh with
     | error =>
+      simp only [List.mapM'_cons, pure, Except.pure]
+      simp only [forM_cons'] at h₁
       rw [h₂] at h₁
       simp only [Except.bind_err] at h₁
-    | ok y' => sorry
+    | ok y' =>
+      simp only [List.forM_cons'] at h₁
+      rw [h₂] at h₁
+      simp only [Except.bind_ok] at h₁
+      simp only [List.mapM'_cons, pure, Except.pure]
+      rw [h₂]
+      obtain ⟨ys, h₃⟩ := ih h₁
+      rw [h₃]
+      simp only [Except.bind_ok]
+      exists (y' :: ys)
+
 
 theorem forM_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := by
   intro h₀ x xin
-  sorry
+  obtain ⟨ys, h₁⟩ := forM_mapM f xs h₀
+  have h₂ := List.mapM_ok_implies_all_ok h₁ x
+  obtain ⟨_, _, h₅⟩ := h₂ xin
+  exact h₅
 
 end List
