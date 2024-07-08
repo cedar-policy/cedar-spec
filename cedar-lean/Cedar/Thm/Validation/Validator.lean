@@ -101,6 +101,7 @@ theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Ent
   simp only [substituteAction, mapOnVars]
   simp only [evaluate, List.mapM₁]
   simp only [List.attach_def]
+  sorry
 
 
 
