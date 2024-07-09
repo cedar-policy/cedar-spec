@@ -163,11 +163,11 @@ local macro "attr" roundtrip:ident : tactic => do
       rw [ih]))
 
 
-theorem roundtrip₁ : ∀ (pe : Partial.Expr) (e : Spec.Expr),
+theorem roundtrip₁ (pe : Partial.Expr) (e : Spec.Expr) :
   (pe.asSpec = some e) →
   e.asPartialExpr = pe
   := by
-  intros pe e h
+  intros h
   cases pe
     <;> (try (attr roundtrip₁))
     <;> (try (binary_node roundtrip₁))
@@ -447,11 +447,10 @@ private theorem mapM_option_cons
   simp
   apply And.intro <;> assumption
 
-theorem roundtrip₂ : ∀ (e : Spec.Expr) (pe : Partial.Expr),
+theorem roundtrip₂ (e : Spec.Expr) (pe : Partial.Expr) :
   e.asPartialExpr = pe →
   (pe.asSpec = some e) := by
-  intros e
-  cases e  <;> intros pe h
+  cases e  <;> intros h
     <;> (try (simp only [Spec.Expr.asPartialExpr] at h <;> rw [← h] <;> simp only [Expr.asSpec]))
     <;> (try (rename_i lhs rhs <;> roundtrip₂_recurse roundtrip₂ lhs <;> roundtrip₂_recurse roundtrip₂ rhs <;> slam))
     <;> (try (rename_i a _ <;> roundtrip₂_recurse roundtrip₂ a <;> slam))

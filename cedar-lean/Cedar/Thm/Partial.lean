@@ -17,3 +17,4 @@
 import Cedar.Thm.Partial.Authorization
 import Cedar.Thm.Partial.Evaluation
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.Expr
