@@ -90,29 +90,113 @@ theorem evaluates_subst_or {a b : Expr} {request : Request} {entities : Entities
   simp only [EvaluatesSubst, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
 
--- theorem evaluates_subst_set_inversion {xs : List Expr} {request : Request} {entities : Entities} :
+theorem substitute_action_nil_set : ∀ (uid : EntityUID),
+  substituteAction uid (.set []) = .set [] :=
+by
+  intro uid
+  simp only [substituteAction, mapOnVars, List.attach_def, List.pmap, List.map_nil]
+
+theorem substitute_action_cons_set : ∀ (h : Expr) (t : List Expr) (uid : EntityUID),
+  substituteAction uid (.set (h :: t)) = .set ((substituteAction uid h) :: t.map (substituteAction uid)) :=
+by
+  intro h t uid
+  simp only [substituteAction, mapOnVars, List.attach_def, List.map_pmap_subtype, List.map_cons]
+  simp only [Expr.set.injEq, List.cons.injEq, true_and]
+  unfold substituteAction
+  simp only
+
+theorem forall_map {xs : List Expr} {f g : Expr → Result Value}
+(h₀ : ∀ x ∈ xs, f x = g x) :
+List.mapM f xs = List.mapM g xs := by
+induction xs
+case nil =>
+  simp only [List.mapM_nil]
+case cons h t ih =>
+  simp only [List.mapM_cons]
+  simp [List.mem_cons] at h₀
+  obtain ⟨h₁, h₂⟩ := h₀
+  rw [h₁, ih]
+  assumption
 
 theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Entities}
 (ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
   evaluate (substituteAction request.action (Expr.set xs)) request entities =
   evaluate (Expr.set xs) request entities
 := by
-  simp only [EvaluatesSubst] at ih₁
-  simp only [substituteAction, mapOnVars]
-  simp only [evaluate, List.mapM₁]
-  simp only [List.attach_def]
+  cases h₀ : xs with
+  | nil =>
+    rw [substitute_action_nil_set]
+  | cons h t =>
+    simp only [EvaluatesSubst] at ih₁
+    have h₁ := ih₁ h
+    simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
+    rw [substitute_action_cons_set]
+    simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [List.mapM_cons, bind_assoc, pure_bind]
+    rw [h₁]
+    simp [List.mapM_map]
+    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → EvaluatesSubst x₁ request entities :=
+    by
+      simp [h₀] at ih₁
+      obtain ⟨_, h₂⟩ := ih₁
+      exact h₂
+    rw [forall_map h₂]
+
+theorem substitute_action_nil_record : ∀ (uid : EntityUID),
+  substituteAction uid (.record []) = .record [] :=
+by
+  intro uid
+  simp only [substituteAction, mapOnVars, List.attach₂, List.pmap, List.map_nil]
+
+theorem substitute_action_cons_record : ∀ (h : Attr × Expr) (t : List (Attr × Expr)) (uid : EntityUID),
+  substituteAction uid (.record (h :: t)) = .record ((h.fst, substituteAction uid h.snd) :: t.map (fun (a, e) => (a, substituteAction uid e))) :=
+by
+  intro h t uid
+  simp only [List.cons.sizeOf_spec, List.pmap, List.map_cons, Expr.record.injEq, List.cons.injEq,
+    true_and]
+  simp [substituteAction]
   sorry
 
-
-
+theorem forall_map_record {t : List (Attr × Expr)} {f g : (Attr × Expr) → Result Value}
+(h₀ : ∀ (x₁ : Expr), x₁ ∈ List.map (fun x => x.snd) t) :
+List.mapM f xs = List.mapM g xs := by
+induction xs
+case nil =>
+  simp only [List.mapM_nil]
+case cons h t ih  =>
+  specialize h₀ h.snd
+  simp only [List.mapM_cons]
+  simp [List.mem_cons] at h₀
+  rw [ih]
+  have h₁: f h = g h
+  := by
+    sorry
+  rw [h₁]
 
 theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
 (ih₁ : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities) :
   evaluate (substituteAction request.action (Expr.record axs)) request entities =
   evaluate (Expr.record axs) request entities
 := by
-  simp only [EvaluatesSubst] at ih₁
-  sorry
+  cases h₀ : axs with
+  | nil =>
+    rw [substitute_action_nil_record]
+  | cons h t =>
+    simp only [EvaluatesSubst] at ih₁
+    have h₁ := ih₁ h
+    simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
+    rw [substitute_action_cons_record]
+    simp only [mapOnVars, evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
+    simp [bindAttr]
+    rw [h₁]
+    simp [List.mapM_map]
+    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t.map (·.snd) → EvaluatesSubst x₁ request entities :=
+    by
+      simp [h₀] at ih₁
+      obtain ⟨_, h₂⟩ := ih₁
+      simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+      exact h₂
+    sorry
 
 theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request} {entities : Entities}
 (ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
@@ -129,8 +213,9 @@ theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) 
   cases h₀ : expr with
   | lit p => simp only [substituteAction, mapOnVars]
   | var vr =>
-    cases h₁ : vr <;> simp only [substituteAction, mapOnVars] <;> try assumption
-    case action => sorry
+    cases vr <;> simp only [substituteAction, mapOnVars] <;> try assumption
+    case action =>
+      simp [evaluate]
   | ite i t e =>
     have ih₁ := evaluates_subst i request entities
     have ih₂ := evaluates_subst t request entities
