@@ -49,7 +49,7 @@ pub fn arbitrary_namespace_str(
     Ok(format!("\"{}\"", parts.join("::")))
 }
 
-fn arbitrary_ident_str(
+pub fn arbitrary_ident_str(
     settings: &ABACSettings,
     u: &mut arbitrary::Unstructured<'_>,
 ) -> Result<String, Error> {
