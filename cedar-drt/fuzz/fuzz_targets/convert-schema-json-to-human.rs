@@ -17,6 +17,7 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{RawName, SchemaFragment};
 use similar_asserts::SimpleDiff;
 
@@ -32,8 +33,9 @@ fuzz_target!(|src: String| {
         let natural_src = parsed
             .as_natural_schema()
             .expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = SchemaFragment::<RawName>::from_str_natural(&natural_src)
-            .expect("Failed to parse converted human readable schema");
+        let (natural_parsed, _) =
+            SchemaFragment::<RawName>::from_str_natural(&natural_src, Extensions::all_available())
+                .expect("Failed to parse converted human readable schema");
         if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
             println!("Schema: {src}");
             println!(

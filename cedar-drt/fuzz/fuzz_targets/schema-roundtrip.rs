@@ -17,7 +17,7 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
-use cedar_policy_core::ast;
+use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
@@ -72,7 +72,7 @@ fuzz_target!(|i: Input| {
         .schema
         .as_natural_schema()
         .expect("Failed to convert schema into a human readable schema");
-    let (parsed, _) = SchemaFragment::from_str_natural(&src)
+    let (parsed, _) = SchemaFragment::from_str_natural(&src, Extensions::all_available())
         .expect("Failed to parse converted human readable schema");
     if let Err(msg) = equivalence_check(downgrade_frag_to_raw(i.schema.clone()), parsed.clone()) {
         println!("Schema: {src}");
