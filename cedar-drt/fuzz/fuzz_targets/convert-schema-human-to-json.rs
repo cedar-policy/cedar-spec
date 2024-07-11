@@ -17,6 +17,7 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{RawName, SchemaFragment};
 use similar_asserts::SimpleDiff;
 
@@ -25,7 +26,9 @@ use similar_asserts::SimpleDiff;
 // String we test for the existence of schema that are valid in the natural
 // format but with an invalid json schema conversion.
 fuzz_target!(|src: String| {
-    if let Ok((parsed, _)) = SchemaFragment::<RawName>::from_str_natural(&src) {
+    if let Ok((parsed, _)) =
+        SchemaFragment::<RawName>::from_str_natural(&src, Extensions::all_available())
+    {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }

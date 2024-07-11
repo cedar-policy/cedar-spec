@@ -289,7 +289,7 @@ fn schematype_to_type(
     schematy: &cedar_policy_validator::SchemaType<ast::Name>,
 ) -> Type {
     match schematy {
-        SchemaType::TypeDef { type_name } => schematype_to_type(
+        SchemaType::CommonTypeRef { type_name } => schematype_to_type(
             schema,
             schema
                 .common_types
@@ -332,8 +332,8 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
     attrsorctx: &'a AttributesOrContext<ast::Name>,
 ) -> Attributes<'a> {
     match &attrsorctx.0 {
-        SchemaType::TypeDef { type_name } => match schema.common_types.get(&type_name.clone().try_into().unwrap()).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
-            SchemaType::TypeDef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
+        SchemaType::CommonTypeRef { type_name } => match schema.common_types.get(&type_name.clone().try_into().unwrap()).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
+            SchemaType::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
             SchemaType::Type(SchemaTypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
         SchemaType::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
@@ -367,7 +367,7 @@ fn attrs_in_schematype(
                 Box::new(toplevel.into_iter().chain(recursed))
             }
         },
-        cedar_policy_validator::SchemaType::TypeDef { type_name } => attrs_in_schematype(
+        cedar_policy_validator::SchemaType::CommonTypeRef { type_name } => attrs_in_schematype(
             schema,
             schema
                 .common_types
@@ -458,11 +458,13 @@ impl Bindings {
         ty: &SchemaType<ast::Name>,
     ) -> Result<SchemaType<ast::Name>> {
         match ty {
-            SchemaType::TypeDef { .. } => unreachable!("common type references shouldn't be here"),
+            SchemaType::CommonTypeRef { .. } => {
+                unreachable!("common type references shouldn't be here")
+            }
             SchemaType::Type(SchemaTypeVariant::Set { element }) => {
                 Ok(SchemaType::Type(SchemaTypeVariant::Set {
                     element: Box::new(if let Some(ids) = self.bindings.get(element) {
-                        SchemaType::TypeDef {
+                        SchemaType::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()),
                         }
                     } else {
@@ -514,7 +516,7 @@ impl Bindings {
         ty: &SchemaType<ast::Name>,
     ) -> Result<SchemaType<ast::Name>> {
         let new_ty = if let Some(ids) = self.bindings.get(ty) {
-            SchemaType::TypeDef {
+            SchemaType::CommonTypeRef {
                 type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()),
             }
         } else {
@@ -545,7 +547,7 @@ impl Bindings {
                 for i in 0..(ids.len() - 1) {
                     common_types.insert(
                         ids[i].clone(),
-                        SchemaType::TypeDef {
+                        SchemaType::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(ids[i + 1].clone()),
                         },
                     );
@@ -580,7 +582,9 @@ fn bind_type(
                 .map(|(_, attr_ty)| bind_type(&attr_ty.ty, u, bindings))
                 .collect::<Result<Vec<()>>>()?;
         }
-        SchemaType::TypeDef { .. } => unreachable!("common type references shouldn't exist here"),
+        SchemaType::CommonTypeRef { .. } => {
+            unreachable!("common type references shouldn't exist here")
+        }
         _ => {}
     };
     Ok(())
@@ -1460,7 +1464,7 @@ fn downgrade_nsdef_to_raw(nsdef: NamespaceDefinition<ast::Name>) -> NamespaceDef
 /// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
 fn downgrade_schematype_to_raw(schematype: SchemaType<ast::Name>) -> SchemaType<RawName> {
     match schematype {
-        SchemaType::TypeDef { type_name } => SchemaType::TypeDef {
+        SchemaType::CommonTypeRef { type_name } => SchemaType::CommonTypeRef {
             type_name: RawName::from_name(type_name),
         },
         SchemaType::Type(stv) => SchemaType::Type(downgrade_schematypevariant_to_raw(stv)),
