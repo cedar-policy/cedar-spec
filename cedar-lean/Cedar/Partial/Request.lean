@@ -108,7 +108,12 @@ namespace Cedar.Spec
 
 /--
   Convert an `Expr` to a `Partial.Value` by substituting all of the `.var`s
-  that appear (either for an unknown or value, as provided in `req`)
+  that appear (either for an unknown or value, as provided in `req`).
+
+  This function does not attempt to constant-fold or reduce after the
+  substitution (so, e.g., substituting context={ foo: 3 } in `context.foo + 5`
+  will give `{ foo: 3 }.foo + 5`).
+  To reduce, use `Partial.evaluateValue`.
 -/
 -- Defined in this file because it needs `Partial.Request`
 def Expr.substToPartialValue (req : Partial.Request) : Expr → Partial.Value
