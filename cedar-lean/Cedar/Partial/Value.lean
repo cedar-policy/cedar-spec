@@ -116,9 +116,6 @@ open Cedar.Spec (Attr BinaryOp ExtFun Prim UnaryOp Var)
 
 mutual
 
--- We should be able to get rid of this manual deriviation eventually.
--- There is work in progress on making these mutual derivations automatic.
-
 def decPartialValue (x y : Partial.Value) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
