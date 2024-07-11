@@ -79,9 +79,13 @@ namespace Cedar.Spec
 
 /--
   Convert an `Expr` to `Partial.Value`, if possible (i.e., if the
-  `Expr` does not contain any `.var`)
+  `Expr` does not contain any `.var`).
 
-  Consider using `Expr.substToPartialValue` instead
+  This function does not attempt to constant-fold or reduce (so, e.g.,
+  converting the expression `3 + 5` will give the partial value `3 + 5`).
+  To reduce, use `Partial.evaluateValue`.
+
+  Also, consider using `Expr.substToPartialValue` instead.
 -/
 def Expr.asPartialValue : Expr → Option Partial.Value
   | .lit p => some (.value p)
