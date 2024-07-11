@@ -339,4 +339,105 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Partial.Expr} {op : Bin
       exact evaluateBinaryApp_subst_preserves_evaluation_to_value
     all_goals simp only [Partial.evaluateBinaryApp, Except.ok.injEq, false_implies]
 
+/--
+  If `Partial.apply₂` returns an error, then it also returns an error (not
+  necessarily the same error) after any substitution of unknowns in `entities`
+-/
+theorem partialApply₂_subst_preserves_errors {v₁ v₂ : Spec.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Subsmap} :
+  Partial.apply₂ op v₁ v₂ entities = .error e →
+  ∃ e', Partial.apply₂ op v₁ v₂ (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.apply₂]
+  cases op
+  case eq => simp only [exists_false, imp_self]
+  case mem =>
+    cases v₁ <;> cases v₂
+    case prim.prim p₁ p₂ =>
+      cases p₁ <;> cases p₂
+      <;> simp only [Except.error.injEq, exists_eq', implies_true, exists_false, imp_self]
+    case prim.set p₁ s₂ =>
+      cases p₁ <;> simp only [Except.error.injEq, exists_eq', implies_true]
+      case entityUID uid₁ =>
+        rw [← partialInₛ_subst_const]
+        intro _ ; exists e
+    all_goals simp only [Partial.apply₂.match_1.eq_12, Except.error.injEq, exists_eq', implies_true]
+  case add | sub | mul =>
+    cases v₁ <;> cases v₂
+    case prim.prim p₁ p₂ =>
+      cases p₁ <;> cases p₂
+      <;> simp only [Except.error.injEq, exists_eq', implies_true, exists_false, imp_self]
+      case int.int i₁ i₂ => intro _ ; exists e
+    all_goals simp only [Partial.apply₂.match_1.eq_12, Except.error.injEq, exists_eq', implies_true, exists_false, imp_self]
+  all_goals {
+    cases v₁ <;> cases v₂
+    case prim.prim p₁ p₂ =>
+      cases p₁ <;> cases p₂
+      <;> simp only [Except.error.injEq, exists_eq', implies_true, exists_false, imp_self]
+    all_goals simp only [Partial.apply₂.match_1.eq_12, Except.error.injEq, exists_eq', implies_true, exists_false, imp_self]
+  }
+
+/--
+  If `Partial.evaluateBinaryApp` returns an error, then it also returns an error
+  (not necessarily the same error) after any substitution of unknowns in
+  `entities`
+-/
+theorem evaluateBinaryApp_subst_preserves_errors {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} (subsmap : Subsmap) :
+  Partial.evaluateBinaryApp op pval₁ pval₂ entities = .error e →
+  ∃ e', Partial.evaluateBinaryApp op pval₁ pval₂ (entities.subst subsmap) = .error e'
+:= by
+  simp only [Partial.evaluateBinaryApp]
+  cases pval₁ <;> cases pval₂ <;> simp only [exists_false, imp_self]
+  case value.value v₁ v₂ => exact partialApply₂_subst_preserves_errors
+
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.binaryApp`
+  returns an error, then it also returns an error (not necessarily the same
+  error) after any substitution of unknowns
+
+  The proof of `subst_preserves_evaluation_to_value` for this
+  request/entities/subsmap is passed in as an argument, because this file can't
+  import `Thm/Partial/Evaluation.lean` to access it.
+  See #372.
+-/
+theorem subst_preserves_errors {x₁ x₂ : Partial.Expr} {op : BinaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
+  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap)
+  (ih₂ : SubstPreservesEvaluationToError x₂ req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.binaryApp op x₁ x₂) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  unfold Partial.evaluate Partial.Expr.subst
+  intro h_req ; specialize ih₁ h_req ; specialize ih₂ h_req
+  cases hx₁ : Partial.evaluate x₁ req entities
+  <;> cases hx₂ : Partial.evaluate x₂ req entities
+  <;> simp only [hx₁, hx₂, false_implies, implies_true, Except.error.injEq] at ih₁ ih₂
+  case error.error e₁ e₂ | error.ok e₁ pval₂ =>
+    replace ⟨e₁', ih₁⟩ := ih₁ e₁ rfl
+    simp [ih₁]
+  case ok.error pval₁ e₂ =>
+    replace ⟨e₂', ih₂⟩ := ih₂ e₂ rfl
+    simp [ih₂]
+    cases Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
+    case error e₁' => exists e₁'
+    case ok => exists e₂'
+  case ok.ok pval₁ pval₂ =>
+    simp only [Except.bind_ok]
+    intro e h₁
+    have ⟨e', h₂⟩ := evaluateBinaryApp_subst_preserves_errors subsmap h₁
+    cases hx₁' : Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
+    case error e₁' => exists e₁'
+    case ok pval₁' =>
+      cases hx₂' : Partial.evaluate (x₂.subst subsmap) req' (entities.subst subsmap)
+      case error e₂' => exists e₂'
+      case ok pval₂' =>
+        simp only [Except.bind_ok]
+        cases pval₁ <;> cases pval₂
+        case value.value v₁ v₂ =>
+          simp only [h_spetv x₁ h_req v₁ hx₁, Except.ok.injEq] at hx₁' ; subst pval₁'
+          simp only [h_spetv x₂ h_req v₂ hx₂, Except.ok.injEq] at hx₂' ; subst pval₂'
+          exists e'
+        case value.residual v₁ r₂ => exists e
+        case residual.value r₁ v₂ => exists e'
+        case residual.residual r₁ r₂ => exists e
+
 end Cedar.Thm.Partial.Evaluation.Binary

@@ -41,6 +41,7 @@ def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entitie
 def EvaluatesSubst (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   evaluate (substituteAction request.action expr) request entities = evaluate expr request entities
 
+
 theorem evaluates_subst_ite {i t e : Expr} {request : Request} {entities : Entities}
 (ih₁ : EvaluatesSubst i request entities)
 (ih₂ : EvaluatesSubst t request entities)

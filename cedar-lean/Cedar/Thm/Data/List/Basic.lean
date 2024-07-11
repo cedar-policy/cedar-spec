@@ -77,6 +77,21 @@ theorem cons_equiv_cons (x : α) (xs ys : List α) :
     apply List.cons_subset_cons; assumption
   }
 
+theorem cons_equiv_implies_equiv (x : α) (xs ys : List α) :
+  x :: xs ≡ x :: ys → x ∉ xs → x ∉ ys → xs ≡ ys
+:= by
+  simp [List.Equiv, List.subset_def]
+  intro h₁ h₂ _ _
+  constructor
+  case' left  => have h₃ := h₁
+  case' right => have h₃ := h₂
+  all_goals {
+    intro _ h₄
+    rcases (h₃ _ h₄) with h₃ | h₃
+    · subst h₃ ; contradiction
+    · exact h₃
+  }
+
 theorem dup_head_equiv (x : α) (xs : List α) :
   x :: x :: xs ≡ x :: xs
 := by unfold List.Equiv; simp [List.subset_def]
@@ -126,6 +141,31 @@ theorem filterMap_equiv (f : α → Option β) (xs ys : List α) :
   simp only [h₄, and_true]
   · exact h₁ h₃
   · exact h₂ h₃
+
+theorem append_swap_equiv (xs ys : List α) :
+  xs ++ ys ≡ ys ++ xs
+:= by
+  simp only [Equiv, append_subset, subset_append_right, subset_append_left, and_self]
+
+theorem append_left_equiv (xs ys zs : List α) :
+  xs ≡ ys → xs ++ zs ≡ ys ++ zs
+:= by
+  simp only [Equiv, append_subset, subset_append_right, and_true, and_imp]
+  simp only [subset_def, mem_append]
+  intro h₁ h₂
+  constructor <;> intro _ h₃
+  · simp only [h₁ h₃, true_or]
+  · simp only [h₂ h₃, true_or]
+
+theorem append_right_equiv (xs ys zs : List α) :
+  ys ≡ zs → xs ++ ys ≡ xs ++ zs
+:= by
+  simp only [Equiv, append_subset, subset_append_left, true_and, and_imp]
+  simp only [subset_def, mem_append]
+  intro h₁ h₂
+  constructor <;> intro _ h₃
+  · simp only [h₁ h₃, or_true]
+  · simp only [h₂ h₃, or_true]
 
 /-! ### Sorted -/
 
