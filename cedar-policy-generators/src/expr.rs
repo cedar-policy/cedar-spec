@@ -1139,7 +1139,7 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_expr_for_schematype(
+            SchemaType::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
                 self.schema
                     .schema
                     .common_types
@@ -1522,7 +1522,7 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_ext_func_call_for_schematype(
+            SchemaType::CommonTypeRef { type_name } => self.generate_ext_func_call_for_schematype(
                 self.schema
                     .schema
                     .common_types
@@ -1717,7 +1717,7 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_attr_value_for_schematype(
+            SchemaType::CommonTypeRef { type_name } => self.generate_attr_value_for_schematype(
                 self.schema
                     .schema
                     .common_types
@@ -1930,7 +1930,7 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_value_for_schematype(
+            SchemaType::CommonTypeRef { type_name } => self.generate_value_for_schematype(
                 self.schema
                     .schema
                     .common_types
