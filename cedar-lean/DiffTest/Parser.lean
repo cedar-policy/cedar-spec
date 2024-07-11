@@ -224,59 +224,59 @@ partial def jsonToPartialValue (json : Lean.Json) : ParseResult Cedar.Partial.Va
   match tag with
   | "Lit" => do
     let prim ← jsonToPrim body
-    .ok $ .value prim
+    .ok (.value prim)
   | "Var" => .error s!"vars are not supported in partial-value residuals"
   | "And" => do
     let lhs ← getJsonField body "left" >>= jsonToPartialValue
     let rhs ← getJsonField body "right" >>= jsonToPartialValue
-    .ok $ .residual $ .and lhs rhs
+    .ok (.residual (.and lhs rhs))
   | "Or" => do
     let lhs ← getJsonField body "left" >>= jsonToPartialValue
     let rhs ← getJsonField body "right" >>= jsonToPartialValue
-    .ok $ .residual $ .or lhs rhs
+    .ok (.residual (.or lhs rhs))
   | "If" => do
     let i ← getJsonField body "test_expr" >>= jsonToPartialValue
     let t ← getJsonField body "then_expr" >>= jsonToPartialValue
     let e ← getJsonField body "else_expr" >>= jsonToPartialValue
-    .ok $ .residual $ .ite i t e
+    .ok (.residual (.ite i t e))
   | "UnaryApp" => do
     let op ← getJsonField body "op" >>= jsonToUnaryOp
     let arg ← getJsonField body "arg" >>= jsonToPartialValue
-    .ok $ .residual $ .unaryApp op arg
+    .ok (.residual (.unaryApp op arg))
   | "Like" => do
     let pat ← getJsonField body "pattern" >>= jsonToPattern
     let expr ← getJsonField body "expr" >>= jsonToPartialValue
-    .ok $ .residual $ .unaryApp (.like pat) expr
+    .ok (.residual (.unaryApp (.like pat) expr))
   | "Is" => do
     let ety ← getJsonField body "entity_type" >>= jsonToName
     let expr ← getJsonField body "expr" >>= jsonToPartialValue
-    .ok $ .residual $ .unaryApp (.is ety) expr
+    .ok (.residual (.unaryApp (.is ety) expr))
   | "BinaryApp" => do
     let op ← getJsonField body "op" >>= jsonToBinaryOp
     let arg1 ← getJsonField body "arg1" >>= jsonToPartialValue
     let arg2 ← getJsonField body "arg2" >>= jsonToPartialValue
-    .ok $ .residual $ .binaryApp op arg1 arg2
+    .ok (.residual (.binaryApp op arg1 arg2))
   | "GetAttr" => do
     let e ← getJsonField body "expr" >>= jsonToPartialValue
     let attr ← getJsonField body "attr" >>= jsonToString
-    .ok $ .residual $ .getAttr e attr
+    .ok (.residual (.getAttr e attr))
   | "HasAttr" => do
     let e ← getJsonField body "expr" >>= jsonToPartialValue
     let attr ← getJsonField body "attr" >>= jsonToString
-    .ok $ .residual $ .hasAttr e attr
+    .ok (.residual (.hasAttr e attr))
   | "Record" => do
     let kvs_json ← jsonObjToKVList body
     let kvs ← mapMValues kvs_json jsonToPartialValue
-    .ok $ .residual $ .record kvs
+    .ok (.residual (.record kvs))
   | "Set" => do
     let arr_json ← jsonToArray body
     let arr ← List.mapM jsonToPartialValue arr_json.toList
-    .ok $ .residual $ .set arr
+    .ok (.residual (.set arr))
   | "ExtensionFunctionApp" => do
     let fn ← getJsonField body "fn_name" >>= jsonToExtFun
     let args_json ← getJsonField body "args" >>= jsonToArray
     let args ← List.mapM jsonToPartialValue args_json.toList
-    .ok $ .residual $ .call fn args
+    .ok (.residual (.call fn args))
   | "Unknown" => .error s!"expression contained unknown"
   | tag => .error s!"jsonToExpr: unknown tag {tag}"
 
@@ -320,18 +320,18 @@ def jsonToPartialValue' (json : Lean.Json) : ParseResult Cedar.Partial.Value := 
 def jsonToOptionalPartialValue (json : Lean.Json) : ParseResult (Option Cedar.Partial.Value) := do
   match json with
   | Lean.Json.null => .ok none
-  | _ => do .ok $ some (← jsonToPartialValue' json)
+  | _ => do .ok (some (← jsonToPartialValue' json))
 
 def jsonToOptionalValue (json : Lean.Json) : ParseResult (Option Value) :=
   match json with
   | Lean.Json.null => .ok .none
-  | _ => do .ok $ some (← jsonToValue json)
+  | _ => do .ok (some (← jsonToValue json))
 
 def jsonToPartialContext (json : Lean.Json) : (ParseResult (Map Attr Cedar.Partial.Value)) := do
   let value ← jsonToPartialValue json
   match value with
-  | .value (.record m) => .ok $ m.mapOnValues Cedar.Partial.Value.value
-  | .residual (.record kvs) => .ok $ Cedar.Data.Map.make kvs
+  | .value (.record m) => .ok (m.mapOnValues Cedar.Partial.Value.value)
+  | .residual (.record kvs) => .ok (Cedar.Data.Map.make kvs)
   |_ => .error ("jsonToPartialContext: context must be a record\n" ++ toString (repr value))
 
 def jsonToContext (json : Lean.Json) : ParseResult (Map Attr Value) := do
@@ -441,7 +441,7 @@ def jsonToActionScope (json : Lean.Json) : ParseResult ActionScope := do
 -- conditions structure
 def jsonToConditions (json : Lean.Json) : ParseResult Conditions := do
   let expr ← jsonToExpr json
-  .ok $ [{ kind := .when,  body := expr }]
+  .ok [{ kind := .when,  body := expr }]
 
 def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
   let effect ← getJsonField json "effect" >>= jsonToEffect

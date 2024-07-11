@@ -118,24 +118,24 @@ def Expr.substToPartialValue (req : Partial.Request) : Expr → Partial.Value
   | .var .resource => req.resource
   | .var .context => .residual (.record req.context.kvs)
   | .ite x₁ x₂ x₃ =>
-      .residual $ .ite (x₁.substToPartialValue req) (x₂.substToPartialValue req) (x₃.substToPartialValue req)
+      .residual (.ite (x₁.substToPartialValue req) (x₂.substToPartialValue req) (x₃.substToPartialValue req))
   | .and x₁ x₂ =>
-      .residual $ .and (x₁.substToPartialValue req) (x₂.substToPartialValue req)
+      .residual (.and (x₁.substToPartialValue req) (x₂.substToPartialValue req))
   | .or x₁ x₂ =>
-      .residual $ .or (x₁.substToPartialValue req) (x₂.substToPartialValue req)
+      .residual (.or (x₁.substToPartialValue req) (x₂.substToPartialValue req))
   | .unaryApp op x₁ =>
-      .residual $ .unaryApp op (x₁.substToPartialValue req)
+      .residual (.unaryApp op (x₁.substToPartialValue req))
   | .binaryApp op x₁ x₂ =>
-      .residual $ .binaryApp op (x₁.substToPartialValue req) (x₂.substToPartialValue req)
+      .residual (.binaryApp op (x₁.substToPartialValue req) (x₂.substToPartialValue req))
   | .getAttr x₁ attr =>
-      .residual $ .getAttr (x₁.substToPartialValue req) attr
+      .residual (.getAttr (x₁.substToPartialValue req) attr)
   | .hasAttr x₁ attr =>
-      .residual $ .hasAttr (x₁.substToPartialValue req) attr
+      .residual (.hasAttr (x₁.substToPartialValue req) attr)
   | .set xs =>
-      .residual $ .set (xs.map₁ λ ⟨x, _⟩ => x.substToPartialValue req)
+      .residual (.set (xs.map₁ λ ⟨x, _⟩ => x.substToPartialValue req))
   | .record attrs =>
-      .residual $ .record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, (v.substToPartialValue req)))
+      .residual (.record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, (v.substToPartialValue req))))
   | .call xfn args =>
-      .residual $ .call xfn (args.map₁ λ ⟨x, _⟩ => x.substToPartialValue req)
+      .residual (.call xfn (args.map₁ λ ⟨x, _⟩ => x.substToPartialValue req))
 
 end Cedar.Spec

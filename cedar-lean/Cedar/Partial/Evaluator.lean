@@ -37,8 +37,8 @@ open Cedar.Spec.Error
 def evaluateUnaryApp (op₁ : UnaryOp) : Partial.Value → Result Partial.Value
   | .value v₁ => do
     let val ← Spec.apply₁ op₁ v₁
-    .ok $ .value val
-  | pv => .ok $ .residual $ .unaryApp op₁ pv
+    .ok (.value val)
+  | pv => .ok (.residual (.unaryApp op₁ pv))
 
 /-- Analogous to Spec.inₑ but for partial entities -/
 def inₑ (uid₁ uid₂ : EntityUID) (es : Partial.Entities) : Bool :=
@@ -47,22 +47,22 @@ def inₑ (uid₁ uid₂ : EntityUID) (es : Partial.Entities) : Bool :=
 /-- Analogous to Spec.inₛ but for partial entities -/
 def inₛ (uid : EntityUID) (vs : Set Spec.Value) (es : Partial.Entities) : Result Spec.Value := do
   let uids ← vs.mapOrErr Spec.Value.asEntityUID .typeError
-  .ok $ uids.any (Partial.inₑ uid · es)
+  .ok (uids.any (Partial.inₑ uid · es))
 
 /-- Analogous to Spec.apply₂ but for partial entities -/
 def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities) : Result Partial.Value :=
   match op₂, v₁, v₂ with
-  | .eq, _, _                                              => .ok $ .value (v₁ == v₂)
-  | .less,   .prim (.int i), .prim (.int j)                => .ok $ .value ((i < j): Bool)
-  | .lessEq, .prim (.int i), .prim (.int j)                => .ok $ .value ((i ≤ j): Bool)
-  | .add,    .prim (.int i), .prim (.int j)                => do .ok $ .value (← intOrErr (i.add? j))
-  | .sub,    .prim (.int i), .prim (.int j)                => do .ok $ .value (← intOrErr (i.sub? j))
-  | .mul,    .prim (.int i), .prim (.int j)                => do .ok $ .value (← intOrErr (i.mul? j))
-  | .contains,    .set vs₁, _                              => .ok $ .value (vs₁.contains v₂)
-  | .containsAll, .set vs₁, .set vs₂                       => .ok $ .value (vs₂.subset vs₁)
-  | .containsAny, .set vs₁, .set vs₂                       => .ok $ .value (vs₁.intersects vs₂)
-  | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok $ .value (Partial.inₑ uid₁ uid₂ es)
-  | .mem, .prim (.entityUID uid₁), .set (vs)               => do .ok $ .value (← Partial.inₛ uid₁ vs es)
+  | .eq, _, _                                              => .ok (.value (v₁ == v₂))
+  | .less,   .prim (.int i), .prim (.int j)                => .ok (.value ((i < j): Bool))
+  | .lessEq, .prim (.int i), .prim (.int j)                => .ok (.value ((i ≤ j): Bool))
+  | .add,    .prim (.int i), .prim (.int j)                => do .ok (.value (← intOrErr (i.add? j)))
+  | .sub,    .prim (.int i), .prim (.int j)                => do .ok (.value (← intOrErr (i.sub? j)))
+  | .mul,    .prim (.int i), .prim (.int j)                => do .ok (.value (← intOrErr (i.mul? j)))
+  | .contains,    .set vs₁, _                              => .ok (.value (vs₁.contains v₂))
+  | .containsAll, .set vs₁, .set vs₂                       => .ok (.value (vs₂.subset vs₁))
+  | .containsAny, .set vs₁, .set vs₂                       => .ok (.value (vs₁.intersects vs₂))
+  | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok (.value (Partial.inₑ uid₁ uid₂ es))
+  | .mem, .prim (.entityUID uid₁), .set (vs)               => do .ok (.value (← Partial.inₛ uid₁ vs es))
   | _, _, _                                                => .error .typeError
 
 /--
@@ -73,19 +73,19 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Spec.Value) (es : Partial.Entities)
 def evaluateBinaryApp (op₂ : BinaryOp) (pv₁ pv₂ : Partial.Value) (es : Partial.Entities) : Result Partial.Value :=
   match (pv₁, pv₂) with
   | (.value v₁, .value v₂) => Partial.apply₂ op₂ v₁ v₂ es
-  | (pv₁, pv₂) => .ok $ .residual $ .binaryApp op₂ pv₁ pv₂
+  | (pv₁, pv₂) => .ok (.residual (.binaryApp op₂ pv₁ pv₂))
 
 /-- Analogous to Spec.attrsOf but for lookup functions that return partial values -/
 def attrsOf (v : Spec.Value) (lookup : EntityUID → Result (Map Attr Partial.Value)) : Result (Map Attr Partial.Value) :=
   match v with
-  | .record r              => .ok $ r.mapOnValues Partial.Value.value
+  | .record r              => .ok (r.mapOnValues Partial.Value.value)
   | .prim (.entityUID uid) => lookup uid
   | _                      => .error typeError
 
 /-- Analogous to Spec.hasAttr but for partial entities -/
 def hasAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Spec.Value := do
   let r ← Partial.attrsOf v (λ uid => .ok (es.attrsOrEmpty uid))
-  .ok $ r.contains a
+  .ok (r.contains a)
 
 /--
   Partial-evaluate `pv has a`. No analogue in Spec.Evaluator; this logic (that
@@ -96,8 +96,8 @@ def evaluateHasAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Re
   match pv with
   | .value v₁ => do
     let val ← Partial.hasAttr v₁ a es
-    .ok $ .value val
-  | .residual r => .ok $ .residual $ .hasAttr (.residual r) a -- TODO more precise: even though pv is a residual we may know concretely whether it contains the particular attr we care about
+    .ok (.value val)
+  | .residual r => .ok (.residual (.hasAttr (.residual r) a)) -- TODO more precise: even though pv is a residual we may know concretely whether it contains the particular attr we care about
 
 /-- Analogous to Spec.getAttr but for partial entities -/
 def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
@@ -112,7 +112,7 @@ def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial
 def evaluateGetAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   match pv with
   | .value v₁ => Partial.getAttr v₁ a es
-  | .residual r => .ok $ .residual $ .getAttr (.residual r) a -- TODO more precise: pv will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
+  | .residual r => .ok (.residual (.getAttr (.residual r) a)) -- TODO more precise: pv will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
 
 /-- Analogous to Spec.bindAttr but for partial values -/
 def bindAttr (a : Attr) (res : Result Partial.Value) : Result (Attr × Partial.Value) := do
@@ -126,21 +126,21 @@ def evaluateVar (v : Var) (req : Partial.Request) : Result Partial.Value :=
   | .action    => .ok req.action
   | .resource  => .ok req.resource
   | .context   => match req.context.mapMOnValues λ v => match v with | .value v => some v | .residual _ => none with
-    | some m   => .ok $ .value m
-    | none     => .ok $ .residual $ .record req.context.kvs
+    | some m   => .ok (.value m)
+    | none     => .ok (.residual (.record req.context.kvs))
 
 /-- Call an extension function with partial values as arguments -/
 def evaluateCall (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Value :=
   match args.mapM (λ pval => match pval with | .value v => some v | .residual _ => none) with
   | some vs => do
     let val ← Spec.call xfn vs
-    .ok $ .value val
-  | none    => .ok $ .residual $ .call xfn args
+    .ok (.value val)
+  | none    => .ok (.residual (.call xfn args))
 
 /-- Analogous to Spec.evaluate but performs partial evaluation given partial request/entities -/
 def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
   match x with
-  | .lit l           => .ok $ .value l
+  | .lit l           => .ok (.value l)
   | .var v           => evaluateVar v req
   | .ite x₁ x₂ x₃    => do
     let pval ← Partial.evaluate x₁ req es
@@ -148,7 +148,7 @@ def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result
     | .value v => do
       let b ← v.asBool
       if b then Partial.evaluate x₂ req es else Partial.evaluate x₃ req es
-    | .residual r => .ok $ .residual $ .ite (.residual r) (x₂.substToPartialValue req) (x₃.substToPartialValue req)
+    | .residual r => .ok (.residual (.ite (.residual r) (x₂.substToPartialValue req) (x₃.substToPartialValue req)))
   | .and x₁ x₂       => do
     let pval ← Partial.evaluate x₁ req es
     match pval with
@@ -159,9 +159,9 @@ def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result
         match pval with
         | .value v => do
           let b ← v.asBool
-          .ok $ .value b
-        | .residual r => .ok $ .residual r
-    | .residual r => .ok $ .residual $ .and (.residual r) (x₂.substToPartialValue req)
+          .ok (.value b)
+        | .residual r => .ok (.residual r)
+    | .residual r => .ok (.residual (.and (.residual r) (x₂.substToPartialValue req)))
   | .or x₁ x₂        => do
     let pval ← Partial.evaluate x₁ req es
     match pval with
@@ -172,9 +172,9 @@ def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result
         match pval with
         | .value v => do
           let b ← v.asBool
-          .ok $ .value b
-        | .residual r => .ok $ .residual r
-    | .residual r => .ok $ .residual $ .or (.residual r) (x₂.substToPartialValue req)
+          .ok (.value b)
+        | .residual r => .ok (.residual r)
+    | .residual r => .ok (.residual (.or (.residual r) (x₂.substToPartialValue req)))
   | .unaryApp op₁ x₁  => do
     let pval ← Partial.evaluate x₁ req es
     evaluateUnaryApp op₁ pval
@@ -191,13 +191,13 @@ def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result
   | .set xs          => do
     let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     match pvs.mapM (λ pval => match pval with | .value v => some v | .residual _ => none) with
-    | some vs => .ok $ .value $ Set.make vs
-    | none    => .ok $ .residual $ .set pvs
+    | some vs => .ok (.value (Set.make vs))
+    | none    => .ok (.residual (.set pvs))
   | .record axs      => do
     let apvs ← axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => Partial.bindAttr a₁ (Partial.evaluate x₁ req es))
     match apvs.mapM (λ (a, pval) => match pval with | .value v => some (a, v) | .residual _ => none) with
-    | some avs => .ok $ .value $ Map.make avs
-    | none     => .ok $ .residual $ .record apvs
+    | some avs => .ok (.value (Map.make avs))
+    | none     => .ok (.residual (.record apvs))
   | .call xfn xs     => do
     let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
     evaluateCall xfn pvs
@@ -211,7 +211,7 @@ mutual
 -/
 def evaluateValue (pv : Partial.Value) (es : Partial.Entities) : Result Partial.Value :=
   match pv with
-  | .value v => .ok $ .value v
+  | .value v => .ok (.value v)
   | .residual r => evaluateResidual r es
 
 /--
@@ -228,7 +228,7 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
     | .value v₁' => do
       let b ← v₁'.asBool
       if b then Partial.evaluateValue pv₂ es else Partial.evaluateValue pv₃ es
-    | .residual r₁' => .ok $ .residual $ .ite (.residual r₁') pv₂ pv₃
+    | .residual r₁' => .ok (.residual (.ite (.residual r₁') pv₂ pv₃))
   | .and pv₁ pv₂ => do
     let pv₁' ← Partial.evaluateValue pv₁ es
     match pv₁' with
@@ -239,9 +239,9 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
         match pv₂' with
         | .value v₂' => do
           let b ← v₂'.asBool
-          .ok $ .value b
-        | .residual r₂' => .ok $ .residual r₂'
-    | .residual r₁' => .ok $ .residual $ .and (.residual r₁') pv₂
+          .ok (.value b)
+        | .residual r₂' => .ok (.residual r₂')
+    | .residual r₁' => .ok (.residual (.and (.residual r₁') pv₂))
   | .or pv₁ pv₂ => do
     let pv₁' ← Partial.evaluateValue pv₁ es
     match pv₁' with
@@ -252,9 +252,9 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
         match pv₂' with
         | .value v₂' => do
           let b ← v₂'.asBool
-          .ok $ .value b
-        | .residual r₂' => .ok $ .residual r₂'
-    | .residual r₁' => .ok $ .residual $ .or (.residual r₁') pv₂
+          .ok (.value b)
+        | .residual r₂' => .ok (.residual r₂')
+    | .residual r₁' => .ok (.residual (.or (.residual r₁') pv₂))
   | .unaryApp op₁ pv₁ => do
     let pv₁' ← Partial.evaluateValue pv₁ es
     evaluateUnaryApp op₁ pv₁'
@@ -271,13 +271,13 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
   | .set pvs => do
     let pvs' ← pvs.mapM₁ (λ ⟨pv, _⟩ => Partial.evaluateValue pv es)
     match pvs'.mapM (λ pv => match pv with | .value v => some v | .residual _ => none) with
-    | some vs => .ok $ .value $ Set.make vs
-    | none    => .ok $ .residual $ .set pvs'
+    | some vs => .ok (.value (Set.make vs))
+    | none    => .ok (.residual (.set pvs'))
   | .record apvs => do
     let apvs' ← apvs.mapM₂ (λ ⟨(a, pv), _⟩ => Partial.bindAttr a (Partial.evaluateValue pv es))
     match apvs'.mapM (λ (a, pv) => match pv with | .value v => some (a, v) | .residual _ => none) with
-    | some avs => .ok $ .value $ Map.make avs
-    | none     => .ok $ .residual $ .record apvs'
+    | some avs => .ok (.value (Map.make avs))
+    | none     => .ok (.residual (.record apvs'))
   | .call xfn pvs => do
     let pvs' ← pvs.mapM₁ (λ ⟨pv, _⟩ => Partial.evaluateValue pv es)
     evaluateCall xfn pvs'
