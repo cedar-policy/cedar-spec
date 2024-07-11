@@ -161,14 +161,14 @@ pub fn validator_schema_attr_types_equivalent(
             .entity_types()
             .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
     );
-    let context_ty1: HashSet<cedar_policy_validator::types::Type> = HashSet::from_iter(
+    let context_ty1: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
         schema1
             .action_entities()
             .unwrap()
             .iter()
             .map(|e| schema1.get_action_id(e.uid()).unwrap().context_type()),
     );
-    let context_ty2: HashSet<cedar_policy_validator::types::Type> = HashSet::from_iter(
+    let context_ty2: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
         schema2
             .action_entities()
             .unwrap()
