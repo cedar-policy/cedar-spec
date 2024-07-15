@@ -1197,7 +1197,7 @@ theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
       simp only [Except.bind_ok] at h₁
       simp only [List.mapM'_cons, pure, Except.pure]
       rw [h₂]
-      obtain ⟨ys, h₃⟩ := ih h₁
+      have ⟨ys, h₃⟩ := ih h₁
       rw [h₃]
       simp only [Except.bind_ok]
       exists (y' :: ys)

@@ -21,9 +21,9 @@ import Cedar.Thm.Validation.Validator
 
 /-!
 This file contains the top-level correctness properties for the Cedar validator.
-We show that if validation succeeds, then for any request consistent with the schema,
-evaluation of every policy is "correct", that is, it either produces a boolean value,
-or throws one of the errors in the set of valid errors.
+We show that if validation succeeds for a set of policies, then for any request
+consistent with the schema, evaluating a policy in this set either produces a
+boolean value, or throws one of the errors in the set of valid errors.
 --/
 
 namespace Cedar.Thm
@@ -34,10 +34,10 @@ open Cedar.Validation
 
 /--
 If a set of policies is well-typed (valid) with respect to the schema according to the validator,
-and the input request and entities are consistent with the schema, then every policy "evaluates correctly":
-this means that evaluation either produces a boolean value, or throws an error of type
-`entityDoesNotExist`, `extensionError`, or `arithBoundsError`. These errors cannot be protected against at
-validation time, as they depend on runtime information. 
+and the input request and entities are consistent with the schema, then evaluating a policy in this set
+either produces a boolean value, or throws an error of type `entityDoesNotExist`, `extensionError`, or
+`arithBoundsError`. These errors cannot be protected against at validation time, as they depend on runtime
+information.
 -/
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
   validate policies schema = .ok () →
@@ -55,8 +55,8 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
     apply typecheck_policy_with_environments_is_sound policy schema.toEnvironments request entities h₁
     subst h₃
     simp only [List.forM_cons'] at h₀
-    cases h₄ : (typecheckPolicyWithEnvironments h' schema.toEnvironments) <;> simp only [h₄,
-      Except.bind_err] at h₀
+    cases h₄ : (typecheckPolicyWithEnvironments h' schema.toEnvironments) <;>
+    simp only [h₄, Except.bind_err] at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
       cases pin with
@@ -64,7 +64,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
         subst h₅
         assumption
       | inr h₅ =>
-      apply List.forM_implies_all_ok t' (fun x => typecheckPolicyWithEnvironments x schema.toEnvironments)
+      apply List.forM_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
       repeat assumption
 
 end Cedar.Thm

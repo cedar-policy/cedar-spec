@@ -26,13 +26,13 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-/-- for a single expression, evaluates to a boolean value (or appropriate error) -/
+/-- For a single expression, evaluates to a boolean value (or appropriate error) -/
 def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   ∃ (b : Bool), EvaluatesTo expr request entities b
 
-/-- every policy as an expression evaluates to a boolean value or appropriate error -/
+/-- Every policy as an expression evaluates to a boolean value or appropriate error -/
 def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
-  ∀ policy : Policy, policy ∈ policies → OneEvaluatesCorrectly policy.toExpr request entities
+  ∀ policy ∈ policies, OneEvaluatesCorrectly policy.toExpr request entities
 
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
   ∀ env ∈ schema.toEnvironments,
@@ -43,9 +43,9 @@ def EvaluatesSubst (expr : Expr) (request : Request) (entities : Entities) : Pro
 
 
 theorem evaluates_subst_ite {i t e : Expr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst i request entities)
-(ih₂ : EvaluatesSubst t request entities)
-(ih₃ : EvaluatesSubst e request entities) :
+  (ih₁ : EvaluatesSubst i request entities)
+  (ih₂ : EvaluatesSubst t request entities)
+  (ih₃ : EvaluatesSubst e request entities) :
   evaluate (substituteAction request.action (Expr.ite i t e)) request entities =
   evaluate (Expr.ite i t e) request entities
 := by
@@ -122,20 +122,6 @@ theorem substitute_action_cons_set : ∀ (h : Expr) (t : List Expr) (uid : Entit
   unfold substituteAction
   simp only
 
-theorem forall_map {xs : List Expr} {f g : Expr → Result Value}
-(h₀ : ∀ x ∈ xs, f x = g x) :
-  List.mapM f xs = List.mapM g xs
-:= by
-  induction xs
-  case nil =>
-    simp only [List.mapM_nil]
-  case cons h t ih =>
-    simp only [List.mapM_cons]
-    simp [List.mem_cons] at h₀
-    obtain ⟨h₁, h₂⟩ := h₀
-    rw [h₁, ih]
-    assumption
-
 theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Entities}
 (ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
   evaluate (substituteAction request.action (Expr.set xs)) request entities =
@@ -158,7 +144,7 @@ theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Ent
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
       exact h₂
-    rw [forall_map h₂]
+    simp [List.mapM_congr h₂]
 
 theorem substitute_action_nil_record : ∀ (uid : EntityUID),
   substituteAction uid (.record []) = .record []
@@ -166,26 +152,12 @@ theorem substitute_action_nil_record : ∀ (uid : EntityUID),
   intro uid
   simp only [substituteAction, mapOnVars, List.attach₂, List.pmap, List.map_nil]
 
-theorem substitute_action_cons_record : ∀ (h : Attr × Expr) (t : List (Attr × Expr)) (uid : EntityUID),
-  substituteAction uid (.record (h :: t)) =
-  .record ((h.fst, substituteAction uid h.snd) :: t.map (fun (a, e) => (a, substituteAction uid e)))
+theorem substitute_action_cons_record : ∀ (ax : Attr × Expr) (axs : List (Attr × Expr)) (uid : EntityUID),
+  substituteAction uid (.record (ax :: axs)) =
+  .record ((ax.fst, substituteAction uid ax.snd) :: axs.map (fun (a, e) => (a, substituteAction uid e)))
 := by
   intro h t uid
   simp only [substituteAction, mapOnVars, List.attach₂, List.map_pmap_subtype_snd, List.map_cons]
-
-theorem forall_map_record {t : List (Attr × Expr)} {f g : (Attr × Expr) → Result (Attr × Value)}
-(h₀ : ∀ x₁ ∈ t, f x₁ = g x₁) :
-  List.mapM (fun x => f x) t = List.mapM (fun x => g x) t
-:= by
-  induction t
-  case nil =>
-    simp only [List.mapM_nil]
-  case cons h tl ih =>
-    simp only [List.mapM_cons]
-    simp [List.mem_cons] at h₀
-    obtain ⟨h₁, h₂⟩ := h₀
-    rw [h₁, ih]
-    assumption
 
 theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
 (ih₁ : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities) :
@@ -217,7 +189,7 @@ theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
       simp [h₂ x xin]
-    rw [forall_map_record h₂]
+    rw [List.mapM_congr h₂]
 
 theorem substitute_action_nil_call : ∀ (uid : EntityUID) (xfn : ExtFun),
   substituteAction uid (.call xfn []) = .call xfn [] :=
@@ -226,8 +198,8 @@ by
   simp only [substituteAction, mapOnVars, List.attach_def, List.pmap, List.map_nil, implies_true]
 
 
-theorem substitute_action_cons_call : ∀ (h : Expr) (t : List Expr) (uid : EntityUID) (xfn : ExtFun),
-  substituteAction uid (.call xfn (h :: t)) = .call xfn ((substituteAction uid h) :: t.map (substituteAction uid)) :=
+theorem substitute_action_cons_call : ∀ (x : Expr) (xs : List Expr) (uid : EntityUID) (xfn : ExtFun),
+  substituteAction uid (.call xfn (x :: xs)) = .call xfn ((substituteAction uid x) :: xs.map (substituteAction uid)) :=
 by
   intro h t uid
   simp only [substituteAction, mapOnVars, List.attach_def, List.map_pmap_subtype, List.map_cons]
@@ -258,7 +230,7 @@ theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request}
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
       exact h₂
-    rw [forall_map h₂]
+    rw [List.mapM_congr h₂]
 
 theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) :
   evaluate (substituteAction request.action expr) request entities =
@@ -323,15 +295,15 @@ theorem action_matches_env (env : Environment) (request : Request) (entities : E
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  typecheckPolicy policy env = .ok t →
+  typecheckPolicy policy env = .ok ty →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₁ h₂
   simp only [typecheckPolicy] at h₂
-  cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;> simp only [List.empty_eq,
-    h₃] at h₂
+  cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
+  simp only [List.empty_eq, h₃] at h₂
   split at h₂ <;> simp only [Except.ok.injEq] at h₂
   rename_i cp ht
   have hc := empty_capabilities_invariant request entities
