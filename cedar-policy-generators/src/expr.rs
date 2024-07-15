@@ -27,7 +27,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Id};
+use cedar_policy_core::ast::{self, UnreservedId};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -1052,8 +1052,8 @@ impl<'a> ExprGenerator<'a> {
                         })];
                         Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
                     } else {
-                        let type_name: Id = match target_type {
-                            Type::IPAddr => "ipaddr".parse::<Id>().unwrap(),
+                        let type_name: UnreservedId = match target_type {
+                            Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
                             Type::Decimal => "decimal".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
                         };
