@@ -486,6 +486,48 @@ theorem union_comm [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   simp only [List.Equiv, List.append_subset,
     List.subset_append_right, List.subset_append_left, and_self]
 
+theorem union_assoc [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ s₃ : Set α) :
+  (s₁ ∪ s₂) ∪ s₃ = s₁ ∪ (s₂ ∪ s₃)
+:= by
+  rw [← eq_means_eqv (union_wf _ _) (union_wf _ _)]
+  simp only [Union.union, Set.union, Set.make, Set.elts]
+  have h₁ := List.Equiv.symm (List.canonicalize_equiv (List.canonicalize id (s₁.1 ++ s₂.1) ++ s₃.1))
+  have h₂ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ List.canonicalize id (s₂.1 ++ s₃.1)))
+  apply List.Equiv.trans h₁
+  apply List.Equiv.symm
+  apply List.Equiv.trans h₂
+  have h₃ := List.Equiv.symm (List.canonicalize_equiv (s₂.1 ++ s₃.1))
+  replace h₃ := List.append_right_equiv s₁.1 _ _ h₃
+  have h₄ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ s₂.1))
+  replace h₄ := List.append_left_equiv _ _ s₃.1 h₄
+  apply List.Equiv.trans h₃
+  apply List.Equiv.symm
+  apply List.Equiv.trans h₄
+  simp only [List.append_assoc]
+  exact List.append_right_equiv _ _ _ List.Equiv.refl
+
+theorem union_empty_right [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → s ∪ Set.empty = s
+:= by
+  intro h
+  simp only [WellFormed, toList, elts] at h
+  simp only [Union.union, union, elts, empty, List.append_nil, ← h]
+
+theorem union_empty_left [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → Set.empty ∪ s = s
+:= by
+  rw [union_comm]
+  exact union_empty_right
+
+theorem union_idempotent [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
+  s.WellFormed → s ∪ s = s
+:= by
+  intro h
+  rw [← eq_means_eqv (union_wf _ _) h]
+  simp only [Union.union, Set.union, Set.make, Set.elts]
+  apply List.Equiv.trans (List.Equiv.symm (List.canonicalize_equiv _))
+  simp only [List.Equiv, List.append_subset, List.Subset.refl, and_self, List.subset_append_left]
+
 /-! ### subset -/
 
 theorem elts_subset_then_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {xs ys : List α} :
@@ -545,6 +587,11 @@ theorem subset_trans [DecidableEq α] {s₁ s₂ s₃ : Set α} :
   intro h₁ h₂ a ha
   exact h₂ a (h₁ a ha)
 
+theorem subset_refl [DecidableEq α] {s : Set α} :
+  s ⊆ s
+:= by
+  simp only [subset_def, imp_self, implies_true]
+
 theorem mem_subset_mem [DecidableEq α] {a : α} {s₁ s₂ : Set α} :
   a ∈ s₁ → s₁ ⊆ s₂ → a ∈ s₂
 := by
@@ -577,5 +624,15 @@ theorem union_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s�
     rcases hor with hor | hor
     · exact h.left a hor
     · exact h.right a hor
+
+theorem union_subset_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
+  s₂.WellFormed → s₁ ⊆ s₂ → s₁ ∪ s₂ = s₂
+:= by
+  intro h₁ h₂
+  rw [← subset_iff_eq (union_wf _ _) h₁]
+  constructor
+  · simp only [union_subset, h₂, subset_refl, and_self]
+  · rw [union_comm]
+    exact subset_union _ _
 
 end Cedar.Data.Set

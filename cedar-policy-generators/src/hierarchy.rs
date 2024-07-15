@@ -17,7 +17,7 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, build_qualified_entity_type_name, Schema};
+use crate::schema::{attrs_from_attrs_or_context, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -452,7 +452,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .map(|name| {
                 let name = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name.prefix_namespace_if_unqualified(schema.namespace())
+                        name.qualify_with(schema.namespace())
                     }
                     HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
                 };
@@ -503,7 +503,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: Option<
-            HashMap<ast::EntityType, &cedar_policy_validator::EntityType>,
+            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::Name>>,
         > = match &self.mode {
             HierarchyGeneratorMode::SchemaBased { schema } => Some(
                 schema
@@ -512,10 +512,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     .iter()
                     .map(|(name, et)| {
                         (
-                            build_qualified_entity_type_name(
-                                schema.namespace.as_ref(),
-                                &ast::Name::from(name.clone()).into(),
-                            ),
+                            ast::EntityType::from(ast::Name::from(name.clone()))
+                                .qualify_with(schema.namespace.as_ref()),
                             et,
                         )
                     })
@@ -542,9 +540,8 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
-                            let allowed_parent_typename = build_qualified_entity_type_name(
-                                schema.namespace.as_ref(),
-                                allowed_parent_typename,
+                            let allowed_parent_typename = ast::EntityType::from(
+                                allowed_parent_typename.qualify_with(schema.namespace.as_ref()),
                             );
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph

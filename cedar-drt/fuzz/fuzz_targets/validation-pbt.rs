@@ -164,7 +164,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats(schema: Option<&NamespaceDefinition>, suffix: &str) {
+fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
