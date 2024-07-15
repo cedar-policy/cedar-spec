@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -42,16 +42,16 @@ information.
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
   validate policies schema = .ok () →
   RequestAndEntitiesMatchSchema schema request entities →
-  AllEvaluateCorrectly policies request entities
+  AllEvaluateToBool policies request entities
 := by
   intro h₀ h₁
   unfold validate at h₀
-  simp only [AllEvaluateCorrectly]
+  simp only [AllEvaluateToBool]
   cases h₃ : policies with
   | nil => simp only [List.not_mem_nil, false_implies, implies_true]
   | cons h' t' =>
     intro policy pin
-    simp only [OneEvaluatesCorrectly]
+    simp only [EvaluatesToBool]
     apply typecheck_policy_with_environments_is_sound policy schema.toEnvironments request entities h₁
     subst h₃
     simp only [List.forM_cons'] at h₀

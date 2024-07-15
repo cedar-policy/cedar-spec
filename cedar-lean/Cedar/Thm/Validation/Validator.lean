@@ -1,5 +1,5 @@
 /-
- Copyright 2022-2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Cedar Contributors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,84 +27,84 @@ open Cedar.Spec
 open Cedar.Validation
 
 /-- For a single expression, evaluates to a boolean value (or appropriate error) -/
-def OneEvaluatesCorrectly (expr : Expr) (request : Request) (entities : Entities) : Prop :=
+def EvaluatesToBool (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   ∃ (b : Bool), EvaluatesTo expr request entities b
 
 /-- Every policy as an expression evaluates to a boolean value or appropriate error -/
-def AllEvaluateCorrectly (policies : Policies) (request : Request) (entities : Entities) : Prop :=
-  ∀ policy ∈ policies, OneEvaluatesCorrectly policy.toExpr request entities
+def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Entities) : Prop :=
+  ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
   ∀ env ∈ schema.toEnvironments,
   RequestAndEntitiesMatchEnvironment env request entities
 
-def EvaluatesSubst (expr : Expr) (request : Request) (entities : Entities) : Prop :=
+def SubstituteActionPreservesEvaluation (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   evaluate (substituteAction request.action expr) request entities = evaluate expr request entities
 
 
-theorem evaluates_subst_ite {i t e : Expr} {request : Request} {entities : Entities}
-  (ih₁ : EvaluatesSubst i request entities)
-  (ih₂ : EvaluatesSubst t request entities)
-  (ih₃ : EvaluatesSubst e request entities) :
+theorem substitute_action_preserves_evaluation_ite {i t e : Expr} {request : Request} {entities : Entities}
+  (ih₁ : SubstituteActionPreservesEvaluation i request entities)
+  (ih₂ : SubstituteActionPreservesEvaluation t request entities)
+  (ih₃ : SubstituteActionPreservesEvaluation e request entities) :
   evaluate (substituteAction request.action (Expr.ite i t e)) request entities =
   evaluate (Expr.ite i t e) request entities
 := by
-  simp only [EvaluatesSubst, substituteAction, mapOnVars] at *
+  simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂, ih₃]
 
-theorem evaluates_subst_getAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst e request entities) :
+theorem substitute_action_preserves_evaluation_getAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation e request entities) :
   evaluate (substituteAction request.action (Expr.getAttr e attr)) request entities =
   evaluate (Expr.getAttr e attr) request entities
 := by
-  simp only [EvaluatesSubst] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
-theorem evaluates_subst_hasAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst e request entities) :
+theorem substitute_action_preserves_evaluation_hasAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation e request entities) :
   evaluate (substituteAction request.action (Expr.hasAttr e attr)) request entities =
   evaluate (Expr.hasAttr e attr) request entities
 := by
-  simp only [EvaluatesSubst] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
-theorem evaluates_subst_unaryApp {op : UnaryOp} {e : Expr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst e request entities) :
+theorem substitute_action_preserves_evaluation_unaryApp {op : UnaryOp} {e : Expr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation e request entities) :
   evaluate (substituteAction request.action (Expr.unaryApp op e)) request entities =
   evaluate (Expr.unaryApp op e) request entities
 := by
-  simp only [EvaluatesSubst] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
-theorem evaluates_subst_binaryApp {op : BinaryOp} {a b : Expr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst a request entities)
-(ih₂ : EvaluatesSubst b request entities) :
+theorem substitute_action_preserves_evaluation_binaryApp {op : BinaryOp} {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation a request entities)
+(ih₂ : SubstituteActionPreservesEvaluation b request entities) :
   evaluate (substituteAction request.action (Expr.binaryApp op a b)) request entities =
   evaluate (Expr.binaryApp op a b) request entities
 := by
-  simp only [EvaluatesSubst] at *
+  simp only [SubstituteActionPreservesEvaluation] at *
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
 
-theorem evaluates_subst_and {a b : Expr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst a request entities)
-(ih₂ : EvaluatesSubst b request entities) :
+theorem substitute_action_preserves_evaluation_and {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation a request entities)
+(ih₂ : SubstituteActionPreservesEvaluation b request entities) :
   evaluate (substituteAction request.action (Expr.and a b)) request entities =
   evaluate (Expr.and a b) request entities
 := by
-  simp only [EvaluatesSubst, substituteAction, mapOnVars] at *
+  simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
 
-theorem evaluates_subst_or {a b : Expr} {request : Request} {entities : Entities}
-(ih₁ : EvaluatesSubst a request entities)
-(ih₂ : EvaluatesSubst b request entities) :
+theorem substitute_action_preserves_evaluation_or {a b : Expr} {request : Request} {entities : Entities}
+(ih₁ : SubstituteActionPreservesEvaluation a request entities)
+(ih₂ : SubstituteActionPreservesEvaluation b request entities) :
   evaluate (substituteAction request.action (Expr.or a b)) request entities =
   evaluate (Expr.or a b) request entities
 := by
-  simp only [EvaluatesSubst, substituteAction, mapOnVars] at *
+  simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
 
 theorem substitute_action_nil_set : ∀ (uid : EntityUID),
@@ -122,8 +122,8 @@ theorem substitute_action_cons_set : ∀ (h : Expr) (t : List Expr) (uid : Entit
   unfold substituteAction
   simp only
 
-theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Entities}
-(ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
+theorem substitute_action_preserves_evaluation_set {xs : List Expr} {request : Request} {entities : Entities}
+(ih₁ : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities) :
   evaluate (substituteAction request.action (Expr.set xs)) request entities =
   evaluate (Expr.set xs) request entities
 := by
@@ -131,7 +131,7 @@ theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Ent
   | nil =>
     rw [substitute_action_nil_set]
   | cons h t =>
-    simp only [EvaluatesSubst] at ih₁
+    simp only [SubstituteActionPreservesEvaluation] at ih₁
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_set]
@@ -139,7 +139,7 @@ theorem evaluates_subst_set {xs : List Expr} {request : Request} {entities : Ent
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp [List.mapM_map]
-    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → EvaluatesSubst x₁ request entities :=
+    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
     by
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
@@ -159,8 +159,8 @@ theorem substitute_action_cons_record : ∀ (ax : Attr × Expr) (axs : List (Att
   intro h t uid
   simp only [substituteAction, mapOnVars, List.attach₂, List.map_pmap_subtype_snd, List.map_cons]
 
-theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
-(ih₁ : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities) :
+theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
+(ih₁ : ∀ axᵢ, axᵢ ∈ axs → SubstituteActionPreservesEvaluation axᵢ.snd request entities) :
   evaluate (substituteAction request.action (Expr.record axs)) request entities =
   evaluate (Expr.record axs) request entities
 := by
@@ -168,7 +168,7 @@ theorem evaluates_subst_record {axs : List (Attr × Expr)} {request : Request} {
   | nil =>
     rw [substitute_action_nil_record]
   | cons h t =>
-    simp only [EvaluatesSubst] at ih₁
+    simp only [SubstituteActionPreservesEvaluation] at ih₁
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_record]
@@ -208,8 +208,8 @@ by
   simp only
 
 
-theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request} {entities : Entities}
-(ih₁ : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities) :
+theorem substitute_action_preserves_evaluation_call {xfn : ExtFun} {xs : List Expr} {request : Request} {entities : Entities}
+(ih₁ : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities) :
   evaluate (substituteAction request.action (Expr.call xfn xs)) request entities =
   evaluate (Expr.call xfn xs) request entities
 := by
@@ -217,7 +217,7 @@ theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request}
   | nil =>
     rw [substitute_action_nil_call]
   | cons h t =>
-    simp only [EvaluatesSubst] at ih₁
+    simp only [SubstituteActionPreservesEvaluation] at ih₁
     have h₁ := ih₁ h
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_call]
@@ -225,14 +225,14 @@ theorem evaluates_subst_call {xfn : ExtFun} {xs : List Expr} {request : Request}
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
     simp [List.mapM_map]
-    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → EvaluatesSubst x₁ request entities :=
+    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
     by
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
       exact h₂
     rw [List.mapM_congr h₂]
 
-theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) :
+theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request) (entities : Entities) :
   evaluate (substituteAction request.action expr) request entities =
   evaluate expr request entities
 := by
@@ -243,48 +243,48 @@ theorem evaluates_subst (expr : Expr) (request : Request) (entities : Entities) 
     case action =>
       simp [evaluate]
   | ite i t e =>
-    have ih₁ := evaluates_subst i request entities
-    have ih₂ := evaluates_subst t request entities
-    have ih₃ := evaluates_subst e request entities
-    exact @evaluates_subst_ite i t e request entities ih₁ ih₂ ih₃
+    have ih₁ := substitute_action_preserves_evaluation i request entities
+    have ih₂ := substitute_action_preserves_evaluation t request entities
+    have ih₃ := substitute_action_preserves_evaluation e request entities
+    exact @substitute_action_preserves_evaluation_ite i t e request entities ih₁ ih₂ ih₃
   | and a b =>
-    have ih₁ := evaluates_subst a request entities
-    have ih₂ := evaluates_subst b request entities
-    exact @evaluates_subst_and a b request entities ih₁ ih₂
+    have ih₁ := substitute_action_preserves_evaluation a request entities
+    have ih₂ := substitute_action_preserves_evaluation b request entities
+    exact @substitute_action_preserves_evaluation_and a b request entities ih₁ ih₂
   | or a b =>
-    have ih₁ := evaluates_subst a request entities
-    have ih₂ := evaluates_subst b request entities
-    exact @evaluates_subst_or a b request entities ih₁ ih₂
+    have ih₁ := substitute_action_preserves_evaluation a request entities
+    have ih₂ := substitute_action_preserves_evaluation b request entities
+    exact @substitute_action_preserves_evaluation_or a b request entities ih₁ ih₂
   | unaryApp op e =>
-    have ih₁ := evaluates_subst e request entities
-    exact @evaluates_subst_unaryApp op e request entities ih₁
+    have ih₁ := substitute_action_preserves_evaluation e request entities
+    exact @substitute_action_preserves_evaluation_unaryApp op e request entities ih₁
   | binaryApp op a b =>
-    have ih₁ := evaluates_subst a request entities
-    have ih₂:= evaluates_subst b request entities
-    exact @evaluates_subst_binaryApp op a b request entities ih₁ ih₂
+    have ih₁ := substitute_action_preserves_evaluation a request entities
+    have ih₂:= substitute_action_preserves_evaluation b request entities
+    exact @substitute_action_preserves_evaluation_binaryApp op a b request entities ih₁ ih₂
   | getAttr x attr =>
-    have ih₁ := evaluates_subst x request entities
-    exact @evaluates_subst_getAttr x attr request entities ih₁
+    have ih₁ := substitute_action_preserves_evaluation x request entities
+    exact @substitute_action_preserves_evaluation_getAttr x attr request entities ih₁
   | hasAttr x attr =>
-    have ih₁ := evaluates_subst x request entities
-    exact @evaluates_subst_hasAttr x attr request entities ih₁
+    have ih₁ := substitute_action_preserves_evaluation x request entities
+    exact @substitute_action_preserves_evaluation_hasAttr x attr request entities ih₁
   | set xs =>
-    have ih : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities := by
+    have ih : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities := by
       intro xᵢ _
-      exact @evaluates_subst xᵢ request entities
-    exact @evaluates_subst_set xs request entities ih
+      exact @substitute_action_preserves_evaluation xᵢ request entities
+    exact @substitute_action_preserves_evaluation_set xs request entities ih
   | record axs =>
-    have ih : ∀ axᵢ, axᵢ ∈ axs → EvaluatesSubst axᵢ.snd request entities := by
+    have ih : ∀ axᵢ, axᵢ ∈ axs → SubstituteActionPreservesEvaluation axᵢ.snd request entities := by
       intro axᵢ hᵢ
       have _ : sizeOf axᵢ.snd < 1 + sizeOf axs := by
         apply List.sizeOf_snd_lt_sizeOf_list hᵢ
-      exact @evaluates_subst axᵢ.snd request entities
-    exact @evaluates_subst_record axs request entities ih
+      exact @substitute_action_preserves_evaluation axᵢ.snd request entities
+    exact @substitute_action_preserves_evaluation_record axs request entities ih
   | call xfn xs =>
-    have ih : ∀ xᵢ, xᵢ ∈ xs → EvaluatesSubst xᵢ request entities := by
+    have ih : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities := by
       intro xᵢ _
-      exact @evaluates_subst xᵢ request entities
-    exact @evaluates_subst_call xfn xs request entities ih
+      exact @substitute_action_preserves_evaluation xᵢ request entities
+    exact @substitute_action_preserves_evaluation_call xfn xs request entities ih
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
@@ -315,14 +315,14 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
   cases h₄ with
   | inl h₁ =>
     left
-    rw [← evaluates_subst policy.toExpr request entities]
+    rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
     rw [action_matches_env]
     repeat assumption
   | inr h₁ => cases h₁ with
     | inl h₂ =>
       right
       left
-      rw [← evaluates_subst policy.toExpr request entities]
+      rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
       rw [action_matches_env]
       repeat assumption
     | inr h₂ => cases h₂ with
@@ -330,14 +330,14 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
         right
         right
         left
-        rw [← evaluates_subst policy.toExpr request entities]
+        rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
         rw [action_matches_env]
         repeat assumption
       | inr h₃ =>
         right
         right
         right
-        rw [← evaluates_subst policy.toExpr request entities]
+        rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
         rw [action_matches_env]
         repeat assumption
 
