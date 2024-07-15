@@ -47,8 +47,13 @@ jobs:
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
   test_docker_build:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
     name: Test Docker build
-    runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
