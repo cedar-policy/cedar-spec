@@ -42,7 +42,7 @@ use lean_sys::{
 use log::info;
 use miette::miette;
 use serde::Deserialize;
-use std::ffi::CStr;
+use std::ffi::{c_char, CStr};
 use std::str::FromStr;
 
 #[link(name = "Cedar", kind = "static")]
@@ -120,7 +120,7 @@ pub struct LeanDefinitionalEngine {}
 
 fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
     let lean_obj_p = unsafe { lean_string_cstr(lean_str_obj) };
-    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const i8) };
+    let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const c_char) };
     let rust_string = lean_obj_cstr
         .to_str()
         .expect("failed to convert Lean object to string")
