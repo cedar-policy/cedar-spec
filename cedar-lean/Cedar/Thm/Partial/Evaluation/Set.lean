@@ -226,4 +226,32 @@ theorem subst_preserves_evaluation_to_value {xs : List Partial.Expr} {req req' :
     rw [mapM_subst_preserves_evaluation_to_values ih h_req pvals h₁ (by unfold IsAllConcrete ; exists vs)]
     simp only [h₂, Except.bind_ok]
 
+/--
+  Inductive argument that if partial-evaluation of a `Partial.Expr.set`
+  returns an error, then it also returns an error (not necessarily the same
+  error) after any substitution of unknowns
+-/
+theorem subst_preserves_errors {xs : List Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (ih : ∀ x ∈ xs, SubstPreservesEvaluationToError x req req' entities subsmap) :
+  SubstPreservesEvaluationToError (Partial.Expr.set xs) req req' entities subsmap
+:= by
+  unfold SubstPreservesEvaluationToError at *
+  simp only [Partial.evaluate, Partial.Expr.subst]
+  intro h_req e
+  rw [List.map₁_eq_map]
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · req entities)]
+  rw [List.mapM₁_eq_mapM (Partial.evaluate · req' (entities.subst subsmap))]
+  cases hxs : xs.mapM (Partial.evaluate · req entities)
+  case error e' =>
+    simp only [Except.bind_err, Except.error.injEq, List.mapM_map]
+    intro _ ; subst e'
+    replace ⟨x, hx, hxs⟩ := List.mapM_error_implies_exists_error hxs
+    replace ⟨e', ih⟩ := ih x hx h_req e hxs
+    have ⟨e'', h₁⟩ := List.element_error_implies_mapM_error hx (f := λ x => Partial.evaluate (x.subst subsmap) req' (entities.subst subsmap)) ih
+    simp only [h₁, Except.bind_err, Except.error.injEq, exists_eq']
+  case ok pvals =>
+    simp only [Except.bind_ok]
+    intro h₁
+    split at h₁ <;> simp at h₁
+
 end Cedar.Thm.Partial.Evaluation.Set

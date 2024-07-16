@@ -25,7 +25,7 @@ use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_core::parser;
 use cedar_policy_generators::collections::HashMap;
-use cedar_policy_validator::{SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_validator::{RawName, SchemaFragment, ValidationMode, Validator, ValidatorSchema};
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::io::Write;
@@ -42,7 +42,7 @@ use std::str::FromStr;
 pub fn dump(
     dirname: impl AsRef<Path>,
     testcasename: &str,
-    schema: &SchemaFragment,
+    schema: &SchemaFragment<RawName>,
     policies: &PolicySet,
     entities: &Entities,
     requests: impl IntoIterator<Item = (Request, Response)>,
@@ -102,7 +102,8 @@ pub fn dump(
             resource: dump_request_var(q.resource()),
             context: dump_context(
                 q.context()
-                    .expect("`dump` does not support requests missing context"),
+                    .expect("`dump` does not support requests missing context")
+                    .clone(),
             ),
             validate_request: true,
             decision: a.decision,
@@ -202,7 +203,7 @@ fn well_formed(policies: &PolicySet) -> bool {
 }
 
 /// Check whether a policy set passes validation
-fn passes_validation(schema: SchemaFragment, policies: &PolicySet) -> bool {
+fn passes_validation(schema: SchemaFragment<RawName>, policies: &PolicySet) -> bool {
     if let Ok(schema) = ValidatorSchema::try_from(schema) {
         let validator = Validator::new(schema);
         validator
@@ -220,31 +221,27 @@ fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
             panic!("`dump` does not support requests with unknown fields")
         }
         EntityUIDEntry::Known { euid, .. } => {
-            let json = serde_json::to_value(TypeAndId::from(euid as &EntityUID))
+            serde_json::to_value(TypeAndId::from(euid as &EntityUID))
                 .expect("failed to serialize euid")
-                .into();
-            json
+                .into()
         }
     }
 }
 
 /// Dump the context to a "natural" json value
-fn dump_context(context: &Context) -> JsonValueWithNoDuplicateKeys {
+fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
     let context = context
-        .iter()
-        .map(|it| {
-            it.map(|(k, pval)| {
-                (
-                    k.clone(),
-                    RestrictedExpr::try_from(pval)
-                        .unwrap()
-                        .to_natural_json()
-                        .unwrap(),
-                )
-            })
-            .collect::<HashMap<_, _>>()
+        .into_iter()
+        .map(|(k, pval)| {
+            (
+                k,
+                RestrictedExpr::try_from(pval)
+                    .unwrap()
+                    .to_natural_json()
+                    .unwrap(),
+            )
         })
-        .unwrap_or_default();
+        .collect::<HashMap<_, _>>();
     serde_json::to_value(context)
         .expect("failed to serialize context")
         .into()

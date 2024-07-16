@@ -50,6 +50,17 @@ def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial
     Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .ok (.value v)
 
 /--
+  Prop that .subst preserves evaluation to an error
+
+  (not necessarily the same error, but some error)
+-/
+def SubstPreservesEvaluationToError (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
+  req.subst subsmap = some req' →
+  ∀ e,
+    Partial.evaluate expr req entities = .error e →
+    ∃ e', Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .error e'
+
+/--
   Prop that a list of partial values is actually a list of concrete values
 -/
 def IsAllConcrete (pvals : List Partial.Value) : Prop :=

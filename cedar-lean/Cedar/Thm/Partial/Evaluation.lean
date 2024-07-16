@@ -444,3 +444,114 @@ theorem subst_preserves_evaluation_to_value {expr : Partial.Expr} {req req' : Pa
       exact subst_preserves_evaluation_to_value wf_r wf_e h_req hx
     exact Call.subst_preserves_evaluation_to_value ih h_req v h₁
 termination_by expr
+
+/--
+  If partial evaluation returns an error, then it also returns an error (not
+  necessarily the same error) after any substitution of unknowns
+-/
+theorem subst_preserves_errors {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {e : Error} {subsmap : Subsmap}
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed) :
+  req.subst subsmap = some req' →
+  Partial.evaluate expr req entities = .error e →
+  ∃ e', Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .error e'
+:= by
+  cases expr <;> intro h_req h₁
+  case lit | unknown => simp only [Partial.evaluate] at h₁
+  case var v =>
+    have h := Var.subst_preserves_errors h_req h₁
+    exists e
+  case and x₁ x₂ =>
+    apply (AndOr.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ _).left h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case or x₁ x₂ =>
+    apply (AndOr.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ _).right h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case ite x₁ x₂ x₃ =>
+    apply Ite.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ _ _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case binaryApp op x₁ x₂ =>
+    apply Binary.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case unaryApp op x₁ =>
+    apply Unary.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case getAttr x₁ attr =>
+    apply GetAttr.subst_preserves_errors wf_e (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case hasAttr x₁ attr =>
+    apply HasAttr.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro _ e'
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case set xs =>
+    apply Set.subst_preserves_errors _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro x hx _ e'
+      have := List.sizeOf_lt_of_mem hx
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case record attrs =>
+    apply Record.subst_preserves_errors _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro x hx _ e'
+      have := Map.sizeOf_lt_of_value hx
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+  case call xfn xs =>
+    apply Call.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e h_req) _ h_req e h₁
+    all_goals {
+      unfold SubstPreservesEvaluationToError
+      intro x hx _ e'
+      have := List.sizeOf_lt_of_mem hx
+      exact subst_preserves_errors wf_r wf_e h_req
+    }
+termination_by expr
+
+/--
+  Corollary (contrapositive) of the above:
+  If partial evaluation returns ok after any substitution of unknowns,
+  then it must return ok before that substitution
+-/
+theorem subst_preserves_errors_mt {expr : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed) :
+  req.subst subsmap = some req' →
+  (Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap)).isOk →
+  (Partial.evaluate expr req entities).isOk
+:= by
+  unfold Except.isOk Except.toBool
+  intro h₁ h₂
+  by_contra h₃
+  split at h₃ <;> simp at h₃
+  case _ e h₄ =>
+    have ⟨e', h₅⟩ := subst_preserves_errors wf_r wf_e h₁ h₄
+    simp [h₅] at h₂

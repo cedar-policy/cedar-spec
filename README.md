@@ -21,7 +21,7 @@ See the README in each directory for more information.
 
 * Install Lean, following the instructions [here](https://leanprover.github.io/lean4/doc/setup.html).
 * `cd cedar-lean`
-* `source ../cedar-drt/set_env_vars.sh`
+* `source ../cedar-drt/set_env_vars.sh` (only required if running on AL2)
 * `lake build Cedar`
 
 ### DRT framework
@@ -38,7 +38,7 @@ If you'd rather not use Docker, here are the full instructions for a local build
 * Install Lean, following the instructions above.
 * Clone the `cedar` repository in the current (`cedar-spec`) repository.
 * `source cedar-drt/set_env_vars.sh`
-* `cd cedar-lean && lake build Cedar:static DiffTest:static Batteries:static`
+* `cd cedar-lean && ../cedar-drt/build_lean_lib.sh`
 * `cd ../cedar-drt && cargo build`
 
 The build has only been tested on **Amazon Linux 2**.
