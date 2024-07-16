@@ -15,8 +15,8 @@
 -/
 
 import Cedar.Data.Map
+import Cedar.Data.SizeOf
 import Cedar.Partial.Entities
-import Cedar.Partial.Expr
 import Cedar.Partial.Request
 import Cedar.Partial.Value
 import Cedar.Spec.Expr
@@ -30,46 +30,7 @@ namespace Cedar.Thm.Partial.Subst
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Attr EntityUID Error)
-
-/--
-  subst on a concrete expression is that expression
--/
-theorem subst_concrete_expr (expr : Spec.Expr) (subsmap : Subsmap) :
-  expr.asPartialExpr.subst subsmap = expr.asPartialExpr
-:= by
-  unfold Partial.Expr.subst Spec.Expr.asPartialExpr
-  cases expr
-  case lit | var => simp only
-  case unaryApp op x₁ | getAttr x₁ attr | hasAttr x₁ attr =>
-    simp only [Partial.Expr.unaryApp.injEq, Partial.Expr.getAttr.injEq, Partial.Expr.hasAttr.injEq, true_and, and_true]
-    exact subst_concrete_expr x₁ subsmap
-  case and x₁ x₂ | or x₁ x₂ | binaryApp op x₁ x₂ =>
-    simp only [Partial.Expr.and.injEq, Partial.Expr.or.injEq, Partial.Expr.binaryApp.injEq, true_and, and_true]
-    constructor
-    · exact subst_concrete_expr x₁ subsmap
-    · exact subst_concrete_expr x₂ subsmap
-  case ite x₁ x₂ x₃ =>
-    simp only [Partial.Expr.ite.injEq]
-    and_intros
-    · exact subst_concrete_expr x₁ subsmap
-    · exact subst_concrete_expr x₂ subsmap
-    · exact subst_concrete_expr x₃ subsmap
-  case set xs | call xfn xs =>
-    simp only [Partial.Expr.set.injEq, Partial.Expr.call.injEq, true_and, and_true]
-    simp only [List.map₁_eq_map, List.map_map]
-    apply List.map_congr
-    intro x _
-    exact subst_concrete_expr x subsmap
-  case record attrs =>
-    simp only [Partial.Expr.record.injEq, Partial.Expr.record.injEq, true_and, and_true]
-    simp only [List.map_attach₂_snd, List.map_map]
-    apply List.map_congr
-    intro (a, x) h₁
-    simp only [Function.comp_apply, Prod.mk.injEq, true_and]
-    have := List.sizeOf_snd_lt_sizeOf_list h₁
-    exact subst_concrete_expr x subsmap
-termination_by expr
+open Cedar.Spec (Attr EntityUID Error Prim)
 
 /--
   Partial.Value.subst on a concrete value is that value
@@ -77,73 +38,62 @@ termination_by expr
 theorem subst_concrete_value (value : Spec.Value) (subsmap : Subsmap) :
   (Partial.Value.value value).subst subsmap = value
 := by
-  unfold Partial.Value.subst
-  split <;> rename_i h <;> simp only [Partial.Value.value.injEq] at h
-  subst h
-  rfl
+  simp only [Partial.Value.subst]
 
 /--
-  Partial.Expr.subst on a concrete value is that value
+  Partial.ResidualExpr.subst preserves well-formedness
 -/
-theorem subst_concrete_value' (value : Spec.Value) (subsmap : Subsmap) :
-  value.asPartialExpr.subst subsmap = value.asPartialExpr
+theorem residual_subst_preserves_wf {x : Partial.ResidualExpr} {subsmap : Subsmap} :
+  x.WellFormed → subsmap.WellFormed → (x.subst subsmap).WellFormed
 := by
-  unfold Partial.Expr.subst Spec.Value.asPartialExpr
-  cases value
-  case prim => simp only
-  case set vs =>
-    simp only [Partial.Expr.set.injEq]
-    rw [List.map₁_eq_map, List.map₁_eq_map]
-    rw [List.map_map]
-    apply List.map_congr
-    intro v _
-    exact subst_concrete_value' v subsmap
-  case record attrs =>
-    simp only [Partial.Expr.record.injEq]
-    rw [List.map_attach₂_snd]
-    rw [List.map_attach₃_snd]
-    rw [List.map_map]
-    apply List.map_congr
-    intro (k, v) _
-    simp only [Function.comp_apply, Prod.mk.injEq, true_and]
-    exact subst_concrete_value' v subsmap
-  case ext x =>
-    cases x <;> simp only [Partial.Expr.call.injEq, true_and]
-    <;> rw [List.map₁_eq_map]
-    <;> simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true]
-    <;> unfold Partial.Expr.subst
-    <;> rfl
-termination_by value
-decreasing_by
-  all_goals simp_wf
-  case _ h₁ => -- set
-    have := Set.sizeOf_lt_of_mem h₁
-    omega
-  case _ h₁ => -- record
-    have h₂ := Map.sizeOf_lt_of_value h₁
-    have h₃ := Map.sizeOf_lt_of_kvs m
-    simp [Map.kvs] at h₂ h₃
-    omega
+  cases x
+  case unknown u =>
+    simp only [Partial.ResidualExpr.WellFormed, Partial.Value.WellFormed,
+      Partial.ResidualExpr.subst, true_implies]
+    split
+    · rename_i h ; split at h
+      · subst h ; rename_i v _ h
+        replace h := Map.find?_mem_toList h
+        intro wf_s
+        suffices (Partial.Value.value v).WellFormed by simpa [Partial.Value.WellFormed] using this
+        apply wf_s.right
+        simp only [Map.toList] at h
+        exact Map.in_list_in_values h
+      · simp only at h
+    · simp only [implies_true]
+  all_goals {
+    simp only [Partial.ResidualExpr.WellFormed, Partial.Value.WellFormed,
+      Partial.ResidualExpr.subst, implies_true, imp_self]
+  }
 
 /--
   Partial.Value.subst preserves well-formedness
 -/
-theorem val_subst_preserves_wf {v : Partial.Value} {subsmap : Subsmap} :
-  v.WellFormed → (v.subst subsmap).WellFormed
-:= by
-  cases v <;> simp [Partial.Value.WellFormed, Partial.Value.subst]
+theorem val_subst_preserves_wf {pv : Partial.Value} {subsmap : Subsmap} :
+  pv.WellFormed → subsmap.WellFormed → (pv.subst subsmap).WellFormed
+:= match pv with
+  | .value v => by simp only [Partial.Value.WellFormed, subst_concrete_value] ; intro h _ ; exact h
+  | .residual r => by
+    -- we want to unfold only the first occurrence of `Partial.Value.WellFormed`.
+    -- I'm not aware of any way in Lean to do this directly, but this workaround works
+    have h_tmp : (Partial.Value.residual r).WellFormed ↔ r.WellFormed := by
+      simp only [Partial.Value.WellFormed]
+    rw [h_tmp] ; clear h_tmp
+    simp only [Partial.Value.subst]
+    exact residual_subst_preserves_wf
 
 /--
   Partial.Request.subst preserves well-formedness
 -/
 theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Subsmap} :
   req.WellFormed →
+  subsmap.WellFormed →
   req.subst subsmap = some req' →
   req'.WellFormed
 := by
   unfold Partial.Request.WellFormed Partial.Request.subst
-  intro wf h₁
-  have ⟨wf_c, wf_vals⟩ := wf ; clear wf
+  intro wf_r wf_s h₁
+  have ⟨wf_c, wf_vals⟩ := wf_r ; clear wf_r
   simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
   replace ⟨principal, _, ⟨action, _, ⟨resource, _, h₁⟩⟩⟩ := h₁
   subst h₁ ; simp only
@@ -152,7 +102,7 @@ theorem req_subst_preserves_wf {req req' : Partial.Request} {subsmap : Subsmap} 
   rw [Map.values_mapOnValues] at h₁
   replace ⟨pval, h₁, h₂⟩ := List.mem_map.mp h₁
   subst pval'
-  exact val_subst_preserves_wf (wf_vals pval h₁)
+  exact val_subst_preserves_wf (wf_vals pval h₁) wf_s
 
 /--
   Partial.Request.subst preserves a known principal UID
@@ -236,34 +186,34 @@ theorem req_subst_preserves_concrete_context_vals {req req' : Partial.Request} {
   Partial.EntityData.subst preserves well-formedness
 -/
 theorem entitydata_subst_preserves_wf {ed : Partial.EntityData} (subsmap : Subsmap) :
-  ed.WellFormed → (ed.subst subsmap).WellFormed
+  ed.WellFormed → subsmap.WellFormed → (ed.subst subsmap).WellFormed
 := by
   unfold Partial.EntityData.WellFormed Partial.EntityData.subst
-  intro h₁
+  intro h₁ h₂
   and_intros
   · exact Map.mapOnValues_wf.mp h₁.left
   · exact h₁.right.left
-  · intro pval h₂
-    simp [Map.values_mapOnValues] at h₂
-    replace ⟨pval', h₂, h₃⟩ := h₂
-    subst h₃
-    exact val_subst_preserves_wf (h₁.right.right pval' h₂)
+  · intro pval h₃
+    simp [Map.values_mapOnValues] at h₃
+    replace ⟨pval', h₃, h₄⟩ := h₃
+    subst h₄
+    exact val_subst_preserves_wf (h₁.right.right pval' h₃) h₂
 
 /--
   Partial.Entities.subst preserves well-formedness
 -/
-theorem entities_subst_preserves_wf {entities : Partial.Entities} (subsmap : Subsmap) :
-  entities.WellFormed → (entities.subst subsmap).WellFormed
+theorem entities_subst_preserves_wf {entities : Partial.Entities} {subsmap : Subsmap} :
+  entities.WellFormed → subsmap.WellFormed → (entities.subst subsmap).WellFormed
 := by
   unfold Partial.Entities.WellFormed Partial.Entities.subst
-  intro h₁
+  intro h₁ h₂
   constructor
   · exact Map.mapOnValues_wf.mp h₁.left
-  · intro ed' h₂
-    simp only [Map.values_mapOnValues, List.mem_map] at h₂
-    replace ⟨ed, h₂, h₃⟩ := h₂
+  · intro ed' h₃
+    simp only [Map.values_mapOnValues, List.mem_map] at h₃
+    replace ⟨ed, h₃, h₄⟩ := h₃
     subst ed'
-    exact entitydata_subst_preserves_wf subsmap (h₁.right ed h₂)
+    exact entitydata_subst_preserves_wf subsmap (h₁.right ed h₃) h₂
 
 /--
   Partial.EntityData.subst preserves .ancestors
@@ -383,11 +333,9 @@ theorem entities_subst_preserves_attrs {entities : Partial.Entities} {uid : Enti
   case ok ed =>
     simp only [Except.bind_ok, Except.ok.injEq]
     intro h h₂ ; subst h
-    have h₃ := entitydata_subst_preserves_attrs subsmap h₂
-    exists (ed.subst subsmap).attrs
-    apply And.intro _ h₃
-    simp only [Map.findOrErr_mapOnValues]
-    simp only [h₁, Except.map, Except.bind_ok]
+    simp only [Map.findOrErr_mapOnValues, Except.map, h₁, Except.bind_ok, Except.ok.injEq,
+      exists_eq_left']
+    exact entitydata_subst_preserves_attrs subsmap h₂
 
 /--
   Partial.Entities.subst preserves concrete attribute values
@@ -418,11 +366,9 @@ theorem entities_subst_preserves_absent_attrs {entities : Partial.Entities} {uid
   case ok ed =>
     simp only [Except.bind_ok, Except.ok.injEq]
     intro h h₂ ; subst h
-    have h₃ := entitydata_subst_preserves_absent_attrs subsmap h₂
-    exists (ed.subst subsmap).attrs
-    apply And.intro _ h₃
-    simp only [Map.findOrErr_mapOnValues]
-    simp only [h₁, Except.map, Except.bind_ok]
+    simp only [Map.findOrErr_mapOnValues, Except.map, h₁, Except.bind_ok, Except.ok.injEq,
+      exists_eq_left']
+    exact entitydata_subst_preserves_absent_attrs subsmap h₂
 
 /--
   Partial.Entities.subst preserves errors returned by `Partial.Entities.attrs`
@@ -458,8 +404,8 @@ theorem entities_subst_preserves_error_attrs {entities : Partial.Entities} {uid 
       cases h₂ : entities.es.findOrErr uid Error.entityDoesNotExist <;> simp
       case error e =>
         rcases Map.findOrErr_returns entities.es uid Error.entityDoesNotExist with h₃ | h₃
-        <;> simp [h₂] at h₃
-        · exact h₃
+        · simp only [h₂, exists_const] at h₃
+        · simpa [h₂] using h₃
       case ok edata =>
         rw [Map.findOrErr_ok_iff_find?_some] at h₂
         have ⟨ed', h₃⟩ := entities_subst_preserves_present_entities subsmap h₂

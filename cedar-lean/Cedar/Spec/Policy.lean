@@ -117,7 +117,7 @@ def Condition.toExpr (c : Condition) : Expr :=
 
 -- Conditions are evaluated top to bottom, and short circuit
 def Conditions.toExpr (cs : Conditions) : Expr :=
-  List.foldr (λ c expr => .and (c.toExpr) expr ) (Expr.lit $ Prim.bool true ) cs
+  cs.foldr (λ c expr => .and (c.toExpr) expr) (Expr.lit (Prim.bool true))
 
 def Policy.toExpr (p : Policy) : Expr :=
   .and

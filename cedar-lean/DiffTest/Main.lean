@@ -102,16 +102,15 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     match Lean.Json.parse req with
     | .error e => .error s!"partialEvaluateDRT: failed to parse input: {e}"
     | .ok json => do
-      let expr ← getJsonField json "expr" >>= jsonToPartialExpr
+      let expr ← getJsonField json "expr" >>= jsonToExpr
       let request ← getJsonField json "request" >>= jsonToRequest
       let entities ← getJsonField json "entities" >>= jsonToEntities
-      let expected ←  getJsonField json "expected" >>= jsonToOptionalValueOrExpr
+      let expected ←  getJsonField json "expected" >>= jsonToOptionalPartialValue
       let result := runAndTime (λ () => Cedar.Partial.evaluate expr request entities )
       let { data, duration } := unsafeBaseIO result
       let test_passed := match data, expected with
         | .error _, .none => true
-        | .ok (.value v₁), .some (.value v₂) => v₁ == v₂
-        | .ok (.residual e₁), .some (.expr e₂) => e₁ == e₂
+        | .ok pv₁, .some pv₂ => pv₁ == pv₂
         | _, _ => false
       .ok { data := test_passed , duration }
   toString (Lean.toJson result)

@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 
-import Cedar.Partial.Expr
 import Cedar.Partial.Value
 import Cedar.Spec.Expr
 import Cedar.Spec.Request
@@ -36,9 +35,9 @@ inductive UidOrUnknown where
 deriving instance Repr, DecidableEq, Inhabited for UidOrUnknown
 
 instance : Coe UidOrUnknown Partial.Value where
-  coe x := match x with
+  coe
   | .known uid => .value uid
-  | .unknown u => .residual (Partial.Expr.unknown u)
+  | .unknown u => u
 
 structure Request where
   principal : UidOrUnknown
@@ -81,8 +80,8 @@ open Cedar.Spec (EntityUID)
 def UidOrUnknown.subst (subsmap : Subsmap) : UidOrUnknown → Option UidOrUnknown
   | .known uid => some (.known uid)
   | .unknown unk => match subsmap.m.find? unk with
-    | some (.lit (.entityUID uid)) => some (.known uid)
-    | some (.unknown unk') => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
+    | some (.value (.prim (.entityUID uid))) => some (.known uid)
+    | some (.residual (.unknown unk')) => some (.unknown unk') -- substituting an unknown with another unknown, we'll allow it
     | none => some (.unknown unk) -- no substitution available, return `unk` unchanged
     | _ => none -- substitution is not for a literal UID or literal unknown. Not valid, return none
 
@@ -103,5 +102,45 @@ def Request.subst (subsmap : Subsmap) : Partial.Request → Option Partial.Reque
     let context := context.mapOnValues (Partial.Value.subst subsmap)
     some { principal, action, resource, context }
 
-
 end Cedar.Partial
+
+namespace Cedar.Spec
+
+/--
+  Convert an `Expr` to a `Partial.Value` by substituting all of the `.var`s
+  that appear (either for an unknown or value, as provided in `req`).
+
+  This function does not attempt to constant-fold or reduce after the
+  substitution (so, e.g., substituting context={ foo: 3 } in `context.foo + 5`
+  will give `{ foo: 3 }.foo + 5`).
+  To reduce, use `Partial.evaluateValue`.
+-/
+-- Defined in this file because it needs `Partial.Request`
+def Expr.substToPartialValue (req : Partial.Request) : Expr → Partial.Value
+  | .lit p => .value p
+  | .var .principal => req.principal
+  | .var .action => req.action
+  | .var .resource => req.resource
+  | .var .context => .residual (.record req.context.kvs)
+  | .ite x₁ x₂ x₃ =>
+      .residual (.ite (x₁.substToPartialValue req) (x₂.substToPartialValue req) (x₃.substToPartialValue req))
+  | .and x₁ x₂ =>
+      .residual (.and (x₁.substToPartialValue req) (x₂.substToPartialValue req))
+  | .or x₁ x₂ =>
+      .residual (.or (x₁.substToPartialValue req) (x₂.substToPartialValue req))
+  | .unaryApp op x₁ =>
+      .residual (.unaryApp op (x₁.substToPartialValue req))
+  | .binaryApp op x₁ x₂ =>
+      .residual (.binaryApp op (x₁.substToPartialValue req) (x₂.substToPartialValue req))
+  | .getAttr x₁ attr =>
+      .residual (.getAttr (x₁.substToPartialValue req) attr)
+  | .hasAttr x₁ attr =>
+      .residual (.hasAttr (x₁.substToPartialValue req) attr)
+  | .set xs =>
+      .residual (.set (xs.map₁ λ ⟨x, _⟩ => x.substToPartialValue req))
+  | .record attrs =>
+      .residual (.record (attrs.attach₂.map λ ⟨(k, v), _⟩ => (k, (v.substToPartialValue req))))
+  | .call xfn args =>
+      .residual (.call xfn (args.map₁ λ ⟨x, _⟩ => x.substToPartialValue req))
+
+end Cedar.Spec
