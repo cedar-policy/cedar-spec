@@ -24,29 +24,29 @@ namespace Cedar.Thm.Partial.Evaluation.Unary
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Prim UnaryOp)
+open Cedar.Spec (Expr Prim UnaryOp)
 
 /--
-  `Partial.apply₁` on concrete arguments gives the same output as `Spec.apply₁`
-  on the same arguments
+  `Partial.evaluateUnaryApp` on concrete arguments gives the same output as
+  `Spec.apply₁` on the same arguments
 -/
-theorem apply₁_on_concrete_eqv_concrete (op : UnaryOp) (v : Spec.Value) :
-  Partial.apply₁ op v = (Spec.apply₁ op v).map Partial.Value.value
+theorem evaluateUnaryApp_on_concrete_eqv_concrete (op : UnaryOp) (v : Spec.Value) :
+  Partial.evaluateUnaryApp op v = (Spec.apply₁ op v).map Partial.Value.value
 := by
   rfl
 
 /--
-  Inductive argument that partial evaluating a concrete `Partial.Expr.unaryApp`
-  expression gives the same output as concrete-evaluating the
-  `Spec.Expr.unaryApp` with the same subexpressions
+  Inductive argument that, for an `Expr.unaryApp` with concrete
+  request/entities, partial evaluation and concrete evaluation give the same
+  output
 -/
-theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {op : UnaryOp} :
+theorem on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Spec.Request} {entities : Spec.Entities} {op : UnaryOp} :
   PartialEvalEquivConcreteEval x₁ request entities →
-  PartialEvalEquivConcreteEval (Spec.Expr.unaryApp op x₁) request entities
+  PartialEvalEquivConcreteEval (Expr.unaryApp op x₁) request entities
 := by
   unfold PartialEvalEquivConcreteEval
   intro ih₁
-  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  unfold Partial.evaluate Spec.evaluate
   simp only [ih₁]
   cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
   case error e => simp [Except.map]
@@ -72,57 +72,58 @@ theorem specApply₁_wf {v : Spec.Value} {op : UnaryOp} :
   · simp [Spec.Value.WellFormed, Prim.WellFormed]
 
 /--
-  if `Partial.apply₁` on a well-formed value returns `ok` with some value, that is
-  a well-formed value as well
+  if `Partial.evaluateUnaryApp` on a well-formed value returns `ok` with some
+  value, that is a well-formed value as well
 
   This theorem does not actually require that the input value is WellFormed
 -/
-theorem partialApply₁_wf {pval : Partial.Value} {op : UnaryOp} :
-  Partial.apply₁ op pval = .ok pval' → pval'.WellFormed
+theorem evaluateUnaryApp_wf {pval : Partial.Value} {op : UnaryOp} :
+  Partial.evaluateUnaryApp op pval = .ok pval' → pval'.WellFormed
 := by
-  unfold Partial.apply₁
-  cases pval <;> simp
-  case residual r => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
+  unfold Partial.evaluateUnaryApp
+  cases pval <;> simp only [Except.ok.injEq]
+  case residual r => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
   case value v =>
-    cases h₁ : Spec.apply₁ op v <;> simp
+    cases h₁ : Spec.apply₁ op v
+    case error e => simp only [Except.bind_err, false_implies]
     case ok v' =>
-      intro h ; subst h ; simp [Partial.Value.WellFormed] at *
+      simp only [Except.bind_ok, Except.ok.injEq]
+      intro h ; subst h ; simp only [Partial.Value.WellFormed]
       exact specApply₁_wf h₁
 
 /--
-  Inductive argument that if partial-evaluating a `Partial.Expr.unaryApp`
+  Inductive argument that if partial-evaluating an `Expr.unaryApp`
   produces `ok` with some value, that value is well-formed
 
   This theorem does not actually require that x₁ is WellFormed
 -/
-theorem partial_eval_wf {x₁ : Partial.Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
-  EvaluatesToWellFormed (Partial.Expr.unaryApp op x₁) request entities
+theorem partial_eval_wf {x₁ : Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToWellFormed (Expr.unaryApp op x₁) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
   intro pval
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
-  case ok pval₁ => exact partialApply₁_wf
+  case ok pval₁ => exact evaluateUnaryApp_wf
 
 /--
-  If `Partial.apply₁` produces `ok` with a concrete value, then so would
-  partial-evaluating its operand
+  If `Partial.evaluateUnaryApp` produces `ok` with a concrete value, then so
+  would partial-evaluating its operand
 -/
-theorem partialApply₁_returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {op : UnaryOp} :
-  Partial.apply₁ op pval₁ = .ok (.value v) →
+theorem evaluateUnaryApp_returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {op : UnaryOp} :
+  Partial.evaluateUnaryApp op pval₁ = .ok (.value v) →
   ∃ v₁, pval₁ = .value v₁
 := by
-  unfold Partial.apply₁
-  intro h₁
+  unfold Partial.evaluateUnaryApp
   cases pval₁
-  case value v₁ => exists v₁
-  case residual r₁ => simp only [Except.ok.injEq] at h₁
+  case value v₁ => intro _ ; exists v₁
+  case residual r₁ => simp only [Except.ok.injEq, exists_const, imp_self]
 
 /--
-  If partial-evaluating a `Partial.Expr.unaryApp` produces `ok` with a concrete
+  If partial-evaluating an `Expr.unaryApp` produces `ok` with a concrete
   value, then so would partial-evaluating its operand
 -/
-theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
-  EvaluatesToConcrete (Partial.Expr.unaryApp op x₁) request entities →
+theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToConcrete (Expr.unaryApp op x₁) request entities →
   EvaluatesToConcrete x₁ request entities
 := by
   unfold EvaluatesToConcrete
@@ -132,33 +133,34 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {
   cases hx₁ : Partial.evaluate x₁ request entities
   <;> simp only [hx₁, Except.bind_err, Except.bind_ok] at h₁
   case ok pval₁ =>
-    have ⟨v₁, hv₁⟩ := partialApply₁_returns_concrete_then_operand_evals_to_concrete h₁
+    have ⟨v₁, hv₁⟩ := evaluateUnaryApp_returns_concrete_then_operand_evals_to_concrete h₁
     subst pval₁
     exists v₁
 
 /--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.unaryApp`
+  Inductive argument that if partial-evaluation of an `Expr.unaryApp`
   returns a concrete value, then it returns the same value after any
   substitution of unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {op : UnaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+theorem subst_preserves_evaluation_to_value {x₁ : Expr} {op : UnaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
-  SubstPreservesEvaluationToConcrete (Partial.Expr.unaryApp op x₁) req req' entities subsmap
+  SubstPreservesEvaluationToConcrete (Expr.unaryApp op x₁) req req' entities subsmap
 := by
   unfold SubstPreservesEvaluationToConcrete at *
-  unfold Partial.evaluate Spec.Value.asBool
+  unfold Partial.evaluate
   intro h_req v
   specialize ih₁ h_req
-  unfold Partial.Expr.subst
   cases hx₁ : Partial.evaluate x₁ req entities
   <;> simp only [hx₁, Except.ok.injEq, Except.bind_ok, Except.bind_err, false_implies, forall_const] at *
   case ok pval₁ =>
     cases pval₁
-    case value v₁ => simp only [Partial.Value.value.injEq, forall_eq'] at * ; simp [ih₁]
-    case residual r₁ => simp [Partial.apply₁]
+    case residual r₁ => simp only [Partial.evaluateUnaryApp, Except.ok.injEq, false_implies]
+    case value v₁ =>
+      simp only [Partial.Value.value.injEq, forall_eq'] at ih₁
+      simp only [ih₁, Except.bind_ok, imp_self]
 
 /--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.unaryApp`
+  Inductive argument that if partial-evaluation of an `Expr.unaryApp`
   returns an error, then it also returns an error (not necessarily the same
   error) after any substitution of unknowns
 
@@ -167,13 +169,13 @@ theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {op : UnaryOp}
   import `Thm/Partial/Evaluation.lean` to access it.
   See #372.
 -/
-theorem subst_preserves_errors {x₁ : Partial.Expr} {op : UnaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+theorem subst_preserves_errors {x₁ : Expr} {op : UnaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
   (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap) :
-  SubstPreservesEvaluationToError (Partial.Expr.unaryApp op x₁) req req' entities subsmap
+  SubstPreservesEvaluationToError (Expr.unaryApp op x₁) req req' entities subsmap
 := by
   unfold SubstPreservesEvaluationToError at *
-  unfold Partial.evaluate Partial.Expr.subst
+  unfold Partial.evaluate
   intro h_req ; specialize ih₁ h_req
   cases hx₁ : Partial.evaluate x₁ req entities
   <;> simp only [hx₁, false_implies, implies_true, Except.error.injEq] at ih₁
@@ -183,15 +185,15 @@ theorem subst_preserves_errors {x₁ : Partial.Expr} {op : UnaryOp} {req req' : 
   case ok pval₁ =>
     simp only [Except.bind_ok]
     intro e₁ h₁
-    cases hx₁' : Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
+    cases hx₁' : Partial.evaluate x₁ req' (entities.subst subsmap)
     case error e₁' => exists e₁'
     case ok pval₁' =>
       simp only [Except.bind_ok]
       cases pval₁
+      case residual r₁ => exists e₁
       case value v₁ =>
         simp only [h_spetv x₁ h_req v₁ hx₁, Except.ok.injEq] at hx₁' ; subst pval₁'
         exists e₁
-      case residual r₁ => exists e₁
 
 
 end Cedar.Thm.Partial.Evaluation.Unary
