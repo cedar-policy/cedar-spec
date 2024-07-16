@@ -1203,7 +1203,7 @@ theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
       exists (y' :: ys)
 
 
-theorem forM_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
   xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
 := by
   intro h₀ x xin

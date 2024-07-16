@@ -64,7 +64,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
         subst h₅
         assumption
       | inr h₅ =>
-      apply List.forM_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
+      apply List.forM_ok_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
       repeat assumption
 
 end Cedar.Thm
