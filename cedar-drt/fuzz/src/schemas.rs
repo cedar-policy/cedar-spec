@@ -73,6 +73,22 @@ fn remove_trivial_empty_namespace(schema: &mut SchemaFragment) {
     }
 }
 
+fn is_trivial_action(action: &ActionType) -> bool {
+    action.applies_to.is_none()
+        || (action
+            .applies_to
+            .as_ref()
+            .unwrap()
+            .principal_types
+            .is_empty()
+            && action
+                .applies_to
+                .as_ref()
+                .unwrap()
+                .resource_types
+                .is_empty())
+}
+
 fn namespace_equivalence(lhs: NamespaceDefinition, rhs: NamespaceDefinition) -> Result<(), String> {
     if lhs.common_types != rhs.common_types {
         Err("Common types differ".to_string())
@@ -95,7 +111,9 @@ fn namespace_equivalence(lhs: NamespaceDefinition, rhs: NamespaceDefinition) -> 
 }
 
 fn action_type_equivalence(name: &str, lhs: ActionType, rhs: ActionType) -> Result<(), String> {
-    if lhs.attributes != rhs.attributes {
+    if is_trivial_action(&lhs) && is_trivial_action(&rhs) {
+        Ok(())
+    } else if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
     } else if lhs.member_of != rhs.member_of {
         Err(format!("Member of don't match for `{name}`"))
