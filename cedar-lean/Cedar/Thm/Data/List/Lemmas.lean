@@ -1146,4 +1146,125 @@ theorem f_implies_g_then_subset {f g : α → Option β} {xs : List α} :
   apply And.intro h₂
   exact h₁ a b h₃
 
+/-! ### forM and mapM -/
+
+theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys : List PUnit) :
+  xs.mapM f = Except.ok ys → xs.forM f = Except.ok ()
+:= by
+  intro h₀
+  induction xs generalizing ys with
+  | nil => simp only [forM_nil', pure, Except.pure]
+  | cons xh xt ih =>
+    simp only [forM_cons']
+    cases h₁ : f xh with
+    | error =>
+      simp only [List.mapM_cons] at h₀
+      rw [h₁] at h₀
+      simp only [Except.bind_err] at h₀
+    | ok =>
+        simp only [List.mapM_cons, pure, Except.pure] at h₀
+        cases h₁ : f xh <;>
+        simp only [h₁, Except.bind_err, Except.bind_ok] at h₀
+        rename_i yh
+        cases h₂ : List.mapM f xt <;>
+        simp only [h₂, Except.bind_err, Except.bind_ok] at h₀
+        rename_i yt
+        simp only [Except.ok.injEq] at h₀
+        subst h₀
+        simp only [Except.bind_ok]
+        apply ih yt
+        assumption
+
+theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
+  xs.forM f = Except.ok () → ∃ ys, xs.mapM f = Except.ok ys
+:= by
+  intro h₁
+  rw [← List.mapM'_eq_mapM]
+  induction xs
+  case nil =>
+    simp only [List.mapM'_nil, pure, Except.pure, Except.ok.injEq]
+    exists []
+  case cons xh xt ih =>
+    cases h₂ : f xh with
+    | error =>
+      simp only [List.mapM'_cons, pure, Except.pure]
+      simp only [forM_cons'] at h₁
+      rw [h₂] at h₁
+      simp only [Except.bind_err] at h₁
+    | ok y' =>
+      simp only [List.forM_cons'] at h₁
+      rw [h₂] at h₁
+      simp only [Except.bind_ok] at h₁
+      simp only [List.mapM'_cons, pure, Except.pure]
+      rw [h₂]
+      have ⟨ys, h₃⟩ := ih h₁
+      rw [h₃]
+      simp only [Except.bind_ok]
+      exists (y' :: ys)
+
+
+theorem forM_ok_implies_all_ok {α β : Type} (xs : List α) (f : α → Except β Unit) :
+  xs.forM f = Except.ok () → (∀ x ∈ xs, f x = Except.ok ())
+:= by
+  intro h₀ x xin
+  obtain ⟨ys, h₁⟩ := forM_mapM f xs h₀
+  have h₂ := List.mapM_ok_implies_all_ok h₁ x
+  obtain ⟨_, _, h₅⟩ := h₂ xin
+  exact h₅
+
+/-! ### removeAll -/
+
+theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List α) :
+  x ≠ y → (x :: xs).removeAll [y] = x :: (xs.removeAll [y])
+:= by
+  intro _
+  simp only [removeAll, notElem, elem_eq_mem, mem_singleton, filter_cons, Bool.not_eq_true',
+    decide_eq_false_iff_not, ite_not, ite_eq_right_iff]
+  intro _
+  contradiction
+
+theorem removeAll_singleton_cons_of_eq [DecidableEq α] (x : α) (xs : List α) :
+  (x :: xs).removeAll [x] = xs.removeAll [x]
+:= by
+  simp only [removeAll, notElem, elem_eq_mem, mem_singleton, decide_True, Bool.not_true,
+    Bool.false_eq_true, not_false_eq_true, filter_cons_of_neg]
+
+theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
+  x ∉ xs.removeAll [x]
+:= by
+  simp only [removeAll, notElem, elem_eq_mem, mem_singleton]
+  by_contra h
+  simp only [mem_filter, decide_True, Bool.not_true, Bool.false_eq_true, and_false] at h
+
+theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
+  x :: xs ≡ x :: (xs.removeAll [x])
+:= by
+  induction xs
+  case nil =>
+    simp only [removeAll, filter_nil, Equiv.refl]
+  case cons xhd xtl ih =>
+    cases h : decide (x = xhd)
+    case false =>
+      simp only [decide_eq_false_iff_not] at h
+      rw [eq_comm] at h
+      rw [removeAll_singleton_cons_of_neq _ _ _ h]
+      apply List.Equiv.trans (List.swap_cons_cons_equiv _ _ _)
+      apply List.Equiv.symm
+      apply List.Equiv.trans (List.swap_cons_cons_equiv _ _ _)
+      apply List.Equiv.symm
+      exact List.cons_equiv_cons _ _ _ ih
+    case true =>
+      simp only [decide_eq_true_eq] at h
+      subst h
+      simp only [removeAll_singleton_cons_of_eq]
+      exact List.Equiv.trans (dup_head_equiv x xtl) ih
+
+theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
+  (xs.removeAll ys).length ≤ xs.length
+:= by
+  simp only [List.length_cons, Nat.succ_eq_add_one,
+    List.removeAll, List.notElem, List.elem_eq_mem, List.mem_singleton]
+  have _ := List.length_filter_le (fun x => !elem x ys) xs
+  omega
+
 end List

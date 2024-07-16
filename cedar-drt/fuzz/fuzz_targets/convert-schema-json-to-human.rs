@@ -18,9 +18,11 @@
 use cedar_drt::entities::conformance::err;
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::settings::ABACSettings;
 use cedar_policy_generators::{schema_grammar::*, size_hint_utils};
 use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::{RawName, SchemaFragment};
 use libfuzzer_sys::arbitrary::{self, size_hint, Arbitrary, Unstructured};
 use serde::Serialize;
 use similar_asserts::SimpleDiff;

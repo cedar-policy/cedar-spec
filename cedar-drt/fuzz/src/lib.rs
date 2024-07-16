@@ -298,7 +298,9 @@ pub fn run_val_test(
 #[test]
 fn test_run_auth_test() {
     use cedar_drt::LeanDefinitionalEngine;
-    use cedar_policy_core::ast::{Entity, EntityUID, RequestSchemaAllPass, RestrictedExpr};
+    use cedar_policy_core::ast::{
+        Entity, EntityUID, PolicyID, RequestSchemaAllPass, RestrictedExpr,
+    };
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
@@ -335,9 +337,11 @@ fn test_run_auth_test() {
             false
     };"#;
 
-    let static_policy =
-        cedar_policy_core::parser::parse_policy(Some("policy0".into()), policy_string)
-            .expect("Failed to parse");
+    let static_policy = cedar_policy_core::parser::parse_policy(
+        Some(PolicyID::from_string("policy0")),
+        policy_string,
+    )
+    .expect("Failed to parse");
     let static_policy: cedar_policy_core::ast::Policy = static_policy.into();
     policies
         .add(static_policy)

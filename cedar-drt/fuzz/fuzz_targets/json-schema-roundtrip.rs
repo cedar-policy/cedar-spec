@@ -17,15 +17,18 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
-use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_core::{ast, extensions::Extensions};
+use cedar_policy_generators::{
+    schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
+};
+use cedar_policy_validator::{RawName, SchemaFragment};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment,
+    pub schema: SchemaFragment<ast::Name>,
 }
 
 /// settings for this fuzz target
@@ -64,11 +67,19 @@ impl<'a> Arbitrary<'a> for Input {
 
 fuzz_target!(|i: Input| {
     let json = serde_json::to_value(i.schema.clone()).unwrap();
-    let json_ast = SchemaFragment::from_json_value(json).unwrap();
-    assert_eq!(json_ast, i.schema, "JSON rountrip failed");
+    let json_ast: SchemaFragment<RawName> = SchemaFragment::from_json_value(json).unwrap();
+    assert_eq!(
+        json_ast,
+        downgrade_frag_to_raw(i.schema.clone()),
+        "JSON roundtrip failed"
+    );
     let src = json_ast.as_natural_schema().unwrap();
-    let (final_ast, _) = SchemaFragment::from_str_natural(&src).unwrap();
-    if let Err(e) = equivalence_check(i.schema, final_ast) {
-        panic!("Roundtrip Mismatch: {}\nSrc:\n```\n{}\n```", e, src);
+    let (final_ast, _) =
+        SchemaFragment::from_str_natural(&src, Extensions::all_available()).unwrap();
+    if let Err(e) = equivalence_check(downgrade_frag_to_raw(i.schema), final_ast) {
+        panic!(
+            "Human-readable roundtrip failed: {}\nSrc:\n```\n{}\n```",
+            e, src
+        );
     }
 });

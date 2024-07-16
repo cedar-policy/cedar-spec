@@ -80,15 +80,12 @@ def jsonToInt64 (json : Json) : ParseResult Int64 := do
     | .none => .error s!"jsonToInt64: not a signed 64-bit integer {num.mantissa}"
   | n => .error s!"jsonToInt64: number has exponent {n}"
 
-def jsonToChar (json : Json) : ParseResult Char := do
-  let num ← jsonToNum json
-  match num.exponent with
-  | 0 =>
-    let nat := num.mantissa.toNat
-    if nat.isValidChar
-    then .ok (Char.ofNat nat)
-    else .error s!"jsonToChar: cannot convert to character {nat}"
-  | n => .error s!"jsonToChar: cannot convert to character {n}"
+def jsonToChar (json: Json) : ParseResult Char :=
+  match json.getStr? with
+  | .ok s => match s.data with
+    | [c] => .ok c
+    | _ => .error s!"jsonToChar: Expected single character"
+  | .error e => .error s!"jsonToChar: {e}\n{json.pretty}"
 
 def getSingleElement (kvs : RBNode String (λ _ => Json)) : String × Json :=
   kvs.fold (init := ("",Json.null)) (λ _ k v => (k,v))
