@@ -76,6 +76,24 @@ fn remove_trivial_empty_namespace<N>(schema: &mut SchemaFragment<N>) {
     }
 }
 
+fn is_trivial_action<N>(
+    action: &ActionType<N>,
+) -> bool {
+    action.applies_to.is_none()
+        || (action
+            .applies_to
+            .as_ref()
+            .unwrap()
+            .principal_types
+            .is_empty()
+            && action
+                .applies_to
+                .as_ref()
+                .unwrap()
+                .resource_types
+                .is_empty())
+}
+
 fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(
     lhs: NamespaceDefinition<N>,
     rhs: NamespaceDefinition<N>,
@@ -105,7 +123,9 @@ fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
     lhs: ActionType<N>,
     rhs: ActionType<N>,
 ) -> Result<(), String> {
-    if lhs.attributes != rhs.attributes {
+    if is_trivial_action(&lhs) && is_trivial_action(&rhs) {
+        Ok(())
+    } else if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
     } else if lhs.member_of != rhs.member_of {
         Err(format!("Member of don't match for `{name}`"))
