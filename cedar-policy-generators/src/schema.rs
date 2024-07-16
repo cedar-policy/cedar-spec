@@ -29,7 +29,7 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Effect, Id, PolicyID};
+use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
     ActionEntityUID, ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition,
@@ -380,7 +380,12 @@ fn attrs_in_schematype(
 /// Build `attributes_by_type` from other components of `Schema`
 fn build_attributes_by_type<'a>(
     schema: &cedar_policy_validator::NamespaceDefinition<ast::Name>,
-    entity_types: impl IntoIterator<Item = (&'a Id, &'a cedar_policy_validator::EntityType<ast::Name>)>,
+    entity_types: impl IntoIterator<
+        Item = (
+            &'a UnreservedId,
+            &'a cedar_policy_validator::EntityType<ast::Name>,
+        ),
+    >,
     namespace: Option<&ast::Name>,
 ) -> HashMap<Type, Vec<(ast::EntityType, SmolStr)>> {
     let triples = entity_types
@@ -412,7 +417,7 @@ struct Bindings {
     // Bindings from `SchemaType` to a list of `Id`
     // The `ids` field ensures that `Id`s are unique
     // Note that `SchemaType`s should not contain any common type references
-    bindings: BTreeMap<SchemaType<ast::Name>, Vec<Id>>,
+    bindings: BTreeMap<SchemaType<ast::Name>, Vec<UnreservedId>>,
     // The set of `Id`s used in the bindings
     ids: HashSet<SmolStr>,
 }
@@ -427,7 +432,7 @@ impl Bindings {
     // Add a `SchemaType` and `Id` binding
     // Note that this function always succeeds even if the `Id` already exists
     // Under that situation, we create a new `Id` based on the existing `Id`
-    fn add_binding(&mut self, binding: (SchemaType<ast::Name>, Id)) {
+    fn add_binding(&mut self, binding: (SchemaType<ast::Name>, UnreservedId)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
         let new_id = if self.ids.contains(id.as_ref()) {
@@ -537,7 +542,7 @@ impl Bindings {
     fn to_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<HashMap<Id, SchemaType<ast::Name>>> {
+    ) -> Result<HashMap<UnreservedId, SchemaType<ast::Name>>> {
         let mut common_types = HashMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
@@ -603,7 +608,7 @@ impl Schema {
         }
 
         let common_types = bindings.to_common_types(u)?;
-        let entity_types: HashMap<Id, EntityType<ast::Name>> = HashMap::from_iter(
+        let entity_types: HashMap<UnreservedId, EntityType<ast::Name>> = HashMap::from_iter(
             self.schema
                 .entity_types
                 .iter()
@@ -787,10 +792,10 @@ impl Schema {
         // first generate the pool of names. we generate a set (so there are no
         // duplicates), but then convert it to a Vec (because we want them
         // ordered, even though we want the order to be arbitrary)
-        let entity_type_ids: HashSet<ast::Id> = u
+        let entity_type_ids: HashSet<ast::UnreservedId> = u
             .arbitrary()
             .map_err(|e| while_doing("generating entity type ids".into(), e))?;
-        let entity_type_ids: Vec<ast::Id> = if entity_type_ids.is_empty() {
+        let entity_type_ids: Vec<ast::UnreservedId> = if entity_type_ids.is_empty() {
             // we want there to be at least one valid Name
             vec!["a".parse().expect("should be a valid Name")]
         } else {
@@ -810,7 +815,7 @@ impl Schema {
 
         // now turn each of those names into an EntityType, no
         // member-relationships yet
-        let mut entity_types: Vec<(Id, cedar_policy_validator::EntityType<ast::Name>)> =
+        let mut entity_types: Vec<(UnreservedId, cedar_policy_validator::EntityType<ast::Name>)> =
             entity_type_ids
                 .iter()
                 .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
