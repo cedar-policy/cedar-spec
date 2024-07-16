@@ -97,7 +97,7 @@ def evaluateHasAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Re
   | .value v₁ => do
     let val ← Partial.hasAttr v₁ a es
     .ok (.value val)
-  | .residual r => .ok (.residual (.hasAttr (.residual r) a)) -- TODO more precise: even though pv is a residual we may know concretely whether it contains the particular attr we care about
+  | .residual r => .ok (.residual (.hasAttr (.residual r) a)) -- could be more precise; see cedar-spec#395
 
 /-- Analogous to Spec.getAttr but for partial entities -/
 def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
@@ -112,7 +112,7 @@ def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial
 def evaluateGetAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   match pv with
   | .value v₁ => Partial.getAttr v₁ a es
-  | .residual r => .ok (.residual (.getAttr (.residual r) a)) -- TODO more precise: pv will be a .residual if it contains any unknowns, but we might have a concrete value for the particular attr we care about
+  | .residual r => .ok (.residual (.getAttr (.residual r) a)) -- could be more precise; see cedar-spec#395
 
 /-- Analogous to Spec.bindAttr but for partial values -/
 def bindAttr (a : Attr) (res : Result Partial.Value) : Result (Attr × Partial.Value) := do
