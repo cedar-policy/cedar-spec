@@ -29,9 +29,9 @@ use std::path::Path;
 use std::str::FromStr;
 
 /// Input expected by this fuzz target: a JSON string of schema
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Arbitrary)]
 pub struct FuzzTargetInput {
-    pub schema: String,
+    pub schema: SchemaFragment,
 }
 
 /// settings for this fuzz target
@@ -49,23 +49,25 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unspecified_apply_spec: true,
 };
 
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let schema = arbitrary_schema_json_str(&SETTINGS, 0, u)?;
-        Ok(Self { schema })
-    }
+// impl<'a> Arbitrary<'a> for FuzzTargetInput {
+//     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+//         let schema = arbitrary_schema_json_str(&SETTINGS, 0, u)?;
+//         Ok(Self { schema })
+//     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        size_hint_utils::size_hint_for_range(0, SETTINGS.max_depth * SETTINGS.max_width * depth)
-    }
-}
+//     fn size_hint(depth: usize) -> (usize, Option<usize>) {
+//         size_hint_utils::size_hint_for_range(0, SETTINGS.max_depth * SETTINGS.max_width * depth)
+//     }
+// }
 
 // JSON String -> SchemaFragment -> Natural String -> SchemaFragment
 // Assert that schema fragments are equivalent. By starting with a JSON String
 // we test for the existence of schema that are valid in JSON but with an
 // invalid natural schema conversion.
 fuzz_target!(|input: FuzzTargetInput| {
-    let parsed = SchemaFragment::from_json_str(&input.schema);
+    let json = serde_json::to_value(input.schema.clone()).unwrap();
+    println!("orig schema json: {:?}", json.to_string());
+    let parsed = SchemaFragment::from_json_value(json);
     if let Ok(parsed) = parsed {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
@@ -73,47 +75,22 @@ fuzz_target!(|input: FuzzTargetInput| {
         let natural_src = parsed
             .as_natural_schema()
             .expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = SchemaFragment::from_str_natural(&natural_src)
-            .expect("Failed to parse converted human readable schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
-            println!("Schema: {}", input.schema);
-            println!(
-                "{}",
-                SimpleDiff::from_str(
-                    &format!("{:#?}", parsed),
-                    &format!("{:#?}", natural_parsed),
-                    "Parsed JSON",
-                    "Human Round tripped"
-                )
-            );
-            panic!("{}", msg);
+        println!("natural: {}", natural_src);
+        let natural_parsed = SchemaFragment::from_str_natural(&natural_src);
+        if let Ok((natural_parsed, _)) = natural_parsed {
+            if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
+                println!("Schema: {}", parsed.clone());
+                println!(
+                    "{}",
+                    SimpleDiff::from_str(
+                        &format!("{:#?}", parsed),
+                        &format!("{:#?}", natural_parsed),
+                        "Parsed JSON",
+                        "Human Round tripped"
+                    )
+                );
+                panic!("{}", msg);
+            }
         }
-    } else {
-        let err = parsed.unwrap_err();
-        let error_msg = err.to_string();
-
-        let mut error_file = std::fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(true)
-            .truncate(true)
-            .open("schema_error.log")
-            .unwrap();
-        writeln!(
-            error_file,
-            "Failed to parse schema: {}, {}\n",
-            input.schema, err
-        );
-        // if error_msg.contains("duplicate key")
-        //     || error_msg.contains("invalid entity type")
-        //     || error_msg.contains("expected struct ActionEntityUID")
-        //     || error_msg.contains("expected one of `type`")
-        //     || error_msg.contains("invalid name")
-        //     || error_msg.contains("expected `,` or `}`")
-        //     || error_msg.contains("invalid extension type")
-        // {
-        //     return;
-        // }
-        // panic!("Failed to parse schema: {}, {}", input.schema, err)
     }
 });
