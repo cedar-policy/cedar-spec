@@ -294,6 +294,83 @@ pub fn run_val_test(
     }
 }
 
+// API for request validation
+// pub fn new<S: RequestSchema>(
+//     principal: (EntityUID, Option<Loc>),
+//     action: (EntityUID, Option<Loc>),
+//     resource: (EntityUID, Option<Loc>),
+//     context: Context,
+//     schema: Option<&S>,
+//     extensions: Extensions<'_>,
+// ) -> Result<Self, S::Error>
+
+// pub fn new_with_unknowns<S: RequestSchema>(
+//     principal: EntityUIDEntry,
+//     action: EntityUIDEntry,
+//     resource: EntityUIDEntry,
+//     context: Option<Context>,
+//     schema: Option<&S>,
+//     extensions: Extensions<'_>,
+// ) -> Result<Self, S::Error> {
+
+pub fn req_val_test(
+    custom_impl: &impl CedarTestImplementation,
+    schema: Schema,
+    request: ast::Request,
+    extensions: Extensions<'_>
+) {
+    let (rust_res, rust_auth_dur) =
+        time_function(|| Request::new_with_unknowns(
+            request.principal,
+            request.action,
+            request.resource,
+            request.context,
+            Some(&schema),
+            extensions
+        ));
+    info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+
+    let definitional_res = custom_impl.validate_request(&schema, &request);
+    match definitional_res {
+        TestResult::Failure => {
+            panic!("todo")
+        }
+        TestResult::Success(definitional_res) => {
+            if rust_res.validation_passed() {
+                assert!(
+                    definitional_res.validation_passed(),
+                    "TODO");
+            } else {
+                match custom_impl.validation_comparison_mode() {
+                    ValidationComparisonMode::AgreeOnAll => {
+                        assert!(
+                            !definitional_res.validation_passed(),
+                            "TODO",
+                        );
+                    }
+                    ValidationComparisonMode::AgreeOnValid => {}
+                };
+            }
+        }
+    }
+}
+
+// API for entity validation 
+// pub fn from_entities(
+//     entities: impl IntoIterator<Item = Entity>,
+//     schema: Option<&impl Schema>,
+//     tc_computation: TCComputation,
+//     extensions: Extensions<'_>,
+// ) -> Result<Self>
+pub fn ent_val_test(
+    custom_impl: &impl CedarTestImplementation,
+    schema: Schema,
+    entities: Entities,
+    extensions: Extensions<'_>
+) {
+}
+
+
 #[test]
 fn test_run_auth_test() {
     use cedar_drt::LeanDefinitionalEngine;
