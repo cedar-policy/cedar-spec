@@ -21,6 +21,7 @@ import Cedar.Validation
 import DiffTest.Util
 import DiffTest.Parser
 import Cedar.Partial.Evaluator
+import Cedar.Validation.RequestEntityValidator
 
 /-! This file defines the public interfaces for the Lean implementation.
     The input and output are stringified JSON objects. -/
@@ -113,6 +114,28 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
         | .ok pv₁, .some pv₂ => pv₁ == pv₂
         | _, _ => false
       .ok { data := test_passed , duration }
+  toString (Lean.toJson result)
+
+@[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : String) : String :=
+  let result : ParseResult (Timed EntityValidationResult) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateEntities: failed to parse input: {e}"
+    | .ok json => do
+        let schema ← getJsonField json "schema" >>= jsonToSchema
+        let entities ← getJsonField json "entities" >>= jsonToEntities
+        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
+        .ok (unsafeBaseIO result)
+  toString (Lean.toJson result)
+
+@[export validateRequestDRT] unsafe def validateRequestDRT (req : String) : String :=
+  let result : ParseResult (Timed RequestValidationResult) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateEntities: failed to parse input: {e}"
+    | .ok json => do
+        let schema ← getJsonField json "schema" >>= jsonToSchema
+        let request ← getJsonField json "request" >>= jsonToRequest
+        let result := runAndTime (λ () => Cedar.Validation.validateRequest schema request )
+        .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
