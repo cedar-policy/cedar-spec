@@ -36,7 +36,25 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, h₂ : ty with
+
+-- copied from Cedar/Thm/Data/Map.lean, but should move somewhere it can be accessed
+namespace Cedar.Data.Map
+
+theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
+  (h₁ : m.find? k = .some v) :
+  (k, v) ∈ m.toList
+:= by
+  unfold Map.toList Map.kvs Map.find? at *
+  split at h₁ <;> simp only [Option.some.injEq] at h₁
+  subst h₁
+  rename_i h₂
+  have h₃ := List.find?_some h₂
+  simp only [beq_iff_eq] at h₃ ; subst h₃
+  exact List.mem_of_find?_eq_some h₂
+
+end Cedar.Data.Map
+
+def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, ty with
 | .prim (.bool b), .bool bty => instanceOfBoolType b bty
 | .prim (.int _), .int => true
 | .prim (.string _), .string => true
@@ -44,25 +62,24 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, h₂ : ty wit
 | .set s, .set ty => (s.elts.attach.map (λ ⟨v, _⟩ => instanceOfType v ty)).all id
 | .record r, .record rty =>
   r.keys.all rty.keys.contains &&
-  (r.toList.attach₂.all (λ ⟨(k, _), _⟩ => attributeHasExpectedType r ty k)) &&
+  (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match h₀ : rty.find? k with
+      | .some qty => instanceOfType v qty.getType
+      | _ => true))) &&
   rty.keys.all (requiredAttributesPresent r rty)
 | .ext x, .ext xty => instanceOfExtType x xty
 | _, _ => false
+termination_by ty
 decreasing_by
   all_goals simp_wf
   case _ h₁ =>
     have := Set.sizeOf_lt_of_mem h₁
     omega
+  case _ h₁ =>
+    simp only at h₁
+    have h₂ := Cedar.Data.Map.find?_mem_toList h₀
+    have  h₃ := Map.sizeOf_lt_of_value h₂
+    sorry
 
-where attributeHasExpectedType (r : Map Attr Value) (ty : CedarType) (k : Attr) :=
-  match ty with
-  | .record rty =>
-    (match r.find? k, rty.find? k with
-      | .some v, .some qty => instanceOfType v qty.getType
-      | _, _ => true)
-  | _ => panic "Impossible"
-decreasing_by
-  {sorry}
 
     -- have := Map.sizeOf_lt_of_kvs attrs
 
