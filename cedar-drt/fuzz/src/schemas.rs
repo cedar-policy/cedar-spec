@@ -107,7 +107,7 @@ fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
 ) -> Result<(), String> {
     if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
-    } else if lhs.member_of != rhs.member_of {
+    } else if lhs.member_of.unwrap_or_default() != rhs.member_of.unwrap_or_default() {
         Err(format!("Member of don't match for `{name}`"))
     } else {
         match (lhs.applies_to, rhs.applies_to) {
