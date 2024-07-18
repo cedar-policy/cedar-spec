@@ -36,24 +36,6 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-
--- copied from Cedar/Thm/Data/Map.lean, but should move somewhere it can be accessed
-namespace Cedar.Data.Map
-
-theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β}
-  (h₁ : m.find? k = .some v) :
-  (k, v) ∈ m.toList
-:= by
-  unfold Map.toList Map.kvs Map.find? at *
-  split at h₁ <;> simp only [Option.some.injEq] at h₁
-  subst h₁
-  rename_i h₂
-  have h₃ := List.find?_some h₂
-  simp only [beq_iff_eq] at h₃ ; subst h₃
-  exact List.mem_of_find?_eq_some h₂
-
-end Cedar.Data.Map
-
 def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, ty with
 | .prim (.bool b), .bool bty => instanceOfBoolType b bty
 | .prim (.int _), .int => true
@@ -68,21 +50,17 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, ty with
   rty.keys.all (requiredAttributesPresent r rty)
 | .ext x, .ext xty => instanceOfExtType x xty
 | _, _ => false
-termination_by ty
-decreasing_by
-  all_goals simp_wf
-  case _ h₁ =>
-    have := Set.sizeOf_lt_of_mem h₁
-    omega
-  case _ h₁ =>
-    simp only at h₁
-    have h₂ := Cedar.Data.Map.find?_mem_toList h₀
-    have  h₃ := Map.sizeOf_lt_of_value h₂
-    sorry
-
-
-    -- have := Map.sizeOf_lt_of_kvs attrs
-
+  termination_by v
+  decreasing_by
+    all_goals simp_wf
+    case _ h₁ =>
+      have := Set.sizeOf_lt_of_mem h₁
+      omega
+    case _ h₁ =>
+      cases r
+      simp only [Map.kvs] at h₁
+      simp only [Map.mk.sizeOf_spec]
+      omega
 
 def instanceOfRequestType (request : Request) (reqty : RequestType) : Except RequestValidationError Unit :=
   if instanceOfEntityType request.principal reqty.principal then
