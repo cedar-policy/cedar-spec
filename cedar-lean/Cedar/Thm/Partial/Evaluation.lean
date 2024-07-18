@@ -30,7 +30,7 @@ import Cedar.Thm.Partial.Evaluation.Record
 import Cedar.Thm.Partial.Evaluation.Set
 import Cedar.Thm.Partial.Evaluation.Unary
 import Cedar.Thm.Partial.Evaluation.Var
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Data.Control
 
 /-! This file contains theorems about Cedar's partial evaluator. -/
@@ -360,34 +360,16 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
         exact ih₃
   case getAttr x₁ attr =>
     intro h_req h₁
-    have h₂ := GetAttr.evals_to_concrete_then_operand_evals_to_concrete (by
-      unfold EvaluatesToConcrete
-      exists v
-    )
-    unfold EvaluatesToConcrete at h₂
-    have ⟨v₁, hx₁⟩ := h₂ ; clear h₂
-    have ih₁ := subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx₁
     apply GetAttr.subst_preserves_evaluation_to_value wf_e wf_s _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
-      subst v₁'
-      exact ih₁
+      exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx₁'
   case hasAttr x₁ attr =>
     intro h_req h₁
-    have h₂ := HasAttr.evals_to_concrete_then_operand_evals_to_concrete (by
-      unfold EvaluatesToConcrete
-      exists v
-    )
-    unfold EvaluatesToConcrete at h₂
-    have ⟨v₁, hx₁⟩ := h₂ ; clear h₂
-    have ih₁ := subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx₁
     apply HasAttr.subst_preserves_evaluation_to_value wf_e _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
-      simp only [hx₁', Except.ok.injEq, Partial.Value.value.injEq] at hx₁
-      subst v₁'
-      exact ih₁
+      exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx₁'
   case set xs =>
     intro h_req h₁
     have hx := Set.evals_to_concrete_then_elts_eval_to_concrete (by

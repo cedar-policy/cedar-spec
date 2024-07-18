@@ -18,7 +18,8 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
+import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Ite
 

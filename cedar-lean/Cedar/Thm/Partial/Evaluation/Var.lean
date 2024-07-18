@@ -21,20 +21,20 @@ import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Var
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Error Expr Prim Var)
+open Cedar.Spec (Attr Error Expr Prim Var)
 
 /--
   `Partial.evaluateVar` on concrete arguments gives the same output as
   `Spec.evaluate` on those arguments
 -/
-theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
+theorem evaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.context.WellFormed) :
   Partial.evaluateVar v request = (Spec.evaluate (Expr.var v) request entities).map Partial.Value.value
 := by
@@ -86,12 +86,12 @@ theorem on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entiti
   PartialEvalEquivConcreteEval (Expr.var v) request entities
 := by
   unfold PartialEvalEquivConcreteEval Partial.evaluate
-  exact partialEvaluateVar_on_concrete_eqv_concrete_eval v request entities wf
+  exact evaluateVar_on_concrete_eqv_concrete_eval v request entities wf
 
 /--
   if `Partial.evaluateVar` returns `ok` with some value, it is a well-formed value
 -/
-theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
+theorem evaluateVar_wf {v : Var} {request : Partial.Request}
   (wf_r : request.WellFormed) :
   ∀ pval, Partial.evaluateVar v request = .ok pval → pval.WellFormed
 := by
@@ -127,7 +127,7 @@ theorem partial_eval_wf {v : Var} {request : Partial.Request} {entities : Partia
   EvaluatesToWellFormed (Expr.var v) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
-  exact partialEvaluateVar_wf wf_r
+  exact evaluateVar_wf wf_r
 
 /--
   Lemma: If `context` has only concrete values before substitution, then it has

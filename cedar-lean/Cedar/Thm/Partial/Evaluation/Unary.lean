@@ -17,23 +17,16 @@
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Partial.EvaluateUnaryApp
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
+import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Unary
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Expr Prim UnaryOp)
-
-/--
-  `Partial.evaluateUnaryApp` on concrete arguments gives the same output as
-  `Spec.apply₁` on the same arguments
--/
-theorem evaluateUnaryApp_on_concrete_eqv_concrete (op : UnaryOp) (v : Spec.Value) :
-  Partial.evaluateUnaryApp op v = (Spec.apply₁ op v).map Partial.Value.value
-:= by
-  rfl
 
 /--
   Inductive argument that, for an `Expr.unaryApp` with concrete
@@ -53,45 +46,6 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Spec.Request} {en
   case ok v₁ => rfl
 
 /--
-  if `Spec.apply₁` returns `ok` with some value, that is a well-formed value as
-  well
-
-  This theorem does not actually require that the input value is WellFormed
--/
-theorem specApply₁_wf {v : Spec.Value} {op : UnaryOp} :
-  Spec.apply₁ op v = .ok v' → v'.WellFormed
-:= by
-  unfold Spec.apply₁
-  intro h
-  split at h <;> try simp at h <;> subst h
-  · simp [Spec.Value.WellFormed, Prim.WellFormed]
-  · unfold Spec.intOrErr at h
-    split at h <;> simp at h
-    subst h ; simp [Spec.Value.WellFormed, Prim.WellFormed]
-  · simp [Spec.Value.WellFormed, Prim.WellFormed]
-  · simp [Spec.Value.WellFormed, Prim.WellFormed]
-
-/--
-  if `Partial.evaluateUnaryApp` on a well-formed value returns `ok` with some
-  value, that is a well-formed value as well
-
-  This theorem does not actually require that the input value is WellFormed
--/
-theorem evaluateUnaryApp_wf {pval : Partial.Value} {op : UnaryOp} :
-  Partial.evaluateUnaryApp op pval = .ok pval' → pval'.WellFormed
-:= by
-  unfold Partial.evaluateUnaryApp
-  cases pval <;> simp only [Except.ok.injEq]
-  case residual r => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
-  case value v =>
-    cases h₁ : Spec.apply₁ op v
-    case error e => simp only [Except.bind_err, false_implies]
-    case ok v' =>
-      simp only [Except.bind_ok, Except.ok.injEq]
-      intro h ; subst h ; simp only [Partial.Value.WellFormed]
-      exact specApply₁_wf h₁
-
-/--
   Inductive argument that if partial-evaluating an `Expr.unaryApp`
   produces `ok` with some value, that value is well-formed
 
@@ -103,20 +57,7 @@ theorem partial_eval_wf {x₁ : Expr} {op : UnaryOp} {request : Partial.Request}
   unfold EvaluatesToWellFormed Partial.evaluate
   intro pval
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
-  case ok pval₁ => exact evaluateUnaryApp_wf
-
-/--
-  If `Partial.evaluateUnaryApp` produces `ok` with a concrete value, then so
-  would partial-evaluating its operand
--/
-theorem evaluateUnaryApp_returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {op : UnaryOp} :
-  Partial.evaluateUnaryApp op pval₁ = .ok (.value v) →
-  ∃ v₁, pval₁ = .value v₁
-:= by
-  unfold Partial.evaluateUnaryApp
-  cases pval₁
-  case value v₁ => intro _ ; exists v₁
-  case residual r₁ => simp only [Except.ok.injEq, exists_const, imp_self]
+  case ok pval₁ => exact EvaluateUnaryApp.evaluateUnaryApp_wf
 
 /--
   If partial-evaluating an `Expr.unaryApp` produces `ok` with a concrete
@@ -133,7 +74,7 @@ theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Expr} {op : Una
   cases hx₁ : Partial.evaluate x₁ request entities
   <;> simp only [hx₁, Except.bind_err, Except.bind_ok] at h₁
   case ok pval₁ =>
-    have ⟨v₁, hv₁⟩ := evaluateUnaryApp_returns_concrete_then_operand_evals_to_concrete h₁
+    have ⟨v₁, hv₁⟩ := EvaluateUnaryApp.returns_concrete_then_operand_evals_to_concrete h₁
     subst pval₁
     exists v₁
 

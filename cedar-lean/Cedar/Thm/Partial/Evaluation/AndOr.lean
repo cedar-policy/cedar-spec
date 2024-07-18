@@ -17,7 +17,7 @@
 import Cedar.Partial.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.AndOr
 

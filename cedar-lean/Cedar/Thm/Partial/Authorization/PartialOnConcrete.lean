@@ -21,7 +21,7 @@ import Cedar.Partial.Authorizer
 import Cedar.Partial.Response
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Partial.Evaluation
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 
 /-!
   This file contains lemmas about the behavior of partial authorization on

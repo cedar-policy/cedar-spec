@@ -22,7 +22,8 @@ import Cedar.Partial.Value
 import Cedar.Spec.Expr
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.WellFormed
 
 /-! ## Lemmas about `subst` operations -/
 
@@ -39,6 +40,31 @@ theorem subst_concrete_value (value : Spec.Value) (subsmap : Subsmap) :
   (Partial.Value.value value).subst subsmap = value
 := by
   simp only [Partial.Value.subst]
+
+/--
+  If a list of `Partial.Value`s is all concrete, then mapping
+  `Partial.Value.subst` over it does nothing
+-/
+theorem subst_concrete_values {pvals : List Partial.Value} {subsmap : Subsmap} :
+  IsAllConcrete pvals →
+  pvals = pvals.map (Partial.Value.subst subsmap)
+:= match pvals with
+  | [] => by simp only [List.map_nil, implies_true]
+  | hd :: tl => by
+    simp only [IsAllConcrete, List.mapM_cons, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_eq_some, Option.some.injEq, List.map_cons, List.cons.injEq, forall_exists_index,
+      and_imp]
+    intro vs vhd
+    exact match hd with
+    | .residual r => by simp only [false_implies]
+    | .value v => by
+      simp only [Option.some.injEq]
+      intro _ ; subst vhd
+      intro vtl hvtl _ ; subst vs
+      simp [Subst.subst_concrete_value]
+      apply subst_concrete_values
+      unfold IsAllConcrete
+      exists vtl
 
 /--
   Partial.ResidualExpr.subst preserves well-formedness

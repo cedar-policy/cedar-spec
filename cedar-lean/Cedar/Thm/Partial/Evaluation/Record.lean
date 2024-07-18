@@ -20,7 +20,7 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
 
 namespace Cedar.Thm.Partial.Evaluation.Record
@@ -163,9 +163,8 @@ theorem partial_eval_wf {attrs: List (Attr × Expr)} {request : Partial.Request}
   <;> simp only [Except.bind_ok, Except.bind_err, false_implies, implies_true]
   case ok pvals =>
     replace hkv := List.mapM_ok_implies_all_from_ok hkv
-    simp only [Partial.Value.WellFormed]
     split <;> simp only [Except.ok.injEq, forall_eq']
-    · simp only [Spec.Value.WellFormed]
+    · simp only [Partial.Value.WellFormed, Spec.Value.WellFormed]
       rename_i vs h₂
       apply And.intro (Map.make_wf vs)
       intro kv h₃
@@ -181,7 +180,7 @@ theorem partial_eval_wf {attrs: List (Attr × Expr)} {request : Partial.Request}
         replace ⟨hkv, hkv'⟩ := hkv
         subst k' pval'
         simpa [Partial.Value.WellFormed] using ih (k, v) h₅ (.value v') h₇
-    · simp only [Partial.ResidualExpr.WellFormed]
+    · simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
 
 /--
   If partial-evaluating an `Expr.record` produces `ok` with a concrete
