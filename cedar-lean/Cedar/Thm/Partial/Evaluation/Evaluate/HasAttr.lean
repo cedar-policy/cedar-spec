@@ -19,12 +19,12 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.EvaluateHasAttr
+import Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.HasAttr
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.HasAttr
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -138,4 +138,4 @@ theorem subst_preserves_errors {x₁ : Expr} {attr : Attr} {req req' : Partial.R
         exact EvaluateHasAttr.subst_preserves_errors subsmap h₁
 
 
-end Cedar.Thm.Partial.Evaluation.HasAttr
+end Cedar.Thm.Partial.Evaluation.Evaluate.HasAttr

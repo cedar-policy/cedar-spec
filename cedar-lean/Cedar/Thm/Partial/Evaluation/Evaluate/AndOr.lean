@@ -19,7 +19,7 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.AndOr
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.AndOr
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -199,4 +199,4 @@ theorem subst_preserves_errors {x₁ x₂ : Expr} {req req' : Partial.Request} {
           }
   }
 
-end Cedar.Thm.Partial.Evaluation.AndOr
+end Cedar.Thm.Partial.Evaluation.Evaluate.AndOr

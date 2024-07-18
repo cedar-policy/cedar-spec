@@ -19,12 +19,12 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.EvaluateCall
+import Cedar.Thm.Partial.Evaluation.EvaluateCall
+import Cedar.Thm.Partial.Evaluation.Evaluate.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.Set
 import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Call
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Call
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -157,4 +157,4 @@ theorem subst_preserves_errors {xs : List Expr} {req req' : Partial.Request} {en
       simp only [h₂, h₁', h₁, Except.bind_ok, Except.bind_err, Except.error.injEq, exists_eq']
     · simp only at h₁
 
-end Cedar.Thm.Partial.Evaluation.Call
+end Cedar.Thm.Partial.Evaluation.Evaluate.Call

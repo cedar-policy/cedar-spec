@@ -21,10 +21,10 @@ import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Var
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Var
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -278,4 +278,4 @@ theorem subst_preserves_errors {var : Var} {req req' : Partial.Request} {e : Err
   simp only [Partial.evaluate]
   exact subst_preserves_evaluateVar_to_error
 
-end Cedar.Thm.Partial.Evaluation.Var
+end Cedar.Thm.Partial.Evaluation.Evaluate.Var

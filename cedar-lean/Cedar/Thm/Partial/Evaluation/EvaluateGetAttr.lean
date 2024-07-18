@@ -24,7 +24,7 @@ import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
 
-namespace Cedar.Thm.Partial.EvaluateGetAttr
+namespace Cedar.Thm.Partial.Evaluation.EvaluateGetAttr
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)

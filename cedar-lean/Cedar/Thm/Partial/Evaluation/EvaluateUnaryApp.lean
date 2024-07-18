@@ -23,7 +23,7 @@ import Cedar.Thm.Partial.Subst
 
 /-! Theorems about `Partial.evaluateUnaryApp` -/
 
-namespace Cedar.Thm.Partial.EvaluateUnaryApp
+namespace Cedar.Thm.Partial.Evaluation.EvaluateUnaryApp
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)

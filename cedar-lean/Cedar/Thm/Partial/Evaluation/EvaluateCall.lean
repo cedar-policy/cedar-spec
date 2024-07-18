@@ -20,13 +20,13 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.Set
+import Cedar.Thm.Partial.Evaluation.Evaluate.Set
 import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
 
 /-! Theorems about `Partial.evaluateCall` -/
 
-namespace Cedar.Thm.Partial.EvaluateCall
+namespace Cedar.Thm.Partial.Evaluation.EvaluateCall
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -103,7 +103,7 @@ theorem returns_concrete_then_args_concrete {args : List Partial.Value} {xfn : E
     cases arg' <;> simp only [Except.ok.injEq] at h₁ h₄
 
 /--
-  something akin to `Partial.EvaluateValue.eval_spec_value`, lifted to lists of `Partial.Value`
+  something akin to `Partial.Evaluation.EvaluateValue.eval_spec_value`, lifted to lists of `Partial.Value`
 -/
 theorem mapM_eval_spec_value {pvals : List Partial.Value} (entities : Partial.Entities) :
   (pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none) = some vs →

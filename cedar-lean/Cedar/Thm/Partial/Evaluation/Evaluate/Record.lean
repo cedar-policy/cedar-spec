@@ -20,10 +20,10 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Record
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Record
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -365,4 +365,4 @@ theorem subst_preserves_errors {attrs : List (Attr × Expr)} {req req' : Partial
     intro h₁
     split at h₁ <;> simp at h₁
 
-end Cedar.Thm.Partial.Evaluation.Record
+end Cedar.Thm.Partial.Evaluation.Evaluate.Record

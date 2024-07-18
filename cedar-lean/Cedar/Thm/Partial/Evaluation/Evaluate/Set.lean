@@ -23,7 +23,7 @@ import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Set
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Set
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -247,4 +247,4 @@ theorem subst_preserves_errors {xs : List Expr} {req req' : Partial.Request} {en
     intro h₁
     split at h₁ <;> simp at h₁
 
-end Cedar.Thm.Partial.Evaluation.Set
+end Cedar.Thm.Partial.Evaluation.Evaluate.Set

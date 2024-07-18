@@ -25,7 +25,7 @@ import Cedar.Thm.Partial.Subst
 
 /-! Theorems about `Partial.evaluateBinaryApp` -/
 
-namespace Cedar.Thm.Partial.EvaluateBinaryApp
+namespace Cedar.Thm.Partial.Evaluation.EvaluateBinaryApp
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -316,7 +316,7 @@ theorem reeval_eqv_substituting_first_partialApply₂ {op : BinaryOp} {v₁ v₂
   case value v =>
     simp only [Subst.subst_concrete_value, Partial.evaluateValue]
     intro h
-    exact (Partial.EvaluateBinaryApp.partialApply₂_subst_preserves_evaluation_to_value h).symm
+    exact (EvaluateBinaryApp.partialApply₂_subst_preserves_evaluation_to_value h).symm
   case residual r =>
     cases op <;> simp only [Partial.apply₂, Except.ok.injEq, false_implies]
     case mem =>
@@ -381,7 +381,7 @@ theorem reeval_eqv_substituting_first (op : BinaryOp) (pval₁ pval₂ : Partial
     simp only [Partial.Value.subst, Partial.evaluateValue, Except.bind_ok]
     cases h₁ : Partial.apply₂ op v₁ v₂ entities <;> simp only [Except.bind_ok, Except.bind_err]
     case error e =>
-      have ⟨e', h⟩ := Partial.EvaluateBinaryApp.partialApply₂_subst_preserves_errors h₁ (subsmap := subsmap)
+      have ⟨e', h⟩ := EvaluateBinaryApp.partialApply₂_subst_preserves_errors h₁ (subsmap := subsmap)
       simp only [h, implies_true]
     case ok pv =>
       rw [← reeval_eqv_substituting_first_partialApply₂ h₁]

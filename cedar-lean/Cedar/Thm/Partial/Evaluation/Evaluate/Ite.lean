@@ -18,10 +18,10 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Ite
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Ite
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -190,4 +190,4 @@ theorem subst_preserves_errors {x₁ x₂ x₃ : Expr} {req req' : Partial.Reque
           | .ok (.residual r₃) => by simp only [false_implies, implies_true]
           | .ok (.value v₃) => by simp [h_spetv x₃ h_req v₃ hx₃, hx₃]
 
-end Cedar.Thm.Partial.Evaluation.Ite
+end Cedar.Thm.Partial.Evaluation.Evaluate.Ite

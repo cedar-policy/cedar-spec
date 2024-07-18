@@ -19,12 +19,12 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.EvaluateBinaryApp
+import Cedar.Thm.Partial.Evaluation.EvaluateBinaryApp
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Binary
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Binary
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
@@ -165,4 +165,4 @@ theorem subst_preserves_errors {x₁ x₂ : Expr} {op : BinaryOp} {req req' : Pa
         case residual.value r₁ v₂ => exists e'
         case residual.residual r₁ r₂ => exists e
 
-end Cedar.Thm.Partial.Evaluation.Binary
+end Cedar.Thm.Partial.Evaluation.Evaluate.Binary
