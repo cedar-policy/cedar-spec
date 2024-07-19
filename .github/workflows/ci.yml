@@ -52,7 +52,6 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest-large
-          - macos-latest
     runs-on: ${{ matrix.os }}
     name: Test Docker build
     steps:
