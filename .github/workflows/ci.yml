@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Set up Docker
         if: ${{ matrix.os  != 'ubuntu-latest' }}
-        run: brew install docker colima
+        run: brew install docker colima && brew services start colima
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build Docker image
