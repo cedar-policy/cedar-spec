@@ -65,12 +65,4 @@ jobs:
         with:
           push: false
           tags: cedar-drt:latest
-      #- name: Checkout cedar-spec
-      #  uses: actions/checkout@v4
-      #- name: Set up Docker and build (macOS)
-      #  if: ${{ matrix.os  != 'ubuntu-latest' }}
-      #  run: brew install docker colima && colima start && docker build . -t cedar-drt
-      #- name: Set up Docker and build (ubuntu)
-      #  if: ${{ matrix.os  == 'ubuntu-latest' }}
-      #  run: docker build . -t cedar-drt
       
