@@ -56,13 +56,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Test Docker build
     steps:
-      - name: Set up Docker
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+      - name: Set up Docker and build (macOS)
         if: ${{ matrix.os  != 'ubuntu-latest' }}
-        run: brew install docker colima && brew services start colima
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          push: false
-          tags: cedar-drt:latest
+        run: brew install docker colima && brew services start colima && docker build . -t cedar-drt
+      - name: Set up Docker and build (ubuntu)
+        if: ${{ matrix.os  == 'ubuntu-latest' }}
+        run: docker build . -t cedar-drt
+      
