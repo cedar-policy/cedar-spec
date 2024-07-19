@@ -321,10 +321,10 @@ pub fn run_req_val_test(
 ) {
     let (rust_res, rust_auth_dur) =
         time_function(|| ast::Request::new_with_unknowns(
-            request.principal(),
-            request.action(),
-            request.resource(),
-            request.context(),
+            request.principal().clone(),
+            request.action().clone(),
+            request.resource().clone(),
+            request.context().cloned(),
             Some(&schema),
             extensions
         ));
@@ -371,8 +371,9 @@ pub fn run_ent_val_test(
     let (rust_res, rust_auth_dur) =
     time_function(|| Entities::from_entities(
         entities.into_iter(),
-        Some(&schema), // needs Schema not ValidatorSchema
-        // ??
+        cedar_policy_validator::CoreSchema::new(&schema),
+        // Some(&schema), // needs Schema not ValidatorSchema
+        TCComputation::ComputeNow, // todo 
         extensions
     ));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
