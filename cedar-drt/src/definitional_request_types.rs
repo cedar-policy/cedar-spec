@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use cedar_policy::Entity;
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 use cedar_testing::cedar_test_impl::ExprOrValue;
@@ -66,5 +67,5 @@ pub struct RequestValidationRequest<'a> {
 #[derive(Debug, Serialize)]
 pub struct EntityValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
-    pub entities: &'a Entities,
+    pub entities: &'a Vec<Entity>,
 }
