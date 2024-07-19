@@ -52,11 +52,13 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest-large
+          - macos-latest
     runs-on: ${{ matrix.os }}
     name: Test Docker build
     steps:
       - name: Set up Docker
-        uses: crazy-max/ghaction-setup-docker@v3
+        if: ${{ matrix.os  != 'ubuntu-latest' }}
+        run: brew install docker colima
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build Docker image
