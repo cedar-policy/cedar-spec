@@ -44,7 +44,7 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, ty with
 | .set s, .set ty => (s.elts.attach.map (λ ⟨v, _⟩ => instanceOfType v ty)).all id
 | .record r, .record rty =>
   r.keys.all rty.keys.contains &&
-  (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match h₀ : rty.find? k with
+  (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
       | .some qty => instanceOfType v qty.getType
       | _ => true))) &&
   rty.keys.all (requiredAttributesPresent r rty)
