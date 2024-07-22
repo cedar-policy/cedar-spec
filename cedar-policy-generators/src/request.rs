@@ -17,7 +17,7 @@
 use crate::collections::HashMap;
 use crate::err::Error;
 use crate::hierarchy::Hierarchy;
-use arbitrary::{Arbitrary, Unstructured};
+use arbitrary::Unstructured;
 use cedar_policy_core::ast::{self, EntityUID, RestrictedExpr};
 use cedar_policy_core::extensions::Extensions;
 use smol_str::SmolStr;
@@ -48,19 +48,6 @@ impl Request {
             action: hierarchy.arbitrary_uid(u, Some(ast::Var::Action))?,
             resource: hierarchy.arbitrary_uid(u, Some(ast::Var::Resource))?,
             context: ast::Context::from_pairs(context, Extensions::all_available())
-                .map_err(Error::ContextError)?,
-        })
-    }
-}
-
-impl<'a> Arbitrary<'a> for Request {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let context_pairs: Vec<(SmolStr, RestrictedExpr)> = u.arbitrary()?;
-        Ok(Self {
-            principal: u.arbitrary()?,
-            action: u.arbitrary()?,
-            resource: u.arbitrary()?,
-            context: ast::Context::from_pairs(context_pairs, Extensions::all_available())
                 .map_err(Error::ContextError)?,
         })
     }

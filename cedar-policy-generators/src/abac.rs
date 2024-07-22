@@ -23,8 +23,8 @@ use crate::size_hint_utils::size_hint_for_choose;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
 use ast::{EntityUID, Name, RestrictedExpr, StaticPolicy};
-use cedar_policy_core::ast::{self, Unknown};
 use cedar_policy_core::extensions;
+use cedar_policy_core::{ast, est};
 use serde::Serialize;
 use smol_str::SmolStr;
 use std::cell::RefCell;
@@ -76,12 +76,6 @@ pub struct UnknownPool {
     unknowns: RefCell<HashMap<String, (Type, ast::Value)>>,
 }
 
-impl<'a> Arbitrary<'a> for UnknownPool {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(UnknownPool::default())
-    }
-}
-
 impl UnknownPool {
     /// Given the name of an unknown, get its `Type`, or `None` if it's not in
     /// the pool
@@ -115,7 +109,7 @@ impl UnknownPool {
 }
 
 /// Pool of integer and string constants
-#[derive(Debug, Clone, Arbitrary)]
+#[derive(Debug, Clone)]
 pub struct ConstantPool {
     /// integer constants to choose from. we generate a finite list as part of
     /// the pool in order to increase the chance of integers actually being
@@ -134,7 +128,14 @@ struct BiasedI64(i64);
 
 impl<'a> Arbitrary<'a> for BiasedI64 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(<i64 as Arbitrary>::arbitrary(u)?.into())
+        Ok(gen!(u,
+            1 => std::i64::MAX,
+            1 => std::i64::MIN,
+            1 => -1,
+            1 => 0,
+            6 => <i64 as Arbitrary>::arbitrary(u)?
+        )
+        .into())
     }
 }
 
@@ -150,22 +151,22 @@ impl From<BiasedI64> for i64 {
     }
 }
 
-// impl<'a> Arbitrary<'a> for ConstantPool {
-//     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-//         let sc: Vec<String> = u.arbitrary()?;
-//         Ok(Self {
-//             int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
-//                 .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
-//             string_constants: sc.iter().map(|s| s.into()).collect(),
-//         })
-//     }
-//     fn size_hint(depth: usize) -> (usize, Option<usize>) {
-//         arbitrary::size_hint::and_all(&[
-//             <Vec<i64> as Arbitrary>::size_hint(depth),
-//             <Vec<String> as Arbitrary>::size_hint(depth),
-//         ])
-//     }
-// }
+impl<'a> Arbitrary<'a> for ConstantPool {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let sc: Vec<String> = u.arbitrary()?;
+        Ok(Self {
+            int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
+                .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
+            string_constants: sc.iter().map(|s| s.into()).collect(),
+        })
+    }
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and_all(&[
+            <Vec<i64> as Arbitrary>::size_hint(depth),
+            <Vec<String> as Arbitrary>::size_hint(depth),
+        ])
+    }
+}
 
 impl ConstantPool {
     /// Get an arbitrary int constant from the pool.
@@ -317,7 +318,7 @@ fn arbitrary_string(u: &mut Unstructured<'_>, bound: Option<usize>) -> Result<Sm
 }
 
 /// Data describing an extension function available for use in policies/etc
-#[derive(Debug, Clone, Arbitrary)]
+#[derive(Debug, Clone)]
 pub struct AvailableExtensionFunction {
     /// Name of the extension function
     pub name: Name,
@@ -332,7 +333,7 @@ pub struct AvailableExtensionFunction {
 }
 
 /// Struct holding information about all available extension functions
-#[derive(Debug, Clone, Arbitrary)]
+#[derive(Debug, Clone)]
 pub struct AvailableExtensionFunctions {
     /// available extension functions (constructors only).
     /// Empty if settings.enable_extensions is false
@@ -713,6 +714,12 @@ impl From<AttrValue> for RestrictedExpr {
 #[serde(transparent)]
 pub struct ABACPolicy(pub GeneratedPolicy);
 
+impl From<ABACPolicy> for est::Policy {
+    fn from(ap: ABACPolicy) -> est::Policy {
+        ap.0.into()
+    }
+}
+
 impl std::fmt::Display for ABACPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -739,7 +746,7 @@ impl From<ABACPolicy> for StaticPolicy {
 }
 
 /// Represents an ABAC request, i.e., fully general
-#[derive(Debug, Clone, Arbitrary)]
+#[derive(Debug, Clone)]
 pub struct ABACRequest(pub Request);
 
 impl std::fmt::Display for ABACRequest {

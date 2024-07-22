@@ -59,9 +59,3 @@ pub mod size_hint_utils;
 
 /// This module contains various generator settings
 pub mod settings;
-
-/// This module contains generator functions for sampling Cedar schema grammars
-pub mod schema_grammar;
-
-/// This module contains generator functions for sampling Cedar policy grammars
-pub mod policy_grammar;
