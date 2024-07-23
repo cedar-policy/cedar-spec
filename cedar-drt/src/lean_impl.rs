@@ -336,6 +336,7 @@ impl LeanDefinitionalEngine {
     fn deserialize_validation_response(
         response_string: String,
     ) -> TestResult<TestValidationResult> {
+        use log::debug;
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
@@ -393,7 +394,7 @@ impl LeanDefinitionalEngine {
     pub fn validate_entities(
         &self,
         schema: &ValidatorSchema,
-        entities: &Vec<Entity>,
+        entities: &Entities,
     ) -> TestResult<TestValidationResult> {
         let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
             .expect("failed to serialize request");
@@ -488,9 +489,9 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
     fn validate_entities(
         &self,
         schema: &ValidatorSchema,
-        entities: &Vec<Entity>,
+        entities: Entities,
     ) -> TestResult<TestValidationResult> {
-        let result = self.validate_entities(schema, entities);
+        let result = self.validate_entities(schema, &entities);
         result.map(|res| {
             let errors = res.errors.into_iter().collect();
             TestValidationResult { errors, ..res }

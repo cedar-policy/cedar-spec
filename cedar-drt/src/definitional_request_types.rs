@@ -67,5 +67,5 @@ pub struct RequestValidationRequest<'a> {
 #[derive(Debug, Serialize)]
 pub struct EntityValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
-    pub entities: &'a Vec<Entity>,
+    pub entities: &'a Entities
 }

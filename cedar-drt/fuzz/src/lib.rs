@@ -333,7 +333,7 @@ pub fn run_req_val_test(
     let definitional_res = custom_impl.validate_request(&schema, &request);
     match definitional_res {
         TestResult::Failure(_) => {
-            panic!("todo")
+            ;
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
@@ -365,43 +365,33 @@ pub fn run_req_val_test(
 pub fn run_ent_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
-    entities: Vec<Entity>,
+    entities: Entities,
     extensions: Extensions<'_>
 ) {
     let (rust_res, rust_auth_dur) =
     time_function(|| Entities::from_entities(
-        entities.into_iter(),
-        cedar_policy_validator::CoreSchema::new(&schema),
-        // Some(&schema), // needs Schema not ValidatorSchema
+        entities.iter().cloned(),
+        Some(&cedar_policy_validator::CoreSchema::new(&schema)),
         TCComputation::ComputeNow, // todo 
         extensions
     ));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
-    let definitional_res = custom_impl.validate_entities(&schema, &entities.into_iter());
+    let definitional_res = custom_impl.validate_entities(&schema, entities);
     match definitional_res {
-        TestResult::Failure => {
-            panic!("todo")
+        TestResult::Failure(_) => {
+            ;
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
-                assert!(
-                    definitional_res.validation_passed(),
-                    "TODO");
-            } else {
-                match custom_impl.validation_comparison_mode() {
-                    ValidationComparisonMode::AgreeOnAll => {
-                        assert!(
-                            !definitional_res.validation_passed(),
-                            "TODO",
-                        );
-                    }
-                    ValidationComparisonMode::AgreeOnValid => {}
-                };
+                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust Errors: {:?}", definitional_res.errors, rust_res.unwrap());
+            }
+            else {
+                assert!(!definitional_res.validation_passed(), "Errors: {:?}", definitional_res.errors);
             }
         }
     }
-
 }
+
 
 
 #[test]

@@ -18,7 +18,9 @@
  use cedar_drt::*;
  use cedar_drt_inner::*;
  use cedar_policy_core::ast;
- use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
+ use cedar_policy_core::ast::Entity;
+ use cedar_policy_core::extensions::Extensions;
+ use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
  use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
  use log::{debug, info};
  use serde::Serialize;
@@ -29,8 +31,14 @@
      /// generated schema
      #[serde(skip)]
      pub schema: Schema,
-     /// generated policy
-     pub policy: ABACPolicy,
+    /// generated hierarchy
+    #[serde(skip)]
+    pub hierarchy: Hierarchy,
+    /// the requests to try for this hierarchy and policy. We try 8 requests per
+    /// policy/hierarchy
+    #[serde(skip)]
+    pub requests: [ABACRequest; 8],
+
  }
  
  /// settings for this fuzz target
@@ -51,6 +59,7 @@
  impl<'a> Arbitrary<'a> for FuzzTargetInput {
      fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
          let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+         let hierarchy = schema.arbitrary_hierarchy(u)?;
          let requests = [
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
@@ -61,7 +70,7 @@
             schema.arbitrary_request(&hierarchy, u)?,
             schema.arbitrary_request(&hierarchy, u)?,
         ];
-         Ok(Self { schema, requests })
+         Ok(Self { schema, hierarchy, requests })
      }
  
 //  todo 
@@ -89,9 +98,8 @@
      if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         if let Ok(entities) = Entities::try_from(input.hierarchy) {
-            debug!("Entities: {entities}");
-        let (_, total_dur) =
-            time_function(|| run_ent_val_test(&def_impl, schema, &entities, Extension::all_available()));
+            let (_, total_dur) =
+            time_function(|| run_ent_val_test(&def_impl, schema, entities, Extensions::all_available()));
         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
         }
     }
