@@ -1,6 +1,5 @@
-import Cedar.Validation
+import Cedar.Validation.Validator
 import Cedar.Validation.Typechecker
-
 namespace Cedar.Validation
 
 open Cedar.Spec
@@ -105,10 +104,20 @@ instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entit
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult := schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 
-end Cedar.Validation
-
 
 -- json
 
-deriving instance Lean.ToJson for Cedar.Validation.EntityValidationError
-deriving instance Lean.ToJson for Cedar.Validation.RequestValidationError
+def entityValidationErrorToJson : EntityValidationError → Lean.Json
+  | .typeError x => x
+
+instance : Lean.ToJson EntityValidationError where
+  toJson := entityValidationErrorToJson
+
+def requestValidationErrorToJson : RequestValidationError → Lean.Json
+  | .typeError x => x
+
+instance : Lean.ToJson RequestValidationError where
+  toJson := requestValidationErrorToJson
+
+
+end Cedar.Validation
