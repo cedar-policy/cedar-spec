@@ -1,0 +1,1532 @@
+warning: unused manifest key: dependencies.serde.feature
+warning: unused import: `cedar_policy::Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:23:5
+   |
+23 | use cedar_policy::Entity;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `schema`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:413:13
+    |
+413 |             schema: &ValidatorSchema,
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_schema`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `entities`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:414:13
+    |
+414 |             entities: Entities,
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entities`
+
+warning: unused variable: `schema`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:421:9
+    |
+421 |         schema: &ValidatorSchema,
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_schema`
+
+warning: unused variable: `request`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:422:9
+    |
+422 |         request: &ast::Request,
+    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+   Compiling cedar-drt-inner v0.0.0 (/local/home/bhaktish/cedar-spec/cedar-drt/fuzz)
+warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
+warning: unused import: `cedar_policy::Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
+   |
+17 | use cedar_policy::Entity;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
+   |
+29 | use cedar_policy::{ffi, Entity};
+   |                         ^^^^^^
+
+warning: unused import: `log::debug`
+   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
+    |
+339 |         use log::debug;
+    |             ^^^^^^^^^^
+
+warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
+warning: unnecessary trailing semicolon
+   --> src/lib.rs:336:13
+    |
+336 |             ;
+    |             ^ help: remove this semicolon
+    |
+    = note: `#[warn(redundant_semicolons)]` on by default
+
+warning: unnecessary trailing semicolon
+   --> src/lib.rs:373:13
+    |
+373 |             ;
+    |             ^ help: remove this semicolon
+
+warning: `cedar-drt-inner` (lib) generated 2 warnings
+warning: unused import: `cedar_policy_core::ast`
+  --> fuzz_targets/request-validation.rs:20:6
+   |
+20 |  use cedar_policy_core::ast;
+   |      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `abac::ABACPolicy`
+  --> fuzz_targets/request-validation.rs:22:32
+   |
+22 |  use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
+   |                                ^^^^^^^^^^^^^^^^
+
+warning: `cedar-drt-inner` (bin "request-validation") generated 2 warnings (run `cargo fix --bin "request-validation"` to apply 2 suggestions)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1m 00s
+warning: unused manifest key: dependencies.serde.feature
+warning: unused import: `cedar_policy::Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:23:5
+   |
+23 | use cedar_policy::Entity;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `schema`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:413:13
+    |
+413 |             schema: &ValidatorSchema,
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_schema`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `entities`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:414:13
+    |
+414 |             entities: Entities,
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entities`
+
+warning: unused variable: `schema`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:421:9
+    |
+421 |         schema: &ValidatorSchema,
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_schema`
+
+warning: unused variable: `request`
+   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:422:9
+    |
+422 |         request: &ast::Request,
+    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
+warning: unused import: `cedar_policy::Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
+   |
+17 | use cedar_policy::Entity;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Entity`
+  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
+   |
+29 | use cedar_policy::{ffi, Entity};
+   |                         ^^^^^^
+
+warning: unused import: `log::debug`
+   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
+    |
+339 |         use log::debug;
+    |             ^^^^^^^^^^
+
+warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
+warning: unnecessary trailing semicolon
+   --> src/lib.rs:336:13
+    |
+336 |             ;
+    |             ^ help: remove this semicolon
+    |
+    = note: `#[warn(redundant_semicolons)]` on by default
+
+warning: unnecessary trailing semicolon
+   --> src/lib.rs:373:13
+    |
+373 |             ;
+    |             ^ help: remove this semicolon
+
+warning: `cedar-drt-inner` (lib) generated 2 warnings
+warning: unused import: `cedar_policy_core::ast`
+  --> fuzz_targets/request-validation.rs:20:6
+   |
+20 |  use cedar_policy_core::ast;
+   |      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `abac::ABACPolicy`
+  --> fuzz_targets/request-validation.rs:22:32
+   |
+22 |  use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
+   |                                ^^^^^^^^^^^^^^^^
+
+warning: `cedar-drt-inner` (bin "request-validation") generated 2 warnings (run `cargo fix --bin "request-validation"` to apply 2 suggestions)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.12s
+     Running `fuzz/target/x86_64-unknown-linux-gnu/release/request-validation -artifact_prefix=/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/ /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/corpus/request-validation`
+WARNING: Failed to find function "__sanitizer_acquire_crash_state".
+WARNING: Failed to find function "__sanitizer_print_stack_trace".
+WARNING: Failed to find function "__sanitizer_set_death_callback".
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2704580198
+INFO: Loaded 1 modules   (542784 inline 8-bit counters): 542784 [0x55dd21620848, 0x55dd216a5088), 
+INFO: Loaded 1 PC tables (542784 PCs): 542784 [0x55dd216a5088,0x55dd21eed488), 
+INFO:      366 files found in /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/corpus/request-validation
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 366 min: 27b max: 29b total: 10479b rss: 55Mb
+#367	INITED cov: 6427 ft: 12295 corp: 250/7128b exec/s: 367 rss: 101Mb
+#398	NEW    cov: 6427 ft: 12298 corp: 251/7155b lim: 29 exec/s: 199 rss: 101Mb L: 27/29 MS: 1 CMP- DE: "\377\377\377\226"-
+#404	NEW    cov: 6427 ft: 12299 corp: 252/7184b lim: 29 exec/s: 202 rss: 101Mb L: 29/29 MS: 1 InsertByte-
+#420	NEW    cov: 6427 ft: 12304 corp: 253/7212b lim: 29 exec/s: 210 rss: 101Mb L: 28/29 MS: 1 ChangeByte-
+#421	NEW    cov: 6427 ft: 12306 corp: 254/7241b lim: 29 exec/s: 210 rss: 101Mb L: 29/29 MS: 1 ShuffleBytes-
+#423	NEW    cov: 6427 ft: 12320 corp: 255/7270b lim: 29 exec/s: 211 rss: 101Mb L: 29/29 MS: 2 ChangeBit-CopyPart-
+#448	NEW    cov: 6427 ft: 12321 corp: 256/7299b lim: 29 exec/s: 224 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeByte-ChangeBinInt-ChangeBit-ShuffleBytes-
+#450	NEW    cov: 6427 ft: 12323 corp: 257/7328b lim: 29 exec/s: 225 rss: 101Mb L: 29/29 MS: 2 ShuffleBytes-ChangeBit-
+	NEW_FUNC[1/1]: 0x55dd1fe255a1
+#451	NEW    cov: 6438 ft: 12335 corp: 258/7357b lim: 29 exec/s: 225 rss: 101Mb L: 29/29 MS: 1 CMP- DE: "\003\000\000\000\000\000\000\000\000\001\000\000\000\005\000\000\000V\002\002"-
+#463	NEW    cov: 6439 ft: 12336 corp: 259/7384b lim: 29 exec/s: 231 rss: 101Mb L: 27/29 MS: 2 ChangeASCIIInt-ShuffleBytes-
+#469	NEW    cov: 6439 ft: 12339 corp: 260/7412b lim: 29 exec/s: 234 rss: 101Mb L: 28/29 MS: 1 ChangeByte-
+#480	NEW    cov: 6439 ft: 12343 corp: 261/7441b lim: 29 exec/s: 240 rss: 101Mb L: 29/29 MS: 1 CMP- DE: "\377\377\377\377\377\377\377\377"-
+#505	NEW    cov: 6440 ft: 12344 corp: 262/7470b lim: 29 exec/s: 252 rss: 101Mb L: 29/29 MS: 5 ChangeByte-ChangeBinInt-ShuffleBytes-ChangeByte-ChangeByte-
+#529	NEW    cov: 6440 ft: 12369 corp: 263/7498b lim: 29 exec/s: 264 rss: 101Mb L: 28/29 MS: 4 CopyPart-ChangeByte-ShuffleBytes-EraseBytes-
+#539	NEW    cov: 6440 ft: 12370 corp: 264/7527b lim: 29 exec/s: 269 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeBit-CMP-ChangeBit-InsertByte- DE: "\002\000\000\000\000\000\000\000"-
+#545	NEW    cov: 6440 ft: 12372 corp: 265/7556b lim: 29 exec/s: 272 rss: 101Mb L: 29/29 MS: 1 ChangeBit-
+#548	NEW    cov: 6440 ft: 12373 corp: 266/7584b lim: 29 exec/s: 274 rss: 101Mb L: 28/29 MS: 3 ChangeByte-ChangeBinInt-CMP- DE: "descendant"-
+#551	NEW    cov: 6441 ft: 12374 corp: 267/7613b lim: 29 exec/s: 275 rss: 101Mb L: 29/29 MS: 3 ChangeBit-ChangeBinInt-ChangeByte-
+#618	NEW    cov: 6443 ft: 12376 corp: 268/7642b lim: 29 exec/s: 309 rss: 101Mb L: 29/29 MS: 2 ChangeByte-PersAutoDict- DE: "\003\000\000\000\000\000\000\000\000\001\000\000\000\005\000\000\000V\002\002"-
+#619	NEW    cov: 6443 ft: 12377 corp: 269/7671b lim: 29 exec/s: 309 rss: 101Mb L: 29/29 MS: 1 CopyPart-
+#630	NEW    cov: 6444 ft: 12381 corp: 270/7698b lim: 29 exec/s: 315 rss: 101Mb L: 27/29 MS: 1 EraseBytes-
+#631	NEW    cov: 6444 ft: 12382 corp: 271/7727b lim: 29 exec/s: 315 rss: 101Mb L: 29/29 MS: 1 PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
+#633	NEW    cov: 6444 ft: 12383 corp: 272/7756b lim: 29 exec/s: 316 rss: 101Mb L: 29/29 MS: 2 ChangeByte-ChangeBit-
+#645	NEW    cov: 6444 ft: 12396 corp: 273/7785b lim: 29 exec/s: 322 rss: 101Mb L: 29/29 MS: 2 ChangeBinInt-CrossOver-
+#651	NEW    cov: 6444 ft: 12398 corp: 274/7814b lim: 29 exec/s: 325 rss: 101Mb L: 29/29 MS: 1 CrossOver-
+#658	NEW    cov: 6444 ft: 12400 corp: 275/7842b lim: 29 exec/s: 329 rss: 101Mb L: 28/29 MS: 2 InsertByte-PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
+#665	NEW    cov: 6445 ft: 12401 corp: 276/7870b lim: 29 exec/s: 332 rss: 101Mb L: 28/29 MS: 2 CrossOver-ChangeByte-
+#681	NEW    cov: 6445 ft: 12410 corp: 277/7899b lim: 29 exec/s: 340 rss: 101Mb L: 29/29 MS: 1 CrossOver-
+#706	NEW    cov: 6445 ft: 12415 corp: 278/7928b lim: 29 exec/s: 353 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeBit-ChangeBinInt-CrossOver-ChangeBinInt-
+#726	NEW    cov: 6445 ft: 12417 corp: 279/7957b lim: 29 exec/s: 363 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-EraseBytes-InsertByte-ChangeBinInt-CMP- DE: "R\000\000\000"-
+	NEW_FUNC[1/1]: 0x55dd1f161e91
+#731	NEW    cov: 6451 ft: 12426 corp: 280/7986b lim: 29 exec/s: 365 rss: 101Mb L: 29/29 MS: 5 EraseBytes-ShuffleBytes-ChangeByte-EraseBytes-InsertRepeatedBytes-
+#791	NEW    cov: 6451 ft: 12496 corp: 281/8015b lim: 29 exec/s: 395 rss: 102Mb L: 29/29 MS: 5 ChangeBinInt-ShuffleBytes-ShuffleBytes-CopyPart-PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
+thread '<unnamed>' panicked at /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/src/lib.rs:340:17:
+Definitional Errors: ["resource"]
+, Rust output: Request { principal: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("A"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, action: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [], loc: Some(Loc { span: SourceSpan { offset: SourceOffset(0), length: 6 }, src: "Action" }) })), eid: Eid("action"), loc: None }, loc: None }, resource: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("A"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, context: Some(Value({})) }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+==5598== ERROR: libFuzzer: deadly signal
+NOTE: libFuzzer has rudimentary signal handlers.
+      Combine libFuzzer with AddressSanitizer or similar for better crash reports.
+SUMMARY: libFuzzer: deadly signal
+MS: 5 CrossOver-CopyPart-ChangeBit-ChangeBinInt-CopyPart-; base unit: a668512e8f9a9c814e1d557f32b6b96e20b6d55b
+0x22,0x5d,0x0,0x0,0x3f,0x26,0x1,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xf7,0x0,0x0,0x0,0x0,0x7,0x0,0x0,0x0,0x7,0x0,0xfe,0x1e,0x0,0x28,
+\"]\000\000?&\001\000\000\000\000\000\000\000\367\000\000\000\000\007\000\000\000\007\000\376\036\000(
+artifact_prefix='/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/'; Test unit written to /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+Base64: Il0AAD8mAQAAAAAAAAD3AAAAAAcAAAAHAP4eACg=
+
+────────────────────────────────────────────────────────────────────────────────
+
+Failing input:
+
+	fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+
+Output of `std::fmt::Debug`:
+
+	FuzzTargetInput {
+	    schema: Schema {
+	        schema: NamespaceDefinition {
+	            common_types: {},
+	            entity_types: {
+	                UnreservedId(
+	                    Id(
+	                        "B0000",
+	                    ),
+	                ): EntityType {
+	                    member_of_types: [],
+	                    shape: AttributesOrContext(
+	                        Type(
+	                            Record {
+	                                attributes: {
+	                                    "A": TypeOfAttribute {
+	                                        ty: Type(
+	                                            String,
+	                                        ),
+	                                        required: true,
+	                                    },
+	                                },
+	                                additional_attributes: false,
+	                            },
+	                        ),
+	                    ),
+	                },
+	                UnreservedId(
+	                    Id(
+	                        "A",
+	                    ),
+	                ): EntityType {
+	                    member_of_types: [
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "B0000",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ],
+	                    shape: AttributesOrContext(
+	                        Type(
+	                            Record {
+	                                attributes: {},
+	                                additional_attributes: false,
+	                            },
+	                        ),
+	                    ),
+	                },
+	            },
+	            actions: {
+	                "action": ActionType {
+	                    attributes: None,
+	                    applies_to: Some(
+	                        ApplySpec {
+	                            resource_types: [
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "A",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "B0000",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                            ],
+	                            principal_types: [
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "A",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                            ],
+	                            context: AttributesOrContext(
+	                                Type(
+	                                    Record {
+	                                        attributes: {},
+	                                        additional_attributes: false,
+	                                    },
+	                                ),
+	                            ),
+	                        },
+	                    ),
+	                    member_of: Some(
+	                        [],
+	                    ),
+	                },
+	            },
+	        },
+	        namespace: None,
+	        settings: ABACSettings {
+	            match_types: false,
+	            enable_extensions: true,
+	            max_depth: 7,
+	            max_width: 7,
+	            enable_additional_attributes: true,
+	            enable_like: true,
+	            enable_action_groups_and_attrs: true,
+	            enable_arbitrary_func_call: true,
+	            enable_unknowns: false,
+	            enable_unspecified_apply_spec: true,
+	            enable_action_in_constraints: true,
+	        },
+	        constant_pool: ConstantPool {
+	            int_constants: [],
+	            string_constants: [],
+	        },
+	        unknown_pool: UnknownPool {
+	            unknowns: RefCell {
+	                value: HashMap(
+	                    {},
+	                ),
+	            },
+	        },
+	        ext_funcs: AvailableExtensionFunctions {
+	            constructors: [
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "ip",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: true,
+	                    parameter_types: [
+	                        String,
+	                    ],
+	                    return_ty: IPAddr,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "decimal",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: true,
+	                    parameter_types: [
+	                        String,
+	                    ],
+	                    return_ty: Decimal,
+	                },
+	            ],
+	            all: [
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "ip",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: true,
+	                    parameter_types: [
+	                        String,
+	                    ],
+	                    return_ty: IPAddr,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "isIpv4",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        IPAddr,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "isIpv6",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        IPAddr,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "isLoopback",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        IPAddr,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "isMulticast",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        IPAddr,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "isInRange",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        IPAddr,
+	                        IPAddr,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "decimal",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: true,
+	                    parameter_types: [
+	                        String,
+	                    ],
+	                    return_ty: Decimal,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "lessThan",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        Decimal,
+	                        Decimal,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "lessThanOrEqual",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        Decimal,
+	                        Decimal,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "greaterThan",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        Decimal,
+	                        Decimal,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	                AvailableExtensionFunction {
+	                    name: Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "greaterThanOrEqual",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                    is_constructor: false,
+	                    parameter_types: [
+	                        Decimal,
+	                        Decimal,
+	                    ],
+	                    return_ty: Bool,
+	                },
+	            ],
+	            constructors_by_type: HashMap(
+	                {},
+	            ),
+	            all_by_type: HashMap(
+	                {},
+	            ),
+	        },
+	        entity_types: [
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "A",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "B0000",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	        ],
+	        principal_types: [
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "A",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	        ],
+	        actions_eids: [
+	            Eid(
+	                "action",
+	            ),
+	        ],
+	        resource_types: [
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "B0000",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "A",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	        ],
+	        attributes: [
+	            (
+	                "A",
+	                Type(
+	                    String,
+	                ),
+	            ),
+	        ],
+	        attributes_by_type: HashMap(
+	            {
+	                String: [
+	                    (
+	                        EntityType(
+	                            Name(
+	                                UncheckedName {
+	                                    id: Id(
+	                                        "B0000",
+	                                    ),
+	                                    path: [],
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                        "A",
+	                    ),
+	                ],
+	            },
+	        ),
+	    },
+	    hierarchy: Hierarchy {
+	        entities: HashMap(
+	            {
+	                EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "B0000",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                }: Entity {
+	                    uid: EntityUID {
+	                        ty: EntityType(
+	                            Name(
+	                                UncheckedName {
+	                                    id: Id(
+	                                        "B0000",
+	                                    ),
+	                                    path: [],
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                        eid: Eid(
+	                            "",
+	                        ),
+	                        loc: None,
+	                    },
+	                    attrs: {
+	                        "A": PartialValueSerializedAsExpr(
+	                            Value(
+	                                Value {
+	                                    value: Lit(
+	                                        String(
+	                                            "",
+	                                        ),
+	                                    ),
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                    },
+	                    ancestors: {},
+	                },
+	                EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                }: Entity {
+	                    uid: EntityUID {
+	                        ty: EntityType(
+	                            Name(
+	                                UncheckedName {
+	                                    id: Id(
+	                                        "A",
+	                                    ),
+	                                    path: [],
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                        eid: Eid(
+	                            "",
+	                        ),
+	                        loc: None,
+	                    },
+	                    attrs: {},
+	                    ancestors: {
+	                        EntityUID {
+	                            ty: EntityType(
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "B0000",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                            ),
+	                            eid: Eid(
+	                                "",
+	                            ),
+	                            loc: None,
+	                        },
+	                    },
+	                },
+	            },
+	        ),
+	        uids: [
+	            EntityUID {
+	                ty: EntityType(
+	                    Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "B0000",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                ),
+	                eid: Eid(
+	                    "",
+	                ),
+	                loc: None,
+	            },
+	            EntityUID {
+	                ty: EntityType(
+	                    Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "A",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                ),
+	                eid: Eid(
+	                    "",
+	                ),
+	                loc: None,
+	            },
+	        ],
+	        uids_by_type: HashMap(
+	            {
+	                EntityType(
+	                    Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "B0000",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                ): EntityUIDs {
+	                    indices: HashMap(
+	                        {
+	                            EntityUID {
+	                                ty: EntityType(
+	                                    Name(
+	                                        UncheckedName {
+	                                            id: Id(
+	                                                "B0000",
+	                                            ),
+	                                            path: [],
+	                                            loc: None,
+	                                        },
+	                                    ),
+	                                ),
+	                                eid: Eid(
+	                                    "",
+	                                ),
+	                                loc: None,
+	                            }: 0,
+	                        },
+	                    ),
+	                    uids: [
+	                        EntityUID {
+	                            ty: EntityType(
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "B0000",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                            ),
+	                            eid: Eid(
+	                                "",
+	                            ),
+	                            loc: None,
+	                        },
+	                    ],
+	                },
+	                EntityType(
+	                    Name(
+	                        UncheckedName {
+	                            id: Id(
+	                                "A",
+	                            ),
+	                            path: [],
+	                            loc: None,
+	                        },
+	                    ),
+	                ): EntityUIDs {
+	                    indices: HashMap(
+	                        {
+	                            EntityUID {
+	                                ty: EntityType(
+	                                    Name(
+	                                        UncheckedName {
+	                                            id: Id(
+	                                                "A",
+	                                            ),
+	                                            path: [],
+	                                            loc: None,
+	                                        },
+	                                    ),
+	                                ),
+	                                eid: Eid(
+	                                    "",
+	                                ),
+	                                loc: None,
+	                            }: 0,
+	                        },
+	                    ),
+	                    uids: [
+	                        EntityUID {
+	                            ty: EntityType(
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "A",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                            ),
+	                            eid: Eid(
+	                                "",
+	                            ),
+	                            loc: None,
+	                        },
+	                    ],
+	                },
+	            },
+	        ),
+	        entity_types: [
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "B0000",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "A",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	        ],
+	    },
+	    requests: [
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	        ABACRequest(
+	            Request {
+	                principal: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                action: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "Action",
+	                                ),
+	                                path: [],
+	                                loc: Some(
+	                                    Loc {
+	                                        span: SourceSpan {
+	                                            offset: SourceOffset(
+	                                                0,
+	                                            ),
+	                                            length: 6,
+	                                        },
+	                                        src: "Action",
+	                                    },
+	                                ),
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "action",
+	                    ),
+	                    loc: None,
+	                },
+	                resource: EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "A",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                },
+	                context: Value(
+	                    {},
+	                ),
+	            },
+	        ),
+	    ],
+	}
+
+Reproduce with:
+
+	cargo fuzz run --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+
+Minimize test case with:
+
+	cargo fuzz tmin --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+
+────────────────────────────────────────────────────────────────────────────────
+
+Error: Fuzz target exited with exit status: 77

@@ -337,19 +337,10 @@ pub fn run_req_val_test(
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
-                assert!(
-                    definitional_res.validation_passed(),
-                    "TODO");
-            } else {
-                match custom_impl.validation_comparison_mode() {
-                    ValidationComparisonMode::AgreeOnAll => {
-                        assert!(
-                            !definitional_res.validation_passed(),
-                            "TODO",
-                        );
-                    }
-                    ValidationComparisonMode::AgreeOnValid => {}
-                };
+                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust output: {:?}", definitional_res.errors, rust_res.unwrap());
+            }
+            else {
+                assert!(!definitional_res.validation_passed(), "Errors: {:?}", definitional_res.errors);
             }
         }
     }
@@ -383,7 +374,7 @@ pub fn run_ent_val_test(
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
-                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust Errors: {:?}", definitional_res.errors, rust_res.unwrap());
+                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust output: {:?}", definitional_res.errors, rust_res.unwrap());
             }
             else {
                 assert!(!definitional_res.validation_passed(), "Errors: {:?}", definitional_res.errors);
