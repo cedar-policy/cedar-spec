@@ -91,7 +91,7 @@ For every action in the entity store, the action's ancestors are consistent
 with the ancestor information in the action store.
 -/
 def instanceOfActionSchema (entities : Entities) (as : ActionSchema) : EntityValidationResult :=
-entities.toList.forM (λ (uid, data) => match as.find? uid with
+as.toList.forM (λ (uid, data) => match entities.find? uid with
   | .some entry => if data.ancestors == entry.ancestors then .ok () else .error (.typeError "action ancestors inconsistent with type store information")
   | _ => .error (.typeError "action type not defined in type store"))
 
