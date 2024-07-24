@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Data.SizeOf
 
 namespace Cedar.Validation
 open Cedar.Data
@@ -40,6 +41,13 @@ inductive Qualified (α : Type u) where
   | optional (a : α)
   | required (a : α)
 
+instance : Functor Qualified where
+  map f q :=
+    match q with
+    | .optional x => .optional (f x)
+    | .required x => .required (f x)
+
+
 def Qualified.getType {α} : Qualified α → α
   | optional a => a
   | required a => a
@@ -48,14 +56,103 @@ def Qualified.isRequired {α} : Qualified α → Bool
   | optional _ => false
   | required _ => true
 
+abbrev Level := Option Nat
+
+def Level.finite (n : Nat) : Level := .some n
+
+def Level.zero : Level := Level.finite 0
+
+def Level.infinite : Level := .none
+
+def Level.sub1 (l : Level) : Level :=
+  match l with
+  | .some n => .some (n - 1)
+  | .none => .none
+
+def Level.isInfinite (l : Level) : Bool := l.isNone
+
+
+inductive LevelLT : Level → Level → Prop where
+  | finite₁ : ∀ n₁ n₂,
+    n₁ < n₂ →
+    LevelLT (.some n₁) (.some n₂)
+  | finite₂ : ∀ n₁,
+    LevelLT (.some n₁) .none
+
+-- Is there a way to get an anymous inductive?
+instance : LT Level where
+  lt := LevelLT
+
+instance (l₁ l₂ : Level) : Decidable (l₁ < l₂) := by
+  cases l₁ <;> cases l₂
+  case some.some n₁ n₂ =>
+    cases hlt : decide (n₁ < n₂)
+    case false =>
+      apply isFalse
+      simp at hlt
+      intros h
+      cases h
+      case _ h₁ =>
+        omega
+    case true =>
+      apply isTrue
+      apply LevelLT.finite₁
+      apply of_decide_eq_true
+      apply hlt
+  case some.none n =>
+    apply isTrue
+    apply LevelLT.finite₂
+  case none.some n =>
+    apply isFalse
+    intros h
+    cases h
+  case none.none =>
+    apply isFalse
+    intros h
+    cases h
+
+deriving instance DecidableEq for Level
+
+instance : LE Level where
+  le l₁ l₂ := if l₁ == l₂ then true else if l₁ < l₂ then true else false
+
+
 inductive CedarType where
   | bool (bty : BoolType)
   | int
   | string
-  | entity (ety : EntityType)
+  | entity (ty : EntityType) (l : Level)
   | set (ty : CedarType)
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
+
+
+
+def level (ty : CedarType) : Level :=
+  match ty with
+  | .bool _
+  | .int
+  | .string
+  | .set _
+  | .ext _ => .infinite
+  | .record fields =>
+    let levels : List Level := fields.kvs.map₁ (λ kv => level kv.val.snd.getType)
+    levels.foldl min .infinite
+  | .entity _ level => level
+termination_by sizeOf ty
+decreasing_by
+  simp_wf
+  have h₁ : sizeOf kv.val < sizeOf fields.kvs := by
+    apply List.sizeOf_lt_of_mem
+    apply kv.property
+  have h₂ : sizeOf kv.val.snd.getType < sizeOf kv.val := by
+    cases kv.val
+    case mk fst snd =>
+      cases snd <;> simp [Qualified.getType] <;> omega
+  have h₃ : sizeOf fields.kvs < sizeOf fields := by
+    apply Cedar.Data.Map.sizeOf_lt_of_kvs
+  omega
+
 
 abbrev QualifiedType := Qualified CedarType
 
@@ -103,9 +200,9 @@ structure Schema where
   acts : ActionSchema
 
 structure RequestType where
-  principal : EntityType
-  action : EntityUID
-  resource : EntityType
+  principal : EntityType × Level
+  action : (EntityUID × Level)
+  resource : EntityType × Level
   context : RecordType
 
 structure Environment where
@@ -135,8 +232,10 @@ def decCedarType (a b : CedarType) : Decidable (a = b) := by
   case set.set t1 t2 => exact match decCedarType t1 t2 with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case entity.entity lub1 lub2 => exact match decEq lub1 lub2 with
-    | isTrue h => isTrue (by rw [h])
+  case entity.entity lub1 l1 lub2 l2 => exact match decEq lub1 lub2 with
+    | isTrue h => match decEq l1 l2 with
+      | isTrue h' => isTrue (by rw [h]; rw[h'])
+      | isFalse _ => isFalse (by intro h; injection h; contradiction)
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record r1 r2 => exact match decAttrQualifiedCedarTypeMap r1 r2 with
     | isTrue h => isTrue (by rw [h])

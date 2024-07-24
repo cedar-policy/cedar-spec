@@ -26,20 +26,20 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.and x₁ x₂) c env = Except.ok (ty, c')) :
+theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.and x₁ x₂) c env (l == Level.infinite) = Except.ok (ty, c')) :
   ∃ bty₁ c₁,
-    typeOf x₁ c env = .ok (.bool bty₁, c₁) ∧
+    typeOf x₁ c env (l == Level.infinite) = .ok (.bool bty₁, c₁) ∧
     if bty₁ = BoolType.ff
     then ty = .bool BoolType.ff ∧ c' = ∅
     else ∃ bty₂ c₂,
-      typeOf x₂ (c ∪ c₁) env = .ok (.bool bty₂, c₂) ∧
+      typeOf x₂ (c ∪ c₁) env (l == Level.infinite) = .ok (.bool bty₂, c₂) ∧
       if bty₂ = BoolType.ff
       then ty = .bool BoolType.ff ∧ c' = ∅
       else ty = .bool (lubBool bty₁ bty₂) ∧ c' = c₁ ∪ c₂
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at *
+  cases h₂ : typeOf x₁ c env (l == Level.infinite) <;> simp [h₂] at *
   rename_i res₁
   simp [typeOfAnd] at h₁
   split at h₁ <;> simp [ok, err] at h₁
@@ -55,7 +55,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     have ⟨hty₁, hc₁⟩ := h₄
     simp [←hty₁, ←hc₁]
     split ; contradiction
-    cases h₄ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₄] at *
+    cases h₄ : typeOf x₂ (c ∪ res₁.snd) env (l == Level.infinite) <;> simp [h₄] at *
     rename_i res₂
     split at h₁ <;> simp at h₁ <;>
     have ⟨hty, hc⟩ := h₁ <;> subst hty hc
@@ -72,10 +72,10 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
       · simp [h₆]
       · rfl
 
-theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l: Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.and x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.and x₁ x₂) c₁ env (l == Level.infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.and x₁ x₂) c₂ request entities ∧

@@ -17,8 +17,10 @@
 import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
+import Cedar.Thm.Validation.WellFormed
 import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.RequestEntityValidation
+import Cedar.Thm.Validation.Levels
 
 /-!
 This file contains the top-level correctness properties for the Cedar validator.
@@ -41,14 +43,14 @@ either produces a boolean value, or throws an error of type `entityDoesNotExist`
 information.
 -/
 
-theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
-  validate policies schema = .ok () →
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
+theorem validation_is_sound (policies : Policies) (schema : Schema) (l : Level) (request : Request) (entities : Entities) :
+  validate policies schema l = .ok () →
+  validateRequest schema request l = .ok () →
+  validateEntities schema entities l = .ok () →
   AllEvaluateToBool policies request entities
 := by
   intro h₀ h₁ h₂
-  have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
+  have h₁ := request_and_entities_validate_implies_match_schema schema request entities l h₁ h₂
   unfold validate at h₀
   simp only [AllEvaluateToBool]
   cases h₃ : policies with
@@ -56,10 +58,10 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
   | cons h' t' =>
     intro policy pin
     simp only [EvaluatesToBool]
-    apply typecheck_policy_with_environments_is_sound policy schema.toEnvironments request entities h₁
+    apply typecheck_policy_with_environments_is_sound policy (schema.toEnvironments l) request entities l h₁
     subst h₃
     simp only [List.forM_cons'] at h₀
-    cases h₄ : (typecheckPolicyWithEnvironments h' schema.toEnvironments) <;>
+    cases h₄ : (typecheckPolicyWithEnvironments l h' (schema.toEnvironments l)) <;>
     simp only [h₄, Except.bind_err] at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
@@ -68,7 +70,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
         subst h₅
         assumption
       | inr h₅ =>
-      apply List.forM_ok_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
+      apply List.forM_ok_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments l x (schema.toEnvironments l))
       repeat assumption
 
 end Cedar.Thm

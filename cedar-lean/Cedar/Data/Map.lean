@@ -88,6 +88,23 @@ def size {α β} (m : Map α β) : Nat :=
 def mapOnValues {α β γ} [LT α] [DecidableLT α] (f : β → γ) (m : Map α β) : Map α γ :=
   Map.mk (m.kvs.map (λ (k, v) => (k, f v)))
 
+def mapOnValuesAttach {α β γ} [LT α] [DecidableLT α] (m : Map α β) (f : {x : β // ∃ (k : α), (k,x) ∈ m.kvs} → γ) : Map α γ :=
+  let wrapper (prod : {x // x ∈ m.kvs}) : {x // ∃ k, (k,x) ∈ m.kvs} :=
+    let property : ∃ k, (k, prod.val.snd) ∈ m.kvs := by
+      have h := prod.property
+      cases heq : prod.val
+      rename_i fst snd
+      exists fst
+      simp
+      rw [← heq]
+      assumption
+    { val := prod.val.snd, property := property }
+  let f' (prod : {x // x ∈ m.kvs}) :=
+    let key := prod.val.fst
+    let value := wrapper prod
+    (key, f value)
+  Map.mk (m.kvs.map₁ (λ p => f' p))
+
 def mapOnKeys {α β γ} [LT γ] [DecidableLT γ] (f : α → γ) (m : Map α β) : Map γ β :=
   Map.make (m.kvs.map (λ (k, v) => (f k, v)))
 
@@ -98,6 +115,14 @@ def mapMOnValues {α β γ} [LT α] [DecidableLT α] [Monad m] (f : β → m γ)
 def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (map : Map α β) : m (Map γ β) := do
   let kvs ← map.kvs.mapM (λ (k, v) => f k >>= λ k' => pure (k', v))
   pure (Map.make kvs)
+
+
+
+def Equiv {α β} [LT α] [DecidableLT α] [BEq α] (m₁ m₂ : Map α β) : Prop :=
+  ∀ (k : α),
+    m₁.find? k = m₂.find? k
+
+infix:50 " ≃ " => Equiv
 
 ----- Instances -----
 

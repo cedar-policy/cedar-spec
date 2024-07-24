@@ -51,6 +51,11 @@ mutual
     | .set s₁, .set s₂ => do
       let lub ← lub? s₁ s₂
       .some (.set lub)
+    | .entity t₁ l₁, .entity  t₂ l₂ =>
+      if t₁ == t₂ then
+        .some (.entity t₁ (min l₁ l₂))
+      else
+        .none
     | .record (.mk r₁), .record (.mk r₂) => do
       let lub ← lubRecordType r₁ r₂
       .some (.record (Map.mk lub))

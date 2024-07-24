@@ -127,6 +127,19 @@ instance : Coe Value (Result (Data.Set Value)) where
 
 ----- Derivations -----
 
+instance : LawfulBEq Attr where
+  rfl := by
+    intros a
+    simp
+  eq_of_beq := by
+    intros a b h
+    unfold Attr at a
+    unfold Attr at b
+    apply LawfulBEq.eq_of_beq
+    assumption
+
+
+deriving instance Repr, DecidableEq, BEq, LT  for Attr
 deriving instance Repr, DecidableEq, BEq for Except
 deriving instance Repr, DecidableEq for Error
 deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for Name

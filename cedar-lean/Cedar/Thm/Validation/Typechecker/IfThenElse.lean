@@ -25,29 +25,29 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.ite x₁ x₂ x₃) c env = Except.ok (ty, c')) :
+theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.ite x₁ x₂ x₃) c env (l == .infinite) = Except.ok (ty, c')) :
   ∃ bty₁ c₁ ty₂ c₂ ty₃ c₃,
-    typeOf x₁ c env = .ok (.bool bty₁, c₁) ∧
+    typeOf x₁ c env (l == .infinite) = .ok (.bool bty₁, c₁) ∧
     match bty₁ with
     | .ff      =>
-      typeOf x₃ c env = .ok (ty₃, c₃) ∧ ty = ty₃ ∧ c' = c₃
+      typeOf x₃ c env (l == .infinite) = .ok (ty₃, c₃) ∧ ty = ty₃ ∧ c' = c₃
     | .tt      =>
-      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
+      typeOf x₂ (c ∪ c₁) env (l == .infinite) = .ok (ty₂, c₂) ∧
       ty = ty₂ ∧ c' = c₁ ∪ c₂
     | .anyBool =>
-      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
-      typeOf x₃ c env = .ok (ty₃, c₃) ∧
+      typeOf x₂ (c ∪ c₁) env (l == .infinite) = .ok (ty₂, c₂) ∧
+      typeOf x₃ c env (l == .infinite) = .ok (ty₃, c₃) ∧
       (ty₂ ⊔ ty₃) = (.some ty) ∧ c' = (c₁ ∪ c₂) ∩ c₃
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c env <;> simp [h₂, typeOfIf] at *
+  cases h₂ : typeOf x₁ c env (l == .infinite) <;> simp [h₂, typeOfIf] at *
   rename_i res₁
   split at h₁ <;> try { simp [ok, err] at h₁ } <;>
   rename_i c₁ hr₁ <;> simp at hr₁ <;> have ⟨ht₁, hc₁⟩ := hr₁
   case ok.h_1 =>
     exists BoolType.tt, res₁.snd ; simp [←ht₁]
-    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
+    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env (l == .infinite) <;> simp [h₃] at h₁
     rename_i res₂ ; simp [ok] at h₁
     have ⟨ht₂, hc₂⟩ := h₁
     exists res₂.fst, res₂.snd
@@ -58,8 +58,8 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     exists ty
   case ok.h_3 =>
     exists BoolType.anyBool, res₁.snd ; simp [←ht₁]
-    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
-    cases h₄ : typeOf x₃ c env <;> simp [h₄] at h₁
+    cases h₃ : typeOf x₂ (c ∪ res₁.snd) env (l == .infinite) <;> simp [h₃] at h₁
+    cases h₄ : typeOf x₃ c env  (l == .infinite)<;> simp [h₄] at h₁
     split at h₁ <;> simp [ok, err] at h₁
     rename_i ty' res₂ res₃ _ ty' hty
     have ⟨ht, hc⟩ := h₁
@@ -68,10 +68,10 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     simp only [Except.ok.injEq, true_and]
     exists res₃.fst, res₃.snd
 
-theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.ite x₁ x₂ x₃) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.ite x₁ x₂ x₃) c₁ env  (l == .infinite)= Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂)
   (ih₃ : TypeOfIsSound x₃) :
