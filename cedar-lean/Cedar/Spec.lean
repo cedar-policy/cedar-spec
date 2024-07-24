@@ -18,6 +18,7 @@ import Cedar.Spec.Authorizer
 import Cedar.Spec.Entities
 import Cedar.Spec.Evaluator
 import Cedar.Spec.Expr
+import Cedar.Spec.EntitySlice
 import Cedar.Spec.Ext
 import Cedar.Spec.Policy
 import Cedar.Spec.Request

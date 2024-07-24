@@ -23,6 +23,26 @@ import Cedar.Data.Set
   `Cedar/Partial`, and our convention prevents files in `Cedar/Spec` or
   `Cedar/Partial` from depending on lemmas in `Cedar/Thm`.
 -/
+namespace Cedar.Data.List
+theorem in_lists_means_smaller [SizeOf α] (x : α) (list : List α)
+  (h : x ∈ list) :
+  sizeOf x < sizeOf list
+  := by
+  cases list
+  case nil =>
+    cases h
+  case cons head tail =>
+    cases h
+    case _ =>
+      simp
+      omega
+    case _ in_tail =>
+      have step : sizeOf x < sizeOf tail := by
+        apply in_lists_means_smaller
+        assumption
+      simp
+      omega
+end Cedar.Data.List
 
 namespace Cedar.Data.Map
 
@@ -57,6 +77,25 @@ theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
   conv => rhs ; unfold sizeOf _sizeOf_inst _sizeOf_1 ; simp only
   generalize sizeOf m.1 = s
   omega
+
+
+theorem sizeOf_lt_of_in_values [SizeOf α] [SizeOf β] {m : Map α β} {v : β}
+  (h : v ∈ m.values) :
+  sizeOf v < sizeOf m
+  := by
+  simp [Map.values] at h
+  replace ⟨k, h⟩ := h
+  have step₁ : sizeOf v < sizeOf (k,v) := by
+    simp
+    omega
+  have step₂ : sizeOf m.kvs < sizeOf m := by
+    apply sizeOf_lt_of_kvs
+  have step₃ : sizeOf (k,v) < sizeOf m.kvs := by
+    apply List.in_lists_means_smaller
+    apply h
+
+  omega
+
 
 theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α × β)}
   (h : m.kvs = (k, v) :: tl) :

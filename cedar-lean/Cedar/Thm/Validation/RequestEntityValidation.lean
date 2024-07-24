@@ -60,7 +60,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         contradiction
     | entityUID uid =>
       cases ty
-      case entity ety =>
+      case entity ety l =>
         apply InstanceOfType.instance_of_entity uid ety
         apply instance_of_entity_type_refl
         assumption
@@ -263,10 +263,10 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
   exact instance_of_entity_schema_refl entities env.ets h₂
   exact instance_of_action_schema_refl entities env.acts h₁
 
-theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
-  RequestAndEntitiesMatchSchema schema request entities
+theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) (l : Level) :
+  validateRequest schema request l = .ok () →
+  validateEntities schema entities l = .ok () →
+  RequestAndEntitiesMatchSchema schema request entities l
 := by
   intro h₀ h₁
   simp only [RequestAndEntitiesMatchSchema]
@@ -279,5 +279,5 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
   exact h₀
   apply request_and_entities_match_env
   exact h₂
-  have h₃ := List.forM_ok_implies_all_ok schema.toEnvironments (fun x => entitiesMatchEnvironment x entities) h₁ env h₀
+  have h₃ := List.forM_ok_implies_all_ok (schema.toEnvironments l) (fun x => entitiesMatchEnvironment x entities) h₁ env h₀
   simp only [h₃]
