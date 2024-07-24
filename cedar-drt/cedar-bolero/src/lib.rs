@@ -38,11 +38,54 @@ pub use cedar_testing::cedar_test_impl::{
 };
 use log::info;
 use miette::miette;
+use serde::Serialize;
 use std::collections::HashSet;
 
 /// Times for cedar-policy authorization and validation.
 pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
 pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
+/// Test format for Tyche visualizer
+
+pub trait TestCaseFormat {
+    fn to_fuzz_test_case(&self) -> FuzzTestCase;
+    fn to_json(&self) -> String {
+        serde_json::to_string(&self.to_fuzz_test_case()).unwrap()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum FuzzOutcome {
+    Success,
+    Invalid,
+    Failure,
+}
+
+impl FuzzOutcome {
+    pub fn to_string(&self) -> String {
+        match self {
+            FuzzOutcome::Success => "success".to_string(),
+            FuzzOutcome::Invalid => "gave_up".to_string(),
+            FuzzOutcome::Failure => "failure".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct FuzzTestCase {
+    pub status: String,
+    pub status_reason: String,
+    pub representation: String,
+}
+
+impl Default for FuzzTestCase {
+    fn default() -> Self {
+        Self {
+            status: "passed".to_string(),
+            status_reason: String::new(),
+            representation: String::new(),
+        }
+    }
+}
 
 /// Compare the behavior of the partial evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to

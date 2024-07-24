@@ -32,6 +32,8 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
+use crate::FuzzTestCase;
+
 /// Dump testcase to a directory.
 ///
 /// `dirname`: directory in which to dump the data for the testcase. Will be
@@ -245,4 +247,21 @@ fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
     serde_json::to_value(context)
         .expect("failed to serialize context")
         .into()
+}
+
+pub fn dump_fuzz_test_case(dirname: &str, test_name: &str, obs: &FuzzTestCase) {
+    // Make a directory called tyche-out/ in the current directory
+    let tyche_out = Path::new(dirname);
+    std::fs::create_dir_all(tyche_out).expect("Error creating tyche-out directory");
+
+    // Make a file in tyche-out with the name of the test followed by _testcases.jsonl
+    let obs_file_path = tyche_out.join(format!("{}_testcases.jsonl", test_name));
+
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(obs_file_path)
+        .unwrap();
+    let obs_out_json = serde_json::to_value(&obs).unwrap();
+    writeln!(file, "{}", obs_out_json).expect("Error writing to tyche file");
 }

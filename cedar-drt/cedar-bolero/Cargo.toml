@@ -48,3 +48,11 @@ harness = false
 [[test]]
 name = "raw_convert_policy_est_to_cedar"
 harness = false
+
+[[test]]
+name = "abac_type_directed"
+harness = false
+
+[[test]]
+name = "validation_drt_type_directed"
+harness = false
