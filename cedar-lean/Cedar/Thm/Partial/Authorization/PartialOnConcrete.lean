@@ -21,7 +21,7 @@ import Cedar.Partial.Authorizer
 import Cedar.Partial.Response
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Partial.Evaluation
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 
 /-!
   This file contains lemmas about the behavior of partial authorization on
@@ -47,7 +47,7 @@ theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Re
 := by
   unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
   simp only [List.filterMap_filterMap, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq]
-  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
+  simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
   simp only [Set.make_make_eqv, List.Equiv, List.subset_def]
   simp only [List.mem_filterMap, Option.bind_eq_some, ite_some_none_eq_some, forall_exists_index, and_imp]
   constructor <;> intro pid policy h₁
@@ -109,7 +109,7 @@ theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Reque
   cond = .value true
 := by
   unfold Partial.isAuthorized
-  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map,
+  simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf, Except.map,
     List.mem_filterMap, forall_exists_index, and_imp]
   intro policy _
   have h₂ := policy_produces_bool_or_error (p := policy) (request := req) (entities := entities)
@@ -206,7 +206,7 @@ theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request
       replace ⟨policy, h₁, h₂⟩ := h₁
       exists policy
       apply And.intro h₁
-      simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf] at h₂
+      simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf] at h₂
       split <;> split at h₂
       <;> simp only [Option.some.injEq, Residual.error.injEq] at h₂
       <;> try simp only [h₂, and_true, and_self]
@@ -222,7 +222,7 @@ theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request
       exists (.error policy.id e)
       simp only [and_true]
       unfold Partial.isAuthorized
-      simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf,
+      simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf,
         List.mem_filterMap]
       exists policy
       apply And.intro h₁

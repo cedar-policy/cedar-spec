@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Data.SizeOf
 import Cedar.Partial.Entities
 import Cedar.Partial.Request
 import Cedar.Partial.Value
@@ -23,7 +24,8 @@ import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 
 /-!
-  This file defines `WellFormed` for various Spec and Partial types
+  The definition of `WellFormed` used by the `Partial` authorization and
+  evaluation theorems
 -/
 
 namespace Cedar.Spec
