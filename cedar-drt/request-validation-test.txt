@@ -33,29 +33,7 @@ warning: unused variable: `request`
 422 |         request: &ast::Request,
     |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
 
-   Compiling cedar-drt-inner v0.0.0 (/local/home/bhaktish/cedar-spec/cedar-drt/fuzz)
 warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
-warning: unused import: `cedar_policy::Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
-   |
-17 | use cedar_policy::Entity;
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused import: `Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
-   |
-29 | use cedar_policy::{ffi, Entity};
-   |                         ^^^^^^
-
-warning: unused import: `log::debug`
-   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
-    |
-339 |         use log::debug;
-    |             ^^^^^^^^^^
-
-warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
 warning: unnecessary trailing semicolon
    --> src/lib.rs:336:13
     |
@@ -71,6 +49,7 @@ warning: unnecessary trailing semicolon
     |             ^ help: remove this semicolon
 
 warning: `cedar-drt-inner` (lib) generated 2 warnings
+   Compiling cedar-drt-inner v0.0.0 (/local/home/bhaktish/cedar-spec/cedar-drt/fuzz)
 warning: unused import: `cedar_policy_core::ast`
   --> fuzz_targets/request-validation.rs:20:6
    |
@@ -86,7 +65,7 @@ warning: unused import: `abac::ABACPolicy`
    |                                ^^^^^^^^^^^^^^^^
 
 warning: `cedar-drt-inner` (bin "request-validation") generated 2 warnings (run `cargo fix --bin "request-validation"` to apply 2 suggestions)
-    Finished `release` profile [optimized + debuginfo] target(s) in 1m 00s
+    Finished `release` profile [optimized + debuginfo] target(s) in 38.08s
 warning: unused manifest key: dependencies.serde.feature
 warning: unused import: `cedar_policy::Entity`
   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:23:5
@@ -123,27 +102,6 @@ warning: unused variable: `request`
     |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
 
 warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
-warning: unused import: `cedar_policy::Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
-   |
-17 | use cedar_policy::Entity;
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused import: `Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
-   |
-29 | use cedar_policy::{ffi, Entity};
-   |                         ^^^^^^
-
-warning: unused import: `log::debug`
-   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
-    |
-339 |         use log::debug;
-    |             ^^^^^^^^^^
-
-warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
 warning: unnecessary trailing semicolon
    --> src/lib.rs:336:13
     |
@@ -180,65 +138,78 @@ WARNING: Failed to find function "__sanitizer_acquire_crash_state".
 WARNING: Failed to find function "__sanitizer_print_stack_trace".
 WARNING: Failed to find function "__sanitizer_set_death_callback".
 INFO: Running with entropic power schedule (0xFF, 100).
-INFO: Seed: 2704580198
-INFO: Loaded 1 modules   (542784 inline 8-bit counters): 542784 [0x55dd21620848, 0x55dd216a5088), 
-INFO: Loaded 1 PC tables (542784 PCs): 542784 [0x55dd216a5088,0x55dd21eed488), 
-INFO:      366 files found in /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/corpus/request-validation
+INFO: Seed: 3451851709
+INFO: Loaded 1 modules   (542800 inline 8-bit counters): 542800 [0x557500821848, 0x5575008a6098), 
+INFO: Loaded 1 PC tables (542800 PCs): 542800 [0x5575008a6098,0x5575010ee598), 
+INFO:      397 files found in /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/corpus/request-validation
 INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
-INFO: seed corpus: files: 366 min: 27b max: 29b total: 10479b rss: 55Mb
-#367	INITED cov: 6427 ft: 12295 corp: 250/7128b exec/s: 367 rss: 101Mb
-#398	NEW    cov: 6427 ft: 12298 corp: 251/7155b lim: 29 exec/s: 199 rss: 101Mb L: 27/29 MS: 1 CMP- DE: "\377\377\377\226"-
-#404	NEW    cov: 6427 ft: 12299 corp: 252/7184b lim: 29 exec/s: 202 rss: 101Mb L: 29/29 MS: 1 InsertByte-
-#420	NEW    cov: 6427 ft: 12304 corp: 253/7212b lim: 29 exec/s: 210 rss: 101Mb L: 28/29 MS: 1 ChangeByte-
-#421	NEW    cov: 6427 ft: 12306 corp: 254/7241b lim: 29 exec/s: 210 rss: 101Mb L: 29/29 MS: 1 ShuffleBytes-
-#423	NEW    cov: 6427 ft: 12320 corp: 255/7270b lim: 29 exec/s: 211 rss: 101Mb L: 29/29 MS: 2 ChangeBit-CopyPart-
-#448	NEW    cov: 6427 ft: 12321 corp: 256/7299b lim: 29 exec/s: 224 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeByte-ChangeBinInt-ChangeBit-ShuffleBytes-
-#450	NEW    cov: 6427 ft: 12323 corp: 257/7328b lim: 29 exec/s: 225 rss: 101Mb L: 29/29 MS: 2 ShuffleBytes-ChangeBit-
-	NEW_FUNC[1/1]: 0x55dd1fe255a1
-#451	NEW    cov: 6438 ft: 12335 corp: 258/7357b lim: 29 exec/s: 225 rss: 101Mb L: 29/29 MS: 1 CMP- DE: "\003\000\000\000\000\000\000\000\000\001\000\000\000\005\000\000\000V\002\002"-
-#463	NEW    cov: 6439 ft: 12336 corp: 259/7384b lim: 29 exec/s: 231 rss: 101Mb L: 27/29 MS: 2 ChangeASCIIInt-ShuffleBytes-
-#469	NEW    cov: 6439 ft: 12339 corp: 260/7412b lim: 29 exec/s: 234 rss: 101Mb L: 28/29 MS: 1 ChangeByte-
-#480	NEW    cov: 6439 ft: 12343 corp: 261/7441b lim: 29 exec/s: 240 rss: 101Mb L: 29/29 MS: 1 CMP- DE: "\377\377\377\377\377\377\377\377"-
-#505	NEW    cov: 6440 ft: 12344 corp: 262/7470b lim: 29 exec/s: 252 rss: 101Mb L: 29/29 MS: 5 ChangeByte-ChangeBinInt-ShuffleBytes-ChangeByte-ChangeByte-
-#529	NEW    cov: 6440 ft: 12369 corp: 263/7498b lim: 29 exec/s: 264 rss: 101Mb L: 28/29 MS: 4 CopyPart-ChangeByte-ShuffleBytes-EraseBytes-
-#539	NEW    cov: 6440 ft: 12370 corp: 264/7527b lim: 29 exec/s: 269 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeBit-CMP-ChangeBit-InsertByte- DE: "\002\000\000\000\000\000\000\000"-
-#545	NEW    cov: 6440 ft: 12372 corp: 265/7556b lim: 29 exec/s: 272 rss: 101Mb L: 29/29 MS: 1 ChangeBit-
-#548	NEW    cov: 6440 ft: 12373 corp: 266/7584b lim: 29 exec/s: 274 rss: 101Mb L: 28/29 MS: 3 ChangeByte-ChangeBinInt-CMP- DE: "descendant"-
-#551	NEW    cov: 6441 ft: 12374 corp: 267/7613b lim: 29 exec/s: 275 rss: 101Mb L: 29/29 MS: 3 ChangeBit-ChangeBinInt-ChangeByte-
-#618	NEW    cov: 6443 ft: 12376 corp: 268/7642b lim: 29 exec/s: 309 rss: 101Mb L: 29/29 MS: 2 ChangeByte-PersAutoDict- DE: "\003\000\000\000\000\000\000\000\000\001\000\000\000\005\000\000\000V\002\002"-
-#619	NEW    cov: 6443 ft: 12377 corp: 269/7671b lim: 29 exec/s: 309 rss: 101Mb L: 29/29 MS: 1 CopyPart-
-#630	NEW    cov: 6444 ft: 12381 corp: 270/7698b lim: 29 exec/s: 315 rss: 101Mb L: 27/29 MS: 1 EraseBytes-
-#631	NEW    cov: 6444 ft: 12382 corp: 271/7727b lim: 29 exec/s: 315 rss: 101Mb L: 29/29 MS: 1 PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
-#633	NEW    cov: 6444 ft: 12383 corp: 272/7756b lim: 29 exec/s: 316 rss: 101Mb L: 29/29 MS: 2 ChangeByte-ChangeBit-
-#645	NEW    cov: 6444 ft: 12396 corp: 273/7785b lim: 29 exec/s: 322 rss: 101Mb L: 29/29 MS: 2 ChangeBinInt-CrossOver-
-#651	NEW    cov: 6444 ft: 12398 corp: 274/7814b lim: 29 exec/s: 325 rss: 101Mb L: 29/29 MS: 1 CrossOver-
-#658	NEW    cov: 6444 ft: 12400 corp: 275/7842b lim: 29 exec/s: 329 rss: 101Mb L: 28/29 MS: 2 InsertByte-PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
-#665	NEW    cov: 6445 ft: 12401 corp: 276/7870b lim: 29 exec/s: 332 rss: 101Mb L: 28/29 MS: 2 CrossOver-ChangeByte-
-#681	NEW    cov: 6445 ft: 12410 corp: 277/7899b lim: 29 exec/s: 340 rss: 101Mb L: 29/29 MS: 1 CrossOver-
-#706	NEW    cov: 6445 ft: 12415 corp: 278/7928b lim: 29 exec/s: 353 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-ChangeBit-ChangeBinInt-CrossOver-ChangeBinInt-
-#726	NEW    cov: 6445 ft: 12417 corp: 279/7957b lim: 29 exec/s: 363 rss: 101Mb L: 29/29 MS: 5 ShuffleBytes-EraseBytes-InsertByte-ChangeBinInt-CMP- DE: "R\000\000\000"-
-	NEW_FUNC[1/1]: 0x55dd1f161e91
-#731	NEW    cov: 6451 ft: 12426 corp: 280/7986b lim: 29 exec/s: 365 rss: 101Mb L: 29/29 MS: 5 EraseBytes-ShuffleBytes-ChangeByte-EraseBytes-InsertRepeatedBytes-
-#791	NEW    cov: 6451 ft: 12496 corp: 281/8015b lim: 29 exec/s: 395 rss: 102Mb L: 29/29 MS: 5 ChangeBinInt-ShuffleBytes-ShuffleBytes-CopyPart-PersAutoDict- DE: "\377\377\377\377\377\377\377\377"-
+INFO: seed corpus: files: 397 min: 27b max: 29b total: 11366b rss: 55Mb
+#398	INITED cov: 6456 ft: 12512 corp: 261/7439b exec/s: 199 rss: 101Mb
+#426	NEW    cov: 6457 ft: 12513 corp: 262/7467b lim: 33 exec/s: 213 rss: 101Mb L: 28/29 MS: 3 CrossOver-ChangeBit-ChangeByte-
+#454	NEW    cov: 6457 ft: 12515 corp: 263/7500b lim: 33 exec/s: 227 rss: 101Mb L: 33/33 MS: 3 ChangeBinInt-CrossOver-CMP- DE: "\377\377\377\377\377\377\000\364"-
+#485	NEW    cov: 6458 ft: 12516 corp: 264/7533b lim: 33 exec/s: 242 rss: 101Mb L: 33/33 MS: 1 InsertRepeatedBytes-
+#502	NEW    cov: 6458 ft: 12517 corp: 265/7560b lim: 33 exec/s: 251 rss: 101Mb L: 27/33 MS: 2 ChangeByte-ChangeBinInt-
+#503	NEW    cov: 6458 ft: 12519 corp: 266/7587b lim: 33 exec/s: 251 rss: 101Mb L: 27/33 MS: 1 PersAutoDict- DE: "\377\377\377\377\377\377\000\364"-
+#512	pulse  cov: 6458 ft: 12519 corp: 266/7587b lim: 33 exec/s: 256 rss: 101Mb
+#524	NEW    cov: 6458 ft: 12525 corp: 267/7616b lim: 33 exec/s: 262 rss: 101Mb L: 29/33 MS: 1 CrossOver-
+#526	NEW    cov: 6458 ft: 12526 corp: 268/7649b lim: 33 exec/s: 263 rss: 101Mb L: 33/33 MS: 2 CopyPart-CopyPart-
+#527	NEW    cov: 6459 ft: 12540 corp: 269/7678b lim: 33 exec/s: 263 rss: 101Mb L: 29/33 MS: 1 ChangeByte-
+#533	NEW    cov: 6459 ft: 12542 corp: 270/7708b lim: 33 exec/s: 266 rss: 101Mb L: 30/33 MS: 1 InsertByte-
+	NEW_FUNC[1/1]: 0x5574fe4455e1
+#537	NEW    cov: 6563 ft: 12948 corp: 271/7737b lim: 33 exec/s: 268 rss: 101Mb L: 29/33 MS: 4 CopyPart-CMP-CopyPart-EraseBytes- DE: "principa"-
+#543	NEW    cov: 6564 ft: 12955 corp: 272/7767b lim: 33 exec/s: 271 rss: 101Mb L: 30/33 MS: 1 InsertByte-
+#556	NEW    cov: 6564 ft: 12957 corp: 273/7798b lim: 33 exec/s: 278 rss: 101Mb L: 31/33 MS: 3 InsertRepeatedBytes-CrossOver-CopyPart-
+#560	NEW    cov: 6564 ft: 12958 corp: 274/7826b lim: 33 exec/s: 280 rss: 101Mb L: 28/33 MS: 4 ShuffleBytes-ChangeBit-ShuffleBytes-PersAutoDict- DE: "\377\377\377\377\377\377\000\364"-
+	NEW_FUNC[1/1]: 0x5574fef70fc1
+#581	NEW    cov: 6568 ft: 12984 corp: 275/7855b lim: 33 exec/s: 290 rss: 101Mb L: 29/33 MS: 1 PersAutoDict- DE: "\377\377\377\377\377\377\000\364"-
+#613	NEW    cov: 6568 ft: 12985 corp: 276/7883b lim: 33 exec/s: 306 rss: 101Mb L: 28/33 MS: 2 ChangeByte-InsertByte-
+#646	NEW    cov: 6569 ft: 12987 corp: 277/7914b lim: 33 exec/s: 323 rss: 101Mb L: 31/33 MS: 3 ShuffleBytes-EraseBytes-CrossOver-
+#674	NEW    cov: 6570 ft: 12996 corp: 278/7942b lim: 33 exec/s: 337 rss: 101Mb L: 28/33 MS: 3 ChangeBinInt-ChangeBit-PersAutoDict- DE: "\377\377\377\377\377\377\000\364"-
+#690	NEW    cov: 6570 ft: 12998 corp: 279/7974b lim: 33 exec/s: 345 rss: 101Mb L: 32/33 MS: 1 CopyPart-
+#711	NEW    cov: 6570 ft: 13143 corp: 280/8003b lim: 33 exec/s: 355 rss: 101Mb L: 29/33 MS: 1 InsertByte-
+#712	NEW    cov: 6571 ft: 13146 corp: 281/8032b lim: 33 exec/s: 356 rss: 101Mb L: 29/33 MS: 1 CopyPart-
+	NEW_FUNC[1/1]: 0x5574fe3623e1
+#723	NEW    cov: 6577 ft: 13154 corp: 282/8065b lim: 33 exec/s: 361 rss: 101Mb L: 33/33 MS: 1 CrossOver-
+#745	REDUCE cov: 6577 ft: 13154 corp: 282/8064b lim: 33 exec/s: 372 rss: 101Mb L: 28/33 MS: 2 ChangeBit-EraseBytes-
+#753	NEW    cov: 6577 ft: 13157 corp: 283/8093b lim: 33 exec/s: 376 rss: 101Mb L: 29/33 MS: 3 ChangeBit-ChangeBinInt-PersAutoDict- DE: "\377\377\377\377\377\377\000\364"-
+#771	NEW    cov: 6578 ft: 13158 corp: 284/8122b lim: 33 exec/s: 385 rss: 101Mb L: 29/33 MS: 3 ShuffleBytes-ChangeByte-ChangeBit-
+#785	NEW    cov: 6578 ft: 13159 corp: 285/8154b lim: 33 exec/s: 392 rss: 101Mb L: 32/33 MS: 4 InsertByte-InsertByte-ChangeBinInt-InsertByte-
+#811	NEW    cov: 6578 ft: 13162 corp: 286/8182b lim: 33 exec/s: 405 rss: 101Mb L: 28/33 MS: 1 PersAutoDict- DE: "principa"-
+#834	NEW    cov: 6578 ft: 13169 corp: 287/8215b lim: 33 exec/s: 417 rss: 101Mb L: 33/33 MS: 3 InsertRepeatedBytes-ChangeByte-InsertByte-
+#867	NEW    cov: 6578 ft: 13253 corp: 288/8248b lim: 33 exec/s: 289 rss: 102Mb L: 33/33 MS: 3 InsertByte-PersAutoDict-InsertRepeatedBytes- DE: "principa"-
+#897	NEW    cov: 6578 ft: 13298 corp: 289/8280b lim: 33 exec/s: 299 rss: 102Mb L: 32/33 MS: 5 ShuffleBytes-EraseBytes-InsertRepeatedBytes-ChangeByte-CMP- DE: "resourceApplySpec"-
+#898	NEW    cov: 6578 ft: 13303 corp: 290/8312b lim: 33 exec/s: 299 rss: 102Mb L: 32/33 MS: 1 ChangeBit-
+#935	NEW    cov: 6579 ft: 13305 corp: 291/8341b lim: 33 exec/s: 311 rss: 102Mb L: 29/33 MS: 2 InsertByte-PersAutoDict- DE: "resourceApplySpec"-
+	NEW_FUNC[1/3]: 0x5574ff0750e1
+	NEW_FUNC[2/3]: 0x5574fe3960e1
+#937	NEW    cov: 6592 ft: 13557 corp: 292/8374b lim: 33 exec/s: 312 rss: 102Mb L: 33/33 MS: 2 ShuffleBytes-InsertRepeatedBytes-
+#942	NEW    cov: 6594 ft: 13559 corp: 293/8405b lim: 33 exec/s: 314 rss: 102Mb L: 31/33 MS: 4 ChangeBinInt-CMP-InsertRepeatedBytes-ShuffleBytes- DE: "\000\000\0008"-
+#970	NEW    cov: 6595 ft: 13569 corp: 294/8435b lim: 33 exec/s: 323 rss: 102Mb L: 30/33 MS: 3 ChangeByte-InsertByte-ShuffleBytes-
+#979	NEW    cov: 6596 ft: 13570 corp: 295/8467b lim: 33 exec/s: 326 rss: 102Mb L: 32/33 MS: 4 ShuffleBytes-PersAutoDict-ChangeBit-InsertByte- DE: "\000\000\0008"-
+#992	NEW    cov: 6604 ft: 13578 corp: 296/8498b lim: 33 exec/s: 330 rss: 102Mb L: 31/33 MS: 3 CopyPart-ChangeBit-PersAutoDict- DE: "principa"-
+#1001	NEW    cov: 6607 ft: 13584 corp: 297/8529b lim: 33 exec/s: 333 rss: 102Mb L: 31/33 MS: 4 InsertByte-CrossOver-ChangeBinInt-InsertByte-
+#1009	NEW    cov: 6607 ft: 13585 corp: 298/8562b lim: 33 exec/s: 336 rss: 102Mb L: 33/33 MS: 3 InsertByte-ChangeBinInt-InsertRepeatedBytes-
+#1033	NEW    cov: 6607 ft: 13589 corp: 299/8594b lim: 33 exec/s: 344 rss: 102Mb L: 32/33 MS: 4 ChangeASCIIInt-EraseBytes-CrossOver-ShuffleBytes-
+#1067	NEW    cov: 6608 ft: 13590 corp: 300/8626b lim: 33 exec/s: 355 rss: 102Mb L: 32/33 MS: 4 ChangeBinInt-ChangeBinInt-CrossOver-CrossOver-
 thread '<unnamed>' panicked at /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/src/lib.rs:340:17:
-Definitional Errors: ["resource"]
-, Rust output: Request { principal: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("A"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, action: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [], loc: Some(Loc { span: SourceSpan { offset: SourceOffset(0), length: 6 }, src: "Action" }) })), eid: Eid("action"), loc: None }, loc: None }, resource: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("A"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, context: Some(Value({})) }
+Definitional Errors: ["principal"]
+, Rust output: Request { principal: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("At0x040000x04"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, action: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [], loc: Some(Loc { span: SourceSpan { offset: SourceOffset(0), length: 6 }, src: "Action" }) })), eid: Eid("action"), loc: None }, loc: None }, resource: Known { euid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("At0x040000x04"), path: [], loc: None })), eid: Eid(""), loc: None }, loc: None }, context: Some(Value({})) }
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-==5598== ERROR: libFuzzer: deadly signal
+==16204== ERROR: libFuzzer: deadly signal
 NOTE: libFuzzer has rudimentary signal handlers.
       Combine libFuzzer with AddressSanitizer or similar for better crash reports.
 SUMMARY: libFuzzer: deadly signal
-MS: 5 CrossOver-CopyPart-ChangeBit-ChangeBinInt-CopyPart-; base unit: a668512e8f9a9c814e1d557f32b6b96e20b6d55b
-0x22,0x5d,0x0,0x0,0x3f,0x26,0x1,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xf7,0x0,0x0,0x0,0x0,0x7,0x0,0x0,0x0,0x7,0x0,0xfe,0x1e,0x0,0x28,
-\"]\000\000?&\001\000\000\000\000\000\000\000\367\000\000\000\000\007\000\000\000\007\000\376\036\000(
-artifact_prefix='/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/'; Test unit written to /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
-Base64: Il0AAD8mAQAAAAAAAAD3AAAAAAcAAAAHAP4eACg=
+MS: 2 ChangeBit-ChangeByte-; base unit: f6feded26d499442b560a6fb73176425cdd4def5
+0x22,0x3,0x0,0x22,0x3,0x2e,0x0,0x37,0x0,0x7a,0x0,0x4,0x0,0x0,0x3f,0x0,0x7a,0x0,0x4,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x3,0x3a,0x1,
+\"\003\000\"\003.\0007\000z\000\004\000\000?\000z\000\004\000\000\000\000\000\000\000\003:\001
+artifact_prefix='/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/'; Test unit written to /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/request-validation/crash-768415b088b8d961b8f4442fd1cf17045a8c5652
+Base64: IgMAIgMuADcAegAEAAA/AHoABAAAAAAAAAADOgE=
 
 ────────────────────────────────────────────────────────────────────────────────
 
 Failing input:
 
-	fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+	fuzz/artifacts/request-validation/crash-768415b088b8d961b8f4442fd1cf17045a8c5652
 
 Output of `std::fmt::Debug`:
 
@@ -249,21 +220,24 @@ Output of `std::fmt::Debug`:
 	            entity_types: {
 	                UnreservedId(
 	                    Id(
-	                        "B0000",
+	                        "At0x040000x04",
 	                    ),
 	                ): EntityType {
-	                    member_of_types: [],
+	                    member_of_types: [
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "i",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ],
 	                    shape: AttributesOrContext(
 	                        Type(
 	                            Record {
-	                                attributes: {
-	                                    "A": TypeOfAttribute {
-	                                        ty: Type(
-	                                            String,
-	                                        ),
-	                                        required: true,
-	                                    },
-	                                },
+	                                attributes: {},
 	                                additional_attributes: false,
 	                            },
 	                        ),
@@ -271,20 +245,10 @@ Output of `std::fmt::Debug`:
 	                },
 	                UnreservedId(
 	                    Id(
-	                        "A",
+	                        "i",
 	                    ),
 	                ): EntityType {
-	                    member_of_types: [
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "B0000",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ],
+	                    member_of_types: [],
 	                    shape: AttributesOrContext(
 	                        Type(
 	                            Record {
@@ -304,7 +268,7 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "A",
+	                                            "At0x040000x04",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -313,7 +277,7 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "B0000",
+	                                            "i",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -324,7 +288,16 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "A",
+	                                            "At0x040000x04",
+	                                        ),
+	                                        path: [],
+	                                        loc: None,
+	                                    },
+	                                ),
+	                                Name(
+	                                    UncheckedName {
+	                                        id: Id(
+	                                            "i",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -602,7 +575,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "A",
+	                            "At0x040000x04",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -613,7 +586,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "B0000",
+	                            "i",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -626,7 +599,18 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "A",
+	                            "At0x040000x04",
+	                        ),
+	                        path: [],
+	                        loc: None,
+	                    },
+	                ),
+	            ),
+	            EntityType(
+	                Name(
+	                    UncheckedName {
+	                        id: Id(
+	                            "i",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -644,7 +628,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "B0000",
+	                            "At0x040000x04",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -655,7 +639,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "A",
+	                            "i",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -663,33 +647,9 @@ Output of `std::fmt::Debug`:
 	                ),
 	            ),
 	        ],
-	        attributes: [
-	            (
-	                "A",
-	                Type(
-	                    String,
-	                ),
-	            ),
-	        ],
+	        attributes: [],
 	        attributes_by_type: HashMap(
-	            {
-	                String: [
-	                    (
-	                        EntityType(
-	                            Name(
-	                                UncheckedName {
-	                                    id: Id(
-	                                        "B0000",
-	                                    ),
-	                                    path: [],
-	                                    loc: None,
-	                                },
-	                            ),
-	                        ),
-	                        "A",
-	                    ),
-	                ],
-	            },
+	            {},
 	        ),
 	    },
 	    hierarchy: Hierarchy {
@@ -700,7 +660,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "B0000",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -717,57 +677,7 @@ Output of `std::fmt::Debug`:
 	                            Name(
 	                                UncheckedName {
 	                                    id: Id(
-	                                        "B0000",
-	                                    ),
-	                                    path: [],
-	                                    loc: None,
-	                                },
-	                            ),
-	                        ),
-	                        eid: Eid(
-	                            "",
-	                        ),
-	                        loc: None,
-	                    },
-	                    attrs: {
-	                        "A": PartialValueSerializedAsExpr(
-	                            Value(
-	                                Value {
-	                                    value: Lit(
-	                                        String(
-	                                            "",
-	                                        ),
-	                                    ),
-	                                    loc: None,
-	                                },
-	                            ),
-	                        ),
-	                    },
-	                    ancestors: {},
-	                },
-	                EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "A",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                }: Entity {
-	                    uid: EntityUID {
-	                        ty: EntityType(
-	                            Name(
-	                                UncheckedName {
-	                                    id: Id(
-	                                        "A",
+	                                        "At0x040000x04",
 	                                    ),
 	                                    path: [],
 	                                    loc: None,
@@ -786,7 +696,7 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "B0000",
+	                                            "i",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -800,6 +710,43 @@ Output of `std::fmt::Debug`:
 	                        },
 	                    },
 	                },
+	                EntityUID {
+	                    ty: EntityType(
+	                        Name(
+	                            UncheckedName {
+	                                id: Id(
+	                                    "i",
+	                                ),
+	                                path: [],
+	                                loc: None,
+	                            },
+	                        ),
+	                    ),
+	                    eid: Eid(
+	                        "",
+	                    ),
+	                    loc: None,
+	                }: Entity {
+	                    uid: EntityUID {
+	                        ty: EntityType(
+	                            Name(
+	                                UncheckedName {
+	                                    id: Id(
+	                                        "i",
+	                                    ),
+	                                    path: [],
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                        eid: Eid(
+	                            "",
+	                        ),
+	                        loc: None,
+	                    },
+	                    attrs: {},
+	                    ancestors: {},
+	                },
 	            },
 	        ),
 	        uids: [
@@ -808,7 +755,7 @@ Output of `std::fmt::Debug`:
 	                    Name(
 	                        UncheckedName {
 	                            id: Id(
-	                                "B0000",
+	                                "At0x040000x04",
 	                            ),
 	                            path: [],
 	                            loc: None,
@@ -825,7 +772,7 @@ Output of `std::fmt::Debug`:
 	                    Name(
 	                        UncheckedName {
 	                            id: Id(
-	                                "A",
+	                                "i",
 	                            ),
 	                            path: [],
 	                            loc: None,
@@ -844,7 +791,7 @@ Output of `std::fmt::Debug`:
 	                    Name(
 	                        UncheckedName {
 	                            id: Id(
-	                                "B0000",
+	                                "At0x040000x04",
 	                            ),
 	                            path: [],
 	                            loc: None,
@@ -858,7 +805,7 @@ Output of `std::fmt::Debug`:
 	                                    Name(
 	                                        UncheckedName {
 	                                            id: Id(
-	                                                "B0000",
+	                                                "At0x040000x04",
 	                                            ),
 	                                            path: [],
 	                                            loc: None,
@@ -878,7 +825,7 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "B0000",
+	                                            "At0x040000x04",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -896,7 +843,7 @@ Output of `std::fmt::Debug`:
 	                    Name(
 	                        UncheckedName {
 	                            id: Id(
-	                                "A",
+	                                "i",
 	                            ),
 	                            path: [],
 	                            loc: None,
@@ -910,7 +857,7 @@ Output of `std::fmt::Debug`:
 	                                    Name(
 	                                        UncheckedName {
 	                                            id: Id(
-	                                                "A",
+	                                                "i",
 	                                            ),
 	                                            path: [],
 	                                            loc: None,
@@ -930,7 +877,7 @@ Output of `std::fmt::Debug`:
 	                                Name(
 	                                    UncheckedName {
 	                                        id: Id(
-	                                            "A",
+	                                            "i",
 	                                        ),
 	                                        path: [],
 	                                        loc: None,
@@ -951,7 +898,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "B0000",
+	                            "At0x040000x04",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -962,7 +909,7 @@ Output of `std::fmt::Debug`:
 	                Name(
 	                    UncheckedName {
 	                        id: Id(
-	                            "A",
+	                            "i",
 	                        ),
 	                        path: [],
 	                        loc: None,
@@ -979,7 +926,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1023,7 +970,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1047,7 +994,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1091,7 +1038,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1115,7 +1062,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1159,7 +1106,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1183,7 +1130,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1227,7 +1174,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1251,7 +1198,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1295,7 +1242,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1319,7 +1266,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1363,7 +1310,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1387,7 +1334,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1431,7 +1378,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1455,7 +1402,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1499,7 +1446,7 @@ Output of `std::fmt::Debug`:
 	                        Name(
 	                            UncheckedName {
 	                                id: Id(
-	                                    "A",
+	                                    "At0x040000x04",
 	                                ),
 	                                path: [],
 	                                loc: None,
@@ -1521,11 +1468,11 @@ Output of `std::fmt::Debug`:
 
 Reproduce with:
 
-	cargo fuzz run --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+	cargo fuzz run --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-768415b088b8d961b8f4442fd1cf17045a8c5652
 
 Minimize test case with:
 
-	cargo fuzz tmin --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-7986b5661bf435849b6d09698aab9af099329e9a
+	cargo fuzz tmin --sanitizer=none request-validation fuzz/artifacts/request-validation/crash-768415b088b8d961b8f4442fd1cf17045a8c5652
 
 ────────────────────────────────────────────────────────────────────────────────
 

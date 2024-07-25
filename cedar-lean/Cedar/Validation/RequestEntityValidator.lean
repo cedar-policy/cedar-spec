@@ -66,7 +66,7 @@ def instanceOfRequestType (request : Request) (reqty : RequestType) : Except Req
     if request.action == reqty.action then
       if instanceOfEntityType request.resource reqty.resource then
         if instanceOfType request.context (.record reqty.context) then .ok ()
-        else .error (.typeError "context")
+        else .error (.typeError "context not instance of type")
       else .error (.typeError "resource")
     else .error (.typeError "action")
   else .error (.typeError "principal")
@@ -93,7 +93,7 @@ with the ancestor information in the action store.
 def instanceOfActionSchema (entities : Entities) (as : ActionSchema) : EntityValidationResult :=
 as.toList.forM (λ (uid, data) => match entities.find? uid with
   | .some entry => if data.ancestors == entry.ancestors then .ok () else .error (.typeError "action ancestors inconsistent with type store information")
-  | _ => .error (.typeError "action type not defined in type store"))
+  | _ => .error (.typeError s!"action type {uid.eid} not defined in type store"))
 
 def requestMatchesEnvironment (env : Environment) (request : Request) : RequestValidationResult := instanceOfRequestType request env.reqty
 
@@ -102,7 +102,29 @@ def validateRequest (schema : Schema) (request : Request) : RequestValidationRes
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
 instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
 
-def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult := schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
+def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
+  ancestors := ase.ancestors,
+  attrs := Map.empty
+}
+
+def actionsInEntities (schema : Schema) (entities : Entities) : Schema × Entities :=
+let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
+let entities := Map.make (entities.kvs ++ actionEntities.kvs)
+let schema := {
+  ets := Map.make (actionEntities.kvs.map
+    (λ (e, ed) => (e.ty,
+    {
+      ancestors := ed.ancestors.map (·.ty),
+      attrs := Map.empty
+    }
+    )) ++ schema.ets.kvs),
+  acts := schema.acts
+  }
+(schema, entities)
+
+def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
+let (schema, entities) := actionsInEntities schema entities
+schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 
 
 -- json

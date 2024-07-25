@@ -26,7 +26,7 @@ use std::ffi::CString;
 use std::sync::Once;
 
 use crate::definitional_request_types::*;
-use cedar_policy::{ffi, Entity};
+use cedar_policy::ffi;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
 use cedar_testing::cedar_test_impl::partial::FlatPartialResponse;
@@ -336,7 +336,6 @@ impl LeanDefinitionalEngine {
     fn deserialize_validation_response(
         response_string: String,
     ) -> TestResult<TestValidationResult> {
-        use log::debug;
         let resp: ValidationResponse =
             serde_json::from_str(&response_string).expect("could not deserialize json");
         match resp {
@@ -396,8 +395,12 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         entities: &Entities,
     ) -> TestResult<TestValidationResult> {
+        use log::debug;
         let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
             .expect("failed to serialize request");
+        debug!("requestStart");
+        debug!("{}", request);
+        debug!("requestEnd");
         let cstring = CString::new(request).expect("CString::new failed");
         let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { validateEntitiesDRT(req) };

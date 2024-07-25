@@ -1,4 +1,5 @@
 warning: unused manifest key: dependencies.serde.feature
+   Compiling cedar-drt v4.0.0 (/local/home/bhaktish/cedar-spec/cedar-drt)
 warning: unused import: `cedar_policy::Entity`
   --> /local/home/bhaktish/cedar-spec/cedar/cedar-testing/src/cedar_test_impl.rs:23:5
    |
@@ -35,27 +36,6 @@ warning: unused variable: `request`
 
    Compiling cedar-drt-inner v0.0.0 (/local/home/bhaktish/cedar-spec/cedar-drt/fuzz)
 warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
-warning: unused import: `cedar_policy::Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
-   |
-17 | use cedar_policy::Entity;
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused import: `Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
-   |
-29 | use cedar_policy::{ffi, Entity};
-   |                         ^^^^^^
-
-warning: unused import: `log::debug`
-   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
-    |
-339 |         use log::debug;
-    |             ^^^^^^^^^^
-
-warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
 warning: unnecessary trailing semicolon
    --> src/lib.rs:336:13
     |
@@ -65,9 +45,9 @@ warning: unnecessary trailing semicolon
     = note: `#[warn(redundant_semicolons)]` on by default
 
 warning: unnecessary trailing semicolon
-   --> src/lib.rs:382:13
+   --> src/lib.rs:373:13
     |
-382 |             ;
+373 |             ;
     |             ^ help: remove this semicolon
 
 warning: `cedar-drt-inner` (lib) generated 2 warnings
@@ -85,11 +65,11 @@ warning: unused import: `cedar_policy_core::ast::Entity`
 21 |  use cedar_policy_core::ast::Entity;
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: unused import: `abac::ABACPolicy`
+warning: unused imports: `abac::ABACPolicy`, `abac::ABACRequest`
   --> fuzz_targets/entity-validation.rs:23:32
    |
 23 |  use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
-   |                                ^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^^^^^^                                                                ^^^^^^^^^^^^^^^^^
 
 warning: `cedar-drt-inner` (bin "entity-validation") generated 3 warnings (run `cargo fix --bin "entity-validation"` to apply 3 suggestions)
     Finished `release` profile [optimized + debuginfo] target(s) in 1m 03s
@@ -129,27 +109,6 @@ warning: unused variable: `request`
     |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
 
 warning: `cedar-testing` (lib) generated 5 warnings (run `cargo fix --lib -p cedar-testing` to apply 1 suggestion)
-warning: unused import: `cedar_policy::Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/definitional_request_types.rs:17:5
-   |
-17 | use cedar_policy::Entity;
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused import: `Entity`
-  --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:29:25
-   |
-29 | use cedar_policy::{ffi, Entity};
-   |                         ^^^^^^
-
-warning: unused import: `log::debug`
-   --> /local/home/bhaktish/cedar-spec/cedar-drt/src/lean_impl.rs:339:13
-    |
-339 |         use log::debug;
-    |             ^^^^^^^^^^
-
-warning: `cedar-drt` (lib) generated 3 warnings (run `cargo fix --lib -p cedar-drt` to apply 3 suggestions)
 warning: unnecessary trailing semicolon
    --> src/lib.rs:336:13
     |
@@ -159,9 +118,9 @@ warning: unnecessary trailing semicolon
     = note: `#[warn(redundant_semicolons)]` on by default
 
 warning: unnecessary trailing semicolon
-   --> src/lib.rs:382:13
+   --> src/lib.rs:373:13
     |
-382 |             ;
+373 |             ;
     |             ^ help: remove this semicolon
 
 warning: `cedar-drt-inner` (lib) generated 2 warnings
@@ -179,11 +138,11 @@ warning: unused import: `cedar_policy_core::ast::Entity`
 21 |  use cedar_policy_core::ast::Entity;
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: unused import: `abac::ABACPolicy`
+warning: unused imports: `abac::ABACPolicy`, `abac::ABACRequest`
   --> fuzz_targets/entity-validation.rs:23:32
    |
 23 |  use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
-   |                                ^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^^^^^^                                                                ^^^^^^^^^^^^^^^^^
 
 warning: `cedar-drt-inner` (bin "entity-validation") generated 3 warnings (run `cargo fix --bin "entity-validation"` to apply 3 suggestions)
     Finished `release` profile [optimized + debuginfo] target(s) in 0.12s
@@ -192,34 +151,40 @@ WARNING: Failed to find function "__sanitizer_acquire_crash_state".
 WARNING: Failed to find function "__sanitizer_print_stack_trace".
 WARNING: Failed to find function "__sanitizer_set_death_callback".
 INFO: Running with entropic power schedule (0xFF, 100).
-INFO: Seed: 689418946
-INFO: Loaded 1 modules   (546465 inline 8-bit counters): 546465 [0x55577026d5c8, 0x5557702f2c69), 
-INFO: Loaded 1 PC tables (546465 PCs): 546465 [0x5557702f2c70,0x555770b49680), 
+INFO: Seed: 1815138849
+INFO: Loaded 1 modules   (546141 inline 8-bit counters): 546141 [0x5593ca6675c8, 0x5593ca6ecb25), 
+INFO: Loaded 1 PC tables (546141 PCs): 546141 [0x5593ca6ecb28,0x5593caf420f8), 
 INFO:        0 files found in /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/corpus/entity-validation
 INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
 INFO: A corpus is not provided, starting from an empty corpus
 #2	INITED exec/s: 0 rss: 55Mb
 WARNING: no interesting inputs were found so far. Is the code instrumented for coverage?
 This may also happen if the target rejected all inputs we tried so far
-thread '<unnamed>' panicked at /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/src/lib.rs:386:17:
+[2024-07-25T17:06:23Z DEBUG entity_validation] Schema: ValidatorSchema { entity_types: {EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None })): ValidatorEntityType { name: EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None })), descendants: {}, attributes: Attributes { attrs: {"r": AttributeType { attr_type: Primitive { primitive_type: String }, is_required: false }} }, open_attributes: ClosedAttributes }}, action_ids: {EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [Id("A")], loc: None })), eid: Eid("action"), loc: None }: ValidatorActionId { name: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [Id("A")], loc: None })), eid: Eid("action"), loc: None }, applies_to: ValidatorApplySpec { principal_apply_spec: {EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None }))}, resource_apply_spec: {EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None }))} }, descendants: {}, context: EntityOrRecord(Record { attrs: Attributes { attrs: {} }, open_attributes: ClosedAttributes }), attribute_types: Attributes { attrs: {} }, attributes: {} }} }
+[2024-07-25T17:06:23Z INFO  cedar_drt_inner] rust_auth (ns) : 56796
+[2024-07-25T17:06:23Z DEBUG cedar_drt::lean_impl] requestStart
+[2024-07-25T17:06:23Z DEBUG cedar_drt::lean_impl] {"schema":{"entityTypes":[["A::a",{"name":"A::a","descendants":[],"attributes":{"attrs":{"r":{"attrType":{"Primitive":{"primitiveType":"String"}},"isRequired":false}}},"open_attributes":"ClosedAttributes"}]],"actionIds":[[{"ty":"A::Action","eid":"action"},{"name":{"ty":"A::Action","eid":"action"},"appliesTo":{"principalApplySpec":["A::a"],"resourceApplySpec":["A::a"]},"descendants":[],"context":{"EntityOrRecord":{"Record":{"attrs":{"attrs":{}},"open_attributes":"ClosedAttributes"}}},"attributeTypes":{"attrs":{}},"attributes":{}}]]},"entities":{"entities":[[{"ty":"A::a","eid":""},{"uid":{"ty":"A::a","eid":""},"attrs":{"r":{"expr_kind":{"Lit":{"String":""}},"source_loc":null,"data":null}},"ancestors":[]}]]}}
+[2024-07-25T17:06:23Z DEBUG cedar_drt::lean_impl] requestEnd
+[2024-07-25T17:06:23Z INFO  cedar_drt::lean_impl] Lean validation time (ns) : 7479
+thread '<unnamed>' panicked at /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/src/lib.rs:377:17:
 Definitional Errors: ["action type not defined in type store"]
-, Rust output: Entities { entities: {EntityUID { ty: EntityType(Name(UncheckedName { id: Id("a"), path: [], loc: None })), eid: Eid(""), loc: None }: Entity { uid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("a"), path: [], loc: None })), eid: Eid(""), loc: None }, attrs: {}, ancestors: {} }, EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [], loc: None })), eid: Eid("action"), loc: None }: Entity { uid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [], loc: None })), eid: Eid("action"), loc: None }, attrs: {}, ancestors: {} }}, mode: Concrete }
+, Rust output: Entities { entities: {EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [Id("A")], loc: None })), eid: Eid("action"), loc: None }: Entity { uid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("Action"), path: [Id("A")], loc: None })), eid: Eid("action"), loc: None }, attrs: {}, ancestors: {} }, EntityUID { ty: EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None })), eid: Eid(""), loc: None }: Entity { uid: EntityUID { ty: EntityType(Name(UncheckedName { id: Id("a"), path: [Id("A")], loc: None })), eid: Eid(""), loc: None }, attrs: {"r": PartialValueSerializedAsExpr(Value(Value { value: Lit(String("")), loc: None }))}, ancestors: {} }}, mode: Concrete }
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-==27288== ERROR: libFuzzer: deadly signal
+==20715== ERROR: libFuzzer: deadly signal
 NOTE: libFuzzer has rudimentary signal handlers.
       Combine libFuzzer with AddressSanitizer or similar for better crash reports.
 SUMMARY: libFuzzer: deadly signal
-MS: 3 InsertRepeatedBytes-ChangeBit-InsertRepeatedBytes-; base unit: adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
-0xa,0x0,0x0,0x0,0x0,0x8,0x0,0x0,0xf0,0xf0,0xf0,0xf0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-\012\000\000\000\000\010\000\000\360\360\360\360\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000
-artifact_prefix='/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/entity-validation/'; Test unit written to /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/entity-validation/crash-2eccfd0405c1b98ed673d99e9d2bf1ba6a92a3e7
-Base64: CgAAAAAIAADw8PDwAAAAAAAAAAAAAAAAAAAAAAA=
+MS: 4 ChangeBinInt-ChangeBit-InsertRepeatedBytes-InsertRepeatedBytes-; base unit: adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+0x3,0x0,0x0,0x0,0x0,0xff,0xff,0xff,0xff,0xff,0xff,
+\003\000\000\000\000\377\377\377\377\377\377
+artifact_prefix='/local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/entity-validation/'; Test unit written to /local/home/bhaktish/cedar-spec/cedar-drt/fuzz/artifacts/entity-validation/crash-b2c4e0a452b93ecc2fe3a18a76c9c3c15df2990a
+Base64: AwAAAAD///////8=
 
 ────────────────────────────────────────────────────────────────────────────────
 
 Failing input:
 
-	fuzz/artifacts/entity-validation/crash-2eccfd0405c1b98ed673d99e9d2bf1ba6a92a3e7
+	fuzz/artifacts/entity-validation/crash-b2c4e0a452b93ecc2fe3a18a76c9c3c15df2990a
 
 Output of `std::fmt::Debug`:
 
@@ -237,7 +202,14 @@ Output of `std::fmt::Debug`:
 	                    shape: AttributesOrContext(
 	                        Type(
 	                            Record {
-	                                attributes: {},
+	                                attributes: {
+	                                    "r": TypeOfAttribute {
+	                                        ty: Type(
+	                                            String,
+	                                        ),
+	                                        required: false,
+	                                    },
+	                                },
 	                                additional_attributes: false,
 	                            },
 	                        ),
@@ -287,7 +259,17 @@ Output of `std::fmt::Debug`:
 	                },
 	            },
 	        },
-	        namespace: None,
+	        namespace: Some(
+	            Name(
+	                UncheckedName {
+	                    id: Id(
+	                        "A",
+	                    ),
+	                    path: [],
+	                    loc: None,
+	                },
+	            ),
+	        ),
 	        settings: ABACSettings {
 	            match_types: false,
 	            enable_extensions: true,
@@ -544,7 +526,11 @@ Output of `std::fmt::Debug`:
 	                        id: Id(
 	                            "a",
 	                        ),
-	                        path: [],
+	                        path: [
+	                            Id(
+	                                "A",
+	                            ),
+	                        ],
 	                        loc: None,
 	                    },
 	                ),
@@ -557,7 +543,11 @@ Output of `std::fmt::Debug`:
 	                        id: Id(
 	                            "a",
 	                        ),
-	                        path: [],
+	                        path: [
+	                            Id(
+	                                "A",
+	                            ),
+	                        ],
 	                        loc: None,
 	                    },
 	                ),
@@ -575,15 +565,47 @@ Output of `std::fmt::Debug`:
 	                        id: Id(
 	                            "a",
 	                        ),
-	                        path: [],
+	                        path: [
+	                            Id(
+	                                "A",
+	                            ),
+	                        ],
 	                        loc: None,
 	                    },
 	                ),
 	            ),
 	        ],
-	        attributes: [],
+	        attributes: [
+	            (
+	                "r",
+	                Type(
+	                    String,
+	                ),
+	            ),
+	        ],
 	        attributes_by_type: HashMap(
-	            {},
+	            {
+	                String: [
+	                    (
+	                        EntityType(
+	                            Name(
+	                                UncheckedName {
+	                                    id: Id(
+	                                        "a",
+	                                    ),
+	                                    path: [
+	                                        Id(
+	                                            "A",
+	                                        ),
+	                                    ],
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                        "r",
+	                    ),
+	                ],
+	            },
 	        ),
 	    },
 	    hierarchy: Hierarchy {
@@ -596,7 +618,11 @@ Output of `std::fmt::Debug`:
 	                                id: Id(
 	                                    "a",
 	                                ),
-	                                path: [],
+	                                path: [
+	                                    Id(
+	                                        "A",
+	                                    ),
+	                                ],
 	                                loc: None,
 	                            },
 	                        ),
@@ -613,7 +639,11 @@ Output of `std::fmt::Debug`:
 	                                    id: Id(
 	                                        "a",
 	                                    ),
-	                                    path: [],
+	                                    path: [
+	                                        Id(
+	                                            "A",
+	                                        ),
+	                                    ],
 	                                    loc: None,
 	                                },
 	                            ),
@@ -623,7 +653,20 @@ Output of `std::fmt::Debug`:
 	                        ),
 	                        loc: None,
 	                    },
-	                    attrs: {},
+	                    attrs: {
+	                        "r": PartialValueSerializedAsExpr(
+	                            Value(
+	                                Value {
+	                                    value: Lit(
+	                                        String(
+	                                            "",
+	                                        ),
+	                                    ),
+	                                    loc: None,
+	                                },
+	                            ),
+	                        ),
+	                    },
 	                    ancestors: {},
 	                },
 	            },
@@ -636,7 +679,11 @@ Output of `std::fmt::Debug`:
 	                            id: Id(
 	                                "a",
 	                            ),
-	                            path: [],
+	                            path: [
+	                                Id(
+	                                    "A",
+	                                ),
+	                            ],
 	                            loc: None,
 	                        },
 	                    ),
@@ -655,7 +702,11 @@ Output of `std::fmt::Debug`:
 	                            id: Id(
 	                                "a",
 	                            ),
-	                            path: [],
+	                            path: [
+	                                Id(
+	                                    "A",
+	                                ),
+	                            ],
 	                            loc: None,
 	                        },
 	                    ),
@@ -669,7 +720,11 @@ Output of `std::fmt::Debug`:
 	                                            id: Id(
 	                                                "a",
 	                                            ),
-	                                            path: [],
+	                                            path: [
+	                                                Id(
+	                                                    "A",
+	                                                ),
+	                                            ],
 	                                            loc: None,
 	                                        },
 	                                    ),
@@ -689,7 +744,11 @@ Output of `std::fmt::Debug`:
 	                                        id: Id(
 	                                            "a",
 	                                        ),
-	                                        path: [],
+	                                        path: [
+	                                            Id(
+	                                                "A",
+	                                            ),
+	                                        ],
 	                                        loc: None,
 	                                    },
 	                                ),
@@ -710,568 +769,26 @@ Output of `std::fmt::Debug`:
 	                        id: Id(
 	                            "a",
 	                        ),
-	                        path: [],
+	                        path: [
+	                            Id(
+	                                "A",
+	                            ),
+	                        ],
 	                        loc: None,
 	                    },
 	                ),
 	            ),
 	        ],
 	    },
-	    requests: [
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	        ABACRequest(
-	            Request {
-	                principal: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                action: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "Action",
-	                                ),
-	                                path: [],
-	                                loc: Some(
-	                                    Loc {
-	                                        span: SourceSpan {
-	                                            offset: SourceOffset(
-	                                                0,
-	                                            ),
-	                                            length: 6,
-	                                        },
-	                                        src: "Action",
-	                                    },
-	                                ),
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "action",
-	                    ),
-	                    loc: None,
-	                },
-	                resource: EntityUID {
-	                    ty: EntityType(
-	                        Name(
-	                            UncheckedName {
-	                                id: Id(
-	                                    "a",
-	                                ),
-	                                path: [],
-	                                loc: None,
-	                            },
-	                        ),
-	                    ),
-	                    eid: Eid(
-	                        "",
-	                    ),
-	                    loc: None,
-	                },
-	                context: Value(
-	                    {},
-	                ),
-	            },
-	        ),
-	    ],
 	}
 
 Reproduce with:
 
-	cargo fuzz run --sanitizer=none entity-validation fuzz/artifacts/entity-validation/crash-2eccfd0405c1b98ed673d99e9d2bf1ba6a92a3e7
+	cargo fuzz run --sanitizer=none entity-validation fuzz/artifacts/entity-validation/crash-b2c4e0a452b93ecc2fe3a18a76c9c3c15df2990a
 
 Minimize test case with:
 
-	cargo fuzz tmin --sanitizer=none entity-validation fuzz/artifacts/entity-validation/crash-2eccfd0405c1b98ed673d99e9d2bf1ba6a92a3e7
+	cargo fuzz tmin --sanitizer=none entity-validation fuzz/artifacts/entity-validation/crash-b2c4e0a452b93ecc2fe3a18a76c9c3c15df2990a
 
 ────────────────────────────────────────────────────────────────────────────────
 

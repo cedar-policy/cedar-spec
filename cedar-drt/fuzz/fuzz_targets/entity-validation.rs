@@ -33,12 +33,7 @@
      pub schema: Schema,
     /// generated hierarchy
     #[serde(skip)]
-    pub hierarchy: Hierarchy,
-    /// the requests to try for this hierarchy and policy. We try 8 requests per
-    /// policy/hierarchy
-    #[serde(skip)]
-    pub requests: [ABACRequest; 8],
-
+    pub hierarchy: Hierarchy
  }
  
  /// settings for this fuzz target
@@ -60,31 +55,12 @@
      fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
          let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
          let hierarchy = schema.arbitrary_hierarchy(u)?;
-         let requests = [
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-            schema.arbitrary_request(&hierarchy, u)?,
-        ];
-         Ok(Self { schema, hierarchy, requests })
+         Ok(Self { schema, hierarchy })
      }
  
-//  todo 
      fn size_hint(depth: usize) -> (usize, Option<usize>) {
          arbitrary::size_hint::and_all(&[
              Schema::arbitrary_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth),
-             Schema::arbitrary_request_size_hint(depth), 
          ])
      }
  }

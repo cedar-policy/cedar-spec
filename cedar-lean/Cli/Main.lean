@@ -46,11 +46,11 @@ unsafe def main (args : List String) : IO Unit :=
       | "evaluate" =>
         let response := evaluate request
         IO.println s!"{repr response}"
-      | "validate request" =>
+      | "validateRequest" =>
         let response := validateRequestDRT request
         IO.println response
-      | "validate entities" =>
+      | "validateEntities" =>
         let response := validateEntitiesDRT request
         IO.println response
-      | _ => printUsage s!"Invalid command `{command}` (expected `authorize`, `validate` or `evaluate`)"
+      | _ => printUsage s!"Invalid command `{command}` (expected `authorize`, `validate`, `validateRequest`, `validateEntities`, or `evaluate`)"
     | n => printUsage s!"Incorrect number of arguments (expected 2, but got {n})"
