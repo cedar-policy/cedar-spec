@@ -54,9 +54,9 @@ inductive InstanceOfType : Value → CedarType → Prop :=
       InstanceOfType (.prim (.int _)) .int
   | instance_of_string :
       InstanceOfType (.prim (.string _)) .string
-  | instance_of_entity (e : EntityUID) (ety: EntityType)
+  | instance_of_entity (e : EntityUID) (ety: EntityType) (l : Level)
       (h₁ : InstanceOfEntityType e ety) :
-      InstanceOfType (.prim (.entityUID e)) (.entity ety)
+      InstanceOfType (.prim (.entityUID e)) (.entity ety l)
   | instance_of_set (s : Set Value) (ty : CedarType)
       (h₁ : forall v, v ∈ s → InstanceOfType v ty) :
       InstanceOfType (.set s) (.set ty)
@@ -74,9 +74,9 @@ inductive InstanceOfType : Value → CedarType → Prop :=
       InstanceOfType (.ext x) (.ext xty)
 
 def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
-  InstanceOfEntityType request.principal reqty.principal ∧
-  request.action = reqty.action ∧
-  InstanceOfEntityType request.resource reqty.resource ∧
+  InstanceOfEntityType request.principal reqty.principal.fst ∧
+  request.action = reqty.action.fst ∧
+  InstanceOfEntityType request.resource reqty.resource.fst ∧
   InstanceOfType request.context (.record reqty.context)
 
 /--
@@ -182,7 +182,7 @@ theorem instance_of_string_is_string {v₁ : Value} :
   exists y
 
 theorem instance_of_entity_type_is_entity {ety : EntityType} :
-  InstanceOfType v₁ (.entity ety) →
+  InstanceOfType v₁ (.entity ety l) →
   ∃ euid, euid.ty = ety ∧ v₁ = .prim (.entityUID euid)
 := by
   intro h₁
@@ -385,10 +385,10 @@ theorem type_is_inhabited (ty : CedarType) :
   | .string =>
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
-  | .entity ety =>
+  | .entity ety l =>
     have ⟨euid, h₁⟩ := entity_type_is_inhabited ety
     exists (.prim (.entityUID euid))
-    apply InstanceOfType.instance_of_entity _ _ h₁
+    apply InstanceOfType.instance_of_entity _ _ _ h₁
   | .set ty₁ =>
     exists (.set Set.empty)
     apply InstanceOfType.instance_of_set
@@ -496,7 +496,30 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
     intro w h₅
     specialize h₄ w h₅
     apply instance_of_lub_left h₃ (by simp [h₄])
-  case h_3 _ _ rty₁ rty₂ =>
+  case h_3 ety₁ l₁ ety₂ l₂ =>
+    cases heq : decide (ety₁ = ety₂) <;> simp at heq
+    case false =>
+      rw [if_neg] at  h₁
+      contradiction
+      simp
+      apply heq
+    case true =>
+      rw [if_pos] at h₁
+      simp at h₁
+      cases ty₁' <;> simp at hty₁
+      rename_i ety' l'
+      have ⟨h₃, _h₄⟩ := hty₁
+      cases ty <;> simp at h₁
+      cases h₂
+      apply InstanceOfType.instance_of_entity
+      have ⟨h₁, _h₂ ⟩ := h₁
+      rename_i h
+      rw [← h₁]
+      rw [h₃]
+      apply h
+      rw [heq]
+      simp
+  case h_4 _ _ rty₁ rty₂ =>
     cases h₃ : lubRecordType rty₁ rty₂ <;> simp [h₃] at h₁
     rename_i rty
     have hl := lubRecordType_is_lub_of_record_types h₃
@@ -520,7 +543,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
       have ⟨qty₁, h₉, h₁₀⟩ := lubRecord_find_implies_find_left hl h₇
       apply h₆ a qty₁ h₉
       simp [h₁₀, h₈]
-  case h_4 =>
+  case h_5 =>
     split at h₁ <;> simp at h₁
     rename_i h₃
     subst h₁ h₃ hty₁ hty₂

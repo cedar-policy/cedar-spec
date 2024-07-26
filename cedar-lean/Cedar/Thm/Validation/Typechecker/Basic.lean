@@ -73,10 +73,10 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
   CapabilitiesInvariant c request entities
 
 def TypeOfIsSound (x₁ : Expr) : Prop :=
-  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities},
+  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level},
     CapabilitiesInvariant c₁ request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
-    typeOf x₁ c₁ env = Except.ok (ty, c₂) →
+    typeOf x₁ c₁ env (l == Level.infinite) = Except.ok (ty, c₂) →
     GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
     ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty
 

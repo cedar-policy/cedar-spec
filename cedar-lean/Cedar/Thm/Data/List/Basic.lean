@@ -437,17 +437,4 @@ theorem forallᵥ_def {α β γ} {p : β → γ → Prop} {kvs₁ : List (α × 
   List.Forallᵥ p kvs₁ kvs₂ = List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd) kvs₁ kvs₂
 := by simp only [Forallᵥ]
 
-/-! Sizeofs -/
-
-theorem pair_smaller (t : Type) (p : t → Prop ) (pair : { x : t // p x } ) : sizeOf pair.val < sizeOf pair := by
-  simp_wf
-
-theorem member_smaller (t : Type) (l : List t) (mem : { x // x ∈ l }) :
-  sizeOf mem.val < sizeOf l
-  := by
-  simp_wf
-
-  sorry
-
-
 end List

@@ -51,9 +51,9 @@ mutual
     | .set s₁, .set s₂ => do
       let lub ← lub? s₁ s₂
       .some (.set lub)
-    | .entity { typeName := t₁, level := l₁ }, .entity { typeName := t₂, level := l₂ } =>
+    | .entity t₁ l₁, .entity  t₂ l₂ =>
       if t₁ == t₂ then
-        .some (.entity { typeName := t₁, level := min l₁ l₂ })
+        .some (.entity t₁ (min l₁ l₂))
       else
         .none
     | .record (.mk r₁), .record (.mk r₂) => do

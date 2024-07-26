@@ -34,9 +34,9 @@ def ActionSchemaEntry.toRequestTypes (level : Level) (action : EntityUID) (entry
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
         {
-          principal := applyLevel level principal ,
+          principal := (principal, level),
           action := (action, level),
-          resource := applyLevel level resource,
+          resource := (resource, level),
           context := entry.context
         })
     reqtys ++ acc) ∅
@@ -107,7 +107,7 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
 /-- Check that a policy is Boolean-typed. -/
 def typecheckPolicy (policy : Policy) (l : Level) (env : Environment) : Except ValidationError CedarType := do
   let expr := substituteAction env.reqty.action.fst policy.toExpr
-  match typeOf expr ∅ env l.is_infinite with
+  match typeOf expr ∅ env (l == Level.infinite) with
   | .ok (ty, _) =>
     if ty ⊑ .bool .anyBool
     then .ok ty

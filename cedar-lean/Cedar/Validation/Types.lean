@@ -23,21 +23,6 @@ open Cedar.Spec
 
 ----- Definitions -----
 
-inductive A : Prop where
-  | a
-
-inductive B : Prop where
-  | b
-
-theorem Example : B → A := sorry
-
--- theorem Ex2 : A → B := by
---   intros a
---   rw [Example] at a
-
-
-
-
 inductive BoolType where
   | anyBool
   | tt
@@ -64,34 +49,28 @@ def Qualified.isRequired {α} : Qualified α → Bool
   | optional _ => false
   | required _ => true
 
-instance : Functor Qualified where
-  map f q :=
-    match q with
-    | .optional x => .optional $ f x
-    | .required x => .required $ f x
+abbrev Level := Option Nat
 
-inductive Level where
-  | finite (n : Nat)
-  | infinite
+def Level.finite (n : Nat) : Level := .some n
+
+def Level.zero : Level := Level.finite 0
+
+def Level.infinite : Level := .none
 
 def Level.sub1 (l : Level) : Level :=
   match l with
-  | .finite n => .finite $ n - 1
-  | .infinite => .infinite
+  | .some n => .some (n - 1)
+  | .none => .none
 
-def Level.is_infinite (l : Level) : Bool :=
-  match l with
-  | .infinite => true
-  | .finite _ => false
+def Level.isInfinite (l : Level) : Bool := l.isNone
 
-deriving instance Repr, DecidableEq, Inhabited for Level
 
 inductive LevelLT : Level → Level → Prop where
   | finite₁ : ∀ n₁ n₂,
     n₁ < n₂ →
-    LevelLT (.finite n₁) (.finite n₂)
+    LevelLT (.some n₁) (.some n₂)
   | finite₂ : ∀ n₁,
-    LevelLT (.finite n₁) .infinite
+    LevelLT (.some n₁) .none
 
 -- Is there a way to get an anymous inductive?
 instance : LT Level where
@@ -99,7 +78,7 @@ instance : LT Level where
 
 instance (l₁ l₂ : Level) : Decidable (l₁ < l₂) := by
   cases l₁ <;> cases l₂
-  case finite.finite n₁ n₂ =>
+  case some.some n₁ n₂ =>
     cases hlt : decide (n₁ < n₂)
     case false =>
       apply isFalse
@@ -113,46 +92,27 @@ instance (l₁ l₂ : Level) : Decidable (l₁ < l₂) := by
       apply LevelLT.finite₁
       apply of_decide_eq_true
       apply hlt
-  case finite.infinite n =>
+  case some.none n =>
     apply isTrue
     apply LevelLT.finite₂
-  case infinite.finite n =>
+  case none.some n =>
     apply isFalse
     intros h
     cases h
-  case infinite.infinite =>
+  case none.none =>
     apply isFalse
     intros h
     cases h
 
-
-instance : Min Level where
-  min l₁ l₂ := if l₁ < l₂ then l₁ else l₂
-
-
-structure LeveledEntityType where
-  typeName : EntityType
-  level : Level
-
-def applyLevel (l : Level) (ety : EntityType) : LeveledEntityType :=
-  { typeName := ety, level := l }
-
-def LeveledEntityType.setLevel (ety : LeveledEntityType) (l : Level) : LeveledEntityType :=
-  { typeName := ety.typeName, level := l }
-
-deriving instance Repr, DecidableEq, Inhabited for Level
-deriving instance Repr, DecidableEq, Inhabited for LeveledEntityType
 
 inductive CedarType where
   | bool (bty : BoolType)
   | int
   | string
-  | entity (ty : LeveledEntityType)
+  | entity (ty : EntityType) (l : Level)
   | set (ty : CedarType)
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
-
-
 
 
 
@@ -166,7 +126,7 @@ def level (ty : CedarType) : Level :=
   | .record fields =>
     let levels : List Level := fields.kvs.map₁ (λ kv => level kv.val.snd.getType)
     levels.foldl min .infinite
-  | .entity ety => ety.level
+  | .entity _ level => level
 termination_by sizeOf ty
 decreasing_by
   simp_wf
@@ -228,9 +188,9 @@ structure Schema where
   acts : ActionSchema
 
 structure RequestType where
-  principal : LeveledEntityType
+  principal : EntityType × Level
   action : (EntityUID × Level)
-  resource : LeveledEntityType
+  resource : EntityType × Level
   context : RecordType
 
 structure Environment where
@@ -260,8 +220,10 @@ def decCedarType (a b : CedarType) : Decidable (a = b) := by
   case set.set t1 t2 => exact match decCedarType t1 t2 with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
-  case entity.entity lub1 lub2 => exact match decEq lub1 lub2 with
-    | isTrue h => isTrue (by rw [h];)
+  case entity.entity lub1 l1 lub2 l2 => exact match decEq lub1 lub2 with
+    | isTrue h => match decEq l1 l2 with
+      | isTrue h' => isTrue (by rw [h]; rw[h'])
+      | isFalse _ => isFalse (by intro h; injection h; contradiction)
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record r1 r2 => exact match decAttrQualifiedCedarTypeMap r1 r2 with
     | isTrue h => isTrue (by rw [h])

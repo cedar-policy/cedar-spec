@@ -27,25 +27,25 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.binaryApp .eq x₁ x₂) c env = Except.ok (ty, c')) :
+theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.binaryApp .eq x₁ x₂) c env (l == Level.infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
   match x₁, x₂ with
   | .lit p₁, .lit p₂ =>
     if p₁ = p₂ then ty = (.bool .tt) else ty = (.bool .ff)
   | _, _ =>
     ∃ ty₁ c₁ ty₂ c₂,
-      typeOf x₁ c env = Except.ok (ty₁, c₁) ∧
-      typeOf x₂ c env = Except.ok (ty₂, c₂) ∧
+      typeOf x₁ c env (l == Level.infinite) = Except.ok (ty₁, c₁) ∧
+      typeOf x₂ c env (l == Level.infinite) = Except.ok (ty₂, c₂) ∧
       match ty₁ ⊔ ty₂ with
       | .some _ => ty = (.bool .anyBool)
       | .none   =>
         ty = (.bool .ff) ∧
-        ∃ ety₁ ety₂, ty₁ = .entity ety₁ ∧ ty₂ = .entity ety₂
+        ∃ ety₁ l₁ ety₂ l₂, ty₁ = .entity ety₁ l₁ ∧ ty₂ = .entity ety₂ l₂
 := by
   simp [typeOf] at h₁ ; rename_i h₁'
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at h₁
-  cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
+  cases h₂ : typeOf x₁ c env (l == Level.infinite) <;> simp [h₂] at h₁
+  cases h₃ : typeOf x₂ c env (l == Level.infinite) <;> simp [h₃] at h₁
   simp [typeOfBinaryApp, typeOfEq, ok, err] at h₁
   rename_i tc₁ tc₂
   split at h₁
@@ -72,7 +72,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       split
       case h_1 p₁ p₂ _ =>
         specialize h₄ p₁ p₂ ; simp at h₄
-      case h_2 ety₁ ety₂ _ true_is_instance_of_tt _ _ _ _ =>
+      case h_2 ety₁ l₁ ety₂ l₂ _ true_is_instance_of_tt _ _ _ _ =>
         exists tc₁.fst
         constructor
         · exists tc₁.snd
@@ -81,13 +81,13 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
           · exists tc₂.snd
           · simp [h₅]
             constructor
-            · exists ety₁
-            · exists ety₂
+            · exists ety₁ ; exists l₁
+            · exists ety₂ ; exists l₂
 
-theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
-  (h₁ : InstanceOfType v₁ (CedarType.entity ety₁))
-  (h₂ : InstanceOfType v₂ (CedarType.entity ety₂))
-  (h₃ : (CedarType.entity ety₁ ⊔ CedarType.entity ety₂) = none) :
+theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType} {l₁ l₂ : Level}
+  (h₁ : InstanceOfType v₁ (CedarType.entity ety₁ l₁))
+  (h₂ : InstanceOfType v₂ (CedarType.entity ety₂ l₂))
+  (h₃ : (CedarType.entity ety₁ l₁ ⊔ CedarType.entity ety₂ l₂) = none) :
   ¬ v₁ = v₂
 := by
   by_contra h₄ ; subst h₄
@@ -99,10 +99,10 @@ theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : E
   subst h₄ h₅
   contradiction
 
-theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}  {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp .eq x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp .eq x₁ x₂) c₁ env (l == Level.infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .eq x₁ x₂) c₂ request entities ∧
@@ -141,7 +141,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       rw [hty]
       apply bool_is_instance_of_anyBool
     case h_2 heq =>
-      have ⟨hty₀, ⟨ety₁, hty₁⟩, ⟨ety₂, hty₂⟩⟩ := hty ; clear hty
+      have ⟨hty₀, ⟨ety₁, l₁, hty₁⟩, ⟨ety₂, l₂, hty₂⟩⟩ := hty ; clear hty
       subst hty₀ hty₁ hty₂
       have h₆ := no_entity_type_lub_implies_not_eq ih₃ ih₄ heq
       cases h₇ : v₁ == v₂ <;>
@@ -149,17 +149,17 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       case false => exact false_is_instance_of_ff
       case true  => contradiction
 
-theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₁ : op₂ = .less ∨ op₂ = .lessEq)
-  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
+  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env (l == Level.infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty = .bool .anyBool ∧
-  (∃ c₁, typeOf x₁ c env = Except.ok (.int, c₁)) ∧
-  (∃ c₂, typeOf x₂ c env = Except.ok (.int, c₂))
+  (∃ c₁, typeOf x₁ c env (l == Level.infinite) = Except.ok (.int, c₁)) ∧
+  (∃ c₂, typeOf x₂ c env (l == Level.infinite)= Except.ok (.int, c₂))
 := by
   simp [typeOf] at *
-  cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
-  cases h₄ : typeOf x₂ c env <;> simp [h₄] at h₂
+  cases h₃ : typeOf x₁ c env (l == Level.infinite) <;> simp [h₃] at h₂
+  cases h₄ : typeOf x₂ c env (l == Level.infinite) <;> simp [h₄] at h₂
   rcases h₁ with h₁ | h₁
   all_goals {
     subst h₁
@@ -172,11 +172,11 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
     · exists tc₂.snd ; simp [←h₆]
   }
 
-theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₀ : op₂ = .less ∨ op₂ = .lessEq)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env (l == Level.infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
@@ -206,17 +206,17 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     apply bool_is_instance_of_anyBool
   }
 
-theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₁ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
-  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
+  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env (l == Level.infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty = .int ∧
-  (∃ c₁, typeOf x₁ c env = Except.ok (.int, c₁)) ∧
-  (∃ c₂, typeOf x₂ c env = Except.ok (.int, c₂))
+  (∃ c₁, typeOf x₁ c env (l == Level.infinite) = Except.ok (.int, c₁)) ∧
+  (∃ c₂, typeOf x₂ c env (l == Level.infinite) = Except.ok (.int, c₂))
 := by
   simp [typeOf] at *
-  cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
-  cases h₄ : typeOf x₂ c env <;> simp [h₄] at h₂
+  cases h₃ : typeOf x₁ c env (l == Level.infinite) <;> simp [h₃] at h₂
+  cases h₄ : typeOf x₂ c env (l == Level.infinite) <;> simp [h₄] at h₂
   rcases h₁ with h₁ | h₁ | h₁
   all_goals {
     subst h₁
@@ -230,11 +230,11 @@ theorem type_of_int_arith_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     · exists tc₂.snd ; simp [←h₂, ←h₆]
   }
 
-theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₀ : op₂ = .add ∨ op₂ = .sub ∨ op₂ = .mul)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env (l == Level.infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
@@ -271,18 +271,18 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
     case none => exact type_is_inhabited CedarType.int
     case some => simp [InstanceOfType.instance_of_int]
 
-theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.binaryApp .contains x₁ x₂) c env = Except.ok (ty, c')) :
+theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.binaryApp .contains x₁ x₂) c env (l == .infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty = .bool .anyBool ∧
   ∃ ty₁ ty₂,
     (ty₁ ⊔ ty₂).isSome ∧
-    (∃ c₁, typeOf x₁ c env = Except.ok (.set ty₁, c₁)) ∧
-    (∃ c₂, typeOf x₂ c env = Except.ok (ty₂, c₂))
+    (∃ c₁, typeOf x₁ c env (l == .infinite) = Except.ok (.set ty₁, c₁)) ∧
+    (∃ c₂, typeOf x₂ c env (l == .infinite) = Except.ok (ty₂, c₂))
 := by
   simp [typeOf] at *
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at h₁
-  cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
+  cases h₂ : typeOf x₁ c env (l == .infinite) <;> simp [h₂] at h₁
+  cases h₃ : typeOf x₂ c env (l == .infinite) <;> simp [h₃] at h₁
   simp [typeOfBinaryApp, err, ok] at h₁
   split at h₁ <;> try contradiction
   simp [ifLubThenBool, err, ok] at h₁
@@ -296,10 +296,10 @@ theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env
   · exists tc₁.snd
   · exists tc₂.snd
 
-theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp .contains x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp .contains x₁ x₂) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .contains x₁ x₂) c₂ request entities ∧
