@@ -324,19 +324,19 @@ theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} 
   simp [apply₂]
   apply bool_is_instance_of_anyBool
 
-theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₁ : op₂ = .containsAll ∨ op₂ = .containsAny)
-  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
+  (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env (l == .infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty = .bool .anyBool ∧
   ∃ ty₁ ty₂,
     (ty₁ ⊔ ty₂).isSome ∧
-    (∃ c₁, typeOf x₁ c env = Except.ok (.set ty₁, c₁)) ∧
-    (∃ c₂, typeOf x₂ c env = Except.ok (.set ty₂, c₂))
+    (∃ c₁, typeOf x₁ c env (l == .infinite) = Except.ok (.set ty₁, c₁)) ∧
+    (∃ c₂, typeOf x₂ c env (l == .infinite) = Except.ok (.set ty₂, c₂))
 := by
   simp [typeOf] at *
-  cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
-  cases h₄ : typeOf x₂ c env <;> simp [h₄] at h₂
+  cases h₃ : typeOf x₁ c env (l == .infinite) <;> simp [h₃] at h₂
+  cases h₄ : typeOf x₂ c env (l == .infinite) <;> simp [h₄] at h₂
   rcases h₁ with h₁ | h₁
   all_goals {
     subst h₁
