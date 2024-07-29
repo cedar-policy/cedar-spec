@@ -61,15 +61,15 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool := match v, ty with
       simp only [Map.mk.sizeOf_spec]
       omega
 
-def instanceOfRequestType (request : Request) (reqty : RequestType) : Except RequestValidationError Unit :=
+def instanceOfRequestType (request : Request) (reqty : RequestType) : Bool :=
   if instanceOfEntityType request.principal reqty.principal then
     if request.action == reqty.action then
       if instanceOfEntityType request.resource reqty.resource then
-        if instanceOfType request.context (.record reqty.context) then .ok ()
-        else .error (.typeError "context not instance of type")
-      else .error (.typeError "resource")
-    else .error (.typeError "action")
-  else .error (.typeError "principal")
+        if instanceOfType request.context (.record reqty.context) then true
+        else false
+      else false
+    else false
+  else false
 /--
 For every entity in the store,
 1. The entity's type is defined in the type store.
@@ -82,7 +82,7 @@ def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityVa
 entities.toList.forM (λ (uid, data) => match ets.find? uid.ty with
   | .some entry => if instanceOfType data.attrs (.record entry.attrs) then
                     if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then .ok ()
-                   else .error (.typeError s!"entity ancestors {data.ancestors.elts.map (·.eid)} for {uid.eid} inconsistent with type store information")
+                   else .error (.typeError s!"entity ancestors inconsistent with type store information")
                   else .error (.typeError "entity attributes do not match type store")
   | _ => .error (.typeError "entity type not defined in type store"))
 
@@ -92,12 +92,17 @@ with the ancestor information in the action store.
 -/
 def instanceOfActionSchema (entities : Entities) (as : ActionSchema) : EntityValidationResult :=
 as.toList.forM (λ (uid, data) => match entities.find? uid with
-  | .some entry => if data.ancestors == entry.ancestors then .ok () else .error (.typeError "action ancestors inconsistent with type store information")
+  | .some entry => if data.ancestors == entry.ancestors
+                    then .ok ()
+                    else .error (.typeError "action ancestors inconsistent with type store information")
   | _ => .error (.typeError s!"action type {uid.eid} not defined in type store"))
 
-def requestMatchesEnvironment (env : Environment) (request : Request) : RequestValidationResult := instanceOfRequestType request env.reqty
+def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env.reqty
 
-def validateRequest (schema : Schema) (request : Request) : RequestValidationResult := schema.toEnvironments.forM (requestMatchesEnvironment · request)
+def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
+  if ((schema.toEnvironments.any (requestMatchesEnvironment · request)))
+  then .ok ()
+  else .error (.typeError "request could not be validated in any environment")
 
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
 instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
@@ -107,29 +112,32 @@ def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   attrs := Map.empty
 }
 
+/--
+Update the entity schema with the entities created for action schema entries.
+This involves the construction of the ancestor information for the associated types
+by inspecting the concrete hierarchy.
+-/
 def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
-let tys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
-let tysMap := tys.elts.map (λ ty =>
-  let allWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
-  let allAncestors := List.join (allWithType.values.map (λ edt => edt.ancestors.elts.map (·.ty) ))
-  let ese : EntitySchemaEntry := {ancestors := Set.make allAncestors, attrs := Map.empty}
-  (ty, ese)
-  )
-{
-  ets := Map.make (schema.ets.kvs ++ tysMap),
-  acts := schema.acts
-}
-
-def actionsInEntities (schema : Schema) (entities : Entities) : Schema × Entities :=
-let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
-let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-let schema := updateSchema schema actionEntities
-(schema, entities)
+  let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
+  let newEntitySchemaEntries := uniqueTys.elts.map (λ ty =>
+    let entriesWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
+    let allAncestorsForType := List.join (entriesWithType.values.map (λ edt =>
+      edt.ancestors.elts.map (·.ty) ))
+    let ese : EntitySchemaEntry := {
+      ancestors := Set.make allAncestorsForType,
+      attrs := Map.empty
+    }
+    (ty, ese))
+  {
+    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries),
+    acts := schema.acts
+  }
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-let (schema, entities) := actionsInEntities schema entities
-schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
-
+  let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
+  let entities := Map.make (entities.kvs ++ actionEntities.kvs)
+  let schema := updateSchema schema actionEntities
+  schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 
 -- json
 
