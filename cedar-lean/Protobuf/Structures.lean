@@ -38,8 +38,7 @@ deriving Repr, DecidableEq
 
 namespace Len
   def parse : BParsec Len := do
-    let slice ← BParsec.attempt find_varint
-    let isize ← parse_int32 (slice.last - slice.first)
+    let isize ← parse_int32
     match isize with
     | Int.negSucc _ => BParsec.fail "Expected positive size in len payload"
     | Int.ofNat size =>
@@ -50,8 +49,7 @@ end Len
 namespace Tag
 @[inline]
 def parse : BParsec Tag := do
-  let slice ← BParsec.attempt find_varint
-  let element ← parse_uint32 (slice.last - slice.first)
+  let element ← parse_uint32
   have wt_uint := element &&& 7
   let wire_type ← if wt_uint = 0 then pure WireType.VARINT
                     else if wt_uint = 1 then pure WireType.I64

@@ -30,18 +30,21 @@ partial def parse_uvarint_packed_helper (size_remaining: Nat) (result: Array Nat
   if empty then
     BParsec.fail s!"Expected more packed uints, Size Remaining: {size_remaining}"
 
-  let slice ← BParsec.attempt find_varint
-  let element_size ← pure (slice.last - slice.first)
+  let startPos ← BParsec.pos
 
   let element ← match t with
     -- NOTE: One can only hope I can replace this with a map
-    | PType.uint32 => fun it => match (parse_uint32 element_size) it with
+    | PType.uint32 => fun it => match parse_uint32 it with
       | BParsec.ParseResult.success it r => BParsec.ParseResult.success it r.toNat
       | BParsec.ParseResult.error it e => BParsec.ParseResult.error it e
-    | PType.uint64 => fun it => match (parse_uint64 element_size) it with
+    | PType.uint64 => fun it => match parse_uint64 it with
       | BParsec.ParseResult.success it r => BParsec.ParseResult.success it r.toNat
       | BParsec.ParseResult.error it e => BParsec.ParseResult.error it e
     | _ => BParsec.fail "Unexpected type"
+
+  let endPos ← BParsec.pos
+
+  let element_size ← pure (endPos - startPos)
 
   parse_uvarint_packed_helper (size_remaining - element_size) (result.push element) t
 -- termination_by size_remaining
@@ -68,13 +71,16 @@ partial def parse_varint_packed_helper (size_remaining: Nat) (result: Array Int)
   if empty then
     BParsec.fail s!"Expected more packed uints, Size Remaining: {size_remaining}"
 
-  let slice ← BParsec.attempt find_varint
-  let element_size ← pure (slice.last - slice.first)
+  let startPos ← BParsec.pos
 
   let element ← match t with
-    | PType.int32 => fun it => parse_int32 element_size it
-    | PType.int64 => fun it => parse_int64 element_size it
+    | PType.int32 => fun it => parse_int32 it
+    | PType.int64 => fun it => parse_int64 it
     | _ => BParsec.fail "Unexpected type"
+
+  let endPos ← BParsec.pos
+
+  let element_size ← pure (endPos - startPos)
 
   parse_varint_packed_helper (size_remaining - element_size) (result.push element) t
 -- termination_by size_remaining

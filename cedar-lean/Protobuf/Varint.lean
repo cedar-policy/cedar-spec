@@ -55,6 +55,7 @@ def find_end_of_varint : BParsec Nat := find_end_of_varint_helper 0
 
 
 /- Find the start and end indices of the next varint -/
+-- NOTE: Does not progress iterator
 @[inline]
 def find_varint : BParsec Slice := do
   let start_idx ← BParsec.pos
@@ -104,7 +105,10 @@ private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec 
 
 
 @[inline]
-def parse_uint64 (remaining: Nat) : BParsec UInt64 := parse_uint64_helper remaining 0 0
+def parse_uint64 : BParsec UInt64 := do
+  let slice ← BParsec.attempt find_varint
+  let remaining ← pure (slice.last - slice.first)
+  parse_uint64_helper remaining 0 0
 
 @[inline]
 def interpret_uint64 (b: ByteArray) : UInt64 :=
@@ -125,7 +129,10 @@ private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec 
 
 
 @[inline]
-def parse_uint32 (remaining: Nat) : BParsec UInt32 := parse_uint32_helper remaining 0 0
+def parse_uint32 : BParsec UInt32 := do
+  let slice ← BParsec.attempt find_varint
+  let remaining ← pure (slice.last - slice.first)
+  parse_uint32_helper remaining 0 0
 
 @[inline]
 def interpret_uint32 (b: ByteArray) : UInt32 :=
@@ -133,8 +140,8 @@ def interpret_uint32 (b: ByteArray) : UInt32 :=
 
 
 @[inline]
-def parse_int32 (remaining: Nat): BParsec Int := do
-  let r ← parse_uint32 remaining
+def parse_int32: BParsec Int := do
+  let r ← parse_uint32
     match msb_set32 r with
     | true => pure (Int.neg (~~~(r - (1: UInt32))).toNat)
     | false => pure (Int.ofNat r.toNat)
@@ -142,12 +149,12 @@ def parse_int32 (remaining: Nat): BParsec Int := do
 
 @[inline]
 def interpret_int32 (b: ByteArray) : Int :=
-  BParsec.run! (parse_int32 b.size) b
+  BParsec.run! parse_int32 b
 
 
 @[inline]
-def parse_int64 (remaining: Nat): BParsec Int := do
-  let r ← parse_uint64 remaining
+def parse_int64: BParsec Int := do
+  let r ← parse_uint64
     match msb_set64 r with
     | true => pure (Int.neg (~~~(r - (1: UInt64))).toNat)
     | false => pure (Int.ofNat r.toNat)
@@ -155,14 +162,14 @@ def parse_int64 (remaining: Nat): BParsec Int := do
 
 @[inline]
 def interpret_int64 (b: ByteArray) : Int :=
-  BParsec.run! (parse_int32 b.size) b
+  BParsec.run! parse_int32 b
 
 #guard interpret_int64 (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) = -2
 
 
 @[inline]
 def parse_bool : BParsec Bool := do
-  let result ← parse_int32 1
+  let result ← parse_int32
   if result = 1 then pure true else
   if result = 0 then pure false else
   BParsec.fail "Expected 00 or 01"

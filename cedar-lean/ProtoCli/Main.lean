@@ -10,7 +10,7 @@ import Protobuf.Varint
 import Protobuf.Types
 import Protobuf.Structures
 import Protobuf.Packed
-import Protobuf.HardCodeTest2
+import Protobuf.HardCodeTest
 open Proto
 
 -- #check String.Iterator
@@ -52,13 +52,13 @@ def readFileBytes (filename: String) : IO ByteArray := do
 
 def processJson (filename: String): IO Bool := do
   let result_str ← IO.FS.readFile filename
-  match parse_hardcode2_json result_str with
+  match parse_hardcode_json result_str with
     | .error _ => pure false
     | .ok _ => pure true
 
 def processProto (filename: String): IO String := do
   let result_bytes ← readFileBytes filename
-  match parse_hardcode2 result_bytes.iter with
+  match parse_hardcode result_bytes.iter with
     | .error e => pure e
     | .ok h => pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"
 
