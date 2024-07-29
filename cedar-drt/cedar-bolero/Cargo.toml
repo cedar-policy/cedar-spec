@@ -39,16 +39,16 @@ codegen-units = 1
 
 [[test]]
 name = "eval_type_directed"
-harness = true
+harness = false
 
 [[test]]
 name = "convert_policy_json_to_cedar"
-harness = true
+harness = false
 
 [[test]]
 name = "abac_type_directed"
-harness = true 
+harness = false
 
 [[test]]
-name = "validation_type_directed"
-harness = true
+name = "validation_drt_type_directed"
+harness = false

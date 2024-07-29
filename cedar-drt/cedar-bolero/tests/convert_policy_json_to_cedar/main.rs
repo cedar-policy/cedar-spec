@@ -50,8 +50,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-#[test]
-fn policy_json_roundtrip() {
+fn main() {
     check!()
         .with_arbitrary::<FuzzTargetInput>()
         .for_each(|input| {

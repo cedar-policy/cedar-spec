@@ -15,20 +15,23 @@
  */
 
 use arbitrary::{self, Arbitrary, Unstructured};
+use ast::PolicyID;
 use bolero::check;
 use cedar_bolero_fuzz::{
-    drop_some_entities, dump_fuzz_test_case, run_eval_test, FuzzTestCase, TestCaseFormat,
+    drop_some_entities, dump, dump_fuzz_test_case, run_auth_test, run_eval_test, time_function,
+    FuzzTestCase, TestCaseFormat,
 };
 use cedar_drt::utils::expr_to_est;
 use cedar_drt::*;
-use cedar_policy::Request;
+use cedar_policy::{Authorizer, Request};
 use cedar_policy_core::{ast::Expr, entities::Entities};
-use cedar_policy_generators::abac::ABACRequest;
+use cedar_policy_generators::abac::{ABACPolicy, ABACRequest};
 use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::{self, Hierarchy, HierarchyGenerator};
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
-use log::debug;
+use cedar_policy_validator::SchemaFragment;
+use log::{debug, info};
 use serde::Serialize;
 use serde_json::json;
 use std::convert::TryFrom;
@@ -40,40 +43,55 @@ pub struct FuzzTargetInput {
     /// generated schema
     #[serde(skip)]
     pub schema: Schema,
-    // generated entity slice
+    /// generated entity slice
     #[serde(skip)]
     pub entities: Entities,
-    /// generated expression
-    #[serde(serialize_with = "expr_to_est")]
-    pub expression: Expr,
+    /// generated policy
+    pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
     #[serde(skip)]
-    pub request: ABACRequest,
+    pub requests: [ABACRequest; 8],
 }
+
+/// settings for this fuzz target
+const SETTINGS: ABACSettings = ABACSettings {
+    match_types: true,
+    enable_extensions: true,
+    max_depth: 3,
+    max_width: 3,
+    enable_additional_attributes: false,
+    enable_like: true,
+    enable_action_groups_and_attrs: true,
+    enable_arbitrary_func_call: true,
+    enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
+};
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let toplevel_type = arbitrary_schematype_with_bounded_depth(
-            &SETTINGS,
-            schema.entity_types(),
-            SETTINGS.max_depth,
-            u,
-        )?;
-        let expr_gen = schema.exprgenerator(Some(&hierarchy));
-        let expression =
-            expr_gen.generate_expr_for_schematype(&toplevel_type, SETTINGS.max_depth, u)?;
+        let policy = schema.arbitrary_policy(&hierarchy, u)?;
 
-        let request = schema.arbitrary_request(&hierarchy, u)?;
-        let all_entities = Entities::try_from(hierarchy).map_err(Error::EntitiesError)?;
+        let requests = [
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+        ];
+        let all_entities = Entities::try_from(hierarchy).map_err(|_| Error::NotEnoughData)?;
         let entities = drop_some_entities(all_entities, u)?;
         Ok(Self {
             schema,
             entities,
-            expression,
-            request,
+            policy,
+            requests,
         })
     }
 
@@ -97,10 +115,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 impl TestCaseFormat for FuzzTargetInput {
     fn to_fuzz_test_case(&self) -> FuzzTestCase {
         // Access the serialized expression
+        let est_policy: cedar_policy_core::est::Policy = self.policy.0.clone().into();
         let representation = json!({
             "entities": self.entities,
-            "expression": self.expression,
-            "request": format!("{}", &self.request),
+            "policy": est_policy,
+            // Format the requests as strings in a list
+            "requests": self.requests.iter().map(|r| format!("{}", r)).collect::<Vec<_>>(),
         });
         FuzzTestCase {
             representation: representation.to_string(),
@@ -109,41 +129,51 @@ impl TestCaseFormat for FuzzTargetInput {
     }
 }
 
-/// settings for this fuzz target
-const SETTINGS: ABACSettings = ABACSettings {
-    match_types: true,
-    enable_extensions: true,
-    max_depth: 3,
-    max_width: 3,
-    enable_additional_attributes: false,
-    enable_like: true,
-    enable_action_groups_and_attrs: true,
-    enable_arbitrary_func_call: true,
-    enable_unknowns: false,
-    enable_action_in_constraints: true,
-    enable_unspecified_apply_spec: true,
-};
-
-#[test]
-fn eval_differential() {
+fn main() {
     check!()
         .with_arbitrary::<FuzzTargetInput>()
         .for_each(|input| {
             initialize_log();
             let def_impl = LeanDefinitionalEngine::new();
-            debug!("expr: {}\n", input.expression);
+            let mut policyset = ast::PolicySet::new();
+            let policy: ast::StaticPolicy = input.policy.clone().into();
+            policyset.add_static(policy.clone()).unwrap();
+            debug!("Schema: {}\n", input.schema.schemafile_string());
+            debug!("Policies: {policyset}\n");
             debug!("Entities: {}\n", input.entities);
-            let obs_out = input.to_fuzz_test_case();
-            run_eval_test(
-                &def_impl,
-                input.request.clone().into(),
-                &input.expression,
-                &input.entities,
-                SETTINGS.enable_extensions,
-            );
+
+            let requests = input
+                .requests
+                .clone()
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>();
+
+            for request in requests.iter().cloned() {
+                debug!("Request : {request}");
+                let (rust_res, total_dur) = time_function(|| {
+                    run_auth_test(&def_impl, request, &policyset, &input.entities)
+                });
+
+                info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+
+                // additional invariant:
+                // type-directed fuzzing should never produce wrong-number-of-arguments errors
+                assert_eq!(
+                    rust_res
+                        .diagnostics
+                        .errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .filter(|err| err.contains("wrong number of arguments"))
+                        .collect::<Vec<String>>(),
+                    Vec::<String>::new()
+                );
+            }
             if let Ok(_) = std::env::var("DRT_OBSERVABILITY") {
+                let obs_out = input.to_fuzz_test_case();
                 let dirname = "fuzz/observations";
-                let testname = std::env::var("FUZZ_TARGET").unwrap_or("eval-derived".to_string());
+                let testname = std::env::var("FUZZ_TARGET").unwrap_or("abac-derived".to_string());
                 dump_fuzz_test_case(dirname, &testname, &obs_out)
             }
         });

@@ -92,8 +92,7 @@ impl TestCaseFormat for FuzzTargetInput {
     }
 }
 
-#[test]
-fn validation_differential() {
+fn main() {
     check!()
         .with_arbitrary::<FuzzTargetInput>()
         .for_each(|input| {
