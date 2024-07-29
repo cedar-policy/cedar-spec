@@ -381,6 +381,7 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         request: &ast::Request,
     ) -> TestResult<TestValidationResult> {
+        use log::debug;
         let request: String = serde_json::to_string(&RequestValidationRequest { schema, request })
             .expect("failed to serialize request");
         let cstring = CString::new(request).expect("CString::new failed");
@@ -398,9 +399,6 @@ impl LeanDefinitionalEngine {
         use log::debug;
         let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
             .expect("failed to serialize request");
-        debug!("requestStart");
-        debug!("{}", request);
-        debug!("requestEnd");
         let cstring = CString::new(request).expect("CString::new failed");
         let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { validateEntitiesDRT(req) };
