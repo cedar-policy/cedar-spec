@@ -30,7 +30,7 @@ inductive PType where
   -- WireType.I32
   | sfixed32: PType
   | fixed32: PType
-  | float: PType -- TODO: Float is 64 bits in Lean
+  | float: PType -- NOTE: Float is 64 bits in Lean
   -- WireType.I64
   | sfixed64: PType
   | fixed64: PType
@@ -51,28 +51,4 @@ inductive WireType where
   | I32: WireType
 deriving Inhabited, Repr, DecidableEq
 
-namespace WireType
-
-def isCompatible (w: WireType) (p: PType) : Bool :=
-  match p with
-  | PType.int32 => w = WireType.VARINT
-  | PType.int64 => w = WireType.VARINT
-  | PType.uint32 => w = WireType.VARINT
-  | PType.uint64 => w = WireType.VARINT
-  | PType.bool => w = WireType.VARINT
-  | PType.enum => w = WireType.VARINT
-  | PType.sint32 => w = WireType.VARINT
-  | PType.sint64 => w = WireType.VARINT
-  | PType.sfixed32 => w = WireType.I32
-  | PType.fixed32 => w = WireType.I32
-  | PType.float => w = WireType.I32
-  | PType.sfixed64 => w = WireType.I64
-  | PType.fixed64 => w = WireType.I64
-  | PType.double => w = WireType.I64
-  | PType.string => w = WireType.LEN
-  | PType.message => w = WireType.LEN
-  | PType.bytes => w = WireType.LEN
-  | PType.packed _ => w = WireType.LEN
-
-end WireType
 end Proto

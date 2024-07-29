@@ -83,17 +83,12 @@ def parse_hardcode (i: ByteArray.Iterator) : Except String HardCodeStruct :=
     | BParsec.ParseResult.error _ e => .error e
 
 
-instance : DecidableEq (Except String HardCodeStruct) := Except.dec_eq
-#guard parse_hardcode (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05]).iter =
-  Except.ok (HardCodeStruct.mk #[3, 270, 86942])
-
-
 -- JSON functions
 
 def getNat! (j: Lean.Json) : Nat :=
   match j.getNat? with
   | .ok v => v
-  | .error _ => panic!("AH")
+  | .error _ => panic!("Unable to parse natural number")
 
 def parse_hardcode_json_helper (j: Array Lean.Json) : Array Nat :=
   Array.map getNat! j

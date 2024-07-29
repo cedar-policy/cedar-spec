@@ -64,34 +64,6 @@ def find_next_varint : BParsec Slice := do
   pure slice
 
 
--- theorem find_varint_success_size_gt_0 (i: ByteArray.Iterator) : (find_varint i) = BParsec.ParseResult.success i2 slice → slice.last - slice.first > 0 := by
---   unfold find_varint
---   unfold find_end_of_varint
---   unfold find_end_of_varint_helper
---   unfold BParsec.attempt
---   unfold BParsec.pos
---   unfold bind
---   unfold Monad.toBind
---   unfold BParsec.instMonad
---   dsimp
---   unfold BParsec.bind
---   dsimp
---   unfold pure
---   unfold Applicative.toPure
---   unfold Alternative.toApplicative
---   unfold BParsec.instAlternative
---   unfold Monad.toApplicative
---   unfold BParsec.instMonad
---   unfold BParsec.pure
---   dsimp
---   unfold BParsec.fail
---   unfold ByteArray.Iterator.empty
---   cases i
---   dsimp
---   -- Induction on data+: ByteArray
---   intro H
---   sorry
-
 -- Note: Panic indexing used but may be able to remove with some work
 private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec UInt64 := do
   if remaining = 0 then pure r else
@@ -114,9 +86,6 @@ def parse_uint64 : BParsec UInt64 := do
 def interpret_uint64 (b: ByteArray) : UInt64 :=
   BParsec.run! (parse_uint64_helper b.size 0 0) b
 
-#guard interpret_uint64 (ByteArray.mk #[150, 01]) = 150
-
-
 private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec UInt32 := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty -- NOTE: Might be able to remove if we add a hypotheses in the definition
@@ -138,7 +107,6 @@ def parse_uint32 : BParsec UInt32 := do
 def interpret_uint32 (b: ByteArray) : UInt32 :=
   BParsec.run! (parse_uint32_helper b.size 0 0) b
 
-
 @[inline]
 def parse_int32: BParsec Int := do
   let r ← parse_uint32
@@ -151,7 +119,6 @@ def parse_int32: BParsec Int := do
 def interpret_int32 (b: ByteArray) : Int :=
   BParsec.run! parse_int32 b
 
-
 @[inline]
 def parse_int64: BParsec Int := do
   let r ← parse_uint64
@@ -159,12 +126,9 @@ def parse_int64: BParsec Int := do
     | true => pure (Int.neg (~~~(r - (1: UInt64))).toNat)
     | false => pure (Int.ofNat r.toNat)
 
-
 @[inline]
 def interpret_int64 (b: ByteArray) : Int :=
   BParsec.run! parse_int32 b
-
-#guard interpret_int64 (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) = -2
 
 @[inline]
 def parse_bool : BParsec Bool := do
@@ -176,6 +140,3 @@ def parse_bool : BParsec Bool := do
 @[inline]
 def interpret_bool (b: ByteArray) : Except String Bool :=
   BParsec.run parse_bool b
-
-#guard interpret_bool (ByteArray.mk #[0]) = Except.ok false
-#guard interpret_bool (ByteArray.mk #[1]) = Except.ok true

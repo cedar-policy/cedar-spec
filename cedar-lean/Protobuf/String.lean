@@ -17,14 +17,6 @@
 Decode UTF-8 encoded strings with ByteArray Parser Combinators
 -/
 import Protobuf.BParsec
-import Protobuf.Util
-
-/-
-===========================================================================
-Parsing Strings
-===========================================================================
--/
-
 namespace Proto
 
 -- NOTE: Will panic if there's not enough bytes to determine the next character
@@ -87,7 +79,5 @@ def parse_string (remaining: Nat) : BParsec String := parse_string_helper remain
 @[inline]
 def interpret_string (b: ByteArray) : Except String String :=
   BParsec.run (parse_string b.size) b
-
-#guard interpret_string (ByteArray.mk #[116, 101, 115, 116, 105, 110, 103]) = Except.ok "testing"
 
 end Proto

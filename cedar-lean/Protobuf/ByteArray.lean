@@ -78,16 +78,5 @@ def empty (i: Iterator) : Bool := ¬i.hasNext
   simp only [empty_iff, hasNext_iff, remaining_eq, gt_iff_lt, Nat.not_lt, Nat.le_zero_eq]
   exact Nat.ne_zero_iff_zero_lt
 
-/-- The byte at the current position.
-On an invalid position, returns `(default : UInt8)`. -/
-def curr : Iterator → UInt8 :=
-  fun i => if h : hasNext i then
-    have h2 : i.pos < i.size := by
-     simp only [hasNext_iff, remaining_eq, gt_iff_lt] at h
-     exact Nat.lt_of_sub_pos h
-    i.data.data[i.pos]
-  else
-    default
-
 end Iterator
 end ByteArray

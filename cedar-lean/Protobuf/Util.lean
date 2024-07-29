@@ -17,30 +17,6 @@
 Helper definitions
 -/
 
-
--- Show DecidableEquality of Except for unit tests
-namespace Except
-def dec_eq [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
-  unfold DecidableEq
-  intro a b
-  cases a <;> cases b <;>
-  -- Get rid of obvious cases where .ok != .err
-  try { apply isFalse ; intro h ; injection h }
-  case error.error c d =>
-    match decEq c d with
-      | isTrue h => apply isTrue (by rw [h])
-      | isFalse _ => apply isFalse (by intro h; injection h; contradiction)
-  case ok.ok c d =>
-    match decEq c d with
-      | isTrue h => apply isTrue (by rw [h])
-      | isFalse _ => apply isFalse (by intro h; injection h; contradiction)
-end Except
-
-instance : DecidableEq (Except String String) := Except.dec_eq
-instance : DecidableEq (Except String Bool) := Except.dec_eq
-instance : DecidableEq (Except String (Array Int)) := Except.dec_eq
-instance : DecidableEq (Except String (Array Nat)) := Except.dec_eq
-
 structure Slice where
   first: Nat
   last: Nat

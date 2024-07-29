@@ -13,19 +13,6 @@ import Protobuf.Packed
 import Protobuf.HardCodeTest
 open Proto
 
--- #check String.Iterator
--- #check Lean.Parsec
--- #check Lean.Json
-
--- TODO: Zig-zag signed integers
-
--- TODO: Floats
-
--- TODO: Doubles
-
--- TODO: Maps
-
-
 def bufsize : USize := 2000000 * 1024
 
 def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
@@ -60,7 +47,8 @@ def processProto (filename: String): IO String := do
   let result_bytes ← readFileBytes filename
   match parse_hardcode result_bytes.iter with
     | .error e => pure e
-    | .ok h => pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"
+    | .ok h =>
+      pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"
 
 structure Timed (α : Type) where
   data : α

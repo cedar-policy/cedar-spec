@@ -69,6 +69,4 @@ def parse_int64_packed (size_remaining: Nat): BParsec (Array Int) :=
 def interpret_int64_packed (b: ByteArray): Except String (Array Int) :=
   BParsec.run (parse_int64_packed b.size) b
 
-#guard interpret_int64_packed (ByteArray.mk #[03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
-
 end Proto

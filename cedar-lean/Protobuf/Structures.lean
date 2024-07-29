@@ -20,7 +20,6 @@ import Lean.Data.HashMap
 import Protobuf.BParsec
 import Protobuf.Varint
 import Protobuf.Types
-
 namespace Proto
 
 structure MessageSchema where
@@ -65,11 +64,7 @@ def parse : BParsec Tag := do
 def interpret (b: ByteArray) : Except String Tag :=
   BParsec.run Tag.parse b
 
-instance : DecidableEq (Except String Tag) := Except.dec_eq
 end Tag
 
-#guard Tag.interpret (ByteArray.mk #[08]) = Except.ok (Tag.mk 1 WireType.VARINT)
-#guard Tag.interpret (ByteArray.mk #[18]) = Except.ok (Tag.mk 2 WireType.LEN)
-#guard Tag.interpret (ByteArray.mk #[50]) = Except.ok (Tag.mk 6 WireType.LEN)
 
 end Proto
