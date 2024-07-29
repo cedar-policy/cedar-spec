@@ -130,4 +130,20 @@ def pos : BParsec Nat :=
 
 @[simp] theorem pos_eq (it: ByteArray.Iterator) : pos it = ParseResult.success it it.pos := rfl
 
+
+@[specialize] partial def foldl_helper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β  :=
+  if h: remaining > 0 then do
+    let startPos ← pos
+    let element ← f
+    let endPos ← pos
+    let element_size ← pure (endPos - startPos)
+    let newResult ← pure (g result element)
+    foldl_helper f g (remaining - element_size) newResult
+  else
+    pure result
+
+@[inline] def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
+  foldl_helper f g remaining init
+
+
 end BParsec

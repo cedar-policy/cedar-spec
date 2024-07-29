@@ -21,82 +21,54 @@ import Protobuf.Varint
 import Protobuf.Types
 namespace Proto
 
-partial def parse_uvarint_packed_helper (size_remaining: Nat) (result: Array Nat) (t: PType) : BParsec (Array Nat) := do
-  if size_remaining = 0 then
-    return result
-  else
-
-  let empty ← BParsec.empty
-  if empty then
-    BParsec.fail s!"Expected more packed uints, Size Remaining: {size_remaining}"
-
-  let startPos ← BParsec.pos
-
-  let element ← match t with
-    -- NOTE: One can only hope I can replace this with a map
-    | PType.uint32 => fun it => match parse_uint32 it with
-      | BParsec.ParseResult.success it r => BParsec.ParseResult.success it r.toNat
-      | BParsec.ParseResult.error it e => BParsec.ParseResult.error it e
-    | PType.uint64 => fun it => match parse_uint64 it with
-      | BParsec.ParseResult.success it r => BParsec.ParseResult.success it r.toNat
-      | BParsec.ParseResult.error it e => BParsec.ParseResult.error it e
-    | _ => BParsec.fail "Unexpected type"
-
-  let endPos ← BParsec.pos
-
-  let element_size ← pure (endPos - startPos)
-
-  parse_uvarint_packed_helper (size_remaining - element_size) (result.push element) t
--- termination_by size_remaining
--- decreasing_by
---   simp_wf
---   have H1 : element_size > 0 := sorry
---   omega
-
+@[inline]
+def parse_uint32_packed (size_remaining: Nat): BParsec (Array Nat) :=
+  BParsec.foldl
+    parse_uint32
+    (fun arr => fun element => arr.push element.toNat)
+    size_remaining
+    #[]
 
 @[inline]
-def parse_uint_packed (size: Nat) (t: PType): BParsec (Array Nat) := parse_uvarint_packed_helper size #[] t
+def interpret_uint32_packed (b: ByteArray): Except String (Array Nat) :=
+  BParsec.run (parse_uint32_packed b.size) b
 
 @[inline]
-def interpret_uint_packed (b: ByteArray) (t: PType) : Except String (Array Nat) :=
-  BParsec.run (parse_uint_packed b.size t) b
-
-
-partial def parse_varint_packed_helper (size_remaining: Nat) (result: Array Int) (t: PType) : BParsec (Array Int) := do
-  if size_remaining = 0 then
-    return result
-  else
-
-  let empty ← BParsec.empty
-  if empty then
-    BParsec.fail s!"Expected more packed uints, Size Remaining: {size_remaining}"
-
-  let startPos ← BParsec.pos
-
-  let element ← match t with
-    | PType.int32 => fun it => parse_int32 it
-    | PType.int64 => fun it => parse_int64 it
-    | _ => BParsec.fail "Unexpected type"
-
-  let endPos ← BParsec.pos
-
-  let element_size ← pure (endPos - startPos)
-
-  parse_varint_packed_helper (size_remaining - element_size) (result.push element) t
--- termination_by size_remaining
--- decreasing_by
---   simp_wf
---   have H1 : element_size > 0 := sorry
---   omega
-
+def parse_uint64_packed (size_remaining: Nat): BParsec (Array Nat) :=
+  BParsec.foldl
+    parse_uint32
+    (fun arr => fun element => arr.push element.toNat)
+    size_remaining
+    #[]
 
 @[inline]
-def parse_int_packed (size: Nat) (t: PType): BParsec (Array Int) := parse_varint_packed_helper size #[] t
+def interpret_uint64_packed (b: ByteArray): Except String (Array Nat) :=
+  BParsec.run (parse_uint64_packed b.size) b
 
 @[inline]
-def interpret_int_packed (b: ByteArray) (t: PType) : Except String (Array Int) :=
-  BParsec.run (parse_int_packed b.size t) b
+def parse_generic_packed (f: BParsec α) (size_remaining: Nat): BParsec (Array α) :=
+  BParsec.foldl
+    f
+    (fun arr => fun element => arr.push element)
+    size_remaining
+    #[]
 
-#guard interpret_int_packed (ByteArray.mk #[03, 142, 02, 158, 167, 05]) PType.int64 = Except.ok #[3, 270, 86942]
+@[inline]
+def parse_int32_packed (size_remaining: Nat): BParsec (Array Int) :=
+  parse_generic_packed parse_int32 size_remaining
+
+@[inline]
+def interpret_int32_packed (b: ByteArray): Except String (Array Int) :=
+  BParsec.run (parse_int32_packed b.size) b
+
+@[inline]
+def parse_int64_packed (size_remaining: Nat): BParsec (Array Int) :=
+  parse_generic_packed parse_int64 size_remaining
+
+@[inline]
+def interpret_int64_packed (b: ByteArray): Except String (Array Int) :=
+  BParsec.run (parse_int64_packed b.size) b
+
+#guard interpret_int64_packed (ByteArray.mk #[03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
 
 end Proto

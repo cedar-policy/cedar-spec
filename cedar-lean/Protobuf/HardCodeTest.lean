@@ -47,7 +47,7 @@ end HardCodeStruct
 
 -- Progresses the entire ByteArray.Iterator
 partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStruct := do
-  let hasNext ← fun it => BParsec.ParseResult.success it it.hasNext
+  let hasNext ← BParsec.hasNext
 
   if ¬hasNext then
     return result
@@ -55,20 +55,21 @@ partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStr
   let tag ← BParsec.attempt Tag.parse
 
   match tag.wireType with
-    | .VARINT => parse_hardcode_helper result -- Skip
+    | .VARINT => BParsec.fail "Unexpected VARINT WireType"
     | .LEN =>
       let len ← BParsec.attempt Len.parse
       match tag.fieldNum with
         | 6 =>
-          let x ← BParsec.attempt (parse_uint_packed len.size PType.uint32)
-          let _ ← fun it => BParsec.ParseResult.success (it.forward len.size) true
+          let x ← BParsec.attempt (parse_uint32_packed len.size)
           have new_result := result.set_6 x
           (parse_hardcode_helper new_result)
-        | _ => (parse_hardcode_helper result) -- Skip
+        | _ =>
+          -- Skip this field
+          BParsec.forward len.size
+          parse_hardcode_helper result
 
-
-      | .I32 => parse_hardcode_helper result -- Skip
-      | .I64 => parse_hardcode_helper result -- Skip
+      | .I32 => BParsec.fail "Unexpected I32 WireType"
+      | .I64 => BParsec.fail "Unexpected I64 WireType"
 
       -- The following two records don't have values
       | .SGROUP => parse_hardcode_helper result
