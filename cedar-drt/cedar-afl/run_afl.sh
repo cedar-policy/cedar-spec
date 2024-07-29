@@ -38,4 +38,4 @@ fi
 source ../set_env_vars.sh
 cargo afl build
 echo cargo afl fuzz -i in -o $RESULTS_DIR -V $TIME target/debug/$BENCHMARK
-cargo afl fuzz -i in -o $RESULTS_DIR -V $TIME target/debug/$BENCHMARK > /dev/null
+AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1 cargo afl fuzz -i in -o $RESULTS_DIR -V $TIME target/debug/$BENCHMARK > /dev/null
