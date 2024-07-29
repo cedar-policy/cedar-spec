@@ -50,7 +50,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     }
 }
 
-fn main() {
+#[test]
+fn policy_json_roundtrip() {
     check!()
         .with_arbitrary::<FuzzTargetInput>()
         .for_each(|input| {
@@ -72,9 +73,9 @@ fn main() {
 
                     Err(e) => {
                         println!("{:?}", miette::Report::new(e));
-                        // panic!(
-                        //     "Policy parsed from est to ast but did not roundtrip ast->text->ast"
-                        // );
+                        panic!(
+                            "Policy parsed from est to ast but did not roundtrip ast->text->ast"
+                        );
                     }
                 }
             }

@@ -124,7 +124,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unspecified_apply_spec: true,
 };
 
-fn main() {
+#[test]
+fn eval_differential() {
     check!()
         .with_arbitrary::<FuzzTargetInput>()
         .for_each(|input| {
