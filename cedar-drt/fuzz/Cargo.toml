@@ -179,3 +179,15 @@ name = "convert-policy-json-to-cedar"
 path = "fuzz_targets/convert-policy-json-to-cedar.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "entity-validation"
+path = "fuzz_targets/entity-validation.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "request-validation"
+path = "fuzz_targets/request-validation.rs"
+test = false
+doc = false
