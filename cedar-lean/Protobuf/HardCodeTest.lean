@@ -57,14 +57,14 @@ partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStr
   match tag.wireType with
     | .VARINT => BParsec.fail "Unexpected VARINT WireType"
     | .LEN =>
-      let len ← BParsec.attempt Len.parse
       match tag.fieldNum with
         | 6 =>
-          let x ← BParsec.attempt (parse_uint32_packed len.size)
+          let x ← BParsec.attempt parse_uint32_packed
           have new_result := result.set_6 x
           (parse_hardcode_helper new_result)
         | _ =>
           -- Skip this field
+          let len ← Len.parse
           BParsec.forward len.size
           parse_hardcode_helper result
 

@@ -53,9 +53,9 @@ instance : DecidableEq (Except String HardCodeStruct) := Except.dec_eq
 
 #guard interpret_int64 (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) = -2
 
-#guard interpret_int64_packed (ByteArray.mk #[03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
+#guard interpret_int64_packed (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
 
-#guard interpret_string (ByteArray.mk #[116, 101, 115, 116, 105, 110, 103]) = Except.ok "testing"
+#guard interpret_string (ByteArray.mk #[07, 116, 101, 115, 116, 105, 110, 103]) = Except.ok "testing"
 
 #guard Tag.interpret (ByteArray.mk #[08]) = Except.ok (Tag.mk 1 WireType.VARINT)
 

@@ -19,54 +19,58 @@ Parsers for Repeated Fields
 import Protobuf.BParsec
 import Protobuf.Varint
 import Protobuf.Types
+import Protobuf.Structures
 namespace Proto
 
 @[inline]
-def parse_uint32_packed (size_remaining: Nat): BParsec (Array Nat) :=
+def parse_uint32_packed: BParsec (Array Nat) := do
+  let len ← BParsec.attempt Len.parse
   BParsec.foldl
     parse_uint32
     (fun arr => fun element => arr.push element.toNat)
-    size_remaining
+    len.size
     #[]
 
 @[inline]
 def interpret_uint32_packed (b: ByteArray): Except String (Array Nat) :=
-  BParsec.run (parse_uint32_packed b.size) b
+  BParsec.run parse_uint32_packed b
 
 @[inline]
-def parse_uint64_packed (size_remaining: Nat): BParsec (Array Nat) :=
+def parse_uint64_packed: BParsec (Array Nat) := do
+  let len ← BParsec.attempt Len.parse
   BParsec.foldl
     parse_uint32
     (fun arr => fun element => arr.push element.toNat)
-    size_remaining
+    len.size
     #[]
 
 @[inline]
 def interpret_uint64_packed (b: ByteArray): Except String (Array Nat) :=
-  BParsec.run (parse_uint64_packed b.size) b
+  BParsec.run parse_uint64_packed b
 
 @[inline]
-def parse_generic_packed (f: BParsec α) (size_remaining: Nat): BParsec (Array α) :=
+def parse_generic_packed (f: BParsec α): BParsec (Array α) := do
+  let len ← BParsec.attempt Len.parse
   BParsec.foldl
     f
     (fun arr => fun element => arr.push element)
-    size_remaining
+    len.size
     #[]
 
 @[inline]
-def parse_int32_packed (size_remaining: Nat): BParsec (Array Int) :=
-  parse_generic_packed parse_int32 size_remaining
+def parse_int32_packed: BParsec (Array Int) :=
+  parse_generic_packed parse_int32
 
 @[inline]
 def interpret_int32_packed (b: ByteArray): Except String (Array Int) :=
-  BParsec.run (parse_int32_packed b.size) b
+  BParsec.run parse_int32_packed b
 
 @[inline]
-def parse_int64_packed (size_remaining: Nat): BParsec (Array Int) :=
-  parse_generic_packed parse_int64 size_remaining
+def parse_int64_packed: BParsec (Array Int) :=
+  parse_generic_packed parse_int64
 
 @[inline]
 def interpret_int64_packed (b: ByteArray): Except String (Array Int) :=
-  BParsec.run (parse_int64_packed b.size) b
+  BParsec.run parse_int64_packed b
 
 end Proto
