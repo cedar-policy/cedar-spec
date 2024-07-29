@@ -19,19 +19,19 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
 
-namespace Cedar.Thm.Partial.Evaluation.Or
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.And
 
 open Cedar.Data
 open Cedar.Spec (Expr)
 
 /--
-  If partial-evaluating an `Expr.or` produces `ok` with a concrete
+  If partial-evaluating an `Expr.and` produces `ok` with a concrete
   value, then so would partial-evaluating either of the operands, unless the
-  `or` short-circuits
+  `and` short-circuits
 -/
 theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Expr} {request : Partial.Request} {entities : Partial.Entities} :
-  EvaluatesToConcrete (Expr.or x₁ x₂) request entities →
-  Partial.evaluate x₁ request entities = .ok (.value true) ∨
+  EvaluatesToConcrete (Expr.and x₁ x₂) request entities →
+  Partial.evaluate x₁ request entities = .ok (.value false) ∨
   (EvaluatesToConcrete x₁ request entities ∧ EvaluatesToConcrete x₂ request entities)
 := by
   unfold EvaluatesToConcrete
@@ -40,20 +40,22 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Expr} {req
   replace ⟨v, h₁⟩ := h₁
   cases hx₁ : Partial.evaluate x₁ request entities
   <;> cases hx₂ : Partial.evaluate x₂ request entities
-  <;> simp only [hx₁, hx₂, Spec.Value.asBool, Except.bind_ok, Except.bind_err] at h₁
+  <;> simp only [hx₁, Spec.Value.asBool, Bool.not_eq_true', hx₂, Except.bind_ok, Except.bind_err] at h₁
   case ok.ok pval₁ pval₂ =>
     cases pval₁
-    case residual r₁ => simp only [Except.ok.injEq] at h₁
+    case residual r₁ =>
+      simp only [Except.ok.injEq, exists_const, false_and, or_self]
+      simp only [Except.ok.injEq] at h₁
     case value v₁ =>
       cases pval₂
-      case value v₂ => right ; exact And.intro (by exists v₁) (by exists v₂)
+      case value v₂ => simp only [Except.ok.injEq, Partial.Value.value.injEq, exists_eq', and_self, or_true]
       case residual r₂ =>
-        cases v₁
-        case prim p₁ =>
-          cases p₁ <;> simp only [Except.bind_ok, Except.bind_err] at h₁
-          case bool b₁ => cases b₁ <;> simp at *
-        case set | record => simp at h₁
-        case ext x => cases x <;> simp at h₁
+        exact match v₁ with
+        | .prim p => by
+          cases p <;> simp only [Except.bind_ok, Except.bind_err] at h₁
+          case bool b => cases b <;> simp at *
+        | .set _ | .record _ => by simp at h₁
+        | .ext x => by cases x <;> simp at h₁
   case ok.error pval e =>
     cases pval <;> simp only [Except.ok.injEq] at h₁
     case value v =>
@@ -67,4 +69,4 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ : Expr} {req
       case set | record => simp at h₁
       case ext x => cases x <;> simp at h₁
 
-end Cedar.Thm.Partial.Evaluation.Or
+end Cedar.Thm.Partial.Evaluation.Evaluate.And
