@@ -354,11 +354,11 @@ theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
   }
 
 
-theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₀ : op₂ = .containsAll ∨ op₂ = .containsAny)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp op₂ x₁ x₂) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
@@ -388,30 +388,68 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
     apply bool_is_instance_of_anyBool
   }
 
-theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.binaryApp .mem x₁ x₂) c env = Except.ok (ty, c')) :
+theorem type_of_mem_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.binaryApp .mem x₁ x₂) c env (l == .infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
-  ∃ (ety₁ ety₂ : EntityType),
-    (∃ c₁, typeOf x₁ c env = Except.ok (.entity ety₁, c₁)) ∧
+  ∃ (ety₁ ety₂ : EntityType) (l₁ l₂ : Level),
+    (∃ c₁, typeOf x₁ c env (l == .infinite) = Except.ok (.entity ety₁ l₁, c₁)) ∧
     (∃ c₂,
-      (typeOf x₂ c env = Except.ok (.entity ety₂, c₂) ∧
-       ty = .bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env)) ∨
-      (typeOf x₂ c env = Except.ok (.set (.entity ety₂), c₂) ∧
-       ty = .bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env)))
+      (typeOf x₂ c env (l == .infinite) = Except.ok (.entity ety₂ l₂, c₂) ∧
+       .ok ty = Functor.map Prod.fst (typeOfInₑ ety₁ ety₂ l₁ x₁ x₂ env)) ∨
+      (typeOf x₂ c env (l == .infinite) = Except.ok (.set (.entity ety₂ l₂), c₂) ∧
+       .ok ty = Functor.map Prod.fst (typeOfInₛ ety₁ ety₂ l₁ x₁ x₂ env)))
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at h₁
-  cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
+  cases h₂ : typeOf x₁ c env (l == .infinite) <;> simp [h₂] at h₁
+  cases h₃ : typeOf x₂ c env (l == .infinite) <;> simp [h₃] at h₁
   simp [typeOfBinaryApp, ok] at h₁
-  split at h₁ <;> try { contradiction }
+  split at h₁
+    <;> try { contradiction }
+    <;> rename_i tc₁ tc₂ op ty₁ ty₂ ety₁ l₁ ety₂ l₂ _ heq₁ heq₂
   all_goals {
-    simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
-    simp [h₁]
-    rename_i tc₁ tc₂ _ _ _ ety₁ ety₂ _ h₄ h₅
-    exists ety₁
+    try unfold typeOfInₑ at h₁
+    try unfold typeOfInₛ at h₁
+
+    split at h₁ <;> try contradiction
+    rename_i hlt
+    injection h₁
+    rename_i heq₃
+    injection heq₃
+    rename_i heq₃ heq₄
+    rw [← heq₄]
     constructor
-    · exists tc₁.snd ; simp [←h₄]
-    · exists ety₂, tc₂.snd ; simp [←h₅, h₁]
+    simp
+    exists ety₁
+    exists ety₂
+    exists l₁
+    exists l₂
+    constructor
+    case inl.right.left =>
+      exists tc₁.snd
+      simp
+      rw [← heq₁]
+    case inl.right.right =>
+      exists tc₂.snd
+      try (
+        apply Or.inl ;
+        constructor ;
+        rw [← heq₂]
+        rw [← heq₃]
+        unfold typeOfInₑ
+        rw [if_pos]
+        simp [ok, Functor.map, Except.map]
+        apply hlt
+      )
+      try (
+        apply Or.inr
+        constructor
+        rw [← heq₂]
+        unfold typeOfInₛ
+        rw [if_pos]
+        simp [Prod.fst, Functor.map, Except.map, ok]
+        rw [heq₃]
+        apply hlt
+      )
   }
 
 theorem entityUID?_some_implies_entity_lit {x : Expr} {euid : EntityUID}
@@ -495,16 +533,17 @@ theorem action_type_in_eq_action_inₑ (euid₁ euid₂ : EntityUID) {env : Envi
   simp [inₑ, ActionSchema.descendentOf, h₃, Entities.ancestorsOrEmpty, h₁₁]
   rcases h₄ : euid₁ == euid₂ <;> simp at h₄ <;> simp [h₄, h₁₂]
 
-theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
+theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType} {ty : CedarType} {l l₁ l₂ : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf x₁ c₁ env = Except.ok (CedarType.entity ety₁, c₁'))
-  (h₄ : typeOf x₂ c₁ env = Except.ok (CedarType.entity ety₂, c₂'))
+  (h₃ : typeOf x₁ c₁ env (l == .infinite) = Except.ok (CedarType.entity ety₁ l₁, c₁'))
+  (h₄ : typeOf x₂ c₁ env (l == .infinite) = Except.ok (CedarType.entity ety₂ l₂, c₂'))
+  (h₅ : .ok (ty,∅) = typeOfInₑ ety₁ ety₂ l₁ x₁ x₂ env)
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   ∃ v,
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
-    InstanceOfType v (CedarType.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
+    InstanceOfType v ty
 := by
   have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h₃
   have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
@@ -523,17 +562,32 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   replace ⟨euid₂, hty₂, hty₂'⟩ := hty₂
   subst hty₂ hty₂'
   simp [apply₂]
+
+  unfold typeOfInₑ at h₅
+  split at h₅ <;> try contradiction
+  rename_i hgt
+  simp [ok] at h₅
+  subst h₅
   apply InstanceOfType.instance_of_bool
   simp [InstanceOfBoolType]
   split <;> try simp only
   rename_i b bty  h₇ h₈ h₉
   simp [typeOfInₑ] at *
   have ⟨_, hents, hacts⟩ := h₂ ; clear h₂
+  unfold typeOfInₑ.type at h₇ h₈ h₉
   cases hₐ : actionUID? x₁ env.acts <;> simp [hₐ] at h₇ h₈ h₉
   case none =>
-    cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
-    simp [hin] at h₇ h₈ h₉
-    simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
+    cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty
+    case _ =>
+      rw [entity_type_in_false_implies_inₑ_false] at h₉
+      have h₁₀ := h₉ (by rfl)
+      rw [hin] at h₁₀
+      contradiction
+      apply hents
+      apply hin
+    case _ =>
+      rw [h₇] at hin
+      contradiction
   case some =>
     cases he : entityUID? x₂ <;> simp [he] at h₇ h₈ h₉
     case none =>
@@ -550,8 +604,8 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [h₁₀] at h₈ h₉
       cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
-theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityType}
-  (h₁ : InstanceOfType (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety))) :
+theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityType} {l : Level}
+  (h₁ : InstanceOfType (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety l))) :
   ∃ (euids : List EntityUID),
     vs.mapM Value.asEntityUID = Except.ok euids ∧
     ∀ euid, euid ∈ euids → euid.ty = ety
@@ -569,7 +623,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     subst h₂
     rw [Value.asEntityUID] ; simp only [Except.bind_ok]
     rw [List.mapM'_eq_mapM]
-    have h₃ : InstanceOfType (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety)) := by
+    have h₃ : InstanceOfType (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety l)) := by
       apply InstanceOfType.instance_of_set
       intro v h₃
       apply h₁ v
@@ -731,17 +785,41 @@ theorem action_type_in_eq_action_inₛ {auid : EntityUID} {euids euids' : List E
     case neg =>
       simp [inₑ, Entities.ancestorsOrEmpty, hl₁, hr₁, h₅]
 
-theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType}
+theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilities} {env : Environment} {request : Request} {entities : Entities} {ety₁ ety₂ : EntityType} {l l₁ l₂ : Level} {ty : CedarType}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf x₁ c₁ env = Except.ok (CedarType.entity ety₁, c₁'))
-  (h₄ : typeOf x₂ c₁ env = Except.ok (CedarType.set (CedarType.entity ety₂), c₂'))
+  (h₃ : typeOf x₁ c₁ env (l == .infinite) = Except.ok (CedarType.entity ety₁ l₁, c₁'))
+  (h₄ : typeOf x₂ c₁ env (l == .infinite) = Except.ok (CedarType.set (CedarType.entity ety₂ l₁), c₂'))
+  (h₅ : .ok (ty, ∅) = typeOfInₛ ety₁ ety₂ l₁ x₁ x₂ env)
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   ∃ v,
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
-    InstanceOfType v (CedarType.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
+    InstanceOfType v ty
 := by
+  have hbool : ∃ b, ty = .bool b := by
+    unfold typeOfInₛ at h₅
+    split at h₅ <;> try contradiction
+    simp [ok] at h₅
+    cases ty <;> try contradiction
+    rename_i btype
+    unfold typeOfInₛ.type at h₅
+    split at h₅ <;> split at h₅
+    case _ =>
+      exists BoolType.tt
+    case _ =>
+      exists BoolType.ff
+    case _ =>
+      exists BoolType.anyBool
+    case _ =>
+      exists BoolType.ff
+  have ⟨boolType, hbool⟩ := hbool
+  subst hbool
+
+
+
+
+
   have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h₃
   have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp only [EvaluatesTo] at *
@@ -761,6 +839,10 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp only [Set.mapOrErr, Set.elts]
   have ⟨euids, h₇, hty₇⟩ := entity_set_type_implies_set_of_entities hty₂
   simp only [h₇, Except.bind_ok, Except.ok.injEq, false_or, exists_eq_left']
+  rename_i h₈
+
+
+
   apply InstanceOfType.instance_of_bool
   simp only [InstanceOfBoolType]
   split <;> try simp only
