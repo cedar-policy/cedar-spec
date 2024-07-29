@@ -82,7 +82,7 @@ def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityVa
 entities.toList.forM (λ (uid, data) => match ets.find? uid.ty with
   | .some entry => if instanceOfType data.attrs (.record entry.attrs) then
                     if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then .ok ()
-                   else .error (.typeError "entity ancestors inconsistent with type store information")
+                   else .error (.typeError s!"entity ancestors {data.ancestors.elts.map (·.eid)} for {uid.eid} inconsistent with type store information")
                   else .error (.typeError "entity attributes do not match type store")
   | _ => .error (.typeError "entity type not defined in type store"))
 
@@ -107,19 +107,23 @@ def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   attrs := Map.empty
 }
 
+def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
+let tys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
+let tysMap := tys.elts.map (λ ty =>
+  let allWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
+  let allAncestors := List.join (allWithType.values.map (λ edt => edt.ancestors.elts.map (·.ty) ))
+  let ese : EntitySchemaEntry := {ancestors := Set.make allAncestors, attrs := Map.empty}
+  (ty, ese)
+  )
+{
+  ets := Map.make (schema.ets.kvs ++ tysMap),
+  acts := schema.acts
+}
+
 def actionsInEntities (schema : Schema) (entities : Entities) : Schema × Entities :=
 let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
 let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-let schema := {
-  ets := Map.make (actionEntities.kvs.map
-    (λ (e, ed) => (e.ty,
-    {
-      ancestors := ed.ancestors.map (·.ty),
-      attrs := Map.empty
-    }
-    )) ++ schema.ets.kvs),
-  acts := schema.acts
-  }
+let schema := updateSchema schema actionEntities
 (schema, entities)
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
