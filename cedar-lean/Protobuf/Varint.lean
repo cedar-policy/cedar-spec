@@ -36,10 +36,10 @@ def clear_msb64(i: UInt64): UInt64 := i &&& (9223372036854775808: UInt64)
 private def find_end_of_varint_helper  (n: Nat) : BParsec Nat := do
   let empty ← BParsec.empty
   have H0 := empty
-  if empty then BParsec.fail s!"Expected more bytes" else
+  if empty then throw "Expected more bytes"
 
   -- Due to the PTypes allowed, we can't have a varint with more than 10 bytes
-  if H: n ≥ 10 then BParsec.fail "Too many bytes in this varint" else
+  if H: n ≥ 10 then throw "Too many bytes in this varint" else
 
   let msbSet ← fun it => BParsec.ParseResult.success it (msb_set8 it.data[it.pos + n]!)
   if ¬msbSet then
@@ -68,7 +68,7 @@ def find_next_varint : BParsec Slice := do
 private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec UInt64 := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
-  if empty then BParsec.fail "Expected more bytes" else
+  if empty then throw "Expected more bytes" else
   let byte ← fun it => BParsec.ParseResult.success it it.data[it.pos]!
   BParsec.next -- Progress iterator
   have byte2 := clear_msb8 byte
@@ -79,7 +79,7 @@ private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec 
 @[inline]
 def parse_uint64 : BParsec UInt64 := do
   let slice ← BParsec.attempt find_next_varint
-  let remaining ← pure (slice.last - slice.first)
+  let remaining := slice.last - slice.first
   parse_uint64_helper remaining 0 0
 
 @[inline]
@@ -89,7 +89,7 @@ def interpret_uint64 (b: ByteArray) : UInt64 :=
 private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec UInt32 := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty -- NOTE: Might be able to remove if we add a hypotheses in the definition
-  if empty then BParsec.fail "Expected more bytes" else
+  if empty then throw "Expected more bytes" else
   let byte ← fun it => BParsec.ParseResult.success it it.data[it.pos]!
   BParsec.next -- Progress iterator
   have byte2 := clear_msb8 byte
@@ -122,9 +122,10 @@ def interpret_int32 (b: ByteArray) : Int :=
 @[inline]
 def parse_int64: BParsec Int := do
   let r ← parse_uint64
-    match msb_set64 r with
-    | true => pure (Int.neg (~~~(r - (1: UInt64))).toNat)
-    | false => pure (Int.ofNat r.toNat)
+  if msb_set64 r then
+    pure (Int.neg (~~~(r - (1: UInt64))).toNat)
+  else
+    pure (Int.ofNat r.toNat)
 
 @[inline]
 def interpret_int64 (b: ByteArray) : Int :=
@@ -135,7 +136,7 @@ def parse_bool : BParsec Bool := do
   let result ← parse_int32
   if result = 1 then pure true else
   if result = 0 then pure false else
-  BParsec.fail "Expected 00 or 01"
+  throw "Expected 00 or 01"
 
 @[inline]
 def interpret_bool (b: ByteArray) : Except String Bool :=

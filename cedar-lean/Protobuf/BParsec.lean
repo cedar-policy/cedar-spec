@@ -37,8 +37,8 @@ def pure (a : α) : BParsec α := λ it => ParseResult.success it a
 @[inline]
 def bind {α β : Type} (f : BParsec α) (g : α → BParsec β) : BParsec β := λ it =>
   match f it with
-  | ParseResult.success rem a => g a rem
-  | ParseResult.error pos msg => ParseResult.error pos msg
+  | ParseResult.success it a => g a it
+  | ParseResult.error it msg => ParseResult.error it msg
 
 instance : Monad BParsec := { pure := BParsec.pure, bind }
 
@@ -46,26 +46,30 @@ instance : Monad BParsec := { pure := BParsec.pure, bind }
 def fail (msg : String) : BParsec α := fun it => ParseResult.error it msg
 
 @[inline]
-def tryCatch (p : BParsec α)
-    (csuccess : α → BParsec β)
-    (cerror : Unit → BParsec β)
-    : BParsec β := fun it =>
-  match p it with
-  | .success rem a => csuccess a rem
-  | .error rem err =>
-    -- We assume that it.s never changes as the `Parsec` monad only modifies `it.pos`.
-    if it.pos = rem.pos then cerror () rem else .error rem err
+def tryCatch (body: BParsec α) (handler: String → BParsec α): BParsec α := fun it =>
+  match body it with
+    | ParseResult.success it result => ParseResult.success it result
+    | ParseResult.error it err => (handler err) it
 
 @[inline]
-def orElse (p : BParsec α) (q : Unit → BParsec α) : BParsec α := tryCatch p pure q
+def orElse (p : BParsec α) (q : Unit → BParsec α) : BParsec α := fun it =>
+  match p it with
+    | .success it result => ParseResult.success it result
+    | .error it _ => q () it
 
+/-- Attempt a parser combinator on a byte array, if it fails, reset
+the position-/
 @[inline]
 def attempt (p : BParsec α) : BParsec α := λ it =>
   match p it with
   | ParseResult.success rem res => ParseResult.success rem res
   | ParseResult.error _ err => ParseResult.error it err
 
-instance : Alternative BParsec := { failure := fail "", orElse }
+instance : Alternative BParsec := { failure := fail default, orElse }
+
+instance : MonadExceptOf String BParsec := {
+  throw := fail, tryCatch := tryCatch
+}
 
 /- Execute parser combinators on a byte array,
 returns an Except to capture both successes and failures -/
@@ -136,8 +140,8 @@ def pos : BParsec Nat :=
     let startPos ← pos
     let element ← f
     let endPos ← pos
-    let element_size ← pure (endPos - startPos)
-    let newResult ← pure (g result element)
+    let element_size := endPos - startPos
+    let newResult := g result element
     foldl_helper f g (remaining - element_size) newResult
   else
     pure result

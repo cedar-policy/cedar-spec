@@ -39,7 +39,7 @@ namespace Len
   def parse : BParsec Len := do
     let isize ← parse_int32
     match isize with
-    | Int.negSucc _ => BParsec.fail "Expected positive size in len payload"
+    | Int.negSucc _ => throw "Expected positive size in len payload"
     | Int.ofNat size =>
         let slice ← fun it => BParsec.ParseResult.success it (Slice.mk it.pos (it.pos + size))
         pure (Len.mk size slice)
@@ -56,7 +56,7 @@ def parse : BParsec Tag := do
                     else if wt_uint = 3 then pure WireType.SGROUP
                     else if wt_uint = 4 then pure WireType.EGROUP
                     else if wt_uint = 5 then pure WireType.I32
-                    else BParsec.fail "Unexcepted Wire Type"
+                    else throw "Unexcepted Wire Type"
   have field_num := element >>> 3
   pure (Tag.mk field_num.toNat wire_type)
 

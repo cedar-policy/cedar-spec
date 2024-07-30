@@ -55,7 +55,7 @@ partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStr
   let tag ← BParsec.attempt Tag.parse
 
   match tag.wireType with
-    | .VARINT => BParsec.fail "Unexpected VARINT WireType"
+    | .VARINT => throw "Unexpected VARINT WireType"
     | .LEN =>
       match tag.fieldNum with
         | 6 =>
@@ -68,8 +68,8 @@ partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStr
           BParsec.forward len.size
           parse_hardcode_helper result
 
-      | .I32 => BParsec.fail "Unexpected I32 WireType"
-      | .I64 => BParsec.fail "Unexpected I64 WireType"
+      | .I32 => throw "Unexpected I32 WireType"
+      | .I64 => throw "Unexpected I64 WireType"
 
       -- The following two records don't have values
       | .SGROUP => parse_hardcode_helper result
