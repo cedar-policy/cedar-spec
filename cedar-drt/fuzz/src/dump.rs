@@ -167,7 +167,7 @@ fn check_test(
         .unwrap_or_else(|e| panic!("error re-parsing policy file: {e}"));
 
     let parsed_schema =
-        ValidatorSchema::from_str_natural(&formatted_schema, &Extensions::all_available())
+        ValidatorSchema::from_str_natural(&formatted_schema, Extensions::all_available())
             .unwrap_or_else(|e| panic!("error re-parsing schema: {e}"))
             .0;
 
