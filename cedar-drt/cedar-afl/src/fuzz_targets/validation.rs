@@ -37,34 +37,52 @@ use serde_json::json;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FuzzTargetInput {
     /// generated schema
-    pub schema: SchemaFragment<RawName>,
+    #[serde(skip)]
+    pub schema: Schema,
     /// generated policy
-    pub policy: ast::Policy,
+    pub policy: ABACPolicy,
 }
+
+/// settings for this fuzz target
+const SETTINGS: ABACSettings = ABACSettings {
+    match_types: true,
+    enable_extensions: true,
+    max_depth: 7,
+    max_width: 7,
+    enable_additional_attributes: true,
+    enable_like: true,
+    enable_action_groups_and_attrs: true,
+    enable_arbitrary_func_call: true,
+    enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
+};
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let est_policy: cedar_policy_core::est::Policy = u.arbitrary()?;
-        let policy = est_policy
-            .try_into_ast_policy(Some(PolicyID::from_string("policy0")))
-            .map_err(|e| arbitrary::Error::IncorrectFormat)?;
+        let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        Ok(Self { schema, policy })
+    }
 
-        Ok(FuzzTargetInput {
-            schema: u.arbitrary()?,
-            policy: policy,
-        })
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth),
+            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+        ])
     }
 }
 
 impl TestCaseFormat for FuzzTargetInput {
     fn to_fuzz_test_case(&self) -> FuzzTestCase {
         // Access the serialized expression
-        let est_policy: cedar_policy_core::est::Policy = self.policy.clone().into();
+        let est_policy: cedar_policy_core::est::Policy = self.policy.0.clone().into();
         let representation = json!({
-            "schema": self.schema,
+            "schema": self.schema.schema,
             "policy": est_policy,
         });
         FuzzTestCase {
@@ -86,7 +104,7 @@ fn main() {
 
             let policy = input.policy.clone();
             let mut policyset = ast::PolicySet::new();
-            policyset.add(policy).unwrap();
+            policyset.add_static(policy.into()).unwrap();
             debug!("Policies: {policyset}");
 
             // run the policy through both validators and compare the result

@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-use std::path::Path;
-
 use afl::fuzz;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_afl::{
     check_policy_equivalence, check_policy_est_parse_bugs, dump_fuzz_test_case, FuzzTestCase,
     TestCaseFormat,
 };
+use cedar_policy_generators::{
+    hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use thiserror::Error;
 
 use cedar_policy_core::{ast::PolicyID, est::FromJsonError};
-use std::io::Write;
 
 #[derive(miette::Diagnostic, Error, Debug)]
 enum ESTParseError {
@@ -38,12 +38,43 @@ enum ESTParseError {
     ESTToAST(#[from] FromJsonError),
 }
 
-/// Input expected by this fuzz target:
-/// A policy EST
-#[derive(Debug, Clone, Serialize)]
-pub struct FuzzTargetInput {
-    /// generated policy
-    pub policy: cedar_policy_core::est::Policy,
+/// settings for this fuzz target
+const SETTINGS: ABACSettings = ABACSettings {
+    match_types: true,
+    enable_extensions: true,
+    max_depth: 3,
+    max_width: 3,
+    enable_additional_attributes: false,
+    enable_like: true,
+    enable_action_groups_and_attrs: true,
+    enable_arbitrary_func_call: true,
+    enable_unknowns: false,
+    enable_action_in_constraints: true,
+    enable_unspecified_apply_spec: true,
+};
+
+impl<'a> Arbitrary<'a> for FuzzTargetInput {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        let schema = Schema::arbitrary(SETTINGS.clone(), u)?;
+        let hierarchy = schema.arbitrary_hierarchy(u)?;
+        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        let est_policy: cedar_policy_core::est::Policy = policy.into();
+        let est_json =
+            serde_json::to_string(&est_policy).map_err(|e| arbitrary::Error::IncorrectFormat)?;
+        let est_from_str = serde_json::from_str::<cedar_policy_core::est::Policy>(&est_json)
+            .map_err(|e| arbitrary::Error::IncorrectFormat)?;
+        Ok(Self {
+            policy: est_from_str,
+        })
+    }
+
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
+            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+        ])
+    }
 }
 
 impl TestCaseFormat for FuzzTargetInput {
@@ -59,17 +90,12 @@ impl TestCaseFormat for FuzzTargetInput {
     }
 }
 
-impl<'a> Arbitrary<'a> for FuzzTargetInput {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let policy: cedar_policy_core::est::Policy = u.arbitrary()?;
-        let est_json =
-            serde_json::to_string(&policy).map_err(|e| arbitrary::Error::IncorrectFormat)?;
-        let est_from_str = serde_json::from_str::<cedar_policy_core::est::Policy>(&est_json)
-            .map_err(|e| arbitrary::Error::IncorrectFormat)?;
-        Ok(FuzzTargetInput {
-            policy: est_from_str,
-        })
-    }
+/// Input expected by this fuzz target:
+/// A policy EST
+#[derive(Debug, Clone, Serialize)]
+pub struct FuzzTargetInput {
+    /// generated policy
+    pub policy: cedar_policy_core::est::Policy,
 }
 
 fn main() {
