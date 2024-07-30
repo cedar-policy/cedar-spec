@@ -23,6 +23,7 @@ import Cedar.Partial.Value
 namespace Cedar.Partial
 
 open Cedar.Data
+open Cedar.Partial (Residual)
 open Cedar.Spec (Policy Policies)
 
 def knownSatisfied (policy : Policy) (req : Partial.Request) (entities : Partial.Entities) : Bool :=
@@ -36,12 +37,21 @@ def knownErroring (policy : Policy) (req : Partial.Request) (entities : Partial.
   | .ok _ => false
   | .error _ => true
 
+/--
+  Not to be confused with `Partial.evaluate`, which evaluates a `Spec.Expr`
+  and returns a `Partial.Value`, this function `Partial.evaluatePolicy`
+  evaluates a `Policy` and returns a `Residual`, or `none` if the policy is
+  definitely not satisfied (residual `false`).
+-/
+def evaluatePolicy (policy : Policy) (req : Partial.Request) (entities : Partial.Entities) : Option Residual :=
+  match Partial.evaluate policy.toExpr req entities with
+  | .ok (.value false) => none
+  | .ok pv => some (.residual policy.id policy.effect pv)
+  | .error _ => some (.error policy.id)
+
 def isAuthorized (req : Partial.Request) (entities : Partial.Entities) (policies : Policies) : Partial.Response :=
   {
-    residuals := policies.filterMap λ policy => match Partial.evaluate policy.toExpr req entities with
-      | .ok (.value (.prim (.bool false))) => none
-      | .ok pv => some (.residual policy.id policy.effect pv)
-      | .error e => some (.error policy.id e)
+    residuals := policies.filterMap (evaluatePolicy · req entities),
     entities,
   }
 

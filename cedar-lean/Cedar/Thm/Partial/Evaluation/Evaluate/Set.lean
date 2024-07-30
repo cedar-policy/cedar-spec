@@ -29,6 +29,11 @@ open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Expr Result)
 
+theorem sizeOf_set_lt_of_val (xs : Set Spec.Value) :
+  sizeOf xs < sizeOf (Spec.Value.set xs)
+:= by
+  sorry
+
 /--
   Lemma (used for both the Set and Call cases):
 
@@ -111,6 +116,9 @@ theorem partial_eval_wf {xs : List Expr} {request : Partial.Request} {entities :
       rename_i v' ; subst v'
       simpa [Partial.Value.WellFormed] using ih x h₅ (.value v) hx
     · simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+      intro pv hpv
+      replace ⟨x, hx, hx'⟩ := List.mapM_ok_implies_all_from_ok hx pv hpv
+      exact ih x hx _ hx'
 
 /--
   If partial-evaluating an `Expr.set` produces `ok` with a concrete

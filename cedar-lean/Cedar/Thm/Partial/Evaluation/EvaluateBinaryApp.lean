@@ -20,8 +20,8 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
 /-! Theorems about `Partial.evaluateBinaryApp` -/
 
@@ -165,10 +165,12 @@ theorem evaluateBinaryApp_wf {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {
   split
   · rename_i v₁ v₂ h₁
     simp at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst h₁ h₁'
-    simp only [Partial.Value.WellFormed] at wf₁ wf₂
+    simp [Partial.Value.WellFormed] at wf₁ wf₂
     exact partialApply₂_wf wf₁ wf₂
-  · intro pval h₁ ; simp only [Except.ok.injEq] at h₁ ; subst h₁
-    simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+  · intro pval h₁ ; simp at h₁ ; subst h₁ ; rename_i h₁
+    simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+    simp only [Prod.mk.injEq] at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst h₁ h₁'
+    exact And.intro wf₁ wf₂
 
 /--
   If `Partial.evaluateBinaryApp` produces `ok` with a concrete value, then so

@@ -47,16 +47,19 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Spec.Request} {en
   case ok v₁ => exact EvaluateHasAttr.on_concrete_eqv_concrete
 
 /--
-  if partial-evaluating an `Expr.hasAttr` returns `ok` with some value,
-  that is a well-formed value
+  Inductive argument that if partial-evaluating an `Expr.hasAttr` on a
+  well-formed value returns `ok` with some value, that is a well-formed value as
+  well
 -/
-theorem partial_eval_wf {x₁ : Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request} :
+theorem partial_eval_wf {x₁ : Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request}
+  (ih₁ : EvaluatesToWellFormed x₁ request entities) :
   EvaluatesToWellFormed (Expr.hasAttr x₁ attr) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ =>
-    exact EvaluateHasAttr.evaluateHasAttr_wf
+    apply EvaluateHasAttr.evaluateHasAttr_wf
+    exact ih₁ pval₁ hx₁
 
 /--
   If partial-evaluating an `Expr.hasAttr` produces `ok` with a concrete
@@ -108,7 +111,7 @@ theorem subst_preserves_evaluation_to_value {x₁ : Expr} {attr : Attr} {req req
 
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
+  import `Thm/Partial/Evaluation/Evaluate.lean` to access it.
   See #372.
 -/
 theorem subst_preserves_errors {x₁ : Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}

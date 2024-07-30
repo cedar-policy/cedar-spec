@@ -65,13 +65,46 @@ end Cedar.Spec
 
 namespace Cedar.Partial
 
-/-- All `ResidualExpr`s are structurally WellFormed. -/
+open Cedar.Data
+
+mutual
+
 def ResidualExpr.WellFormed : Partial.ResidualExpr → Prop
-  | _ => true
+  | .and pv₁ pv₂
+  | .or pv₁ pv₂
+  | .binaryApp _ pv₁ pv₂ =>
+      pv₁.WellFormed ∧ pv₂.WellFormed
+  | .ite pv₁ pv₂ pv₃ =>
+      pv₁.WellFormed ∧ pv₂.WellFormed ∧ pv₃.WellFormed
+  | .unaryApp _ pv₁
+  | .getAttr pv₁ _
+  | .hasAttr pv₁ _ =>
+      pv₁.WellFormed
+  | .set pvs
+  | .call _ pvs =>
+      ∀ pv ∈ pvs, pv.WellFormed
+  | .record apvs =>
+      ∀ kv ∈ apvs, kv.snd.WellFormed
+  | .unknown _ =>
+      true
+termination_by x => sizeOf x
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ | _ => -- set | call
+    rename_i h
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ => -- record
+    rename_i h
+    exact List.sizeOf_snd_lt_sizeOf_list h
 
 def Value.WellFormed : Partial.Value → Prop
   | .value v => v.WellFormed
   | .residual r => r.WellFormed
+termination_by pv => sizeOf pv
+
+end
 
 def Request.WellFormed : Partial.Request → Prop
   | { context, .. } => context.WellFormed ∧ ∀ pval ∈ context.values, pval.WellFormed

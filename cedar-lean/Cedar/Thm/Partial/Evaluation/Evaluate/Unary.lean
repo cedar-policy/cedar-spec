@@ -46,18 +46,20 @@ theorem on_concrete_eqv_concrete_eval {x₁ : Expr} {request : Spec.Request} {en
   case ok v₁ => rfl
 
 /--
-  Inductive argument that if partial-evaluating an `Expr.unaryApp`
-  produces `ok` with some value, that value is well-formed
-
-  This theorem does not actually require that x₁ is WellFormed
+  Inductive argument that if partial-evaluating an `Expr.unaryApp` on
+  well-formed arguments produces `ok` with some value, that is a well-formed
+  value as well
 -/
-theorem partial_eval_wf {x₁ : Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities} :
+theorem partial_eval_wf {x₁ : Expr} {op : UnaryOp} {request : Partial.Request} {entities : Partial.Entities}
+  (ih₁ : EvaluatesToWellFormed x₁ request entities) :
   EvaluatesToWellFormed (Expr.unaryApp op x₁) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
   intro pval
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
-  case ok pval₁ => exact EvaluateUnaryApp.evaluateUnaryApp_wf
+  case ok pval₁ =>
+    apply EvaluateUnaryApp.evaluateUnaryApp_wf
+    exact ih₁ pval₁ hx₁
 
 /--
   If partial-evaluating an `Expr.unaryApp` produces `ok` with a concrete
@@ -107,7 +109,7 @@ theorem subst_preserves_evaluation_to_value {x₁ : Expr} {op : UnaryOp} {req re
 
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
+  import `Thm/Partial/Evaluation/Evaluate.lean` to access it.
   See #372.
 -/
 theorem subst_preserves_errors {x₁ : Expr} {op : UnaryOp} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
