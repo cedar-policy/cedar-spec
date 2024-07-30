@@ -126,19 +126,29 @@ const SETTINGS: ABACSettings = ABACSettings {
 
 // Type-directed fuzzing of expression evaluation.
 fn main() {
-    fuzz!(|input: FuzzTargetInput| {
-        let obs_out = input.to_fuzz_test_case();
-        initialize_log();
-        let def_impl = LeanDefinitionalEngine::new();
-        debug!("expr: {}\n", input.expression);
-        debug!("Entities: {}\n", input.entities);
-        run_eval_test(
-            &def_impl,
-            input.request.clone().into(),
-            &input.expression,
-            &input.entities,
-            SETTINGS.enable_extensions,
-        );
+    fuzz!(|data: &[u8]| {
+        let mut input_data = Unstructured::new(data);
+        let input = FuzzTargetInput::arbitrary(&mut input_data);
+        let mut obs_out = FuzzTestCase::default();
+        if let Ok(input) = input {
+            obs_out = input.to_fuzz_test_case();
+            initialize_log();
+            let def_impl = LeanDefinitionalEngine::new();
+            debug!("expr: {}\n", input.expression);
+            debug!("Entities: {}\n", input.entities);
+            run_eval_test(
+                &def_impl,
+                input.request.clone().into(),
+                &input.expression,
+                &input.entities,
+                SETTINGS.enable_extensions,
+            );
+        } else {
+            debug!("unsuccessful arbitrary input!");
+            obs_out.status = "invalid".to_string();
+            obs_out.status_reason = "arbitrary generation failed".to_string();
+        }
+
         if let Ok(_) = std::env::var("DRT_OBSERVABILITY") {
             let dirname = "fuzz/observations";
             let testname = std::env::var("FUZZ_TARGET").unwrap_or("eval-derived".to_string());

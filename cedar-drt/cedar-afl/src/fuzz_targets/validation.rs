@@ -93,28 +93,37 @@ impl TestCaseFormat for FuzzTargetInput {
 }
 
 fn main() {
-    fuzz!(|input: FuzzTargetInput| {
+    fuzz!(|data: &[u8]| {
+        let mut input_data = Unstructured::new(data);
+        let input = FuzzTargetInput::arbitrary(&mut input_data);
+        let mut obs_out = FuzzTestCase::default();
         initialize_log();
-        let def_impl = LeanDefinitionalEngine::new();
-        let mut obs_out = input.to_fuzz_test_case();
+        if let Ok(input) = input {
+            let def_impl = LeanDefinitionalEngine::new();
+            obs_out = input.to_fuzz_test_case();
 
-        // generate a schema
-        if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
-            debug!("Schema: {:?}", schema);
+            // generate a schema
+            if let Ok(schema) = ValidatorSchema::try_from(input.schema.clone()) {
+                debug!("Schema: {:?}", schema);
 
-            let policy = input.policy.clone();
-            let mut policyset = ast::PolicySet::new();
-            policyset.add_static(policy.into()).unwrap();
-            debug!("Policies: {policyset}");
+                let policy = input.policy.clone();
+                let mut policyset = ast::PolicySet::new();
+                policyset.add_static(policy.into()).unwrap();
+                debug!("Policies: {policyset}");
 
-            // run the policy through both validators and compare the result
-            let (_, total_dur) = time_function(|| {
-                run_val_test(&def_impl, schema, &policyset, ValidationMode::Strict)
-            });
-            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+                // run the policy through both validators and compare the result
+                let (_, total_dur) = time_function(|| {
+                    run_val_test(&def_impl, schema, &policyset, ValidationMode::Strict)
+                });
+                info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+            } else {
+                obs_out.status = "invalid".to_string();
+                obs_out.status_reason =
+                    "schema could not be converted to ValidatorSchema".to_string();
+            }
         } else {
             obs_out.status = "invalid".to_string();
-            obs_out.status_reason = "schema could not be converted to ValidatorSchema".to_string();
+            obs_out.status_reason = "arbitrary generation failed".to_string();
         }
         if let Ok(_) = std::env::var("DRT_OBSERVABILITY") {
             let dirname = "fuzz/observations";

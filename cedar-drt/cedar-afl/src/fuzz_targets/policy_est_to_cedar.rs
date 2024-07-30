@@ -99,36 +99,46 @@ pub struct FuzzTargetInput {
 }
 
 fn main() {
-    fuzz!(|input: FuzzTargetInput| {
-        let mut obs_out = input.to_fuzz_test_case();
-        if let Ok(ast_from_est) = input
-            .clone()
-            .policy
-            .try_into_ast_template(Some(PolicyID::from_string("policy0")))
-            .map_err(ESTParseError::from)
-        {
-            let ast_from_cedar =
-                cedar_policy_core::parser::parse_policy_template(None, &ast_from_est.to_string());
+    fuzz!(|data: &[u8]| {
+        let mut input_data = Unstructured::new(data);
+        let input = FuzzTargetInput::arbitrary(&mut input_data);
+        let mut obs_out = FuzzTestCase::default();
+        if let Ok(input) = input {
+            obs_out = input.to_fuzz_test_case();
+            if let Ok(ast_from_est) = input
+                .clone()
+                .policy
+                .try_into_ast_template(Some(PolicyID::from_string("policy0")))
+                .map_err(ESTParseError::from)
+            {
+                let ast_from_cedar = cedar_policy_core::parser::parse_policy_template(
+                    None,
+                    &ast_from_est.to_string(),
+                );
 
-            match ast_from_cedar {
-                Ok(ast_from_cedar) => {
-                    check_policy_equivalence(&ast_from_est, &ast_from_cedar);
-                }
+                match ast_from_cedar {
+                    Ok(ast_from_cedar) => {
+                        check_policy_equivalence(&ast_from_est, &ast_from_cedar);
+                    }
 
-                Err(e) => {
-                    obs_out.status = "invalid".to_string();
-                    obs_out.status_reason =
-                        "policy parsed from est to ast but did not roundtrip ast->text->ast"
-                            .to_string();
-                    // println!("{:?}", miette::Report::new(e));
-                    // panic!(
-                    //     "Policy parsed from est to ast but did not roundtrip ast->text->ast"
-                    // );
+                    Err(e) => {
+                        obs_out.status = "invalid".to_string();
+                        obs_out.status_reason =
+                            "policy parsed from est to ast but did not roundtrip ast->text->ast"
+                                .to_string();
+                        // println!("{:?}", miette::Report::new(e));
+                        // panic!(
+                        //     "Policy parsed from est to ast but did not roundtrip ast->text->ast"
+                        // );
+                    }
                 }
+            } else {
+                obs_out.status = "invalid".to_string();
+                obs_out.status_reason = "est to ast conversion failed".to_string();
             }
         } else {
             obs_out.status = "invalid".to_string();
-            obs_out.status_reason = "est to ast conversion failed".to_string();
+            obs_out.status_reason = "arbitrary generation failed".to_string();
         }
         if let Ok(_) = std::env::var("DRT_OBSERVABILITY") {
             let dirname = "fuzz/observations";

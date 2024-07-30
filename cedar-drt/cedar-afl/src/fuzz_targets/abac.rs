@@ -130,30 +130,39 @@ impl TestCaseFormat for FuzzTargetInput {
 }
 
 fn main() {
-    fuzz!(|input: FuzzTargetInput| {
-        initialize_log();
-        let def_impl = LeanDefinitionalEngine::new();
-        let policy = input.policy.clone();
-        let mut policyset: ast::PolicySet = ast::PolicySet::new();
-        let entities = input.entities.clone();
-        policyset.add_static(policy.into()).unwrap();
-        debug!("Policies: {policyset}");
-        debug!("Entities: {entities}");
-        let requests = input
-            .requests
-            .clone()
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<_>>();
+    fuzz!(|data: &[u8]| {
+        let mut input_data = Unstructured::new(data);
+        let input = FuzzTargetInput::arbitrary(&mut input_data);
+        let mut obs_out = FuzzTestCase::default();
+        if let Ok(input) = input {
+            obs_out = input.to_fuzz_test_case();
+            initialize_log();
+            let def_impl = LeanDefinitionalEngine::new();
+            let policy = input.policy.clone();
+            let mut policyset: ast::PolicySet = ast::PolicySet::new();
+            let entities = input.entities.clone();
+            policyset.add_static(policy.into()).unwrap();
+            debug!("Policies: {policyset}");
+            debug!("Entities: {entities}");
+            let requests = input
+                .requests
+                .clone()
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>();
 
-        for request in requests.iter().cloned() {
-            debug!("Request: {request}");
-            let (_, total_dur) =
-                time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
-            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+            for request in requests.iter().cloned() {
+                debug!("Request: {request}");
+                let (_, total_dur) =
+                    time_function(|| run_auth_test(&def_impl, request, &policyset, &entities));
+                info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+            }
+        } else {
+            debug!("unsuccessful arbitrary input!");
+            obs_out.status = "invalid".to_string();
+            obs_out.status_reason = "arbitrary generation failed".to_string();
         }
         if let Ok(_) = std::env::var("DRT_OBSERVABILITY") {
-            let obs_out = input.to_fuzz_test_case();
             let dirname = "fuzz/observations";
             let testname = std::env::var("FUZZ_TARGET").unwrap_or("abac-derived".to_string());
             dump_fuzz_test_case(dirname, &testname, &obs_out)
