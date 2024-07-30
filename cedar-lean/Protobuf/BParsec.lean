@@ -136,7 +136,7 @@ def pos : BParsec Nat :=
 
 
 @[specialize] partial def foldl_helper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β  :=
-  if h: remaining > 0 then do
+  if remaining > 0 then do
     let startPos ← pos
     let element ← f
     let endPos ← pos

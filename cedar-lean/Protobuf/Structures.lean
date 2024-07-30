@@ -35,7 +35,15 @@ structure Len where
   payload: Slice
 deriving Repr, DecidableEq
 
+namespace VarInt
+  @[inline]
+  def skip : BParsec Unit := do
+    let slice ← BParsec.attempt find_next_varint
+    BParsec.forward (slice.last - slice.first)
+end VarInt
+
 namespace Len
+  @[inline]
   def parse : BParsec Len := do
     let isize ← parse_int32
     match isize with
@@ -43,6 +51,16 @@ namespace Len
     | Int.ofNat size =>
         let slice ← fun it => BParsec.ParseResult.success it (Slice.mk it.pos (it.pos + size))
         pure (Len.mk size slice)
+
+  /-- Skips not only the LEN size but also the payload -/
+  @[inline]
+  def skip : BParsec Unit := do
+    let isize ← parse_int32
+    match isize with
+    | Int.negSucc _ => throw "Expected positive size in len payload"
+    | Int.ofNat size =>
+        BParsec.forward size
+
 end Len
 
 namespace Tag
@@ -66,5 +84,18 @@ def interpret (b: ByteArray) : Except String Tag :=
 
 end Tag
 
+namespace WireType
+
+@[inline]
+def skip (wt: WireType) : BParsec Unit := do
+  match wt with
+  | .VARINT => VarInt.skip
+  | .I64 => BParsec.forward 8
+  | .LEN => Len.skip
+  | .SGROUP => pure ()
+  | .EGROUP => pure ()
+  | .I32 => BParsec.forward 4
+
+end WireType
 
 end Proto
