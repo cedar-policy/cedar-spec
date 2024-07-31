@@ -111,7 +111,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Expr} {op : BinaryOp} {
     <;> simp only [Partial.Value.value.injEq, forall_eq', false_implies, forall_const] at *
     case value.value v₁ v₂ =>
       simp only [ih₁, ih₂, Except.bind_ok]
-      exact EvaluateBinaryApp.subst_preserves_evaluation_to_value
+      exact EvaluateBinaryApp.subst_preserves_evaluation_to_value subsmap
     all_goals simp only [Partial.evaluateBinaryApp, Except.ok.injEq, false_implies]
 
 /--

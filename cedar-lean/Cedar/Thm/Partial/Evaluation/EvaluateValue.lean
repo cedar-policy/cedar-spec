@@ -348,17 +348,78 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
             subst e₂
             simp [EvaluateUnaryApp.reducing_arg_preserves_errors h₄ hpv₁] at h₁
           case ok pv₁'' =>
-            have ⟨pv, h₅⟩ := EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf) hpv₁ h₁
+            have ⟨pv, h₅⟩ :=
+              EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf)
+                hpv₁ h₁
             simp [h₅] at hpv₁'
         · rename_i hₑ
           subst h₃ h₃'
           simp [h₂] at hₑ
       case ok pv₁'' =>
         intro h₁
-        have ⟨pv, h₂⟩ := EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf) hpv₁ h₁
+        have ⟨pv, h₂⟩ :=
+          EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf)
+            hpv₁ h₁
         simp [hpv₁'] at h₂
         simp [h₂]
-  case binaryApp op pv₁ pv₂ => sorry
+  case binaryApp op pv₁ pv₂ =>
+    have h₁ := EvaluateBinaryApp.reeval_eqv_substituting_first op pv₁ pv₂ entities subsmap wf.left wf.right
+    cases hpv₁ : Partial.evaluateValue pv₁ entities
+    <;> cases hpv₂ : Partial.evaluateValue pv₂ entities
+    <;> simp
+    case ok.ok pv₁' pv₂' =>
+      cases hpv₁' : Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap)
+      <;> cases hpv₂' : Partial.evaluateValue (pv₂.subst subsmap) (entities.subst subsmap)
+      <;> simp
+      <;> simp [hpv₁', hpv₂'] at h₁
+      case error.error e₁ e₂ | error.ok e₁ pv₂'' =>
+        split at h₁ <;> rename_i h₃
+        <;> simp only [Prod.mk.injEq] at h₃ <;> replace ⟨h₃, h₃'⟩ := h₃
+        · simp at h₃' ; subst h₃' ; rename_i e₃
+          cases h₄ : Partial.evaluateBinaryApp op pv₁ pv₂ entities
+          <;> simp [h₄] at h₃
+          case error e₄ => simp [EvaluateBinaryApp.reducing_arg_preserves_errors h₄ hpv₁ hpv₂]
+          case ok pv₁'' =>
+            intro h₂
+            have ⟨pv₁''', pv₂''', h₅⟩ :=
+              EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+                hpv₁ hpv₂ h₂
+            simp [h₅] at hpv₁'
+        · rename_i hₑ
+          subst h₃ h₃'
+          simp [h₁] at hₑ
+      case ok.error pv₁'' e₂ =>
+        split at h₁ <;> rename_i h₃
+        <;> simp only [Prod.mk.injEq] at h₃ <;> replace ⟨h₃, h₃'⟩ := h₃
+        · simp at h₃' ; subst h₃' ; rename_i e₃
+          cases h₄ : Partial.evaluateBinaryApp op pv₁ pv₂ entities
+          <;> simp [h₄] at h₃
+          case error e₄ => simp [EvaluateBinaryApp.reducing_arg_preserves_errors h₄ hpv₁ hpv₂]
+          case ok pv₁'' =>
+            intro h₂
+            have ⟨pv₁''', pv₂''', h₅⟩ :=
+              EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+                hpv₁ hpv₂ h₂
+            simp [h₅] at hpv₂'
+        · rename_i hₑ
+          subst h₃ h₃'
+          simp [h₁] at hₑ
+      case ok.ok pv₁'' pv₂'' =>
+        intro h₂
+        have ⟨pv₁'''', pv₂'''', h₅, h₆, h₇⟩ :=
+          EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+            hpv₁ hpv₂ h₂
+        simp only [h₅, h₆, Except.ok.injEq] at hpv₁' hpv₂'
+        subst pv₁'''' pv₂''''
+        exact h₇
   case hasAttr pv₁ attr => sorry
   case getAttr pv₁ attr => sorry
   case set pvs => sorry
@@ -635,7 +696,7 @@ theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities}
       | .ok b₁ => by
         cases b₁
         all_goals try {
-          -- this dispatches the false case for and, and the true case for or
+          -- this dispatches the false case for `and`, and the true case for `or`
           simp only [Except.bind_ok, Bool.true_eq_false, Bool.false_eq_true, reduceIte, Except.ok.injEq]
           intro _ ; subst pv'
           simp only [Subst.subst_concrete_value, eval_spec_value]
