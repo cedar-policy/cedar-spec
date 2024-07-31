@@ -503,7 +503,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: Option<
-            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::Name>>,
+            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::InternalName>>,
         > = match &self.mode {
             HierarchyGeneratorMode::SchemaBased { schema } => Some(
                 schema
@@ -540,9 +540,12 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
-                            let allowed_parent_typename = ast::EntityType::from(
-                                allowed_parent_typename.qualify_with(schema.namespace.as_ref()),
-                            );
+                            let allowed_parent_typename = ast::Name::try_from(
+                                allowed_parent_typename
+                                    .qualify_with_name(schema.namespace.as_ref()),
+                            )
+                            .unwrap()
+                            .into();
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
                                 // It should be very unlikely where loops involving multiple entity types occur in the schemas
