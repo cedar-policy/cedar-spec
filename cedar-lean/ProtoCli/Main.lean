@@ -11,6 +11,7 @@ import Protobuf.Types
 import Protobuf.Structures
 import Protobuf.Packed
 import Protobuf.HardCodeTest
+import Protobuf.Message
 open Proto
 
 def bufsize : USize := 2000000 * 1024
@@ -45,7 +46,7 @@ def processJson (filename: String): IO Bool := do
 
 def processProto (filename: String): IO String := do
   let result_bytes ← readFileBytes filename
-  match parse_hardcode result_bytes.iter with
+  match BParsec.run parse_message result_bytes with
     | .error e => pure e
     | .ok h =>
       pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"

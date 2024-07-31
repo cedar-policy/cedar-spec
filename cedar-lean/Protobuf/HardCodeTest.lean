@@ -24,6 +24,7 @@ import Protobuf.Types
 import Protobuf.BParsec
 import Protobuf.Structures
 import Protobuf.Packed
+import Protobuf.Message
 
 namespace Proto
 
@@ -33,55 +34,28 @@ deriving Inhabited, Repr, DecidableEq
 
 namespace HardCodeStruct
 
-def set_6 (_ : HardCodeStruct) (v: Array Nat) : HardCodeStruct :=
-  HardCodeStruct.mk v
+/-- Returns whether the wire type matches the field number,
+note that this returns true for unknown field numbers-/
+def wt_matches (t: Tag) : Bool :=
+  match t.fieldNum with
+  | 6 => t.wireType = WireType.LEN
+  | _ => true
 
-/- Get PType from field number -/
-def get_type (_: HardCodeStruct) (n: Nat) : Option PType :=
-  match n with
-  | 6 => some (PType.packed PType.uint32)
-  | _ => none
+def parse_field (h: HardCodeStruct) (t: Tag) : BParsec HardCodeStruct := do
+  match t.fieldNum with
+    | 6 =>
+      guard (wt_matches t)
+      let x ← BParsec.attempt parse_uint32_packed
+      pure (HardCodeStruct.mk x)
+    | _ =>
+      t.wireType.skip
+      pure h
+
+instance : Message HardCodeStruct := {
+  wt_matches := wt_matches, parse_field := parse_field
+}
 
 end HardCodeStruct
-
-
--- Progresses the entire ByteArray.Iterator
-partial def parse_hardcode_helper (result: HardCodeStruct) : BParsec HardCodeStruct := do
-  let hasNext ← BParsec.hasNext
-
-  if ¬hasNext then
-    return result
-
-  let tag ← BParsec.attempt Tag.parse
-
-  match tag.wireType with
-    | .VARINT => throw "Unexpected VARINT WireType"
-    | .LEN =>
-      match tag.fieldNum with
-        | 6 =>
-          let x ← BParsec.attempt parse_uint32_packed
-          have new_result := result.set_6 x
-          (parse_hardcode_helper new_result)
-        | _ =>
-          -- Skip this field
-          let len ← Len.parse
-          BParsec.forward len.size
-          parse_hardcode_helper result
-
-      | .I32 => throw "Unexpected I32 WireType"
-      | .I64 => throw "Unexpected I64 WireType"
-
-      -- The following two records don't have values
-      | .SGROUP => parse_hardcode_helper result
-      | .EGROUP => parse_hardcode_helper result
-
-
-def parse_hardcode (i: ByteArray.Iterator) : Except String HardCodeStruct :=
-  have empty_result: HardCodeStruct := default
-  match (parse_hardcode_helper empty_result) i with
-    | BParsec.ParseResult.success _ v => .ok v
-    | BParsec.ParseResult.error _ e => .error e
-
 
 -- JSON functions
 
