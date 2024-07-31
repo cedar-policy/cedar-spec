@@ -294,25 +294,6 @@ pub fn run_val_test(
     }
 }
 
-// API for request validation
-// pub fn new<S: RequestSchema>(
-//     principal: (EntityUID, Option<Loc>),
-//     action: (EntityUID, Option<Loc>),
-//     resource: (EntityUID, Option<Loc>),
-//     context: Context,
-//     schema: Option<&S>,
-//     extensions: Extensions<'_>,
-// ) -> Result<Self, S::Error>
-
-// pub fn new_with_unknowns<S: RequestSchema>(
-//     principal: EntityUIDEntry,
-//     action: EntityUIDEntry,
-//     resource: EntityUIDEntry,
-//     context: Option<Context>,
-//     schema: Option<&S>,
-//     extensions: Extensions<'_>,
-// ) -> Result<Self, S::Error> {
-
 pub fn run_req_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
@@ -346,13 +327,6 @@ pub fn run_req_val_test(
     }
 }
 
-// API for entity validation 
-// pub fn from_entities(
-//     entities: impl IntoIterator<Item = Entity>,
-//     schema: Option<&impl Schema>,
-//     tc_computation: TCComputation,
-//     extensions: Extensions<'_>,
-// ) -> Result<Self>
 pub fn run_ent_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
@@ -363,7 +337,7 @@ pub fn run_ent_val_test(
     time_function(|| Entities::from_entities(
         entities.iter().cloned(),
         Some(&cedar_policy_validator::CoreSchema::new(&schema)),
-        TCComputation::ComputeNow, // todo 
+        TCComputation::AssumeAlreadyComputed,
         extensions
     ));
     info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());

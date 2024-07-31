@@ -60,12 +60,11 @@
  
      fn size_hint(depth: usize) -> (usize, Option<usize>) {
          arbitrary::size_hint::and_all(&[
-             Schema::arbitrary_size_hint(depth),
+             Schema::arbitrary_size_hint(depth)
          ])
      }
  }
  
- // Non-type-directed fuzzing of (strict) validation.
  fuzz_target!(|input: FuzzTargetInput| {
      initialize_log();
      let def_impl = LeanDefinitionalEngine::new();
