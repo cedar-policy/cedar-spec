@@ -3,9 +3,7 @@
         "principal": {
             "Known": {
                 "euid": {
-                    "ty": {
-                        "Specified": "User"
-                    },
+                    "ty": "User",
                     "eid": "alice"
                 },
                 "loc": null
@@ -14,9 +12,7 @@
         "action": {
             "Known": {
                 "euid": {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "view"
                 },
                 "loc": null
@@ -25,9 +21,7 @@
         "resource": {
             "Known": {
                 "euid": {
-                    "ty": {
-                        "Specified": "Photo"
-                    },
+                    "ty": "Photo",
                     "eid": "VacationPhoto94.jpg"
                 },
                 "loc": null
@@ -102,9 +96,7 @@
                 },
                 "action_constraint": {
                     "Eq": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "view"
                     }
                 },
@@ -112,9 +104,7 @@
                     "constraint": {
                         "Eq": {
                             "EUID": {
-                                "ty": {
-                                    "Specified": "Photo"
-                                },
+                                "ty": "Photo",
                                 "eid": "VacationPhoto94.jpg"
                             }
                         }
@@ -302,16 +292,12 @@
         "entities": [
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "listPhotos"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "listPhotos"
                     },
                     "attrs": {},
@@ -320,16 +306,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "edit"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "edit"
                     },
                     "attrs": {},
@@ -338,16 +320,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "User"
-                    },
+                    "ty": "User",
                     "eid": "ahmad"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "User"
-                        },
+                        "ty": "User",
                         "eid": "ahmad"
                     },
                     "attrs": {
@@ -375,16 +353,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Photo"
-                    },
+                    "ty": "Photo",
                     "eid": "vacation.jpg"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Photo"
-                        },
+                        "ty": "Photo",
                         "eid": "vacation.jpg"
                     },
                     "attrs": {
@@ -392,9 +366,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "alice"
                                     }
                                 }
@@ -421,21 +393,15 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "Album"
-                            },
+                            "ty": "Album",
                             "eid": "alice_vacation"
                         },
                         {
-                            "ty": {
-                                "Specified": "AccountGroup"
-                            },
+                            "ty": "AccountGroup",
                             "eid": "GeronimoTeam"
                         },
                         {
-                            "ty": {
-                                "Specified": "Account"
-                            },
+                            "ty": "Account",
                             "eid": "alice"
                         }
                     ]
@@ -443,16 +409,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Photo"
-                    },
+                    "ty": "Photo",
                     "eid": "alice_w2.jpg"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Photo"
-                        },
+                        "ty": "Photo",
                         "eid": "alice_w2.jpg"
                     },
                     "attrs": {
@@ -476,9 +438,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "alice"
                                     }
                                 }
@@ -489,15 +449,11 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "Account"
-                            },
+                            "ty": "Account",
                             "eid": "alice"
                         },
                         {
-                            "ty": {
-                                "Specified": "AccountGroup"
-                            },
+                            "ty": "AccountGroup",
                             "eid": "GeronimoTeam"
                         }
                     ]
@@ -505,16 +461,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "UserGroup"
-                    },
+                    "ty": "UserGroup",
                     "eid": "AVTeam"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "UserGroup"
-                        },
+                        "ty": "UserGroup",
                         "eid": "AVTeam"
                     },
                     "attrs": {},
@@ -523,16 +475,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "UserGroup"
-                    },
+                    "ty": "UserGroup",
                     "eid": "alice_friends"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "UserGroup"
-                        },
+                        "ty": "UserGroup",
                         "eid": "alice_friends"
                     },
                     "attrs": {},
@@ -541,16 +489,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Album"
-                    },
+                    "ty": "Album",
                     "eid": "alice_vacation"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Album"
-                        },
+                        "ty": "Album",
                         "eid": "alice_vacation"
                     },
                     "attrs": {
@@ -567,9 +511,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "alice"
                                     }
                                 }
@@ -587,15 +529,11 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "Account"
-                            },
+                            "ty": "Account",
                             "eid": "alice"
                         },
                         {
-                            "ty": {
-                                "Specified": "AccountGroup"
-                            },
+                            "ty": "AccountGroup",
                             "eid": "GeronimoTeam"
                         }
                     ]
@@ -603,16 +541,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "view"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "view"
                     },
                     "attrs": {},
@@ -621,16 +555,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Photo"
-                    },
+                    "ty": "Photo",
                     "eid": "sales_projections.jpg"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Photo"
-                        },
+                        "ty": "Photo",
                         "eid": "sales_projections.jpg"
                     },
                     "attrs": {
@@ -641,9 +571,7 @@
                                         "expr_kind": {
                                             "Lit": {
                                                 "EntityUID": {
-                                                    "ty": {
-                                                        "Specified": "User"
-                                                    },
+                                                    "ty": "User",
                                                     "eid": "giuseppe"
                                                 }
                                             }
@@ -660,9 +588,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "stacey"
                                     }
                                 }
@@ -682,9 +608,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "Account"
-                            },
+                            "ty": "Account",
                             "eid": "stacey"
                         }
                     ]
@@ -692,16 +616,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Photo"
-                    },
+                    "ty": "Photo",
                     "eid": "prototype_v0.jpg"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Photo"
-                        },
+                        "ty": "Photo",
                         "eid": "prototype_v0.jpg"
                     },
                     "attrs": {
@@ -725,9 +645,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "ahmad"
                                     }
                                 }
@@ -738,9 +656,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "Album"
-                            },
+                            "ty": "Album",
                             "eid": "device_prototypes"
                         }
                     ]
@@ -748,16 +664,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "comment"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "comment"
                     },
                     "attrs": {},
@@ -766,16 +678,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "addPhoto"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "addPhoto"
                     },
                     "attrs": {},
@@ -784,16 +692,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Account"
-                    },
+                    "ty": "Account",
                     "eid": "alice"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Account"
-                        },
+                        "ty": "Account",
                         "eid": "alice"
                     },
                     "attrs": {
@@ -808,9 +712,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "User"
-                                        },
+                                        "ty": "User",
                                         "eid": "alice"
                                     }
                                 }
@@ -830,9 +732,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "AccountGroup"
-                            },
+                            "ty": "AccountGroup",
                             "eid": "GeronimoTeam"
                         }
                     ]
@@ -840,16 +740,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Account"
-                    },
+                    "ty": "Account",
                     "eid": "ahmad"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Account"
-                        },
+                        "ty": "Account",
                         "eid": "ahmad"
                     },
                     "attrs": {
@@ -873,9 +769,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "User"
-                                        },
+                                        "ty": "User",
                                         "eid": "ahmad"
                                     }
                                 }
@@ -886,9 +780,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "AccountGroup"
-                            },
+                            "ty": "AccountGroup",
                             "eid": "GeronimoTeam"
                         }
                     ]
@@ -896,16 +788,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "User"
-                    },
+                    "ty": "User",
                     "eid": "stacey"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "User"
-                        },
+                        "ty": "User",
                         "eid": "stacey"
                     },
                     "attrs": {
@@ -930,9 +818,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "UserGroup"
-                            },
+                            "ty": "UserGroup",
                             "eid": "alice_friends"
                         }
                     ]
@@ -940,16 +826,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "User"
-                    },
+                    "ty": "User",
                     "eid": "giuseppe"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "User"
-                        },
+                        "ty": "User",
                         "eid": "giuseppe"
                     },
                     "attrs": {
@@ -974,9 +856,7 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "UserGroup"
-                            },
+                            "ty": "UserGroup",
                             "eid": "AVTeam"
                         }
                     ]
@@ -984,16 +864,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Account"
-                    },
+                    "ty": "Account",
                     "eid": "stacey"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Account"
-                        },
+                        "ty": "Account",
                         "eid": "stacey"
                     },
                     "attrs": {
@@ -1010,9 +886,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "User"
-                                        },
+                                        "ty": "User",
                                         "eid": "stacey"
                                     }
                                 }
@@ -1033,16 +907,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "listAlbums"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "listAlbums"
                     },
                     "attrs": {},
@@ -1051,16 +921,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "delete"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "delete"
                     },
                     "attrs": {},
@@ -1069,16 +935,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Album"
-                    },
+                    "ty": "Album",
                     "eid": "device_prototypes"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "Album"
-                        },
+                        "ty": "Album",
                         "eid": "device_prototypes"
                     },
                     "attrs": {
@@ -1102,9 +964,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "Account"
-                                        },
+                                        "ty": "Account",
                                         "eid": "alice"
                                     }
                                 }
@@ -1118,16 +978,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "User"
-                    },
+                    "ty": "User",
                     "eid": "alice"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "User"
-                        },
+                        "ty": "User",
                         "eid": "alice"
                     },
                     "attrs": {
@@ -1152,15 +1008,11 @@
                     },
                     "ancestors": [
                         {
-                            "ty": {
-                                "Specified": "UserGroup"
-                            },
+                            "ty": "UserGroup",
                             "eid": "AVTeam"
                         },
                         {
-                            "ty": {
-                                "Specified": "UserGroup"
-                            },
+                            "ty": "UserGroup",
                             "eid": "alice_friends"
                         }
                     ]
@@ -1168,16 +1020,12 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "AccountGroup"
-                    },
+                    "ty": "AccountGroup",
                     "eid": "GeronimoTeam"
                 },
                 {
                     "uid": {
-                        "ty": {
-                            "Specified": "AccountGroup"
-                        },
+                        "ty": "AccountGroup",
                         "eid": "GeronimoTeam"
                     },
                     "attrs": {
@@ -1185,9 +1033,7 @@
                             "expr_kind": {
                                 "Lit": {
                                     "EntityUID": {
-                                        "ty": {
-                                            "Specified": "User"
-                                        },
+                                        "ty": "User",
                                         "eid": "alice"
                                     }
                                 }
