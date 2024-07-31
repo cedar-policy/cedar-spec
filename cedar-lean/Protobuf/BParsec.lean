@@ -84,7 +84,6 @@ def run! [Inhabited α] (p: BParsec α) (ba: ByteArray) : α :=
   | ParseResult.success _ res => res
   | ParseResult.error _ _  => panic!("Unexpected error")
 
-
 -- Iterator wrapers
 
 @[inline]
@@ -93,7 +92,6 @@ def hasNext : BParsec Bool :=
 
 @[simp] theorem has_next_eq (it: ByteArray.Iterator) :
   (hasNext it) = ParseResult.success it it.hasNext := rfl
-
 
 @[inline]
 def next : BParsec Unit :=
@@ -135,16 +133,22 @@ def pos : BParsec Nat :=
 @[simp] theorem pos_eq (it: ByteArray.Iterator) : pos it = ParseResult.success it it.pos := rfl
 
 
-@[specialize] partial def foldl_helper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β  :=
-  if remaining > 0 then do
-    let startPos ← pos
-    let element ← f
-    let endPos ← pos
-    let element_size := endPos - startPos
-    let newResult := g result element
-    foldl_helper f g (remaining - element_size) newResult
-  else
+@[specialize] def foldl_helper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β := do
+  if remaining = 0 then
     pure result
+  else
+
+  let startPos ← pos
+  let element ← f
+  let endPos ← pos
+
+  let element_size := endPos - startPos
+  if element_size = 0 then
+    throw "f did not progress ByteArray"
+  else
+
+  let newResult := g result element
+  foldl_helper f g (remaining - element_size) newResult
 
 @[inline] def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
   foldl_helper f g remaining init
