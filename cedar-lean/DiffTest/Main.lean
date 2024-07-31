@@ -21,7 +21,6 @@ import Cedar.Validation
 import DiffTest.Util
 import DiffTest.Parser
 import Cedar.Partial.Evaluator
-import Cedar.Validation.RequestEntityValidator
 
 /-! This file defines the public interfaces for the Lean implementation.
     The input and output are stringified JSON objects. -/

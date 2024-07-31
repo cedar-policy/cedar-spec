@@ -18,7 +18,9 @@
  use cedar_drt::*;
  use cedar_drt_inner::*;
  use cedar_policy_core::ast;
- use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
+ use cedar_policy_core::ast::Entity;
+ use cedar_policy_core::extensions::Extensions;
+ use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, hierarchy::Hierarchy, abac::ABACRequest};
  use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
  use log::{debug, info};
  use serde::Serialize;
@@ -29,8 +31,9 @@
      /// generated schema
      #[serde(skip)]
      pub schema: Schema,
-     /// generated policy
-     pub policy: ABACPolicy,
+    /// generated hierarchy
+    #[serde(skip)]
+    pub hierarchy: Hierarchy
  }
  
  /// settings for this fuzz target
@@ -52,14 +55,12 @@
      fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
          let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
          let hierarchy = schema.arbitrary_hierarchy(u)?;
-         let policy = schema.arbitrary_policy(&hierarchy, u)?;
-         Ok(Self { schema, policy })
+         Ok(Self { schema, hierarchy })
      }
  
      fn size_hint(depth: usize) -> (usize, Option<usize>) {
          arbitrary::size_hint::and_all(&[
              Schema::arbitrary_size_hint(depth),
-             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
          ])
      }
  }
@@ -71,18 +72,12 @@
  
      // generate a schema
      if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
-         debug!("Schema: {:?}", schema);
- 
-         // generate a policy
-         let mut policyset = ast::PolicySet::new();
-         let policy: ast::StaticPolicy = input.policy.into();
-         policyset.add_static(policy).unwrap();
-         debug!("Policies: {policyset}");
- 
-         // run the policy through both validators and compare the result
-         let (_, total_dur) =
-             time_function(|| run_val_test(&def_impl, schema, &policyset, ValidationMode::Strict));
-         info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-     }
+        debug!("Schema: {:?}", schema);
+        if let Ok(entities) = Entities::try_from(input.hierarchy) {
+            let (_, total_dur) =
+            time_function(|| run_ent_val_test(&def_impl, schema, entities, Extensions::all_available()));
+        info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+        }
+    }
  });
  

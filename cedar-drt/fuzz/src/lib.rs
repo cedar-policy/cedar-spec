@@ -313,18 +313,18 @@ pub fn run_val_test(
 //     extensions: Extensions<'_>,
 // ) -> Result<Self, S::Error> {
 
-pub fn req_val_test(
+pub fn run_req_val_test(
     custom_impl: &impl CedarTestImplementation,
-    schema: Schema,
+    schema: ValidatorSchema,
     request: ast::Request,
     extensions: Extensions<'_>
 ) {
     let (rust_res, rust_auth_dur) =
-        time_function(|| Request::new_with_unknowns(
-            request.principal,
-            request.action,
-            request.resource,
-            request.context,
+        time_function(|| ast::Request::new_with_unknowns(
+            request.principal().clone(),
+            request.action().clone(),
+            request.resource().clone(),
+            request.context().cloned(),
             Some(&schema),
             extensions
         ));
@@ -332,24 +332,15 @@ pub fn req_val_test(
 
     let definitional_res = custom_impl.validate_request(&schema, &request);
     match definitional_res {
-        TestResult::Failure => {
-            panic!("todo")
+        TestResult::Failure(_) => {
+            ;
         }
         TestResult::Success(definitional_res) => {
-            if rust_res.validation_passed() {
-                assert!(
-                    definitional_res.validation_passed(),
-                    "TODO");
-            } else {
-                match custom_impl.validation_comparison_mode() {
-                    ValidationComparisonMode::AgreeOnAll => {
-                        assert!(
-                            !definitional_res.validation_passed(),
-                            "TODO",
-                        );
-                    }
-                    ValidationComparisonMode::AgreeOnValid => {}
-                };
+            if rust_res.is_ok() {
+                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust output: {:?}", definitional_res.errors, rust_res.unwrap());
+            }
+            else {
+                assert!(!definitional_res.validation_passed(), "Errors: {:?}", definitional_res.errors);
             }
         }
     }
@@ -362,13 +353,36 @@ pub fn req_val_test(
 //     tc_computation: TCComputation,
 //     extensions: Extensions<'_>,
 // ) -> Result<Self>
-pub fn ent_val_test(
+pub fn run_ent_val_test(
     custom_impl: &impl CedarTestImplementation,
-    schema: Schema,
+    schema: ValidatorSchema,
     entities: Entities,
     extensions: Extensions<'_>
 ) {
+    let (rust_res, rust_auth_dur) =
+    time_function(|| Entities::from_entities(
+        entities.iter().cloned(),
+        Some(&cedar_policy_validator::CoreSchema::new(&schema)),
+        TCComputation::ComputeNow, // todo 
+        extensions
+    ));
+    info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+    let definitional_res = custom_impl.validate_entities(&schema, entities);
+    match definitional_res {
+        TestResult::Failure(_) => {
+            ;
+        }
+        TestResult::Success(definitional_res) => {
+            if rust_res.is_ok() {
+                assert!(definitional_res.validation_passed(), "Definitional Errors: {:?}\n, Rust output: {:?}", definitional_res.errors, rust_res.unwrap());
+            }
+            else {
+                assert!(!definitional_res.validation_passed(), "Errors: {:?}", definitional_res.errors);
+            }
+        }
+    }
 }
+
 
 
 #[test]

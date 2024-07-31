@@ -54,8 +54,8 @@ extern "C" {
     fn evaluateDRT(req: *mut lean_object) -> *mut lean_object;
     fn partialEvaluateDRT(req: *mut lean_object) -> *mut lean_object;
     fn partialAuthorizeDRT(req: *mut lean_object) -> *mut lean_object;
-    fn validateRequestDRT (req: *mut lean_object) -> *mut lean_object;
-    fn validateEntitiesDRT (req: *mut lean_object) -> *mut lean_object;
+    fn validateRequestDRT(req: *mut lean_object) -> *mut lean_object;
+    fn validateEntitiesDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_DiffTest_Main(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 }
 
@@ -379,15 +379,14 @@ impl LeanDefinitionalEngine {
     pub fn validate_request(
         &self,
         schema: &ValidatorSchema,
-        request: &ast::Request
+        request: &ast::Request,
     ) -> TestResult<TestValidationResult> {
-        let request : String = serde_json::to_string(&RequestValidationRequest {
-            schema, 
-            request
-        }).expect("failed to serialize request");
+        use log::debug;
+        let request: String = serde_json::to_string(&RequestValidationRequest { schema, request })
+            .expect("failed to serialize request");
         let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8)};
-        let response = unsafe {validateRequestDRT(req)};
+        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let response = unsafe { validateRequestDRT(req) };
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
@@ -395,15 +394,14 @@ impl LeanDefinitionalEngine {
     pub fn validate_entities(
         &self,
         schema: &ValidatorSchema,
-        entities: &Entities
+        entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        let request : String = serde_json::to_string(&EntityValidationRequest {
-            schema, 
-            entities
-        }).expect("failed to serialize request");
+        use log::debug;
+        let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
+            .expect("failed to serialize request");
         let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8)};
-        let response = unsafe {validateEntitiesDRT(req)};
+        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let response = unsafe { validateEntitiesDRT(req) };
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
@@ -490,35 +488,28 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
     }
 
     fn validate_entities(
-            &self,
-            schema: &ValidatorSchema,
-            entities: &Entities
-        ) -> TestResult<TestValidationResult> {
-        let result = self.validate_entities(schema, entities);
+        &self,
+        schema: &ValidatorSchema,
+        entities: Entities,
+    ) -> TestResult<TestValidationResult> {
+        let result = self.validate_entities(schema, &entities);
         result.map(|res| {
-            let errors = res
-                .errors
-                .into_iter()
-                .collect();
+            let errors = res.errors.into_iter().collect();
             TestValidationResult { errors, ..res }
         })
-        }
-
-    fn validate_request(
-            &self, 
-            schema: &ValidatorSchema,
-            request: &ast::Request
-        ) -> TestResult<TestValidationResult> {
-        let result = self.validate_request(schema, request);
-        result.map(|res| {
-            let errors = res
-                .errors
-                .into_iter()
-                .collect();
-            TestValidationResult { errors, ..res }
-        })    
     }
 
+    fn validate_request(
+        &self,
+        schema: &ValidatorSchema,
+        request: &ast::Request,
+    ) -> TestResult<TestValidationResult> {
+        let result = self.validate_request(schema, request);
+        result.map(|res| {
+            let errors = res.errors.into_iter().collect();
+            TestValidationResult { errors, ..res }
+        })
+    }
 
     fn error_comparison_mode(&self) -> ErrorComparisonMode {
         ErrorComparisonMode::PolicyIds
