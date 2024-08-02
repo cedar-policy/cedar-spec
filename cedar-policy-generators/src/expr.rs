@@ -21,7 +21,8 @@ use crate::hierarchy::{
     arbitrary_specified_uid, generate_uid_with_type, EntityUIDGenMode, Hierarchy,
 };
 use crate::schema::{
-    attrs_from_attrs_or_context, entity_type_name_to_schema_type, uid_for_action_name, Schema,
+    attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
+    uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -563,10 +564,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &cedar_policy_validator::SchemaType::Type(
                                         cedar_policy_validator::SchemaTypeVariant::Entity {
-                                            // This does not use an explicit namespace because entity types
-                                            // implicitly use the schema namespace if an explicit one is not
-                                            // provided.
-                                            name: ast::Name::from(entity_name.clone()),
+                                            name: ast::Name::from(entity_name.clone()).into(),
                                         }
                                     ),
                                     max_depth - 1,
@@ -847,7 +845,7 @@ impl<'a> ExprGenerator<'a> {
                         3 => {
                             let attr_name: SmolStr =
                                 self.constant_pool.arbitrary_string_constant(u)?;
-                            let attr_ty: cedar_policy_validator::SchemaType<ast::Name> =
+                            let attr_ty: cedar_policy_validator::SchemaType<ast::InternalName> =
                                 match self.schema.try_into_schematype(target_type, u)? {
                                     Some(schematy) => schematy,
                                     None => return Err(Error::IncorrectFormat {
@@ -1132,7 +1130,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_expr_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &cedar_policy_validator::SchemaType<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -1140,14 +1138,26 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaType::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
+            SchemaType::Type(SchemaTypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_expr_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it as we treat entity references
+                        self.generate_expr_for_schematype(
+                            &SchemaType::Type(SchemaTypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_expr_for_type(&Type::bool(), max_depth, u)
             }
@@ -1357,7 +1367,7 @@ impl<'a> ExprGenerator<'a> {
                     gen!(u,
                     // UID literal
                     13 => {
-                        let entity_type_name = ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                        let entity_type_name = ast::Name::try_from(name.qualify_with_name(self.schema.namespace())).unwrap().into();
                         Ok(ast::Expr::val(self.arbitrary_uid_with_type(
                             &entity_type_name, u,
                         )?))
@@ -1515,7 +1525,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     fn generate_ext_func_call_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &cedar_policy_validator::SchemaType<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
@@ -1523,15 +1533,27 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaType::CommonTypeRef { type_name } => self.generate_ext_func_call_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
             SchemaType::Type(ty) => match ty {
+                SchemaTypeVariant::EntityOrCommon { type_name } => {
+                    match lookup_common_type(&self.schema.schema, type_name) {
+                        Some(ty) => self.generate_ext_func_call_for_schematype(ty, max_depth, u),
+                        None => {
+                            // must be an entity reference, so treat it how we treat entity references
+                            self.generate_ext_func_call_for_schematype(
+                                &SchemaType::Type(SchemaTypeVariant::Entity {
+                                    name: type_name.clone(),
+                                }),
+                                max_depth,
+                                u,
+                            )
+                        }
+                    }
+                }
                 SchemaTypeVariant::Boolean => {
                     self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
                 }
@@ -1710,7 +1732,7 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_attr_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &cedar_policy_validator::SchemaType<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
@@ -1718,14 +1740,26 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaType::CommonTypeRef { type_name } => self.generate_attr_value_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
+            SchemaType::Type(SchemaTypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_attr_value_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it how we treat entity references
+                        self.generate_attr_value_for_schematype(
+                            &SchemaType::Type(SchemaTypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
@@ -1811,7 +1845,9 @@ impl<'a> ExprGenerator<'a> {
             SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
-                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
+                        .unwrap()
+                        .into();
                 Ok(AttrValue::UIDLit(
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
@@ -1922,7 +1958,7 @@ impl<'a> ExprGenerator<'a> {
     /// generate an arbitrary `Value` of the given `target_type`
     fn generate_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &cedar_policy_validator::SchemaType<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Value> {
@@ -1931,14 +1967,26 @@ impl<'a> ExprGenerator<'a> {
         use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
             SchemaType::CommonTypeRef { type_name } => self.generate_value_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
+            SchemaType::Type(SchemaTypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_value_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it how we treat entity references
+                        self.generate_value_for_schematype(
+                            &SchemaType::Type(SchemaTypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
             SchemaType::Type(SchemaTypeVariant::Boolean) => {
                 self.generate_value_for_type(&Type::bool(), max_depth, u)
             }
@@ -2019,7 +2067,9 @@ impl<'a> ExprGenerator<'a> {
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name =
-                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
+                        .unwrap()
+                        .into();
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::from(euid))
             }
