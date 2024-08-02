@@ -56,17 +56,17 @@ instance : DecidableEq (Except String (Array (String × UInt32))) := Except.dec_
 instance : DecidableEq (Except String (Packed Int64)) := Except.dec_eq
 
 
-#guard interpret? (ByteArray.mk #[0]) Bool = Except.ok false
-#guard interpret? (ByteArray.mk #[1]) Bool = Except.ok true
-#guard interpret? (ByteArray.mk #[150, 01]) UInt64 = Except.ok 150
-#guard interpret? (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) Int64 = Except.ok (-2)
-#guard interpret? (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]) (Packed Int64) = Except.ok #[3, 270, 86942]
-#guard interpret? (ByteArray.mk #[07, 116, 101, 115, 116, 105, 110, 103]) String = Except.ok "testing"
-#guard Tag.interpret (ByteArray.mk #[08]) = Except.ok (Tag.mk 1 WireType.VARINT)
-#guard Tag.interpret (ByteArray.mk #[18]) = Except.ok (Tag.mk 2 WireType.LEN)
-#guard Tag.interpret (ByteArray.mk #[50]) = Except.ok (Tag.mk 6 WireType.LEN)
+#guard (@Field.interpret? Bool) (ByteArray.mk #[0]) = Except.ok false
+#guard (@Field.interpret? Bool) (ByteArray.mk #[1]) = Except.ok true
+#guard (@Field.interpret? UInt64) (ByteArray.mk #[150, 01]) = Except.ok 150
+#guard (@Field.interpret? Int64) (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) = Except.ok (-2)
+#guard (@Field.interpret? (Packed Int64)) (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
+#guard (@Field.interpret? String) (ByteArray.mk #[07, 116, 101, 115, 116, 105, 110, 103]) = Except.ok "testing"
+#guard Tag.interpret? (ByteArray.mk #[08]) = Except.ok (Tag.mk 1 WireType.VARINT)
+#guard Tag.interpret? (ByteArray.mk #[18]) = Except.ok (Tag.mk 2 WireType.LEN)
+#guard Tag.interpret? (ByteArray.mk #[50]) = Except.ok (Tag.mk 6 WireType.LEN)
 
-#eval interpret_message (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05]) =
+#guard (@Message.interpret? HardCodeStruct) (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05])  =
   Except.ok (HardCodeStruct.mk #[3, 270, 86942])
 
 def map_test : Except String (Array (String × UInt32)) :=
@@ -115,4 +115,4 @@ end A
 
 instance : DecidableEq (Except String A) := Except.dec_eq
 
-#guard interpret? (ByteArray.mk #[02]) A = Except.ok A.Tuesday
+#guard (@Field.interpret? A) (ByteArray.mk #[02]) = Except.ok A.Tuesday

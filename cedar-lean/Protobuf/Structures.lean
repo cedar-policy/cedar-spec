@@ -28,7 +28,7 @@ structure MessageSchema where
 structure Tag where
   fieldNum: Nat
   wireType: WireType
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 structure Len where
   size: Nat
@@ -79,8 +79,12 @@ def parse : BParsec Tag := do
   pure (Tag.mk field_num.toNat wire_type)
 
 @[inline]
-def interpret (b: ByteArray) : Except String Tag :=
+def interpret? (b: ByteArray) : Except String Tag :=
   BParsec.run Tag.parse b
+
+@[inline]
+def interpret! (b: ByteArray) : Tag :=
+  BParsec.run! Tag.parse b
 
 end Tag
 

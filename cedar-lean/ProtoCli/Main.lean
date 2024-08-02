@@ -46,7 +46,8 @@ def processJson (filename: String): IO Bool := do
 
 def processProto (filename: String): IO String := do
   let result_bytes ← readFileBytes filename
-  match BParsec.run parse_message result_bytes with
+  let result := (@Message.interpret? HardCodeStruct) result_bytes
+  match result with
     | .error e => pure e
     | .ok h =>
       pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"

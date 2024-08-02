@@ -22,10 +22,14 @@ namespace Proto
 class Field (α: Type) where
   merge: BParsec α
 
-def interpret! (b: ByteArray) (α: Type) [Field α] [Inhabited α] : α :=
+namespace Field
+
+def interpret! {α: Type} [Field α] [Inhabited α] (b: ByteArray) : α :=
   BParsec.run! Field.merge b
 
-def interpret? (b: ByteArray) (α: Type) [Field α] [Inhabited α] : Except String α :=
+def interpret? {α: Type} [Field α] [Inhabited α] (b: ByteArray) : Except String α :=
   BParsec.run Field.merge b
+
+end Field
 
 end Proto
