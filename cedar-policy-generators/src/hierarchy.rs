@@ -317,7 +317,7 @@ pub struct HierarchyGenerator<'a, 'u> {
     /// `Unstructured` used for making random choices
     pub u: &'a mut Unstructured<'u>,
     /// Extensions active for the attribute values in the hierarchy
-    pub extensions: Extensions<'a>,
+    pub extensions: &'a Extensions<'a>,
 }
 
 // can't auto-derive `Debug` because of the `Unstructured`
