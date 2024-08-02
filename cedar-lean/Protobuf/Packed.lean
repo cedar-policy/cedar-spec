@@ -18,59 +18,31 @@ Parsers for Repeated Fields
 -/
 import Protobuf.BParsec
 import Protobuf.Varint
-import Protobuf.Types
+import Protobuf.Field
 import Protobuf.Structures
 namespace Proto
 
-@[inline]
-def parse_uint32_packed: BParsec (Array Nat) := do
+def Packed (α: Type) [Field α] : Type := Array α
+
+instance [Field α] : Inhabited (Packed α) where
+  default := #[]
+
+instance [DecidableEq α] [Field α] : DecidableEq (Packed α) := by
+  unfold DecidableEq
+  unfold Packed
+  intro a b
+  apply inferInstance
+
+def parse_packed (α: Type) [Field α] : BParsec (Array α) := do
   let len ← BParsec.attempt Len.parse
   BParsec.foldl
-    parse_uint32
-    (fun arr => fun element => arr.push element.toNat)
-    len.size
-    #[]
-
-@[inline]
-def interpret_uint32_packed (b: ByteArray): Except String (Array Nat) :=
-  BParsec.run parse_uint32_packed b
-
-@[inline]
-def parse_uint64_packed: BParsec (Array Nat) := do
-  let len ← BParsec.attempt Len.parse
-  BParsec.foldl
-    parse_uint32
-    (fun arr => fun element => arr.push element.toNat)
-    len.size
-    #[]
-
-@[inline]
-def interpret_uint64_packed (b: ByteArray): Except String (Array Nat) :=
-  BParsec.run parse_uint64_packed b
-
-@[inline]
-def parse_generic_packed (f: BParsec α): BParsec (Array α) := do
-  let len ← BParsec.attempt Len.parse
-  BParsec.foldl
-    f
+    Field.merge
     (fun arr => fun element => arr.push element)
     len.size
     #[]
 
-@[inline]
-def parse_int32_packed: BParsec (Array Int) :=
-  parse_generic_packed parse_int32
-
-@[inline]
-def interpret_int32_packed (b: ByteArray): Except String (Array Int) :=
-  BParsec.run parse_int32_packed b
-
-@[inline]
-def parse_int64_packed: BParsec (Array Int) :=
-  parse_generic_packed parse_int64
-
-@[inline]
-def interpret_int64_packed (b: ByteArray): Except String (Array Int) :=
-  BParsec.run parse_int64_packed b
+instance {α: Type} [Field α]: Field (Packed α) := {
+  merge := (parse_packed α)
+}
 
 end Proto

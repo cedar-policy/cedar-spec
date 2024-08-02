@@ -13,24 +13,19 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+/-
+Protobuf fields and their parsers
+-/
 import Protobuf.BParsec
-import Protobuf.Varint
-import Protobuf.Field
 namespace Proto
 
-class ProtoEnum (α : Type) where
-  fromInt : Int → Except String α
-export ProtoEnum (fromInt)
+class Field (α: Type) where
+  merge: BParsec α
 
-def parse_enum (α: Type) [ProtoEnum α] : BParsec α := do
-  let wdata: Int ← parse_int32
-  let result: Except String α := fromInt wdata
-  match result with
-    | Except.ok r => pure r
-    | Except.error e => throw e
+def interpret! (b: ByteArray) (α: Type) [Field α] [Inhabited α] : α :=
+  BParsec.run! Field.merge b
 
-instance [ProtoEnum α] : Field α := {
-  merge := (parse_enum α)
-}
+def interpret? (b: ByteArray) (α: Type) [Field α] [Inhabited α] : Except String α :=
+  BParsec.run Field.merge b
 
 end Proto

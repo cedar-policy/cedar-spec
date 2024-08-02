@@ -37,4 +37,7 @@ def parse_message {α: Type} [Message α] [Inhabited α] : BParsec α := do
 def parse_message_of_size {α: Type} [Message α] [Inhabited α] (size: Nat) : BParsec α := do
   parse_message_helper size default
 
+def interpret_message {α: Type} [Message α] [Inhabited α] (b: ByteArray) : Except String α :=
+  BParsec.run parse_message b
+
 end Proto

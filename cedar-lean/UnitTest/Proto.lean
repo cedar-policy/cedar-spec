@@ -18,7 +18,10 @@ import Protobuf.Structures
 import Protobuf.HardCodeTest
 import Protobuf.String
 import Protobuf.Map
+import Protobuf.Field
 import Protobuf.Enum
+import Protobuf.Varint
+import Protobuf.Packed
 open Proto
 
 -- Show DecidableEquality of Except for unit tests
@@ -44,59 +47,49 @@ instance : DecidableEq (Except String Bool) := Except.dec_eq
 instance : DecidableEq (Except String (Array Int)) := Except.dec_eq
 instance : DecidableEq (Except String (Array Nat)) := Except.dec_eq
 instance : DecidableEq (Except String Tag) := Except.dec_eq
+instance : DecidableEq (Except String UInt32) := Except.dec_eq
+instance : DecidableEq (Except String UInt64) := Except.dec_eq
+instance : DecidableEq (Except String Int32) := Except.dec_eq
+instance : DecidableEq (Except String Int64) := Except.dec_eq
 instance : DecidableEq (Except String HardCodeStruct) := Except.dec_eq
-instance : DecidableEq (Except String (Array (String × Nat))) := Except.dec_eq
+instance : DecidableEq (Except String (Array (String × UInt32))) := Except.dec_eq
+instance : DecidableEq (Except String (Packed Int64)) := Except.dec_eq
 
-#guard interpret_bool (ByteArray.mk #[0]) = Except.ok false
 
-#guard interpret_bool (ByteArray.mk #[1]) = Except.ok true
-
-#guard interpret_uint64 (ByteArray.mk #[150, 01]) = 150
-
-#guard interpret_int64 (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) = -2
-
-#guard interpret_int64_packed (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]) = Except.ok #[3, 270, 86942]
-
-#guard interpret_string (ByteArray.mk #[07, 116, 101, 115, 116, 105, 110, 103]) = Except.ok "testing"
-
+#guard interpret? (ByteArray.mk #[0]) Bool = Except.ok false
+#guard interpret? (ByteArray.mk #[1]) Bool = Except.ok true
+#guard interpret? (ByteArray.mk #[150, 01]) UInt64 = Except.ok 150
+#guard interpret? (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]) Int64 = Except.ok (-2)
+#guard interpret? (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]) (Packed Int64) = Except.ok #[3, 270, 86942]
+#guard interpret? (ByteArray.mk #[07, 116, 101, 115, 116, 105, 110, 103]) String = Except.ok "testing"
 #guard Tag.interpret (ByteArray.mk #[08]) = Except.ok (Tag.mk 1 WireType.VARINT)
-
 #guard Tag.interpret (ByteArray.mk #[18]) = Except.ok (Tag.mk 2 WireType.LEN)
-
 #guard Tag.interpret (ByteArray.mk #[50]) = Except.ok (Tag.mk 6 WireType.LEN)
 
-#guard parse_hardcode (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05]).iter =
+#eval interpret_message (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05]) =
   Except.ok (HardCodeStruct.mk #[3, 270, 86942])
 
-def map_test : Except String (Array (String × Nat)) :=
+def map_test : Except String (Array (String × UInt32)) :=
  have data := ByteArray.mk #[10, 10, 10, 06, 68, 97, 114, 99, 105, 101, 16, 04, 10, 09, 10, 05,
  83, 104, 97, 119, 110, 16, 02, 10,  09, 10, 05, 67, 97, 114, 108, 121,
  16, 04, 08, 07, 10, 03, 82, 111, 121, 16, 01]
  BParsec.run (do
-     let mut result: Array (String × Nat) := #[]
+     let mut result: Array (String × UInt32) := #[]
+
      let tag1 ← Tag.parse
      if tag1.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element ← parse_map_elem
-          parse_string
-          (do
-               let r ← parse_uint32
-               pure r.toNat
-          )
+     let element ← parse_map_elem String UInt32
      result := result.push element
 
      let tag2 ← Tag.parse
      if tag2.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element2 ← parse_map_elem
-          parse_string
-          (do
-               let r ← parse_uint32
-               pure r.toNat
-          )
+     let element2 ← parse_map_elem String UInt32
      result := result.push element2
+
      pure result
  ) data
 
@@ -122,4 +115,4 @@ end A
 
 instance : DecidableEq (Except String A) := Except.dec_eq
 
-#guard interpret_enum A (ByteArray.mk #[02]) = Except.ok A.Tuesday
+#guard interpret? (ByteArray.mk #[02]) A = Except.ok A.Tuesday

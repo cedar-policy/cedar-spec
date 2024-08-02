@@ -45,8 +45,9 @@ def parse_field (h: HardCodeStruct) (t: Tag) : BParsec HardCodeStruct := do
   match t.fieldNum with
     | 6 =>
       guard (wt_matches t)
-      let x ← BParsec.attempt parse_uint32_packed
-      pure (HardCodeStruct.mk x)
+      let x ← BParsec.attempt (Field.merge: (BParsec (Packed UInt32)))
+      let y := x.map (fun xi => xi.toNat)
+      pure (HardCodeStruct.mk y)
     | _ =>
       t.wireType.skip
       pure h

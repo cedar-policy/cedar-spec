@@ -18,7 +18,9 @@ Variable-width integers and parsers for their relevant
 Protobuf Types
 -/
 import Protobuf.BParsec
+import Protobuf.Field
 import Protobuf.Util
+namespace Proto
 
 
 def msb_set8(i: UInt8) : Bool := i &&& (128: UInt8) != 0
@@ -82,9 +84,10 @@ def parse_uint64 : BParsec UInt64 := do
   let remaining := slice.last - slice.first
   parse_uint64_helper remaining 0 0
 
-@[inline]
-def interpret_uint64 (b: ByteArray) : UInt64 :=
-  BParsec.run! (parse_uint64_helper b.size 0 0) b
+
+instance : Field UInt64 := {
+  merge := parse_uint64
+}
 
 private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec UInt32 := do
   if remaining = 0 then pure r else
@@ -103,33 +106,37 @@ def parse_uint32 : BParsec UInt32 := do
   let remaining ← pure (slice.last - slice.first)
   parse_uint32_helper remaining 0 0
 
-@[inline]
-def interpret_uint32 (b: ByteArray) : UInt32 :=
-  BParsec.run! (parse_uint32_helper b.size 0 0) b
+instance : Field UInt32 := {
+  merge := parse_uint32
+}
+
+abbrev Int32 := Int
 
 @[inline]
-def parse_int32: BParsec Int := do
+def parse_int32: BParsec Int32 := do
   let r ← parse_uint32
     match msb_set32 r with
     | true => pure (Int.neg (~~~(r - (1: UInt32))).toNat)
     | false => pure (Int.ofNat r.toNat)
 
 
-@[inline]
-def interpret_int32 (b: ByteArray) : Int :=
-  BParsec.run! parse_int32 b
+instance : Field Int32 := {
+  merge := parse_int32
+}
+
+abbrev Int64 := Int
 
 @[inline]
-def parse_int64: BParsec Int := do
+def parse_int64: BParsec Int64 := do
   let r ← parse_uint64
   if msb_set64 r then
     pure (Int.neg (~~~(r - (1: UInt64))).toNat)
   else
     pure (Int.ofNat r.toNat)
 
-@[inline]
-def interpret_int64 (b: ByteArray) : Int :=
-  BParsec.run! parse_int32 b
+instance : Field Int64 := {
+  merge := parse_int64
+}
 
 @[inline]
 def parse_bool : BParsec Bool := do
@@ -138,6 +145,8 @@ def parse_bool : BParsec Bool := do
   if result = 0 then pure false else
   throw "Expected 00 or 01"
 
-@[inline]
-def interpret_bool (b: ByteArray) : Except String Bool :=
-  BParsec.run parse_bool b
+instance : Field Bool := {
+  merge := Proto.parse_bool
+}
+
+end Proto
