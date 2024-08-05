@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaFragment};
+use cedar_policy_validator::json_schema;
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
@@ -37,8 +37,8 @@ use cedar_policy_validator::{ActionType, ApplySpec, NamespaceDefinition, SchemaF
 /// used. Whether or not there are applicable resources is useless.
 ///
 pub fn equivalence_check<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(
-    lhs: SchemaFragment<N>,
-    rhs: SchemaFragment<N>,
+    lhs: json_schema::Fragment<N>,
+    rhs: json_schema::Fragment<N>,
 ) -> Result<(), String> {
     // We need to remove trivial empty namespaces because both `{}`
     // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
@@ -63,7 +63,7 @@ pub fn equivalence_check<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Disp
     }
 }
 
-fn remove_trivial_empty_namespace<N>(schema: &mut SchemaFragment<N>) {
+fn remove_trivial_empty_namespace<N>(schema: &mut json_schema::Fragment<N>) {
     match schema.0.get(&None) {
         Some(def)
             if def.entity_types.is_empty()
@@ -77,8 +77,8 @@ fn remove_trivial_empty_namespace<N>(schema: &mut SchemaFragment<N>) {
 }
 
 fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(
-    lhs: NamespaceDefinition<N>,
-    rhs: NamespaceDefinition<N>,
+    lhs: json_schema::NamespaceDefinition<N>,
+    rhs: json_schema::NamespaceDefinition<N>,
 ) -> Result<(), String> {
     if lhs.common_types != rhs.common_types {
         Err("Common types differ".to_string())
@@ -102,8 +102,8 @@ fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Disp
 
 fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
     name: &str,
-    lhs: ActionType<N>,
-    rhs: ActionType<N>,
+    lhs: json_schema::ActionType<N>,
+    rhs: json_schema::ActionType<N>,
 ) -> Result<(), String> {
     if lhs.attributes != rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
@@ -139,7 +139,7 @@ fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
     }
 }
 
-fn either_empty<N>(spec: &ApplySpec<N>) -> bool {
+fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 

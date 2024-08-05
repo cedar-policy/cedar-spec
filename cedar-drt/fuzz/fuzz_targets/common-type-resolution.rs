@@ -21,7 +21,7 @@ use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
 };
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use serde::Serialize;
@@ -29,8 +29,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment<ast::InternalName>,
-    pub schema_with_common_types: SchemaFragment<ast::InternalName>,
+    pub schema: json_schema::Fragment<ast::InternalName>,
+    pub schema_with_common_types: json_schema::Fragment<ast::InternalName>,
 }
 
 /// settings for this fuzz target
@@ -57,10 +57,10 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = &arb_schema.schema;
         let name = &arb_schema.namespace;
 
-        let schema = SchemaFragment(HashMap::from([(name.clone(), namespace.clone())]));
+        let schema = json_schema::Fragment(HashMap::from([(name.clone(), namespace.clone())]));
 
         let namespace_with_common_types = arb_schema.add_common_types(u)?;
-        let schema_with_common_types = SchemaFragment(HashMap::from_iter([(
+        let schema_with_common_types = json_schema::Fragment(HashMap::from_iter([(
             name.clone(),
             namespace_with_common_types,
         )]));

@@ -31,11 +31,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::{
-    ActionEntityUID, ActionType, ApplySpec, AttributesOrContext, EntityType, NamespaceDefinition,
-    RawName, SchemaError, SchemaFragment, SchemaType, SchemaTypeVariant, TypeOfAttribute,
-    ValidatorSchema,
-};
+use cedar_policy_validator::{json_schema, RawName, SchemaError, ValidatorSchema};
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 
@@ -43,7 +39,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct Schema {
     /// actual underlying schema
-    pub schema: cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
+    pub schema: json_schema::NamespaceDefinition<ast::InternalName>,
     /// Namespace for the schema, as an `ast::Name`
     pub namespace: Option<ast::Name>,
     /// settings
@@ -68,14 +64,11 @@ pub struct Schema {
     /// action in the `schema`
     pub resource_types: Vec<ast::EntityType>,
     /// list of (attribute, type) pairs that occur in the `schema`
-    attributes: Vec<(
-        SmolStr,
-        cedar_policy_validator::SchemaType<ast::InternalName>,
-    )>,
+    attributes: Vec<(SmolStr, json_schema::Type<ast::InternalName>)>,
     /// map from type to (entity type, attribute name) pairs indicating
     /// attributes in the `schema` that have that type.
-    /// note that we can't make a similar map for SchemaType because it isn't
-    /// Hash or Ord
+    /// note that we can't make a similar map for json_schema::Type because it
+    /// isn't Hash or Ord
     attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
 }
 
@@ -84,12 +77,12 @@ fn arbitrary_attrspec<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     u: &mut Unstructured<'_>,
-) -> Result<AttributesOrContext<N>> {
+) -> Result<json_schema::AttributesOrContext<N>> {
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
         .map_err(|e| while_doing("generating attribute names for an attrspec".into(), e))?;
-    Ok(AttributesOrContext(cedar_policy_validator::SchemaType::Type(
-        cedar_policy_validator::SchemaTypeVariant::Record {
+    Ok(json_schema::AttributesOrContext(json_schema::Type::Type(
+        json_schema::TypeVariant::Record {
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
@@ -149,8 +142,8 @@ fn arbitrary_typeofattribute_with_bounded_depth<N: From<ast::Name>>(
     entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<TypeOfAttribute<N>> {
-    Ok(TypeOfAttribute {
+) -> Result<json_schema::TypeOfAttribute<N>> {
+    Ok(json_schema::TypeOfAttribute {
         ty: arbitrary_schematype_with_bounded_depth::<N>(settings, entity_types, max_depth, u)?,
         required: u.arbitrary()?,
     })
@@ -164,7 +157,7 @@ fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
 }
 
 /// internal helper function, an alternative to the `Arbitrary` impl for
-/// `SchemaType` that implements a bounded maximum depth.
+/// [`json_schema::Type`] that implements a bounded maximum depth.
 /// For instance, if `max_depth` is 3, then Set types (or Record types)
 /// won't be nested more than 3 deep.
 ///
@@ -180,20 +173,20 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
     entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<cedar_policy_validator::SchemaType<N>> {
-    Ok(SchemaType::Type(uniform!(
+) -> Result<json_schema::Type<N>> {
+    Ok(json_schema::Type::Type(uniform!(
         u,
-        SchemaTypeVariant::String,
-        SchemaTypeVariant::Long,
-        SchemaTypeVariant::Boolean,
+        json_schema::TypeVariant::String,
+        json_schema::TypeVariant::Long,
+        json_schema::TypeVariant::Boolean,
         {
             if max_depth == 0 {
                 // can't recurse; we arbitrarily choose Set<Long> in this case
-                SchemaTypeVariant::Set {
-                    element: Box::new(SchemaType::Type(SchemaTypeVariant::Long)),
+                json_schema::TypeVariant::Set {
+                    element: Box::new(json_schema::Type::Type(json_schema::TypeVariant::Long)),
                 }
             } else {
-                SchemaTypeVariant::Set {
+                json_schema::TypeVariant::Set {
                     element: Box::new(arbitrary_schematype_with_bounded_depth(
                         settings,
                         entity_types,
@@ -206,7 +199,7 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
         {
             if max_depth == 0 {
                 // can't recurse; use empty-record
-                SchemaTypeVariant::Record {
+                json_schema::TypeVariant::Record {
                     attributes: BTreeMap::new(),
                     additional_attributes: if settings.enable_additional_attributes {
                         u.arbitrary()?
@@ -215,7 +208,7 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
                     },
                 }
             } else {
-                SchemaTypeVariant::Record {
+                json_schema::TypeVariant::Record {
                     attributes: {
                         let attr_names: HashSet<String> = u
                             .arbitrary()
@@ -244,40 +237,40 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
             }
         },
         entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
-        SchemaTypeVariant::Extension {
+        json_schema::TypeVariant::Extension {
             name: "ipaddr".parse().unwrap(),
         },
-        SchemaTypeVariant::Extension {
+        json_schema::TypeVariant::Extension {
             name: "decimal".parse().unwrap(),
         }
     )))
 }
 
-/// Convert an `EntityType` into the corresponding `SchemaTypeVariant` for an
-/// entity reference with that entity type.
+/// Convert an [`ast::EntityType`] into the corresponding
+/// [`json_schema::TypeVariant`] for an entity reference with that entity type.
 pub fn entity_type_name_to_schema_type_variant<N: From<ast::Name>>(
     name: &ast::EntityType,
-) -> cedar_policy_validator::SchemaTypeVariant<N> {
-    cedar_policy_validator::SchemaTypeVariant::Entity {
+) -> json_schema::TypeVariant<N> {
+    json_schema::TypeVariant::Entity {
         name: N::from(name.as_ref().clone()),
     }
 }
 
-/// Convert an `EntityType` into the corresponding `SchemaType` for an entity
-/// reference with that entity type.
+/// Convert an [`ast::EntityType`] into the corresponding [`json_schema::Type`]
+/// for an entity reference with that entity type.
 pub fn entity_type_name_to_schema_type<N: From<ast::Name>>(
     name: &ast::EntityType,
-) -> cedar_policy_validator::SchemaType<N> {
-    SchemaType::Type(entity_type_name_to_schema_type_variant(name))
+) -> json_schema::Type<N> {
+    json_schema::Type::Type(entity_type_name_to_schema_type_variant(name))
 }
 
 /// size hint for arbitrary_schematype_with_bounded_depth
 fn arbitrary_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
     // assume it's similar to the unbounded-depth version
-    <cedar_policy_validator::SchemaType<RawName> as Arbitrary>::size_hint(depth)
+    <json_schema::Type<RawName> as Arbitrary>::size_hint(depth)
 }
 
-/// internal helper function, get the EntityUID corresponding to the given action
+/// internal helper function, get the [`ast::EntityUID`] corresponding to the given action
 pub fn uid_for_action_name(namespace: Option<&ast::Name>, action_name: ast::Eid) -> ast::EntityUID {
     let entity_type = ast::EntityType::from_normalized_str("Action")
         .expect("valid id")
@@ -288,9 +281,9 @@ pub fn uid_for_action_name(namespace: Option<&ast::Name>, action_name: ast::Eid)
 /// Lookup the given `common_type_name` in the `schema`, and if it's defined,
 /// return its definition
 pub fn lookup_common_type<'a>(
-    schema: &'a cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
+    schema: &'a json_schema::NamespaceDefinition<ast::InternalName>,
     common_type_name: &ast::InternalName,
-) -> Option<&'a cedar_policy_validator::SchemaType<ast::InternalName>> {
+) -> Option<&'a json_schema::Type<ast::InternalName>> {
     // uh-oh: the common `type_name` could refer to a common type defined in
     // another namespace, but our `schema` is only a `NamespaceDefinition`,
     // which only contains items in a single namespace.
@@ -301,32 +294,34 @@ pub fn lookup_common_type<'a>(
     schema.common_types.get(&base_type_name)
 }
 
-/// internal helper function, convert a SchemaType to a Type (loses some
-/// information)
+/// internal helper function, convert a [`json_schema::Type`] to a [`Type`]
+/// (loses some information)
 fn schematype_to_type(
-    schema: &cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
-    schematy: &cedar_policy_validator::SchemaType<ast::InternalName>,
+    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
+    schematy: &json_schema::Type<ast::InternalName>,
 ) -> Type {
     match schematy {
-        SchemaType::CommonTypeRef { type_name } => schematype_to_type(
+        json_schema::Type::CommonTypeRef { type_name } => schematype_to_type(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
         ),
-        SchemaType::Type(ty) => match ty {
-            SchemaTypeVariant::Boolean => Type::bool(),
-            SchemaTypeVariant::Long => Type::long(),
-            SchemaTypeVariant::String => Type::string(),
-            SchemaTypeVariant::Set { element } => Type::set_of(schematype_to_type(schema, element)),
-            SchemaTypeVariant::Record { .. } => Type::record(),
-            SchemaTypeVariant::Entity { .. } => Type::entity(),
-            SchemaTypeVariant::EntityOrCommon { type_name } => {
+        json_schema::Type::Type(ty) => match ty {
+            json_schema::TypeVariant::Boolean => Type::bool(),
+            json_schema::TypeVariant::Long => Type::long(),
+            json_schema::TypeVariant::String => Type::string(),
+            json_schema::TypeVariant::Set { element } => {
+                Type::set_of(schematype_to_type(schema, element))
+            }
+            json_schema::TypeVariant::Record { .. } => Type::record(),
+            json_schema::TypeVariant::Entity { .. } => Type::entity(),
+            json_schema::TypeVariant::EntityOrCommon { type_name } => {
                 match lookup_common_type(schema, type_name) {
                     Some(ty) => schematype_to_type(schema, ty),
                     None => Type::entity(),
                 }
             }
-            SchemaTypeVariant::Extension { name } => match name.as_ref() {
+            json_schema::TypeVariant::Extension { name } => match name.as_ref() {
                 "ipaddr" => Type::ipaddr(),
                 "decimal" => Type::decimal(),
                 _ => panic!("unrecognized extension type: {name:?}"),
@@ -344,62 +339,57 @@ fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
 /// Information about attributes from the schema
 pub(crate) struct Attributes<'a> {
     /// the actual attributes
-    pub attrs: &'a BTreeMap<SmolStr, TypeOfAttribute<ast::InternalName>>,
+    pub attrs: &'a BTreeMap<SmolStr, json_schema::TypeOfAttribute<ast::InternalName>>,
     /// whether `additional_attributes` is set
     pub additional_attrs: bool,
 }
 
-/// Given an `AttributesOrContext`, get the actual attributes map from it, and whether it has `additional_attributes` set
+/// Given a [`json_schema::AttributesOrContext`], get the actual attributes map
+/// from it, and whether it has `additional_attributes` set
 pub(crate) fn attrs_from_attrs_or_context<'a>(
-    schema: &'a cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
-    attrsorctx: &'a AttributesOrContext<ast::InternalName>,
+    schema: &'a json_schema::NamespaceDefinition<ast::InternalName>,
+    attrsorctx: &'a json_schema::AttributesOrContext<ast::InternalName>,
 ) -> Attributes<'a> {
     match &attrsorctx.0 {
-        SchemaType::CommonTypeRef { type_name } => match lookup_common_type(schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
-            SchemaType::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
-            SchemaType::Type(SchemaTypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
-        SchemaType::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
+        json_schema::Type::CommonTypeRef { type_name } => match lookup_common_type(schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
+            json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
+            json_schema::Type::Type(json_schema::TypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+        json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
-        SchemaType::Type(SchemaTypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
-        SchemaType::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
+        json_schema::Type::Type(json_schema::TypeVariant::Record { attributes, additional_attributes }) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+        json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
     }
 }
 
-/// Given a `SchemaType`, return all (attribute, type) pairs that occur inside it
+/// Given a [`json_schema::Type`], return all (attribute, type) pairs that occur
+/// inside it
 fn attrs_in_schematype(
-    schema: &cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
-    schematype: &cedar_policy_validator::SchemaType<ast::InternalName>,
-) -> Box<
-    dyn Iterator<
-        Item = (
-            SmolStr,
-            cedar_policy_validator::SchemaType<ast::InternalName>,
-        ),
-    >,
-> {
+    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
+    schematype: &json_schema::Type<ast::InternalName>,
+) -> Box<dyn Iterator<Item = (SmolStr, json_schema::Type<ast::InternalName>)>> {
     match schematype {
-        cedar_policy_validator::SchemaType::Type(variant) => match variant {
-            SchemaTypeVariant::Boolean => Box::new(std::iter::empty()),
-            SchemaTypeVariant::Long => Box::new(std::iter::empty()),
-            SchemaTypeVariant::String => Box::new(std::iter::empty()),
-            SchemaTypeVariant::Entity { .. } => Box::new(std::iter::empty()),
-            SchemaTypeVariant::EntityOrCommon { type_name } => {
+        json_schema::Type::Type(variant) => match variant {
+            json_schema::TypeVariant::Boolean => Box::new(std::iter::empty()),
+            json_schema::TypeVariant::Long => Box::new(std::iter::empty()),
+            json_schema::TypeVariant::String => Box::new(std::iter::empty()),
+            json_schema::TypeVariant::Entity { .. } => Box::new(std::iter::empty()),
+            json_schema::TypeVariant::EntityOrCommon { type_name } => {
                 match lookup_common_type(schema, type_name) {
                     Some(ty) => attrs_in_schematype(schema, ty),
                     None => {
                         // it's an entity type, so treat it like we treat entity types
                         attrs_in_schematype(
                             schema,
-                            &cedar_policy_validator::SchemaType::Type(SchemaTypeVariant::Entity {
+                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
                                 name: type_name.clone(),
                             }),
                         )
                     }
                 }
             }
-            SchemaTypeVariant::Extension { .. } => Box::new(std::iter::empty()),
-            SchemaTypeVariant::Set { element } => attrs_in_schematype(schema, element),
-            SchemaTypeVariant::Record { attributes, .. } => {
+            json_schema::TypeVariant::Extension { .. } => Box::new(std::iter::empty()),
+            json_schema::TypeVariant::Set { element } => attrs_in_schematype(schema, element),
+            json_schema::TypeVariant::Record { attributes, .. } => {
                 let toplevel = attributes
                     .iter()
                     .map(|(k, v)| (k.clone(), v.ty.clone()))
@@ -411,7 +401,7 @@ fn attrs_in_schematype(
                 Box::new(toplevel.into_iter().chain(recursed))
             }
         },
-        cedar_policy_validator::SchemaType::CommonTypeRef { type_name } => attrs_in_schematype(
+        json_schema::Type::CommonTypeRef { type_name } => attrs_in_schematype(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
@@ -421,11 +411,11 @@ fn attrs_in_schematype(
 
 /// Build `attributes_by_type` from other components of `Schema`
 fn build_attributes_by_type<'a>(
-    schema: &cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
+    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     entity_types: impl IntoIterator<
         Item = (
             &'a UnreservedId,
-            &'a cedar_policy_validator::EntityType<ast::InternalName>,
+            &'a json_schema::EntityType<ast::InternalName>,
         ),
     >,
     namespace: Option<&ast::Name>,
@@ -456,11 +446,11 @@ fn build_attributes_by_type<'a>(
 // Common type bindings
 #[derive(Debug)]
 struct Bindings {
-    // Bindings from `SchemaType` to a list of `UnreservedId`.
+    // Bindings from `json_schema::Type` to a list of `UnreservedId`.
     // The `ids` field ensures that `UnreservedId`s are unique.
-    // Note that the `SchemaType`s in the `bindings` map should not contain any
-    // common type references.
-    bindings: BTreeMap<SchemaType<ast::InternalName>, Vec<UnreservedId>>,
+    // Note that the `json_schema::Type`s in the `bindings` map should not
+    // contain any common type references.
+    bindings: BTreeMap<json_schema::Type<ast::InternalName>, Vec<UnreservedId>>,
     // The set of `UnreservedId`s used in the bindings
     ids: HashSet<SmolStr>,
 }
@@ -472,10 +462,10 @@ impl Bindings {
         }
     }
 
-    // Add a `SchemaType` and `UnreservedId` binding.
+    // Add a `json_schema::Type` and `UnreservedId` binding.
     // Note that this function always succeeds even if the `UnreservedId` already exists.
     // Under that situation, we create a new `UnreservedId` based on the existing `UnreservedId`.
-    fn add_binding(&mut self, binding: (SchemaType<ast::InternalName>, UnreservedId)) {
+    fn add_binding(&mut self, binding: (json_schema::Type<ast::InternalName>, UnreservedId)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
         let id_smolstr: &str = id.as_ref();
@@ -504,16 +494,16 @@ impl Bindings {
     fn rewrite_type(
         &self,
         u: &mut Unstructured<'_>,
-        ty: &SchemaType<ast::InternalName>,
-    ) -> Result<SchemaType<ast::InternalName>> {
+        ty: &json_schema::Type<ast::InternalName>,
+    ) -> Result<json_schema::Type<ast::InternalName>> {
         match ty {
-            SchemaType::CommonTypeRef { .. } => {
+            json_schema::Type::CommonTypeRef { .. } => {
                 unreachable!("common type references shouldn't be here")
             }
-            SchemaType::Type(SchemaTypeVariant::Set { element }) => {
-                Ok(SchemaType::Type(SchemaTypeVariant::Set {
+            json_schema::Type::Type(json_schema::TypeVariant::Set { element }) => {
+                Ok(json_schema::Type::Type(json_schema::TypeVariant::Set {
                     element: Box::new(if let Some(ids) = self.bindings.get(element) {
-                        SchemaType::CommonTypeRef {
+                        json_schema::Type::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()).into(),
                         }
                     } else {
@@ -521,17 +511,17 @@ impl Bindings {
                     }),
                 }))
             }
-            SchemaType::Type(SchemaTypeVariant::Record {
+            json_schema::Type::Type(json_schema::TypeVariant::Record {
                 attributes,
                 additional_attributes,
-            }) => Ok(SchemaType::Type(SchemaTypeVariant::Record {
+            }) => Ok(json_schema::Type::Type(json_schema::TypeVariant::Record {
                 attributes: BTreeMap::from_iter(
                     attributes
                         .iter()
                         .map(|(attr, attr_ty)| {
                             Ok((
                                 attr.to_owned(),
-                                TypeOfAttribute {
+                                json_schema::TypeOfAttribute {
                                     ty: self.rewrite_type(u, &attr_ty.ty)?,
                                     required: attr_ty.required.to_owned(),
                                 },
@@ -549,12 +539,12 @@ impl Bindings {
     fn rewrite_entity_type(
         &self,
         u: &mut Unstructured<'_>,
-        et: &EntityType<ast::InternalName>,
-    ) -> Result<EntityType<ast::InternalName>> {
+        et: &json_schema::EntityType<ast::InternalName>,
+    ) -> Result<json_schema::EntityType<ast::InternalName>> {
         let ty = &et.shape.0;
-        Ok(EntityType {
+        Ok(json_schema::EntityType {
             member_of_types: et.member_of_types.clone(),
-            shape: AttributesOrContext(self.rewrite_record_type(u, ty)?),
+            shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
         })
     }
 
@@ -562,10 +552,10 @@ impl Bindings {
     fn rewrite_record_type(
         &self,
         u: &mut Unstructured<'_>,
-        ty: &SchemaType<ast::InternalName>,
-    ) -> Result<SchemaType<ast::InternalName>> {
+        ty: &json_schema::Type<ast::InternalName>,
+    ) -> Result<json_schema::Type<ast::InternalName>> {
         let new_ty = if let Some(ids) = self.bindings.get(ty) {
-            SchemaType::CommonTypeRef {
+            json_schema::Type::CommonTypeRef {
                 type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()).into(),
             }
         } else {
@@ -586,7 +576,7 @@ impl Bindings {
     fn to_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<HashMap<UnreservedId, SchemaType<ast::InternalName>>> {
+    ) -> Result<HashMap<UnreservedId, json_schema::Type<ast::InternalName>>> {
         let mut common_types = HashMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
@@ -596,7 +586,7 @@ impl Bindings {
                 for i in 0..(ids.len() - 1) {
                     common_types.insert(
                         ids[i].clone(),
-                        SchemaType::CommonTypeRef {
+                        json_schema::Type::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(ids[i + 1].clone()).into(),
                         },
                     );
@@ -610,7 +600,7 @@ impl Bindings {
 
 // Bind types to random ids recursively
 fn bind_type(
-    ty: &SchemaType<ast::InternalName>,
+    ty: &json_schema::Type<ast::InternalName>,
     u: &mut Unstructured<'_>,
     bindings: &mut Bindings,
 ) -> Result<()> {
@@ -619,10 +609,10 @@ fn bind_type(
         bindings.add_binding((ty.clone(), u.arbitrary()?));
     }
     match ty {
-        SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Set { element }) => {
+        json_schema::Type::Type(json_schema::TypeVariant::Set { element }) => {
             bind_type(element, u, bindings)?;
         }
-        SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Record {
+        json_schema::Type::Type(json_schema::TypeVariant::Record {
             attributes,
             additional_attributes: _,
         }) => {
@@ -631,7 +621,7 @@ fn bind_type(
                 .map(|(_, attr_ty)| bind_type(&attr_ty.ty, u, bindings))
                 .collect::<Result<Vec<()>>>()?;
         }
-        SchemaType::CommonTypeRef { .. } => {
+        json_schema::Type::CommonTypeRef { .. } => {
             unreachable!("common type references shouldn't exist here")
         }
         _ => {}
@@ -644,7 +634,7 @@ impl Schema {
     pub fn add_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<cedar_policy_validator::NamespaceDefinition<ast::InternalName>> {
+    ) -> Result<json_schema::NamespaceDefinition<ast::InternalName>> {
         let attribute_types = &self.attributes;
         let mut bindings = Bindings::new();
         for (_, ty) in attribute_types {
@@ -652,13 +642,14 @@ impl Schema {
         }
 
         let common_types = bindings.to_common_types(u)?;
-        let entity_types: HashMap<UnreservedId, EntityType<ast::InternalName>> = HashMap::from_iter(
-            self.schema
-                .entity_types
-                .iter()
-                .map(|(id, et)| Ok((id.clone(), bindings.rewrite_entity_type(u, et)?)))
-                .collect::<Result<Vec<_>>>()?,
-        );
+        let entity_types: HashMap<UnreservedId, json_schema::EntityType<ast::InternalName>> =
+            HashMap::from_iter(
+                self.schema
+                    .entity_types
+                    .iter()
+                    .map(|(id, et)| Ok((id.clone(), bindings.rewrite_entity_type(u, et)?)))
+                    .collect::<Result<Vec<_>>>()?,
+            );
         let actions = HashMap::from_iter(
             self.schema
                 .actions
@@ -666,14 +657,14 @@ impl Schema {
                 .map(|(id, ty)| {
                     Ok((
                         id.to_owned(),
-                        ActionType {
+                        json_schema::ActionType {
                             attributes: ty.attributes.to_owned(),
                             member_of: ty.member_of.clone(),
                             applies_to: match &ty.applies_to {
-                                Some(applies) => Some(ApplySpec {
+                                Some(applies) => Some(json_schema::ApplySpec {
                                     resource_types: applies.resource_types.clone(),
                                     principal_types: applies.principal_types.clone(),
-                                    context: AttributesOrContext(
+                                    context: json_schema::AttributesOrContext(
                                         bindings.rewrite_record_type(u, &applies.context.0)?,
                                     ),
                                 }),
@@ -684,7 +675,7 @@ impl Schema {
                 })
                 .collect::<Result<Vec<_>>>()?,
         );
-        Ok(cedar_policy_validator::NamespaceDefinition {
+        Ok(json_schema::NamespaceDefinition {
             common_types: common_types.into(),
             entity_types: entity_types.into(),
             actions: actions.into(),
@@ -701,7 +692,7 @@ impl Schema {
     /// The input is `NamespaceDefinition<RawName>`, meaning that entity and
     /// common type names may not yet be fully qualified.
     pub fn from_raw_nsdef(
-        nsdef: cedar_policy_validator::NamespaceDefinition<RawName>,
+        nsdef: json_schema::NamespaceDefinition<RawName>,
         namespace: Option<ast::Name>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
@@ -712,7 +703,7 @@ impl Schema {
             RawName::new_from_unreserved(unreserved).qualify_with(namespace_internal)
         };
         let action_id_to_def = |id: SmolStr| -> ast::EntityUID {
-            cedar_policy_validator::ActionEntityUID::default_type(id)
+            json_schema::ActionEntityUID::default_type(id)
                 .qualify_with(namespace_internal)
                 .try_into()
                 .unwrap()
@@ -745,13 +736,13 @@ impl Schema {
         )
     }
 
-    /// Create an arbitrary `Schema` based on (compatible with) the given
-    /// Validator `NamespaceDefinition`.
+    /// Create an arbitrary [`Schema`] based on (compatible with) the given
+    /// [`json_schema::NamespaceDefinition`].
     ///
-    /// The input is `NamespaceDefinition<ast::InternalName>`, meaning that all
+    /// The input is [`json_schema::NamespaceDefinition<ast::InternalName>`], meaning that all
     /// entity and common type names are expected to already be fully qualified.
     pub fn from_nsdef(
-        nsdef: cedar_policy_validator::NamespaceDefinition<ast::InternalName>,
+        nsdef: json_schema::NamespaceDefinition<ast::InternalName>,
         namespace: Option<ast::Name>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
@@ -805,21 +796,21 @@ impl Schema {
         })
     }
 
-    /// Create an arbitrary `Schema` based on (compatible with) the given Validator `SchemaFragment`.
+    /// Create an arbitrary `Schema` based on (compatible with) the given [`json_schema::Fragment`].
     ///
-    /// The input is `SchemaFragment<RawName>`, meaning that entity and common
+    /// The input is [`json_schema::Fragment<RawName>`], meaning that entity and common
     /// type names may not yet be fully qualified.
     pub fn from_raw_schemafrag(
-        schemafrag: cedar_policy_validator::SchemaFragment<RawName>,
+        schemafrag: json_schema::Fragment<RawName>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
         let mut nsdefs = schemafrag.0.into_iter();
         match nsdefs.next() {
-            None => panic!("Empty SchemaFragment not supported in this method"),
+            None => panic!("Empty json_schema::Fragment not supported in this method"),
             Some((ns, nsdef)) => match nsdefs.next() {
                 Some(_) => unimplemented!(
-                    "SchemaFragment with multiple namespaces not yet supported in this method"
+                    "json_schema::Fragment with multiple namespaces not yet supported in this method"
                 ),
                 None => Self::from_raw_nsdef(nsdef, ns, settings, u),
             },
@@ -827,21 +818,21 @@ impl Schema {
     }
 
     /// Create an arbitrary `Schema` based on (compatible with) the given
-    /// Validator `SchemaFragment`.
+    /// [`json_schema::Fragment`].
     ///
-    /// The input is `SchemaFragment<ast::InternalName>`, meaning that all
+    /// The input is [`json_schema::Fragment<ast::InternalName>`], meaning that all
     /// entity and common type names are expected to already be fully-qualified.
     pub fn from_schemafrag(
-        schemafrag: cedar_policy_validator::SchemaFragment<ast::InternalName>,
+        schemafrag: json_schema::Fragment<ast::InternalName>,
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
         let mut nsdefs = schemafrag.0.into_iter();
         match nsdefs.next() {
-            None => panic!("Empty SchemaFragment not supported in this method"),
+            None => panic!("Empty json_schema::Fragment not supported in this method"),
             Some((ns, nsdef)) => match nsdefs.next() {
                 Some(_) => unimplemented!(
-                    "SchemaFragment with multiple namespaces not yet supported in this method"
+                    "json_schema::Fragment with multiple namespaces not yet supported in this method"
                 ),
                 None => Self::from_nsdef(nsdef, ns, settings, u),
             },
@@ -894,22 +885,20 @@ impl Schema {
 
         // now turn each of those names into an EntityType, no
         // member-relationships yet
-        let mut entity_types: Vec<(
-            UnreservedId,
-            cedar_policy_validator::EntityType<ast::InternalName>,
-        )> = entity_type_ids
-            .iter()
-            .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
-            .map(|id| {
-                Ok((
-                    id.clone(),
-                    cedar_policy_validator::EntityType {
-                        member_of_types: vec![],
-                        shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                    },
-                ))
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let mut entity_types: Vec<(UnreservedId, json_schema::EntityType<ast::InternalName>)> =
+            entity_type_ids
+                .iter()
+                .filter(|id| settings.enable_action_groups_and_attrs || id.to_string() != "Action")
+                .map(|id| {
+                    Ok((
+                        id.clone(),
+                        json_schema::EntityType {
+                            member_of_types: vec![],
+                            shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                        },
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
         // fill in member-relationships. WLOG we only make edges from entities
         // earlier in the entity_types list to entities later in the list; this
         // ensures we get a DAG
@@ -974,12 +963,12 @@ impl Schema {
         let mut principal_and_resource_types_exist = false;
         // Ensure on the first pass we always generate a principal/resource
         // After that, flip a coin to optional delete the principal/resource type lists
-        let mut actions: Vec<(SmolStr, ActionType<ast::InternalName>)> = action_names
+        let mut actions: Vec<(SmolStr, json_schema::ActionType<ast::InternalName>)> = action_names
             .iter()
             .map(|name| {
                 Ok((
                     name.clone(),
-                    ActionType {
+                    json_schema::ActionType {
                         applies_to: {
                             let mut picked_resource_types =
                                 pick_entity_types(&mut resource_types, u)?;
@@ -995,7 +984,7 @@ impl Schema {
                             } else {
                                 principal_and_resource_types_exist = true;
                             }
-                            Some(ApplySpec {
+                            Some(json_schema::ApplySpec {
                                 resource_types: picked_resource_types,
                                 principal_types: picked_principal_types,
                                 context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
@@ -1025,7 +1014,7 @@ impl Schema {
                                 "`member_of` is always `Some` when action groups are permitted.",
                             )
                             .push(
-                                cedar_policy_validator::ActionEntityUID::default_type(name.clone())
+                                json_schema::ActionEntityUID::default_type(name.clone())
                                     .qualify_with(namespace.as_ref().map(AsRef::as_ref)),
                             );
                     }
@@ -1033,14 +1022,14 @@ impl Schema {
             }
         }
 
-        let nsdef = cedar_policy_validator::NamespaceDefinition {
+        let nsdef = json_schema::NamespaceDefinition {
             common_types: HashMap::new().into(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
         };
         let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
-        let attributes: Vec<(SmolStr, cedar_policy_validator::SchemaType<_>)> = attrsorcontexts
+        let attributes: Vec<(SmolStr, json_schema::Type<_>)> = attrsorcontexts
             .flat_map(|attributes| {
                 attributes.attrs.iter().map(|(s, ty)| {
                     (
@@ -1148,24 +1137,24 @@ impl Schema {
             .arbitrary_uid_with_type(&ty, u)
     }
 
-    /// internal helper function, try to convert `Type` into `SchemaType`
+    /// internal helper function, try to convert [`Type`] into [`json_schema::Type`]
     pub fn try_into_schematype<N: From<ast::Name>>(
         &self,
         ty: &Type,
         u: &mut Unstructured<'_>,
-    ) -> Result<Option<cedar_policy_validator::SchemaType<N>>> {
+    ) -> Result<Option<json_schema::Type<N>>> {
         Ok(match ty {
-            Type::Bool => Some(SchemaTypeVariant::Boolean),
-            Type::Long => Some(SchemaTypeVariant::Long),
-            Type::String => Some(SchemaTypeVariant::String),
-            Type::Set(None) => None, // SchemaType doesn't support any-set
+            Type::Bool => Some(json_schema::TypeVariant::Boolean),
+            Type::Long => Some(json_schema::TypeVariant::Long),
+            Type::String => Some(json_schema::TypeVariant::String),
+            Type::Set(None) => None, // json_schema::Type doesn't support any-set
             Type::Set(Some(el_ty)) => {
                 self.try_into_schematype(el_ty, u)?
-                    .map(|schematy| SchemaTypeVariant::Set {
+                    .map(|schematy| json_schema::TypeVariant::Set {
                         element: Box::new(schematy),
                     })
             }
-            Type::Record => Some(SchemaTypeVariant::Record {
+            Type::Record => Some(json_schema::TypeVariant::Record {
                 attributes: BTreeMap::new(),
                 additional_attributes: true,
             }),
@@ -1173,24 +1162,21 @@ impl Schema {
                 let entity_type = self.exprgenerator(None).generate_uid(u)?.components().0;
                 Some(entity_type_name_to_schema_type_variant(&entity_type))
             }
-            Type::IPAddr => Some(SchemaTypeVariant::Extension {
+            Type::IPAddr => Some(json_schema::TypeVariant::Extension {
                 name: "ipaddr".parse().unwrap(),
             }),
-            Type::Decimal => Some(SchemaTypeVariant::Extension {
+            Type::Decimal => Some(json_schema::TypeVariant::Extension {
                 name: "decimal".parse().unwrap(),
             }),
         }
-        .map(SchemaType::Type))
+        .map(json_schema::Type::Type))
     }
 
-    /// get an attribute name and its `SchemaType`, from the schema
+    /// get an attribute name and its `json_schema::Type`, from the schema
     pub fn arbitrary_attr(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<&(
-        SmolStr,
-        cedar_policy_validator::SchemaType<ast::InternalName>,
-    )> {
+    ) -> Result<&(SmolStr, json_schema::Type<ast::InternalName>)> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
     }
@@ -1216,15 +1202,15 @@ impl Schema {
         }
     }
 
-    /// Given a schematype, get an entity type name and attribute name, such
-    /// that entities with that typename have a (possibly optional) attribute
-    /// with the given schematype
+    /// Given a [`json_schema::Type`], get an entity type name and attribute
+    /// name, such that entities with that typename have a (possibly optional)
+    /// attribute with the given [`json_schema::Type`]
     pub fn arbitrary_attr_for_schematype(
         &self,
-        target_type: impl Into<cedar_policy_validator::SchemaType<ast::InternalName>>,
+        target_type: impl Into<json_schema::Type<ast::InternalName>>,
         u: &mut Unstructured<'_>,
     ) -> Result<(ast::EntityType, SmolStr)> {
-        let target_type: cedar_policy_validator::SchemaType<ast::InternalName> = target_type.into();
+        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
         let pairs: Vec<(ast::EntityType, SmolStr)> = self
             .schema
             .entity_types
@@ -1428,7 +1414,8 @@ impl Schema {
             .collect();
         let (action_name, action) = applicable_actions[u.choose_index(applicable_actions.len())?];
         // This is safe as we checked above
-        let applies_to: &ApplySpec<ast::InternalName> = action.applies_to.as_ref().unwrap();
+        let applies_to: &json_schema::ApplySpec<ast::InternalName> =
+            action.applies_to.as_ref().unwrap();
         // now generate a valid request for that Action
         Ok(ABACRequest(Request {
             principal: {
@@ -1491,7 +1478,7 @@ impl Schema {
     }
 
     /// Get the underlying schema file, as a `NamespaceDefinition`
-    pub fn schemafile(&self) -> &cedar_policy_validator::NamespaceDefinition<ast::InternalName> {
+    pub fn schemafile(&self) -> &json_schema::NamespaceDefinition<ast::InternalName> {
         &self.schema
     }
 
@@ -1502,19 +1489,19 @@ impl Schema {
     }
 }
 
-impl From<Schema> for SchemaFragment<ast::InternalName> {
-    fn from(schema: Schema) -> SchemaFragment<ast::InternalName> {
-        SchemaFragment(HashMap::from_iter([(schema.namespace, schema.schema)]).into())
+impl From<Schema> for json_schema::Fragment<ast::InternalName> {
+    fn from(schema: Schema) -> json_schema::Fragment<ast::InternalName> {
+        json_schema::Fragment(HashMap::from_iter([(schema.namespace, schema.schema)]).into())
     }
 }
 
-impl From<Schema> for SchemaFragment<RawName> {
-    fn from(schema: Schema) -> SchemaFragment<RawName> {
-        downgrade_frag_to_raw(SchemaFragment::<ast::InternalName>::from(schema))
+impl From<Schema> for json_schema::Fragment<RawName> {
+    fn from(schema: Schema) -> json_schema::Fragment<RawName> {
+        downgrade_frag_to_raw(json_schema::Fragment::<ast::InternalName>::from(schema))
     }
 }
 
-/// Utility function to "downgrade" a [`SchemaFragment`] with fully-qualified
+/// Utility function to "downgrade" a [`json_schema::Fragment`] with fully-qualified
 /// names into one with [`RawName`]s.
 /// When this results in `RawName`s like `A::B`, this is unambiguous, because
 /// the `RawName` `A::B` is always translated back into the fully-qualified
@@ -1526,8 +1513,10 @@ impl From<Schema> for SchemaFragment<RawName> {
 /// fixed). However, we can't do any better, because there is currently no way
 /// for a `RawName` to unambiguously refer to a name in the empty namespace;
 /// solutions are discussed in RFC 64 (which is `pending` as of this writing).
-pub fn downgrade_frag_to_raw(frag: SchemaFragment<ast::InternalName>) -> SchemaFragment<RawName> {
-    SchemaFragment(
+pub fn downgrade_frag_to_raw(
+    frag: json_schema::Fragment<ast::InternalName>,
+) -> json_schema::Fragment<RawName> {
+    json_schema::Fragment(
         frag.0
             .into_iter()
             .map(|(k, nsdef)| (k, downgrade_nsdef_to_raw(nsdef)))
@@ -1538,9 +1527,9 @@ pub fn downgrade_frag_to_raw(frag: SchemaFragment<ast::InternalName>) -> SchemaF
 /// Utility function to "downgrade" a [`NamespaceDefinition`] with fully-qualified
 /// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
 fn downgrade_nsdef_to_raw(
-    nsdef: NamespaceDefinition<ast::InternalName>,
-) -> NamespaceDefinition<RawName> {
-    NamespaceDefinition {
+    nsdef: json_schema::NamespaceDefinition<ast::InternalName>,
+) -> json_schema::NamespaceDefinition<RawName> {
+    json_schema::NamespaceDefinition {
         common_types: nsdef
             .common_types
             .into_iter()
@@ -1559,40 +1548,48 @@ fn downgrade_nsdef_to_raw(
     }
 }
 
-/// Utility function to "downgrade" a [`SchemaType`] with fully-qualified names
+/// Utility function to "downgrade" a [`json_schema::Type`] with fully-qualified names
 /// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_schematype_to_raw(schematype: SchemaType<ast::InternalName>) -> SchemaType<RawName> {
+fn downgrade_schematype_to_raw(
+    schematype: json_schema::Type<ast::InternalName>,
+) -> json_schema::Type<RawName> {
     match schematype {
-        SchemaType::CommonTypeRef { type_name } => SchemaType::CommonTypeRef {
+        json_schema::Type::CommonTypeRef { type_name } => json_schema::Type::CommonTypeRef {
             type_name: RawName::from_name(type_name),
         },
-        SchemaType::Type(stv) => SchemaType::Type(downgrade_schematypevariant_to_raw(stv)),
+        json_schema::Type::Type(stv) => {
+            json_schema::Type::Type(downgrade_schematypevariant_to_raw(stv))
+        }
     }
 }
 
-/// Utility function to "downgrade" a [`SchemaTypeVariant`] with fully-qualified
+/// Utility function to "downgrade" a [`json_schema::TypeVariant`] with fully-qualified
 /// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
 fn downgrade_schematypevariant_to_raw(
-    stv: SchemaTypeVariant<ast::InternalName>,
-) -> SchemaTypeVariant<RawName> {
+    stv: json_schema::TypeVariant<ast::InternalName>,
+) -> json_schema::TypeVariant<RawName> {
     match stv {
-        SchemaTypeVariant::Boolean => SchemaTypeVariant::Boolean,
-        SchemaTypeVariant::Long => SchemaTypeVariant::Long,
-        SchemaTypeVariant::String => SchemaTypeVariant::String,
-        SchemaTypeVariant::Extension { name } => SchemaTypeVariant::Extension { name },
-        SchemaTypeVariant::Set { element } => SchemaTypeVariant::Set {
+        json_schema::TypeVariant::Boolean => json_schema::TypeVariant::Boolean,
+        json_schema::TypeVariant::Long => json_schema::TypeVariant::Long,
+        json_schema::TypeVariant::String => json_schema::TypeVariant::String,
+        json_schema::TypeVariant::Extension { name } => {
+            json_schema::TypeVariant::Extension { name }
+        }
+        json_schema::TypeVariant::Set { element } => json_schema::TypeVariant::Set {
             element: Box::new(downgrade_schematype_to_raw(*element)),
         },
-        SchemaTypeVariant::Entity { name } => SchemaTypeVariant::Entity {
+        json_schema::TypeVariant::Entity { name } => json_schema::TypeVariant::Entity {
             name: RawName::from_name(name),
         },
-        SchemaTypeVariant::EntityOrCommon { type_name } => SchemaTypeVariant::EntityOrCommon {
-            type_name: RawName::from_name(type_name),
-        },
-        SchemaTypeVariant::Record {
+        json_schema::TypeVariant::EntityOrCommon { type_name } => {
+            json_schema::TypeVariant::EntityOrCommon {
+                type_name: RawName::from_name(type_name),
+            }
+        }
+        json_schema::TypeVariant::Record {
             attributes,
             additional_attributes,
-        } => SchemaTypeVariant::Record {
+        } => json_schema::TypeVariant::Record {
             attributes: attributes
                 .into_iter()
                 .map(|(k, v)| (k, downgrade_toa_to_raw(v)))
@@ -1604,20 +1601,22 @@ fn downgrade_schematypevariant_to_raw(
 
 /// Utility function to "downgrade" a [`TypeOfAttribute`] with fully-qualified
 /// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_toa_to_raw(toa: TypeOfAttribute<ast::InternalName>) -> TypeOfAttribute<RawName> {
-    TypeOfAttribute {
+fn downgrade_toa_to_raw(
+    toa: json_schema::TypeOfAttribute<ast::InternalName>,
+) -> json_schema::TypeOfAttribute<RawName> {
+    json_schema::TypeOfAttribute {
         ty: downgrade_schematype_to_raw(toa.ty),
         required: toa.required,
     }
 }
 
-/// Utility function to "downgrade" a [`cedar_policy_validator::EntityType`] with
+/// Utility function to "downgrade" a [`json_schema::EntityType`] with
 /// fully-qualified names into one with [`RawName`]s. See notes on
 /// [`downgrade_frag_to_raw()`].
 fn downgrade_entitytype_to_raw(
-    entitytype: cedar_policy_validator::EntityType<ast::InternalName>,
-) -> cedar_policy_validator::EntityType<RawName> {
-    cedar_policy_validator::EntityType {
+    entitytype: json_schema::EntityType<ast::InternalName>,
+) -> json_schema::EntityType<RawName> {
+    json_schema::EntityType {
         member_of_types: entitytype
             .member_of_types
             .into_iter()
@@ -1631,15 +1630,17 @@ fn downgrade_entitytype_to_raw(
 /// fully-qualified names into one with [`RawName`]s. See notes on
 /// [`downgrade_frag_to_raw()`].
 fn downgrade_aoc_to_raw(
-    aoc: AttributesOrContext<ast::InternalName>,
-) -> AttributesOrContext<RawName> {
-    AttributesOrContext(downgrade_schematype_to_raw(aoc.0))
+    aoc: json_schema::AttributesOrContext<ast::InternalName>,
+) -> json_schema::AttributesOrContext<RawName> {
+    json_schema::AttributesOrContext(downgrade_schematype_to_raw(aoc.0))
 }
 
 /// Utility function to "downgrade" an [`ActionType`] with fully-qualified names
 /// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_action_to_raw(action: ActionType<ast::InternalName>) -> ActionType<RawName> {
-    ActionType {
+fn downgrade_action_to_raw(
+    action: json_schema::ActionType<ast::InternalName>,
+) -> json_schema::ActionType<RawName> {
+    json_schema::ActionType {
         attributes: action.attributes,
         applies_to: action.applies_to.map(downgrade_applyspec_to_raw),
         member_of: action
@@ -1650,8 +1651,10 @@ fn downgrade_action_to_raw(action: ActionType<ast::InternalName>) -> ActionType<
 
 /// Utility function to "downgrade" an [`ApplySpec`] with fully-qualified names
 /// into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_applyspec_to_raw(applyspec: ApplySpec<ast::InternalName>) -> ApplySpec<RawName> {
-    ApplySpec {
+fn downgrade_applyspec_to_raw(
+    applyspec: json_schema::ApplySpec<ast::InternalName>,
+) -> json_schema::ApplySpec<RawName> {
+    json_schema::ApplySpec {
         principal_types: applyspec
             .principal_types
             .into_iter()
@@ -1668,8 +1671,10 @@ fn downgrade_applyspec_to_raw(applyspec: ApplySpec<ast::InternalName>) -> ApplyS
 
 /// Utility function to "downgrade" an [`ActionEntityUID`] with fully-qualified
 /// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_aeuid_to_raw(aeuid: ActionEntityUID<ast::InternalName>) -> ActionEntityUID<RawName> {
-    ActionEntityUID::new(
+fn downgrade_aeuid_to_raw(
+    aeuid: json_schema::ActionEntityUID<ast::InternalName>,
+) -> json_schema::ActionEntityUID<RawName> {
+    json_schema::ActionEntityUID::new(
         Some(RawName::from_name(aeuid.ty().clone().into())),
         aeuid.id,
     )
@@ -1678,7 +1683,7 @@ fn downgrade_aeuid_to_raw(aeuid: ActionEntityUID<ast::InternalName>) -> ActionEn
 impl TryFrom<Schema> for ValidatorSchema {
     type Error = SchemaError;
     fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
-        ValidatorSchema::try_from(SchemaFragment::<RawName>::from(schema))
+        ValidatorSchema::try_from(json_schema::Fragment::<RawName>::from(schema))
     }
 }
 
@@ -1689,7 +1694,7 @@ mod tests {
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
-    use cedar_policy_validator::{CoreSchema, RawName, SchemaFragment, ValidatorSchema};
+    use cedar_policy_validator::{json_schema::Fragment, CoreSchema, RawName, ValidatorSchema};
     use rand::{rngs::ThreadRng, thread_rng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
@@ -2129,7 +2134,7 @@ mod tests {
 
     #[test]
     fn entities_generation_github() {
-        let fragment = SchemaFragment::from_file(GITHUB_SCHEMA_STR.as_bytes())
+        let fragment = json_schema::Fragment::from_file(GITHUB_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
@@ -2139,7 +2144,7 @@ mod tests {
 
     #[test]
     fn entities_generation_document_cloud() {
-        let fragment = SchemaFragment::from_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
+        let fragment = json_schema::Fragment::from_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
@@ -2149,7 +2154,7 @@ mod tests {
 
     fn generate_hierarchy_from_schema(
         rng: &mut ThreadRng,
-        fragment: SchemaFragment<RawName>,
+        fragment: json_schema::Fragment<RawName>,
     ) -> cedar_policy_core::entities::err::Result<Entities> {
         let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
         rng.fill_bytes(&mut bytes);

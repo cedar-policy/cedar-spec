@@ -25,7 +25,7 @@ use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_core::parser;
 use cedar_policy_generators::collections::HashMap;
-use cedar_policy_validator::{RawName, SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_validator::{json_schema, RawName, ValidationMode, Validator, ValidatorSchema};
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::io::Write;
@@ -42,7 +42,7 @@ use std::str::FromStr;
 pub fn dump(
     dirname: impl AsRef<Path>,
     testcasename: &str,
-    schema: &SchemaFragment<RawName>,
+    schema: &json_schema::Fragment<RawName>,
     policies: &PolicySet,
     entities: &Entities,
     requests: impl IntoIterator<Item = (Request, Response)>,
@@ -203,7 +203,7 @@ fn well_formed(policies: &PolicySet) -> bool {
 }
 
 /// Check whether a policy set passes validation
-fn passes_validation(schema: SchemaFragment<RawName>, policies: &PolicySet) -> bool {
+fn passes_validation(schema: json_schema::Fragment<RawName>, policies: &PolicySet) -> bool {
     if let Ok(schema) = ValidatorSchema::try_from(schema) {
         let validator = Validator::new(schema);
         validator
