@@ -934,4 +934,13 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
+theorem contains_keys_if_contains {α : Type u} [DecidableEq α] (k : α) (r : Map α β) :
+  r.contains k → r.keys.contains k
+:= by
+    intro h₀
+    simp [Map.contains, Option.isSome, Map.find?] at h₀
+    simp [Set.contains, Set.in_list_iff_in_set, keys]
+    cases h₁ : List.find? (fun x => x.fst == k) r.kvs <;> simp [h₁] at h₀
+    sorry
+    
 end Cedar.Data.Map

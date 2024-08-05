@@ -70,18 +70,52 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
     case set sty =>
       apply InstanceOfType.instance_of_set s sty
       simp at h₀
-      simp [List.attach_def] at h₀
-      sorry
+      intro v hv
+      simp only [← Set.in_list_iff_in_set] at hv
+      specialize h₀ ⟨v, hv⟩
+      simp only [List.attach_def, List.mem_pmap_subtype, hv, true_implies] at h₀
+      exact instance_of_type_refl v sty h₀
+    all_goals
+      contradiction
     all_goals
       contradiction
   | record r =>
     cases ty
     case record rty =>
       apply InstanceOfType.instance_of_record r rty
-      simp at h₀
-      simp [List.attach₂] at h₀
-      sorry
-      sorry
+      all_goals
+        simp at h₀
+      intro k h₁
+      simp only [Map.contains_iff_some_find?] at h₁
+      have ⟨⟨h₂, h₃⟩, h₄⟩ := h₀
+      obtain ⟨v, h₁⟩ := h₁
+      specialize h₂ (k, v)
+      simp only at h₂
+      apply h₂
+      exact Map.find?_mem_toList h₁
+      intro k v qty h₁ h₂
+      have ⟨⟨h₃, h₄⟩, h₅⟩ := h₀
+      have h₆ : sizeOf (k,v).snd < 1 + sizeOf r.kvs
+      := by
+        have hin := Map.find?_mem_toList h₁
+        simp only
+        replace hin := List.sizeOf_lt_of_mem hin
+        simp only [Prod.mk.sizeOf_spec] at hin
+        sorry
+      specialize h₄ ⟨(k, v), h₆⟩
+      simp only [List.attach₂, List.mem_pmap_subtype] at h₄
+      have h₇ := h₄ (Map.find?_mem_toList h₁)
+      cases h₈ : rty.find? k with
+      | none =>
+        rw [h₂] at h₈
+        contradiction
+      | some vl =>
+        simp [h₈] at h₇
+        simp [h₈] at h₂
+        subst h₂
+        exact instance_of_type_refl v vl.getType h₇
+      intro k qty h₁ h₂
+      have ⟨⟨h₃, h₄⟩, h₅⟩ := h₀
       sorry
     all_goals
       contradiction
@@ -125,6 +159,7 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   simp [InstanceOfEntitySchema]
   simp [instanceOfEntitySchema] at h₀
   intro uid data h₁
+
   sorry
 
 theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchema) :
