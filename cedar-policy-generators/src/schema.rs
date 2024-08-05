@@ -1694,7 +1694,7 @@ mod tests {
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
-    use cedar_policy_validator::{json_schema::Fragment, CoreSchema, RawName, ValidatorSchema};
+    use cedar_policy_validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
     use rand::{rngs::ThreadRng, thread_rng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
