@@ -23,6 +23,7 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
+use cedar_policy_validator::json_schema;
 use nanoid::nanoid;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -503,7 +504,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: Option<
-            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::InternalName>>,
+            HashMap<ast::EntityType, &json_schema::EntityType<ast::InternalName>>,
         > = match &self.mode {
             HierarchyGeneratorMode::SchemaBased { schema } => Some(
                 schema

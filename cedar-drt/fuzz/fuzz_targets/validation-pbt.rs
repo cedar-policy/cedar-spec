@@ -28,9 +28,7 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{
-    ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema,
-};
+use cedar_policy_validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
@@ -164,7 +162,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &str) {
+fn maybe_log_schemastats<N>(schema: Option<&json_schema::NamespaceDefinition<N>>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
@@ -184,7 +182,7 @@ fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &st
         for action in schema.actions.values() {
             match action.applies_to.as_ref() {
                 None => checkpoint(LOG_FILENAME_APPLIES_TO_NONE.to_string() + "_" + suffix),
-                Some(ApplySpec {
+                Some(json_schema::ApplySpec {
                     principal_types,
                     resource_types,
                     ..
