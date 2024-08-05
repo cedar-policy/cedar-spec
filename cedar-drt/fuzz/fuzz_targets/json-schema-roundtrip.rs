@@ -78,9 +78,6 @@ fuzz_target!(|i: Input| {
     let (final_ast, _) =
         json_schema::Fragment::from_str_cedar(&src, Extensions::all_available()).unwrap();
     if let Err(e) = equivalence_check(downgrade_frag_to_raw(i.schema), final_ast) {
-        panic!(
-            "Cedar roundtrip failed: {}\nSrc:\n```\n{}\n```",
-            e, src
-        );
+        panic!("Cedar roundtrip failed: {}\nSrc:\n```\n{}\n```", e, src);
     }
 });
