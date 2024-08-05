@@ -21,30 +21,32 @@ use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{json_schema, RawName};
 use similar_asserts::SimpleDiff;
 
-// Natural String -> json_schema::Fragment -> JSON String -> json_schema::Fragment
-// Assert that schema fragments are equivalent. By starting with a Natural
-// String we test for the existence of schema that are valid in the natural
-// format but with an invalid json schema conversion.
+// JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
+// Assert that schema fragments are equivalent. By starting with a JSON String
+// we test for the existence of schema that are valid in JSON but with an
+// invalid ceadr schema conversion.
 fuzz_target!(|src: String| {
-    if let Ok((parsed, _)) =
-        json_schema::Fragment::<RawName>::from_str_natural(&src, Extensions::all_available())
-    {
+    if let Ok(parsed) = json_schema::Fragment::<RawName>::from_json_str(&src) {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let json = serde_json::to_value(parsed.clone())
-            .expect("Failed to convert human readable schema to JSON");
-        let json_parsed = json_schema::Fragment::from_json_value(json)
-            .expect("Failed to parse converted JSON schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), json_parsed.clone()) {
+        let ceadr_src = parsed
+            .as_cedar_schema()
+            .expect("Failed to convert the JSON schema into a Cedar schema");
+        let (ceadr_parsed, _) = json_schema::Fragment::<RawName>::from_str_cedar(
+            &ceadr_src,
+            Extensions::all_available(),
+        )
+        .expect("Failed to parse converted Cedar schema");
+        if let Err(msg) = equivalence_check(parsed.clone(), ceadr_parsed.clone()) {
             println!("Schema: {src}");
             println!(
                 "{}",
                 SimpleDiff::from_str(
                     &format!("{:#?}", parsed),
-                    &format!("{:#?}", json_parsed),
-                    "Parsed human readable",
-                    "JSON round-tripped"
+                    &format!("{:#?}", ceadr_parsed),
+                    "Parsed JSON",
+                    "Cedar Round tripped"
                 )
             );
             panic!("{msg}");
