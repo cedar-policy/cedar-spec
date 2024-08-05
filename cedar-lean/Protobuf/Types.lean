@@ -17,30 +17,6 @@
 Protobuf Native and Wire Types
 -/
 namespace Proto
-inductive PType where
-  -- WireType.VARINT
-  | int32: PType
-  | int64: PType
-  | uint32: PType
-  | uint64: PType
-  | bool: PType
-  | enum: PType
-  | sint32: PType
-  | sint64: PType
-  -- WireType.I32
-  | sfixed32: PType
-  | fixed32: PType
-  | float: PType -- NOTE: Float is 64 bits in Lean
-  -- WireType.I64
-  | sfixed64: PType
-  | fixed64: PType
-  | double: PType
-  -- WireType.LEN
-  | string: PType
-  | message: PType
-  | bytes: PType
-  | packed (p: PType): PType
-deriving Repr
 
 inductive WireType where
   | VARINT : WireType

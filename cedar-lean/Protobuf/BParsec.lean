@@ -132,8 +132,7 @@ def pos : BParsec Nat :=
 
 @[simp] theorem pos_eq (it: ByteArray.Iterator) : pos it = ParseResult.success it it.pos := rfl
 
-
-@[specialize] def foldl_helper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β := do
+@[specialize] def foldlHelper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β := do
   if remaining = 0 then
     pure result
   else
@@ -142,16 +141,16 @@ def pos : BParsec Nat :=
   let element ← f
   let endPos ← pos
 
-  let element_size := endPos - startPos
-  if element_size = 0 then
+  let elementSize := endPos - startPos
+  if elementSize = 0 then
     throw "f did not progress ByteArray"
   else
 
   let newResult := g result element
-  foldl_helper f g (remaining - element_size) newResult
+  foldlHelper f g (remaining - elementSize) newResult
 
 @[inline] def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
-  foldl_helper f g remaining init
+  foldlHelper f g remaining init
 
 
 end BParsec

@@ -20,6 +20,7 @@ Protobuf Types
 import Protobuf.BParsec
 import Protobuf.Field
 import Protobuf.Util
+import Protobuf.Types
 namespace Proto
 
 
@@ -86,7 +87,8 @@ def parse_uint64 : BParsec UInt64 := do
 
 
 instance : Field UInt64 := {
-  merge := parse_uint64
+  parse := parse_uint64
+  checkWireType := fun (w: WireType) => WireType.VARINT = w
 }
 
 private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec UInt32 := do
@@ -107,7 +109,8 @@ def parse_uint32 : BParsec UInt32 := do
   parse_uint32_helper remaining 0 0
 
 instance : Field UInt32 := {
-  merge := parse_uint32
+  parse := parse_uint32
+  checkWireType := fun w => WireType.VARINT = w
 }
 
 abbrev Int32 := Int
@@ -121,7 +124,8 @@ def parse_int32: BParsec Int32 := do
 
 
 instance : Field Int32 := {
-  merge := parse_int32
+  parse := parse_int32
+  checkWireType := fun w => WireType.VARINT = w
 }
 
 abbrev Int64 := Int
@@ -135,7 +139,8 @@ def parse_int64: BParsec Int64 := do
     pure (Int.ofNat r.toNat)
 
 instance : Field Int64 := {
-  merge := parse_int64
+  parse := parse_int64
+  checkWireType := fun w => WireType.VARINT = w
 }
 
 @[inline]
@@ -146,7 +151,8 @@ def parse_bool : BParsec Bool := do
   throw "Expected 00 or 01"
 
 instance : Field Bool := {
-  merge := Proto.parse_bool
+  parse := Proto.parse_bool
+  checkWireType := fun w => WireType.VARINT = w
 }
 
 end Proto

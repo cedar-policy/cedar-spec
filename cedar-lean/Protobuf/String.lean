@@ -19,6 +19,7 @@ Decode UTF-8 encoded strings with ByteArray Parser Combinators
 import Protobuf.BParsec
 import Protobuf.Field
 import Protobuf.Structures
+import Protobuf.Types
 namespace Proto
 
 -- NOTE: Will panic if there's not enough bytes to determine the next character
@@ -64,24 +65,25 @@ def utf8DecodeChar (i : Nat) : BParsec Char := do
 
 -- Progresses ByteArray.Iterator
 -- Assumes UTF8 encoding
-private partial def parse_string_helper (remaining: Nat) (r: String) : BParsec String := do
+private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec String := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
   let pos ← fun it => BParsec.ParseResult.success it it.pos
   let c ← utf8DecodeChar pos
-  let element_size := String.csize c
-  BParsec.forward (element_size)
-  parse_string_helper (remaining - element_size) (r.push c)
+  let elementSize := String.csize c
+  BParsec.forward (elementSize)
+  parseStringHelper (remaining - elementSize) (r.push c)
 -- Note: Can likely prove temrination if I show that ∀ c: Char, String.csize c > 0
 
 @[inline]
 def parse_string: BParsec String := do
   let len ← Len.parse
-  parse_string_helper len.size ""
+  parseStringHelper len.size ""
 
 instance : Field String := {
-  merge := parse_string
+  parse := parse_string
+  checkWireType := fun (w: WireType) => WireType.LEN = w
 }
 
 end Proto

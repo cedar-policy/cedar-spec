@@ -80,14 +80,14 @@ def map_test : Except String (Array (String × UInt32)) :=
      if tag1.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element ← parse_map_elem String UInt32
+     let element ← parseMapElem String UInt32
      result := result.push element
 
      let tag2 ← Tag.parse
      if tag2.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element2 ← parse_map_elem String UInt32
+     let element2 ← parseMapElem String UInt32
      result := result.push element2
 
      pure result

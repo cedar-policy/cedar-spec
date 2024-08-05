@@ -17,9 +17,10 @@
 Parsers for Repeated Fields
 -/
 import Protobuf.BParsec
-import Protobuf.Varint
 import Protobuf.Field
 import Protobuf.Structures
+import Protobuf.Types
+
 namespace Proto
 
 def Packed (α: Type) [Field α] : Type := Array α
@@ -33,16 +34,17 @@ instance [DecidableEq α] [Field α] : DecidableEq (Packed α) := by
   intro a b
   apply inferInstance
 
-def parse_packed (α: Type) [Field α] : BParsec (Array α) := do
+def parsePacked (α: Type) [Field α] : BParsec (Array α) := do
   let len ← BParsec.attempt Len.parse
   BParsec.foldl
-    Field.merge
+    Field.parse
     (fun arr => fun element => arr.push element)
     len.size
     #[]
 
 instance {α: Type} [Field α]: Field (Packed α) := {
-  merge := (parse_packed α)
+  parse := (parsePacked α)
+  checkWireType := fun (w: WireType) => WireType.LEN = w
 }
 
 end Proto

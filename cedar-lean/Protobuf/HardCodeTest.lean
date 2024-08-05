@@ -25,7 +25,7 @@ import Protobuf.BParsec
 import Protobuf.Structures
 import Protobuf.Packed
 import Protobuf.Message
-
+universe u
 namespace Proto
 
 structure HardCodeStruct where
@@ -34,26 +34,27 @@ deriving Inhabited, Repr, DecidableEq
 
 namespace HardCodeStruct
 
-/-- Returns whether the wire type matches the field number,
-note that this returns true for unknown field numbers-/
-def wt_matches (t: Tag) : Bool :=
-  match t.fieldNum with
-  | 6 => t.wireType = WireType.LEN
-  | _ => true
+def extend_a (result: HardCodeStruct) (a: Array UInt32) : HardCodeStruct :=
+  let y := a.map (fun xi => xi.toNat)
+  {result with
+    a := result.a.append y
+  }
 
-def parse_field (h: HardCodeStruct) (t: Tag) : BParsec HardCodeStruct := do
+
+def parseField (t: Tag) : BParsec (MessageM HardCodeStruct) := do
   match t.fieldNum with
     | 6 =>
-      guard (wt_matches t)
-      let x ← BParsec.attempt (Field.merge: (BParsec (Packed UInt32)))
-      let y := x.map (fun xi => xi.toNat)
-      pure (HardCodeStruct.mk y)
+      (@Field.guardWireType (Packed UInt32)) t.wireType
+      let x ← BParsec.attempt (Field.parse: (BParsec (Packed UInt32)))
+      pure (MessageM.modifyGet fun s => s.extend_a x)
     | _ =>
       t.wireType.skip
-      pure h
+      pure MessageM.pure
+
+
 
 instance : Message HardCodeStruct := {
-  wt_matches := wt_matches, parse_field := parse_field
+  parseField := parseField
 }
 
 end HardCodeStruct

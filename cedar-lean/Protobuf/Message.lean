@@ -1,47 +1,71 @@
 import Protobuf.BParsec
 import Protobuf.Structures
 import Protobuf.Packed
+import Protobuf.Types
 namespace Proto
 
-class Message (α : Type) where
-  wt_matches : Tag → Bool
-  parse_field : α → Tag → BParsec α
+@[reducible]
+def MessageM (α: Type) : Type := StateM α Unit
 
-export Message (wt_matches)
-export Message (parse_field)
+
+class Message (α : Type) where
+  parseField : Tag → BParsec (MessageM α)
+
+export Message (parseField)
+
+namespace MessageM
+
+@[inline]
+def run {σ : Type u} {α : Type u} (x : StateM σ α) (s : σ) : σ :=
+  (StateT.run x s).snd
+
+private def modifyMessageHelper (f: α → α) : StateM α Unit := do
+  modifyGet fun s => ((), f s)
+
+def modifyGet (f: α → α) : MessageM α := modifyMessageHelper f
+
+@[inline]
+def pure  : MessageM α := StateT.pure ()
+
+end MessageM
+
 
 namespace Message
 
-private partial def parse_message_helper {α: Type} [Message α] (remaining: Nat) (result: α) : BParsec α := do
+private partial def parseMessageHelper {α: Type} [Message α] (remaining: Nat) (result: MessageM α) : BParsec (MessageM α) := do
   if remaining = 0 then
     pure result
   else
 
   let empty ← BParsec.empty
   if empty then
-    return result
+    throw "Expected more bytes"
 
   let startPos ← BParsec.pos
 
   let tag ← BParsec.attempt Tag.parse
-  let result ← parse_field result tag
+
+  let result: MessageM α ← BParsec.attempt (parseField tag)
 
   let endPos ← BParsec.pos
-  let element_size := (endPos - startPos)
+  let elementSize := (endPos - startPos)
 
-  (parse_message_helper (remaining - element_size) result)
+  (parseMessageHelper (remaining - elementSize) result)
 
 
 def parse {α: Type} [Message α] [Inhabited α] : BParsec α := do
   let remaining ← BParsec.remaining
-  parse_message_helper remaining default
+  let message_m: StateM α Unit ← parseMessageHelper remaining MessageM.pure
+  pure (MessageM.run message_m default)
 
-def parse_with_len {α: Type} [Message α] [Inhabited α] : BParsec α := do
+def parseWithLen {α: Type} [Message α] [Inhabited α] : BParsec α := do
   let len ← Len.parse
-  parse_message_helper len.size default
+  let message_m: StateM α Unit ← parseMessageHelper len.size MessageM.pure
+  pure (MessageM.run message_m default)
 
-def parse_with_size {α: Type} [Message α] [Inhabited α] (size: Nat) : BParsec α := do
-  parse_message_helper size default
+def parseWithSize {α: Type} [Message α] [Inhabited α] (size: Nat) : BParsec α := do
+  let message_m: StateM α Unit ← parseMessageHelper size MessageM.pure
+  pure (MessageM.run message_m default)
 
 def interpret? {α: Type} [Message α] [Inhabited α] (b: ByteArray) : Except String α :=
   BParsec.run parse b
@@ -50,7 +74,8 @@ def interpret! {α: Type} [Message α] [Inhabited α] (b: ByteArray) : α :=
   BParsec.run! parse b
 
 instance [Message α] [Inhabited α] : Field α := {
-  merge := parse_with_len
+  parse := parseWithLen
+  checkWireType := fun (w: WireType) => WireType.LEN = w
 }
 
 end Message

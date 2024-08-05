@@ -17,18 +17,28 @@
 Protobuf fields and their parsers
 -/
 import Protobuf.BParsec
+import Protobuf.Types
 namespace Proto
 
 class Field (α: Type) where
-  merge: BParsec α
+  parse: BParsec α
+  checkWireType: WireType → Bool
 
 namespace Field
 
+@[inline]
 def interpret! {α: Type} [Field α] [Inhabited α] (b: ByteArray) : α :=
-  BParsec.run! Field.merge b
+  BParsec.run! Field.parse b
 
+@[inline]
 def interpret? {α: Type} [Field α] [Inhabited α] (b: ByteArray) : Except String α :=
-  BParsec.run Field.merge b
+  BParsec.run Field.parse b
+
+@[inline]
+def guardWireType {α: Type} [Field α] (wt: WireType) : BParsec Unit := do
+  let wtMatches := (@Field.checkWireType α) wt
+  if not wtMatches then
+    throw s!"WireType mismatch"
 
 end Field
 

@@ -14,15 +14,15 @@
  limitations under the License.
 -/
 import Protobuf.BParsec
-import Protobuf.Varint
 import Protobuf.Field
+import Protobuf.Varint
 namespace Proto
 
 class ProtoEnum (α : Type) where
   fromInt : Int → Except String α
 export ProtoEnum (fromInt)
 
-def parse_enum (α: Type) [ProtoEnum α] : BParsec α := do
+def parseEnum (α: Type) [ProtoEnum α] : BParsec α := do
   let wdata: Int ← parse_int32
   let result: Except String α := fromInt wdata
   match result with
@@ -30,7 +30,8 @@ def parse_enum (α: Type) [ProtoEnum α] : BParsec α := do
     | Except.error e => throw e
 
 instance [ProtoEnum α] : Field α := {
-  merge := (parse_enum α)
+  parse := (parseEnum α)
+  checkWireType := fun w => WireType.VARINT = w
 }
 
 end Proto
