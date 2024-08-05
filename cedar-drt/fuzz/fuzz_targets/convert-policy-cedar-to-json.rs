@@ -45,8 +45,10 @@ fuzz_target!(|src: String| {
                     .try_into()
                     .map_err(|e: parser::err::ParseErrors| e.into())
                     .and_then(|est: est::Policy| {
-                        est.try_into_ast_template(Some(ast::PolicyID::from_string("policy0")))
-                            .map_err(|e| e.into())
+                        est.try_into_ast_policy_or_template(Some(ast::PolicyID::from_string(
+                            "policy0",
+                        )))
+                        .map_err(|e| e.into())
                     });
 
                 match policy_est {
