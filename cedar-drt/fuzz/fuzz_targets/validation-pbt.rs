@@ -182,7 +182,7 @@ fn maybe_log_schemastats<N>(schema: Option<&json_schema::NamespaceDefinition<N>>
         for action in schema.actions.values() {
             match action.applies_to.as_ref() {
                 None => checkpoint(LOG_FILENAME_APPLIES_TO_NONE.to_string() + "_" + suffix),
-                Some(ApplySpec {
+                Some(json_schema::ApplySpec {
                     principal_types,
                     resource_types,
                     ..
