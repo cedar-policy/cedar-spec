@@ -66,4 +66,9 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
 
      pure result
 
+instance {α β: Type} [Field α] [Field β]: Field (α × β) := {
+  parse := parseMapElem α β
+  checkWireType := fun (w: WireType) => WireType.LEN = w
+}
+
 end Proto
