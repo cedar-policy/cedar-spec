@@ -74,3 +74,4 @@ jobs:
     with:
       cedar_spec_ref: ${{ inputs.cedar_spec_ref }}
       cedar_policy_ref: ${{ inputs.cedar_policy_ref }}
+      cedar_integration_tests_ref: ${{ inputs.cedar_policy_ref }} # match the `cedar` version
