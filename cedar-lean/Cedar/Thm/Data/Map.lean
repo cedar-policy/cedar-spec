@@ -559,6 +559,113 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   simp only [kvs, List.mem_map, Prod.mk.injEq]
   exists (k, v)
 
+theorem mapOnValuesAttachIsMapOnValues
+  {α : Type u} {β γ : Type v} [LT α] [DecidableLT α]
+  {m : Map α β}
+  {f : β → γ} :
+  m.mapOnValues f = m.mapOnValuesAttach (λ prod => f prod.val)
+  := by
+  rw [← eq_iff_kvs_eq]
+  simp [mapOnValues, mapOnValuesAttach]
+  rw [← List.map₁_eq_map]
+
+theorem mapOnValues_cons
+  {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ]
+  {f : β → γ}
+  {kv : α × β}
+  {kvs : List (α × β)}
+  :
+  (Map.mk (kv :: kvs)).mapOnValues f =
+  Map.mk ((kv.fst, f kv.snd) :: ((Map.mk kvs).mapOnValues f).kvs)
+  := by
+  rw [← eq_iff_kvs_eq]
+  simp [mapOnValues, List.map]
+
+
+theorem mapOnValuesAttach_preservesKeys
+  {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
+  {m : Map α β}
+  {f : β → γ}
+  {k : α}
+  {h : m.contains k = true} :
+  (m.mapOnValuesAttach (λ v => f v.val)).contains k = true
+
+  := by
+
+  rw [← mapOnValuesAttachIsMapOnValues]
+  cases m
+  rename_i kvs
+  induction kvs
+  case nil =>
+    simp [mapOnValues, List.map, contains, find?, kvs] at h
+  case cons head tail ih =>
+    simp [contains, find?, kvs, List.find?] at h
+    simp [contains, find?, kvs, List.find?]
+    cases heq_head : (head.fst == k)
+    case true =>
+      simp
+    case false =>
+      simp
+      cases htail : (mk tail).contains k
+      case true =>
+        have hrecur : (mapOnValues f (mk tail)).contains k = true := by
+          apply ih
+          assumption
+        simp [mapOnValues, contains, find?, kvs ] at hrecur
+        cases h' : List.find? (fun x => x.fst == k) (List.map (fun x => (x.fst, f x.snd)) tail)
+        case none =>
+          rw [h'] at hrecur
+          simp at hrecur
+        case some =>
+          simp
+      case false =>
+        exfalso
+        rw [heq_head] at h
+        simp at h
+        simp [contains, find?, kvs] at htail
+
+        cases h' : List.find? (fun x => x.fst == k) tail
+        case none =>
+          rw [h'] at h
+          simp at h
+        case some =>
+          rw [h'] at htail
+          simp at htail
+
+
+theorem mapOnValuesAttach_preservesKeys_adapter
+  {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
+  {m : Map α β}
+  {f : { x // ∃ k, (k,x) ∈ m.kvs} → γ}
+  {k : α}
+  {h₁ : m.contains k = true}
+  {h₂ : ∃ (f' : β → γ), f = λ val => f' val.val } :
+  (m.mapOnValuesAttach f).contains k = true
+  := by
+  replace ⟨f', h₂⟩ := h₂
+  rw [h₂]
+  apply mapOnValuesAttach_preservesKeys
+  assumption
+
+theorem mapOnValues_maps
+  {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α] [DecidableEq α]
+  {m : Map α β}
+  {f : β → γ}
+  {k : α}
+  {v : β}
+  {h₁ : m.find? k = some v} :
+  (m.mapOnValuesAttach (λ prod => f prod.val)).find? k = .some (f v)
+  := by
+  rw [← mapOnValuesAttachIsMapOnValues]
+  -- m.find? k = .some v →
+  -- (m.mapOnValues f).find? k = .some (f v)
+  apply find?_mapOnValues_some
+
+
+
+  sorry
+
+
 /--
   Converse of `in_kvs_in_mapOnValues`; requires the extra preconditions that `m`
   is `WellFormed` and `f` is injective

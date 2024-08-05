@@ -214,35 +214,39 @@ def setLevel (l: Level) (ty : CedarType)  : CedarType :=
   | .int => .int
   | .string => .string
   | .entity ety l  => .entity ety l
-  | .set ty => .set $ setLevel l ty
+  | .set ty => .set (setLevel l ty)
   | .record rty =>
-    .record (Map.mk ((List.attach (rty.kvs)).map (λ pair =>
-      let attrName := pair.val.fst
-      let ty := match _h : pair.val.snd with
-                | .required ty => .required (setLevel l ty)
-                | .optional ty => .optional (setLevel l ty)
-      (attrName, ty)
-    )))
+    .record (rty.mapOnValuesAttach (λ v =>
+      match _h : v.val with
+      | .required ty => .required (setLevel l ty)
+      | .optional ty => .optional (setLevel l ty)
+    ))
+    -- .record (Map.make ((List.attach (rty.kvs)).map (λ pair =>
+    --   let attrName := pair.val.fst
+    --   let ty := match _h : pair.val.snd with
+    --             | .required ty => .required (setLevel l ty)
+    --             | .optional ty => .optional (setLevel l ty)
+    --   (attrName, ty)
+    -- )))
   | .ext ty => .ext ty
 termination_by sizeOf ty
 decreasing_by
   all_goals simp_wf
   all_goals try omega
   all_goals {
-      have h₁ : sizeOf ty < sizeOf pair.val.snd := by
+      have h₁ := v.property
+      cases h₁
+      rename_i k h₁
+      have h₂ : sizeOf ty < sizeOf (k, v.val) := by
         rw [_h]
         simp
         omega
-      have h₂ : sizeOf pair.val.snd < sizeOf pair.val := by
-        cases pair.val
-        case mk fst snd =>
-          simp_wf
-          omega
-      have h₃ : sizeOf rty.kvs < sizeOf rty := by
-        apply Cedar.Data.Map.sizeOf_lt_of_kvs
-      have h₄ : sizeOf pair.val < sizeOf rty.kvs := by
+      have h₃ : sizeOf (k, v.val) < sizeOf rty.kvs := by
         apply List.sizeOf_lt_of_mem
-        apply pair.property
+        assumption
+      have h₄ : sizeOf rty.kvs < sizeOf rty := by
+        apply Cedar.Data.Map.sizeOf_lt_of_kvs
+
       omega
   }
 
