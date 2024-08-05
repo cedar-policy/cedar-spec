@@ -20,6 +20,40 @@ use cedar_testing::cedar_test_impl::ExprOrValue;
 pub use entities::Entities;
 use serde::Serialize;
 
+pub mod proto {
+    #![allow(missing_docs)]
+    include!(concat!(env!("OUT_DIR"), "/cedar_drt.rs"));
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AuthorizationRequestMsg {
+    pub request: ast::Request,
+    pub policies: ast::PolicySet,
+    pub entities: entities::Entities,
+}
+
+impl From<&proto::AuthorizationRequestMsg> for AuthorizationRequestMsg {
+    fn from(v: &proto::AuthorizationRequestMsg) -> Self {
+        let request = ast::Request::from(v.request.as_ref().unwrap());
+
+        Self {
+            request: request,
+            policies: ast::PolicySet::try_from(v.policies.as_ref().unwrap()).expect("Failed to parse policy set"),
+            entities: entities::Entities::from(v.entities.as_ref().unwrap())
+        }
+    }
+}
+
+impl From<&AuthorizationRequestMsg> for proto::AuthorizationRequestMsg {
+    fn from(v: &AuthorizationRequestMsg) -> Self {
+        Self {
+            request: Some(ast::proto::Request::from(&v.request)),
+            policies: Some(ast::proto::LiteralPolicySet::from(&v.policies)),
+            entities: Some(ast::proto::Entities::from(&v.entities))
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthorizationRequest<'a> {
     pub request: &'a ast::Request,
