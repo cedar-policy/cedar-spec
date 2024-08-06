@@ -20,7 +20,7 @@ theorem instance_of_entity_type_refl (e : EntityUID) (ety : EntityType) :
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
-  simp at h₀
+  simp only [beq_iff_eq] at h₀
   assumption
 
 theorem instance_of_ext_type_refl (ext : Ext) (extty : ExtType) :
@@ -70,7 +70,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
     cases ty
     case set sty =>
       apply InstanceOfType.instance_of_set s sty
-      simp at h₀
+      simp only [List.all_eq_true] at h₀
       intro v hv
       simp only [← Set.in_list_iff_in_set] at hv
       specialize h₀ ⟨v, hv⟩
@@ -85,7 +85,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
     case record rty =>
       apply InstanceOfType.instance_of_record r rty
       all_goals
-        simp at h₀
+        simp only [Bool.and_eq_true, List.all_eq_true] at h₀
       intro k h₁
       simp only [Map.contains_iff_some_find?] at h₁
       have ⟨⟨h₂, h₃⟩, h₄⟩ := h₀
@@ -111,19 +111,19 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         rw [h₂] at h₈
         contradiction
       | some vl =>
-        simp [h₈] at h₇
-        simp [h₈] at h₂
+        simp only [h₈] at h₇
+        simp only [h₈, Option.some.injEq] at h₂
         subst h₂
         exact instance_of_type_refl v vl.getType h₇
       intro k qty h₁ h₂
-      have ⟨⟨h₃, h₄⟩, h₅⟩ := h₀
+      have ⟨⟨_, h₄⟩, h₅⟩ := h₀
       clear h₀
       simp only [List.attach₂] at h₄
-      simp [requiredAttributePresent] at h₅
+      simp only [requiredAttributePresent, Bool.if_true_right, Bool.decide_eq_true] at h₅
       specialize h₅ (k, qty)
-      simp [h₁] at h₅
+      simp only [h₁, Bool.or_eq_true, Bool.not_eq_true'] at h₅
       have h₆ := Map.find?_mem_toList h₁
-      simp [Map.toList] at h₆
+      simp only [Map.toList] at h₆
       have h₅ := h₅ h₆
       cases h₅ with
       | inl h₅ =>
@@ -144,17 +144,17 @@ termination_by v
 decreasing_by
   all_goals
     simp_wf
-    simp at h₀
+    simp only [Bool.and_eq_true, List.all_eq_true] at h₀
   case _ v' _ _ _ _ h₁ _ _ _ =>
     subst h₁
-    simp [Value.set]
+    simp only [Value.set.sizeOf_spec]
     have := Set.sizeOf_lt_of_mem hv
     omega
   case _ v' _ _ _ _ h₉ _ _ _ _ =>
     subst h₉
     have h₁ := Map.find?_mem_toList h₁
-    simp [Map.toList, Map.kvs] at h₁
-    simp [Value.record]
+    simp only [Map.toList, Map.kvs] at h₁
+    simp only [Value.record.sizeOf_spec, gt_iff_lt]
     have := Map.sizeOf_lt_of_value h₁
     omega
 
@@ -162,8 +162,8 @@ theorem instance_of_request_type_refl (request : Request) (reqty : RequestType) 
   instanceOfRequestType request reqty = true → InstanceOfRequestType request reqty
 := by
   intro h₀
-  simp [InstanceOfRequestType]
-  simp [instanceOfRequestType] at h₀
+  simp only [InstanceOfRequestType]
+  simp only [instanceOfRequestType, Bool.and_eq_true, beq_iff_eq] at h₀
   obtain ⟨⟨⟨h₁,h₂⟩,h₃⟩, h₄⟩ := h₀
   constructor
   case left =>
@@ -186,8 +186,8 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   instanceOfEntitySchema entities ets = .ok () → InstanceOfEntitySchema entities ets
 := by
   intro h₀
-  simp [InstanceOfEntitySchema]
-  simp [instanceOfEntitySchema] at h₀
+  simp only [InstanceOfEntitySchema]
+  simp only [instanceOfEntitySchema] at h₀
   generalize h₁ : (fun x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets x.fst x.snd) = f
   rw [h₁] at h₀
   intro uid data h₂
@@ -195,19 +195,19 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   specialize h₀ (uid, data)
   have h₀ := h₀ (Map.find?_mem_toList h₂)
   rw [← h₁] at h₀
-  simp [instanceOfEntitySchema.instanceOfEntityData] at h₀
+  simp only [instanceOfEntitySchema.instanceOfEntityData] at h₀
   cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
   case some entry =>
     exists entry
     constructor
     rfl
     cases h₃ : instanceOfType (Value.record data.attrs) (CedarType.record entry.attrs) <;> simp [h₃] at h₀
-    simp [Set.all] at h₀
+    simp only [Set.all, List.all_eq_true] at h₀
     constructor
     exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
     intro anc ancin
-    simp [Set.contains] at h₀
-    simp [Membership.mem] at *
+    simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₀
+    simp only [Membership.mem] at *
     apply h₀
     exact ancin
 
@@ -215,8 +215,8 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
   instanceOfActionSchema entities acts = .ok () → InstanceOfActionSchema entities acts
 := by
   intro h₀
-  simp [InstanceOfActionSchema]
-  simp [instanceOfActionSchema] at h₀
+  simp only [InstanceOfActionSchema]
+  simp only [instanceOfActionSchema] at h₀
   generalize h₁ : (fun x : EntityUID × ActionSchemaEntry => instanceOfActionSchema.instanceOfActionSchemaData entities x.fst x.snd) = f
   rw [h₁] at h₀
   intro uid entry h₂
@@ -224,25 +224,25 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
   specialize h₀ (uid, entry)
   have h₀ := h₀ (Map.find?_mem_toList h₂)
   rw [← h₁] at h₀
-  simp [instanceOfActionSchema.instanceOfActionSchemaData] at h₀
+  simp only [instanceOfActionSchema.instanceOfActionSchemaData, beq_iff_eq] at h₀
   cases h₂ : Map.find? entities uid <;> simp [h₂] at h₀
   case some data =>
     exists data
     constructor
     rfl
-    simp [h₀]
+    simp only [h₀]
 
 
 theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) :
   requestMatchesEnvironment env request ∧ entitiesMatchEnvironment env entities = .ok () → RequestAndEntitiesMatchEnvironment env request entities
 := by
   intro ⟨h₀, h₁⟩
-  simp [RequestAndEntitiesMatchEnvironment]
-  simp [requestMatchesEnvironment] at h₀
-  simp [entitiesMatchEnvironment] at h₁
+  simp only [RequestAndEntitiesMatchEnvironment]
+  simp only [requestMatchesEnvironment] at h₀
+  simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl request env.reqty h₀
-  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp [h₂] at h₁
+  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok] at h₁
   constructor
   exact instance_of_entity_schema_refl entities env.ets h₂
   exact instance_of_action_schema_refl entities env.acts h₁
