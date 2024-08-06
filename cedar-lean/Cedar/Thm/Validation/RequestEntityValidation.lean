@@ -142,10 +142,21 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
       contradiction
 termination_by v
 decreasing_by
-  all_goals simp_wf
-  sorry
-  sorry
-
+  all_goals
+    simp_wf
+    simp at h₀
+  case _ v' _ _ _ _ h₁ _ _ _ =>
+    subst h₁
+    simp [Value.set]
+    have := Set.sizeOf_lt_of_mem hv
+    omega
+  case _ v' _ _ _ _ h₉ _ _ _ _ =>
+    subst h₉
+    have h₁ := Map.find?_mem_toList h₁
+    simp [Map.toList, Map.kvs] at h₁
+    simp [Value.record]
+    have := Map.sizeOf_lt_of_value h₁
+    omega
 
 theorem instance_of_request_type_refl (request : Request) (reqty : RequestType) :
   instanceOfRequestType request reqty = true → InstanceOfRequestType request reqty
