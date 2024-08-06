@@ -10,6 +10,7 @@ def MessageM (α: Type) : Type := StateM α Unit
 
 class Message (α : Type) where
   parseField : Tag → BParsec (MessageM α)
+  merge: α → α → α
 
 export Message (parseField)
 
@@ -76,6 +77,7 @@ def interpret! {α: Type} [Message α] [Inhabited α] (b: ByteArray) : α :=
 instance [Message α] [Inhabited α] : Field α := {
   parse := parseWithLen
   checkWireType := fun (w: WireType) => WireType.LEN = w
+  merge := merge
 }
 
 end Message

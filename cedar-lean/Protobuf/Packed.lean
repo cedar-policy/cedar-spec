@@ -23,7 +23,40 @@ import Protobuf.Types
 
 namespace Proto
 
+/-- Repeated fields are assumed to come one record at a time  -/
+@[reducible]
+def Repeated (α: Type) [Field α] : Type := Array α
+
+namespace Repeated
+
+instance [Field α] : Inhabited (Repeated α) where
+  default := #[]
+
+instance [DecidableEq α] [Field α] : DecidableEq (Repeated α) := by
+  unfold DecidableEq
+  unfold Repeated
+  intro a b
+  apply inferInstance
+
+/-- Parses one value from a record -/
+def parse (α: Type) [Field α] : BParsec (Array α) := do
+  let element ← Field.parse
+  pure #[element]
+
+instance {α: Type} [Field α]: Field (Repeated α) := {
+  parse := (parse α)
+  checkWireType := Field.checkWireType α
+  merge := Field.Merge.concatenate
+}
+
+end Repeated
+
+/-- An array of elements that are contained sequentially within
+ a single LEN wire type -/
+@[reducible]
 def Packed (α: Type) [Field α] : Type := Array α
+
+namespace Packed
 
 instance [Field α] : Inhabited (Packed α) where
   default := #[]
@@ -34,7 +67,7 @@ instance [DecidableEq α] [Field α] : DecidableEq (Packed α) := by
   intro a b
   apply inferInstance
 
-def parsePacked (α: Type) [Field α] : BParsec (Array α) := do
+def parse (α: Type) [Field α] : BParsec (Array α) := do
   let len ← BParsec.attempt Len.parse
   BParsec.foldl
     Field.parse
@@ -43,8 +76,12 @@ def parsePacked (α: Type) [Field α] : BParsec (Array α) := do
     #[]
 
 instance {α: Type} [Field α]: Field (Packed α) := {
-  parse := (parsePacked α)
+  parse := (parse α)
   checkWireType := fun (w: WireType) => WireType.LEN = w
+  merge := Field.Merge.concatenate
 }
+
+end Packed
+
 
 end Proto

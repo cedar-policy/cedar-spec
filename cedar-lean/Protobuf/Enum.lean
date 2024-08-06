@@ -32,6 +32,7 @@ def parseEnum (α: Type) [ProtoEnum α] : BParsec α := do
 instance [ProtoEnum α] : Field α := {
   parse := (parseEnum α)
   checkWireType := fun w => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 end Proto

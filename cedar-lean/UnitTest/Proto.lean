@@ -67,15 +67,15 @@ def map_test : Except String (Array (String × UInt32)) :=
      if tag1.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element ← (Field.parse: BParsec (String × UInt32))
-     result := result.push element
+     let element: Array (String × UInt32) ← Field.parse
+     result := (@Field.merge (Array (String × UInt32))) result element
 
      let tag2 ← Tag.parse
      if tag2.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element2 ← (Field.parse: BParsec (String × UInt32))
-     result := result.push element2
+     let element2: Array (String × UInt32) ← Field.parse
+     result := (@Field.merge (Array (String × UInt32))) result element2
 
      pure result
  ) data

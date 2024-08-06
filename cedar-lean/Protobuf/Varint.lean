@@ -89,6 +89,7 @@ def parse_uint64 : BParsec UInt64 := do
 instance : Field UInt64 := {
   parse := parse_uint64
   checkWireType := fun (w: WireType) => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec UInt32 := do
@@ -111,6 +112,7 @@ def parse_uint32 : BParsec UInt32 := do
 instance : Field UInt32 := {
   parse := parse_uint32
   checkWireType := fun w => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 abbrev Int32 := Int
@@ -126,6 +128,7 @@ def parse_int32: BParsec Int32 := do
 instance : Field Int32 := {
   parse := parse_int32
   checkWireType := fun w => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 abbrev Int64 := Int
@@ -141,6 +144,7 @@ def parse_int64: BParsec Int64 := do
 instance : Field Int64 := {
   parse := parse_int64
   checkWireType := fun w => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 @[inline]
@@ -153,6 +157,7 @@ def parse_bool : BParsec Bool := do
 instance : Field Bool := {
   parse := Proto.parse_bool
   checkWireType := fun w => WireType.VARINT = w
+  merge := Field.Merge.override
 }
 
 end Proto

@@ -23,8 +23,21 @@ namespace Proto
 class Field (α: Type) where
   parse: BParsec α
   checkWireType: WireType → Bool
+  merge: α → α → α
 
 namespace Field
+
+
+namespace Merge
+
+/-- Models override semantics, replaces the former value with the later -/
+def override (_: α) (x: α): α := x
+
+/-- Concatenation semantics, combines two arrays -/
+def concatenate (x1: Array α) (x2: Array α): Array α :=
+  x1.append x2
+
+end Merge
 
 @[inline]
 def interpret! {α: Type} [Field α] [Inhabited α] (b: ByteArray) : α :=

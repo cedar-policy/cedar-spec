@@ -22,7 +22,7 @@ import Protobuf.Structures
 namespace Proto
 
 @[inline]
-def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParsec (KeyT × ValueT) := do
+def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParsec (Array (KeyT × ValueT)) := do
      let len ← BParsec.attempt Len.parse
      let startPos ← BParsec.pos
 
@@ -41,7 +41,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
                if tag2.fieldNum != 2 then
                     throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
                let value: ValueT ← Field.parse
-               pure (Prod.mk key value)
+               pure #[(Prod.mk key value)]
           | 2 =>
                let wt1Matches := (@Field.checkWireType ValueT) tag1.wireType
                if not wt1Matches then
@@ -55,7 +55,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
                if tag2.fieldNum != 1 then
                     throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
                let key: KeyT ← Field.parse
-               pure (Prod.mk key value)
+               pure #[(Prod.mk key value)]
 
           | _ => throw "Unexpected Field Number within Map Element"
 
@@ -66,9 +66,10 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
 
      pure result
 
-instance {α β: Type} [Field α] [Field β]: Field (α × β) := {
+instance {α β: Type} [Field α] [Field β]: Field (Array (α × β)) := {
   parse := parseMapElem α β
   checkWireType := fun (w: WireType) => WireType.LEN = w
+  merge := Field.Merge.concatenate
 }
 
 end Proto

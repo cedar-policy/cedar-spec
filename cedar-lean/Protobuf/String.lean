@@ -84,6 +84,7 @@ def parse_string: BParsec String := do
 instance : Field String := {
   parse := parse_string
   checkWireType := fun (w: WireType) => WireType.LEN = w
+  merge := Field.Merge.override
 }
 
 end Proto
