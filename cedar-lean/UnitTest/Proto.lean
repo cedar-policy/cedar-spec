@@ -26,7 +26,7 @@ open Proto
 
 -- Show DecidableEquality of Except for unit tests
 namespace Except
-def dec_eq [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
+instance [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
   unfold DecidableEq
   intro a b
   cases a <;> cases b <;>
@@ -41,19 +41,6 @@ def dec_eq [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
       | isTrue h => apply isTrue (by rw [h])
       | isFalse _ => apply isFalse (by intro h; injection h; contradiction)
 end Except
-
-instance : DecidableEq (Except String String) := Except.dec_eq
-instance : DecidableEq (Except String Bool) := Except.dec_eq
-instance : DecidableEq (Except String (Array Int)) := Except.dec_eq
-instance : DecidableEq (Except String (Array Nat)) := Except.dec_eq
-instance : DecidableEq (Except String Tag) := Except.dec_eq
-instance : DecidableEq (Except String UInt32) := Except.dec_eq
-instance : DecidableEq (Except String UInt64) := Except.dec_eq
-instance : DecidableEq (Except String Int32) := Except.dec_eq
-instance : DecidableEq (Except String Int64) := Except.dec_eq
-instance : DecidableEq (Except String HardCodeStruct) := Except.dec_eq
-instance : DecidableEq (Except String (Array (String × UInt32))) := Except.dec_eq
-instance : DecidableEq (Except String (Packed Int64)) := Except.dec_eq
 
 
 #guard (@Field.interpret? Bool) (ByteArray.mk #[0]) = Except.ok false
@@ -80,14 +67,14 @@ def map_test : Except String (Array (String × UInt32)) :=
      if tag1.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element ← parseMapElem String UInt32
+     let element ← (Field.parse: BParsec (String × UInt32))
      result := result.push element
 
      let tag2 ← Tag.parse
      if tag2.fieldNum != 1 then
           throw "Unexpected field number"
 
-     let element2 ← parseMapElem String UInt32
+     let element2 ← (Field.parse: BParsec (String × UInt32))
      result := result.push element2
 
      pure result
@@ -112,7 +99,5 @@ def get? (n: Int) : Except String A :=
 instance : ProtoEnum A where
   fromInt := get?
 end A
-
-instance : DecidableEq (Except String A) := Except.dec_eq
 
 #guard (@Field.interpret? A) (ByteArray.mk #[02]) = Except.ok A.Tuesday
