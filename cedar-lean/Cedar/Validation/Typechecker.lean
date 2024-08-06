@@ -69,8 +69,9 @@ def typeOfIf (r₁ : CedarType × Capabilities) (r₂ r₃ : ResultType) : Resul
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
     match ty₂ ⊔ ty₃ with
+    | .some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
+    | .none => err (.lubErr ty₂ ty₃)
     | .some ty => ok ty ((c₁ ∪ c₂) ∩ c₃)
-    | .none    => err (.lubErr ty₂ ty₃)
   | (ty₁, _) => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=
@@ -115,6 +116,7 @@ def typeOfEq (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) : ResultType :=
   | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
   | _, _ =>
     match ty₁ ⊔ ty₂ with
+    | .some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
     | .some _ => ok (.bool .anyBool)
     | .none   =>
     match ty₁, ty₂ with
@@ -159,6 +161,7 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
 
 def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
   match ty₁ ⊔ ty₂ with
+  | some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
@@ -198,6 +201,8 @@ def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
       if actionType? ety env.acts
       then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
+  | .attribute_map _ =>
+    ok (.bool .anyBool) (Capabilities.singleton x a)
   | _           => err (.unexpectedType ty)
 
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
@@ -206,6 +211,9 @@ def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c
   | .some (.optional aty) => if (x, a) ∈ c then ok aty else err (.attrNotFound ty a)
   | .none                 => err (.attrNotFound ty a)
 
+def getAttrInEAMap (ty : CedarType) (aty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
+  if (x, a) ∈ c then ok aty else err (.attrNotFound ty a)
+
 def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   match ty with
   | .record rty => getAttrInRecord ty rty x a c
@@ -213,6 +221,7 @@ def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
     match env.ets.attrs? ety with
     | .some rty => getAttrInRecord ty rty x a c
     | .none     => err (.unknownEntity ety)
+  | .attribute_map aty => getAttrInEAMap ty aty x a c
   | _           => err (.unexpectedType ty)
 
 def typeOfSet (tys : List CedarType) : ResultType :=
@@ -220,6 +229,7 @@ def typeOfSet (tys : List CedarType) : ResultType :=
   | []       => err .emptySetErr
   | hd :: tl =>
     match tl.foldlM lub? hd with
+    | .some (.attribute_map aty) => err (.unexpectedType aty.attribute_map)
     | .some ty => ok (.set ty)
     | .none    => err (.incompatibleSetTypes tys)
 
@@ -227,7 +237,10 @@ def justType (r : ResultType) : Except TypeError CedarType :=
   r.map Prod.fst
 
 def requiredAttr (a : Attr) (r : ResultType) : Except TypeError (Attr × QualifiedType) :=
-  r.map λ (ty, _) => (a, .required ty)
+  r.bind λ (ty, _) =>
+    match ty with
+      | .attribute_map aty => .error (.unexpectedType aty.attribute_map)
+      | ty => .ok (a, .required ty)
 
 def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarType) : ResultType :=
   match xs with

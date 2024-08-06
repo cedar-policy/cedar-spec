@@ -71,8 +71,10 @@ theorem type_of_set_tail
   (h₁ : (List.mapM₁ (xhd :: xtl) fun x => justType (typeOf x.val c env)) = Except.ok (hd :: tl))
   (h₂ : List.foldlM lub? hd tl = some ty)
   (h₃ : List.Mem x xtl) :
-  ∃ ty', typeOf (Expr.set xtl) c env = Except.ok (.set ty', []) ∧
-  (ty' ⊔ ty) = some ty
+  ∃ ty',
+    (typeOf (Expr.set xtl) c env = Except.ok (.set ty', []) ∨
+     typeOf (Expr.set xtl) c env = Except.error (.unexpectedType ty')) ∧
+    (ty' ⊔ ty) = some ty
 := by
   cases xtl
   case nil =>
@@ -110,7 +112,26 @@ theorem type_of_set_tail
         simp only [subty] at h₆
         split at h₆ <;> simp at h₆
         subst h₆
-        assumption
+        cases ty' <;> rename_i h₆ <;> simp [h₆]
+
+theorem type_of_set_unexpected_type_inversion {xs : List Expr} {c : Capabilities} {env: Environment} {ty : CedarType} {tys : List CedarType}
+  (h₁ : typeOf (Expr.set xs) c env = Except.error (.unexpectedType ty))
+  (h₂ : List.mapM (fun x => justType (typeOf x c env)) xs = Except.ok tys) :
+  ∃ aty, ty = (.attribute_map aty)
+:= by
+  have h₃ := List.mapM₁_eq_mapM (fun x : Expr => justType (typeOf x c env)) xs
+  simp only [h₂, h₃, typeOf, typeOfSet, List.empty_eq, Except.bind_ok] at h₁
+  cases tys <;> simp only at h₁
+  case nil => simp [err] at h₁
+  case cons tyₕ tysₜ =>
+    split at h₁ <;> try contradiction
+    case h_1 =>
+      rename_i aty _
+      exists aty
+      simp only [err, Except.error.injEq, TypeError.unexpectedType.injEq] at h₁
+      simp [h₁]
+    case h_3 =>
+      simp [err] at h₁
 
 theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : CedarType}
   (h₁ : typeOf (Expr.set xs) c env = Except.ok (sty, c')) :
@@ -155,15 +176,24 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
     have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
-    simp only [h₅, List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and,
-      true_implies] at h₇
-    specialize h₇ x h₄
-    have ⟨tyᵢ, h₇, h₈⟩ := h₇
-    exists tyᵢ
-    have ⟨cᵢ, h₇⟩ := h₇
-    apply And.intro
-    · exists cᵢ
-    . exact lub_lub_fixed h₈ h₆
+    cases h₅
+    case inr h₅ =>
+      have h₈ := List.mapM_head_tail h₂
+      rw [List.mapM_pmap_subtype (fun x : Expr => justType (typeOf x c env))] at h₈
+      have ⟨ _, h₁₀ ⟩ := type_of_set_unexpected_type_inversion h₅ h₈
+      simp only [h₁₀, lub?, ite_some_none_eq_some, and_self] at h₆
+      simp [←h₆] at ty
+
+    case inl h₅ =>
+      simp only [h₅, List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and,
+        true_implies] at h₇
+      specialize h₇ x h₄
+      have ⟨tyᵢ, h₇, h₈⟩ := h₇
+      exists tyᵢ
+      have ⟨cᵢ, h₇⟩ := h₇
+      apply And.intro
+      · exists cᵢ
+      . exact lub_lub_fixed h₈ h₆
 
 theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → TypeOfIsSound xᵢ) :

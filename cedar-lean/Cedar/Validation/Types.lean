@@ -55,6 +55,7 @@ inductive CedarType where
   | entity (ety : EntityType)
   | set (ty : CedarType)
   | record (rty : Map Attr (Qualified CedarType))
+  | attribute_map (aty : CedarType)
   | ext (xty : ExtType)
 
 abbrev QualifiedType := Qualified CedarType
@@ -139,6 +140,9 @@ def decCedarType (a b : CedarType) : Decidable (a = b) := by
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case record.record r1 r2 => exact match decAttrQualifiedCedarTypeMap r1 r2 with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case attribute_map.attribute_map a1 a2 => exact match decCedarType a1 a2 with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
   case ext.ext n1 n2 => exact match decEq n1 n2 with

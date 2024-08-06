@@ -58,10 +58,11 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         simp [pure, Except.pure] at h₁
         have ⟨hl₁, hr₁⟩ := h₁
         rw [eq_comm] at hl₁ hr₁ ; subst hl₁ hr₁
-        simp [requiredAttr, Except.map] at h₂
+        simp [requiredAttr, Except.bind] at h₂
+        split at h₂ <;> try contradiction
         split at h₂ <;> simp at h₂
         subst h₂
-        rename_i _ r _
+        rename_i _ r _ _ _
         simp [AttrExprHasAttrType]
         exists r.snd
       }

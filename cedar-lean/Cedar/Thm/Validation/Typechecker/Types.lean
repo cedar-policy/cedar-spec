@@ -72,6 +72,9 @@ inductive InstanceOfType : Value → CedarType → Prop :=
   | instance_of_ext (x : Ext) (xty : ExtType)
       (h₁ : InstanceOfExtType x xty) :
       InstanceOfType (.ext x) (.ext xty)
+  | instance_of_ea_map (r : Map Attr Value) (aty : CedarType)
+      (h₂ : ∀ (k : Attr) (v : Value), r.find? k = some v → InstanceOfType v aty) :
+      InstanceOfType (.record r) (.attribute_map aty)
 
 def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
   InstanceOfEntityType request.principal reqty.principal ∧
@@ -225,6 +228,24 @@ theorem instance_of_set_type_is_set {v : Value} {ty : CedarType} :
   rename_i s h₁
   exists s
 
+theorem instance_of_ea_map_type_is_record {v : Value} {aty : CedarType} :
+  InstanceOfType v (.attribute_map aty) →
+  ∃ r, v = .record r
+:= by
+  intro h₁
+  cases h₁
+  rename_i r _
+  exists r
+
+theorem instance_of_ea_map_attribute_type {r : Map Attr Value} {v : Value} {aty : CedarType} {a : Attr}
+  (h₁ : InstanceOfType (.record r) (.attribute_map aty))
+  (h₂ : r.find? a = .some v) :
+  InstanceOfType v aty
+:= by
+  cases h₁
+  rename_i h₃
+  exact h₃ a v h₂
+
 theorem instance_of_record_type_is_record {v : Value} {rty : RecordType} :
   InstanceOfType v (.record rty) →
   ∃ r, v = .record r
@@ -322,6 +343,12 @@ theorem instance_of_record_nil :
 := by
   apply InstanceOfType.instance_of_record <;>
   simp [Map.contains, Map.find?, Map.kvs, List.find?]
+
+theorem instance_of_attribute_map_nil (ty : CedarType) :
+  InstanceOfType (Value.record (Map.mk [])) (CedarType.attribute_map ty)
+:= by
+  apply InstanceOfType.instance_of_ea_map<;>
+  simp [Map.find?, List.find?]
 
 theorem instance_of_record_cons {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType rhd (Qualified.getType hd.snd))
@@ -423,6 +450,9 @@ theorem type_is_inhabited (ty : CedarType) :
       subst h₄ ; cases mtl ; rename_i rtl
       exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
       exact instance_of_record_cons h₂ h₃
+  | .attribute_map aty =>
+      exists (.record (Map.mk []))
+      exact (instance_of_attribute_map_nil aty)
 
 theorem instance_of_lubBool_left {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType v (CedarType.bool bty₁) →
