@@ -35,26 +35,26 @@ open Proto
 
 namespace Cedar.Spec.Request
 
-def merge_principal (result: Request) (x: EntityUID) : Request :=
+def mergePrincipal (result: Request) (x: EntityUID) : Request :=
   {result with
-    principal := (@Field.merge EntityUID) result.principal x
+    principal := Field.merge result.principal x
   }
 
-def merge_action (result: Request) (x: EntityUID) : Request :=
+def mergeAction (result: Request) (x: EntityUID) : Request :=
   {result with
-    action := (@Field.merge EntityUID) result.action x
+    action := Field.merge result.action x
   }
 
-def merge_resource (result: Request) (x: EntityUID) : Request :=
+def mergeResource (result: Request) (x: EntityUID) : Request :=
   {result with
-    resource := (@Field.merge EntityUID) result.resource x
+    resource := Field.merge result.resource x
   }
 
-def merge_context (result: Request) (x: Value) : Request :=
+def mergeContext (result: Request) (x: Value) : Request :=
   match x with
     | .record m =>
       {result with
-        context := Data.Map.mk (result.context.kvs ++ m.kvs)
+        context := Data.Map.make (result.context.kvs ++ m.kvs)
       }
     | _ => panic!("Context is not of correct type")
 
@@ -63,7 +63,7 @@ def merge (x: Request) (y: Request) : Request :=
     principal := (@Field.merge EntityUID) x.principal y.principal
     action := (@Field.merge EntityUID) x.action y.action
     resource := (@Field.merge EntityUID) x.resource y.resource
-    context := Data.Map.mk (x.context.kvs ++ y.context.kvs)
+    context := Data.Map.make (x.context.kvs ++ y.context.kvs)
   }
 
 def parseField (t: Tag) : BParsec (MessageM Request) := do
@@ -71,19 +71,19 @@ def parseField (t: Tag) : BParsec (MessageM Request) := do
     | 1 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_principal x)
+      pure (MessageM.modifyGet fun s => s.mergePrincipal x)
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_action x)
+      pure (MessageM.modifyGet fun s => s.mergeAction x)
     | 3 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_resource x)
+      pure (MessageM.modifyGet fun s => s.mergeResource x)
     | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: Value ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_context x)
+      pure (MessageM.modifyGet fun s => s.mergeContext x)
     | _ =>
       t.wireType.skip
       pure MessageM.pure

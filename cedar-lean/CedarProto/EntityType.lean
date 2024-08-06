@@ -30,7 +30,7 @@ open Proto
 
 namespace Cedar.Spec.EntityType
 
-def merge_name (x1: EntityType) (x2: Name) : EntityType :=
+def mergeName (x1: EntityType) (x2: Name) : EntityType :=
   (@Field.merge Name) x1 x2
 
 def merge (x1: EntityType) (x2: EntityType) : EntityType :=
@@ -41,7 +41,7 @@ def parseField (t: Tag) : BParsec (MessageM EntityType) := do
     | 1 =>
       (@Field.guardWireType Name) t.wireType
       let x: Name ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_name x)
+      pure (MessageM.modifyGet fun s => s.mergeName x)
     | _ =>
       t.wireType.skip
       pure MessageM.pure

@@ -33,12 +33,12 @@ open Proto
 
 namespace Cedar.Spec.EntityUID
 
-def merge_ty (result: EntityUID) (ty: EntityType) : EntityUID :=
+def mergeTy (result: EntityUID) (ty: EntityType) : EntityUID :=
   {result with
     ty := Field.merge result.ty ty
   }
 
-def merge_eid (result: EntityUID) (eid: String) : EntityUID :=
+def mergeEid (result: EntityUID) (eid: String) : EntityUID :=
   {result with
     eid := Field.merge result.eid eid
   }
@@ -55,11 +55,11 @@ def parseField (t: Tag) : BParsec (MessageM EntityUID) := do
     | 1 =>
       (@Field.guardWireType EntityType) t.wireType
       let x: EntityType ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_ty x)
+      pure (MessageM.modifyGet fun s => s.mergeTy x)
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_eid x)
+      pure (MessageM.modifyGet fun s => s.mergeEid x)
     | _ =>
       t.wireType.skip
       pure MessageM.pure

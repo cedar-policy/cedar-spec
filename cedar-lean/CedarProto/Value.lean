@@ -135,28 +135,28 @@ end Cedar.Spec.Prim
 
 namespace Cedar.Spec.Value
 
-def merge_prim (v: Value) (p2: Prim) : Value :=
+def mergePrim (v: Value) (p2: Prim) : Value :=
   match v with
     | .prim p1 => Value.prim (Field.merge p1 p2)
     | _ => Value.prim p2
 
 -- Concatenates both sets
-def merge_set (v1: Value) (v2: Array Value) : Value :=
+def mergeSet (v1: Value) (v2: Array Value) : Value :=
   match v1 with
-  | set s => Value.set (Data.Set.mk (s.elts ++ v2.toList))
-  | _ => Value.set (Data.Set.mk v2.toList)
+  | set s => Value.set (Data.Set.make (s.elts ++ v2.toList))
+  | _ => Value.set (Data.Set.make v2.toList)
 
 -- Concatenate both maps
-def merge_record (v: Value) (m: (Array (String × Value))) : Value :=
+def mergeRecord (v: Value) (m: (Array (String × Value))) : Value :=
   match v with
-  | record m2 => Value.record (Data.Map.mk (m2.kvs ++ m.toList))
-  | _ => Value.record (Data.Map.mk m.toList)
+  | record m2 => Value.record (Data.Map.make (m2.kvs ++ m.toList))
+  | _ => Value.record (Data.Map.make m.toList)
 
 def merge (v1: Value) (v2: Value) : Value :=
   match v2 with
-    | .prim p2 => merge_prim v1 p2
-    | .set s2 => merge_set v1 s2.elts.toArray
-    | .record m2 => merge_record v1 m2.kvs.toArray
+    | .prim p2 => mergePrim v1 p2
+    | .set s2 => mergeSet v1 s2.elts.toArray
+    | .record m2 => mergeRecord v1 m2.kvs.toArray
     | .ext _ => panic!("Not implemented")
 
 partial def parseField (t: Tag) : BParsec (MessageM Value) := do
@@ -166,16 +166,16 @@ partial def parseField (t: Tag) : BParsec (MessageM Value) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType Prim) t.wireType
-      let x ← BParsec.attempt (Field.parse: (BParsec Prim))
-      pure (MessageM.modifyGet fun s => s.merge_prim x)
+      let x: Prim ← BParsec.attempt Field.parse
+      pure (MessageM.modifyGet fun s => s.mergePrim x)
     | 17 =>
       (@Field.guardWireType Value) t.wireType
       let x: Repeated Value ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_set x)
+      pure (MessageM.modifyGet fun s => s.mergeSet x)
     | 22 =>
       (@Field.guardWireType (Array (String × Value))) t.wireType
       let x: Array (String × Value) ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.merge_record x)
+      pure (MessageM.modifyGet fun s => s.mergeRecord x)
     | _ =>
       t.wireType.skip
       pure MessageM.pure

@@ -50,7 +50,7 @@ def processProto (filename: String): IO String := do
   match result with
     | .error e => pure e
     | .ok h =>
-      pure s!"Successfully parsed {h.a.size} elements, 0: {h.a.get! 0}, 1: {h.a.get! 1}"
+      pure s!"Successfully parsed {h.f6.size} elements, 0: {h.f6.get! 0}, 1: {h.f6.get! 1}"
 
 structure Timed (α : Type) where
   data : α
