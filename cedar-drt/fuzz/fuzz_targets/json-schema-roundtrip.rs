@@ -74,9 +74,9 @@ fuzz_target!(|i: Input| {
         downgrade_frag_to_raw(i.schema.clone()),
         "JSON roundtrip failed"
     );
-    let src = json_ast.as_cedar_schema().unwrap();
+    let src = json_ast.to_cedarschema().unwrap();
     let (final_ast, _) =
-        json_schema::Fragment::from_str_cedar(&src, Extensions::all_available()).unwrap();
+        json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available()).unwrap();
     if let Err(e) = equivalence_check(downgrade_frag_to_raw(i.schema), final_ast) {
         panic!("Cedar roundtrip failed: {}\nSrc:\n```\n{}\n```", e, src);
     }

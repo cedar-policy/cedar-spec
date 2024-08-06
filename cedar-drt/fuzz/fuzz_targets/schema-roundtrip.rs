@@ -70,10 +70,11 @@ impl<'a> Arbitrary<'a> for Input {
 fuzz_target!(|i: Input| {
     let src = i
         .schema
-        .as_cedar_schema()
+        .to_cedarschema()
         .expect("Failed to convert schema into a Cedar schema");
-    let (parsed, _) = json_schema::Fragment::from_str_cedar(&src, Extensions::all_available())
-        .expect("Failed to parse converted Cedar schema");
+    let (parsed, _) =
+        json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available())
+            .expect("Failed to parse converted Cedar schema");
     if let Err(msg) = equivalence_check(downgrade_frag_to_raw(i.schema.clone()), parsed.clone()) {
         println!("Schema: {src}");
         println!(

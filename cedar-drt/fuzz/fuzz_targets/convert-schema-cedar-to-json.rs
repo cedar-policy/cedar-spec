@@ -27,7 +27,7 @@ use similar_asserts::SimpleDiff;
 // format but with an invalid json schema conversion.
 fuzz_target!(|src: String| {
     if let Ok((parsed, _)) =
-        json_schema::Fragment::<RawName>::from_str_cedar(&src, Extensions::all_available())
+        json_schema::Fragment::<RawName>::from_cedarschema_str(&src, Extensions::all_available())
     {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;

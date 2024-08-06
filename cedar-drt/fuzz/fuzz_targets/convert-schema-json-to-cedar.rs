@@ -31,9 +31,9 @@ fuzz_target!(|src: String| {
             return;
         }
         let ceadr_src = parsed
-            .as_cedar_schema()
+            .to_cedarschema()
             .expect("Failed to convert the JSON schema into a Cedar schema");
-        let (ceadr_parsed, _) = json_schema::Fragment::<RawName>::from_str_cedar(
+        let (ceadr_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
             &ceadr_src,
             Extensions::all_available(),
         )
