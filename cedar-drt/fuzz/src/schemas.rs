@@ -43,7 +43,7 @@ use std::fmt::{Debug, Display};
 /// However, this is _equivalent_. An action that can't be applied to any principals can't ever be
 /// used. Whether or not there are applicable resources is useless.
 ///
-pub fn equivalence_check<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display + TypeName>(
+pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     lhs: json_schema::Fragment<N>,
     rhs: json_schema::Fragment<N>,
 ) -> Result<(), String> {
@@ -83,7 +83,7 @@ fn remove_trivial_empty_namespace<N>(schema: &mut json_schema::Fragment<N>) {
     }
 }
 
-fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display + TypeName>(
+fn namespace_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     lhs: json_schema::NamespaceDefinition<N>,
     rhs: json_schema::NamespaceDefinition<N>,
 ) -> Result<(), String> {
@@ -108,7 +108,7 @@ fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Disp
 
 type EntityData<N> = HashMap<UnreservedId, EntityType<N>>;
 
-fn entity_types_equivalence<N: Clone + PartialEq + Debug + Display + TypeName>(
+fn entity_types_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     lhs: EntityData<N>,
     rhs: EntityData<N>,
 ) -> Result<(), String> {
@@ -133,15 +133,15 @@ fn entity_types_equivalence<N: Clone + PartialEq + Debug + Display + TypeName>(
     }
 }
 
-fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName>(
+fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     (name, lhs_type): (UnreservedId, EntityType<N>),
     rhs: &EntityData<N>,
 ) -> Result<(), String> {
     let rhs_type = rhs
         .get(&name)
-        .ok_or_else(|| format!("Type `{name}` was missing from right-hand-size"))?;
+        .ok_or_else(|| format!("Type `{name}` was missing from right-hand-side"))?;
 
-    if lhs_type.member_of_types != rhs_type.member_of_types {
+    if vector_equiv(&lhs_type.member_of_types, &rhs_type.member_of_types) {
         Err(format!(
             "For `{name}`: lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
             lhs_type
@@ -164,7 +164,7 @@ fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName>(
 
 fn shape_equiv<N: Clone + PartialEq + TypeName>(lhs: &Type<N>, rhs: &Type<N>) -> bool {
     match (lhs, rhs) {
-        (Type::Type(lhs), Type::Type(rhs)) => type_var_equiv(lhs, rhs),
+        (Type::Type(lhs), Type::Type(rhs)) => type_varient_equiv(lhs, rhs),
         (Type::CommonTypeRef { type_name: lhs }, Type::CommonTypeRef { type_name: rhs }) => {
             lhs == rhs
         }
@@ -173,7 +173,7 @@ fn shape_equiv<N: Clone + PartialEq + TypeName>(lhs: &Type<N>, rhs: &Type<N>) ->
 }
 
 /// Type Variant equivalence. See the arms of each match for details
-fn type_var_equiv<N: Clone + PartialEq + TypeName>(
+fn type_varient_equiv<N: Clone + PartialEq + TypeName>(
     lhs: &TypeVariant<N>,
     rhs: &TypeVariant<N>,
 ) -> bool {
@@ -213,7 +213,7 @@ fn type_var_equiv<N: Clone + PartialEq + TypeName>(
             },
         ) => shape_equiv(lhs_element.as_ref(), rhs_element.as_ref()),
 
-        // Base types are equivalent to `EntityOrCommon` varients where the type_name is of the
+        // Base types are equivalent to `EntityOrCommon` variants where the type_name is of the
         // form `__cedar::<base type>`
         (TypeVariant::String, TypeVariant::EntityOrCommon { type_name })
         | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::String) => {
@@ -264,6 +264,15 @@ fn is_internal_type<N: TypeName + Clone>(type_name: &N, expected: &str) -> bool 
             == vec!["__cedar"]
 }
 
+/// Vectors are equivalent if they contain the same items, regardless of order
+fn vector_equiv<N: Ord>(lhs: &[N], rhs: &[N]) -> bool {
+    let mut lhs = lhs.iter().collect::<Vec<_>>();
+    let mut rhs = rhs.iter().collect::<Vec<_>>();
+    lhs.sort();
+    rhs.sort();
+    lhs == rhs
+}
+
 /// Trait for taking either `N` to a concrete type we can do equality over
 pub trait TypeName {
     fn qualify(self) -> InternalName;
@@ -283,7 +292,7 @@ impl TypeName for InternalName {
     }
 }
 
-fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName>(
+fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + Ord>(
     name: &str,
     lhs: json_schema::ActionType<N>,
     rhs: json_schema::ActionType<N>,
@@ -325,13 +334,13 @@ fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName>(
 /// ApplySpecs are equivalent iff
 /// A) the principal and resource type lists are equal
 /// B) the context shapes are equivalent
-fn apply_spec_equiv<N: TypeName + Clone + PartialEq>(
+fn apply_spec_equiv<N: TypeName + Clone + PartialEq + Ord>(
     lhs: &ApplySpec<N>,
     rhs: &ApplySpec<N>,
 ) -> bool {
     shape_equiv(&lhs.context.0, &rhs.context.0)
-        && lhs.principal_types == rhs.principal_types
-        && lhs.resource_types == rhs.resource_types
+        && vector_equiv(&lhs.principal_types, &rhs.principal_types)
+        && vector_equiv(&lhs.resource_types, &rhs.resource_types)
 }
 
 fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
