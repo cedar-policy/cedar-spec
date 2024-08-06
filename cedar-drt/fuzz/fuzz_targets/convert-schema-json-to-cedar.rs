@@ -24,7 +24,7 @@ use similar_asserts::SimpleDiff;
 // JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
 // Assert that schema fragments are equivalent. By starting with a JSON String
 // we test for the existence of schema that are valid in JSON but with an
-// invalid ceadr schema conversion.
+// invalid cedar schema conversion.
 fuzz_target!(|src: String| {
     if let Ok(parsed) = json_schema::Fragment::<RawName>::from_json_str(&src) {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
