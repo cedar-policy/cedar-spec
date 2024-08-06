@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
+use cedar_policy_core::ast::{Id, InternalName, UnreservedId};
+use cedar_policy_validator::json_schema::{
+    ApplySpec, EntityType, Type, TypeOfAttribute, TypeVariant,
+};
+use cedar_policy_validator::RawName;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 use cedar_policy_validator::json_schema;
+use std::fmt::{Debug, Display};
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
@@ -36,7 +43,7 @@ use cedar_policy_validator::json_schema;
 /// However, this is _equivalent_. An action that can't be applied to any principals can't ever be
 /// used. Whether or not there are applicable resources is useless.
 ///
-pub fn equivalence_check<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(
+pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     lhs: json_schema::Fragment<N>,
     rhs: json_schema::Fragment<N>,
 ) -> Result<(), String> {
@@ -76,14 +83,13 @@ fn remove_trivial_empty_namespace<N>(schema: &mut json_schema::Fragment<N>) {
     }
 }
 
-fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Display>(
+fn namespace_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
     lhs: json_schema::NamespaceDefinition<N>,
     rhs: json_schema::NamespaceDefinition<N>,
 ) -> Result<(), String> {
+    entity_types_equivalence(lhs.entity_types, rhs.entity_types)?;
     if lhs.common_types != rhs.common_types {
         Err("Common types differ".to_string())
-    } else if lhs.entity_types != rhs.entity_types {
-        Err("Entity types differ".to_string())
     } else if lhs.actions.len() != rhs.actions.len() {
         Err("Different number of actions".to_string())
     } else {
@@ -100,7 +106,193 @@ fn namespace_equivalence<N: Clone + PartialEq + std::fmt::Debug + std::fmt::Disp
     }
 }
 
-fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
+type EntityData<N> = HashMap<UnreservedId, EntityType<N>>;
+
+fn entity_types_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
+    lhs: EntityData<N>,
+    rhs: EntityData<N>,
+) -> Result<(), String> {
+    if lhs.len() == rhs.len() {
+        let errors = lhs
+            .into_iter()
+            .filter_map(|lhs| entity_type_equivalence(lhs, &rhs).err())
+            .collect::<Vec<_>>();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Found the following entity type mismatches: {}",
+                errors.into_iter().join("\n")
+            ))
+        }
+    } else {
+        let lhs_keys: HashSet<_> = lhs.keys().collect();
+        let rhs_keys: HashSet<_> = rhs.keys().collect();
+        let missing_keys = lhs_keys.symmetric_difference(&rhs_keys).join(", ");
+        Err(format!("Missing keys: {missing_keys}"))
+    }
+}
+
+fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
+    (name, lhs_type): (UnreservedId, EntityType<N>),
+    rhs: &EntityData<N>,
+) -> Result<(), String> {
+    let rhs_type = rhs
+        .get(&name)
+        .ok_or_else(|| format!("Type `{name}` was missing from right-hand-side"))?;
+
+    if vector_equiv(&lhs_type.member_of_types, &rhs_type.member_of_types) {
+        Err(format!(
+            "For `{name}`: lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
+            lhs_type
+                .member_of_types
+                .into_iter()
+                .map(|id| id.to_string())
+                .join(","),
+            rhs_type
+                .member_of_types
+                .iter()
+                .map(|id| id.to_string())
+                .join(",")
+        ))
+    } else if shape_equiv(&lhs_type.shape.0, &rhs_type.shape.0) {
+        Ok(())
+    } else {
+        Err(format!("`{name}` has mismatched types"))
+    }
+}
+
+fn shape_equiv<N: Clone + PartialEq + TypeName>(lhs: &Type<N>, rhs: &Type<N>) -> bool {
+    match (lhs, rhs) {
+        (Type::Type(lhs), Type::Type(rhs)) => type_varient_equiv(lhs, rhs),
+        (Type::CommonTypeRef { type_name: lhs }, Type::CommonTypeRef { type_name: rhs }) => {
+            lhs == rhs
+        }
+        _ => false,
+    }
+}
+
+/// Type Variant equivalence. See the arms of each match for details
+fn type_varient_equiv<N: Clone + PartialEq + TypeName>(
+    lhs: &TypeVariant<N>,
+    rhs: &TypeVariant<N>,
+) -> bool {
+    match (lhs, rhs) {
+        // Records are equivalent iff
+        // A) They have all the same required keys
+        // B) Each key has a value that is equivalent
+        // C) the `additional_attributes` field is equal
+        (
+            TypeVariant::Record {
+                attributes: lhs_attributes,
+                additional_attributes: lhs_additional_attributes,
+            },
+            TypeVariant::Record {
+                attributes: rhs_attributes,
+                additional_attributes: rhs_additional_attributes,
+            },
+        ) => {
+            let lhs_required_keys = lhs_attributes.keys().collect::<HashSet<_>>();
+            let rhs_required_keys = rhs_attributes.keys().collect::<HashSet<_>>();
+            if lhs_required_keys == rhs_required_keys {
+                lhs_attributes
+                    .into_iter()
+                    .all(|(key, lhs)| attribute_equiv(&lhs, rhs_attributes.get(key).unwrap()))
+                    && lhs_additional_attributes == rhs_additional_attributes
+            } else {
+                false
+            }
+        }
+        // Sets are equivalent if their elements are equivalent
+        (
+            TypeVariant::Set {
+                element: lhs_element,
+            },
+            TypeVariant::Set {
+                element: rhs_element,
+            },
+        ) => shape_equiv(lhs_element.as_ref(), rhs_element.as_ref()),
+
+        // Base types are equivalent to `EntityOrCommon` variants where the type_name is of the
+        // form `__cedar::<base type>`
+        (TypeVariant::String, TypeVariant::EntityOrCommon { type_name })
+        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::String) => {
+            is_internal_type(type_name, "String")
+        }
+        (TypeVariant::Long, TypeVariant::EntityOrCommon { type_name })
+        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Long) => {
+            is_internal_type(type_name, "Long")
+        }
+        (TypeVariant::Boolean, TypeVariant::EntityOrCommon { type_name })
+        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Boolean) => {
+            is_internal_type(type_name, "Bool")
+        }
+        (TypeVariant::Extension { name }, TypeVariant::EntityOrCommon { type_name })
+        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Extension { name }) => {
+            is_internal_type(type_name, &name.to_string())
+        }
+
+        (TypeVariant::Entity { name }, TypeVariant::EntityOrCommon { type_name })
+        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Entity { name }) => {
+            type_name == name
+        }
+
+        // Types that are exactly equal are of course equivalent
+        (lhs, rhs) => lhs == rhs,
+    }
+}
+
+/// Attributes are equivalent iff their shape is equivalent and they have the same required status
+fn attribute_equiv<N: TypeName + Clone + PartialEq>(
+    lhs: &TypeOfAttribute<N>,
+    rhs: &TypeOfAttribute<N>,
+) -> bool {
+    lhs.required == rhs.required && shape_equiv(&lhs.ty, &rhs.ty)
+}
+
+/// Is the given type name the `__cedar` alias for an internal type
+/// This is true iff
+/// A) the namespace is exactly `__cedar`
+/// B) the basename matches the passed string
+fn is_internal_type<N: TypeName + Clone>(type_name: &N, expected: &str) -> bool {
+    let qualed = type_name.clone().qualify();
+    (qualed.basename().to_string() == expected)
+        && qualed
+            .namespace_components()
+            .map(Id::to_string)
+            .collect_vec()
+            == vec!["__cedar"]
+}
+
+/// Vectors are equivalent if they contain the same items, regardless of order
+fn vector_equiv<N: Ord>(lhs: &[N], rhs: &[N]) -> bool {
+    let mut lhs = lhs.iter().collect::<Vec<_>>();
+    let mut rhs = rhs.iter().collect::<Vec<_>>();
+    lhs.sort();
+    rhs.sort();
+    lhs == rhs
+}
+
+/// Trait for taking either `N` to a concrete type we can do equality over
+pub trait TypeName {
+    fn qualify(self) -> InternalName;
+}
+
+// For [`RawName`] we just qualify with no namespace
+impl TypeName for RawName {
+    fn qualify(self) -> InternalName {
+        self.qualify_with(None)
+    }
+}
+
+// For [`InternalName`] we just return the name as it exists
+impl TypeName for InternalName {
+    fn qualify(self) -> InternalName {
+        self
+    }
+}
+
+fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + Ord>(
     name: &str,
     lhs: json_schema::ActionType<N>,
     rhs: json_schema::ActionType<N>,
@@ -114,7 +306,7 @@ fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                if (either_empty(&lhs) && either_empty(&rhs)) || rhs == lhs {
+                if (either_empty(&lhs) && either_empty(&rhs)) || apply_spec_equiv(&lhs, &rhs) {
                     Ok(())
                 } else {
                     Err(format!(
@@ -137,6 +329,18 @@ fn action_type_equivalence<N: PartialEq + std::fmt::Debug + std::fmt::Display>(
             )),
         }
     }
+}
+
+/// ApplySpecs are equivalent iff
+/// A) the principal and resource type lists are equal
+/// B) the context shapes are equivalent
+fn apply_spec_equiv<N: TypeName + Clone + PartialEq + Ord>(
+    lhs: &ApplySpec<N>,
+    rhs: &ApplySpec<N>,
+) -> bool {
+    shape_equiv(&lhs.context.0, &rhs.context.0)
+        && vector_equiv(&lhs.principal_types, &rhs.principal_types)
+        && vector_equiv(&lhs.resource_types, &rhs.resource_types)
 }
 
 fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
