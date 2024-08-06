@@ -2134,7 +2134,7 @@ mod tests {
 
     #[test]
     fn entities_generation_github() {
-        let fragment = json_schema::Fragment::from_file(GITHUB_SCHEMA_STR.as_bytes())
+        let fragment = json_schema::Fragment::from_json_file(GITHUB_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
@@ -2144,7 +2144,7 @@ mod tests {
 
     #[test]
     fn entities_generation_document_cloud() {
-        let fragment = json_schema::Fragment::from_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
+        let fragment = json_schema::Fragment::from_json_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
         let mut rng = thread_rng();
         for _ in 0..ITERATION {
