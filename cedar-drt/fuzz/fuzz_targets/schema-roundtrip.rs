@@ -71,16 +71,16 @@ fuzz_target!(|i: Input| {
     let src = i
         .schema
         .to_cedarschema()
-        .expect("Failed to convert schema into a Cedar schema");
-    let (parsed, _) =
-        json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available())
-            .expect("Failed to parse converted Cedar schema");
-    if let Err(msg) = equivalence_check(downgrade_frag_to_raw(i.schema.clone()), parsed.clone()) {
+        .expect("Failed to convert schema into a human readable schema");
+    let (parsed, _) = json_schema::Fragment::from_str_natural(&src, Extensions::all_available())
+        .expect("Failed to parse converted human readable schema");
+    let downgraded = downgrade_frag_to_raw(i.schema.clone());
+    if let Err(msg) = equivalence_check(downgraded.clone(), parsed.clone()) {
         println!("Schema: {src}");
         println!(
             "{}",
             SimpleDiff::from_str(
-                &format!("{:#?}", i.schema),
+                &format!("{:#?}", downgraded),
                 &format!("{:#?}", parsed),
                 "Initial Schema",
                 "Cedar Round tripped"
