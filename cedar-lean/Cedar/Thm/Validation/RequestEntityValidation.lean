@@ -1,5 +1,6 @@
 import Cedar.Validation.RequestEntityValidator
 import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.Validator
 
 namespace Cedar.Thm
 
@@ -100,8 +101,8 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         have hin := Map.find?_mem_toList h₁
         simp only
         replace hin := List.sizeOf_lt_of_mem hin
-        simp only [Prod.mk.sizeOf_spec] at hin
-        sorry
+        simp only [Prod.mk.sizeOf_spec, Map.toList] at hin
+        omega
       specialize h₄ ⟨(k, v), h₆⟩
       simp only [List.attach₂, List.mem_pmap_subtype] at h₄
       have h₇ := h₄ (Map.find?_mem_toList h₁)
@@ -116,7 +117,19 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         exact instance_of_type_refl v vl.getType h₇
       intro k qty h₁ h₂
       have ⟨⟨h₃, h₄⟩, h₅⟩ := h₀
-      sorry
+      clear h₀
+      simp only [List.attach₂] at h₄
+      simp [requiredAttributePresent] at h₅
+      specialize h₅ (k, qty)
+      simp [h₁] at h₅
+      have h₆ := Map.find?_mem_toList h₁
+      simp [Map.toList] at h₆
+      have h₅ := h₅ h₆
+      cases h₅ with
+      | inl h₅ =>
+        rw [h₂] at h₅
+        contradiction
+      | inr h₅ => exact h₅
     all_goals
       contradiction
   | ext e =>
@@ -127,6 +140,12 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
       assumption
     all_goals
       contradiction
+termination_by v
+decreasing_by
+  all_goals simp_wf
+  sorry
+  sorry
+
 
 theorem instance_of_request_type_refl (request : Request) (reqty : RequestType) :
   instanceOfRequestType request reqty = true → InstanceOfRequestType request reqty
@@ -158,9 +177,28 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   intro h₀
   simp [InstanceOfEntitySchema]
   simp [instanceOfEntitySchema] at h₀
-  intro uid data h₁
-
-  sorry
+  generalize h₁ : (fun x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets x.fst x.snd) = f
+  rw [h₁] at h₀
+  intro uid data h₂
+  have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀
+  specialize h₀ (uid, data)
+  have h₀ := h₀ (Map.find?_mem_toList h₂)
+  rw [← h₁] at h₀
+  simp [instanceOfEntitySchema.instanceOfEntityData] at h₀
+  cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
+  case some entry =>
+    exists entry
+    constructor
+    rfl
+    cases h₃ : instanceOfType (Value.record data.attrs) (CedarType.record entry.attrs) <;> simp [h₃] at h₀
+    simp [Set.all] at h₀
+    constructor
+    exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
+    intro anc ancin
+    simp [Set.contains] at h₀
+    simp [Membership.mem] at *
+    apply h₀
+    exact ancin
 
 theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchema) :
   instanceOfActionSchema entities acts = .ok () → InstanceOfActionSchema entities acts
@@ -168,5 +206,28 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
   intro h₀
   simp [InstanceOfActionSchema]
   simp [instanceOfActionSchema] at h₀
-  intro uid entry h₁
+  generalize h₁ : (fun x : EntityUID × ActionSchemaEntry => instanceOfActionSchema.instanceOfActionSchemaData entities x.fst x.snd) = f
+  rw [h₁] at h₀
+  intro uid entry h₂
+  have h₀ := List.forM_ok_implies_all_ok (Map.toList acts) f h₀
+  specialize h₀ (uid, entry)
+  have h₀ := h₀ (Map.find?_mem_toList h₂)
+  rw [← h₁] at h₀
+  simp [instanceOfActionSchema.instanceOfActionSchemaData] at h₀
+  cases h₂ : Map.find? entities uid <;> simp [h₂] at h₀
+  case some data =>
+    exists data
+    constructor
+    rfl
+    simp [h₀]
+
+
+theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) :
+  requestMatchesEnvironment env request ∧ entitiesMatchEnvironment env entities = .ok () → RequestAndEntitiesMatchEnvironment env request entities
+:= by
+  sorry
+
+theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
+  validateRequest schema request = .ok () ∧ validateEntities schema entities = .ok () → RequestAndEntitiesMatchSchema schema request entities
+:= by
   sorry

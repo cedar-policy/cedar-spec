@@ -40,11 +40,11 @@ either produces a boolean value, or throws an error of type `entityDoesNotExist`
 information.
 -/
 
-theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
-  validate policies schema = .ok () →
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
-  AllEvaluateToBool policies request entities
+-- theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
+--   validate policies schema = .ok () →
+--   validateRequest schema request = .ok () →
+--   validateEntities schema entities = .ok () →
+--   AllEvaluateToBool policies request entities
 
 
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
