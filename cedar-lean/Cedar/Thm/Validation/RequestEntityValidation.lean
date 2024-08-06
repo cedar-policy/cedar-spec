@@ -225,7 +225,16 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
 theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) :
   requestMatchesEnvironment env request ∧ entitiesMatchEnvironment env entities = .ok () → RequestAndEntitiesMatchEnvironment env request entities
 := by
-  sorry
+  intro ⟨h₀, h₁⟩
+  simp [RequestAndEntitiesMatchEnvironment]
+  simp [requestMatchesEnvironment] at h₀
+  simp [entitiesMatchEnvironment] at h₁
+  constructor
+  exact instance_of_request_type_refl request env.reqty h₀
+  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp [h₂] at h₁
+  constructor
+  exact instance_of_entity_schema_refl entities env.ets h₂
+  exact instance_of_action_schema_refl entities env.acts h₁
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
   validateRequest schema request = .ok () ∧ validateEntities schema entities = .ok () → RequestAndEntitiesMatchSchema schema request entities
