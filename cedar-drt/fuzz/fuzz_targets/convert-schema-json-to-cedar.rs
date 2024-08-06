@@ -24,29 +24,29 @@ use similar_asserts::SimpleDiff;
 // JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
 // Assert that schema fragments are equivalent. By starting with a JSON String
 // we test for the existence of schema that are valid in JSON but with an
-// invalid natural schema conversion.
+// invalid cedar schema conversion.
 fuzz_target!(|src: String| {
     if let Ok(parsed) = json_schema::Fragment::<RawName>::from_json_str(&src) {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let natural_src = parsed
-            .as_natural_schema()
-            .expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = json_schema::Fragment::<RawName>::from_str_natural(
-            &natural_src,
+        let ceadr_src = parsed
+            .to_cedarschema()
+            .expect("Failed to convert the JSON schema into a Cedar schema");
+        let (ceadr_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
+            &ceadr_src,
             Extensions::all_available(),
         )
-        .expect("Failed to parse converted human readable schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
+        .expect("Failed to parse converted Cedar schema");
+        if let Err(msg) = equivalence_check(parsed.clone(), ceadr_parsed.clone()) {
             println!("Schema: {src}");
             println!(
                 "{}",
                 SimpleDiff::from_str(
                     &format!("{:#?}", parsed),
-                    &format!("{:#?}", natural_parsed),
+                    &format!("{:#?}", ceadr_parsed),
                     "Parsed JSON",
-                    "Human Round tripped"
+                    "Cedar Round tripped"
                 )
             );
             panic!("{msg}");

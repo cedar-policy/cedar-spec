@@ -27,13 +27,13 @@ use std::fmt::{Debug, Display};
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
-/// representable in the human-readable syntax. All of these non-representable schemas
+/// representable in the Cedar syntax. All of these non-representable schemas
 /// are equivalent to one that is representable.
 ///
 /// Example:
 /// You can have a JSON schema with an action that has no applicable principals and some applicable
 /// resources.
-/// In the human-readable syntax, you can't. The only way to write an action with no applicable
+/// In the Cedar syntax, you can't. The only way to write an action with no applicable
 /// principals is:
 /// ```cedarschema
 /// action a;
@@ -49,7 +49,7 @@ pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord
 ) -> Result<(), String> {
     // We need to remove trivial empty namespaces because both `{}`
     // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
-    // in the human-readable schema format
+    // in the Cedar schema format
     let mut lhs = lhs;
     let mut rhs = rhs;
     remove_trivial_empty_namespace(&mut lhs);

@@ -84,7 +84,7 @@ impl From<&HierarchyArgs> for ABACSettings {
 
 fn generate_hierarchy_from_schema(byte_length: usize, args: &HierarchyArgs) -> Result<Entities> {
     let f = File::open(&args.schema_file)?;
-    let fragment = json_schema::Fragment::<RawName>::from_file(f)?;
+    let fragment = json_schema::Fragment::<RawName>::from_json_file(f)?;
     let mut rng = thread_rng();
     let mut bytes = Vec::with_capacity(byte_length);
     bytes.resize_with(byte_length, || rng.gen());
