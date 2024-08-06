@@ -54,6 +54,7 @@ mutual
     | .record (.mk r₁), .record (.mk r₂) => do
       let lub ← lubRecordType r₁ r₂
       .some (.record (Map.mk lub))
+    | .attribute_map _, _ | _, .attribute_map _ => .none
     | _, _ => if ty₁ = ty₂ then .some ty₁ else  .none
 end
 
