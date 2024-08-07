@@ -37,12 +37,22 @@ theorem getAttrInRecord_has_empty_capabilities {x₁ : Expr} {a : Attr} {c₁ c�
   split at h₁ <;> simp at h₁
   simp [h₁]
 
+theorem getAttrInEAMap_has_empty_capabilities {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {aty ty ty₁ : CedarType} :
+  getAttrInEAMap ty aty x₁ a c₁ = Except.ok (ty₁, c₂) →
+  c₂ = ∅
+:= by
+  intro h₁
+  simp [getAttrInEAMap] at h₁
+  split at h₁ <;> simp [ok, err] at h₁
+  simp [h₁]
+
 theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
   ∃ c₁',
     (∃ ety, typeOf x₁ c₁ env = Except.ok (.entity ety, c₁')) ∨
-    (∃ rty, typeOf x₁ c₁ env = Except.ok (.record rty, c₁'))
+    (∃ rty, typeOf x₁ c₁ env = Except.ok (.record rty, c₁')) ∨
+    (∃ aty, typeOf x₁ c₁ env = Except.ok (.attribute_map aty, c₁'))
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
@@ -51,12 +61,15 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
     simp [typeOfGetAttr] at h₁
     split at h₁ <;> try contradiction
     · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, false_and, exists_const,
-        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true]
+        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, or_false, and_true]
       apply getAttrInRecord_has_empty_capabilities h₁
     · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq,
         exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true]
       split at h₁ <;> try simp [err] at h₁
       apply getAttrInRecord_has_empty_capabilities h₁
+    · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.attribute_map.injEq,
+        exists_and_right, exists_eq', true_and, false_and, exists_const, false_or, or_false, and_true]
+      apply getAttrInEAMap_has_empty_capabilities h₁
 
 theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -155,6 +168,21 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
         apply instance_of_attribute_type _ h₁₁ (by simp [Qualified.getType]) h₉
         apply well_typed_entity_attributes h₂ h₈ h₁₀
 
+theorem type_of_getAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {aty : CedarType} {request : Request} {entities : Entities} {v₁ : Value}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, ∅))
+  (h₄ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
+  (h₅ : evaluate x₁ request entities = Except.ok v₁)
+  (h₆ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
+  ∃ v,
+  (getAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
+   getAttr v₁ a entities = Except.error Error.extensionError ∨
+   getAttr v₁ a entities = Except.error Error.arithBoundsError ∨
+   getAttr v₁ a entities = Except.ok v) ∧
+   InstanceOfType v ty
+:= by sorry
+
 theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -166,7 +194,7 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   have ⟨h₅, c₁', h₄⟩ := type_of_getAttr_inversion h₃
   subst h₅
   apply And.intro empty_guarded_capabilities_invariant
-  rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
+  rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ | ⟨ aty, h₄ ⟩ <;>
   have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ <;>
   simp [EvaluatesTo] at h₆ <;>
   simp [EvaluatesTo, evaluate] <;>
@@ -174,6 +202,7 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   <;> try exact type_is_inhabited ty
   · exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
   · exact type_of_getAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
+  · exact type_of_getAttr_is_sound_for_ea_maps h₁ h₂ h₃ h₄ h₆ h₇
 
 
 end Cedar.Thm

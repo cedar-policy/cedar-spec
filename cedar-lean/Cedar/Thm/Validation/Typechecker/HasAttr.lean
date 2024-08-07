@@ -31,7 +31,8 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
   (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ a) ∧
   ∃ c₁',
     (∃ ety, typeOf x₁ c₁ env = Except.ok (.entity ety, c₁')) ∨
-    (∃ rty, typeOf x₁ c₁ env = Except.ok (.record rty, c₁'))
+    (∃ rty, typeOf x₁ c₁ env = Except.ok (.record rty, c₁')) ∨
+    (∃ aty, typeOf x₁ c₁ env = Except.ok (.attribute_map aty, c₁'))
 := by
   simp [typeOf, typeOfHasAttr] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
@@ -40,11 +41,11 @@ theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
     simp at h₁
     split at h₁
     <;> simp [err, ok, hasAttrInRecord] at h₁
-    <;> split at h₁
+    <;> try split at h₁
     <;> try split at h₁
     <;> try split at h₁
     all_goals {
-      simp [ok] at h₁
+      try simp [ok] at h₁
       try simp [h₁]
     }
 
@@ -158,6 +159,24 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     rw [h₇] at h₈
     contradiction
 
+theorem type_of_hasAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {aty : CedarType} {request : Request} {entities : Entities} {v₁ : Value}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
+  (h₄ : evaluate x₁ request entities = Except.ok v₁)
+  (h₅ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
+  ∃ v,
+  (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
+   hasAttr v₁ a entities = Except.error Error.extensionError ∨
+   hasAttr v₁ a entities = Except.error Error.arithBoundsError ∨
+   hasAttr v₁ a entities = Except.ok v) ∧
+  InstanceOfType v ty
+:= by
+  have ⟨r, h₅⟩ := instance_of_ea_map_type_is_record h₅
+  subst h₅
+  simp [hasAttr, attrsOf]
+
+  sorry
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -177,7 +196,7 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     subst h₇; subst h₈
     simp [EvaluatesTo, h₆]
   case right =>
-    rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
+    rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ | ⟨ aty, h₄ ⟩ <;>
     have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ <;>
     simp [EvaluatesTo] at h₆ <;>
     simp [EvaluatesTo, evaluate] <;>
@@ -185,6 +204,6 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     <;> try exact type_is_inhabited ty
     · exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
     · exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
-
+    · exact type_of_hasAttr_is_sound_for_ea_maps h₁ h₃ h₄ h₆ h₇
 
 end Cedar.Thm

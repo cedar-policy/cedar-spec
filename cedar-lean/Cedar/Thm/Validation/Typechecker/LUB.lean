@@ -621,7 +621,7 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
   case int | string =>
     subst h₁ h₂
     simp [lub?]
-  case entity | ext =>
+  case entity | ext | attribute_map =>
     have ⟨hl₁, hr₁⟩ := h₁
     have ⟨hl₂, hr₂⟩ := h₂
     subst hl₁ hr₁ hl₂ hr₂

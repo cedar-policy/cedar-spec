@@ -198,6 +198,8 @@ def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
       if actionType? ety env.acts
       then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
+  | .attribute_map _ =>
+    ok (.bool .anyBool) (Capabilities.singleton x a)
   | _           => err (.unexpectedType ty)
 
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
@@ -206,6 +208,9 @@ def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c
   | .some (.optional aty) => if (x, a) ∈ c then ok aty else err (.attrNotFound ty a)
   | .none                 => err (.attrNotFound ty a)
 
+def getAttrInEAMap (ty : CedarType) (aty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
+  if (x, a) ∈ c then ok aty else err (.attrNotFound ty a)
+
 def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   match ty with
   | .record rty => getAttrInRecord ty rty x a c
@@ -213,6 +218,7 @@ def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
     match env.ets.attrs? ety with
     | .some rty => getAttrInRecord ty rty x a c
     | .none     => err (.unknownEntity ety)
+  | .attribute_map aty => getAttrInEAMap ty aty x a c
   | _           => err (.unexpectedType ty)
 
 def typeOfSet (tys : List CedarType) : ResultType :=
