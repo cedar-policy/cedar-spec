@@ -165,10 +165,12 @@ partial def parseField (t: Tag) : BParsec (MessageM Value) := do
 
   match t.fieldNum with
     | 2 =>
+      panic!("Saw 2")
       (@Field.guardWireType Prim) t.wireType
       let x: Prim ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergePrim x)
     | 17 =>
+      panic!("Saw 17")
       (@Field.guardWireType Value) t.wireType
       let x: Repeated Value ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergeSet x)
@@ -176,7 +178,7 @@ partial def parseField (t: Tag) : BParsec (MessageM Value) := do
       (@Field.guardWireType (Array (String × Value))) t.wireType
       let x: Array (String × Value) ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergeRecord x)
-    | _ =>
+    | n =>
       t.wireType.skip
       pure MessageM.pure
 

@@ -21,7 +21,9 @@ import Cedar
 
 -- Dependencies
 import CedarProto.EntityUID
+import CedarProto.EntityUIDEntry
 import CedarProto.Value
+import CedarProto.Context
 
 open Cedar.Spec
 open Proto
@@ -69,20 +71,20 @@ def merge (x: Request) (y: Request) : Request :=
 def parseField (t: Tag) : BParsec (MessageM Request) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      (@Field.guardWireType EntityUIDEntry) t.wireType
+      let x: EntityUIDEntry ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergePrincipal x)
     | 2 =>
-      (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      (@Field.guardWireType EntityUIDEntry) t.wireType
+      let x: EntityUIDEntry ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergeAction x)
     | 3 =>
-      (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      (@Field.guardWireType EntityUIDEntry) t.wireType
+      let x: EntityUIDEntry ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergeResource x)
     | 4 =>
-      (@Field.guardWireType EntityUID) t.wireType
-      let x: Value ← BParsec.attempt Field.parse
+      (@Field.guardWireType Context) t.wireType
+      let x: Context ← BParsec.attempt Field.parse
       pure (MessageM.modifyGet fun s => s.mergeContext x)
     | _ =>
       t.wireType.skip
