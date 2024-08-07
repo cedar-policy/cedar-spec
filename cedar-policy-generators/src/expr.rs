@@ -918,11 +918,11 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type record
                         4 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                json_schema::TypeVariant::Record {
+                                json_schema::TypeVariant::Record(json_schema::RecordType {
                                     // TODO: should we put in some other attributes that appear in schema?
                                     attributes: BTreeMap::new(),
                                     additional_attributes: true,
-                                },
+                                }),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -941,10 +941,10 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        json_schema::TypeVariant::Record {
+                                        json_schema::TypeVariant::Record(json_schema::RecordType {
                                             attributes: BTreeMap::new(),
                                             additional_attributes: true,
-                                        },
+                                        }),
                                     ),
                                     max_depth - 1,
                                     u,
@@ -1240,10 +1240,12 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed
                     Err(Error::TooDeep)
@@ -1792,10 +1794,12 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -2015,10 +2019,12 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::set(l, None))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -2245,7 +2251,7 @@ fn record_schematype_with_attr<N>(
     attr_name: SmolStr,
     attr_type: impl Into<json_schema::Type<N>>,
 ) -> json_schema::Type<N> {
-    json_schema::Type::Type(json_schema::TypeVariant::Record {
+    json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType {
         attributes: [(
             attr_name,
             json_schema::TypeOfAttribute {
@@ -2256,5 +2262,5 @@ fn record_schematype_with_attr<N>(
         .into_iter()
         .collect(),
         additional_attributes: true,
-    })
+    }))
 }

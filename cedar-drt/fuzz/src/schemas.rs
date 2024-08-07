@@ -16,7 +16,7 @@
 
 use cedar_policy_core::ast::{Id, InternalName, UnreservedId};
 use cedar_policy_validator::json_schema::{
-    ApplySpec, EntityType, Type, TypeOfAttribute, TypeVariant,
+    ApplySpec, EntityType, RecordType, Type, TypeOfAttribute, TypeVariant,
 };
 use cedar_policy_validator::RawName;
 use itertools::Itertools;
@@ -183,14 +183,14 @@ fn type_varient_equiv<N: Clone + PartialEq + TypeName>(
         // B) Each key has a value that is equivalent
         // C) the `additional_attributes` field is equal
         (
-            TypeVariant::Record {
+            TypeVariant::Record(RecordType {
                 attributes: lhs_attributes,
                 additional_attributes: lhs_additional_attributes,
-            },
-            TypeVariant::Record {
+            }),
+            TypeVariant::Record(RecordType {
                 attributes: rhs_attributes,
                 additional_attributes: rhs_additional_attributes,
-            },
+            }),
         ) => {
             let lhs_required_keys = lhs_attributes.keys().collect::<HashSet<_>>();
             let rhs_required_keys = rhs_attributes.keys().collect::<HashSet<_>>();
