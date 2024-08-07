@@ -314,7 +314,7 @@ pub fn run_req_val_test(
     let definitional_res = custom_impl.validate_request(&schema, &request);
     match definitional_res {
         TestResult::Failure(_) => {
-            ;
+            panic!("request validation test: failed to parse");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
@@ -344,7 +344,7 @@ pub fn run_ent_val_test(
     let definitional_res = custom_impl.validate_entities(&schema, entities);
     match definitional_res {
         TestResult::Failure(_) => {
-            ;
+            panic!("entity validation test: failed to parse");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
