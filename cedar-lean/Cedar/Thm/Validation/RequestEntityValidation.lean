@@ -88,7 +88,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         simp only [Bool.and_eq_true, List.all_eq_true] at h₀
       intro k h₁
       simp only [Map.contains_iff_some_find?] at h₁
-      have ⟨⟨h₂, h₃⟩, h₄⟩ := h₀
+      have ⟨⟨h₂, _⟩, _⟩ := h₀
       obtain ⟨v, h₁⟩ := h₁
       specialize h₂ (k, v)
       simp only at h₂
@@ -250,4 +250,15 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
   validateRequest schema request = .ok () ∧ validateEntities schema entities = .ok () → RequestAndEntitiesMatchSchema schema request entities
 := by
+  intro ⟨h₀, h₁⟩
+  simp [RequestAndEntitiesMatchSchema]
+  simp [validateRequest] at h₀
+  obtain ⟨env, h₀⟩ := h₀
+  -- apply request_and_entities_match_env
+  -- constructor
+  -- case a.left =>
+
+  -- case a.right =>
+  --   sorry
+
   sorry

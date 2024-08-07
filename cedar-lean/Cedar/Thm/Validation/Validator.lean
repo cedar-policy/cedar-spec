@@ -36,7 +36,7 @@ def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Enti
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
-  ∀ env ∈ schema.toEnvironments,
+  ∃ env ∈ schema.toEnvironments,
   RequestAndEntitiesMatchEnvironment env request entities
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
@@ -95,7 +95,7 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
         repeat assumption
 
 theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
-  (∀ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →
+  (∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →
   typecheckPolicyWithEnvironments policy envs = .ok () →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
@@ -104,23 +104,12 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
   cases h₃ : List.mapM (typecheckPolicy policy) envs with
   | error => simp only [h₃, Except.bind_err] at h₂
   | ok ts =>
-    simp only [h₃, Except.bind_ok, ite_eq_right_iff, imp_false, Bool.not_eq_true] at h₂
-    cases h₄ : envs with
-    | nil =>
-      simp only [h₄, List.mapM_nil, pure, Except.pure, Except.ok.injEq] at h₃
-      subst h₃
-      simp only [allFalse, List.all_nil, Bool.true_eq_false] at h₂
-    | cons h t =>
-        rw [List.mapM_ok_iff_forall₂] at h₃
-        have h₆ : RequestAndEntitiesMatchEnvironment h request entities := by
-          have h₇ : h ∈ envs := by simp only [h₄, List.mem_cons, true_or]
-          specialize h₀ h
-          apply h₀ h₇
-        subst h₄
-        rw [List.forall₂_cons_left_iff] at h₃
-        simp only [exists_and_left] at h₃
-        obtain ⟨ b, _, _, _, _ ⟩ := h₃
-        apply typecheck_policy_is_sound policy h b
-        repeat assumption
-
+    simp only [h₃, Except.bind_ok, ite_eq_right_iff, imp_false, Bool.not_eq_true, allFalse] at h₂
+    obtain ⟨env, ⟨h₀, h₁⟩⟩ := h₀
+    rw [List.mapM_ok_iff_forall₂] at h₃
+    have h₄ := List.forall₂_implies_all_left h₃
+    specialize h₄ env h₀
+    obtain ⟨ty, ⟨h₄, h₅⟩⟩ := h₄
+    exact typecheck_policy_is_sound policy env ty request entities h₁ h₅
+    
 end Cedar.Thm
