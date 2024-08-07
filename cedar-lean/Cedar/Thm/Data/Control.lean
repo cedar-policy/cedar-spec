@@ -56,3 +56,32 @@ theorem do_ok {res : Except ε α} {f : α → β} :
   (do let v ← res ; .ok (f v)) = .ok b ↔
   ∃ a, res = .ok a ∧ f a = b
 := by cases res <;> simp
+
+/--
+  `apply do_eq_do` eliminates the first operation of a `do` block if the first
+  operations are definitionally equal, and your goal is to prove the entire `do`
+  blocks equal
+-/
+theorem do_eq_do [Monad m] [LawfulMonad m] {res : m α} {f g : α → m β} :
+  (∀ v, f v = g v) → (do let v ← res ; f v) = (do let v ← res ; g v)
+:= by
+  intro h₁ ; simp [h₁]
+
+/--
+  Specialization of `do_eq_do` to the `Except` monad, accepts a somewhat weaker
+  hypothesis, namely that `f` and `g` only need to agree when `res` is `.ok`
+-/
+theorem do_eq_do_except {res : Except ε α} {f g : α → Except ε β} :
+  (∀ v, res = .ok v → f v = g v) → (do let v ← res ; f v) = (do let v ← res ; g v)
+:= by
+  intro h₁ ; cases res <;> simp [h₁]
+
+/--
+  `apply do_eq_do'` eliminates the last operation of a `do` block if the last
+  operations are definitionally equal, and your goal is to prove the entire `do`
+  blocks equal
+-/
+theorem do_eq_do' [Monad m] [LawfulMonad m] {res res' : m α} {f : α → m β} :
+  res = res' → (do let v ← res ; f v) = (do let v ← res' ; f v)
+:= by
+  intro _ ; subst res' ; rfl

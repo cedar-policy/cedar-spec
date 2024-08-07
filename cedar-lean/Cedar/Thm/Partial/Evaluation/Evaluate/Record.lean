@@ -29,6 +29,11 @@ open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr Error Expr Result)
 
+theorem sizeOf_map_lt_of_val (m : Map Attr Spec.Value) :
+  sizeOf m < sizeOf (Spec.Value.record m)
+:= by
+  sorry
+
 /--
   `Partial.bindAttr` on concrete arguments is the same as `Spec.bindAttr` on
   those arguments
@@ -88,7 +93,7 @@ private theorem mapM₂_eq_mapM_spec_bindAttr [SizeOf β]
   `List.mapM₂_eq_mapM` specialized for a particular setting involving pairs and
   `Partial.bindAttr`
 -/
-private theorem mapM₂_eq_mapM_partial_bindAttr [SizeOf β]
+theorem mapM₂_eq_mapM_partial_bindAttr [SizeOf β]
   (f : β → Result Partial.Value)
   (attrs : List (Attr × β)) :
   attrs.mapM₂
@@ -181,6 +186,12 @@ theorem partial_eval_wf {attrs: List (Attr × Expr)} {request : Partial.Request}
         subst k' pval'
         simpa [Partial.Value.WellFormed] using ih (k, v) h₅ (.value v') h₇
     · simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+      intro (k, pv) hpv
+      replace ⟨(k', x), hx, hkv⟩ := hkv (k, pv) hpv
+      split at hkv <;> rename_i k'' x' hx'
+      simp only [Prod.mk.injEq] at hx' ; replace ⟨hx', hx''⟩ := hx' ; subst k'' x'
+      simp only [Partial.bindAttr, do_ok, Prod.mk.injEq, exists_eq_right_right] at hkv
+      exact ih (k', x) hx _ hkv.left
 
 /--
   If partial-evaluating an `Expr.record` produces `ok` with a concrete

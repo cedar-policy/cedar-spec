@@ -20,8 +20,8 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
 
@@ -35,7 +35,7 @@ open Cedar.Spec (Attr Error Expr Prim Result)
 
   Note that the "concrete arguments" provided to `Partial.attrsOf` and
   `Spec.attrsOf` in this theorem are different from the "concrete arguments"
-  provided in the theorem of the same name in Partial/Evaluation/GetAttr.lean
+  provided in the theorem of the same name in Partial/Evaluation/EvaluateGetAttr.lean
 -/
 theorem attrsOf_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entities} :
   Partial.attrsOf v (λ uid => .ok (entities.asPartialEntities.attrsOrEmpty uid)) =
@@ -94,22 +94,24 @@ theorem partialHasAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.
   case ok m => simp [Spec.Value.WellFormed, Prim.WellFormed]
 
 /--
-  if `Partial.evaluateHasAttr` returns `ok` with some value, that is a
-  well-formed value
+  if `Partial.evaluateHasAttr` on a well-formed value returns `ok` with some
+  value, that is also a well-formed value
 -/
-theorem evaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+theorem evaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities}
+  (wf : pval₁.WellFormed) :
   ∀ pval, Partial.evaluateHasAttr pval₁ attr entities = .ok pval → pval.WellFormed
 := by
   unfold Partial.evaluateHasAttr
-  split
-  · rename_i v
-    cases h₁ : Partial.hasAttr v attr entities
+  cases pval₁ <;> simp only [Except.ok.injEq, forall_eq']
+  case value v₁ =>
+    cases h₁ : Partial.hasAttr v₁ attr entities
     case error e => simp only [Except.bind_err, false_implies, implies_true]
     case ok v =>
       simp only [Partial.Value.WellFormed, Except.bind_ok, Except.ok.injEq, forall_eq']
       exact partialHasAttr_wf v h₁
-  · intro pval h₁ ; simp only [Except.ok.injEq] at h₁ ; subst h₁
+  case residual r₁ =>
     simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+    simpa [Partial.Value.WellFormed] using wf
 
 /--
   If `Partial.evaluateHasAttr` produces `ok` with a concrete value, then so
@@ -186,3 +188,52 @@ theorem subst_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities
     have ⟨e', h₂⟩ := hasAttr_subst_preserves_errors subsmap h₁
     exists e'
     simp only [h₂, Except.bind_err]
+
+/--
+  Variant of `subst_preserves_errors` where `Partial.evaluateValue` is applied
+  to the argument first
+
+  This takes the proof of `EvaluateValue.evalValue_wf` as an argument, because this
+  file can't directly import `Thm/Partial/Evaluation/EvaluateValue.lean` to get it.
+  See #372.
+
+  This takes the proof of
+  `EvaluateValue.evalResidual_subst_preserves_evaluation_to_value` as an
+  argument, because this file can't directly import
+  `Thm/Partial/Evaluation/EvaluateValue.lean` to get it.
+  See #372.
+-/
+theorem subst_and_reduce_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf_v : pval₁.WellFormed)
+  (wf_e : entities.WellFormed)
+  (wf_s : subsmap.WellFormed)
+  (h_pevwf : ∀ pv es pv', pv.WellFormed → es.WellFormed → Partial.evaluateValue pv es = .ok pv' → pv'.WellFormed)
+  (h_erspetv : ∀ r es v, r.WellFormed →
+    Partial.evaluateResidual r es = .ok (.value v) →
+    Partial.evaluateValue (r.subst subsmap) (es.subst subsmap) = .ok (.value v) ) :
+  Partial.evaluateValue pval₁ entities = .ok pval₂ →
+  Partial.evaluateHasAttr pval₂ attr entities = .error e →
+  Partial.evaluateValue (pval₁.subst subsmap) (entities.subst subsmap) = .ok pval₃ →
+  ∃ e', Partial.evaluateHasAttr pval₃ attr (entities.subst subsmap) = .error e'
+:= by
+  cases pval₁ <;> simp [Partial.evaluateValue]
+  case value v₁ =>
+    intro _ ; subst pval₂
+    simp [Subst.subst_concrete_value, Partial.evaluateValue]
+    intro h₁ h₂ ; subst pval₃
+    exact subst_preserves_errors subsmap h₁
+  case residual r₁ =>
+    simp only [Partial.Value.WellFormed] at wf_v
+    specialize h_erspetv r₁ entities ; simp only [wf_v] at h_erspetv
+    intro h₁ h₂ h₃
+    have wf₃ : pval₃.WellFormed := by
+      apply h_pevwf ((Partial.Value.residual r₁).subst subsmap) (entities.subst subsmap) pval₃ _ _ h₃
+      · apply Subst.val_subst_preserves_wf _ wf_s
+        simp [Partial.Value.WellFormed, wf_v]
+      · exact Subst.entities_subst_preserves_wf wf_e wf_s
+    apply subst_preserves_errors
+    cases pval₂ <;> simp [Partial.Value.subst] at *
+    case a.value v₂ =>
+      simp [h_erspetv v₂ h₁] at h₃ ; subst pval₃
+      exact h₂
+    case a.residual r₂ => simp [Partial.evaluateHasAttr] at h₂

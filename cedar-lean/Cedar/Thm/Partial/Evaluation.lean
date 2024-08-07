@@ -15,3 +15,5 @@
 -/
 
 import Cedar.Thm.Partial.Evaluation.Evaluate
+import Cedar.Thm.Partial.Evaluation.EvaluateValue
+import Cedar.Thm.Partial.Evaluation.Reevaluation

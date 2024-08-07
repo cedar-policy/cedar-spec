@@ -139,6 +139,10 @@ theorem mk_kvs_id (m : Map α β) :
   mk m.kvs = m
 := by simp only [kvs]
 
+theorem kvs_mk_id (xs : List (α × β)) :
+  (Map.mk xs).kvs = xs
+:= by simp only [kvs]
+
 theorem in_list_in_map {α : Type u} (k : α) (v : β) (m : Map α β) :
   (k, v) ∈ m.kvs → k ∈ m
 := by
@@ -375,6 +379,11 @@ theorem mapOnValues_empty {α β γ} [LT α] [DecidableLT α] [DecidableEq α] {
   (empty : Map α β).mapOnValues f = empty
 := by
   simp [mapOnValues, empty]
+
+theorem mapOnValues_id [LT α] [DecidableLT α] {m : Map α β} :
+  m.mapOnValues id = m
+:= by
+  simp [mapOnValues]
 
 theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) (m : Map α β) (k : α)  :
   (m.find? k).map f = (m.mapOnValues f).find? k
@@ -722,6 +731,27 @@ theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Opt
       subst mtl'
       simp [h₃]
 
+theorem mapMOnValues_pure [LT α] [DecidableLT α] [Monad m] [LawfulMonad m] {f : β → γ} {m₁ : Map α β} :
+  m₁.mapMOnValues ((λ b => pure (f b)) : β → m γ) = pure (m₁.mapOnValues f)
+:= by
+  simp [mapMOnValues, List.mapM_pure, mapOnValues]
+
+/-- Corollary: it's true for `m` = `Except` -/
+theorem mapMOnValues_ok [LT α] [DecidableLT α] {f : β → γ} {m₁ : Map α β} :
+  m₁.mapMOnValues ((λ b => Except.ok (f b)) : β → Except ε γ) = Except.ok (m₁.mapOnValues f)
+:= mapMOnValues_pure
+
+/-- Corollary: it's true for `m` = `Option` -/
+theorem mapMOnValues_some [LT α] [DecidableLT α] {f : β → γ} {m₁ : Map α β} :
+  m₁.mapMOnValues (λ b => some (f b)) = some (m₁.mapOnValues f)
+:= mapMOnValues_pure
+
+theorem mapMOnValues_mapOnValues [LT α] [DecidableLT α] [Monad m] [LawfulMonad m] {f : β → γ} {g : γ → m ε} {m₁ : Map α β} :
+  (m₁.mapOnValues f).mapMOnValues g = m₁.mapMOnValues λ v => g (f v)
+:= by
+  simp only [mapMOnValues, mapOnValues]
+  rw [List.mapM_map]
+
 theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
   List.Forall₂ (λ kv₁ kv₂ => kv₁.fst = kv₂.fst ∧ f kv₁.snd = some kv₂.snd) m₁.kvs m₂.kvs
@@ -923,6 +953,13 @@ theorem all_ok_implies_mapMOnValues_ok [LT α] [DecidableLT α] {f : β → Exce
     replace ⟨v', h₁⟩ := h₁ (k, v) hkv
     simp only [h₁, Except.bind_ok] at h₂
 
+/--
+  The converse is not true:
+  counterexample `m` is `[("foo", 1), ("bar", 2)]` and `f` is `Except.error`.
+  In that case, `f 2 = .error 2` but `m.mapMOnValues f = .error 1`.
+
+  But for a limited converse, see `element_error_implies_mapMOnValues_error`
+-/
 theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β → Except ε γ} {m : Map α β} {e : ε} :
   m.mapMOnValues f = .error e → ∃ v ∈ m.values, f v = .error e
 := by
@@ -933,5 +970,24 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   rw [do_error] at h₁
   have h_values := in_list_in_values hkv
   exists v
+
+/--
+  If applying `f` to any of `m.values` produces an error, then `m.mapMOnValues f`
+  must also produce an error (not necessarily the same error)
+
+  Limited converse of `mapMOnValues_error_implies_exists_error`
+-/
+theorem element_error_implies_mapMOnValues_error [LT α] [DecidableLT α] {v : β} {f : β → Except ε γ} {m : Map α β} {e : ε} :
+  v ∈ m.values →
+  f v = .error e →
+  ∃ e', m.mapMOnValues f = .error e'
+:= by
+  intro h₁ h₂
+  cases h₃ : m.mapMOnValues f <;> simp
+  case ok pvals =>
+    replace ⟨k, h₁⟩ := in_values_exists_key h₁
+    replace ⟨pval, _, h₃⟩ := mapMOnValues_ok_implies_all_ok h₃ (k, v) h₁
+    simp [h₂] at h₃
+
 
 end Cedar.Data.Map

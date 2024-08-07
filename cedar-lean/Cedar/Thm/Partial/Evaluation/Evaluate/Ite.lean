@@ -55,6 +55,8 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Expr} {request : Spec.Re
   produces `ok` with some value, that value is well-formed as well
 -/
 theorem partial_eval_wf {x₁ x₂ x₃ : Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (wf_r : request.WellFormed)
+  (ih₁ : EvaluatesToWellFormed x₁ request entities)
   (ih₂ : EvaluatesToWellFormed x₂ request entities)
   (ih₃ : EvaluatesToWellFormed x₃ request entities) :
   EvaluatesToWellFormed (Expr.ite x₁ x₂ x₃) request entities
@@ -63,7 +65,13 @@ theorem partial_eval_wf {x₁ x₂ x₃ : Expr} {request : Partial.Request} {ent
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ =>
     cases pval₁ <;> simp only [Except.ok.injEq, forall_eq']
-    case residual r₁ => simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+    case residual r₁ =>
+      simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+      and_intros
+      · have h₁ := ih₁ (.residual r₁) hx₁
+        simpa [Partial.Value.WellFormed] using h₁
+      · exact Subst.substToPartialValue_wf x₂ wf_r
+      · exact Subst.substToPartialValue_wf x₃ wf_r
     case value v₁ =>
       cases v₁ <;> simp only [Spec.Value.asBool, Except.bind_err, false_implies, implies_true]
       case prim p₁ =>
@@ -152,7 +160,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Expr} {req req' : 
 
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
+  import `Thm/Partial/Evaluation/Evaluate.lean` to access it.
   See #372.
 -/
 theorem subst_preserves_errors {x₁ x₂ x₃ : Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}

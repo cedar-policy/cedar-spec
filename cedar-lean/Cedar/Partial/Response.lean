@@ -37,18 +37,22 @@ inductive Residual where
     constant `false` (definitely not satisfied), or a nontrivial expression
   -/
   | residual (id : PolicyID) (effect : Effect) (condition : Partial.Value)
-  /-- definitely results in this error, for any substitution of the unknowns -/
-  | error (id : PolicyID) (error : Error)
+  /--
+    definitely results in an error, for any substitution of the unknowns.
+    We don't say which error, in order to produce the desired equivalence
+    semantics on `Residual`
+  -/
+  | error (id : PolicyID)
 
 deriving instance Repr, DecidableEq, Inhabited for Residual
 
 def Residual.id : Residual → PolicyID
   | .residual id _ _ => id
-  | .error id _ => id
+  | .error id => id
 
 def Residual.effect : Residual → Option Effect
   | .residual _ effect _ => effect
-  | .error _ _ => none
+  | .error _ => none
 
 /--
   if this policy must be satisfied (for any substitution of the unknowns), and
@@ -126,7 +130,7 @@ def Response.forbids (resp : Partial.Response) : Set PolicyID :=
 -/
 def Response.errorPolicies (resp : Partial.Response) : Set PolicyID :=
   Set.make (resp.residuals.filterMap λ residual => match residual with
-    | .error id _ => some id
+    | .error id => some id
     | _ => none
   )
 
@@ -217,13 +221,12 @@ def Response.underapproximateDeterminingPolicies (resp : Partial.Response) : Set
   Assumes that `entities` have already been substituted.
 -/
 def Residual.reEvaluateWithSubst (subsmap : Subsmap) (entities : Partial.Entities) : Residual → Option Residual
-  | .error id e => some (.error id e)
+  | .error id => some (.error id)
   | .residual id effect cond =>
     match Partial.evaluateValue (cond.subst subsmap) entities with
     | .ok (.value false) => none
-    | .ok (.value v) => some (.residual id effect v)
     | .ok cond' => some (.residual id effect cond')
-    | .error e => some (.error id e)
+    | .error _ => some (.error id)
 
 /--
   Re-evaluate with the given substitution for unknowns, giving a new

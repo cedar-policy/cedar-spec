@@ -20,8 +20,8 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
 /-! Theorems about `Partial.evaluateBinaryApp` -/
 
@@ -165,10 +165,12 @@ theorem evaluateBinaryApp_wf {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {
   split
   · rename_i v₁ v₂ h₁
     simp at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst h₁ h₁'
-    simp only [Partial.Value.WellFormed] at wf₁ wf₂
+    simp [Partial.Value.WellFormed] at wf₁ wf₂
     exact partialApply₂_wf wf₁ wf₂
-  · intro pval h₁ ; simp only [Except.ok.injEq] at h₁ ; subst h₁
-    simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+  · intro pval h₁ ; simp at h₁ ; subst h₁ ; rename_i h₁
+    simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+    simp only [Prod.mk.injEq] at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst h₁ h₁'
+    exact And.intro wf₁ wf₂
 
 /--
   If `Partial.evaluateBinaryApp` produces `ok` with a concrete value, then so
@@ -246,7 +248,7 @@ theorem partialApply₂_subst_preserves_evaluation_to_value {v₁ v₂ : Spec.Va
   If `Partial.evaluateBinaryApp` returns a concrete value, then it returns
   the same value after any substitution of unknowns in `entities`
 -/
-theorem subst_preserves_evaluation_to_value {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} {subsmap : Subsmap} :
+theorem subst_preserves_evaluation_to_value {pval₁ pval₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} (subsmap : Subsmap) :
   Partial.evaluateBinaryApp op pval₁ pval₂ entities = .ok (.value v) →
   Partial.evaluateBinaryApp op pval₁ pval₂ (entities.subst subsmap) = .ok (.value v)
 := by
@@ -303,6 +305,71 @@ theorem subst_preserves_errors {pval₁ pval₂ : Partial.Value} {op : BinaryOp}
   simp only [Partial.evaluateBinaryApp]
   cases pval₁ <;> cases pval₂ <;> simp only [exists_false, imp_self]
   case value.value v₁ v₂ => exact partialApply₂_subst_preserves_errors
+
+/--
+  If `Partial.evaluateBinaryApp` returns an error, but reducing its args
+  succeeds, then it returns the same error on the reduced args
+-/
+theorem reducing_arg_preserves_errors {pval₁ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} :
+  Partial.evaluateBinaryApp op pval₁ pval₂ entities = .error e →
+  Partial.evaluateValue pval₁ entities = .ok pval₁' →
+  Partial.evaluateValue pval₂ entities = .ok pval₂' →
+  Partial.evaluateBinaryApp op pval₁' pval₂' entities = .error e
+:= by
+  cases pval₁ <;> cases pval₂ <;> simp [Partial.evaluateBinaryApp]
+  case value.value v₁ v₂ =>
+    simp [Partial.evaluateValue]
+    intro h₁ _ _ ; subst pval₁' pval₂'
+    simp [h₁]
+
+/--
+  If reducing the args then `Partial.evaluateBinaryApp` returns a concrete value,
+  then any subst before that process shouldn't make a difference.
+
+  This is like `subst_preserves_evaluation_to_value` but with a reduce operation
+  in front of the `Partial.evaluateBinaryApp` in both cases
+
+  Takes inductive hypotheses `ih₁` and `ih₂` which say that
+  `subst_preserves_evaluation_to_value` holds for `pv₁` and `pv₂`
+-/
+theorem subst_preserves_reduce_evaluation_to_value {pv₁ pv₂ : Partial.Value} {op : BinaryOp} {entities : Partial.Entities} (subsmap : Subsmap)
+  (ih₁ : ∀ v, Partial.evaluateValue pv₁ entities = .ok (.value v) → Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap) = .ok (.value v))
+  (ih₂ : ∀ v, Partial.evaluateValue pv₂ entities = .ok (.value v) → Partial.evaluateValue (pv₂.subst subsmap) (entities.subst subsmap) = .ok (.value v)) :
+  Partial.evaluateValue pv₁ entities = .ok pv₁' →
+  Partial.evaluateValue pv₂ entities = .ok pv₂' →
+  Partial.evaluateBinaryApp op pv₁' pv₂' entities = .ok (.value v) →
+  ∃ pv₁'' pv₂'',
+    Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap) = .ok pv₁'' ∧
+    Partial.evaluateValue (pv₂.subst subsmap) (entities.subst subsmap) = .ok pv₂'' ∧
+    Partial.evaluateBinaryApp op pv₁'' pv₂'' (entities.subst subsmap) = .ok (.value v)
+:= by
+  cases pv₁ <;> cases pv₂ <;> simp [Partial.evaluateBinaryApp]
+  case value.value v₁ v₂ =>
+    simp [Subst.subst_concrete_value, Partial.evaluateValue]
+    intro _ _ ; subst pv₁' pv₂' ; simp only
+    exact partialApply₂_subst_preserves_evaluation_to_value
+  case value.residual v₁ r₂ =>
+    simp [Subst.subst_concrete_value, Partial.evaluateValue, Partial.Value.subst] at *
+    intro _ ; subst pv₁'
+    cases pv₂' <;> simp only [Except.ok.injEq, false_implies, implies_true]
+    case value v₂ =>
+      intro h₁
+      simp [ih₂ v₂ h₁]
+      exact partialApply₂_subst_preserves_evaluation_to_value
+  case residual.value r₁ v₂ =>
+    simp [Subst.subst_concrete_value, Partial.evaluateValue, Partial.Value.subst] at *
+    intro h₁ _ ; subst pv₂'
+    cases pv₁' <;> simp only [Except.ok.injEq, false_implies]
+    case value v₁ =>
+      simp [ih₁ v₁ h₁]
+      exact partialApply₂_subst_preserves_evaluation_to_value
+  case residual.residual r₁ r₂ =>
+    simp [Partial.evaluateValue, Partial.Value.subst] at *
+    cases pv₁' <;> cases pv₂' <;> simp only [Except.ok.injEq, false_implies, implies_true]
+    case value.value v₁ v₂ =>
+      intro h₁ h₂
+      simp [ih₁ v₁ h₁, ih₂ v₂ h₂]
+      exact partialApply₂_subst_preserves_evaluation_to_value
 
 /--
   `Partial.apply₂` followed by a substitution and then `Partial.evaluateValue`,
