@@ -253,7 +253,15 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
   intro ⟨h₀, h₁⟩
   simp [RequestAndEntitiesMatchSchema]
   simp [validateRequest] at h₀
-  obtain ⟨env, h₀⟩ := h₀
+  obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
+  exists env
+  constructor
+  exact h₀
+  apply request_and_entities_match_env
+  constructor
+  exact h₂
+  simp only [validateEntities, updateSchema] at h₁
+  
   -- apply request_and_entities_match_env
   -- constructor
   -- case a.left =>
