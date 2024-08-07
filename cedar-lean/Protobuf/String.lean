@@ -34,7 +34,7 @@ def utf8DecodeChar (i : Nat) : BParsec Char := do
     let r := ((c &&& 0x1f).toUInt32 <<< 6) ||| (c1 &&& 0x3f).toUInt32
     guard (0x80 ≤ r)
     -- TODO: Prove h from the definition of r once we have the necessary lemmas
-    if h : r < 0xd800 then pure ⟨r, .inl h⟩ else throw "Not valid UTF8 Char"
+    if h : r < 0xd800 then pure ⟨r, .inl h⟩ else throw s!"Not valid UTF8 Char: {c} {c1}"
   else if c &&& 0xf0 == 0xe0 then
     let c1 ← fun it => BParsec.ParseResult.success it it.data[i+1]!
     let c2 ← fun it => BParsec.ParseResult.success it it.data[i+2]!
@@ -45,7 +45,7 @@ def utf8DecodeChar (i : Nat) : BParsec Char := do
       (c2 &&& 0x3f).toUInt32
     guard (0x800 ≤ r)
     -- TODO: Prove `r < 0x110000` from the definition of r once we have the necessary lemmas
-    if h : r < 0xd800 ∨ 0xdfff < r ∧ r < 0x110000 then pure ⟨r, h⟩ else throw "Not valid UTF8 Char"
+    if h : r < 0xd800 ∨ 0xdfff < r ∧ r < 0x110000 then pure ⟨r, h⟩ else throw s!"Not valid UTF8 Char: {c} {c1} {c2}"
   else if c &&& 0xf8 == 0xf0 then
     let c1 ← fun it => BParsec.ParseResult.success it it.data[i+1]!
     let c2 ← fun it => BParsec.ParseResult.success it it.data[i+2]!
@@ -58,9 +58,9 @@ def utf8DecodeChar (i : Nat) : BParsec Char := do
       (c3 &&& 0x3f).toUInt32
     if h : 0x10000 ≤ r ∧ r < 0x110000 then
       pure ⟨r, .inr ⟨Nat.lt_of_lt_of_le (by decide) h.1, h.2⟩⟩
-    else throw "Not valid UTF8 Char"
+    else throw s!"Not valid UTF8 Char: {c} {c1} {c2} {c3}"
   else
-    throw "Not valid UTF8 Char"
+    throw s!"Not valid UTF8 Char: {c}"
 
 
 -- Progresses ByteArray.Iterator
@@ -69,7 +69,7 @@ private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec Str
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
-  let pos ← fun it => BParsec.ParseResult.success it it.pos
+  let pos ← BParsec.pos
   let c ← utf8DecodeChar pos
   let elementSize := String.csize c
   BParsec.forward (elementSize)

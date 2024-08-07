@@ -49,7 +49,8 @@ namespace Len
     match isize with
     | Int.negSucc _ => throw "Expected positive size in len payload"
     | Int.ofNat size =>
-        let slice ← fun it => BParsec.ParseResult.success it (Slice.mk it.pos (it.pos + size))
+        let pos ← BParsec.pos
+        let slice := Slice.mk pos (pos + size)
         pure (Len.mk size slice)
 
   /-- Skips not only the LEN size but also the payload -/

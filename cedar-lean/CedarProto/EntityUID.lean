@@ -33,36 +33,39 @@ open Proto
 
 namespace Cedar.Spec.EntityUID
 
-def mergeTy (result: EntityUID) (ty: EntityType) : EntityUID :=
+@[inline]
+def mergeTy (result: EntityUID) (ty: EntityTypeProto) : EntityUID :=
   {result with
     ty := Field.merge result.ty ty
   }
 
+@[inline]
 def mergeEid (result: EntityUID) (eid: String) : EntityUID :=
   {result with
     eid := Field.merge result.eid eid
   }
 
+@[inline]
 def merge (x1: EntityUID) (x2: EntityUID) : EntityUID :=
   {x1 with
     ty := Field.merge x1.ty x2.ty
     eid := Field.merge x1.eid x2.eid
   }
 
-
-def parseField (t: Tag) : BParsec (MessageM EntityUID) := do
+def parseField (t: Tag) : BParsec (StateM EntityUID Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType EntityType) t.wireType
-      let x: EntityType ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.mergeTy x)
+      -- panic!("Parsing EntityUID.1")
+      (@Field.guardWireType EntityTypeProto) t.wireType
+      let x: EntityTypeProto ← BParsec.attempt Field.parse
+      pure (modifyGet fun s => Prod.mk () (s.mergeTy x))
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.mergeEid x)
+      pure (modifyGet fun s => Prod.mk () (s.mergeEid x))
     | _ =>
       t.wireType.skip
-      pure MessageM.pure
+      pure (pure ())
 
 instance : Message EntityUID := {
   parseField := parseField

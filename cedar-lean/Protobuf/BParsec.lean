@@ -152,5 +152,11 @@ def pos : BParsec Nat :=
 @[inline] def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
   foldlHelper f g remaining init
 
+@[inline]
+def eof : BParsec Unit := fun it =>
+  if it.pos ≥ it.data.size then
+    ParseResult.success it ()
+  else
+    ParseResult.error it "Expected end of file"
 
 end BParsec

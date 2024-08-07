@@ -10,8 +10,11 @@ import Protobuf.Varint
 import Protobuf.Types
 import Protobuf.Structures
 import Protobuf.Packed
-import Protobuf.HardCodeTest
 import Protobuf.Message
+
+import CedarProto.Request
+import DiffTest
+
 open Proto
 
 def bufsize : USize := 2000000 * 1024
@@ -38,28 +41,42 @@ def readFileBytes (filename: String) : IO ByteArray := do
     stream.read bufsize
 
 
-def processJson (filename: String): IO Bool := do
+def processJson (filename: String): IO Cedar.Spec.Request := do
   let result_str ← IO.FS.readFile filename
-  match parse_hardcode_json result_str with
-    | .error _ => pure false
-    | .ok _ => pure true
 
-def processProto (filename: String): IO String := do
+  match Lean.Json.parse result_str with
+    | .error e =>
+      println! s!"Failed to parse JSON input: {e}"
+      pure default
+    | .ok json => do
+      let x := DiffTest.jsonToRequest json
+      match x with
+        | .error e =>
+          println! s!"Failed to create Request from JSON {e}"
+          pure default
+        | .ok v =>
+          println! s!"JSON parse successful"
+          pure v
+
+def processProto (filename: String): IO Cedar.Spec.Request := do
   let result_bytes ← readFileBytes filename
-  let result := (@Message.interpret? HardCodeStruct) result_bytes
+  let result: Except String Cedar.Spec.Request := Message.interpret? result_bytes
   match result with
-    | .error e => pure e
-    | .ok h =>
-      pure s!"Successfully parsed {h.f6.size} elements, 0: {h.f6.get! 0}, 1: {h.f6.get! 1}"
+    | .error e =>
+      println! "Protobuf failed to parse {e}"
+      pure default
+    | .ok x =>
+      println! "Protobuf parse successful"
+      pure x
 
 structure Timed (α : Type) where
   data : α
   duration : Nat
 deriving Lean.ToJson
 
-def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
+def runAndTime (f : IO α) : IO (Timed α) := do
   let start ← IO.monoNanosNow
-  let result := f ()
+  let result ← f
   let stop ← IO.monoNanosNow
   .ok {
     data := result,
@@ -69,14 +86,12 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
 def main (args: List String) : IO UInt32 := do
   if args.length != 2 then panic! "Usage ./Protobuf [Proto File] [JSON File]"
 
-
   let proto_sec ← runAndTime (processProto (args.get! 0))
-  println! proto_sec.data
-  println! proto_sec.duration
-
+  println! s!"ProtoTime: {proto_sec.duration}"
 
   let json_sec ←  runAndTime (processJson (args.get! 1))
-  println! json_sec.data
-  println! json_sec.duration
+  println! s!"JSONTime:  {json_sec.duration}"
+
+  println! s!"Representations equal? {decide (proto_sec.data = json_sec.data)}"
 
   pure 0

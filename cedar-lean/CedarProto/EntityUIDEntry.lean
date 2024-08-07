@@ -26,25 +26,28 @@ open Proto
 
 -- There are other fields but the Lean client doesn't use it
 -- so we save some time by not creating an entire struct
-abbrev EntityUIDEntry := EntityUID
+def EntityUIDEntry: Type := EntityUID
+deriving instance Inhabited for EntityUIDEntry
 
 namespace Cedar.Spec.EntityUIDEntry
 
+@[inline]
 def mergeEuid (x1: EntityUIDEntry) (x2: EntityUID) : EntityUIDEntry :=
   (@Field.merge EntityUID) x1 x2
 
+@[inline]
 def merge (x1: EntityUIDEntry) (x2: EntityUIDEntry) : EntityUIDEntry :=
   (@Field.merge EntityUID) x1 x2
 
-def parseField (t: Tag) : BParsec (MessageM EntityUIDEntry) := do
+def parseField (t: Tag) : BParsec (StateM EntityUIDEntry Unit) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => mergeEuid s x)
+      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
     | _ =>
       t.wireType.skip
-      pure MessageM.pure
+      pure (pure ())
 
 instance : Message EntityUIDEntry := {
   parseField := parseField

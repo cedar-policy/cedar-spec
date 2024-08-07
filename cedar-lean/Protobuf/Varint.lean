@@ -115,7 +115,11 @@ instance : Field UInt32 := {
   merge := Field.Merge.override
 }
 
-abbrev Int32 := Int
+def Int32 := Int
+deriving instance Inhabited, DecidableEq for Int32
+instance : OfNat Int32 n := ⟨Int.ofNat n⟩
+instance : Neg Int32 := { neg := Int.neg }
+
 
 @[inline]
 def parse_int32: BParsec Int32 := do
@@ -131,7 +135,11 @@ instance : Field Int32 := {
   merge := Field.Merge.override
 }
 
-abbrev Int64 := Int
+def Int64 := Int
+deriving instance Inhabited, DecidableEq for Int64
+instance : OfNat Int64 n := ⟨Int.ofNat n⟩
+instance : Neg Int64 := { neg := Int.neg }
+
 
 @[inline]
 def parse_int64: BParsec Int64 := do

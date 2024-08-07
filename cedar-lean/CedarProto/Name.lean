@@ -30,16 +30,19 @@ open Proto
 
 namespace Cedar.Spec.Name
 
+@[inline]
 def mergeId (result: Name) (x: String) : Name :=
   {result with
     id := Field.merge result.id x
   }
 
+@[inline]
 def mergePath (result: Name) (path_elem: Array String): Name :=
   {result with
     path := path_elem.toList ++ result.path
   }
 
+@[inline]
 def merge (x: Name) (y: Name) : Name :=
   {x with
     id := Field.merge x.id y.id
@@ -47,19 +50,20 @@ def merge (x: Name) (y: Name) : Name :=
   }
 
 
-def parseField (t: Tag) : BParsec (MessageM Name) := do
+def parseField (t: Tag) : BParsec (StateM Name Unit) := do
   match t.fieldNum with
     | 1 =>
+      -- panic!("Calling Name.1")
       (@Field.guardWireType String) t.wireType
       let x: String ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.mergeId x)
+      pure (modifyGet fun s => Prod.mk () (mergeId s x))
     | 2 =>
       (@Field.guardWireType (Repeated String)) t.wireType
       let x: Repeated String ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.mergePath x)
+      pure (modifyGet fun s => Prod.mk () (mergePath s x))
     | _ =>
       t.wireType.skip
-      pure MessageM.pure
+      pure (modifyGet fun s => Prod.mk () s)
 
 instance : Message Name := {
   parseField := parseField

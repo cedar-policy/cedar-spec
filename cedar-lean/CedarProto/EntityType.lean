@@ -28,27 +28,34 @@ open Proto
 -- Already defined in Cedar.Spec.EntityType
 -- abbrev EntityType := Name
 
-namespace Cedar.Spec.EntityType
+-- Note: We don't want it to automatically reduce like
+-- abbrev and @[reducible]
+def EntityTypeProto := Name
+deriving instance Inhabited for EntityTypeProto
 
-def mergeName (x1: EntityType) (x2: Name) : EntityType :=
+namespace Cedar.Spec.EntityTypeProto
+
+@[inline]
+def mergeName (x1: EntityTypeProto) (x2: Name) : EntityTypeProto :=
   (@Field.merge Name) x1 x2
 
-def merge (x1: EntityType) (x2: EntityType) : EntityType :=
+@[inline]
+def merge (x1: EntityTypeProto) (x2: EntityTypeProto) : EntityTypeProto :=
   (@Field.merge Name) x1 x2
 
-def parseField (t: Tag) : BParsec (MessageM EntityType) := do
+def parseField (t: Tag) : BParsec (StateM EntityTypeProto Unit) := do
   match t.fieldNum with
-    | 1 =>
+    | 2 =>
       (@Field.guardWireType Name) t.wireType
       let x: Name ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => s.mergeName x)
+      pure (modifyGet fun s => Prod.mk () (mergeName s x))
     | _ =>
       t.wireType.skip
-      pure MessageM.pure
+      pure (pure ())
 
-instance : Message Name := {
+instance : Message EntityTypeProto := {
   parseField := parseField
   merge := merge
 }
 
-end Cedar.Spec.EntityType
+end Cedar.Spec.EntityTypeProto

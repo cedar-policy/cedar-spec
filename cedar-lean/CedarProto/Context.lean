@@ -20,31 +20,34 @@ import Protobuf.String
 import Cedar
 
 -- Dependencies
-import CedarProto.ValueKind
+import CedarProto.Value
 
 
 open Cedar.Spec
 open Proto
 
-abbrev Context := ValueKind
+def Context := ValueKind
+deriving instance Inhabited for Context
 
 namespace Cedar.Spec.Context
 
+@[inline]
 def mergeValue (x1: Context) (x2: ValueKind) : Context :=
   (@Field.merge ValueKind) x1 x2
 
+@[inline]
 def merge (x1: Context) (x2: Context) : Context :=
   (@Field.merge ValueKind) x1 x2
 
-def parseField (t: Tag) : BParsec (MessageM Context) := do
+def parseField (t: Tag) : BParsec (StateM Context Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType Value) t.wireType
+      (@Field.guardWireType ValueKind) t.wireType
       let x: ValueKind ← BParsec.attempt Field.parse
-      pure (MessageM.modifyGet fun s => mergeValue s x)
+      pure (modifyGet fun s => Prod.mk () (mergeValue s x))
     | _ =>
       t.wireType.skip
-      pure MessageM.pure
+      pure (pure ())
 
 instance : Message Context := {
   parseField := parseField

@@ -24,7 +24,6 @@ import Protobuf.Types
 namespace Proto
 
 /-- Repeated fields are assumed to come one record at a time  -/
-@[reducible]
 def Repeated (α: Type) [Field α] : Type := Array α
 
 namespace Repeated
@@ -36,6 +35,10 @@ instance [DecidableEq α] [Field α] : DecidableEq (Repeated α) := by
   unfold DecidableEq
   unfold Repeated
   intro a b
+  apply inferInstance
+
+instance [Repr α] [Field α] : Repr (Repeated α) := by
+  unfold Repeated
   apply inferInstance
 
 /-- Parses one value from a record -/
@@ -53,7 +56,6 @@ end Repeated
 
 /-- An array of elements that are contained sequentially within
  a single LEN wire type -/
-@[reducible]
 def Packed (α: Type) [Field α] : Type := Array α
 
 namespace Packed
@@ -65,6 +67,10 @@ instance [DecidableEq α] [Field α] : DecidableEq (Packed α) := by
   unfold DecidableEq
   unfold Packed
   intro a b
+  apply inferInstance
+
+instance [Repr α] [Field α] : Repr (Packed α) := by
+  unfold Packed
   apply inferInstance
 
 def parse (α: Type) [Field α] : BParsec (Array α) := do
