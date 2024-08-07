@@ -38,7 +38,7 @@ fuzz_target!(|est_json_str: String| {
         })
     {
         let ast_from_cedar =
-            cedar_policy_core::parser::parse_policy_template(None, &ast_from_est.to_string());
+            cedar_policy_core::parser::parse_policy_or_template(None, &ast_from_est.to_string());
 
         match ast_from_cedar {
             Ok(ast_from_cedar) => {

@@ -25,7 +25,7 @@ use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_core::parser;
 use cedar_policy_generators::collections::HashMap;
-use cedar_policy_validator::{RawName, SchemaFragment, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_validator::{json_schema, RawName, ValidationMode, Validator, ValidatorSchema};
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::io::Write;
@@ -42,7 +42,7 @@ use std::str::FromStr;
 pub fn dump(
     dirname: impl AsRef<Path>,
     testcasename: &str,
-    schema: &SchemaFragment<RawName>,
+    schema: &json_schema::Fragment<RawName>,
     policies: &PolicySet,
     entities: &Entities,
     requests: impl IntoIterator<Item = (Request, Response)>,
@@ -68,7 +68,7 @@ pub fn dump(
         .append(false)
         .truncate(true)
         .open(&schema_filename)?;
-    let schema_text = schema.as_natural_schema().unwrap();
+    let schema_text = schema.to_cedarschema().unwrap();
     writeln!(schema_file, "{schema_text}")?;
 
     let mut policies_file = std::fs::OpenOptions::new()
@@ -167,7 +167,7 @@ fn check_test(
         .unwrap_or_else(|e| panic!("error re-parsing policy file: {e}"));
 
     let parsed_schema =
-        ValidatorSchema::from_str_natural(&formatted_schema, Extensions::all_available())
+        ValidatorSchema::from_cedarschema_str(&formatted_schema, Extensions::all_available())
             .unwrap_or_else(|e| panic!("error re-parsing schema: {e}"))
             .0;
 
@@ -203,7 +203,7 @@ fn well_formed(policies: &PolicySet) -> bool {
 }
 
 /// Check whether a policy set passes validation
-fn passes_validation(schema: SchemaFragment<RawName>, policies: &PolicySet) -> bool {
+fn passes_validation(schema: json_schema::Fragment<RawName>, policies: &PolicySet) -> bool {
     if let Ok(schema) = ValidatorSchema::try_from(schema) {
         let validator = Validator::new(schema);
         validator

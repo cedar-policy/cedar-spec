@@ -22,7 +22,7 @@ use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
 };
-use cedar_policy_validator::SchemaFragment;
+use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
@@ -30,7 +30,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment<ast::Name>,
+    pub schema: json_schema::Fragment<ast::InternalName>,
 }
 
 /// settings for this fuzz target
@@ -57,7 +57,7 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 
-        let schema = SchemaFragment(HashMap::from([(name, namespace)]));
+        let schema = json_schema::Fragment(HashMap::from([(name, namespace)]));
 
         Ok(Self { schema })
     }
@@ -70,19 +70,21 @@ impl<'a> Arbitrary<'a> for Input {
 fuzz_target!(|i: Input| {
     let src = i
         .schema
-        .as_natural_schema()
+        .to_cedarschema()
         .expect("Failed to convert schema into a human readable schema");
-    let (parsed, _) = SchemaFragment::from_str_natural(&src, Extensions::all_available())
-        .expect("Failed to parse converted human readable schema");
-    if let Err(msg) = equivalence_check(downgrade_frag_to_raw(i.schema.clone()), parsed.clone()) {
+    let (parsed, _) =
+        json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available())
+            .expect("Failed to parse converted human readable schema");
+    let downgraded = downgrade_frag_to_raw(i.schema.clone());
+    if let Err(msg) = equivalence_check(downgraded.clone(), parsed.clone()) {
         println!("Schema: {src}");
         println!(
             "{}",
             SimpleDiff::from_str(
-                &format!("{:#?}", i.schema),
+                &format!("{:#?}", downgraded),
                 &format!("{:#?}", parsed),
                 "Initial Schema",
-                "Human Round tripped"
+                "Cedar Round tripped"
             )
         );
         panic!("{msg}");
