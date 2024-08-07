@@ -261,7 +261,6 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
   constructor
   exact h₂
   simp only [validateEntities, updateSchema] at h₁
-  
   -- apply request_and_entities_match_env
   -- constructor
   -- case a.left =>

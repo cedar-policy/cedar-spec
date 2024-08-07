@@ -141,7 +141,7 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
   let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
   let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-  -- let schema := updateSchema schema actionEntities
+  let schema := updateSchema schema actionEntities
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 -- json
 
