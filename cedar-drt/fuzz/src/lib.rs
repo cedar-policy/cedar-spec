@@ -62,7 +62,7 @@ pub fn run_pe_test(
         Extensions::none()
     };
 
-    let eval = Evaluator::new(request.clone(), entities, &exts);
+    let eval = Evaluator::new(request.clone(), entities, exts);
     use cedar_policy_core::ast::PartialValue;
     use cedar_testing::cedar_test_impl::ExprOrValue;
     use log::debug;
@@ -119,7 +119,7 @@ pub fn run_eval_test(
     } else {
         Extensions::none()
     };
-    let eval = Evaluator::new(request.clone(), entities, &exts);
+    let eval = Evaluator::new(request.clone(), entities, exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
         Err(_) => None,

@@ -18,24 +18,24 @@
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::{RawName, SchemaFragment};
+use cedar_policy_validator::{json_schema, RawName};
 use similar_asserts::SimpleDiff;
 
-// Natural String -> SchemaFragment -> JSON String -> SchemaFragment
+// Natural String -> json_schema::Fragment -> JSON String -> json_schema::Fragment
 // Assert that schema fragments are equivalent. By starting with a Natural
-// String we test for the existence of schema that are valid in the natural
+// String we test for the existence of schema that are valid in the Cedar
 // format but with an invalid json schema conversion.
 fuzz_target!(|src: String| {
     if let Ok((parsed, _)) =
-        SchemaFragment::<RawName>::from_str_natural(&src, Extensions::all_available())
+        json_schema::Fragment::<RawName>::from_cedarschema_str(&src, Extensions::all_available())
     {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let json = serde_json::to_value(parsed.clone())
-            .expect("Failed to convert human readable schema to JSON");
-        let json_parsed =
-            SchemaFragment::from_json_value(json).expect("Failed to parse converted JSON schema");
+        let json =
+            serde_json::to_value(parsed.clone()).expect("Failed to convert Cedar schema to JSON");
+        let json_parsed = json_schema::Fragment::from_json_value(json)
+            .expect("Failed to parse converted JSON schema");
         if let Err(msg) = equivalence_check(parsed.clone(), json_parsed.clone()) {
             println!("Schema: {src}");
             println!(
@@ -43,7 +43,7 @@ fuzz_target!(|src: String| {
                 SimpleDiff::from_str(
                     &format!("{:#?}", parsed),
                     &format!("{:#?}", json_parsed),
-                    "Parsed human readable",
+                    "Parsed Cedar",
                     "JSON round-tripped"
                 )
             );
