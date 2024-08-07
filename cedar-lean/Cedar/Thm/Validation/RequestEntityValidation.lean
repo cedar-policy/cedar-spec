@@ -233,10 +233,13 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
     simp only [h₀]
 
 
+
 theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) :
-  requestMatchesEnvironment env request ∧ entitiesMatchEnvironment env entities = .ok () → RequestAndEntitiesMatchEnvironment env request entities
+  requestMatchesEnvironment env request →
+  entitiesMatchEnvironment env entities = .ok () →
+  RequestAndEntitiesMatchEnvironment env request entities
 := by
-  intro ⟨h₀, h₁⟩
+  intro h₀ h₁
   simp only [RequestAndEntitiesMatchEnvironment]
   simp only [requestMatchesEnvironment] at h₀
   simp only [entitiesMatchEnvironment] at h₁
@@ -248,24 +251,20 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
   exact instance_of_action_schema_refl entities env.acts h₁
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
-  validateRequest schema request = .ok () ∧ validateEntities schema entities = .ok () → RequestAndEntitiesMatchSchema schema request entities
+  validateRequest schema request = .ok () →
+  validateEntities schema entities = .ok () →
+  RequestAndEntitiesMatchSchema schema request entities
 := by
-  intro ⟨h₀, h₁⟩
-  simp [RequestAndEntitiesMatchSchema]
-  simp [validateRequest] at h₀
+  intro h₀ h₁
+  simp only [RequestAndEntitiesMatchSchema]
+  simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
+    Bool.not_eq_true, imp_false, Classical.not_forall, not_imp, Bool.not_eq_false] at h₀
+  simp only [validateEntities] at h₁
   obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
   exists env
   constructor
   exact h₀
   apply request_and_entities_match_env
-  constructor
   exact h₂
-  simp only [validateEntities, updateSchema] at h₁
-  -- apply request_and_entities_match_env
-  -- constructor
-  -- case a.left =>
-
-  -- case a.right =>
-  --   sorry
-
-  sorry
+  have h₃ := List.forM_ok_implies_all_ok schema.toEnvironments (fun x => entitiesMatchEnvironment x entities) h₁ env h₀
+  simp only [h₃]

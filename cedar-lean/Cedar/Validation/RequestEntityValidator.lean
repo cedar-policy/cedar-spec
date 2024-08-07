@@ -110,39 +110,9 @@ def validateRequest (schema : Schema) (request : Request) : RequestValidationRes
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
 instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
 
-def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
-  ancestors := ase.ancestors,
-  attrs := Map.empty
-}
-
-/--
-Update the entity schema with the entities created for action schema entries.
-This involves the construction of the ancestor information for the associated types
-by inspecting the concrete hierarchy.
--/
-def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
-  let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
-  let newEntitySchemaEntries := uniqueTys.elts.map makeEntitySchemaEntries
-  {
-    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries),
-    acts := schema.acts
-  }
-  where
-    makeEntitySchemaEntries ty :=
-      let entriesWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
-      let allAncestorsForType := List.join (entriesWithType.values.map (λ edt =>
-        edt.ancestors.elts.map (·.ty) ))
-      let ese : EntitySchemaEntry := {
-        ancestors := Set.make allAncestorsForType,
-        attrs := Map.empty
-      }
-      (ty, ese)
-
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-  let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
-  let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-  let schema := updateSchema schema actionEntities
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
+
 -- json
 
 def entityValidationErrorToJson : EntityValidationError → Lean.Json
