@@ -41,6 +41,13 @@ inductive Qualified (α : Type u) where
   | optional (a : α)
   | required (a : α)
 
+instance : Functor Qualified where
+  map f q :=
+    match q with
+    | .optional x => .optional (f x)
+    | .required x => .required (f x)
+
+
 def Qualified.getType {α} : Qualified α → α
   | optional a => a
   | required a => a

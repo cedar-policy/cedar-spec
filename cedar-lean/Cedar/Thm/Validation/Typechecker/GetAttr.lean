@@ -116,6 +116,8 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
       apply instance_of_attribute_type h₅ h₉ (by simp [Qualified.getType]) h₈
 
 
+
+
 theorem setLevel_preserves_type {v : Value} {ty : CedarType} {l : Level}
   (h : InstanceOfType v ty) :
   InstanceOfType v (setLevel l.sub1 ty) := by
@@ -143,36 +145,78 @@ theorem setLevel_preserves_type {v : Value} {ty : CedarType} {l : Level}
   case _ =>
     rename_i rty m h₁ h₂ h₃
     simp [setLevel]
-      -- -- if an attribute is present in the record, then it is present in the type
-      -- (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
-      -- -- if an attribute is present, then it has the expected type
-      -- (h₂ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
-      --   r.find? k = some v → rty.find? k = some qty → InstanceOfType v qty.getType)
-      -- -- required attributes are present
-      -- (h₃ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
-      -- InstanceOfType (.record r) (.record rty)
     apply InstanceOfType.instance_of_record
     case _ =>
-      -- -- if an attribute is present in the record, then it is present in the type
-      -- (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
       intros attr h₄
       apply Map.mapOnValuesAttach_preservesKeys_adapter
       apply h₁
       apply h₄
-      exists (λ qual =>
-        match _h : qual with
-        | .required ty => .required (setLevel l.sub1 ty)
-        | .optional ty => .optional (setLevel l.sub1 ty)
-      )
+      exists (Functor.map (setLevel l.sub1))
+      simp [Functor.map]
+      funext
+      split <;> rename_i heq <;> rw [heq]
     case _ =>
-      -- -- if an attribute is present, then it has the expected type
-      -- (h₂ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
-      --   r.find? k = some v → rty.find? k = some qty → InstanceOfType v qty.getType)
       intros k v qty h₄ h₅
-      sorry
+      have h₆ : rty.contains k = true := by
+        apply h₁
+        rw [Map.contains_iff_some_find?]
+        exists v
+      have h₇ : ∃ qty_orig, rty.find? k = .some qty_orig := by
+        rw [← Map.contains_iff_some_find?]
+        assumption
+      replace ⟨qty_orig, h₇⟩ := h₇
+      have h₈ : some qty = some (setLevel l.sub1 <$> qty_orig)
+        := by
+        rw [← h₅]
+        rw [@Map.mapOnValues_maps_adapter Attr QualifiedType _ _ _ _ _ _ rty _ (Functor.map (setLevel l.sub1)) k qty_orig]
+        apply h₇
+        simp [Functor.map]
+        funext
+        split <;> rename_i heq <;> rw [heq]
+      simp at h₈
+      have htype : InstanceOfType v (Qualified.getType qty_orig) := by
+        apply h₂
+        repeat assumption
+      rw [h₈]
+      simp [Functor.map]
+      split
+        <;> simp [Qualified.getType]
+        <;> apply setLevel_preserves_type
+        <;> simp [Qualified.getType] at htype
+        <;> assumption
     case _ =>
-      sorry
-
+      intros k qty h₄ h₅
+      have h₆ : (rty.mapOnValuesAttach (λ prod => setLevel l.sub1 <$> prod.val)).contains k = true
+        := by
+        rw [Map.contains_iff_some_find?]
+        exists qty
+        simp [Functor.map]
+        rw [← h₄]
+        rw [Map.mapOnValuesAttachFunEq]
+        funext
+        split <;> rename_i heq <;> rw [heq]
+      have h₇ : rty.contains k = true := by
+        rw [Map.mapOnValuesAttach_preservesContains_adapter]
+        apply h₆
+        exists (Functor.map (setLevel l.sub1))
+        funext
+      rw [Map.contains_iff_some_find?] at h₇
+      replace ⟨qty_orig, h₇⟩ := h₇
+      apply h₃
+      assumption
+      have heq : qty = setLevel l.sub1 <$> qty_orig := by
+        rw [@Map.mapOnValues_maps_adapter _ _ _ _ _ _ _ _ _ _ (Functor.map (setLevel l.sub1)) k qty_orig] at h₄
+        simp at h₄
+        rw [← h₄]
+        assumption
+        funext
+        simp [Functor.map]
+        split <;> rename_i heq <;> rw [heq]
+      cases qty_orig
+      case _ =>
+        simp [heq, Functor.map, Qualified.isRequired] at h₅
+      case _ =>
+        simp [Qualified.isRequired]
   case _ =>
     simp [setLevel]
     apply InstanceOfType.instance_of_ext
@@ -186,15 +230,62 @@ decreasing_by
     rw [c]
     simp [sizeOf, CedarType._sizeOf_1]
     omega
-  -- case _ =>
-  --   rename_i c _ _ _ _ _ _ _ _ _  _ _ _ _ _ _ _ _ _ _ _
-  --   rw [c]
-  --   simp [sizeOf, CedarType._sizeOf_1, Map._sizeOf_1, List._sizeOf_1]
+  case _ =>
+    rename_i ty' h_orig
+    have hsize₁ : sizeOf ty' < sizeOf qty_orig := by
+      rw [h_orig]
+      simp
+      omega
+    rename_i rty heq_ty _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    rw [heq_ty]
+    simp
+    rw [← h_orig] at h₇
 
-  --   omega
+    have hsize₂ : sizeOf qty_orig < sizeOf rty := by
+      have h : (k, qty_orig) ∈ rty.kvs := by
+        apply Map.find_means_mem
+        assumption
+
+      have h₂ : sizeOf (k, qty_orig) < sizeOf rty.kvs := by
+        apply List.sizeOf_lt_of_mem
+        assumption
+
+      have h₃ : sizeOf rty.kvs < sizeOf rty := by
+        apply Map.sizeOf_lt_of_kvs
+
+      have h₄ : sizeOf qty_orig < sizeOf (k, qty_orig) := by
+        simp
+        omega
+
+      omega
 
 
-    -- sorry
+    omega
+  case _ =>
+    rename_i h₉ h₁₀ h₁₁ hinst₁ type hinst₂
+    rename_i heq₁ _ _ _ _ rty _ _ _ _ _ _ _ _ _ heq₂ _ _ _ _
+    rw [heq₂] at h₁₀
+    rw [heq₁]
+    rw [heq₂]
+    rw [heq₂] at h₇
+    have hsize₁ : sizeOf type < sizeOf (Qualified.required type) := by
+      simp
+      omega
+    have hsize₂ : sizeOf (Qualified.required type) < sizeOf rty := by
+      have hmem : (k, (Qualified.required type)) ∈ rty.kvs := by
+        apply Map.find_means_mem
+        assumption
+      have h₁ : sizeOf (Qualified.required type) <  sizeOf (k, Qualified.required type) := by
+        simp
+        omega
+      have h₂ : sizeOf (k, Qualified.required type) < sizeOf rty.kvs := by
+        apply List.sizeOf_lt_of_mem
+        assumption
+      have h₃ : sizeOf rty.kvs < sizeOf rty := by
+        apply Map.sizeOf_lt_of_kvs
+      omega
+    simp
+    omega
 
 
 

@@ -72,7 +72,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
       · simp [h₆]
       · rfl
 
-theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {inf : Bool}
+theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l: Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₃ : typeOf (Expr.and x₁ x₂) c₁ env (l == Level.infinite) = Except.ok (ty, c₂))
