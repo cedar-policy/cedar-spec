@@ -43,6 +43,8 @@ use std::collections::HashSet;
 /// Times for cedar-policy authorization and validation.
 pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
 pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
+pub const RUST_ENT_VALIDATION_MSG: &str = "rust_entity_validation (ns) : ";
+pub const RUST_REQ_VALIDATION_MSG : &str = "rust_request_validation (ns) : ";
 
 /// Compare the behavior of the partial evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
@@ -309,7 +311,7 @@ pub fn run_req_val_test(
             Some(&schema),
             extensions
         ));
-    info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+    info!("{}{}", RUST_REQ_VALIDATION_MSG, rust_auth_dur.as_nanos());
 
     let definitional_res = custom_impl.validate_request(&schema, &request);
     match definitional_res {
@@ -340,7 +342,7 @@ pub fn run_ent_val_test(
         TCComputation::AssumeAlreadyComputed,
         extensions
     ));
-    info!("{}{}", RUST_AUTH_MSG, rust_auth_dur.as_nanos());
+    info!("{}{}", RUST_ENT_VALIDATION_MSG, rust_auth_dur.as_nanos());
     let definitional_res = custom_impl.validate_entities(&schema, entities);
     match definitional_res {
         TestResult::Failure(_) => {
