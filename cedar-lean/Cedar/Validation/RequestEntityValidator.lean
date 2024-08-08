@@ -1,3 +1,20 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+/- This file includes boolean definitions for the propositions declared in `Cedar/Thm/Validation/Typechecker/Types.lean`.-/
 import Cedar.Validation.Validator
 import Cedar.Validation.Typechecker
 namespace Cedar.Validation
@@ -6,12 +23,12 @@ open Cedar.Spec
 open Cedar.Data
 
 inductive RequestValidationError where
-| typeError (loc : String)
+| typeError (msg : String)
 
 abbrev RequestValidationResult := Except RequestValidationError Unit
 
 inductive EntityValidationError where
-| typeError (loc : String)
+| typeError (msg : String)
 
 abbrev EntityValidationResult := Except EntityValidationError Unit
 
@@ -81,9 +98,9 @@ where
   instanceOfEntityData uid data :=
     match ets.find? uid.ty with
     |  .some entry => if instanceOfType data.attrs (.record entry.attrs) then
-                    if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then .ok ()
-                   else .error (.typeError s!"entity ancestors inconsistent with type store information")
-                  else .error (.typeError "entity attributes do not match type store")
+                        if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then .ok ()
+                        else .error (.typeError s!"entity ancestors inconsistent with type store information")
+                      else .error (.typeError "entity attributes do not match type store")
     | _ => .error (.typeError "entity type not defined in type store")
 
 /--
