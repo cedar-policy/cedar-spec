@@ -108,7 +108,7 @@ def validateRequest (schema : Schema) (request : Request) : RequestValidationRes
   else .error (.typeError "request could not be validated in any environment")
 
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
-instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
+  instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,
