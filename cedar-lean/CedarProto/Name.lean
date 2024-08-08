@@ -53,7 +53,6 @@ def merge (x: Name) (y: Name) : Name :=
 def parseField (t: Tag) : BParsec (StateM Name Unit) := do
   match t.fieldNum with
     | 1 =>
-      -- panic!("Calling Name.1")
       (@Field.guardWireType String) t.wireType
       let x: String ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeId s x))
