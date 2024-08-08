@@ -381,7 +381,6 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         request: &ast::Request,
     ) -> TestResult<TestValidationResult> {
-        use log::debug;
         let request: String = serde_json::to_string(&RequestValidationRequest { schema, request })
             .expect("failed to serialize request");
         let cstring = CString::new(request).expect("CString::new failed");
@@ -396,7 +395,6 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        use log::debug;
         let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
             .expect("failed to serialize request");
         let cstring = CString::new(request).expect("CString::new failed");
@@ -490,9 +488,9 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
     fn validate_entities(
         &self,
         schema: &ValidatorSchema,
-        entities: Entities,
+        entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        let result = self.validate_entities(schema, &entities);
+        let result = self.validate_entities(schema, entities);
         result.map(|res| {
             let errors = res.errors.into_iter().collect();
             TestValidationResult { errors, ..res }
