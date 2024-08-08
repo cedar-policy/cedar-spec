@@ -34,8 +34,8 @@
     #[serde(skip)]
     pub hierarchy: Hierarchy,
 
-    /// the requests to try for this hierarchy and policy. We try 8 requests per
-    /// policy/hierarchy
+    /// the requests to try for this schema and hierarchy. We try 8 requests per
+    /// schema/hierarchy
     #[serde(skip)]
     pub requests: [ABACRequest; 8],
  }
