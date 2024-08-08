@@ -237,7 +237,10 @@ def justType (r : ResultType) : Except TypeError CedarType :=
   r.map Prod.fst
 
 def requiredAttr (a : Attr) (r : ResultType) : Except TypeError (Attr × QualifiedType) :=
-  r.map λ (ty, _) => (a, .required ty)
+  r.bind λ (ty, _) =>
+    match ty with
+      | .attribute_map aty => .error (.unexpectedType aty.attribute_map)
+      | ty => .ok (a, .required ty)
 
 def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarType) : ResultType :=
   match xs with
