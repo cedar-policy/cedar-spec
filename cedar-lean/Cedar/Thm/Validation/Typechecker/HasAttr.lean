@@ -159,12 +159,10 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     rw [h₇] at h₈
     contradiction
 
-theorem type_of_hasAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {aty : CedarType} {request : Request} {entities : Entities} {v₁ : Value}
-  (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
-  (h₃ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
-  (h₄ : evaluate x₁ request entities = Except.ok v₁)
-  (h₅ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
+theorem type_of_hasAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {aty : CedarType} {entities : Entities} {v₁ : Value}
+  (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂))
+  (h₂ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
+  (h₃ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
   ∃ v,
   (hasAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    hasAttr v₁ a entities = Except.error Error.extensionError ∨
@@ -172,11 +170,11 @@ theorem type_of_hasAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁
    hasAttr v₁ a entities = Except.ok v) ∧
   InstanceOfType v ty
 := by
-  have ⟨r, h₅⟩ := instance_of_ea_map_type_is_record h₅
-  subst h₅
-  simp [hasAttr, attrsOf]
-
-  sorry
+  simp only [typeOf, h₂, typeOfHasAttr, List.empty_eq, Except.bind_ok] at h₁
+  injections _ h₁ₗ
+  have ⟨ _, h₃ ⟩ := instance_of_ea_map_type_is_record h₃
+  rw [←h₁ₗ, h₃]
+  simp [hasAttr, attrsOf, InstanceOfType.instance_of_bool, InstanceOfBoolType]
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -204,6 +202,6 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     <;> try exact type_is_inhabited ty
     · exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
     · exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
-    · exact type_of_hasAttr_is_sound_for_ea_maps h₁ h₃ h₄ h₆ h₇
+    · exact type_of_hasAttr_is_sound_for_ea_maps h₃ h₄ h₇
 
 end Cedar.Thm

@@ -237,6 +237,15 @@ theorem instance_of_ea_map_type_is_record {v : Value} {aty : CedarType} :
   rename_i r _
   exists r
 
+theorem instance_of_ea_map_attribute_type {r : Map Attr Value} {v : Value} {aty : CedarType} {a : Attr}
+  (h₁ : InstanceOfType (.record r) (.attribute_map aty))
+  (h₂ : r.find? a = .some v) :
+  InstanceOfType v aty
+:= by
+  cases h₁
+  rename_i h₃
+  exact h₃ a v h₂
+
 theorem instance_of_record_type_is_record {v : Value} {rty : RecordType} :
   InstanceOfType v (.record rty) →
   ∃ r, v = .record r

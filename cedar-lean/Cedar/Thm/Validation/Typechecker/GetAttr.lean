@@ -170,18 +170,31 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
 
 theorem type_of_getAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {aty : CedarType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, ∅))
-  (h₄ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
-  (h₅ : evaluate x₁ request entities = Except.ok v₁)
-  (h₆ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
+  (h₂ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, ∅))
+  (h₃ : typeOf x₁ c₁ env = Except.ok (CedarType.attribute_map aty, c₁'))
+  (h₄ : evaluate x₁ request entities = Except.ok v₁)
+  (h₅ : InstanceOfType v₁ (CedarType.attribute_map aty)) :
   ∃ v,
   (getAttr v₁ a entities = Except.error Error.entityDoesNotExist ∨
    getAttr v₁ a entities = Except.error Error.extensionError ∨
    getAttr v₁ a entities = Except.error Error.arithBoundsError ∨
    getAttr v₁ a entities = Except.ok v) ∧
    InstanceOfType v ty
-:= by sorry
+:= by
+  have ⟨ r, h₆ ⟩ := instance_of_ea_map_type_is_record h₅
+  subst h₆
+  simp only [typeOf, h₃, typeOfGetAttr, getAttrInEAMap, List.empty_eq, Except.bind_ok] at h₂
+  split at h₂ <;> try contradiction
+  cases h₈ : r.find? a
+  case none =>
+    rename_i h₇
+    have ⟨_, h₁₁⟩ := capability_implies_record_attribute h₁ h₄ h₇
+    rw [h₁₁] at h₈
+    contradiction
+  case some =>
+    injections _ h₂
+    simp [←h₂, h₈, getAttr, attrsOf, Map.findOrErr, Except.bind_ok, Except.ok.injEq, false_or, exists_eq_left']
+    exact instance_of_ea_map_attribute_type h₅ h₈
 
 theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -202,7 +215,7 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   <;> try exact type_is_inhabited ty
   · exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₄ h₆ h₇
   · exact type_of_getAttr_is_sound_for_records h₁ h₃ h₄ h₆ h₇
-  · exact type_of_getAttr_is_sound_for_ea_maps h₁ h₂ h₃ h₄ h₆ h₇
+  · exact type_of_getAttr_is_sound_for_ea_maps h₁ h₃ h₄ h₆ h₇
 
 
 end Cedar.Thm
