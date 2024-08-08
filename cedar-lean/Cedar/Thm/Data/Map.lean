@@ -193,6 +193,7 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
+-- Weaker version of
 theorem find_means_mem
   {α : Type u} {β : Type v}
   [LT α] [DecidableLT α] [BEq α] [LawfulBEq α] [DecidableEq α]
@@ -230,21 +231,6 @@ theorem find_means_mem
       rfl
 
 
-theorem find_means_smaller
-  {α β : Type}
-  [LT α]  [DecidableLT α] [BEq α] [LawfulBEq α] [DecidableEq α]
-  {m : Map α β}
-  {k : α}
-  {v : β}
-  {h : m.find? k = some v} :
-  sizeOf v < sizeOf m := by
-  have h₂ := find_means_mem h
-  have s₁ : sizeOf v < sizeOf (k,v) := by simp
-  have s₂ : sizeOf m.kvs < sizeOf m := by apply sizeOf_lt_of_kvs
-  have s₃ : sizeOf (k,v) < sizeOf m.kvs := by
-    apply List.sizeOf_lt_of_mem
-    assumption
-  omega
 
 
 
@@ -365,6 +351,7 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   have h₃ := List.find?_some h₂
   simp only [beq_iff_eq] at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
+
 
 /--
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
@@ -1219,5 +1206,29 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   rw [do_error] at h₁
   have h_values := in_list_in_values hkv
   exists v
+
+/-
+  `sizeOf`
+-/
+
+-- If you can find a value in a map, that value is smaller than the map
+theorem find_means_smaller
+  {α β : Type}
+  [LT α]  [DecidableLT α] [BEq α] [DecidableEq α]
+  {m : Map α β}
+  {k : α}
+  {v : β}
+  {h : m.find? k = some v} :
+  sizeOf v < sizeOf m := by
+  have h₂ : (k,v) ∈ m.kvs := by
+    -- rename_i inst₁ inst₂ inst₃ inst₅
+    -- apply @find?_mem_toList α β inst₁ inst₂ inst₅ m k v h
+    sorry
+  have s₁ : sizeOf v < sizeOf (k,v) := by simp
+  have s₂ : sizeOf m.kvs < sizeOf m := by apply sizeOf_lt_of_kvs
+  have s₃ : sizeOf (k,v) < sizeOf m.kvs := by
+    apply List.sizeOf_lt_of_mem
+    assumption
+  omega
 
 end Cedar.Data.Map
