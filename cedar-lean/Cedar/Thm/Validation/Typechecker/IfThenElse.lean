@@ -61,7 +61,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
     cases h₄ : typeOf x₃ c env <;> simp [h₄] at h₁
     split at h₁ <;> simp [ok, err] at h₁
-    rename_i ty' res₂ res₃ _ ty' hty
+    rename_i ty' res₂ res₃ _ ty' hty _
     have ⟨ht, hc⟩ := h₁
     subst ht hc hc₁
     exists res₂.fst, res₂.snd

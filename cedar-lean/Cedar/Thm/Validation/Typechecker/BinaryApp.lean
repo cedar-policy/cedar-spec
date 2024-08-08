@@ -54,7 +54,8 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     rename_i h₄ <;> simp [h₄]
   case h_2 h₄ =>
     split at h₁
-    case h_1 h₅ =>
+    case h_1 => contradiction
+    case h_2 h₅ =>
       simp at h₁ ; simp [h₁]
       split
       case h_1 p₁ p₂ _ =>
@@ -67,7 +68,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
           constructor
           · exists tc₂.snd
           · simp [h₅]
-    case h_2 h₅ =>
+    case h_3 h₅ =>
       split at h₁ <;> simp at h₁ ; simp [h₁]
       split
       case h_1 p₁ p₂ _ =>
@@ -288,7 +289,7 @@ theorem type_of_contains_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env
   simp [ifLubThenBool, err, ok] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
   simp [h₁]
-  rename_i tc₁ tc₂ _ ty₁ ty₂ ty₃ _ h₄ _ _ h₅
+  rename_i tc₁ tc₂ _ ty₁ ty₂ ty₃ _ h₄ _ _ _ h₅
   exists ty₃, tc₂.fst
   rw [lub_comm] at h₅
   simp [h₅, ←h₄]
@@ -345,7 +346,7 @@ theorem type_of_containsA_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' 
     simp [ifLubThenBool, err, ok] at h₂
     split at h₂ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₂
     simp [h₂]
-    rename_i tc₁ tc₂ _ _ _ ty₁ ty₂ _ h₅ h₆ _ _ h₇
+    rename_i tc₁ tc₂ _ _ _ ty₁ ty₂ _ h₅ h₆ _ _ _ h₇
     exists ty₁, ty₂
     simp [h₇]
     constructor

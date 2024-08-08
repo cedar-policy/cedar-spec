@@ -69,8 +69,9 @@ def typeOfIf (r₁ : CedarType × Capabilities) (r₂ r₃ : ResultType) : Resul
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
     match ty₂ ⊔ ty₃ with
+    | .some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
+    | .none => err (.lubErr ty₂ ty₃)
     | .some ty => ok ty ((c₁ ∪ c₂) ∩ c₃)
-    | .none    => err (.lubErr ty₂ ty₃)
   | (ty₁, _) => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=
@@ -115,6 +116,7 @@ def typeOfEq (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) : ResultType :=
   | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
   | _, _ =>
     match ty₁ ⊔ ty₂ with
+    | .some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
     | .some _ => ok (.bool .anyBool)
     | .none   =>
     match ty₁, ty₂ with
@@ -159,6 +161,7 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
 
 def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
   match ty₁ ⊔ ty₂ with
+  | some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
@@ -226,6 +229,7 @@ def typeOfSet (tys : List CedarType) : ResultType :=
   | []       => err .emptySetErr
   | hd :: tl =>
     match tl.foldlM lub? hd with
+    | .some (.attribute_map aty) => err (.unexpectedType aty.attribute_map)
     | .some ty => ok (.set ty)
     | .none    => err (.incompatibleSetTypes tys)
 
