@@ -262,8 +262,8 @@ decreasing_by
 
     omega
   case _ =>
-    rename_i h₉ h₁₀ h₁₁ hinst₁ type hinst₂
-    rename_i heq₁ _ _ _ _ rty _ _ _ _ _ _ _ _ _ heq₂ _ _ _ _
+    rename_i h₁₀ h₁₁ hinst₁ type hinst₂
+    rename_i heq₁ _ _ _ _ rty _ _ _ _ _ _ _ _ _ heq₂ _ _ _ _ _
     rw [heq₂] at h₁₀
     rw [heq₁]
     rw [heq₂]
