@@ -96,8 +96,8 @@ where
   instanceOfActionSchemaData uid data :=
     match entities.find? uid with
       | .some entry => if data.ancestors == entry.ancestors
-                        then .ok ()
-                        else .error (.typeError "action ancestors inconsistent with type store information")
+                       then .ok ()
+                       else .error (.typeError "action ancestors inconsistent with type store information")
       | _ => .error (.typeError s!"action type {uid.eid} not defined in type store")
 
 def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env.reqty
