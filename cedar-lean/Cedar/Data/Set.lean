@@ -112,6 +112,7 @@ def singleton {α} (a : α) : Set α :=
 def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
   s.elts.foldl f init
 
+
 ----- Instances -----
 
 instance [LT α] : LT (Set α) where

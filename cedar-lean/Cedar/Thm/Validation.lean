@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
 import Cedar.Thm.Validation.Validator
+import Cedar.Thm.Validation.RequestEntityValidation
 
 /-!
 This file contains the top-level correctness properties for the Cedar validator.
@@ -39,12 +40,15 @@ either produces a boolean value, or throws an error of type `entityDoesNotExist`
 `arithBoundsError`. These errors cannot be protected against at validation time, as they depend on runtime
 information.
 -/
+
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
   validate policies schema = .ok () →
-  RequestAndEntitiesMatchSchema schema request entities →
+  validateRequest schema request = .ok () →
+  validateEntities schema entities = .ok () →
   AllEvaluateToBool policies request entities
 := by
-  intro h₀ h₁
+  intro h₀ h₁ h₂
+  have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
   unfold validate at h₀
   simp only [AllEvaluateToBool]
   cases h₃ : policies with

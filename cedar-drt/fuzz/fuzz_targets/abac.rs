@@ -22,7 +22,7 @@ use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
-    hierarchy::{Hierarchy, HierarchyGenerator},
+    hierrarchy::{Hierarchy, HierarchyGenerator},
     schema::Schema,
     settings::ABACSettings,
 };
