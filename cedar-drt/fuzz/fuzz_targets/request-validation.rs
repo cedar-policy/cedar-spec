@@ -72,7 +72,6 @@
          Ok(Self { schema, hierarchy, requests })
      }
  
-//  todo 
      fn size_hint(depth: usize) -> (usize, Option<usize>) {
          arbitrary::size_hint::and_all(&[
              Schema::arbitrary_size_hint(depth),
