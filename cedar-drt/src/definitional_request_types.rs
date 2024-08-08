@@ -56,3 +56,15 @@ pub struct ValidationRequest<'a> {
     pub policies: &'a ast::PolicySet,
     pub mode: ValidationMode,
 }
+
+#[derive(Debug, Serialize)]
+pub struct RequestValidationRequest<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub request: &'a ast::Request,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EntityValidationRequest<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub entities: &'a Entities,
+}
