@@ -36,6 +36,11 @@ open Proto
 
 namespace Cedar.Spec.Request
 
+def makeWf (x: Request) : Request :=
+  {x with
+    context := Cedar.Data.Map.make (x.context.kvs)
+  }
+
 @[inline]
 def mergePrincipal (result: Request) (x: EntityUIDEntry) : Request :=
   {result with
@@ -59,7 +64,7 @@ def mergeContext (result: Request) (x: Value) : Request :=
   match x with
     | .record m =>
       {result with
-        context := Data.Map.make (result.context.kvs ++ m.kvs)
+        context := Data.Map.mk (result.context.kvs ++ m.kvs)
       }
     | _ => panic!("Context is not of correct type")
 
@@ -69,7 +74,7 @@ def merge (x: Request) (y: Request) : Request :=
     principal := Field.merge x.principal y.principal
     action := Field.merge x.action y.action
     resource := Field.merge x.resource y.resource
-    context := Data.Map.make (x.context.kvs ++ y.context.kvs)
+    context := Data.Map.mk (x.context.kvs ++ y.context.kvs)
   }
 
 

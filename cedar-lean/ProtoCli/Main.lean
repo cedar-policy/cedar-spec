@@ -61,14 +61,14 @@ def processJson (filename: String): IO Cedar.Spec.Entities := do
 
 def processProto (filename: String): IO Cedar.Spec.Entities := do
   let result_bytes ← readFileBytes filename
-  let result: Except String Cedar.Spec.Entities := Message.interpret? result_bytes
+  let result: Except String Cedar.Spec.EntitiesProto := Message.interpret? result_bytes
   match result with
     | .error e =>
       println! "Protobuf failed to parse {e}"
       pure default
     | .ok x =>
       println! "Protobuf parse successful"
-      pure x
+      pure (x.toEntitiesWf)
 
 structure Timed (α : Type) where
   data : α

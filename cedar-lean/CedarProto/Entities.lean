@@ -24,6 +24,12 @@ open Cedar.Spec
 open Proto
 
 
+namespace Cedar.Spec
+def EntitiesProto := Array (EntityUID × EntityData)
+deriving instance Inhabited for EntitiesProto
+end Cedar.Spec
+
+
 -- Already defined in Cedar.Spec.Entities
 -- abbrev Entities := Map EntityUID EntityData
 
@@ -31,20 +37,25 @@ open Proto
 -- we need to parse an intermediate representation EntityProto
 -- which contains that and transform it to the appropriate types.
 
-
-
-namespace Cedar.Spec.Entities
+namespace Cedar.Spec.EntitiesProto
 
 @[inline]
-def mergeEntities (result: Entities) (x: Array EntityProto) : Entities :=
-  let newKvs := (x.map (fun xi => Prod.mk xi.uid (EntityData.mk xi.attrs xi.ancestors))).toList
-  Cedar.Data.Map.make (result.kvs ++ newKvs)
+def toEntitiesWf (e: EntitiesProto): Entities :=
+  Cedar.Data.Map.make (e.map (fun ⟨euid, entity⟩ => ⟨euid, entity.makeWf⟩)).toList
 
 @[inline]
-def merge (x: Entities) (y: Entities) : Entities :=
-  Cedar.Data.Map.make (x.kvs ++ y.kvs)
+def mergeEntities (result: EntitiesProto) (x: Array EntityProto) : EntitiesProto :=
+  let newKvs := x.map (fun xi => Prod.mk xi.uid (EntityData.mk xi.attrs xi.ancestors))
+  let result : Array (EntityUID × EntityData) := result
+  result ++ newKvs
 
-def parseField (t: Tag) : BParsec (StateM Entities Unit) := do
+@[inline]
+def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
+  let x : Array (EntityUID × EntityData) := x
+  let y : Array (EntityUID × EntityData) := y
+  x ++ y
+
+def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated EntityProto)) t.wireType
@@ -55,9 +66,9 @@ def parseField (t: Tag) : BParsec (StateM Entities Unit) := do
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)
 
-instance : Message Entities := {
+instance : Message EntitiesProto := {
   parseField := parseField
   merge := merge
 }
 
-end Cedar.Spec.Entities
+end Cedar.Spec.EntitiesProto

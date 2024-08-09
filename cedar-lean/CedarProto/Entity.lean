@@ -31,9 +31,16 @@ open Proto
 
 structure EntityProto where
   uid: EntityUID
-  attrs : Cedar.Data.Map Attr ValueKind
+  attrs : Cedar.Data.Map Attr Value
   ancestors : Cedar.Data.Set EntityUID
 deriving Inhabited
+
+namespace Cedar.Spec.EntityData
+partial def makeWf (e: EntityData) : EntityData :=
+  let newAttrs := Cedar.Data.Map.make (e.attrs.kvs.map (fun ⟨attr, v⟩ => ⟨attr, Value.makeWf v⟩))
+  let newAncestors := Cedar.Data.Set.make (e.ancestors.elts)
+  EntityData.mk newAttrs newAncestors
+end Cedar.Spec.EntityData
 
 namespace Cedar.Spec.EntityProto
 
@@ -44,23 +51,23 @@ def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
   }
 
 @[inline]
-def mergeAttrs (result: EntityProto) (x: Array (String × ValueKind)) : EntityProto :=
+def mergeAttrs (result: EntityProto) (x: Array (String × Value)) : EntityProto :=
   {result with
-    attrs := Cedar.Data.Map.make (result.attrs.kvs ++ x.toList)
+    attrs := Cedar.Data.Map.mk (result.attrs.kvs ++ x.toList)
   }
 
 @[inline]
 def mergeAncestors (result: EntityProto) (x: Array EntityUID) : EntityProto :=
   {result with
-    ancestors := Cedar.Data.Set.make (result.ancestors.elts ++ x.toList)
+    ancestors := Cedar.Data.Set.mk (result.ancestors.elts ++ x.toList)
   }
 
 @[inline]
 def merge (x: EntityProto) (y: EntityProto) : EntityProto :=
   {x with
     uid := Field.merge x.uid y.uid
-    attrs := Cedar.Data.Map.make (x.attrs.kvs ++ y.attrs.kvs)
-    ancestors := Cedar.Data.Set.make (x.ancestors.elts ++ y.ancestors.elts)
+    attrs := Cedar.Data.Map.mk (x.attrs.kvs ++ y.attrs.kvs)
+    ancestors := Cedar.Data.Set.mk (x.ancestors.elts ++ y.ancestors.elts)
   }
 
 
@@ -71,8 +78,8 @@ def parseField (t: Tag) : BParsec (StateM EntityProto Unit) := do
       let x: EntityUID ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeUid s x))
     | 2 =>
-      (@Field.guardWireType (Array (String × ValueKind))) t.wireType
-      let x: (Array (String × ValueKind)) ← BParsec.attempt Field.parse
+      (@Field.guardWireType (Array (String × Value))) t.wireType
+      let x: (Array (String × Value)) ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeAttrs s x))
     | 3 =>
       (@Field.guardWireType (Repeated EntityUID)) t.wireType

@@ -118,59 +118,71 @@ end Cedar.Spec.Prim
 --   | record (m : Map Attr Value)
 --   | ext (x : Ext)
 
-namespace Cedar.Spec.Value
+-- Actual Value data in Protobuf is stored in ValueKind message
+namespace Cedar.Spec
+def ValueKind := Value
+deriving instance Inhabited for ValueKind
+end Cedar.Spec
+namespace Cedar.Spec.ValueKind
 
 @[inline]
-def mergePrim (v: Value) (p2: Prim) : Value :=
+def mergePrim (v: ValueKind) (p2: Prim) : ValueKind :=
   match v with
-    | .prim p1 => Value.prim (Field.merge p1 p2)
-    | _ => Value.prim p2
+    | .prim p1 => .prim (Field.merge p1 p2)
+    | _ => .prim p2
 
 -- Concatenates both sets
 @[inline]
-def mergeSet (v1: Value) (v2: Array Value) : Value :=
+def mergeSet (v1: ValueKind) (v2: Array ValueKind) : ValueKind :=
   match v1 with
-  | set s => Value.set (Data.Set.make (s.elts ++ v2.toList))
-  | _ => Value.set (Data.Set.make v2.toList)
+  | .set s =>
+    let s1: List ValueKind := s.elts
+    let s2: List ValueKind := v2.toList
+    .set (Data.Set.mk (s1 ++ s2))
+  | _ => .set (Data.Set.mk v2.toList)
 
 -- Concatenate both maps
 @[inline]
-def mergeRecord (v: Value) (m: (Array (String × Value))) : Value :=
+def mergeRecord (v: ValueKind) (m: (Array (String × ValueKind))) : ValueKind :=
   match v with
-  | .record m2 => Value.record (Data.Map.make (m2.kvs ++ m.toList))
+  | .record m2 =>
+    let mm1: List (String × ValueKind) := m2.kvs
+    let mm2: List (String × ValueKind) := m.toList
+    .record (Data.Map.mk (mm1 ++ mm2))
   | _ =>
-    Value.record (Data.Map.make m.toList)
+    .record (Data.Map.mk m.toList)
 
 @[inline]
-def merge (v1: Value) (v2: Value) : Value :=
+def merge (v1: ValueKind) (v2: ValueKind) : ValueKind :=
   match v2 with
     | .prim p2 => mergePrim v1 p2
     | .set s2 => mergeSet v1 s2.elts.toArray
     | .record m2 => mergeRecord v1 m2.kvs.toArray
     | .ext _ => panic!("Not implemented")
 
-end Cedar.Spec.Value
-
-def ValueKind := Value
-deriving instance Inhabited for ValueKind
-
-namespace Cedar.Spec.ValueKind
-
-@[inline]
-def mergeValue (x1: ValueKind) (x2: Value) : ValueKind :=
-  Value.merge x1 x2
-
-@[inline]
-def merge (x1: ValueKind) (x2: ValueKind) : ValueKind :=
-  Value.merge x1 x2
-
 end Cedar.Spec.ValueKind
 
+-- There's one additinoal message wrapped around ValueKind
+-- that we need to parse
+namespace Cedar.Spec.Value
 
+@[inline]
+def mergeValueKind (x1: Value) (x2: ValueKind) : Value :=
+  ValueKind.merge x1 x2
+
+@[inline]
+def merge (x1: Value) (x2: Value) : Value :=
+  ValueKind.merge x1 x2
+
+end Cedar.Spec.Value
+
+-- The Value message depends on ValueKind
+-- and the recursive components of ValueKind
+-- depends on Value
 mutual
-partial def parseFieldValue (t: Tag) : BParsec (StateM Value Unit) := do
-  have : Message Value := { parseField := parseFieldValue, merge := Value.merge}
+partial def parseFieldValueKind (t: Tag) : BParsec (StateM ValueKind Unit) := do
   have : Message ValueKind := {parseField := parseFieldValueKind, merge := ValueKind.merge}
+  have : Message Value := { parseField := parseFieldValue, merge := Value.merge}
 
   match t.fieldNum with
     | 2 =>
@@ -190,26 +202,34 @@ partial def parseFieldValue (t: Tag) : BParsec (StateM Value Unit) := do
       pure (pure ())
 
 
-partial def parseFieldValueKind (t: Tag) : BParsec (StateM ValueKind Unit) := do
-  have : Message Value := { parseField := parseFieldValue, merge := Value.merge}
+partial def parseFieldValue (t: Tag) : BParsec (StateM Value Unit) := do
   have : Message ValueKind := {parseField := parseFieldValueKind, merge := ValueKind.merge}
+  have : Message Value := { parseField := parseFieldValue, merge := Value.merge}
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType Value) t.wireType
-      let x: Value ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (ValueKind.mergeValue s x))
+      (@Field.guardWireType ValueKind) t.wireType
+      let x: ValueKind ← BParsec.attempt Field.parse
+      pure (modifyGet fun s => Prod.mk () (Value.mergeValueKind s x))
     | _ =>
       t.wireType.skip
       pure (pure ())
 
 end
 
+instance : Message ValueKind := {
+  parseField := parseFieldValueKind
+  merge := ValueKind.merge
+}
+
 instance : Message Value := {
   parseField := parseFieldValue
   merge := Value.merge
 }
 
-instance : Message ValueKind := {
-  parseField := parseFieldValueKind
-  merge := ValueKind.merge
-}
+namespace Cedar.Spec
+partial def Value.makeWf (v: Value) : Value :=
+  match v with
+    | .set s => Cedar.Data.Set.make (s.elts.map makeWf)
+    | .record m => Cedar.Data.Map.make (m.kvs.map (fun ⟨attr, vi⟩ => ⟨ attr, vi.makeWf ⟩))
+    | _ => v
+end Cedar.Spec
