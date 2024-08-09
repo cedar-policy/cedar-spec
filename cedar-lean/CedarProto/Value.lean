@@ -138,7 +138,7 @@ def mergeSet (v1: ValueKind) (v2: Array ValueKind) : ValueKind :=
   | .set s =>
     let s1: List ValueKind := s.elts
     let s2: List ValueKind := v2.toList
-    .set (Data.Set.mk (s1 ++ s2))
+    .set (Data.Set.mk (s2 ++ s1))
   | _ => .set (Data.Set.mk v2.toList)
 
 -- Concatenate both maps
@@ -148,7 +148,7 @@ def mergeRecord (v: ValueKind) (m: (Array (String × ValueKind))) : ValueKind :=
   | .record m2 =>
     let mm1: List (String × ValueKind) := m2.kvs
     let mm2: List (String × ValueKind) := m.toList
-    .record (Data.Map.mk (mm1 ++ mm2))
+    .record (Data.Map.mk (mm2 ++ mm1))
   | _ =>
     .record (Data.Map.mk m.toList)
 

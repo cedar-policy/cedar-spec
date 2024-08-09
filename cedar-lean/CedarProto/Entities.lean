@@ -47,13 +47,13 @@ def toEntitiesWf (e: EntitiesProto): Entities :=
 def mergeEntities (result: EntitiesProto) (x: Array EntityProto) : EntitiesProto :=
   let newKvs := x.map (fun xi => Prod.mk xi.uid (EntityData.mk xi.attrs xi.ancestors))
   let result : Array (EntityUID × EntityData) := result
-  result ++ newKvs
+  newKvs ++ result
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
   let x : Array (EntityUID × EntityData) := x
   let y : Array (EntityUID × EntityData) := y
-  x ++ y
+  y ++ x
 
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with
