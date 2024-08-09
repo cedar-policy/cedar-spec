@@ -193,50 +193,6 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
--- Weaker version of
-theorem find_means_mem
-  {α : Type u} {β : Type v}
-  [LT α] [DecidableLT α] [BEq α] [LawfulBEq α] [DecidableEq α]
-  {m : Map α β}
-  {k : α}
-  {v : β}
-  (h : m.find? k = some v) :
-  (k,v) ∈ m.kvs
-  := by
-  cases m
-  rename_i kvs
-  induction kvs
-  case nil =>
-    simp [find?, List.find?] at h
-  case cons head tail ih =>
-    simp [kvs]
-    cases head
-    rename_i key value
-    cases heq : decide (key = k) <;> simp at heq
-    case _ =>
-      have beq : (key == k) = false := by
-        rw [beq_eq_false_iff_ne]
-        assumption
-      apply Or.inr
-      simp [kvs] at ih
-      apply ih
-      simp [find?, List.find?, beq] at h
-      simp [find?, List.find?]
-      apply h
-    case _ =>
-      apply Or.inl
-      subst heq
-      simp [find?, List.find?] at h
-      subst h
-      rfl
-
-
-
-
-
-
-
-
 /-! ### make and mk -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
@@ -351,7 +307,6 @@ theorem find?_mem_toList {α β} [LT α] [DecidableLT α] [DecidableEq α] {m : 
   have h₃ := List.find?_some h₂
   simp only [beq_iff_eq] at h₃ ; subst h₃
   exact List.mem_of_find?_eq_some h₂
-
 
 /--
   The `mpr` direction of this does not need the `wf` precondition and, in fact,
@@ -604,6 +559,9 @@ theorem in_kvs_in_mapOnValues [LT α] [DecidableLT α] [DecidableEq α] {f : β 
   simp only [kvs, List.mem_map, Prod.mk.injEq]
   exists (k, v)
 
+/--
+  We can remove the attach for the sake of proofs
+-/
 theorem mapOnValuesAttachIsMapOnValues
   {α : Type u} {β γ : Type v} [LT α] [DecidableLT α]
   {m : Map α β}
@@ -626,6 +584,10 @@ theorem mapOnValues_cons
   rw [← eq_iff_kvs_eq]
   simp [mapOnValues, List.map]
 
+/--
+  Keys are not effected by mapping on values
+  ie: the domain of a map is unchanged by map on values
+-/
 theorem mapOnValuesAttach_preservesContains
   {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
   {m : Map α β}
@@ -678,21 +640,20 @@ theorem mapOnValuesAttach_preservesContains
         subst heq_head_key
         simp [contains, find?, List.find?] at hcontains
 
-
+/--
+  An adapter that makes the above lemma easier to apply in context
+-/
 theorem mapOnValuesAttach_preservesContains_adapter
   {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
   {m : Map α β}
   {f : {x // ∃ k, (k,x) ∈ m.kvs} → γ}
   {k : α}
-  {h₁ : ∃ (f' : β → γ), f = (λ prod => f' prod.val)}
-  :
+  {h₁ : ∃ (f' : β → γ), f = (λ prod => f' prod.val)} :
   (m.contains k ) = (m.mapOnValuesAttach f).contains k
   := by
   replace ⟨f', h₁⟩ := h₁
   rw [h₁]
   apply mapOnValuesAttach_preservesContains
-
-
 
 theorem mapOnValuesAttach_preservesKeys
   {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
@@ -701,9 +662,7 @@ theorem mapOnValuesAttach_preservesKeys
   {k : α}
   {h : m.contains k = true} :
   (m.mapOnValuesAttach (λ v => f v.val)).contains k = true
-
   := by
-
   rw [← mapOnValuesAttachIsMapOnValues]
   cases m
   rename_i kvs
@@ -735,7 +694,6 @@ theorem mapOnValuesAttach_preservesKeys
         rw [heq_head] at h
         simp at h
         simp [contains, find?, kvs] at htail
-
         cases h' : List.find? (fun x => x.fst == k) tail
         case none =>
           rw [h'] at h
@@ -743,7 +701,6 @@ theorem mapOnValuesAttach_preservesKeys
         case some =>
           rw [h'] at htail
           simp at htail
-
 
 theorem mapOnValuesAttach_preservesKeys_adapter
   {α : Type u} {β γ : Type v} [LT α] [DecidableLT α] [BEq α ] [LawfulBEq α] [DecidableEq α]
@@ -814,7 +771,6 @@ theorem mapOnValues_maps_adapter
   apply mapOnValues_maps
   assumption
 
-
 theorem mapOnValuesAttachFunEq
   {α : Type u} {β γ : Type v}
   [LT α] [DecidableLT α] [BEq α]
@@ -826,11 +782,6 @@ theorem mapOnValuesAttachFunEq
   (m.mapOnValuesAttach f₁).find? k = (m.mapOnValuesAttach f₂).find? k
   := by
   rw [h₁]
-
-
-
-
-
 
 /--
   Converse of `in_kvs_in_mapOnValues`; requires the extra preconditions that `m`
@@ -1207,23 +1158,56 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
-/-
-  `sizeOf`
--/
+/-! ### `sizeOf` -/
+
+theorem find_means_mem
+  {α : Type u} {β : Type v}
+  [LT α] [DecidableLT α] [BEq α] [LawfulBEq α] [DecidableEq α]
+  {m : Map α β}
+  {k : α}
+  {v : β}
+  (h : m.find? k = some v) :
+  (k,v) ∈ m.kvs
+  := by
+  cases m
+  rename_i kvs
+  induction kvs
+  case nil =>
+    simp [find?, List.find?] at h
+  case cons head tail ih =>
+    simp [kvs]
+    cases head
+    rename_i key value
+    cases heq : decide (key = k) <;> simp at heq
+    case _ =>
+      have beq : (key == k) = false := by
+        rw [beq_eq_false_iff_ne]
+        assumption
+      apply Or.inr
+      simp [kvs] at ih
+      apply ih
+      simp [find?, List.find?, beq] at h
+      simp [find?, List.find?]
+      apply h
+    case _ =>
+      apply Or.inl
+      subst heq
+      simp [find?, List.find?] at h
+      subst h
+      rfl
 
 -- If you can find a value in a map, that value is smaller than the map
 theorem find_means_smaller
   {α β : Type}
-  [LT α]  [DecidableLT α] [BEq α] [DecidableEq α]
+  [LT α] [DecidableLT α] [DecidableEq α]
   {m : Map α β}
   {k : α}
   {v : β}
   {h : m.find? k = some v} :
   sizeOf v < sizeOf m := by
   have h₂ : (k,v) ∈ m.kvs := by
-    -- rename_i inst₁ inst₂ inst₃ inst₅
-    -- apply @find?_mem_toList α β inst₁ inst₂ inst₅ m k v h
-    sorry
+    apply find?_mem_toList
+    assumption
   have s₁ : sizeOf v < sizeOf (k,v) := by simp
   have s₂ : sizeOf m.kvs < sizeOf m := by apply sizeOf_lt_of_kvs
   have s₃ : sizeOf (k,v) < sizeOf m.kvs := by
