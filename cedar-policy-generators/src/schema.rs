@@ -1228,14 +1228,19 @@ impl Schema {
             // 32% Eq, 16% In, 16% Is, 16% IsIn
             let uid = self
                 .exprgenerator(Some(hierarchy))
-                .arbitrary_principal_uid(u)?;
-            let ety = u.choose(self.entity_types())?.clone();
-            gen!(u,
-                2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::In(uid)),
-                1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
-                1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
-            )
+                .arbitrary_principal_uid(u);
+            match uid {
+                Ok(uid) => {
+                    let ety = u.choose(self.entity_types())?.clone();
+                    gen!(u,
+                        2 => Ok(PrincipalOrResourceConstraint::Eq(uid)),
+                        1 => Ok(PrincipalOrResourceConstraint::In(uid)),
+                        1 => Ok(PrincipalOrResourceConstraint::IsType(ety)),
+                        1 => Ok(PrincipalOrResourceConstraint::IsTypeIn(ety, uid))
+                    )
+                }
+                Err(_) => Ok(PrincipalOrResourceConstraint::NoConstraint),
+            }
         }
     }
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {

@@ -15,6 +15,7 @@
  */
 
 use cedar_policy_core::ast;
+use std::io::Write;
 
 /// Our Error type, which carries somewhat more information than
 /// `arbitrary::Error`, for the purposes of debugging and metrics
@@ -66,6 +67,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 impl From<Error> for arbitrary::Error {
     fn from(e: Error) -> arbitrary::Error {
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("errors.txt")
+            .unwrap();
+        writeln!(file, "{:?}", e).expect("Error writing to error file");
         match e {
             Error::NotEnoughData => arbitrary::Error::NotEnoughData,
             Error::EmptyChoose { .. } => arbitrary::Error::EmptyChoose,

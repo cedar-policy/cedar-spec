@@ -282,18 +282,21 @@ impl ConstantPool {
         } else {
             self.arbitrary_ipv6_str(u)?
         };
-        mutate_str(u, &valid_str).map(SmolStr::new)
+        Ok(valid_str.into())
+        // mutate_str(u, &valid_str).map(SmolStr::new)
     }
 
     /// Generate a valid decimal number representation and mutate it
     pub fn arbitrary_decimal_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         let i = self.arbitrary_int_constant(u)?;
-        mutate_str(
-            u,
-            // Replicate from Core
-            &format!("{}.{}", i / i64::pow(10, 4), (i % i64::pow(10, 4)).abs()),
-        )
-        .map(SmolStr::new)
+        // mutate_str(
+        //     u,
+        //     // Replicate from Core
+        //     &format!("{}.{}", i / i64::pow(10, 4), (i % i64::pow(10, 4)).abs()),
+        // )
+        // .map(SmolStr::new)
+        let decimal_str = format!("{}.{}", i / i64::pow(10, 4), (i % i64::pow(10, 4)).abs());
+        Ok(decimal_str.into())
     }
 
     /// size hint for arbitrary_string_constant()

@@ -27,7 +27,8 @@ use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, UnreservedId};
+use cedar_policy_core::ast::{self, Expr, UnreservedId};
+use cedar_policy_validator::{SchemaType, SchemaTypeVariant};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -265,6 +266,25 @@ impl<'a> ExprGenerator<'a> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
+        match self.generate_expr_for_type_inner(target_type, max_depth, u) {
+            Ok(expr) => Ok(expr),
+            Err(_) => {
+                // If we get a `LikeDisabled` error, we should just try again.
+                self.generate_const_expr_for_type(target_type, u)
+            }
+        }
+    }
+
+    pub fn generate_expr_for_type_inner(
+        &self,
+        target_type: &Type,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        // println!(
+        //     "Generating expr for type: {:?} and depth {}",
+        //     target_type, max_depth
+        // );
         if self.should_generate_unknown(max_depth, u)? {
             let v = self.generate_value_for_type(target_type, max_depth, u)?;
             let name = self.unknown_pool.alloc(target_type.clone(), v);
@@ -280,7 +300,8 @@ impl<'a> ExprGenerator<'a> {
                         // no recursion allowed, so, just do a literal
                         Ok(ast::Expr::val(u.arbitrary::<bool>()?))
                     } else {
-                        gen!(u,
+                        // Generate a boolean expression, but return a literal if it fails
+                        let bool_expr = gen!(u,
                         // bool literal
                         2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
                         // == expression, where types on both sides match
@@ -592,7 +613,12 @@ impl<'a> ExprGenerator<'a> {
                                 u,
                             )?,
                             self.constant_pool.arbitrary_string_constant(u)?,
-                        )))
+                        )));
+                        if let Ok(expr) = bool_expr {
+                            Ok(expr)
+                        } else {
+                            Ok(ast::Expr::val(u.arbitrary::<bool>()?))
+                        }
                     }
                 }
                 Type::Long => {
@@ -868,7 +894,14 @@ impl<'a> ExprGenerator<'a> {
                 Type::Record => {
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed
-                        Err(Error::TooDeep)
+                        let mut r = HashMap::new();
+                        u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
+                            let attr_val = self.generate_expr_for_type(&u.arbitrary()?, 0, u)?;
+                            r.insert(self.constant_pool.arbitrary_string_constant(u)?, attr_val);
+                            Ok(std::ops::ControlFlow::Continue(()))
+                        })?;
+                        Ok(ast::Expr::record(r)
+                            .expect("can't have duplicate keys because `r` was already a HashMap"))
                     } else {
                         gen!(u,
                         // record literal
@@ -1136,8 +1169,24 @@ impl<'a> ExprGenerator<'a> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
+        match self.generate_expr_for_schematype_inner(target_type, max_depth, u) {
+            Ok(expr) => Ok(expr),
+            Err(_) => self.generate_const_expr_for_schematype(target_type, u),
+        }
+    }
+
+    pub fn generate_expr_for_schematype_inner(
+        &self,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
         use cedar_policy_validator::SchemaType;
         use cedar_policy_validator::SchemaTypeVariant;
+        // println!(
+        //     "Generating expr for schematype: {:?} and depth {}",
+        //     target_type, max_depth
+        // );
         match target_type {
             SchemaType::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
                 self.schema
@@ -1236,7 +1285,37 @@ impl<'a> ExprGenerator<'a> {
             }) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed
-                    Err(Error::TooDeep)
+                    let mut r: HashMap<SmolStr, ast::Expr> = HashMap::new();
+                    if *additional_attributes {
+                        // maybe add some additional attributes with arbitrary types
+                        u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
+                            let attr_type = if self.settings.enable_extensions {
+                                u.arbitrary()?
+                            } else {
+                                Type::arbitrary_nonextension(u)?
+                            };
+                            let attr_name = {
+                                let s: String = u.arbitrary()?;
+                                SmolStr::from(s)
+                            };
+                            r.insert(attr_name, self.generate_expr_for_type(&attr_type, 0, u)?);
+                            Ok(std::ops::ControlFlow::Continue(()))
+                        })?;
+                    }
+                    for (attr, ty) in attributes {
+                        // now add the actual optional and required attributes, with the
+                        // correct types.
+                        // Doing this second ensures that we overwrite any "additional"
+                        // attributes so that they definitely have the required type, in
+                        // case we got a name collision between an explicitly specified
+                        // attribute and one of the "additional" ones we added.
+                        if ty.required || u.ratio::<u8>(1, 2)? {
+                            let attr_val = self.generate_expr_for_schematype(&ty.ty, 0, u)?;
+                            r.insert(attr.clone(), attr_val);
+                        }
+                    }
+                    Ok(ast::Expr::record(r)
+                        .expect("can't have duplicate keys because `r` was already a HashMap"))
                 } else {
                     gen!(u,
                     // record literal
@@ -1440,6 +1519,7 @@ impl<'a> ExprGenerator<'a> {
         target_type: &Type,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
+        // println!("Generating const expr for type: {:?}", target_type);
         match target_type {
             Type::Bool => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
             Type::Long => Ok(ast::Expr::val(
@@ -1463,8 +1543,8 @@ impl<'a> ExprGenerator<'a> {
             Type::Record => {
                 let mut r = HashMap::new();
                 u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
-                    let (attr_name, _) = self.schema.arbitrary_attr(u)?;
-                    r.insert(attr_name.clone(), self.generate_const_expr(u)?);
+                    let attr_val = self.generate_expr_for_type(&u.arbitrary()?, 0, u)?;
+                    r.insert(self.constant_pool.arbitrary_string_constant(u)?, attr_val);
                     Ok(std::ops::ControlFlow::Continue(()))
                 })?;
                 Ok(ast::Expr::record(r)
@@ -1480,8 +1560,104 @@ impl<'a> ExprGenerator<'a> {
                 )))
             }
             Type::IPAddr | Type::Decimal => {
-                unimplemented!("constant expression of type ipaddr or decimal")
+                let constructor = self
+                    .ext_funcs
+                    .arbitrary_constructor_for_type(target_type, u)?;
+                let args = vec![ast::Expr::val(match target_type {
+                    Type::IPAddr => self.constant_pool.arbitrary_ip_str(u)?,
+                    Type::Decimal => self.constant_pool.arbitrary_decimal_str(u)?,
+                    _ => unreachable!("ty is deemed to be an extension type"),
+                })];
+                Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
             }
+        }
+    }
+
+    /// get an arbitrary constant of a given type, as an expression.
+    #[allow(dead_code)]
+    fn generate_const_expr_for_schematype(
+        &self,
+        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        // println!("Generating const expr for schematype: {:?}", target_type);
+        match target_type {
+            SchemaType::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
+                self.schema
+                    .schema
+                    .common_types
+                    .get(&type_name.clone().try_into().unwrap())
+                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
+                0,
+                u,
+            ),
+            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+                Ok(ast::Expr::val(u.arbitrary::<bool>()?))
+            }
+            SchemaType::Type(SchemaTypeVariant::Long) => Ok(ast::Expr::val(
+                self.constant_pool.arbitrary_int_constant(u)?,
+            )),
+            SchemaType::Type(SchemaTypeVariant::String) => Ok(ast::Expr::val(
+                self.constant_pool.arbitrary_string_constant(u)?,
+            )),
+            SchemaType::Type(SchemaTypeVariant::Set {
+                element: element_ty,
+            }) => {
+                let mut l = Vec::new();
+                u.arbitrary_loop(Some(0), Some(self.settings.max_width as u32), |u| {
+                    l.push(self.generate_expr_for_schematype(element_ty, 0, u)?);
+                    Ok(std::ops::ControlFlow::Continue(()))
+                })?;
+                Ok(ast::Expr::set(l))
+            }
+            SchemaType::Type(SchemaTypeVariant::Record {
+                attributes,
+                additional_attributes,
+            }) => {
+                let mut r: HashMap<SmolStr, ast::Expr> = HashMap::new();
+                if *additional_attributes {
+                    // maybe add some additional attributes with arbitrary types
+                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
+                        let attr_type = if self.settings.enable_extensions {
+                            u.arbitrary()?
+                        } else {
+                            Type::arbitrary_nonextension(u)?
+                        };
+                        let attr_name = {
+                            let s: String = u.arbitrary()?;
+                            SmolStr::from(s)
+                        };
+                        r.insert(attr_name, self.generate_expr_for_type(&attr_type, 0, u)?);
+                        Ok(std::ops::ControlFlow::Continue(()))
+                    })?;
+                }
+                for (attr, ty) in attributes {
+                    // now add the actual optional and required attributes, with the
+                    // correct types.
+                    // Doing this second ensures that we overwrite any "additional"
+                    // attributes so that they definitely have the required type, in
+                    // case we got a name collision between an explicitly specified
+                    // attribute and one of the "additional" ones we added.
+                    if ty.required || u.ratio::<u8>(1, 2)? {
+                        let attr_val = self.generate_expr_for_schematype(&ty.ty, 0, u)?;
+                        r.insert(attr.clone(), attr_val);
+                    }
+                }
+                Ok(ast::Expr::record(r)
+                    .expect("can't have duplicate keys because `r` was already a HashMap"))
+            }
+            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
+                Ok(ast::Expr::var(*u.choose(&[
+                    ast::Var::Principal,
+                    ast::Var::Action,
+                    ast::Var::Resource,
+                ])?))
+            }
+            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_ref() {
+                "ipaddr" => self.generate_const_expr_for_type(&Type::ipaddr(), u),
+                "decimal" => self.generate_const_expr_for_type(&Type::decimal(), u),
+                _ => panic!("unrecognized extension type: {name:?}"),
+            },
         }
     }
 
@@ -1601,9 +1777,9 @@ impl<'a> ExprGenerator<'a> {
             }
             Type::IPAddr | Type::Decimal => {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
-                if max_depth == 0 {
-                    return Err(Error::TooDeep);
-                }
+                // if max_depth == 0 {
+                //     return Err(Error::TooDeep);
+                // }
                 let func = self
                     .ext_funcs
                     .arbitrary_constructor_for_type(target_type, u)?;
@@ -2076,6 +2252,16 @@ impl<'a> ExprGenerator<'a> {
         4 => Ok(ast::Expr::val(
             arbitrary_specified_uid(u)?,
         )))
+    }
+
+    fn generate_bool_literal(&self, u: &mut Unstructured<'_>) -> Result<ast::Expr> {
+        Ok(ast::Expr::val(u.arbitrary::<bool>()?))
+    }
+
+    fn generate_int_literal(&self, u: &mut Unstructured<'_>) -> Result<ast::Expr> {
+        Ok(ast::Expr::val(
+            self.constant_pool.arbitrary_int_constant(u)?,
+        ))
     }
 
     /// get a UID of a type declared in the schema -- may be a principal,
