@@ -904,12 +904,12 @@ impl Schema {
                             let mut picked_principal_types =
                                 pick_entity_types(&mut principal_types, u)?;
                             if principal_and_resource_types_exist {
-                                if u.ratio(1, 8)? {
-                                    picked_principal_types.clear();
-                                }
-                                if u.ratio(1, 8)? {
-                                    picked_resource_types.clear();
-                                }
+                                // if u.ratio(1, 8)? {
+                                //     picked_principal_types.clear();
+                                // }
+                                // if u.ratio(1, 8)? {
+                                //     picked_resource_types.clear();
+                                // }
                             } else {
                                 principal_and_resource_types_exist = true;
                             }
