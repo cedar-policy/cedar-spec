@@ -488,9 +488,9 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
     fn validate_entities(
         &self,
         schema: &ValidatorSchema,
-        entities: Entities,
+        entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        let result = self.validate_entities(schema, &entities);
+        let result = self.validate_entities(schema, entities);
         result.map(|res| {
             let errors = res.errors.into_iter().collect();
             TestValidationResult { errors, ..res }
