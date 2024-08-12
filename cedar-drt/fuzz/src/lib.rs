@@ -382,7 +382,7 @@ fn test_run_auth_test() {
     use cedar_drt::LeanDefinitionalEngine;
     use cedar_policy_core::ast::{
         Entity, EntityUID, PolicyID, RequestSchemaAllPass, RestrictedExpr,
-    }; 
+    };
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
