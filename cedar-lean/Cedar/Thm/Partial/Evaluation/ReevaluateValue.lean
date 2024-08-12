@@ -581,7 +581,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
               replace ⟨pv₂, hpv₂, h₇⟩ := List.mapM_error_implies_exists_error h₇
               replace ⟨pv₃, hpv₃, h₁⟩ := List.mapM_ok_implies_all_from_ok h₁ pv₂ hpv₂
               have wf₃ : pv₃.WellFormed := wf_r pv₃ hpv₃
-              have : sizeOf pv₃ < sizeOf pvs := by sorry
+              have : sizeOf pv₃ < sizeOf pvs := List.sizeOf_lt_of_mem hpv₃
               simp [reeval_eqv_substituting_first wf₃ wf_e wf_s h₁] at h₇
               replace h₂ := List.mapM_ok_implies_all_ok h₂ pv₃ hpv₃
               simp [h₇] at h₂
@@ -600,12 +600,12 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
             case error e =>
               replace ⟨pv₂', hpv₂', h₉⟩ := List.mapM_error_implies_exists_error h₉
               replace ⟨pv'', hpv'', h₁⟩ := List.mapM_ok_implies_all_from_ok h₁ pv₂' hpv₂'
-              have wf'' : pv''.WellFormed := by sorry
-              have : sizeOf pv'' < sizeOf pvs := by sorry
+              have wf'' : pv''.WellFormed := wf_r pv'' hpv''
+              have : sizeOf pv'' < sizeOf pvs := List.sizeOf_lt_of_mem hpv''
               have : sizeOf pvs < sizeOf (Partial.ResidualExpr.set pvs) := EvaluateValue.sizeOf_lt_set pvs
               simp [reeval_eqv_substituting_first wf'' wf_e wf_s h₁] at h₉
               cases pv₂'
-              case value v₂ => simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (by sorry) h₁] at h₉
+              case value v₂ => simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf'' h₁] at h₉
               case residual r₂ =>
                 sorry
             case ok pvs₄ =>
@@ -618,6 +618,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
                 sorry
       case error e =>
         replace ⟨pv, hpv, h₂⟩ := List.mapM_error_implies_exists_error h₂
+        have wf_pv : pv.WellFormed := wf_r pv hpv
         split <;> rename_i h₃ <;> simp only [Except.ok.injEq]
         <;> intro _ <;> subst pv'
         · exfalso
@@ -625,7 +626,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           replace ⟨pv₂, hpv₂, v₂, hv₂, h₁⟩ := mapM_ok_some h₁ h₃ pv hpv
           split at h₁ <;> simp at h₁
           replace ⟨h₁, h₁'⟩ := h₁ ; subst v₂ ; rename_i v₂
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (by sorry) h₁] at h₂
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₁] at h₂
         · replace ⟨pv', hpv', pv₂, hpv₂, h₁, h₃⟩ := mapM_ok_none h₁ h₃
           split at h₃ <;> simp at h₃ ; rename_i r₂
           simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual]
