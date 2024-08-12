@@ -21,7 +21,6 @@ import Cedar.Thm.Partial.Evaluation.EvaluateBinaryApp
 import Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
 import Cedar.Thm.Partial.Evaluation.EvaluateValue
 import Cedar.Thm.Partial.Evaluation.ReevaluateGetAttr
-import Cedar.Thm.Partial.Evaluation.Tactic
 import Cedar.Thm.Partial.Subst
 
 /-! This file contains theorems about reevaluation of `Partial.evaluateValue` (and `Partial.evaluateResidual`). -/
