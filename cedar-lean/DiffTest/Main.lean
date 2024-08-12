@@ -118,7 +118,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
 @[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : String) : String :=
   let result : ParseResult (Timed EntityValidationResult) :=
     match Lean.Json.parse req with
-    | .error e => .error s!"validateEntities: failed to parse input: {e}"
+    | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
     | .ok json => do
         let schema ← getJsonField json "schema" >>= jsonToSchema
         let entities ← getJsonField json "entities" >>= jsonToEntities
@@ -132,7 +132,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
 @[export validateRequestDRT] unsafe def validateRequestDRT (req : String) : String :=
   let result : ParseResult (Timed RequestValidationResult) :=
     match Lean.Json.parse req with
-    | .error e => .error s!"validateEntities: failed to parse input: {e}"
+    | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
     | .ok json => do
         let schema ← getJsonField json "schema" >>= jsonToSchema
         let request ← getJsonField json "request" >>= jsonToRequest
