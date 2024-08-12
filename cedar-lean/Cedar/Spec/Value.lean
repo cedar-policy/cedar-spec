@@ -42,7 +42,6 @@ structure Name where
 
 abbrev EntityType := Name
 
-
 structure EntityUID where
   ty : EntityType
   eid : String
