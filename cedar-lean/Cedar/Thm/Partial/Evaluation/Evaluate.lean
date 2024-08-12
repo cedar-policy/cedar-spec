@@ -265,7 +265,7 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
     have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r
     unfold SubstPreservesEvaluationToConcrete at h₁
     intro h_req
-    exact h₁ wf_s h_req v
+    exact h₁ h_req v
   case and x₁ x₂ =>
     intro h_req h₁
     have h₂ := And.evals_to_concrete_then_operands_eval_to_concrete (by
