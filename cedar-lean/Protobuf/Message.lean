@@ -4,10 +4,6 @@ import Protobuf.Packed
 import Protobuf.Types
 namespace Proto
 
--- @[reducible]
--- def MessageM (α: Type) : Type := StateM α Unit
-
-
 class Message (α : Type) [Inhabited α] where
   parseField : Tag → BParsec (StateM α Unit)
   merge: α → α → α
@@ -38,7 +34,8 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
 def parse {α: Type} [Inhabited α] [Message α] : BParsec α := do
   let remaining ← BParsec.remaining
-  let message_m: StateM α Unit ← parseMessageHelper remaining (pure ())
+  let initial: StateM α Unit := pure ()
+  let message_m: StateM α Unit ← parseMessageHelper remaining initial
   BParsec.eof
   pure (StateT.run message_m default).snd
 
@@ -57,12 +54,24 @@ def interpret? {α: Type} [Inhabited α] [Message α] (b: ByteArray) : Except St
 def interpret! {α: Type} [Inhabited α] [Message α] (b: ByteArray) : α :=
   BParsec.run! parse b
 
-instance [Inhabited α] [Message α] : Field α := {
+instance {α: Type} [Inhabited α] [Message α] : Field α := {
   parse := parseWithLen
   checkWireType := fun (w: WireType) => WireType.LEN = w
   merge := merge
 }
 
 end Message
+
+namespace Field
+
+def fromIntMessage {α β: Type} [Inhabited α] [Message α] (convert: α → β) (merge: β → β → β) : Field β := {
+  parse := do
+    let intMessage: α ← Field.parse
+    pure (convert intMessage)
+  checkWireType := Field.checkWireType α
+  merge := merge
+}
+
+end Field
 
 end Proto

@@ -25,24 +25,22 @@ open Cedar.Spec
 open Proto
 
 
--- EntityData is defined in Cedar.Spec.Entities
--- however it doesn't have the "" field which is
+-- NOTE: EntityData is defined in Cedar.Spec.Entities
+-- however it doesn't have the uid field which is
 -- needed when crafting Entities
 
 structure EntityProto where
   uid: EntityUID
-  attrs : Cedar.Data.Map Attr Value
-  ancestors : Cedar.Data.Set EntityUID
+  attrs : Array (Attr × Value)
+  ancestors : Repeated EntityUID
 deriving Inhabited
 
-namespace Cedar.Spec.EntityData
-partial def makeWf (e: EntityData) : EntityData :=
-  let newAttrs := Cedar.Data.Map.make (e.attrs.kvs.map (fun ⟨attr, v⟩ => ⟨attr, Value.makeWf v⟩))
-  let newAncestors := Cedar.Data.Set.make (e.ancestors.elts)
-  EntityData.mk newAttrs newAncestors
-end Cedar.Spec.EntityData
-
 namespace Cedar.Spec.EntityProto
+
+def toEntityData (e: EntityProto) : EntityData :=
+  let newAttrs := Cedar.Data.Map.make e.attrs.toList
+  let newAncestors := Cedar.Data.Set.make e.ancestors.toList
+  EntityData.mk newAttrs newAncestors
 
 @[inline]
 def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
@@ -53,24 +51,24 @@ def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
 @[inline]
 def mergeAttrs (result: EntityProto) (x: Array (String × Value)) : EntityProto :=
   {result with
-    attrs := Cedar.Data.Map.mk (x.toList ++ result.attrs.kvs)
+    attrs := Field.merge x result.attrs
   }
 
 @[inline]
 def mergeAncestors (result: EntityProto) (x: Array EntityUID) : EntityProto :=
   {result with
-    ancestors := Cedar.Data.Set.mk (x.toList ++ result.ancestors.elts)
+    ancestors := Field.merge x result.ancestors
   }
 
 @[inline]
 def merge (x: EntityProto) (y: EntityProto) : EntityProto :=
   {x with
     uid := Field.merge x.uid y.uid
-    attrs := Cedar.Data.Map.mk (y.attrs.kvs ++ x.attrs.kvs)
-    ancestors := Cedar.Data.Set.mk (y.ancestors.elts ++ x.ancestors.elts)
+    attrs := Field.merge y.attrs x.attrs
+    ancestors := Field.merge y.ancestors x.ancestors
   }
 
-
+@[inline]
 def parseField (t: Tag) : BParsec (StateM EntityProto Unit) := do
   match t.fieldNum with
     | 1 =>

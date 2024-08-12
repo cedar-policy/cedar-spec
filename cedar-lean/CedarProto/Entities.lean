@@ -25,7 +25,7 @@ open Proto
 
 
 namespace Cedar.Spec
-def EntitiesProto := Array (EntityUID × EntityData)
+def EntitiesProto: Type := Array EntityProto
 deriving instance Inhabited for EntitiesProto
 end Cedar.Spec
 
@@ -39,20 +39,17 @@ end Cedar.Spec
 
 namespace Cedar.Spec.EntitiesProto
 
-@[inline]
-def toEntitiesWf (e: EntitiesProto): Entities :=
-  Cedar.Data.Map.make (e.map (fun ⟨euid, entity⟩ => ⟨euid, entity.makeWf⟩)).toList
+
 
 @[inline]
 def mergeEntities (result: EntitiesProto) (x: Array EntityProto) : EntitiesProto :=
-  let newKvs := x.map (fun xi => Prod.mk xi.uid (EntityData.mk xi.attrs xi.ancestors))
-  let result : Array (EntityUID × EntityData) := result
-  newKvs ++ result
+  let result : Array EntityProto := result
+  x ++ result
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
-  let x : Array (EntityUID × EntityData) := x
-  let y : Array (EntityUID × EntityData) := y
+  let x : Array EntityProto := x
+  let y : Array EntityProto := y
   y ++ x
 
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
@@ -71,4 +68,19 @@ instance : Message EntitiesProto := {
   merge := merge
 }
 
+@[inline]
+def toEntities (e: EntitiesProto): Entities :=
+  Cedar.Data.Map.make (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩)).toList
+
 end Cedar.Spec.EntitiesProto
+
+
+namespace Cedar.Spec.Entities
+@[inline]
+def merge (e1: Entities) (e2: Entities): Entities :=
+  let e1: Cedar.Data.Map EntityUID EntityData := e1
+  let e2: Cedar.Data.Map EntityUID EntityData := e2
+  Cedar.Data.Map.make (e1.kvs ++ e2.kvs)
+
+instance : Field Entities := Field.fromIntMessage EntitiesProto.toEntities merge
+end Cedar.Spec.Entities

@@ -55,7 +55,6 @@ def merge (x1: EntityUID) (x2: EntityUID) : EntityUID :=
 def parseField (t: Tag) : BParsec (StateM EntityUID Unit) := do
   match t.fieldNum with
     | 1 =>
-      -- panic!("Parsing EntityUID.1")
       (@Field.guardWireType EntityTypeProto) t.wireType
       let x: EntityTypeProto ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (s.mergeTy x))

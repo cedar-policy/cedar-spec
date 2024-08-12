@@ -68,7 +68,7 @@ def processProto (filename: String): IO Cedar.Spec.Entities := do
       pure default
     | .ok x =>
       println! "Protobuf parse successful"
-      pure (x.toEntitiesWf)
+      pure (x.toEntities)
 
 structure Timed (α : Type) where
   data : α

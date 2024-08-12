@@ -34,6 +34,9 @@ open Proto
 --   resource : EntityUID
 --   context : Map Attr Value
 
+-- TODO: Do I want to make an intermediate representation so
+-- that context can be Array (Attr × Value) ??
+
 namespace Cedar.Spec.Request
 
 def makeWf (x: Request) : Request :=

@@ -39,6 +39,7 @@ def mergeValue (x1: Context) (x2: Value) : Context :=
 def merge (x1: Context) (x2: Context) : Context :=
   (@Field.merge Value) x1 x2
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM Context Unit) := do
   match t.fieldNum with
     | 1 =>
