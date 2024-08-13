@@ -57,11 +57,11 @@ namespace ScopeType
 @[inline]
 def fromInt (n: Int): Except String ScopeType :=
   match n with
-    | 1 => .ok .any
-    | 2 => .ok .in
-    | 3 => .ok .eq
-    | 4 => .ok .is
-    | 5 => .ok .isIn
+    | 0 => .ok .any
+    | 1 => .ok .in
+    | 2 => .ok .eq
+    | 3 => .ok .is
+    | 4 => .ok .isIn
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum ScopeType := {
@@ -125,6 +125,8 @@ instance : Message PrincipalOrResourceConstraint := {
   parseField := parseField
   merge := merge
 }
+
+deriving instance Inhabited for ScopeTemplate
 
 def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplate :=
   match x.ty with

@@ -12,8 +12,9 @@ import Protobuf.Structures
 import Protobuf.Packed
 import Protobuf.Message
 
--- import CedarProto.Request
+import CedarProto.Request
 import CedarProto.Entities
+import CedarProto.LiteralPolicySet
 import DiffTest
 
 open Proto
@@ -42,33 +43,35 @@ def readFileBytes (filename: String) : IO ByteArray := do
     stream.read bufsize
 
 
-def processJson (filename: String): IO Cedar.Spec.Entities := do
+def processJson (filename: String): IO Cedar.Spec.Policies := do
   let result_str ← IO.FS.readFile filename
 
   match Lean.Json.parse result_str with
-    | .error e =>
-      println! s!"Failed to parse JSON input: "
+    | .error _ =>
+      println! s!"Failed to parse JSON input"
       pure default
     | .ok json => do
-      let x := DiffTest.jsonToEntities json
+      -- let x := DiffTest.jsonToEntities json
+      -- let x := DiffTest.jsonToRequest json
+      let x := DiffTest.jsonToPolicies json
       match x with
-        | .error e =>
+        | .error _ =>
           println! s!"Failed to create Entities from JSON "
           pure default
         | .ok v =>
           println! s!"JSON parse successful"
           pure v
 
-def processProto (filename: String): IO Cedar.Spec.Entities := do
+def processProto (filename: String): IO Cedar.Spec.Policies := do
   let result_bytes ← readFileBytes filename
-  let result: Except String Cedar.Spec.EntitiesProto := Message.interpret? result_bytes
+  let result: Except String LiteralPolicySet := Message.interpret? result_bytes
   match result with
     | .error e =>
       println! "Protobuf failed to parse {e}"
       pure default
     | .ok x =>
       println! "Protobuf parse successful"
-      pure (x.toEntities)
+      pure (Cedar.Spec.Policies.fromLiteralPolicySet x)
 
 structure Timed (α : Type) where
   data : α

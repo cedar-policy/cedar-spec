@@ -42,9 +42,9 @@ deriving Inhabited
 namespace ActionConstraintType
 def get? (n: Int) : Except String ActionConstraintType :=
   match n with
-    | 1 => .ok ActionConstraintType.any
-    | 2 => .ok ActionConstraintType.in
-    | 3 => .ok ActionConstraintType.eq
+    | 0 => .ok ActionConstraintType.any
+    | 1 => .ok ActionConstraintType.in
+    | 2 => .ok ActionConstraintType.eq
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum ActionConstraintType where

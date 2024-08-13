@@ -23,26 +23,20 @@ import Cedar
 open Cedar.Spec
 open Proto
 
-deriving instance Inhabited for ScopeTemplate
-
-structure PrincipalConstraint where
-  c : ScopeTemplate
-deriving Inhabited
-
-namespace Cedar.Spec.PrincipalConstraint
+namespace Cedar.Spec.PrincipalScopeTemplate
 
 @[inline]
-def mergeConstraint (result: PrincipalConstraint) (x: Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) : PrincipalConstraint :=
-  PrincipalConstraint.mk (ScopeTemplate.merge result.c (x.toScopeTemplate "?principal"))
+def mergeConstraint (result: PrincipalScopeTemplate) (x: Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) : PrincipalScopeTemplate :=
+  let ⟨ sc1 ⟩ := result
+  .principalScope (ScopeTemplate.merge sc1 (x.toScopeTemplate "?principal"))
 
 @[inline]
-def merge (x: PrincipalConstraint) (y: PrincipalConstraint) : PrincipalConstraint :=
-  {x with
-    c := ScopeTemplate.merge x.c y.c
-  }
+def merge (x: PrincipalScopeTemplate) (y: PrincipalScopeTemplate) : PrincipalScopeTemplate :=
+  let ⟨ sc1 ⟩ := x
+  let ⟨ sc2 ⟩ := y
+  .principalScope (ScopeTemplate.merge sc1 sc2)
 
-
-def parseField (t: Tag) : BParsec (StateM PrincipalConstraint Unit) := do
+def parseField (t: Tag) : BParsec (StateM PrincipalScopeTemplate Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) t.wireType
@@ -52,9 +46,10 @@ def parseField (t: Tag) : BParsec (StateM PrincipalConstraint Unit) := do
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)
 
-instance : Message PrincipalConstraint := {
+deriving instance Inhabited for PrincipalScopeTemplate
+instance : Message PrincipalScopeTemplate := {
   parseField := parseField
   merge := merge
 }
 
-end Cedar.Spec.PrincipalConstraint
+end Cedar.Spec.PrincipalScopeTemplate

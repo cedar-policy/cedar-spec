@@ -41,15 +41,15 @@ inductive EntityUIDOrSlotProto
 deriving Inhabited
 
 inductive EntityReferenceType where
-  | euid
   | slot
+  | euid
 deriving Inhabited
 
 namespace EntityReferenceType
 def fromInt (n: Int): Except String EntityReferenceType :=
   match n with
+    | 0 => .ok .slot
     | 1 => .ok .euid
-    | 2 => .ok .slot
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum EntityReferenceType := {

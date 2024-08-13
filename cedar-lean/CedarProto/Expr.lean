@@ -113,10 +113,10 @@ end Cedar.Spec.Prim
 namespace Cedar.Spec.Var
 def fromInt (n: Int) : Except String Var :=
   match n with
-    | 1 => .ok .principal
-    | 2 => .ok .action
-    | 3 => .ok .resource
-    | 4 => .ok .context
+    | 0 => .ok .principal
+    | 1 => .ok .action
+    | 2 => .ok .resource
+    | 3 => .ok .context
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum Var := {
@@ -184,6 +184,7 @@ end BinaryOpProto
 namespace Cedar.Spec.PatElem
 
 inductive PatElemTy where
+  | na
   | star
   | justChar
 deriving Inhabited
@@ -204,6 +205,7 @@ end PatElemTy
 def mergeTy (result: PatElem) (x: PatElemTy) : PatElem :=
   -- Same type than do nothing, otherwise instantiate with default
   match x with
+    | .na => panic!("Expected PatElemTy")
     | .star => .star
     | .justChar => match result with
       | .justChar _ => result
@@ -240,6 +242,7 @@ instance : Message PatElem := {
 end Cedar.Spec.PatElem
 
 inductive ExprKindType where
+  | na
   | lit
   | varTy
   | if
@@ -411,6 +414,7 @@ partial def toExpr (v: ExprProto) : Expr :=
     | .var p => .var p
     | .expr ty uop bop attr es pat et m =>
       match ty with
+        | .na => panic!("Expected an expression type")
         | .lit => panic!("Unexpected constructor for expression type")
         | .varTy => panic!("Unexpected constructor for expression type")
         | .if => match es with
