@@ -82,5 +82,5 @@ def merge (e1: Entities) (e2: Entities): Entities :=
   let e2: Cedar.Data.Map EntityUID EntityData := e2
   Cedar.Data.Map.make (e1.kvs ++ e2.kvs)
 
-instance : Field Entities := Field.fromIntMessage EntitiesProto.toEntities merge
+instance : Field Entities := Field.fromIntField EntitiesProto.toEntities merge
 end Cedar.Spec.Entities

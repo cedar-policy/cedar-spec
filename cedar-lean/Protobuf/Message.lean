@@ -64,7 +64,7 @@ end Message
 
 namespace Field
 
-def fromIntMessage {α β: Type} [Inhabited α] [Message α] (convert: α → β) (merge: β → β → β) : Field β := {
+def fromIntField {α β: Type} [Inhabited α] [Field α] (convert: α → β) (merge: β → β → β) : Field β := {
   parse := do
     let intMessage: α ← Field.parse
     pure (convert intMessage)
