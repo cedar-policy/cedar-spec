@@ -141,7 +141,7 @@ fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + O
         .get(&name)
         .ok_or_else(|| format!("Type `{name}` was missing from right-hand-side"))?;
 
-    if vector_equiv(&lhs_type.member_of_types, &rhs_type.member_of_types) {
+    if !vector_equiv(&lhs_type.member_of_types, &rhs_type.member_of_types) {
         Err(format!(
             "For `{name}`: lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
             lhs_type
