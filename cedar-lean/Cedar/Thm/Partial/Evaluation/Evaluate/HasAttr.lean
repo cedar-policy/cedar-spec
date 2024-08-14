@@ -102,7 +102,7 @@ theorem subst_preserves_evaluation_to_value {x₁ : Expr} {attr : Attr} {req req
     case value v₁ =>
       simp only [Partial.Value.value.injEq, forall_eq'] at *
       simp only [ih₁, Except.bind_ok]
-      exact EvaluateHasAttr.subst_preserves_evaluation_to_value wf
+      exact EvaluateHasAttr.subst_preserves_evaluation_to_value subsmap wf
 
 /--
   Inductive argument that if partial-evaluation of an `Expr.hasAttr`

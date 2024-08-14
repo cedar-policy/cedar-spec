@@ -17,6 +17,7 @@
 import Cedar.Partial.Evaluator
 import Cedar.Thm.Partial.Evaluation.Evaluate
 import Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
+import Cedar.Thm.Partial.Evaluation.ReevaluateHasAttr
 import Cedar.Thm.Partial.Subst
 import Cedar.Thm.Partial.WellFormed
 
@@ -25,33 +26,6 @@ namespace Cedar.Thm.Partial.Evaluation.Reevaluation.HasAttr
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
 open Cedar.Spec (Attr)
-
-/--
-  If `Partial.evaluateHasAttr` returns a residual, re-evaluating that residual with a
-  substitution is equivalent to substituting first, evaluating the arg, and calling
-  `Partial.evaluateHasAttr` on the substituted/evaluated arg
--/
-theorem reeval_eqv_substituting_first_evaluateHasAttr (pval₁ : Partial.Value) (attr : Attr) (entities : Partial.Entities) {req req' : Partial.Request} {subsmap : Subsmap}
-  (wf_e : entities.WellFormed)
-  (wf₁ : pval₁.WellFormed) :
-  req.subst subsmap = some req' →
-  (Partial.evaluateHasAttr pval₁ attr entities >>= λ residual => Partial.evaluateValue (residual.subst subsmap) (entities.subst subsmap)) =
-  (Partial.evaluateValue (pval₁.subst subsmap) (entities.subst subsmap) >>= λ pval' => Partial.evaluateHasAttr pval' attr (entities.subst subsmap))
-:= by
-  unfold Partial.evaluateHasAttr
-  cases pval₁ <;> simp [Partial.Value.WellFormed] at wf₁
-  case value v₁ =>
-    simp [Subst.subst_concrete_value, Partial.evaluateValue]
-    rw [← EvaluateHasAttr.hasAttr_subst_const wf_e]
-    cases Partial.hasAttr v₁ attr entities
-    case error e => simp only [Except.bind_err, implies_true]
-    case ok v => simp only [Partial.evaluateValue, Except.bind_ok, implies_true]
-  case residual r₁ =>
-    simp [Partial.Value.subst, Partial.ResidualExpr.subst]
-    simp [Partial.evaluateValue, Partial.evaluateResidual]
-    cases Partial.evaluateValue (r₁.subst subsmap) (entities.subst subsmap)
-    case error e => simp only [Except.bind_err, implies_true]
-    case ok r₁' => simp only [Partial.evaluateHasAttr, Except.bind_ok, implies_true]
 
 /--
   Inductive argument that re-evaluation of a `Spec.Expr.hasAttr` with a
@@ -82,7 +56,7 @@ theorem reeval_eqv_substituting_first {x₁ : Spec.Expr} {attr : Attr} {req req'
     cases hx₁ : Partial.evaluate x₁ req entities <;> simp [hx₁] at hₑ ih₁'
     case ok pval₁ =>
       have wf₁ : pval₁.WellFormed := Evaluate.partial_eval_wf wf_r wf_e pval₁ hx₁
-      rw [reeval_eqv_substituting_first_evaluateHasAttr pval₁ attr entities wf_e wf₁ h_req] at hₑ
+      rw [ReevaluateHasAttr.reeval_eqv_substituting_first pval₁ attr subsmap wf_e wf₁] at hₑ
       simp [ih₁'] at hₑ
   · rename_i hₑ' -- the case where hₑ' tells us they're not both errors
     subst ih₁' ih₁''
@@ -92,8 +66,8 @@ theorem reeval_eqv_substituting_first {x₁ : Spec.Expr} {attr : Attr} {req req'
       simp [hx₁, hx₁'] at hₑ
     case ok pval₁ =>
       have wf₁ : pval₁.WellFormed := Evaluate.partial_eval_wf wf_r wf_e pval₁ hx₁
-      simp
-      rw [reeval_eqv_substituting_first_evaluateHasAttr pval₁ attr entities wf_e wf₁ h_req]
-      simp [← ih₁, hx₁]
+      simp only [Except.bind_ok]
+      rw [ReevaluateHasAttr.reeval_eqv_substituting_first pval₁ attr subsmap wf_e wf₁]
+      simp only [← ih₁, hx₁, Except.bind_ok]
 
 end Cedar.Thm.Partial.Evaluation.Reevaluation.HasAttr

@@ -239,7 +239,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
       case error e₁ =>
         cases pv₁' <;> simp
         case value v₁' =>
-          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁] at hpv₁'
+          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁] at hpv₁'
         case residual r₁' =>
           intro _ ; subst pv'
           simp [Partial.Value.subst, Partial.ResidualExpr.subst]
@@ -255,7 +255,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           simp only [hpv₁'] at ih₁
           simp only [ih₁, Except.bind_ok]
         case value v₁' =>
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁] at hpv₁'
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁] at hpv₁'
           subst pv₁''
           simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at *
           cases hv₁' : v₁'.asBool <;> simp
@@ -277,7 +277,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
               case error e₂ =>
                 cases pv₂' <;> simp
                 case value v₂' =>
-                  simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right hpv₂] at hpv₂'
+                  simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right wf_e hpv₂] at hpv₂'
                 case residual r₂' =>
                   intro _ ; subst pv'
                   simp [Partial.Value.subst, Partial.ResidualExpr.subst]
@@ -294,7 +294,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
                   simp only [hpv₂'] at ih₂
                   simp only [ih₂, Except.bind_ok]
                 case value v₂' =>
-                  simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right hpv₂] at hpv₂'
+                  simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right wf_e hpv₂] at hpv₂'
                   subst pv₂''
                   simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at *
                   cases hv₂' : v₂'.asBool <;> simp
@@ -316,14 +316,14 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
       case error.error e₁ _ | error.ok e₁ _ =>
         split <;> rename_i h₁
         <;> simp only [Prod.mk.injEq] at h₁ <;> replace ⟨h₁, h₁'⟩ := h₁ <;> subst h₁ h₁'
-        · simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁] at hpv₁'
+        · simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁] at hpv₁'
         · rename_i hv
           intro h ; simp at h ; subst pv'
           simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual, ih₁, ih₂, hpv₁', hpv₂']
       case ok.error _ e₂ =>
         split <;> rename_i h₁
         <;> simp only [Prod.mk.injEq] at h₁ <;> replace ⟨h₁, h₁'⟩ := h₁ <;> subst h₁ h₁'
-        · simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right hpv₂] at hpv₂'
+        · simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.right wf_e hpv₂] at hpv₂'
         · rename_i hv
           intro h ; simp at h ; subst pv'
           simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual, ih₁, ih₂, hpv₁', hpv₂']
@@ -402,7 +402,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
       case error e₁ =>
         cases pv₁' <;> simp
         case value v₁' =>
-          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁] at hpv₁'
+          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁] at hpv₁'
         case residual r₁' =>
           intro _ ; subst pv'
           simp [Partial.Value.subst, Partial.ResidualExpr.subst]
@@ -418,7 +418,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           simp only [hpv₁'] at ih₁
           simp only [ih₁, Except.bind_ok]
         case value v₁' =>
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁] at hpv₁'
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁] at hpv₁'
           subst pv₁''
           simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at *
           cases hv₁' : v₁'.asBool <;> simp
@@ -443,7 +443,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
       case error e₁ =>
         cases pv₁'
         case value v₁' =>
-          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
         case residual r₁' =>
           simp [Partial.evaluateUnaryApp]
           intro _ ; subst pv'
@@ -461,7 +461,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           simp only [hpv₁'] at ih₁
           simp only [ih₁, Except.bind_ok, Partial.evaluateUnaryApp]
         case value v₁' =>
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
           subst pv₁''
           simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at *
           intro h₁ ; simp [h₁]
@@ -480,7 +480,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
       case error e₁ =>
         cases pv₁'
         case value v₁' =>
-          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
         case residual r₁' =>
           simp [Partial.evaluateHasAttr]
           intro _ ; subst pv'
@@ -498,11 +498,11 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           simp only [hpv₁'] at ih₁
           simp only [ih₁, Except.bind_ok, Partial.evaluateHasAttr]
         case value v₁' =>
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
           subst pv₁''
           simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at *
           simp [Partial.evaluateHasAttr]
-          rw [← EvaluateHasAttr.hasAttr_subst_const wf_e]
+          rw [← EvaluateHasAttr.hasAttr_subst_const subsmap wf_e]
           intro h₁ ; simp [h₁]
           replace ⟨v₁, h₁, h₂⟩ := do_ok.mp h₁
           subst pv'
@@ -520,9 +520,9 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
         cases hpv₁' : Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap)
         <;> simp only [Except.bind_ok, Except.bind_err]
         case error e₁ =>
-          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
         case ok pv₁'' =>
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r hpv₁] at hpv₁'
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_r wf_e hpv₁] at hpv₁'
           subst pv₁''
           simp [Subst.subst_concrete_value, EvaluateValue.eval_spec_value] at ih₁
           simp [Partial.evaluateGetAttr]
@@ -531,7 +531,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
             have wf₂ : pv₂.WellFormed := EvaluateGetAttr.getAttr_wf wf₁ wf_e _ h₁
             simp [EvaluateGetAttr.getAttr_subst_preserves_attrs wf₁ wf_e wf_s h₁]
             intro h₂
-            simp [EvaluateValue.reduce_commutes_subst subsmap wf₂ h₂]
+            simp [EvaluateValue.reduce_commutes_subst subsmap wf₂ wf_e h₂]
       case residual r₁ =>
         simp only [Partial.evaluateGetAttr, Except.ok.injEq]
         intro _ ; subst pv'
@@ -558,17 +558,17 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
             and_intros <;> intro v hv
             · replace ⟨hv', pv₂, hpv₂, v', hv'', h₁, h₂, h₃⟩ := mapM_ok_some_from_ok_some' h₂ h₄ h₁ h₃ v hv ; clear h₄
               have wf₂ : pv₂.WellFormed := wf_r pv₂ hpv₂
-              simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf₂ h₂] at h₁
+              simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf₂ wf_e h₂] at h₁
               subst v'
               exact h₃
             · replace ⟨hv', pv, hpv, v', hv'', h₁, h₂, h₃⟩ := mapM_ok_some_from_ok_some' h₁ h₃ h₂ h₄ v hv ; clear h₄
               have wf : pv.WellFormed := wf_r pv hpv
-              simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf h₁] at h₂
+              simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf wf_e h₁] at h₂
               subst v'
               exact h₃
           · replace ⟨r, hr, pv, hpv, v', hv', h₁, h₂⟩ := mapM_ok_some_from_ok_none' h₁ h₃ h₂ h₄ ; clear h₃ h₄
             have wf₁ : pv.WellFormed := wf_r pv hpv
-            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf₁ h₁] at h₂
+            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf₁ wf_e h₁] at h₂
         · intro _ ; subst pv'
           simp [Partial.Value.subst, Partial.ResidualExpr.subst, List.map₁_eq_map]
           simp [Partial.evaluateValue, Partial.evaluateResidual, List.mapM₁_eq_mapM (Partial.evaluateValue · (entities.subst subsmap)), List.mapM_map]
@@ -604,7 +604,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
               have : sizeOf pvs < sizeOf (Partial.ResidualExpr.set pvs) := EvaluateValue.sizeOf_lt_set pvs
               simp [reeval_eqv_substituting_first wf'' wf_e wf_s h₁] at h₉
               cases pv₂'
-              case value v₂ => simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf'' h₁] at h₉
+              case value v₂ => simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf'' wf_e h₁] at h₉
               case residual r₂ =>
                 sorry
             case ok pvs₄ =>
@@ -625,7 +625,7 @@ theorem evalResidual_reeval_eqv_substituting_first {r : Partial.ResidualExpr} {p
           replace ⟨pv₂, hpv₂, v₂, hv₂, h₁⟩ := mapM_ok_some h₁ h₃ pv hpv
           split at h₁ <;> simp at h₁
           replace ⟨h₁, h₁'⟩ := h₁ ; subst v₂ ; rename_i v₂
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₁] at h₂
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv wf_e h₁] at h₂
         · replace ⟨pv', hpv', pv₂, hpv₂, h₁, h₃⟩ := mapM_ok_none h₁ h₃
           split at h₃ <;> simp at h₃ ; rename_i r₂
           simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual]

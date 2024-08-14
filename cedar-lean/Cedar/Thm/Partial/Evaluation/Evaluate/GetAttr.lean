@@ -95,7 +95,7 @@ theorem subst_preserves_evaluation_to_value {x₁ : Expr} {attr : Attr} {req req
       simp only [ih₁, Except.bind_ok]
       apply EvaluateGetAttr.subst_preserves_evaluation_to_value _ wf_e wf_s
       intro v v' pv wf_v h₁
-      apply EvaluateValue.subst_preserves_evaluation_to_value subsmap (EvaluateGetAttr.getAttr_wf wf_v wf_e _ h₁)
+      apply EvaluateValue.subst_preserves_evaluation_to_value subsmap (EvaluateGetAttr.getAttr_wf wf_v wf_e _ h₁) wf_e
       exact h_pewf _ _ _ (.value v₁) (Subst.req_subst_preserves_wf wf_r wf_s h_req) (Subst.entities_subst_preserves_wf wf_e wf_s) ih₁
 
 /--

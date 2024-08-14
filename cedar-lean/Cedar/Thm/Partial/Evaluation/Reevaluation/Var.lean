@@ -172,7 +172,7 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
               simp only at *
               split at hapvs <;> simp only [Option.some.injEq] at hapvs ; subst v' ; rename_i v
               have wf_pv : pv.WellFormed := wf_r.right pv (Map.in_list_in_values hpv)
-              simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₂] at h₃
+              simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv wf_e h₂] at h₃
             case ok apvs' =>
               simp only [Except.bind_ok]
               split <;> rename_i hapvs'
@@ -191,7 +191,7 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
                     simp only at *
                     subst pv'
                     have wf_pv : pv.WellFormed := wf_r.right pv (Map.in_list_in_values hpv)
-                    simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₂,
+                    simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv wf_e h₂,
                       Except.ok.injEq, Partial.Value.value.injEq] at h₃
                     subst v'
                     exact hv''
@@ -204,7 +204,7 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
                     simp only at *
                     subst pv'
                     have wf_pv : pv.WellFormed := wf_r.right pv (Map.in_list_in_values hpv)
-                    simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₂,
+                    simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv wf_e h₂,
                       Except.ok.injEq, Partial.Value.value.injEq] at h₃
                     subst v'
                     exact hv'
@@ -224,7 +224,7 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
                 simp only at *
                 subst pv'
                 have wf_pv : pv.WellFormed := wf_r.right pv (Map.in_list_in_values hpv)
-                simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv h₂,
+                simp only [EvaluateValue.subst_preserves_evaluation_to_value subsmap wf_pv wf_e h₂,
                   Except.ok.injEq] at h₃
           · -- in this branch, `apvs` contains at least one residual
             -- re-evaluated produced `pval'`; the first evaluation produced `.residual (.record apvs.kvs)`,

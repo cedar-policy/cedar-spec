@@ -164,7 +164,7 @@ theorem subst_and_reduce_preserves_errors {pval₁ : Partial.Value} {attr : Attr
     Partial.evaluateValue pv entities = .error e →
     ∃ e', Partial.evaluateValue (pv.subst subsmap) (entities.subst subsmap) = .error e')
   (h_pevwf : ∀ pv es pv', pv.WellFormed → es.WellFormed → Partial.evaluateValue pv es = .ok pv' → pv'.WellFormed)
-  (h_erspetv : ∀ r es v, r.WellFormed →
+  (h_erspetv : ∀ r es v, r.WellFormed → es.WellFormed →
     Partial.evaluateResidual r es = .ok (.value v) →
     Partial.evaluateValue (r.subst subsmap) (es.subst subsmap) = .ok (.value v) ) :
   Partial.evaluateValue pval₁ entities = .ok pval₂ →
@@ -180,7 +180,7 @@ theorem subst_and_reduce_preserves_errors {pval₁ : Partial.Value} {attr : Attr
     exact subst_preserves_errors wf_v wf_e wf_s ih h₁
   case residual r₁ =>
     simp only [Partial.Value.WellFormed] at wf_v
-    specialize h_erspetv r₁ entities ; simp only [wf_v] at h_erspetv
+    specialize h_erspetv r₁ entities ; simp only [wf_v, wf_e] at h_erspetv
     intro h₁ h₂ h₃
     have wf₃ : pval₃.WellFormed := by
       apply h_pevwf ((Partial.Value.residual r₁).subst subsmap) (entities.subst subsmap) pval₃ _ _ h₃

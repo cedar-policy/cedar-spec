@@ -26,6 +26,7 @@ import Cedar.Thm.Partial.Evaluation.EvaluateGetAttr
 import Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
 import Cedar.Thm.Partial.Evaluation.EvaluateUnaryApp
 import Cedar.Thm.Partial.Evaluation.Evaluate.Record
+import Cedar.Thm.Partial.Evaluation.ReevaluateHasAttr
 import Cedar.Thm.Partial.Evaluation.ReevaluateUnaryApp
 import Cedar.Thm.Partial.WellFormed
 
@@ -293,7 +294,8 @@ mutual
   unknowns
 -/
 theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualExpr} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Subsmap}
-  (wf : r.WellFormed) :
+  (wf : r.WellFormed)
+  (wf_e : entities.WellFormed) :
   Partial.evaluateResidual r entities = .ok (.value v) →
   Partial.evaluateValue (r.subst subsmap) (entities.subst subsmap) = .ok (.value v)
 := by
@@ -308,7 +310,7 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
       case value v₁' =>
         cases hv₁' : v₁'.asBool <;> simp only [Except.bind_ok, Except.bind_err, false_implies]
         case ok b₁' =>
-          cases b₁' <;> simp [subst_preserves_evaluation_to_value subsmap wf.left hpv₁, hv₁']
+          cases b₁' <;> simp [subst_preserves_evaluation_to_value subsmap wf.left wf_e hpv₁, hv₁']
           all_goals {
             cases hpv₂ : Partial.evaluateValue pv₂ entities <;> simp
             case ok pv₂' =>
@@ -317,7 +319,7 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
                 cases hv₂' : v₂'.asBool <;> simp
                 case ok b₂' =>
                   intro _ ; subst v
-                  simp [subst_preserves_evaluation_to_value subsmap wf.right hpv₂, hv₂']
+                  simp [subst_preserves_evaluation_to_value subsmap wf.right wf_e hpv₂, hv₂']
           }
   case ite pv₁ pv₂ pv₃ =>
     cases hpv₁ : Partial.evaluateValue pv₁ entities <;> simp
@@ -326,11 +328,11 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
       case value v₁' =>
         cases hv₁' : v₁'.asBool <;> simp
         case ok b₁' =>
-          cases b₁' <;> simp [subst_preserves_evaluation_to_value subsmap wf.left hpv₁, hv₁']
+          cases b₁' <;> simp [subst_preserves_evaluation_to_value subsmap wf.left wf_e hpv₁, hv₁']
           case true =>
-            intro hpv₂ ; simp [subst_preserves_evaluation_to_value subsmap wf.right.left hpv₂]
+            intro hpv₂ ; simp [subst_preserves_evaluation_to_value subsmap wf.right.left wf_e hpv₂]
           case false =>
-            intro hpv₃ ; simp [subst_preserves_evaluation_to_value subsmap wf.right.right hpv₃]
+            intro hpv₃ ; simp [subst_preserves_evaluation_to_value subsmap wf.right.right wf_e hpv₃]
   case unaryApp op pv₁ =>
     cases hpv₁ : Partial.evaluateValue pv₁ entities <;> simp
     case ok pv₁' =>
@@ -350,7 +352,7 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
           case ok pv₁'' =>
             have ⟨pv, h₅⟩ :=
               EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap
-                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf wf_e)
                 hpv₁ h₁
             simp [h₅] at hpv₁'
         · rename_i hₑ
@@ -360,7 +362,7 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
         intro h₁
         have ⟨pv, h₂⟩ :=
           EvaluateUnaryApp.subst_preserves_reduce_evaluation_to_value subsmap
-            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf)
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf wf_e)
             hpv₁ h₁
         simp [hpv₁'] at h₂
         simp [h₂]
@@ -385,8 +387,8 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
             intro h₂
             have ⟨pv₁''', pv₂''', h₅⟩ :=
               EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
-                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
-                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left wf_e)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right wf_e)
                 hpv₁ hpv₂ h₂
             simp [h₅] at hpv₁'
         · rename_i hₑ
@@ -403,8 +405,8 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
             intro h₂
             have ⟨pv₁''', pv₂''', h₅⟩ :=
               EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
-                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
-                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left wf_e)
+                (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right wf_e)
                 hpv₁ hpv₂ h₂
             simp [h₅] at hpv₂'
         · rename_i hₑ
@@ -414,13 +416,48 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
         intro h₂
         have ⟨pv₁'''', pv₂'''', h₅, h₆, h₇⟩ :=
           EvaluateBinaryApp.subst_preserves_reduce_evaluation_to_value subsmap
-            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left)
-            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right)
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.left wf_e)
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf.right wf_e)
             hpv₁ hpv₂ h₂
         simp only [h₅, h₆, Except.ok.injEq] at hpv₁' hpv₂'
         subst pv₁'''' pv₂''''
         exact h₇
-  case hasAttr pv₁ attr => sorry
+  case hasAttr pv₁ attr =>
+    cases hpv₁ : Partial.evaluateValue pv₁ entities <;> simp
+    case ok pv₁' =>
+      cases hpv₁' : Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap) <;> simp
+      case error e =>
+        intro h₁
+        have h₂ := ReevaluateHasAttr.reeval_eqv_substituting_first pv₁ attr subsmap wf_e wf
+        simp [hpv₁'] at h₂
+        cases h₃ : Partial.evaluateHasAttr pv₁ attr entities
+        <;> simp [h₃] at h₂
+        <;> simp [Partial.evaluateHasAttr] at h₃
+        case error e =>
+          subst e
+          split at h₃
+          · simp [Subst.subst_concrete_value, eval_spec_value] at hpv₁'
+          · simp at h₃
+        case ok pv₂ =>
+          split at h₃
+          · simp [Subst.subst_concrete_value, eval_spec_value] at hpv₁'
+          · rename_i r₁
+            simp only [Partial.Value.WellFormed] at wf
+            simp at h₃
+            subst pv₂
+            simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual] at *
+            simp [hpv₁'] at h₂
+            replace ⟨v₁, h₁⟩ := EvaluateHasAttr.returns_concrete_then_operand_evals_to_concrete h₁
+            subst pv₁'
+            simp [evalResidual_subst_preserves_evaluation_to_value wf wf_e hpv₁] at hpv₁'
+      case ok pv₁'' =>
+        intro h₁
+        have ⟨pv, h₂⟩ :=
+          EvaluateHasAttr.subst_preserves_reduce_evaluation_to_value subsmap wf_e
+            (by intro v ; exact subst_preserves_evaluation_to_value subsmap wf wf_e)
+            hpv₁ h₁
+        simp [hpv₁'] at h₂
+        simp [h₂]
   case getAttr pv₁ attr => sorry
   case set pvs => sorry
   case record attrs => sorry
@@ -431,7 +468,8 @@ theorem evalResidual_subst_preserves_evaluation_to_value {r : Partial.ResidualEx
   value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value {pv : Partial.Value} {entities : Partial.Entities} {v : Spec.Value} (subsmap : Subsmap)
-  (wf : pv.WellFormed) :
+  (wf : pv.WellFormed)
+  (wf_e : entities.WellFormed) :
   Partial.evaluateValue pv entities = .ok (.value v) →
   Partial.evaluateValue (pv.subst subsmap) (entities.subst subsmap) = .ok (.value v)
 := by
@@ -442,7 +480,7 @@ theorem subst_preserves_evaluation_to_value {pv : Partial.Value} {entities : Par
   case residual r =>
     simp only [Partial.Value.subst]
     simp only [Partial.Value.WellFormed] at wf
-    exact evalResidual_subst_preserves_evaluation_to_value wf
+    exact evalResidual_subst_preserves_evaluation_to_value wf wf_e
 
 end
 
@@ -474,7 +512,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
     case ok pv₁' =>
       cases pv₁' <;> simp only [false_implies]
       case value v₁' =>
-        simp only [subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁, Except.bind_ok]
+        simp only [subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁, Except.bind_ok]
         cases v₁'.asBool
         <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
         case ok b₁' =>
@@ -493,7 +531,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
             case ok pv₂' =>
               cases pv₂' <;> simp only [false_implies]
               case value v₂' =>
-                simp only [subst_preserves_evaluation_to_value subsmap wf_r.right hpv₂, Except.bind_ok]
+                simp only [subst_preserves_evaluation_to_value subsmap wf_r.right wf_e hpv₂, Except.bind_ok]
                 cases v₂'.asBool
                 case error e₂' => intro _ ; exists e₂'
                 case ok b₂' => simp only [Except.bind_ok, exists_false, imp_self]
@@ -508,7 +546,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
     case ok pv₁' =>
       cases pv₁' <;> simp only [false_implies]
       case value v₁' =>
-        simp only [subst_preserves_evaluation_to_value subsmap wf_r.left hpv₁, Except.bind_ok]
+        simp only [subst_preserves_evaluation_to_value subsmap wf_r.left wf_e hpv₁, Except.bind_ok]
         cases v₁'.asBool
         <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
         case ok b₁' =>
@@ -570,7 +608,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
         · intro _ _ _
           exact evalValue_wf
         · intro _ _ _
-          exact evalResidual_subst_preserves_evaluation_to_value
+          apply evalResidual_subst_preserves_evaluation_to_value
   case hasAttr pv₁ attr =>
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
@@ -673,7 +711,8 @@ end
   substituting it then reducing it
 -/
 theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities} (subsmap : Subsmap)
-  (wf_v : pv.WellFormed) :
+  (wf_v : pv.WellFormed)
+  (wf_e : entities.WellFormed) :
   Partial.evaluateValue pv entities = .ok pv' →
   Partial.evaluateValue (pv'.subst subsmap) (entities.subst subsmap) =
   Partial.evaluateValue (pv.subst subsmap) (entities.subst subsmap)
@@ -690,7 +729,7 @@ theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities}
     exact match h₁ : Partial.evaluateValue pv₁ entities with
     | .error _ => by simp
     | .ok (.value v₁) => by
-      simp only [Except.bind_ok, subst_preserves_evaluation_to_value subsmap wf_v.left h₁]
+      simp only [Except.bind_ok, subst_preserves_evaluation_to_value subsmap wf_v.left wf_e h₁]
       exact match hv₁ : v₁.asBool with
       | .error _ => by simp
       | .ok b₁ => by
@@ -706,7 +745,7 @@ theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities}
           | .error _ => by simp
           | .ok (.value v₂) => by
             simp only [Except.bind_ok, Bool.true_eq_false, Bool.false_eq_true, reduceIte,
-              subst_preserves_evaluation_to_value subsmap wf_v.right h₂]
+              subst_preserves_evaluation_to_value subsmap wf_v.right wf_e h₂]
             simp only [do_ok]
             intro ⟨b₂, h₃, h₄⟩ ; subst pv'
             simp only [Subst.subst_concrete_value, eval_spec_value, h₃, Except.bind_ok]
@@ -714,7 +753,7 @@ theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities}
             simp only [Except.bind_ok, Bool.true_eq_false, Bool.false_eq_true, reduceIte, Except.ok.injEq]
             intro _ ; subst pv'
             simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual, Spec.Value.asBool]
-            have h₃ := reduce_commutes_subst subsmap wf_v.right h₂
+            have h₃ := reduce_commutes_subst subsmap wf_v.right wf_e h₂
             simp only [Partial.Value.subst] at h₃
             simp [h₃]
         }
@@ -722,7 +761,7 @@ theorem reduce_commutes_subst {pv : Partial.Value} {entities : Partial.Entities}
       simp only [Except.bind_ok, Except.ok.injEq]
       intro _ ; subst pv'
       simp [Partial.Value.subst, Partial.ResidualExpr.subst, Partial.evaluateValue, Partial.evaluateResidual]
-      have h₂ := reduce_commutes_subst subsmap wf_v.left h₁
+      have h₂ := reduce_commutes_subst subsmap wf_v.left wf_e h₁
       simp only [Partial.Value.subst] at h₂
       simp [h₂]
   | .residual (.ite pv₁ pv₂ pv₃) => by

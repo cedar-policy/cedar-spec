@@ -262,7 +262,7 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
     intro _ h₁ ; subst h₁
     rfl
   case var var =>
-    have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r
+    have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r wf_e
     unfold SubstPreservesEvaluationToConcrete at h₁
     intro h_req
     exact h₁ h_req v

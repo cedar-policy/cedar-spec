@@ -195,7 +195,8 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
   value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Request} {entities : Partial.Entities} {v : Spec.Value} {subsmap : Subsmap}
-  (wf_r : req.WellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed) :
   req.subst subsmap = some req' →
   Partial.evaluateVar var req entities = .ok (.value v) →
   Partial.evaluateVar var req' (entities.subst subsmap) = .ok (.value v)
@@ -239,7 +240,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
         simp only at *
         replace ⟨pv'', hpv'', h₁⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, pv') hpv'
         split at h₁ <;> simp at h₁ ; subst pv'' ; simp only at * ; subst pv' ; rename_i v
-        simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv (Map.in_list_in_values hpv)) h₂] at h₃
+        simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv (Map.in_list_in_values hpv)) wf_e h₂] at h₃
       case ok context_ev' =>
         split <;> simp <;> rename_i h₄
         · rename_i m'
@@ -257,7 +258,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
             split at h₄ <;> simp at h₄ ; subst v ; simp only at * ; subst pv'' ; rename_i v
             replace ⟨v', hv', h₁⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, pv') hpv'
             split at h₁ <;> simp at h₁ ; subst v' ; simp only at * ; subst pv' ; rename_i v'
-            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv (Map.in_list_in_values hpv)) h₂] at h₃
+            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv (Map.in_list_in_values hpv)) wf_e h₂] at h₃
             subst v'
             exact hpv''
           · intro (k, pv) hpv
@@ -269,7 +270,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
             simp only at *
             replace ⟨v', hv', h₁⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, pv''') hpv'''
             split at h₁ <;> simp at h₁ ; subst v' ; simp only at * ; subst pv''' ; rename_i v'
-            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv'' (Map.in_list_in_values hpv'')) h₂] at h₃
+            simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv'' (Map.in_list_in_values hpv'')) wf_e h₂] at h₃
             subst v'
             exact hpv'''
         · replace ⟨pv, hpv, h₄⟩ := Map.mapMOnValues_none_iff_exists_none.mp h₄
@@ -282,19 +283,20 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
           replace ⟨v, hv, h₁⟩ := Map.mapMOnValues_some_implies_all_some h₁ (k, pv'') hpv''
           simp only at *
           split at h₁ <;> simp at h₁ ; subst v ; rename_i v
-          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv' (Map.in_list_in_values hpv')) h₂] at h₃
+          simp [EvaluateValue.subst_preserves_evaluation_to_value subsmap (wf_r.right pv' (Map.in_list_in_values hpv')) wf_e h₂] at h₃
 
 /--
   If partial-evaluation of a `Var` returns a concrete value, then it returns the
   same value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value (var : Var) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap)
-  (wf_r : req.WellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed) :
   SubstPreservesEvaluationToConcrete (Expr.var var) req req' entities subsmap
 := by
   unfold SubstPreservesEvaluationToConcrete Partial.evaluate
   intro h_req v
-  exact subst_preserves_evaluateVar_to_value wf_r h_req
+  exact subst_preserves_evaluateVar_to_value wf_r wf_e h_req
 
 /--
   If `Partial.evaluateVar` returns an error, then it also returns an error (not
