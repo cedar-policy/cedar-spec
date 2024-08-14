@@ -63,7 +63,7 @@ def mergeResource (result: Request) (x: EntityUIDEntry) : Request :=
   }
 
 @[inline]
-def mergeContext (result: Request) (x: Value) : Request :=
+def mergeContext (result: Request) (x: Context) : Request :=
   match x with
     | .record m =>
       {result with

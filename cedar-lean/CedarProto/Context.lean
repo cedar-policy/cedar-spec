@@ -27,7 +27,9 @@ open Cedar.Spec
 open Proto
 
 def Context := Value
-deriving instance Inhabited for Context
+
+instance : Inhabited Context where
+  default := .record default
 
 namespace Cedar.Spec.Context
 

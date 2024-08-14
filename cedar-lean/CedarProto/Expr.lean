@@ -318,9 +318,9 @@ def mergeTy (result: ExprKindProto) (x: ExprKindType) : ExprKindProto :=
   | .varTy => match result with
     | .var _ => result
     | _ => .var default
-  | _ => match result with
-    | .expr _ _ _ _ _ _ _ _ => result
-    | _ => .expr default default default default default default default default
+  | ty => match result with
+    | .expr _ uop bop attr es1 pat et m => .expr ty uop bop attr es1 pat et m
+    | _ => .expr ty default default default default default default default
 
 @[inline]
 def mergePrim (result: ExprKindProto) (p2: Prim) : ExprKindProto :=

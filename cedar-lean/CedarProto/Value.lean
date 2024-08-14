@@ -42,8 +42,8 @@ def merge (v1: Value) (v2: Value) : Value :=
 
 private partial def exprToValue : Expr → Value
   | .lit p => .prim p
-  | Expr.record r => .record (Cedar.Data.Map.make (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
-  | Expr.set s => .set (Cedar.Data.Set.make (s.map exprToValue))
+  | .record r => .record (Cedar.Data.Map.make (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
+  | .set s => .set (Cedar.Data.Set.make (s.map exprToValue))
   -- TODO: ExtFun
   | _ => panic!("exprToValue: invalid input expression")
 
