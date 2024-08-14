@@ -13,23 +13,23 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
 import Protobuf.String
 
-import Cedar
-
+-- Message Dependencies
 import CedarProto.EntityUID
 
-open Cedar.Spec
 open Proto
 
--- There are other fields but the Lean client doesn't use it
--- so we save some time by not creating an entire struct
-def EntityUIDEntry: Type := EntityUID
+namespace Cedar.Spec
+
+-- There are other fields, however the lean implementation ignores them
+-- so we can save some time by not constructing the entire struct
+def EntityUIDEntry := EntityUID
 deriving instance Inhabited for EntityUIDEntry
 
-namespace Cedar.Spec.EntityUIDEntry
+namespace EntityUIDEntry
 
 @[inline]
 def mergeEuid (x1: EntityUIDEntry) (x2: EntityUID) : EntityUIDEntry :=
@@ -37,14 +37,14 @@ def mergeEuid (x1: EntityUIDEntry) (x2: EntityUID) : EntityUIDEntry :=
 
 @[inline]
 def merge (x1: EntityUIDEntry) (x2: EntityUIDEntry) : EntityUIDEntry :=
-  (@Field.merge EntityUID) x1 x2
+  mergeEuid x1 x2
 
 def parseField (t: Tag) : BParsec (StateM EntityUIDEntry Unit) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
+      pure (modifyGet fun s => Prod.mk () (s.mergeEuid x))
     | _ =>
       t.wireType.skip
       pure (pure ())
@@ -54,4 +54,6 @@ instance : Message EntityUIDEntry := {
   merge := merge
 }
 
-end Cedar.Spec.EntityUIDEntry
+end EntityUIDEntry
+
+end Cedar.Spec

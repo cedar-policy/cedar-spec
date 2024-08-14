@@ -13,27 +13,26 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
-
 import Cedar
+import Protobuf.Message
 
--- Dependencies
+-- Message Dependencies
 import CedarProto.Name
 
-open Cedar.Spec
 open Proto
+
+namespace Cedar.Spec
 
 -- Already defined in Cedar.Spec.EntityType
 -- abbrev EntityType := Name
 
 -- Note: We don't want it to automatically reduce like
--- abbrev and @[reducible]
-def EntityTypeProto := Name
+-- abbrev and @[reducible] as this causes issues
+-- with typeclass resolution when calling Field.parse
+def EntityTypeProto := Cedar.Spec.Name
 deriving instance Inhabited for EntityTypeProto
 
-namespace Cedar.Spec.EntityTypeProto
+namespace EntityTypeProto
 
 @[inline]
 def mergeName (x1: EntityTypeProto) (x2: Name) : EntityTypeProto :=
@@ -41,7 +40,7 @@ def mergeName (x1: EntityTypeProto) (x2: Name) : EntityTypeProto :=
 
 @[inline]
 def merge (x1: EntityTypeProto) (x2: EntityTypeProto) : EntityTypeProto :=
-  (@Field.merge Name) x1 x2
+  mergeName x1 x2
 
 def parseField (t: Tag) : BParsec (StateM EntityTypeProto Unit) := do
   match t.fieldNum with
@@ -58,4 +57,6 @@ instance : Message EntityTypeProto := {
   merge := merge
 }
 
-end Cedar.Spec.EntityTypeProto
+end EntityTypeProto
+
+end Cedar.Spec

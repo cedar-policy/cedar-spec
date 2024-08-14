@@ -13,22 +13,19 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
 import Protobuf.String
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec.Name
 
 -- Already defined in Cedar.Spec.Name
 -- structure Name where
 --   id: String
 --   path: List String
 -- deriving Inhabited, Repr, DecidableEq
-
-namespace Cedar.Spec.Name
 
 @[inline]
 def mergeId (result: Name) (x: String) : Name :=
@@ -37,18 +34,17 @@ def mergeId (result: Name) (x: String) : Name :=
   }
 
 @[inline]
-def mergePath (result: Name) (path_elem: Array String): Name :=
+def mergePath (result: Name) (path_elem: Repeated String): Name :=
   {result with
     path := path_elem.toList ++ result.path
   }
 
 @[inline]
-def merge (x: Name) (y: Name) : Name :=
+def merge (x y: Name) : Name :=
   {x with
     id := Field.merge x.id y.id
     path := x.path ++ y.path
   }
-
 
 def parseField (t: Tag) : BParsec (StateM Name Unit) := do
   match t.fieldNum with

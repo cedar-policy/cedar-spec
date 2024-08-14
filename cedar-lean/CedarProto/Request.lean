@@ -13,36 +13,27 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
 import Protobuf.String
 
-import Cedar
-
--- Dependencies
+-- Message Dependencies
 import CedarProto.EntityUIDEntry
 import CedarProto.Value
 import CedarProto.Context
 
-open Cedar.Spec
 open Proto
 
--- Defined in Cedar.Spec..
+namespace Cedar.Spec
+
+-- Already defined
 -- structure Request where
 --   principal : EntityUID
 --   action : EntityUID
 --   resource : EntityUID
 --   context : Map Attr Value
 
--- TODO: Do I want to make an intermediate representation so
--- that context can be Array (Attr × Value) ??
-
-namespace Cedar.Spec.Request
-
-def makeWf (x: Request) : Request :=
-  {x with
-    context := Cedar.Data.Map.make (x.context.kvs)
-  }
+namespace Request
 
 @[inline]
 def mergePrincipal (result: Request) (x: EntityUIDEntry) : Request :=
@@ -64,12 +55,9 @@ def mergeResource (result: Request) (x: EntityUIDEntry) : Request :=
 
 @[inline]
 def mergeContext (result: Request) (x: Context) : Request :=
-  match x with
-    | .record m =>
-      {result with
-        context := Data.Map.mk (m.kvs ++ result.context.kvs)
-      }
-    | _ => panic!("Context is not of correct type")
+  {result with
+    context := (@Field.merge Context) result.context x
+  }
 
 @[inline]
 def merge (x: Request) (y: Request) : Request :=
@@ -77,7 +65,7 @@ def merge (x: Request) (y: Request) : Request :=
     principal := Field.merge x.principal y.principal
     action := Field.merge x.action y.action
     resource := Field.merge x.resource y.resource
-    context := Data.Map.mk (y.context.kvs ++ x.context.kvs)
+    context := (@Field.merge Context) x.context y.context
   }
 
 
@@ -108,4 +96,6 @@ instance : Message Request := {
   merge := merge
 }
 
-end Cedar.Spec.Request
+end Request
+
+end Cedar.Spec

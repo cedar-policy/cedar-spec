@@ -13,33 +13,32 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
+import Protobuf.Map
 import Protobuf.String
 
-import Cedar
-
--- Dependencies
+-- Message Dependencies
 import CedarProto.Value
 
-
-open Cedar.Spec
 open Proto
 
-def Context := Value
+namespace Cedar.Spec
 
-instance : Inhabited Context where
-  default := .record default
+def Context := Cedar.Data.Map Attr Value
+deriving Inhabited
 
-namespace Cedar.Spec.Context
+namespace Context
 
 @[inline]
-def mergeValue (x1: Context) (x2: Value) : Context :=
-  (@Field.merge Value) x1 x2
+def mergeValue (result: Context) (x: Value) : Context :=
+  match x with
+    | .record m => Cedar.Data.Map.make (result.kvs ++ m.kvs)
+    | _ => panic!("Context is not of correct type")
 
 @[inline]
 def merge (x1: Context) (x2: Context) : Context :=
-  (@Field.merge Value) x1 x2
+  Cedar.Data.Map.make (x1.kvs ++ x2.kvs)
 
 @[inline]
 def parseField (t: Tag) : BParsec (StateM Context Unit) := do
@@ -57,4 +56,6 @@ instance : Message Context := {
   merge := merge
 }
 
-end Cedar.Spec.Context
+end Context
+
+end Cedar.Spec

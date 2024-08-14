@@ -39,18 +39,16 @@ end Cedar.Spec
 
 namespace Cedar.Spec.EntitiesProto
 
-
-
 @[inline]
-def mergeEntities (result: EntitiesProto) (x: Array EntityProto) : EntitiesProto :=
-  let result : Array EntityProto := result
+def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
+  have x : Array EntityProto := x
+  have result : Array EntityProto := result
   x ++ result
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
-  let x : Array EntityProto := x
-  let y : Array EntityProto := y
-  y ++ x
+  have y : Repeated EntityProto := y
+  mergeEntities x y
 
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with

@@ -13,25 +13,23 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
 import Protobuf.String
 
-import Cedar
-
+-- Message Dependencies
 import CedarProto.EntityType
 
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
 -- Already defined in Cedar.Spec.EntityUID
 -- structure EntityUID where
 --   ty : EntityType
 --   eid : String
 
-
-namespace Cedar.Spec.EntityUID
+namespace EntityUID
 
 @[inline]
 def mergeTy (result: EntityUID) (ty: EntityTypeProto) : EntityUID :=
@@ -71,4 +69,6 @@ instance : Message EntityUID := {
   merge := merge
 }
 
-end Cedar.Spec.EntityUID
+end EntityUID
+
+end Cedar.Spec

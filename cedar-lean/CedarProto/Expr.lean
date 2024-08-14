@@ -13,22 +13,21 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Message
-import Protobuf.String
 import Protobuf.Enum
 import Protobuf.Map
 
-import Cedar
-
+-- Message Dependencies
 import CedarProto.EntityUID
 
-open Cedar.Spec
 open Proto
 
-namespace Cedar.Spec.Prim
+namespace Cedar.Spec
 
--- Already defined in Cedar.Spec.Name
+namespace Prim
+
+-- Already defined
 -- inductive Prim where
 --   | bool (b : Bool)
 --   | int (i : Int64)
@@ -108,9 +107,9 @@ instance : Message Prim := {
   merge := merge
 }
 
-end Cedar.Spec.Prim
+end Prim
 
-namespace Cedar.Spec.Var
+namespace Var
 def fromInt (n: Int) : Except String Var :=
   match n with
     | 0 => .ok .principal
@@ -123,7 +122,7 @@ instance : ProtoEnum Var := {
   fromInt := fromInt
 }
 
-end Cedar.Spec.Var
+end Var
 
 inductive UnaryOpProto where
   | na -- Not applicable, ignore this type when creating expression
@@ -181,7 +180,7 @@ instance : ProtoEnum BinaryOpProto := {
 }
 end BinaryOpProto
 
-namespace Cedar.Spec.PatElem
+namespace PatElem
 
 inductive PatElemTy where
   | na
@@ -239,7 +238,7 @@ instance : Message PatElem := {
   parseField := parseField
   merge := merge
 }
-end Cedar.Spec.PatElem
+end PatElem
 
 inductive ExprKindType where
   | na
@@ -282,7 +281,6 @@ instance : ProtoEnum ExprKindType := {
 }
 end ExprKindType
 
-namespace Cedar.Spec
 mutual
 inductive ExprProto where
   | mk (v : ExprKindProto)
@@ -305,9 +303,8 @@ end
 deriving instance Inhabited for ExprKindProto
 deriving instance Inhabited for ExprProto
 
-end Cedar.Spec
 
-namespace Cedar.Spec.ExprKindProto
+namespace ExprKindProto
 
 @[inline]
 def mergeTy (result: ExprKindProto) (x: ExprKindType) : ExprKindProto :=
@@ -390,11 +387,11 @@ def merge (x1: ExprKindProto) (x2: ExprKindProto) : ExprKindProto :=
         (Field.merge et1 et2) (m1 ++ m2)
       | _ => x2
 
-end Cedar.Spec.ExprKindProto
+end ExprKindProto
 
 -- There's one additinoal message wrapped around ExprKind
 -- that we need to parse
-namespace Cedar.Spec.ExprProto
+namespace ExprProto
 
 @[inline]
 def mergeExprKind (x1: ExprProto) (v2: ExprKindProto) : ExprProto :=
@@ -461,7 +458,7 @@ partial def toExpr (v: ExprProto) : Expr :=
         | .set => .set (es.map toExpr).toList
         | .record => .record (m.map (fun ⟨attr, e⟩ => ⟨attr, e.toExpr⟩)).toList
 
-end Cedar.Spec.ExprProto
+end ExprProto
 
 -- The Value message depends on ValueKind
 -- and the recursive components of ValueKind
@@ -541,7 +538,7 @@ instance : Message ExprProto := {
   merge := ExprProto.merge
 }
 
-namespace Cedar.Spec.Expr
+namespace Expr
 
 def merge (e1: Expr) (e2: Expr) : Expr :=
   match e2 with
@@ -592,4 +589,6 @@ def merge (e1: Expr) (e2: Expr) : Expr :=
 
 instance : Field Expr := Field.fromIntField ExprProto.toExpr merge
 
-end Cedar.Spec.Expr
+end Expr
+
+end Cedar.Spec
