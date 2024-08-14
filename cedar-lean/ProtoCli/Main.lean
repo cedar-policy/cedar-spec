@@ -96,6 +96,14 @@ def main (args: List String) : IO UInt32 := do
   let json_sec ←  runAndTime (processJson (args.get! 1))
   println! s!"JSONTime:  {json_sec.duration}"
 
-  println! s!"Representations equal? {decide (proto_sec.data = json_sec.data)}"
+  -- Cedar.Spec.Policies is a list that has no guarentee on it's ordering
+  -- for comparison, we need to sort first
+  let x := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) proto_sec.data
+  let y := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) json_sec.data
+
+  println! s!"Representations equal? {decide (x = y)}"
+
+  -- println! s!"{repr x}"
+  -- println! s!"{repr y}"
 
   pure 0

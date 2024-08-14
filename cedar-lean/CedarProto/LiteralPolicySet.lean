@@ -77,7 +77,9 @@ end Cedar.Spec.LiteralPolicySet
 namespace Cedar.Spec.Policies
 
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
-  match link? (Cedar.Data.Map.make x.templates.toList) (x.links.map (fun ⟨_, p⟩ => p)).toList with
+  let templates := Cedar.Data.Map.make x.templates.toList
+  let links := (x.links.map (fun ⟨id, p⟩ => p.mergeId id)).toList
+  match link? templates links with
   | .some policies => policies
   | .none => panic!("fromLiteralPolicySet: failed to link templates")
 
