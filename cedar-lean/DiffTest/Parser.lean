@@ -596,6 +596,9 @@ partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
     | "ExtensionType" => do
       let name ← getJsonField body "name" >>= jsonToExtType
       .ok (.ext name)
+    | "EmbeddedAttributeMap" => do
+      let attributeType ← getJsonField body "attrType" >>= jsonToCedarType
+      .ok (.attribute_map attributeType)
     | tag => .error s!"jsonToCedarType: unknown tag {tag}"
 
 partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySchemaEntry := do

@@ -1,0 +1,149 @@
+{
+    "schema": {
+        "entityTypes": [
+            [
+                "User",
+                {
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {
+                            "tags": {
+                                "attrType": {
+                                    "EmbeddedAttributeMap": {
+                                        "attrType": {
+                                            "Primitive": {
+                                                "primitiveType": "String"
+                                            }
+                                        }
+                                    }
+                                },
+                                "isRequired": true
+                            }
+                        }
+                    }
+                }
+            ],
+            [
+                "Photo",
+                {
+                    "descendants": [],
+                    "attributes": {
+                        "attrs": {}
+                    }
+                }
+            ]
+        ],
+        "actionIds": [
+            [
+                {
+                    "ty": "Action",
+                    "eid": "view"
+                },
+                {
+                    "appliesTo": {
+                        "principalApplySpec": [
+                            "User"
+                        ],
+                        "resourceApplySpec": [
+                            "Photo"
+                        ]
+                    },
+                    "descendants": [],
+                    "context": {
+                        "EntityOrRecord": {
+                            "Record": {
+                                "attrs": {
+                                    "attrs": { }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        ]
+    },
+    "policies": {
+        "templates": {
+            "policy0": {
+                "effect": "permit",
+                "principal_constraint": {
+                    "constraint": "Any"
+                },
+                "action_constraint": {
+                    "Eq": {
+                        "ty": "Action",
+                        "eid": "view"
+                    }
+                },
+                "resource_constraint": {
+                    "constraint": "Any" 
+                },
+                "non_scope_constraints": {
+                    "expr_kind": {
+                        "And": {
+                            "left": {
+                                "expr_kind":{
+                                    "HasAttr": {
+                                        "expr": {
+                                            "expr_kind": {
+                                                "GetAttr": {
+                                                    "expr": {
+                                                        "expr_kind": {
+                                                            "Var": "principal"
+                                                        }
+                                                    },
+                                                    "attr": "tags"
+                                                }
+                                            }
+                                        },
+                                        "attr": "foo"
+                                    }
+                                }
+                            },
+                            "right": {
+                                "expr_kind": {
+                                    "BinaryApp": {
+                                        "op": "Eq",
+                                        "arg1": {
+                                            "expr_kind": {
+                                                "GetAttr": {
+                                                    "expr": {
+                                                        "expr_kind": {
+                                                            "GetAttr": {
+                                                                "expr": {
+                                                                    "expr_kind": {
+                                                                        "Var": "principal"
+                                                                    }
+                                                                },
+                                                                "attr": "tags"
+                                                            }
+                                                        }
+                                                    },
+                                                    "attr": "foo"
+                                                }
+                                            }
+                                        },
+                                        "arg2": {
+                                            "expr_kind": {
+                                                "Lit": {
+                                                    "String": "bar"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "links": {
+            "policy0": {
+                "template_id": "policy0",
+                "values": {}
+            }
+        }
+    },
+    "mode": "Strict"
+}
