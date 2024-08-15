@@ -64,9 +64,11 @@ end ScopeType
 -- Therefore we create an intermediate
 -- representation which we can post process later
 
+deriving instance Inhabited for EntityUIDOrSlot
+
 structure PrincipalOrResourceConstraint where
   ty: ScopeType
-  er: EntityUIDOrSlot.EntityUIDOrSlotProto
+  er: EntityUIDOrSlot
   na: EntityType
 deriving Inhabited
 
@@ -78,7 +80,7 @@ def mergeTy (result: PrincipalOrResourceConstraint) (x: ScopeType) : PrincipalOr
   }
 
 @[inline]
-def mergeEr (result: PrincipalOrResourceConstraint) (x: EntityUIDOrSlot.EntityUIDOrSlotProto): PrincipalOrResourceConstraint :=
+def mergeEr (result: PrincipalOrResourceConstraint) (x: EntityUIDOrSlot): PrincipalOrResourceConstraint :=
   {result with
     er := Field.merge result.er x
   }
@@ -105,8 +107,8 @@ def parseField (t: Tag) : BParsec (StateM PrincipalOrResourceConstraint Unit) :=
       let x: ScopeType ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
-      (@Field.guardWireType EntityUIDOrSlot.EntityUIDOrSlotProto) t.wireType
-      let x: EntityUIDOrSlot.EntityUIDOrSlotProto ← BParsec.attempt Field.parse
+      (@Field.guardWireType EntityUIDOrSlot) t.wireType
+      let x: EntityUIDOrSlot ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEr s x))
     | 3 =>
       (@Field.guardWireType EntityType) t.wireType
@@ -127,10 +129,10 @@ deriving instance Inhabited for ScopeTemplate
 def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplate :=
   match x.ty with
     | .any => .any
-    | .in => .mem (x.er.toEntityUIDOrSlot s)
-    | .eq => .eq (x.er.toEntityUIDOrSlot s)
+    | .in => .mem (x.er.withSlot s)
+    | .eq => .eq (x.er.withSlot s)
     | .is => .is x.na
-    | .isIn => .isMem x.na (x.er.toEntityUIDOrSlot s)
+    | .isIn => .isMem x.na (x.er.withSlot s)
 
 end PrincipalOrResourceConstraint
 

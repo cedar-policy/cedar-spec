@@ -25,20 +25,6 @@ namespace Cedar.Spec
 
 namespace EntityUIDOrSlot
 
--- Already defined in Cedar.Spec
--- inductive EntityUIDOrSlot where
---   | entityUID (entity : EntityUID)
---   | slot (id : SlotID)
-
--- Note that we cannot automatically parse into
--- EntityUIDOrSlot since the slot id is not known
--- by the EntityReference message
-
-inductive EntityUIDOrSlotProto
-  | entityUID (entity: EntityUID)
-  | slot
-deriving Inhabited
-
 inductive EntityReferenceType where
   | slot
   | euid
@@ -56,33 +42,34 @@ instance : ProtoEnum EntityReferenceType := {
 }
 end EntityReferenceType
 
-namespace EntityUIDOrSlotProto
 @[inline]
-def mergeTy (result: EntityUIDOrSlotProto) (x: EntityReferenceType) : EntityUIDOrSlotProto :=
+def mergeTy (result: EntityUIDOrSlot) (x: EntityReferenceType) : EntityUIDOrSlot :=
   -- For enums, if result is already of the same type, then we don't do anything
   -- otherwise, we construct a default object of the new type.
   match x with
     | .euid => match result with
       | .entityUID _ => result
-      | .slot => .entityUID default
+      | .slot _ => .entityUID default
     | .slot => match result with
-      | .entityUID _ => .slot
-      | .slot  => result
+      | .entityUID _ => .slot default
+      | .slot _ => result
 
 
 @[inline]
-def mergeEuid (result: EntityUIDOrSlotProto) (x: EntityUID): EntityUIDOrSlotProto :=
+def mergeEuid (result: EntityUIDOrSlot) (x: EntityUID): EntityUIDOrSlot :=
   match result with
     | .entityUID e => .entityUID (Field.merge e x)
-    | .slot => .entityUID x
+    | .slot _ => .entityUID x
 
 @[inline]
-def merge (x: EntityUIDOrSlotProto) (y: EntityUIDOrSlotProto) : EntityUIDOrSlotProto :=
+def merge (x: EntityUIDOrSlot) (y: EntityUIDOrSlot) : EntityUIDOrSlot :=
   match y with
     | .entityUID e2 => mergeEuid x e2
-    | .slot => y
+    | .slot s2 => match x with
+      | .entityUID _ => y
+      | .slot s1 => .slot (Field.merge s1 s2)
 
-def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlotProto Unit) := do
+def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlot Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityReferenceType) t.wireType
@@ -96,28 +83,17 @@ def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlotProto Unit) := do
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)
 
-instance : Message EntityUIDOrSlotProto := {
+deriving instance Inhabited for EntityUIDOrSlot
+instance : Message EntityUIDOrSlot := {
   parseField := parseField
   merge := merge
 }
 
 @[inline]
-def toEntityUIDOrSlot (x: EntityUIDOrSlotProto) (s: SlotID): EntityUIDOrSlot :=
+def withSlot (x: EntityUIDOrSlot) (s: SlotID): EntityUIDOrSlot :=
   match x with
-    | .entityUID e => .entityUID e
-    | .slot => .slot s
-
-end EntityUIDOrSlotProto
-
-@[inline]
-def merge (x1: EntityUIDOrSlot) (x2: EntityUIDOrSlot) : EntityUIDOrSlot :=
-  match x2 with
-    | .entityUID e2 => match x1 with
-      | .entityUID e1 => .entityUID (Field.merge e1 e2)
-      | _ => x2
-    | .slot s2 => match x1 with
-      | .slot s1 => .slot (Field.merge s1 s2)
-      | _ => x2
+    | .entityUID _ => x
+    | .slot _ => .slot s
 
 end EntityUIDOrSlot
 
