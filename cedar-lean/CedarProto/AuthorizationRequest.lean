@@ -13,16 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.Request
 import CedarProto.LiteralPolicySet
 import CedarProto.Entities
 
-import Cedar
-open Cedar.Spec
 open Proto
 
 namespace Cedar.Spec
@@ -31,10 +28,8 @@ structure AuthorizationRequest where
   entities: Entities
   policies: Policies
 deriving Inhabited, DecidableEq
-end Cedar.Spec
 
-
-namespace Cedar.Spec.AuthorizationRequest
+namespace AuthorizationRequest
 
 @[inline]
 def mergeRequest (result: AuthorizationRequest) (x: Request) : AuthorizationRequest :=
@@ -62,7 +57,6 @@ def merge (x y: AuthorizationRequest) : AuthorizationRequest :=
     policies := Field.merge x.policies y.policies
   }
 
-
 def parseField (t: Tag) : BParsec (StateM AuthorizationRequest Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -86,4 +80,6 @@ instance : Message AuthorizationRequest := {
   merge := merge
 }
 
-end Cedar.Spec.AuthorizationRequest
+end AuthorizationRequest
+
+end Cedar.Spec

@@ -13,22 +13,19 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Enum
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.Expr
 import CedarProto.PrincipalConstraint
 import CedarProto.ActionConstraint
 import CedarProto.ResourceConstraint
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
-namespace Cedar.Spec.Effect
+namespace Effect
 def fromInt (n: Int): Except String Effect :=
   match n with
     | 0 => .ok .forbid
@@ -38,9 +35,9 @@ def fromInt (n: Int): Except String Effect :=
 instance : ProtoEnum Effect := {
   fromInt := fromInt
 }
-end Cedar.Spec.Effect
+end Effect
 
-namespace Cedar.Spec.Conditions
+namespace Conditions
 
 @[inline]
 def merge (c1 c2: Conditions) : Conditions :=
@@ -53,11 +50,11 @@ def merge (c1 c2: Conditions) : Conditions :=
 private def fromExpr (e: Expr) : Conditions :=
   [{kind := .when, body := e}]
 
-instance : Field Conditions := Field.fromIntField fromExpr merge
+instance : Field Conditions := Field.fromInterField fromExpr merge
 
-end Cedar.Spec.Conditions
+end Conditions
 
-namespace Cedar.Spec.Template
+namespace Template
 
 -- Already defined in Cedar.Spec
 -- structure Template where
@@ -144,4 +141,6 @@ instance : Message Template := {
   merge := merge
 }
 
-end Cedar.Spec.Template
+end Template
+
+end Cedar.Spec

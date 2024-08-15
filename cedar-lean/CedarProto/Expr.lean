@@ -587,7 +587,7 @@ def merge (e1: Expr) (e2: Expr) : Expr :=
   | _ => e2 -- TODO: ExtFun
 
 
-instance : Field Expr := Field.fromIntField ExprProto.toExpr merge
+instance : Field Expr := Field.fromInterField ExprProto.toExpr merge
 
 end Expr
 

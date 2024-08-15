@@ -13,22 +13,14 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.Entity
 
-import Cedar
-open Cedar.Spec
 open Proto
 
-
 namespace Cedar.Spec
-def EntitiesProto: Type := Array EntityProto
-deriving instance Inhabited for EntitiesProto
-end Cedar.Spec
-
 
 -- Already defined in Cedar.Spec.Entities
 -- abbrev Entities := Map EntityUID EntityData
@@ -37,7 +29,10 @@ end Cedar.Spec
 -- we need to parse an intermediate representation EntityProto
 -- which contains that and transform it to the appropriate types.
 
-namespace Cedar.Spec.EntitiesProto
+def EntitiesProto: Type := Array EntityProto
+deriving instance Inhabited for EntitiesProto
+
+namespace EntitiesProto
 
 @[inline]
 def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
@@ -70,15 +65,17 @@ instance : Message EntitiesProto := {
 def toEntities (e: EntitiesProto): Entities :=
   Cedar.Data.Map.make (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩)).toList
 
-end Cedar.Spec.EntitiesProto
+end EntitiesProto
 
-
-namespace Cedar.Spec.Entities
+namespace Entities
 @[inline]
 def merge (e1: Entities) (e2: Entities): Entities :=
   let e1: Cedar.Data.Map EntityUID EntityData := e1
   let e2: Cedar.Data.Map EntityUID EntityData := e2
   Cedar.Data.Map.make (e1.kvs ++ e2.kvs)
 
-instance : Field Entities := Field.fromIntField EntitiesProto.toEntities merge
-end Cedar.Spec.Entities
+instance : Field Entities := Field.fromInterField EntitiesProto.toEntities merge
+
+end Entities
+
+end Cedar.Spec

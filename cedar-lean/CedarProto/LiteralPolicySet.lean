@@ -13,42 +13,40 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.TemplateBody
 import CedarProto.LiteralPolicy
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
 structure LiteralPolicySet where
   templates: Array (String × Template)
   links: Array (String × TemplateLinkedPolicy)
 deriving Inhabited
 
-namespace Cedar.Spec.LiteralPolicySet
+namespace LiteralPolicySet
 
 @[inline]
 def mergeTemplates (result: LiteralPolicySet) (x: Array (String × Template)) : LiteralPolicySet :=
   {result with
-    templates := result.templates ++ x
+    templates := x ++ result.templates
   }
 
 @[inline]
 def mergeLinks (result: LiteralPolicySet) (x: Array (String × TemplateLinkedPolicy)): LiteralPolicySet :=
   {result with
-    links := result.links ++ x
+    links := x ++ result.links
   }
 
 @[inline]
 def merge (x y: LiteralPolicySet) : LiteralPolicySet :=
   {x with
-    templates := x.templates ++ y.templates
-    links := x.links ++ y.links
+    templates := y.templates ++ x.templates
+    links := y.links ++ x.links
   }
 
 
@@ -71,10 +69,10 @@ instance : Message LiteralPolicySet := {
   merge := merge
 }
 
-end Cedar.Spec.LiteralPolicySet
+end LiteralPolicySet
 
 
-namespace Cedar.Spec.Policies
+namespace Policies
 
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
   let templates := Cedar.Data.Map.make x.templates.toList
@@ -86,6 +84,7 @@ def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
 private def merge (x y : Policies): Policies :=
   x ++ y
 
-instance : Field Policies := Field.fromIntField fromLiteralPolicySet merge
+instance : Field Policies := Field.fromInterField fromLiteralPolicySet merge
 
-end Cedar.Spec.Policies
+end Policies
+end Cedar.Spec

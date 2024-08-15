@@ -13,37 +13,17 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Enum
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.EntityReference
 import CedarProto.EntityType
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
-
-
-namespace Cedar.Spec.ScopeTemplate
-
--- Already defined
--- inductive ScopeTemplate where
---   | any
---   | eq (entityOrSlot : EntityUIDOrSlot)
---   | mem (entityOrSlot : EntityUIDOrSlot)
---   | is (ety : EntityType)
---   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
-
--- Note: In this case, EntityType and EntityUIDOrSlot do not uniquely
--- tell us which constructor to call. Therefore we create an intermediate
--- representation which we can post process later
-
--- We cannot create ScopeTemplate directly from PrincipalOrResourceConstraint
--- since the slot information is not known in this message
+namespace ScopeTemplate
 
 inductive ScopeType where
   | any
@@ -69,9 +49,24 @@ instance : ProtoEnum ScopeType := {
 }
 end ScopeType
 
+-- Already defined
+-- inductive ScopeTemplate where
+--   | any
+--   | eq (entityOrSlot : EntityUIDOrSlot)
+--   | mem (entityOrSlot : EntityUIDOrSlot)
+--   | is (ety : EntityType)
+--   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
+
+-- Note: EntityType and EntityUIDOrSlot do not uniquely
+-- tell us which constructor to call. Also slot information is not carried
+-- within the Protobuf representation of this message.
+
+-- Therefore we create an intermediate
+-- representation which we can post process later
+
 structure PrincipalOrResourceConstraint where
   ty: ScopeType
-  er: Cedar.Spec.EntityUIDOrSlot.EntityUIDOrSlotProto
+  er: EntityUIDOrSlot.EntityUIDOrSlotProto
   na: EntityType
 deriving Inhabited
 
@@ -83,7 +78,7 @@ def mergeTy (result: PrincipalOrResourceConstraint) (x: ScopeType) : PrincipalOr
   }
 
 @[inline]
-def mergeEr (result: PrincipalOrResourceConstraint) (x: Cedar.Spec.EntityUIDOrSlot.EntityUIDOrSlotProto): PrincipalOrResourceConstraint :=
+def mergeEr (result: PrincipalOrResourceConstraint) (x: EntityUIDOrSlot.EntityUIDOrSlotProto): PrincipalOrResourceConstraint :=
   {result with
     er := Field.merge result.er x
   }
@@ -110,8 +105,8 @@ def parseField (t: Tag) : BParsec (StateM PrincipalOrResourceConstraint Unit) :=
       let x: ScopeType ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
-      (@Field.guardWireType Cedar.Spec.EntityUIDOrSlot.EntityUIDOrSlotProto) t.wireType
-      let x: Cedar.Spec.EntityUIDOrSlot.EntityUIDOrSlotProto ← BParsec.attempt Field.parse
+      (@Field.guardWireType EntityUIDOrSlot.EntityUIDOrSlotProto) t.wireType
+      let x: EntityUIDOrSlot.EntityUIDOrSlotProto ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEr s x))
     | 3 =>
       (@Field.guardWireType EntityType) t.wireType
@@ -139,6 +134,8 @@ def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplat
 end PrincipalOrResourceConstraint
 
 def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
+  -- If x1 and x2 have different constructors, then
+  -- return x2, otherwise merge the fields
   match x2 with
    | .any => x2
    | .mem e2 => match x1 with
@@ -155,4 +152,6 @@ def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
     | _ => x2
 
 
-end Cedar.Spec.ScopeTemplate
+end ScopeTemplate
+
+end Cedar.Spec

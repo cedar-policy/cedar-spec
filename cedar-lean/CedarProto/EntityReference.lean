@@ -13,18 +13,17 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Enum
-import Protobuf.Message
-import Protobuf.String
 
+-- Message Dependencies
 import CedarProto.EntityUID
 
-import Cedar
-open Cedar.Spec
 open Proto
 
-namespace Cedar.Spec.EntityUIDOrSlot
+namespace Cedar.Spec
+
+namespace EntityUIDOrSlot
 
 -- Already defined in Cedar.Spec
 -- inductive EntityUIDOrSlot where
@@ -77,7 +76,6 @@ def mergeEuid (result: EntityUIDOrSlotProto) (x: EntityUID): EntityUIDOrSlotProt
     | .entityUID e => .entityUID (Field.merge e x)
     | .slot => .entityUID x
 
-
 @[inline]
 def merge (x: EntityUIDOrSlotProto) (y: EntityUIDOrSlotProto) : EntityUIDOrSlotProto :=
   match y with
@@ -121,5 +119,6 @@ def merge (x1: EntityUIDOrSlot) (x2: EntityUIDOrSlot) : EntityUIDOrSlot :=
       | .slot s1 => .slot (Field.merge s1 s2)
       | _ => x2
 
+end EntityUIDOrSlot
 
-end Cedar.Spec.EntityUIDOrSlot
+end Cedar.Spec

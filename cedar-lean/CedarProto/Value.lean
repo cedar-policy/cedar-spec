@@ -44,6 +44,6 @@ private partial def exprToValue : Expr → Value
   -- TODO: ExtFun
   | _ => panic!("exprToValue: invalid input expression")
 
-instance : Field Value := Field.fromIntField exprToValue merge
+instance : Field Value := Field.fromInterField exprToValue merge
 
 end Cedar.Spec.Value

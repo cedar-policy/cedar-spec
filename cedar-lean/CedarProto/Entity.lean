@@ -13,21 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.EntityUID
 import CedarProto.Value
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
 -- NOTE: EntityData is defined in Cedar.Spec.Entities
 -- however it doesn't have the uid field which is
--- needed when crafting Entities
+-- needed when crafting Entities, therefore
+-- we store within an intermediate representation instead
 
 structure EntityProto where
   uid: EntityUID
@@ -35,8 +34,9 @@ structure EntityProto where
   ancestors : Repeated EntityUID
 deriving Inhabited
 
-namespace Cedar.Spec.EntityProto
+namespace EntityProto
 
+@[inline]
 def toEntityData (e: EntityProto) : EntityData :=
   let newAttrs := Cedar.Data.Map.make e.attrs.toList
   let newAncestors := Cedar.Data.Set.make e.ancestors.toList
@@ -92,4 +92,6 @@ instance : Message EntityProto := {
   merge := merge
 }
 
-end Cedar.Spec.EntityProto
+end EntityProto
+
+end Cedar.Spec

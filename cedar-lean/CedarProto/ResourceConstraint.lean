@@ -13,21 +13,19 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.PrincipalOrResourceConstraint
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
 
-namespace Cedar.Spec.ResourceScopeTemplate
+namespace ResourceScopeTemplate
 
 @[inline]
-def mergeConstraint (result: ResourceScopeTemplate) (x: Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) : ResourceScopeTemplate :=
+def mergeConstraint (result: ResourceScopeTemplate) (x: ScopeTemplate.PrincipalOrResourceConstraint) : ResourceScopeTemplate :=
   let ⟨ sc1 ⟩ := result
   .resourceScope (ScopeTemplate.merge sc1 (x.toScopeTemplate "?resource"))
 
@@ -40,8 +38,8 @@ def merge (x: ResourceScopeTemplate) (y: ResourceScopeTemplate) : ResourceScopeT
 def parseField (t: Tag) : BParsec (StateM ResourceScopeTemplate Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) t.wireType
-      let x: Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint ← BParsec.attempt Field.parse
+      (@Field.guardWireType ScopeTemplate.PrincipalOrResourceConstraint) t.wireType
+      let x: ScopeTemplate.PrincipalOrResourceConstraint ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeConstraint s x))
     | _ =>
       t.wireType.skip
@@ -53,4 +51,4 @@ instance : Message ResourceScopeTemplate := {
   merge := merge
 }
 
-end Cedar.Spec.ResourceScopeTemplate
+end ResourceScopeTemplate

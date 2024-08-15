@@ -13,25 +13,22 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
+import Cedar
 import Protobuf.Enum
-import Protobuf.Message
-import Protobuf.String
 
+-- Message Dependencies
 import CedarProto.EntityUID
 
-import Cedar
-open Cedar.Spec
 open Proto
 
-
+namespace Cedar.Spec
 -- Already defined
 -- inductive ActionScope where
 --   | actionScope (scope : Scope)
 --   | actionInAny (ls : List EntityUID)
 
 
-namespace Cedar.Spec.ActionScope
+namespace ActionScope
 
 inductive ActionConstraintType where
   | any
@@ -51,9 +48,12 @@ instance : ProtoEnum ActionConstraintType where
   fromInt := get?
 end ActionConstraintType
 
-
 @[inline]
 def mergeTy (result: ActionScope) (x: ActionConstraintType) : ActionScope :=
+  -- ActionConstraintTypes don't contain any data, but exists to tell
+  -- us which constructor we need to use. If it matches the current constructor
+  -- chosen within ActionScope, then we don't do anything. Otherwise, we switch
+  -- to the new constructor with default arguments
   match x with
     | .any => .actionScope (Scope.any)
     | .eq => match result with
@@ -72,29 +72,28 @@ def mergeEuids (result: ActionScope) (x: Array EntityUID): ActionScope :=
     | _ => .actionInAny x.toList
 
 @[inline]
-def mergeEuid (result: ActionScope) (x: EntityUID): ActionScope :=
+def mergeEuid (result: ActionScope) (x2: EntityUID): ActionScope :=
   match result with
     | .actionScope s => match s with
-      | .eq x2 => .actionScope (.eq (Field.merge x2 x))
-      | _ => .actionScope (.eq x)
-    | _ => .actionScope (.eq x)
-
+      | .eq x1 => .actionScope (.eq (Field.merge x1 x2))
+      | _ => .actionScope (.eq x2)
+    | _ => .actionScope (.eq x2)
 
 @[inline]
-def merge (x: ActionScope) (y: ActionScope) : ActionScope :=
-  match y with
+def merge (x1 x2: ActionScope) : ActionScope :=
+  match x2 with
     | .actionScope s2 => match s2 with
-      | .eq e2 => match x with
+      | .eq e2 => match x1 with
         | .actionScope s => match s with
+          -- Merge entity data
           | .eq e1 => .actionScope (.eq (Field.merge e1 e2))
-          | _ => y
-        | .actionInAny _ => y
-      | _ => y
-    | .actionInAny l2 => match x with
-      | .actionInAny l => .actionInAny (l2 ++ l)
-      | _ => y
-
-
+          | _ => x2
+        | .actionInAny _ => x2
+      | _ => x2
+    | .actionInAny l2 => match x1 with
+      -- Merge entity uids
+      | .actionInAny l1 => .actionInAny (l2 ++ l1)
+      | _ => x2
 
 def parseField (t: Tag) : BParsec (StateM ActionScope Unit) := do
   match t.fieldNum with
@@ -119,4 +118,6 @@ instance : Message ActionScope := {
   merge := merge
 }
 
-end Cedar.Spec.ActionScope
+end ActionScope
+
+end Cedar.Spec

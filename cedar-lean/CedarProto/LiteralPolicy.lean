@@ -13,24 +13,22 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Protobuf.BParsec
-import Protobuf.Message
-import Protobuf.String
+import Cedar
 
+-- Message Dependencies
 import CedarProto.EntityUID
 
-import Cedar
-open Cedar.Spec
 open Proto
 
+namespace Cedar.Spec
+
+namespace TemplateLinkedPolicy
 
 -- Already defined
 -- structure TemplateLinkedPolicy where
 --   id : PolicyID
 --   templateId : TemplateID
 --   slotEnv : SlotEnv
-
-namespace Cedar.Spec.TemplateLinkedPolicy
 
 @[inline]
 def mergeId (result: TemplateLinkedPolicy) (x: String) : TemplateLinkedPolicy :=
@@ -66,7 +64,6 @@ def merge (x: TemplateLinkedPolicy) (y: TemplateLinkedPolicy) : TemplateLinkedPo
     slotEnv := Cedar.Data.Map.mk (y.slotEnv.kvs ++ x.slotEnv.kvs)
   }
 
-
 def parseField (t: Tag) : BParsec (StateM TemplateLinkedPolicy Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -95,4 +92,6 @@ instance : Message TemplateLinkedPolicy := {
   merge := merge
 }
 
-end Cedar.Spec.TemplateLinkedPolicy
+end TemplateLinkedPolicy
+
+end Cedar.Spec
