@@ -27,7 +27,7 @@ structure AuthorizationRequest where
   request: Request
   entities: Entities
   policies: Policies
-deriving Inhabited, DecidableEq
+deriving Inhabited, DecidableEq, Repr
 
 namespace AuthorizationRequest
 
@@ -79,6 +79,14 @@ instance : Message AuthorizationRequest := {
   parseField := parseField
   merge := merge
 }
+
+@[inline]
+def mkWf (a : AuthorizationRequest) : AuthorizationRequest :=
+  {a with
+    request := a.request.mkWf
+    policies := a.policies
+    entities := a.entities.mkWf
+  }
 
 end AuthorizationRequest
 

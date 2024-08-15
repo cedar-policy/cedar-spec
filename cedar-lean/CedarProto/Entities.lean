@@ -63,7 +63,7 @@ instance : Message EntitiesProto := {
 
 @[inline]
 def toEntities (e: EntitiesProto): Entities :=
-  Cedar.Data.Map.make (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩)).toList
+  Cedar.Data.Map.mk (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩)).toList
 
 end EntitiesProto
 
@@ -72,9 +72,12 @@ namespace Entities
 def merge (e1: Entities) (e2: Entities): Entities :=
   let e1: Cedar.Data.Map EntityUID EntityData := e1
   let e2: Cedar.Data.Map EntityUID EntityData := e2
-  Cedar.Data.Map.make (e1.kvs ++ e2.kvs)
+  Cedar.Data.Map.mk (e2.kvs ++ e1.kvs)
 
 instance : Field Entities := Field.fromInterField EntitiesProto.toEntities merge
+
+def mkWf (e: Entities) : Entities :=
+  Cedar.Data.Map.make (e.kvs.map (fun (euid, edata) => (euid, edata.mkWf)))
 
 end Entities
 

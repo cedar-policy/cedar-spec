@@ -123,6 +123,7 @@ instance : Message PrincipalOrResourceConstraint := {
 
 deriving instance Inhabited for ScopeTemplate
 
+@[inline]
 def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplate :=
   match x.ty with
     | .any => .any
@@ -133,6 +134,7 @@ def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplat
 
 end PrincipalOrResourceConstraint
 
+@[inline]
 def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
   -- If x1 and x2 have different constructors, then
   -- return x2, otherwise merge the fields

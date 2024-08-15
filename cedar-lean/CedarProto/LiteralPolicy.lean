@@ -92,6 +92,12 @@ instance : Message TemplateLinkedPolicy := {
   merge := merge
 }
 
+@[inline]
+def mkWf (t: TemplateLinkedPolicy) : TemplateLinkedPolicy :=
+  {t with
+    slotEnv := Cedar.Data.Map.make t.slotEnv.kvs
+  }
+
 end TemplateLinkedPolicy
 
 end Cedar.Spec

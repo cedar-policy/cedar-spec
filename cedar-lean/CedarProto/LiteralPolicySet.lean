@@ -76,13 +76,13 @@ namespace Policies
 
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
   let templates := Cedar.Data.Map.make x.templates.toList
-  let links := (x.links.map (fun ⟨id, p⟩ => p.mergeId id)).toList
+  let links := (x.links.map (fun ⟨id, p⟩ => (p.mergeId id).mkWf)).toList
   match link? templates links with
   | .some policies => policies
   | .none => panic!("fromLiteralPolicySet: failed to link templates")
 
 private def merge (x y : Policies): Policies :=
-  x ++ y
+  y ++ x
 
 instance : Field Policies := Field.fromInterField fromLiteralPolicySet merge
 

@@ -23,6 +23,10 @@ open Proto
 
 namespace Cedar.Spec
 
+-- structure EntityData where
+--   attrs : Map Attr Partial.Value
+--   ancestors : Set EntityUID
+
 -- NOTE: EntityData is defined in Cedar.Spec.Entities
 -- however it doesn't have the uid field which is
 -- needed when crafting Entities, therefore
@@ -38,8 +42,8 @@ namespace EntityProto
 
 @[inline]
 def toEntityData (e: EntityProto) : EntityData :=
-  let newAttrs := Cedar.Data.Map.make e.attrs.toList
-  let newAncestors := Cedar.Data.Set.make e.ancestors.toList
+  let newAttrs := Cedar.Data.Map.mk e.attrs.toList
+  let newAncestors := Cedar.Data.Set.mk e.ancestors.toList
   EntityData.mk newAttrs newAncestors
 
 @[inline]
@@ -93,5 +97,16 @@ instance : Message EntityProto := {
 }
 
 end EntityProto
+
+namespace EntityData
+
+def mkWf (e: EntityData) : EntityData :=
+  {e with
+    attrs := Cedar.Data.Map.make (e.attrs.kvs.map (fun (ki, vi) => (ki, vi.mkWf)))
+    ancestors := Cedar.Data.Set.make (e.ancestors.elts)
+  }
+
+
+end EntityData
 
 end Cedar.Spec

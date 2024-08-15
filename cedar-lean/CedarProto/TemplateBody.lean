@@ -64,9 +64,6 @@ namespace Template
 --   resourceScope : ResourceScopeTemplate
 --   condition : Conditions
 
--- Since Template doesn't carry an id, we need to store it in a seperate
--- struct so that it can be used when creating the policies
-
 @[inline]
 def mergeEffect (result: Template) (x: Effect): Template :=
   {result with

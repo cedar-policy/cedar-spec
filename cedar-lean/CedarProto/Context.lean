@@ -33,12 +33,12 @@ namespace Context
 @[inline]
 def mergeValue (result: Context) (x: Value) : Context :=
   match x with
-    | .record m => Cedar.Data.Map.make (result.kvs ++ m.kvs)
+    | .record m => Cedar.Data.Map.mk (result.kvs ++ m.kvs)
     | _ => panic!("Context is not of correct type")
 
 @[inline]
 def merge (x1: Context) (x2: Context) : Context :=
-  Cedar.Data.Map.make (x1.kvs ++ x2.kvs)
+  Cedar.Data.Map.mk (x2.kvs ++ x1.kvs)
 
 @[inline]
 def parseField (t: Tag) : BParsec (StateM Context Unit) := do
@@ -55,6 +55,10 @@ instance : Message Context := {
   parseField := parseField
   merge := merge
 }
+
+@[inline]
+def mkWf (c: Context) : Context :=
+  Cedar.Data.Map.make (c.kvs.map (fun (ki, vi) => (ki, vi.mkWf)))
 
 end Context
 

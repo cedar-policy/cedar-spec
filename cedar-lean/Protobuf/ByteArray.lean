@@ -27,23 +27,26 @@ structure Iterator where
   deriving DecidableEq, Repr, Inhabited
 
 /-- Creates an iterator at the beginning of a ByteArray. -/
+@[inline]
 def iter (b : ByteArray) : Iterator := ⟨b, 0⟩
 
 namespace Iterator
 
+@[inline]
 def next (i: Iterator) : Iterator := ⟨i.data, i.pos + 1⟩
 
 @[simp] theorem next_pos_eq (i: Iterator) : i.next.pos = i.pos + 1 := rfl
 @[simp] theorem next_data_eq (i: Iterator) : i.next.data = i.data := rfl
 
-def forward : Iterator → Nat → Iterator
-  | it, 0   => it
-  | it, n+1 => forward it.next n
+@[inline]
+def forward (i: Iterator) (n: Nat) : Iterator := ⟨i.data, i.pos + n⟩
 
+@[inline]
 def size (i: Iterator) : Nat := i.data.size
 
 @[simp] theorem next_size_eq (i: Iterator) : i.next.size = i.size := rfl
 
+@[inline]
 def remaining (i: Iterator) : Nat := i.size - i.pos
 
 @[simp] theorem remaining_eq (i: Iterator) : i.remaining = i.size - i.pos := rfl
@@ -53,8 +56,9 @@ theorem next_le_remaining (i: Iterator) : i.next.remaining ≤ i.remaining := by
   omega
 
 /-- True if there are more bytes passed the current position. -/
-def hasNext (i: Iterator) : Bool := i.remaining > 0
-@[simp] theorem hasNext_iff (i: Iterator) : i.hasNext ↔ i.remaining > 0 := by
+@[inline]
+def hasNext (i: Iterator) : Bool := i.remaining != 0
+@[simp] theorem hasNext_iff (i: Iterator) : i.hasNext ↔ i.remaining != 0 := by
   apply Iff.intro
   all_goals unfold hasNext
   all_goals simp only [remaining_eq, gt_iff_lt, decide_eq_true_eq, imp_self]
@@ -62,10 +66,9 @@ def hasNext (i: Iterator) : Bool := i.remaining > 0
 @[simp] theorem not_hasNext_iff (i: Iterator) : ¬i.hasNext ↔ i.remaining = 0 := by
   apply Iff.intro
   all_goals unfold hasNext
-  all_goals simp only [remaining_eq, gt_iff_lt, decide_eq_true_eq,
-    Nat.not_lt, Nat.le_zero_eq, imp_self]
+  all_goals simp only [remaining_eq, bne_iff_ne, ne_eq, Decidable.not_not, imp_self]
 
-
+@[inline]
 def empty (i: Iterator) : Bool := ¬i.hasNext
 
 @[simp] theorem empty_iff (i: Iterator) : i.empty ↔ ¬i.hasNext := by
@@ -76,7 +79,7 @@ def empty (i: Iterator) : Bool := ¬i.hasNext
 
 @[simp] theorem not_empty_iff (i: Iterator) : ¬i.empty ↔ i.hasNext := by
   simp only [empty_iff, hasNext_iff, remaining_eq, gt_iff_lt, Nat.not_lt, Nat.le_zero_eq]
-  exact Nat.ne_zero_iff_zero_lt
+  exact Decidable.not_not
 
 end Iterator
 end ByteArray

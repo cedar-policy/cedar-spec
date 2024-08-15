@@ -73,12 +73,14 @@ instance : MonadExceptOf String BParsec := {
 
 /- Execute parser combinators on a byte array,
 returns an Except to capture both successes and failures -/
+@[inline]
 def run (p : BParsec α) (ba : ByteArray) : Except String α :=
   match p ba.iter with
   | ParseResult.success _ res => Except.ok res
   | ParseResult.error it err  => Except.error s!"offset {repr it.pos}: {err}"
 
 /- Execute parser combinators on a byte array, panics on error -/
+@[inline]
 def run! [Inhabited α] (p: BParsec α) (ba: ByteArray) : α :=
   match p ba.iter with
   | ParseResult.success _ res => res
@@ -149,7 +151,8 @@ def pos : BParsec Nat :=
   let newResult := g result element
   foldlHelper f g (remaining - elementSize) newResult
 
-@[inline] def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
+@[inline]
+def foldl {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (init: β): BParsec β :=
   foldlHelper f g remaining init
 
 @[inline]
