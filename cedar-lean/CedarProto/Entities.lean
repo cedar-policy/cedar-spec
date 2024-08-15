@@ -29,7 +29,7 @@ namespace Cedar.Spec
 -- we need to parse an intermediate representation EntityProto
 -- which contains that and transform it to the appropriate types.
 
-def EntitiesProto: Type := Array EntityProto
+def EntitiesProto: Type := List EntityProto
 deriving instance Inhabited for EntitiesProto
 
 namespace EntitiesProto
@@ -37,13 +37,14 @@ namespace EntitiesProto
 @[inline]
 def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
   have x : Array EntityProto := x
-  have result : Array EntityProto := result
-  x ++ result
+  have result : List EntityProto := result
+  x.toList ++ result
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
-  have y : Repeated EntityProto := y
-  mergeEntities x y
+  have x : List EntityProto := x
+  have y : List EntityProto := y
+  y ++ x
 
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with
@@ -63,7 +64,7 @@ instance : Message EntitiesProto := {
 
 @[inline]
 def toEntities (e: EntitiesProto): Entities :=
-  Cedar.Data.Map.mk (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩)).toList
+  Cedar.Data.Map.mk (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩))
 
 end EntitiesProto
 

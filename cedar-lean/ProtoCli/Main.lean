@@ -72,7 +72,7 @@ def processProto (filename: String): IO Cedar.Spec.AuthorizationRequest := do
       pure default
     | .ok x =>
       println! "Protobuf parse successful"
-      pure (x)
+      pure (x.mkWf)
 
 structure Timed (α : Type) where
   data : α
@@ -111,7 +111,7 @@ def main (args: List String) : IO UInt32 := do
 
   println! s!"Representations equal? {decide (x1 = x2)}"
 
-  -- println! s!"{repr x}"
-  -- println! s!"{repr y}"
+  -- println! s!"{repr x1}"
+  -- println! s!"{repr x2}"
 
   pure 0

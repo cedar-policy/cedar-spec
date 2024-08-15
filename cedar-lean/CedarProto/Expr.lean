@@ -293,11 +293,11 @@ inductive ExprKindProto where
     (uop: UnaryOpProto)
     (bop: BinaryOpProto)
     (attr: Attr)
-    (args: Array ExprProto)
-    (pattern: Array PatElem)
+    (args: List ExprProto)
+    (pattern: List PatElem)
     (et: EntityTypeProto)
-    (record : Array (Attr × ExprProto))
-    -- TODO: call (xfn: ExtFun) (args: Array ExprProto)
+    (record : List (Attr × ExprProto))
+    -- TODO: call (xfn: ExtFun) (args: List ExprProto)
 end
 
 deriving instance Inhabited for ExprKindProto
@@ -334,8 +334,8 @@ def mergeVar (result: ExprKindProto) (v2: Var) : ExprKindProto :=
 @[inline]
 def mergeArgs (result: ExprKindProto) (es2: Array ExprProto) : ExprKindProto :=
   match result with
-    | .expr ty uop bop attr es1 pat et m => .expr ty uop bop attr (es1 ++ es2) pat et m
-    | _ => .expr default default default default es2 default default default
+    | .expr ty uop bop attr es1 pat et m => .expr ty uop bop attr (es2.toList ++ es1) pat et m
+    | _ => .expr default default default default es2.toList default default default
 
 
 @[inline]
@@ -359,8 +359,8 @@ def mergeAttr (result: ExprKindProto) (attr2: String) : ExprKindProto :=
 @[inline]
 def mergePattern (result: ExprKindProto) (pat2: Array PatElem): ExprKindProto :=
   match result with
-    | .expr ty uop bop attr es pat1 et m => .expr ty uop bop attr es (pat1 ++ pat2) et m
-    | _ => .expr default default default default default pat2 default default
+    | .expr ty uop bop attr es pat1 et m => .expr ty uop bop attr es (pat2.toList ++ pat1) et m
+    | _ => .expr default default default default default pat2.toList default default
 
 @[inline]
 def mergeEntityType (result: ExprKindProto) (et2: EntityTypeProto): ExprKindProto :=
@@ -371,8 +371,8 @@ def mergeEntityType (result: ExprKindProto) (et2: EntityTypeProto): ExprKindProt
 @[inline]
 def mergeRecord (result: ExprKindProto) (m2: (Array (String × ExprProto))) : ExprKindProto :=
   match result with
-    | .expr ty uop bop attr es pat et m1 => .expr ty uop bop attr es pat et (m1 ++ m2)
-    | _ => .expr default default default default default default default m2
+    | .expr ty uop bop attr es pat et m1 => .expr ty uop bop attr es pat et (m2.toList ++ m1)
+    | _ => .expr default default default default default default default m2.toList
 
 @[inline]
 def merge (x1: ExprKindProto) (x2: ExprKindProto) : ExprKindProto :=
@@ -415,22 +415,22 @@ partial def toExpr (v: ExprProto) : Expr :=
         | .lit => panic!("Unexpected constructor for expression type")
         | .varTy => panic!("Unexpected constructor for expression type")
         | .if => match es with
-          | #[test_cond, then_expr, else_expr] => .ite test_cond.toExpr then_expr.toExpr else_expr.toExpr
+          | [test_cond, then_expr, else_expr] => .ite test_cond.toExpr then_expr.toExpr else_expr.toExpr
           | _ => panic!("Expected three subexpressions to build .ite")
         | .and => match es with
-          | #[left, right] => .and left.toExpr right.toExpr
+          | [left, right] => .and left.toExpr right.toExpr
           | _ => panic!("Expected two subexpressions to build .and")
         | .or => match es with
-          | #[left, right] => .or left.toExpr right.toExpr
+          | [left, right] => .or left.toExpr right.toExpr
           | _ => panic!("Expected two subexpressions to build .or")
         | .unaryApp => match es with
-          | #[arg] => match uop with
+          | [arg] => match uop with
             | .na => panic!("Expected a uop type")
             | .not => .unaryApp .not arg.toExpr
             | .neg => .unaryApp .neg arg.toExpr
           | _ => panic!("Expected a single subexpression to construct a .unaryApp")
         | .binaryApp => match es with
-          | #[left, right] => match bop with
+          | [left, right] => match bop with
             | .na => panic!("Expected a bop type")
             | .eq => .binaryApp .eq left.toExpr right.toExpr
             | .less => .binaryApp .less left.toExpr right.toExpr
@@ -444,19 +444,19 @@ partial def toExpr (v: ExprProto) : Expr :=
             | .containsAny => .binaryApp .containsAny left.toExpr right.toExpr
           | _ => panic!("Expected two subexpressions to build .binaryApp")
         | .getAttr => match es with
-          | #[arg] => .getAttr arg.toExpr attr
+          | [arg] => .getAttr arg.toExpr attr
           | _ => panic!("Expected a single subexpression to construct .getAttr")
         | .hasAttr => match es with
-          | #[arg] => .hasAttr arg.toExpr attr
+          | [arg] => .hasAttr arg.toExpr attr
           | _ => panic!("Expected a single subexpression to consturct .hasAttr")
         | .like => match es with
-          | #[arg] => .unaryApp (.like pat.toList) arg.toExpr
+          | [arg] => .unaryApp (.like pat) arg.toExpr
           | _ => panic!("Expected a single subexpression to construct .like")
         | .is => match es with
-          | #[arg] => .unaryApp (.is et) arg.toExpr
+          | [arg] => .unaryApp (.is et) arg.toExpr
           | _ => panic!("Expected a single subexpression to construct .is")
-        | .set => .set (es.map toExpr).toList
-        | .record => .record (m.map (fun ⟨attr, e⟩ => ⟨attr, e.toExpr⟩)).toList
+        | .set => .set (es.map toExpr)
+        | .record => .record (m.map (fun ⟨attr, e⟩ => ⟨attr, e.toExpr⟩))
 
 end ExprProto
 

@@ -34,17 +34,14 @@ namespace Cedar.Spec
 
 structure EntityProto where
   uid: EntityUID
-  attrs : Array (Attr × Value)
-  ancestors : Repeated EntityUID
+  data: EntityData
 deriving Inhabited
 
 namespace EntityProto
 
 @[inline]
 def toEntityData (e: EntityProto) : EntityData :=
-  let newAttrs := Cedar.Data.Map.mk e.attrs.toList
-  let newAncestors := Cedar.Data.Set.mk e.ancestors.toList
-  EntityData.mk newAttrs newAncestors
+  e.data
 
 @[inline]
 def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
@@ -55,21 +52,21 @@ def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
 @[inline]
 def mergeAttrs (result: EntityProto) (x: Array (String × Value)) : EntityProto :=
   {result with
-    attrs := Field.merge x result.attrs
+    data.attrs := Cedar.Data.Map.mk (x.toList ++ result.data.attrs.kvs)
   }
 
 @[inline]
 def mergeAncestors (result: EntityProto) (x: Array EntityUID) : EntityProto :=
   {result with
-    ancestors := Field.merge x result.ancestors
+    data.ancestors := Cedar.Data.Set.mk (x.toList ++ result.data.ancestors.elts)
   }
 
 @[inline]
 def merge (x: EntityProto) (y: EntityProto) : EntityProto :=
   {x with
     uid := Field.merge x.uid y.uid
-    attrs := Field.merge y.attrs x.attrs
-    ancestors := Field.merge y.ancestors x.ancestors
+    data.attrs := Cedar.Data.Map.mk (y.data.attrs.kvs ++ x.data.attrs.kvs)
+    data.ancestors := Cedar.Data.Set.mk (y.data.ancestors.elts ++ x.data.ancestors.elts)
   }
 
 @[inline]

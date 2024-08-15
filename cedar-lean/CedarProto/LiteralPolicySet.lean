@@ -24,8 +24,8 @@ open Proto
 namespace Cedar.Spec
 
 structure LiteralPolicySet where
-  templates: Array (String × Template)
-  links: Array (String × TemplateLinkedPolicy)
+  templates: List (String × Template)
+  links: List (String × TemplateLinkedPolicy)
 deriving Inhabited
 
 namespace LiteralPolicySet
@@ -33,13 +33,13 @@ namespace LiteralPolicySet
 @[inline]
 def mergeTemplates (result: LiteralPolicySet) (x: Array (String × Template)) : LiteralPolicySet :=
   {result with
-    templates := x ++ result.templates
+    templates := x.toList ++ result.templates
   }
 
 @[inline]
 def mergeLinks (result: LiteralPolicySet) (x: Array (String × TemplateLinkedPolicy)): LiteralPolicySet :=
   {result with
-    links := x ++ result.links
+    links := x.toList ++ result.links
   }
 
 @[inline]
@@ -75,8 +75,8 @@ end LiteralPolicySet
 namespace Policies
 
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
-  let templates := Cedar.Data.Map.make x.templates.toList
-  let links := (x.links.map (fun ⟨id, p⟩ => (p.mergeId id).mkWf)).toList
+  let templates := Cedar.Data.Map.make x.templates
+  let links := x.links.map (fun ⟨id, p⟩ => (p.mergeId id).mkWf)
   match link? templates links with
   | .some policies => policies
   | .none => panic!("fromLiteralPolicySet: failed to link templates")
