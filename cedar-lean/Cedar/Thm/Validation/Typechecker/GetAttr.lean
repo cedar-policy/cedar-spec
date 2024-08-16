@@ -192,8 +192,9 @@ theorem type_of_getAttr_is_sound_for_ea_maps {x₁ : Expr} {a : Attr} {c₁ c₁
     rw [h₁₁] at h₈
     contradiction
   case some =>
+    simp only [h₈, getAttr, attrsOf, Map.findOrErr, Except.bind_ok, Except.ok.injEq, false_or, exists_eq_left']
     injections _ h₂
-    simp [←h₂, h₈, getAttr, attrsOf, Map.findOrErr, Except.bind_ok, Except.ok.injEq, false_or, exists_eq_left']
+    rw [←h₂]
     exact instance_of_ea_map_attribute_type h₅ h₈
 
 theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}

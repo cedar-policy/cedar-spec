@@ -70,8 +70,8 @@ def typeOfIf (r₁ : CedarType × Capabilities) (r₂ r₃ : ResultType) : Resul
     let (ty₃, c₃) ← r₃
     match ty₂ ⊔ ty₃ with
     | .some (.attribute_map aty) => .error (.unexpectedType aty.attribute_map)
-    | .none => err (.lubErr ty₂ ty₃)
     | .some ty => ok ty ((c₁ ∪ c₂) ∩ c₃)
+    | .none => err (.lubErr ty₂ ty₃)
   | (ty₁, _) => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=

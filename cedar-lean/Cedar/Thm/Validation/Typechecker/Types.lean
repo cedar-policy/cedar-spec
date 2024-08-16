@@ -347,7 +347,7 @@ theorem instance_of_record_nil :
 theorem instance_of_attribute_map_nil (ty : CedarType) :
   InstanceOfType (Value.record (Map.mk [])) (CedarType.attribute_map ty)
 := by
-  apply InstanceOfType.instance_of_ea_map<;>
+  apply InstanceOfType.instance_of_ea_map <;>
   simp [Map.find?, List.find?]
 
 theorem instance_of_record_cons {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
