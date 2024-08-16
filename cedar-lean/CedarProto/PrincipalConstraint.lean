@@ -25,13 +25,13 @@ namespace PrincipalScopeTemplate
 
 @[inline]
 def mergeConstraint (result: PrincipalScopeTemplate) (x: Cedar.Spec.ScopeTemplate.PrincipalOrResourceConstraint) : PrincipalScopeTemplate :=
-  let ⟨ sc1 ⟩ := result
+  have ⟨ sc1 ⟩ := result
   .principalScope (ScopeTemplate.merge sc1 (x.toScopeTemplate "?principal"))
 
 @[inline]
 def merge (x: PrincipalScopeTemplate) (y: PrincipalScopeTemplate) : PrincipalScopeTemplate :=
-  let ⟨ sc1 ⟩ := x
-  let ⟨ sc2 ⟩ := y
+  have ⟨ sc1 ⟩ := x
+  have ⟨ sc2 ⟩ := y
   .principalScope (ScopeTemplate.merge sc1 sc2)
 
 def parseField (t: Tag) : BParsec (StateM PrincipalScopeTemplate Unit) := do

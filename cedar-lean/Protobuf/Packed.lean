@@ -42,6 +42,7 @@ instance [Repr α] [Field α] : Repr (Repeated α) := by
   apply inferInstance
 
 /-- Parses one value from a record -/
+@[inline]
 def parse (α: Type) [Field α] : BParsec (Array α) := do
   let element ← Field.parse
   pure #[element]
@@ -73,6 +74,7 @@ instance [Repr α] [Field α] : Repr (Packed α) := by
   unfold Packed
   apply inferInstance
 
+@[inline]
 def parse (α: Type) [Field α] : BParsec (Array α) := do
   let len ← BParsec.attempt Len.parse
   BParsec.foldl

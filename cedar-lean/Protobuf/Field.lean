@@ -31,9 +31,11 @@ namespace Field
 namespace Merge
 
 /-- Models override semantics, replaces the former value with the later -/
+@[inline]
 def override (_: α) (x: α): α := x
 
 /-- Concatenation semantics, combines two arrays -/
+@[inline]
 def concatenate (x1: Array α) (x2: Array α): Array α :=
   x1.append x2
 

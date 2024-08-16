@@ -19,6 +19,7 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
   let empty ← BParsec.empty
   if empty then
     throw "Expected more bytes"
+  else
 
   let startPos ← BParsec.pos
 
@@ -31,7 +32,7 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
   (parseMessageHelper (remaining - elementSize) (result >>= fun () => result2))
 
-
+@[inline]
 def parse {α: Type} [Inhabited α] [Message α] : BParsec α := do
   let remaining ← BParsec.remaining
   let initial: StateM α Unit := pure ()
@@ -39,18 +40,22 @@ def parse {α: Type} [Inhabited α] [Message α] : BParsec α := do
   BParsec.eof
   pure (StateT.run message_m default).snd
 
+@[inline]
 def parseWithLen {α: Type} [Inhabited α] [Message α] : BParsec α := do
   let len ← Len.parse
   let message_m: StateM α Unit ← parseMessageHelper len.size (pure ())
   pure (StateT.run message_m default).snd
 
+@[inline]
 def parseWithSize {α: Type} [Inhabited α] [Message α] (size: Nat) : BParsec α := do
   let message_m: StateM α Unit ← parseMessageHelper size (pure ())
   pure (StateT.run message_m default).snd
 
+@[inline]
 def interpret? {α: Type} [Inhabited α] [Message α] (b: ByteArray) : Except String α :=
   BParsec.run parse b
 
+@[inline]
 def interpret! {α: Type} [Inhabited α] [Message α] (b: ByteArray) : α :=
   BParsec.run! parse b
 

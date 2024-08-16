@@ -20,8 +20,10 @@ import DiffTest
 
 open Proto
 
+@[inline]
 def bufsize : USize := 2000000 * 1024
 
+@[inline]
 def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
    let fileExists ← filename.pathExists
    if not fileExists then
@@ -32,7 +34,7 @@ def fileStream (filename : System.FilePath) : IO (Option IO.FS.Stream) := do
      let handle ← IO.FS.Handle.mk filename IO.FS.Mode.read
      pure (some (IO.FS.Stream.ofHandle handle))
 
-
+@[inline]
 def readFileBytes (filename: String) : IO ByteArray := do
   let stream ← fileStream filename
   match stream with
@@ -43,10 +45,8 @@ def readFileBytes (filename: String) : IO ByteArray := do
   | some stream =>
     stream.read bufsize
 
-
-def processJson (filename: String): IO Cedar.Spec.AuthorizationRequest := do
-  let result_str ← IO.FS.readFile filename
-
+@[inline]
+def processJson (result_str: String): IO Cedar.Spec.AuthorizationRequest := do
   match Lean.Json.parse result_str with
     | .error _ =>
       println! s!"Failed to parse JSON input"
@@ -63,8 +63,8 @@ def processJson (filename: String): IO Cedar.Spec.AuthorizationRequest := do
           println! "Failed to create Authorization Request Message"
           pure default
 
-def processProto (filename: String): IO Cedar.Spec.AuthorizationRequest := do
-  let result_bytes ← readFileBytes filename
+@[inline]
+def processProto (result_bytes: ByteArray): IO Cedar.Spec.AuthorizationRequest := do
   let result: Except String Cedar.Spec.AuthorizationRequest := Message.interpret? result_bytes
   match result with
     | .error e =>
@@ -72,7 +72,7 @@ def processProto (filename: String): IO Cedar.Spec.AuthorizationRequest := do
       pure default
     | .ok x =>
       println! "Protobuf parse successful"
-      pure (x.mkWf)
+      pure x
 
 structure Timed (α : Type) where
   data : α
@@ -91,10 +91,12 @@ def runAndTime (f : IO α) : IO (Timed α) := do
 def main (args: List String) : IO UInt32 := do
   if args.length != 2 then panic! "Usage ./Protobuf [Proto File] [JSON File]"
 
-  let proto_sec ← runAndTime (processProto (args.get! 0))
+  let proto_bytes ← readFileBytes (args.get! 0)
+  let proto_sec ← runAndTime (processProto proto_bytes)
   println! s!"ProtoTime: {proto_sec.duration}"
 
-  let json_sec ←  runAndTime (processJson (args.get! 1))
+  let json_str ← IO.FS.readFile (args.get! 1)
+  let json_sec ←  runAndTime (processJson json_str)
   println! s!"JSONTime:  {json_sec.duration}"
 
   -- Cedar.Spec.Policies is a list that has no guarentee on it's ordering

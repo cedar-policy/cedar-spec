@@ -32,28 +32,34 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
                let wt1Matches := (@Field.checkWireType KeyT) tag1.wireType
                if not wt1Matches then
                     throw s!"WireType mismatch"
+               else
                let key: KeyT ← Field.parse
 
                let tag2 ← BParsec.attempt Tag.parse
                let wt2Matches := (@Field.checkWireType ValueT) tag2.wireType
                if not wt2Matches then
                     throw s!"WireType mismatch"
+               else
                if tag2.fieldNum != 2 then
                     throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
+               else
                let value: ValueT ← Field.parse
                pure #[(Prod.mk key value)]
           | 2 =>
                let wt1Matches := (@Field.checkWireType ValueT) tag1.wireType
                if not wt1Matches then
                     throw s!"WireType mismatch"
+               else
                let value: ValueT ← Field.parse
 
                let tag2 ← BParsec.attempt Tag.parse
                let wt2Matches := (@Field.checkWireType KeyT) tag2.wireType
                if not wt2Matches then
                     throw s!"WireType mismatch"
+               else
                if tag2.fieldNum != 1 then
                     throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
+               else
                let key: KeyT ← Field.parse
                pure #[(Prod.mk key value)]
 

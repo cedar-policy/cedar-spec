@@ -38,7 +38,10 @@ def mergeValue (result: Context) (x: Value) : Context :=
 
 @[inline]
 def merge (x1: Context) (x2: Context) : Context :=
-  Cedar.Data.Map.mk (x2.kvs ++ x1.kvs)
+  -- Avoid a sort if x1 is empty
+  match x1.kvs with
+    | [] => x2
+    | _ => Cedar.Data.Map.make (x2.kvs ++ x1.kvs)
 
 @[inline]
 def parseField (t: Tag) : BParsec (StateM Context Unit) := do
@@ -55,10 +58,6 @@ instance : Message Context := {
   parseField := parseField
   merge := merge
 }
-
-@[inline]
-def mkWf (c: Context) : Context :=
-  Cedar.Data.Map.make (c.kvs.map (fun (ki, vi) => (ki, vi.mkWf)))
 
 end Context
 

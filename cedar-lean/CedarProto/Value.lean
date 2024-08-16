@@ -39,16 +39,10 @@ def merge (v1: Value) (v2: Value) : Value :=
 
 private partial def exprToValue : Expr → Value
   | .lit p => .prim p
-  | .record r => .record (Cedar.Data.Map.mk (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
-  | .set s => .set (Cedar.Data.Set.mk (s.map exprToValue))
+  | .record r => .record (Cedar.Data.Map.make (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
+  | .set s => .set (Cedar.Data.Set.make (s.map exprToValue))
   -- TODO: ExtFun
   | _ => panic!("exprToValue: invalid input expression")
-
-partial def mkWf (v: Value) : Value :=
-  match v with
-  | .set s => Cedar.Data.Set.make (s.elts.map mkWf)
-  | .record m => Cedar.Data.Map.make (m.kvs.map (fun (ki, vi) => (ki, vi.mkWf)))
-  | _ => v
 
 instance : Field Value := Field.fromInterField exprToValue merge
 

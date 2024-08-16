@@ -58,6 +58,7 @@ theorem next_le_remaining (i: Iterator) : i.next.remaining ≤ i.remaining := by
 /-- True if there are more bytes passed the current position. -/
 @[inline]
 def hasNext (i: Iterator) : Bool := i.remaining != 0
+
 @[simp] theorem hasNext_iff (i: Iterator) : i.hasNext ↔ i.remaining != 0 := by
   apply Iff.intro
   all_goals unfold hasNext

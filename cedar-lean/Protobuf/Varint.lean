@@ -23,15 +23,14 @@ import Protobuf.Util
 import Protobuf.Types
 namespace Proto
 
+@[inline] def msb_set8(i: UInt8) : Bool := i &&& (128: UInt8) != 0
+@[inline] def clear_msb8(i: UInt8) : UInt8 := i &&& (127: UInt8)
 
-def msb_set8(i: UInt8) : Bool := i &&& (128: UInt8) != 0
-def clear_msb8(i: UInt8) : UInt8 := i &&& (127: UInt8)
+@[inline] def msb_set32(i: UInt32): Bool := i &&& (2147483648: UInt32) != 0
+@[inline] def clear_msb32(i: UInt32) : UInt32 := i &&& (2147483648: UInt32)
 
-def msb_set32(i: UInt32): Bool := i &&& (2147483648: UInt32) != 0
-def clear_msb32(i: UInt32) : UInt32 := i &&& (2147483648: UInt32)
-
-def msb_set64(i: UInt64): Bool := i &&& (9223372036854775808: UInt64) != 0
-def clear_msb64(i: UInt64): UInt64 := i &&& (9223372036854775808: UInt64)
+@[inline] def msb_set64(i: UInt64): Bool := i &&& (9223372036854775808: UInt64) != 0
+@[inline] def clear_msb64(i: UInt64): UInt64 := i &&& (9223372036854775808: UInt64)
 
 
 -- Does not progress iterator

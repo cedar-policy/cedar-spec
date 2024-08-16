@@ -36,7 +36,7 @@ namespace EntitiesProto
 
 @[inline]
 def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
-  have x : Array EntityProto := x
+  have x : Array EntityProto := x.map (fun xi => {xi with data := xi.data.mkWf })
   have result : List EntityProto := result
   x.toList ++ result
 
@@ -64,7 +64,7 @@ instance : Message EntitiesProto := {
 
 @[inline]
 def toEntities (e: EntitiesProto): Entities :=
-  Cedar.Data.Map.mk (e.map (fun entity => ⟨entity.uid, EntityProto.toEntityData entity⟩))
+  Cedar.Data.Map.make (e.map (fun entity => ⟨entity.uid, entity.data⟩))
 
 end EntitiesProto
 
@@ -73,12 +73,12 @@ namespace Entities
 def merge (e1: Entities) (e2: Entities): Entities :=
   let e1: Cedar.Data.Map EntityUID EntityData := e1
   let e2: Cedar.Data.Map EntityUID EntityData := e2
-  Cedar.Data.Map.mk (e2.kvs ++ e1.kvs)
+  -- Don't sort if e1 is empty
+  match e1.kvs with
+    | [] => e2
+    | _ => Cedar.Data.Map.make (e2.kvs ++ e1.kvs)
 
 instance : Field Entities := Field.fromInterField EntitiesProto.toEntities merge
-
-def mkWf (e: Entities) : Entities :=
-  Cedar.Data.Map.make (e.kvs.map (fun (euid, edata) => (euid, edata.mkWf)))
 
 end Entities
 

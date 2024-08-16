@@ -24,6 +24,7 @@ namespace Proto
 
 -- NOTE: Will panic if there's not enough bytes to determine the next character
 -- NOTE: Does not progress iterator
+@[inline]
 def utf8DecodeChar (i : Nat) : BParsec Char := do
   let c ← fun it => BParsec.ParseResult.success it it.data[i]!
   if c &&& 0x80 == 0 then

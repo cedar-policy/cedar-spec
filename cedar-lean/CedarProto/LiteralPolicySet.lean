@@ -74,13 +74,15 @@ end LiteralPolicySet
 
 namespace Policies
 
+@[inline]
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
   let templates := Cedar.Data.Map.make x.templates
-  let links := x.links.map (fun ⟨id, p⟩ => (p.mergeId id).mkWf)
+  let links := x.links.mapTR (fun ⟨id, p⟩ => (p.mergeId id).mkWf)
   match link? templates links with
   | .some policies => policies
   | .none => panic!("fromLiteralPolicySet: failed to link templates")
 
+@[inline]
 private def merge (x y : Policies): Policies :=
   y ++ x
 

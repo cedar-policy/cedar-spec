@@ -96,12 +96,6 @@ instance : Message Request := {
   merge := merge
 }
 
-@[inline]
-def mkWf (r: Request) : Request :=
-  {r with
-    context := Context.mkWf r.context
-  }
-
 end Request
 
 end Cedar.Spec

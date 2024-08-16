@@ -22,6 +22,7 @@ class ProtoEnum (α : Type) where
   fromInt : Int → Except String α
 export ProtoEnum (fromInt)
 
+@[inline]
 def parseEnum (α: Type) [ProtoEnum α] : BParsec α := do
   let wdata: Int ← parse_int32
   let result: Except String α := fromInt wdata

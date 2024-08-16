@@ -40,10 +40,6 @@ deriving Inhabited
 namespace EntityProto
 
 @[inline]
-def toEntityData (e: EntityProto) : EntityData :=
-  e.data
-
-@[inline]
 def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
   {result with
     uid := Field.merge result.uid x
@@ -97,10 +93,11 @@ end EntityProto
 
 namespace EntityData
 
+@[inline]
 def mkWf (e: EntityData) : EntityData :=
   {e with
-    attrs := Cedar.Data.Map.make (e.attrs.kvs.map (fun (ki, vi) => (ki, vi.mkWf)))
-    ancestors := Cedar.Data.Set.make (e.ancestors.elts)
+    attrs := Cedar.Data.Map.make e.attrs.kvs
+    ancestors := Cedar.Data.Set.make e.ancestors.elts
   }
 
 

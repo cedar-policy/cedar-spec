@@ -80,14 +80,6 @@ instance : Message AuthorizationRequest := {
   merge := merge
 }
 
-@[inline]
-def mkWf (a : AuthorizationRequest) : AuthorizationRequest :=
-  {a with
-    request := a.request.mkWf
-    policies := a.policies
-    entities := a.entities.mkWf
-  }
-
 end AuthorizationRequest
 
 end Cedar.Spec

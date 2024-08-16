@@ -285,7 +285,6 @@ mutual
 inductive ExprProto where
   | mk (v : ExprKindProto)
 
-
 inductive ExprKindProto where
   | lit (l : Prim)
   | var (v : Var)
