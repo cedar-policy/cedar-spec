@@ -1,9 +1,0 @@
-syntax = "proto3";
-package cedar_drt;
-import "Request.proto";
-
-message AuthorizationRequestMsg {
-    cedar_policy_core.Request request = 1;
-    cedar_policy_core.LiteralPolicySet policies = 2;
-    cedar_policy_core.Entities entities = 3;
-}
