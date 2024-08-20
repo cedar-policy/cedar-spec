@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-use cedar_policy_core::ast::{Id, InternalName, UnreservedId};
+use cedar_policy_core::ast::{Id, InternalName};
 use cedar_policy_validator::json_schema::{
-    ApplySpec, EntityType, RecordType, Type, TypeOfAttribute, TypeVariant,
+    ApplySpec, EntityAttributeType, EntityAttributeTypeInternal, EntityAttributes,
+    EntityAttributesInternal, EntityType, RecordAttributeType, RecordType, Type, TypeVariant,
 };
 use cedar_policy_validator::RawName;
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use cedar_policy_validator::json_schema;
 use std::fmt::{Debug, Display};
+use std::hash::Hash;
 
 /// Check if two schema fragments are equivalent, modulo empty apply specs.
 /// We do this because there are schemas that are representable in the JSON that are not
@@ -62,7 +64,7 @@ pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord
                     .0
                     .get(&name)
                     .ok_or_else(|| format!("`{name:?}` does not exist in RHS schema"))?;
-                namespace_equivalence(lhs_namespace, rhs_namespace.clone())
+                Equiv::equiv(&lhs_namespace, rhs_namespace)
             })
             .fold(Ok(()), Result::and)
     } else {
@@ -83,171 +85,301 @@ fn remove_trivial_empty_namespace<N>(schema: &mut json_schema::Fragment<N>) {
     }
 }
 
-fn namespace_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
-    lhs: json_schema::NamespaceDefinition<N>,
-    rhs: json_schema::NamespaceDefinition<N>,
-) -> Result<(), String> {
-    entity_types_equivalence(lhs.entity_types, rhs.entity_types)?;
-    if lhs.common_types != rhs.common_types {
-        Err("Common types differ".to_string())
-    } else if lhs.actions.len() != rhs.actions.len() {
-        Err("Different number of actions".to_string())
-    } else {
-        lhs.actions
-            .into_iter()
-            .map(|(name, lhs_action)| {
-                let rhs_action = rhs
-                    .actions
-                    .get(&name)
-                    .ok_or_else(|| format!("Action `{name}` not present on rhs"))?;
-                action_type_equivalence(name.as_ref(), lhs_action, rhs_action.clone())
-            })
-            .fold(Ok(()), Result::and)
-    }
+pub trait Equiv {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String>;
 }
 
-type EntityData<N> = HashMap<UnreservedId, EntityType<N>>;
-
-fn entity_types_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
-    lhs: EntityData<N>,
-    rhs: EntityData<N>,
-) -> Result<(), String> {
-    if lhs.len() == rhs.len() {
-        let errors = lhs
-            .into_iter()
-            .filter_map(|lhs| entity_type_equivalence(lhs, &rhs).err())
-            .collect::<Vec<_>>();
-        if errors.is_empty() {
-            Ok(())
+impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
+    for json_schema::NamespaceDefinition<N>
+{
+    fn equiv(
+        lhs: &json_schema::NamespaceDefinition<N>,
+        rhs: &json_schema::NamespaceDefinition<N>,
+    ) -> Result<(), String> {
+        Equiv::equiv(&lhs.entity_types, &rhs.entity_types)?;
+        if &lhs.common_types != &rhs.common_types {
+            Err("Common types differ".to_string())
+        } else if lhs.actions.len() != rhs.actions.len() {
+            Err("Different number of actions".to_string())
         } else {
-            Err(format!(
-                "Found the following entity type mismatches: {}",
-                errors.into_iter().join("\n")
-            ))
-        }
-    } else {
-        let lhs_keys: HashSet<_> = lhs.keys().collect();
-        let rhs_keys: HashSet<_> = rhs.keys().collect();
-        let missing_keys = lhs_keys.symmetric_difference(&rhs_keys).join(", ");
-        Err(format!("Missing keys: {missing_keys}"))
-    }
-}
-
-fn entity_type_equivalence<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
-    (name, lhs_type): (UnreservedId, EntityType<N>),
-    rhs: &EntityData<N>,
-) -> Result<(), String> {
-    let rhs_type = rhs
-        .get(&name)
-        .ok_or_else(|| format!("Type `{name}` was missing from right-hand-side"))?;
-
-    if !vector_equiv(&lhs_type.member_of_types, &rhs_type.member_of_types) {
-        Err(format!(
-            "For `{name}`: lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
-            lhs_type
-                .member_of_types
-                .into_iter()
-                .map(|id| id.to_string())
-                .join(","),
-            rhs_type
-                .member_of_types
+            lhs.actions
                 .iter()
-                .map(|id| id.to_string())
-                .join(",")
-        ))
-    } else if shape_equiv(&lhs_type.shape.0, &rhs_type.shape.0) {
-        Ok(())
-    } else {
-        Err(format!("`{name}` has mismatched types"))
-    }
-}
-
-fn shape_equiv<N: Clone + PartialEq + TypeName>(lhs: &Type<N>, rhs: &Type<N>) -> bool {
-    match (lhs, rhs) {
-        (Type::Type(lhs), Type::Type(rhs)) => type_varient_equiv(lhs, rhs),
-        (Type::CommonTypeRef { type_name: lhs }, Type::CommonTypeRef { type_name: rhs }) => {
-            lhs == rhs
+                .map(|(name, lhs_action)| {
+                    let rhs_action = rhs
+                        .actions
+                        .get(name)
+                        .ok_or_else(|| format!("Action `{name}` not present on rhs"))?;
+                    action_type_equivalence(name.as_ref(), lhs_action, rhs_action)
+                })
+                .fold(Ok(()), Result::and)
         }
-        _ => false,
     }
 }
 
-/// Type Variant equivalence. See the arms of each match for details
-fn type_varient_equiv<N: Clone + PartialEq + TypeName>(
-    lhs: &TypeVariant<N>,
-    rhs: &TypeVariant<N>,
-) -> bool {
-    match (lhs, rhs) {
-        // Records are equivalent iff
-        // A) They have all the same required keys
-        // B) Each key has a value that is equivalent
-        // C) the `additional_attributes` field is equal
-        (
-            TypeVariant::Record(RecordType {
-                attributes: lhs_attributes,
-                additional_attributes: lhs_additional_attributes,
-            }),
-            TypeVariant::Record(RecordType {
-                attributes: rhs_attributes,
-                additional_attributes: rhs_additional_attributes,
-            }),
-        ) => {
-            let lhs_required_keys = lhs_attributes.keys().collect::<HashSet<_>>();
-            let rhs_required_keys = rhs_attributes.keys().collect::<HashSet<_>>();
-            if lhs_required_keys == rhs_required_keys {
-                lhs_attributes
-                    .into_iter()
-                    .all(|(key, lhs)| attribute_equiv(&lhs, rhs_attributes.get(key).unwrap()))
-                    && lhs_additional_attributes == rhs_additional_attributes
+impl<K: Eq + Hash + Display, V: Equiv> Equiv for HashMap<K, V> {
+    fn equiv(lhs: &HashMap<K, V>, rhs: &HashMap<K, V>) -> Result<(), String> {
+        if lhs.len() == rhs.len() {
+            let errors = lhs
+                .iter()
+                .filter_map(|(k, lhs_v)| match rhs.get(k) {
+                    Some(rhs_v) => Equiv::equiv(lhs_v, rhs_v).err(),
+                    None => Some(format!("`{k}` missing from rhs")),
+                })
+                .collect::<Vec<_>>();
+            if errors.is_empty() {
+                Ok(())
             } else {
-                false
+                Err(format!(
+                    "Found the following mismatches: {}",
+                    errors.into_iter().join("\n")
+                ))
+            }
+        } else {
+            let lhs_keys: HashSet<_> = lhs.keys().collect();
+            let rhs_keys: HashSet<_> = rhs.keys().collect();
+            let missing_keys = lhs_keys.symmetric_difference(&rhs_keys).join(", ");
+            Err(format!("Missing keys: {missing_keys}"))
+        }
+    }
+}
+
+impl<K: Eq + Ord + Display, V: Equiv> Equiv for BTreeMap<K, V> {
+    fn equiv(lhs: &BTreeMap<K, V>, rhs: &BTreeMap<K, V>) -> Result<(), String> {
+        if lhs.len() == rhs.len() {
+            let errors = lhs
+                .iter()
+                .filter_map(|(k, lhs_v)| match rhs.get(k) {
+                    Some(rhs_v) => Equiv::equiv(lhs_v, rhs_v).err(),
+                    None => Some(format!("`{k}` missing from rhs")),
+                })
+                .collect::<Vec<_>>();
+            if errors.is_empty() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "Found the following mismatches: {}",
+                    errors.into_iter().join("\n")
+                ))
+            }
+        } else {
+            let lhs_keys: BTreeSet<_> = lhs.keys().collect();
+            let rhs_keys: BTreeSet<_> = rhs.keys().collect();
+            let missing_keys = lhs_keys.symmetric_difference(&rhs_keys).join(", ");
+            Err(format!("Missing keys: {missing_keys}"))
+        }
+    }
+}
+
+impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for EntityType<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if !vector_equiv(&lhs.member_of_types, &rhs.member_of_types) {
+            Err(format!(
+                "lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
+                lhs.member_of_types.iter().join(","),
+                rhs.member_of_types.iter().join(",")
+            ))
+        } else {
+            Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))
+        }
+    }
+}
+
+impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttributes<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        match (lhs, rhs) {
+            (
+                EntityAttributes::RecordAttributes(rca_l),
+                EntityAttributes::RecordAttributes(rca_r),
+            ) => Equiv::equiv(&rca_l.0, &rca_r.0)
+                .map_err(|e| format!("entity attributes not equivalent: {e}")),
+            (
+                EntityAttributes::EntityAttributes(EntityAttributesInternal {
+                    attrs: attrs_l, ..
+                }),
+                EntityAttributes::EntityAttributes(EntityAttributesInternal {
+                    attrs: attrs_r, ..
+                }),
+            ) => {
+                if attrs_l.additional_attributes != attrs_r.additional_attributes {
+                    return Err("attributes differ in additional_attributes flag".into());
+                }
+                Equiv::equiv(&attrs_l.attributes, &attrs_r.attributes)
+                    .map_err(|e| format!("entity attributes not equivalent: {e}"))
+            }
+            (_, _) => {
+                // these could still be equivalent in some cases
+                unimplemented!()
             }
         }
-        // Sets are equivalent if their elements are equivalent
-        (
-            TypeVariant::Set {
-                element: lhs_element,
-            },
-            TypeVariant::Set {
-                element: rhs_element,
-            },
-        ) => shape_equiv(lhs_element.as_ref(), rhs_element.as_ref()),
-
-        // Base types are equivalent to `EntityOrCommon` variants where the type_name is of the
-        // form `__cedar::<base type>`
-        (TypeVariant::String, TypeVariant::EntityOrCommon { type_name })
-        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::String) => {
-            is_internal_type(type_name, "String")
-        }
-        (TypeVariant::Long, TypeVariant::EntityOrCommon { type_name })
-        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Long) => {
-            is_internal_type(type_name, "Long")
-        }
-        (TypeVariant::Boolean, TypeVariant::EntityOrCommon { type_name })
-        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Boolean) => {
-            is_internal_type(type_name, "Bool")
-        }
-        (TypeVariant::Extension { name }, TypeVariant::EntityOrCommon { type_name })
-        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Extension { name }) => {
-            is_internal_type(type_name, &name.to_string())
-        }
-
-        (TypeVariant::Entity { name }, TypeVariant::EntityOrCommon { type_name })
-        | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Entity { name }) => {
-            type_name == name
-        }
-
-        // Types that are exactly equal are of course equivalent
-        (lhs, rhs) => lhs == rhs,
     }
 }
 
-/// Attributes are equivalent iff their shape is equivalent and they have the same required status
-fn attribute_equiv<N: TypeName + Clone + PartialEq>(
-    lhs: &TypeOfAttribute<N>,
-    rhs: &TypeOfAttribute<N>,
-) -> bool {
-    lhs.required == rhs.required && shape_equiv(&lhs.ty, &rhs.ty)
+impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttributeType<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs.required != rhs.required {
+            return Err("attributes differ in required flag".into());
+        }
+        Equiv::equiv(&lhs.ty, &rhs.ty)
+    }
+}
+
+impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttributeTypeInternal<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        match (lhs, rhs) {
+            (EntityAttributeTypeInternal::Type(ty_l), EntityAttributeTypeInternal::Type(ty_r)) => {
+                Equiv::equiv(ty_l, ty_r)
+            }
+            (
+                EntityAttributeTypeInternal::EAMap {
+                    value_type: val_ty_l,
+                },
+                EntityAttributeTypeInternal::EAMap {
+                    value_type: val_ty_r,
+                },
+            ) => Equiv::equiv(val_ty_l, val_ty_r),
+            (_, _) => Err("EAMap is not equivalent to non-EAMap type".into()),
+        }
+    }
+}
+
+impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for Type<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        match (lhs, rhs) {
+            (Type::Type(lhs), Type::Type(rhs)) => Equiv::equiv(lhs, rhs),
+            (Type::CommonTypeRef { type_name: lhs }, Type::CommonTypeRef { type_name: rhs }) => {
+                if lhs == rhs {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "common type names do not match: `{lhs}` != `{rhs}`"
+                    ))
+                }
+            }
+            (Type::Type(lhs), Type::CommonTypeRef { type_name: rhs }) => Err(format!(
+                "lhs is ordinary type `{lhs:?}`, rhs is common type `{rhs}`"
+            )),
+            (Type::CommonTypeRef { type_name: lhs }, Type::Type(rhs)) => Err(format!(
+                "lhs is common type `{lhs}`, rhs is ordinary type `{rhs:?}`"
+            )),
+        }
+    }
+}
+
+impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for TypeVariant<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        match (lhs, rhs) {
+            // Records are equivalent iff
+            // A) They have all the same required keys
+            // B) Each key has a value that is equivalent
+            // C) the `additional_attributes` field is equal
+            (
+                TypeVariant::Record(RecordType {
+                    attributes: lhs_attributes,
+                    additional_attributes: lhs_additional_attributes,
+                }),
+                TypeVariant::Record(RecordType {
+                    attributes: rhs_attributes,
+                    additional_attributes: rhs_additional_attributes,
+                }),
+            ) => {
+                let lhs_required_keys = lhs_attributes.keys().collect::<HashSet<_>>();
+                let rhs_required_keys = rhs_attributes.keys().collect::<HashSet<_>>();
+                if lhs_required_keys != rhs_required_keys {
+                    return Err(
+                        "records are not equivalent because they have different keysets".into(),
+                    );
+                }
+                if lhs_additional_attributes != rhs_additional_attributes {
+                    return Err("records are not equivalent because they have different additional_attributes flags".into());
+                }
+                lhs_attributes
+                    .into_iter()
+                    .map(|(key, lhs)| Equiv::equiv(lhs, rhs_attributes.get(key).unwrap()))
+                    .collect::<Result<(), String>>()
+            }
+            // Sets are equivalent if their elements are equivalent
+            (
+                TypeVariant::Set {
+                    element: lhs_element,
+                },
+                TypeVariant::Set {
+                    element: rhs_element,
+                },
+            ) => Equiv::equiv(lhs_element.as_ref(), rhs_element.as_ref()),
+
+            // Base types are equivalent to `EntityOrCommon` variants where the type_name is of the
+            // form `__cedar::<base type>`
+            (TypeVariant::String, TypeVariant::EntityOrCommon { type_name })
+            | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::String) => {
+                if is_internal_type(type_name, "String") {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "entity-or-common `{type_name}` is not equivalent to String"
+                    ))
+                }
+            }
+            (TypeVariant::Long, TypeVariant::EntityOrCommon { type_name })
+            | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Long) => {
+                if is_internal_type(type_name, "Long") {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "entity-or-common `{type_name}` is not equivalent to Long"
+                    ))
+                }
+            }
+            (TypeVariant::Boolean, TypeVariant::EntityOrCommon { type_name })
+            | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Boolean) => {
+                if is_internal_type(type_name, "Bool") {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "entity-or-common `{type_name}` is not equivalent to Boolean"
+                    ))
+                }
+            }
+            (TypeVariant::Extension { name }, TypeVariant::EntityOrCommon { type_name })
+            | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Extension { name }) => {
+                if is_internal_type(type_name, &name.to_string()) {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "entity-or-common `{type_name}` is not equivalent to Extension `{name}` "
+                    ))
+                }
+            }
+
+            (TypeVariant::Entity { name }, TypeVariant::EntityOrCommon { type_name })
+            | (TypeVariant::EntityOrCommon { type_name }, TypeVariant::Entity { name }) => {
+                if type_name == name {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "entity `{name}` is not equivalent to entity-or-common `{type_name}`"
+                    ))
+                }
+            }
+
+            // Types that are exactly equal are of course equivalent
+            (lhs, rhs) => {
+                if lhs == rhs {
+                    Ok(())
+                } else {
+                    Err("types are not equivalent".into())
+                }
+            }
+        }
+    }
+}
+
+impl<N: TypeName + Clone + PartialEq + Debug + Display> Equiv for RecordAttributeType<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs.required != rhs.required {
+            return Err(format!("attribute `{lhs:?}` is not equivalent to attribute `{rhs:?}` because of difference in .required"));
+        }
+        Equiv::equiv(&lhs.ty, &rhs.ty)
+    }
 }
 
 /// Is the given type name the `__cedar` alias for an internal type
@@ -294,19 +426,19 @@ impl TypeName for InternalName {
 
 fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + Ord>(
     name: &str,
-    lhs: json_schema::ActionType<N>,
-    rhs: json_schema::ActionType<N>,
+    lhs: &json_schema::ActionType<N>,
+    rhs: &json_schema::ActionType<N>,
 ) -> Result<(), String> {
-    if lhs.attributes != rhs.attributes {
+    if &lhs.attributes != &rhs.attributes {
         Err(format!("Attributes don't match for `{name}`"))
-    } else if lhs.member_of != rhs.member_of {
+    } else if &lhs.member_of != &rhs.member_of {
         Err(format!("Member of don't match for `{name}`"))
     } else {
-        match (lhs.applies_to, rhs.applies_to) {
+        match (&lhs.applies_to, &rhs.applies_to) {
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                if (either_empty(&lhs) && either_empty(&rhs)) || apply_spec_equiv(&lhs, &rhs) {
+                if (either_empty(&lhs) && either_empty(&rhs)) || Equiv::equiv(lhs, rhs).is_ok() {
                     Ok(())
                 } else {
                     Err(format!(
@@ -318,7 +450,7 @@ fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + O
             // An action w/ empty applies to list is equivalent to an action with _no_ applies to
             // section at all.
             // This is because neither action can be legally applied to any principal/resources.
-            (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(&applies_to) => {
+            (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(applies_to) => {
                 Ok(())
             }
             (Some(_), None) => Err(format!(
@@ -331,53 +463,58 @@ fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + O
     }
 }
 
-/// ApplySpecs are equivalent iff
-/// A) the principal and resource type lists are equal
-/// B) the context shapes are equivalent
-fn apply_spec_equiv<N: TypeName + Clone + PartialEq + Ord>(
-    lhs: &ApplySpec<N>,
-    rhs: &ApplySpec<N>,
-) -> bool {
-    shape_equiv(&lhs.context.0, &rhs.context.0)
-        && vector_equiv(&lhs.principal_types, &rhs.principal_types)
-        && vector_equiv(&lhs.resource_types, &rhs.resource_types)
+impl<N: TypeName + Clone + PartialEq + Ord + Debug + Display> Equiv for ApplySpec<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        // ApplySpecs are equivalent iff
+        // A) the principal and resource type lists are equal
+        // B) the context shapes are equivalent
+        if Equiv::equiv(&lhs.context.0, &rhs.context.0).is_ok()
+            && vector_equiv(&lhs.principal_types, &rhs.principal_types)
+            && vector_equiv(&lhs.resource_types, &rhs.resource_types)
+        {
+            Ok(())
+        } else {
+            Err("ApplySpecs are not equivalent".into())
+        }
+    }
 }
 
 fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
-/// Just compare entity attribute types and context types are equivalent
-pub fn validator_schema_attr_types_equivalent(
-    schema1: &cedar_policy_validator::ValidatorSchema,
-    schema2: &cedar_policy_validator::ValidatorSchema,
-) -> bool {
-    let entity_attr_tys1: HashMap<
-        &cedar_drt::ast::EntityType,
-        HashMap<&smol_str::SmolStr, &cedar_policy_validator::types::AttributeType>,
-    > = HashMap::from_iter(
-        schema1
-            .entity_types()
-            .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
-    );
-    let entity_attr_tys2 = HashMap::from_iter(
-        schema2
-            .entity_types()
-            .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
-    );
-    let context_ty1: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
-        schema1
-            .action_entities()
-            .unwrap()
-            .iter()
-            .map(|e| schema1.get_action_id(e.uid()).unwrap().context_type()),
-    );
-    let context_ty2: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
-        schema2
-            .action_entities()
-            .unwrap()
-            .iter()
-            .map(|e| schema1.get_action_id(e.uid()).unwrap().context_type()),
-    );
-    entity_attr_tys1 == entity_attr_tys2 && context_ty1 == context_ty2
+impl Equiv for cedar_policy_validator::ValidatorSchema {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        // Just compare entity attribute types and context types are equivalent
+        let entity_attr_tys_lhs: HashMap<
+            &cedar_drt::ast::EntityType,
+            HashMap<&smol_str::SmolStr, &cedar_policy_validator::types::AttributeType>,
+        > = HashMap::from_iter(
+            lhs.entity_types()
+                .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
+        );
+        let entity_attr_tys_rhs = HashMap::from_iter(
+            rhs.entity_types()
+                .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
+        );
+        if entity_attr_tys_lhs != entity_attr_tys_rhs {
+            return Err("entity attributes not equivalent".into());
+        }
+        let context_ty_lhs: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
+            lhs.action_entities()
+                .unwrap()
+                .iter()
+                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type()),
+        );
+        let context_ty_rhs: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
+            rhs.action_entities()
+                .unwrap()
+                .iter()
+                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type()),
+        );
+        if context_ty_lhs != context_ty_rhs {
+            return Err("contexts not equivalent".into());
+        }
+        Ok(())
+    }
 }

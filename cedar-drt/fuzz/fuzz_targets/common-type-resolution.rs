@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
+use cedar_drt_inner::*;
 use cedar_policy_core::ast;
 use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
@@ -84,16 +84,13 @@ fuzz_target!(|i: Input| {
         downgrade_frag_to_raw(i.schema_with_common_types).try_into();
     match (validator_schema1, validator_schema2) {
         (Ok(s1), Ok(s2)) => {
-            assert!(
-                validator_schema_attr_types_equivalent(&s1, &s2),
-                "reduced to different validator schemas: {:?}\n{:?}\n",
-                s1,
-                s2
-            );
+            if let Err(e) = schemas::Equiv::equiv(&s1, &s2) {
+                panic!("reduced to different validator schemas: {s1:?}\n{s2:?}\n\n{e}\n");
+            }
         }
         (Err(_), Err(_)) => {}
         (Ok(s), Err(_)) | (Err(_), Ok(s)) => {
-            panic!("reduction results differ, got validator schema: {:?}\n", s);
+            panic!("reduction results differ, got validator schema: {s:?}\n");
         }
     }
 });
