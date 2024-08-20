@@ -183,7 +183,6 @@ end BinaryOpProto
 namespace PatElem
 
 inductive PatElemTy where
-  | na
   | star
   | justChar
 deriving Inhabited
@@ -191,8 +190,8 @@ deriving Inhabited
 namespace PatElemTy
 def fromInt (n: Int): Except String PatElemTy :=
   match n with
-    | 1 => .ok .star
-    | 2 => .ok .justChar
+    | 0 => .ok .star
+    | 1 => .ok .justChar
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum PatElemTy := {
@@ -204,7 +203,6 @@ end PatElemTy
 def mergeTy (result: PatElem) (x: PatElemTy) : PatElem :=
   -- Same type than do nothing, otherwise instantiate with default
   match x with
-    | .na => panic!("Expected PatElemTy")
     | .star => .star
     | .justChar => match result with
       | .justChar _ => result
@@ -233,6 +231,10 @@ def parseField (t: Tag) : BParsec (StateM PatElem Unit) := do
     | _ =>
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)
+
+-- We assume in the parse functions above that
+-- the default is wildcard/star
+#guard default = Cedar.Spec.PatElem.star
 
 instance : Message PatElem := {
   parseField := parseField
