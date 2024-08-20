@@ -17,12 +17,9 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_core::ast::Entity;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::{
-    abac::ABACPolicy, abac::ABACRequest, hierarchy::Hierarchy, schema::Schema,
-    settings::ABACSettings,
+    hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};

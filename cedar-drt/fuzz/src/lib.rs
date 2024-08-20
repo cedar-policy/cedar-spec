@@ -300,7 +300,7 @@ pub fn run_req_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
     request: ast::Request,
-    extensions: Extensions<'_>,
+    extensions: &Extensions<'_>,
 ) {
     let (rust_res, rust_auth_dur) = time_function(|| {
         ast::Request::new_with_unknowns(
@@ -342,7 +342,7 @@ pub fn run_ent_val_test(
     custom_impl: &impl CedarTestImplementation,
     schema: ValidatorSchema,
     entities: Entities,
-    extensions: Extensions<'_>,
+    extensions: &Extensions<'_>,
 ) {
     let (rust_res, rust_auth_dur) = time_function(|| {
         Entities::from_entities(
@@ -353,7 +353,7 @@ pub fn run_ent_val_test(
         )
     });
     info!("{}{}", RUST_ENT_VALIDATION_MSG, rust_auth_dur.as_nanos());
-    let definitional_res = custom_impl.validate_entities(&schema, entities);
+    let definitional_res = custom_impl.validate_entities(&schema, &entities);
     match definitional_res {
         TestResult::Failure(_) => {
             panic!("entity validation test: failed to parse");
@@ -382,7 +382,7 @@ fn test_run_auth_test() {
     use cedar_drt::LeanDefinitionalEngine;
     use cedar_policy_core::ast::{
         Entity, EntityUID, PolicyID, RequestSchemaAllPass, RestrictedExpr,
-    }; 
+    };
     use cedar_policy_core::entities::{NoEntitiesSchema, TCComputation};
     use smol_str::SmolStr;
 
