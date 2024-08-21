@@ -98,7 +98,7 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃ ; subst hb₁
   split at h₅
-  case inl h₆ =>
+  case isTrue h₆ =>
     subst h₆
     have ⟨hty, hc⟩ := h₅ ; subst hty hc
     apply And.intro empty_guarded_capabilities_invariant
@@ -109,7 +109,7 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
     try exact type_is_inhabited (CedarType.bool BoolType.tt)
     exact true_is_instance_of_tt
-  case inr =>
+  case isFalse =>
     have ⟨bty₂, rc₂, h₅', h₇⟩ := h₅
     specialize ih₂ h₁ h₂ h₅'
     have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂

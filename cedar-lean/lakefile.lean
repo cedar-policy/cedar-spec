@@ -21,7 +21,7 @@ meta if get_config? env = some "dev" then -- dev is so not everyone has to build
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "c7f4ac84b973b6efd8f24ba2b006cad1b32c9c53"
 
 require batteries from git
-  "https://github.com/leanprover-community/batteries" @ "v4.8.0"
+  "https://github.com/leanprover-community/batteries" @ "v4.9.0"
 
 package Cedar
 

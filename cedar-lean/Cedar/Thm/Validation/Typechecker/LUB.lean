@@ -192,7 +192,7 @@ theorem lub_comm {ty₁ ty₂ : CedarType} :
   case h_4 =>
     rename_i h₁ h₂ h₃
     split <;> split <;> rename_i h₄
-    case inl.h_4 | inr.h_4 =>
+    case isTrue.h_4 | isFalse.h_4 =>
       rename_i _ _ h₅ _ _ _ _
       rw [eq_comm] at h₅
       simp [h₅]
@@ -306,8 +306,8 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
     simp [h₅]
   case h_4 =>
     split
-    case inl h₃ => simp [h₃]
-    case inr h₃ h₄ h₅ h₆ =>
+    case isTrue h₃ => simp [h₃]
+    case isFalse h₃ h₄ h₅ h₆ =>
       unfold lub? at h₁ h₂
       cases ty₁ <;> cases ty₂ <;> simp at h₁ <;>
       cases ty₃ <;> simp at h₂ <;> simp at h₆
