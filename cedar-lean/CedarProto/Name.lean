@@ -50,11 +50,11 @@ def parseField (t: Tag) : BParsec (StateM Name Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType String) t.wireType
-      let x: String ← BParsec.attempt Field.parse
+      let x: String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeId s x))
     | 2 =>
       (@Field.guardWireType (Repeated String)) t.wireType
-      let x: Repeated String ← BParsec.attempt Field.parse
+      let x: Repeated String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergePath s x))
     | _ =>
       t.wireType.skip

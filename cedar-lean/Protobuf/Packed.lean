@@ -76,7 +76,7 @@ instance [Repr α] [Field α] : Repr (Packed α) := by
 
 @[inline]
 def parse (α: Type) [Field α] : BParsec (Array α) := do
-  let len ← BParsec.attempt Len.parse
+  let len ← Len.parse
   BParsec.foldl
     Field.parse
     (fun arr => fun element => arr.push element)

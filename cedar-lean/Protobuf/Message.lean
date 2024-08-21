@@ -23,9 +23,9 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
   let startPos ← BParsec.pos
 
-  let tag ← BParsec.attempt Tag.parse
+  let tag ← Tag.parse
 
-  let result2: StateM α Unit ← BParsec.attempt (parseField tag)
+  let result2: StateM α Unit ← parseField tag
 
   let endPos ← BParsec.pos
   let elementSize := (endPos - startPos)

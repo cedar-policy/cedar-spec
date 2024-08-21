@@ -41,7 +41,7 @@ private partial def exprToValue : Expr → Value
   | .lit p => .prim p
   | .record r => .record (Cedar.Data.Map.make (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
   | .set s => .set (Cedar.Data.Set.make (s.map exprToValue))
-  -- TODO: ExtFun
+  | .call _ _ => panic!("TODO: Not Implemented")
   | _ => panic!("exprToValue: invalid input expression")
 
 instance : Field Value := Field.fromInterField exprToValue merge

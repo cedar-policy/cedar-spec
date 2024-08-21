@@ -30,7 +30,7 @@ namespace Cedar.Spec
 -- abbrev and @[reducible] as this causes issues
 -- with typeclass resolution when calling Field.parse
 def EntityTypeProto := Cedar.Spec.Name
-deriving instance Inhabited for EntityTypeProto
+deriving Inhabited, DecidableEq, Repr, LT
 
 namespace EntityTypeProto
 
@@ -46,7 +46,7 @@ def parseField (t: Tag) : BParsec (StateM EntityTypeProto Unit) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType Name) t.wireType
-      let x: Name ← BParsec.attempt Field.parse
+      let x: Name ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeName s x))
     | _ =>
       t.wireType.skip

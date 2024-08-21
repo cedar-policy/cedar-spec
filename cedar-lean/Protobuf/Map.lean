@@ -23,10 +23,10 @@ namespace Proto
 
 @[inline]
 def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParsec (Array (KeyT × ValueT)) := do
-     let len ← BParsec.attempt Len.parse
+     let len ← Len.parse
      let startPos ← BParsec.pos
 
-     let tag1 ← BParsec.attempt Tag.parse
+     let tag1 ← Tag.parse
      let result ← match tag1.fieldNum with
           | 1 =>
                let wt1Matches := (@Field.checkWireType KeyT) tag1.wireType
@@ -35,7 +35,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
                else
                let key: KeyT ← Field.parse
 
-               let tag2 ← BParsec.attempt Tag.parse
+               let tag2 ← Tag.parse
                let wt2Matches := (@Field.checkWireType ValueT) tag2.wireType
                if not wt2Matches then
                     throw s!"WireType mismatch"
@@ -52,7 +52,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Field KeyT] [Field ValueT]: BParse
                else
                let value: ValueT ← Field.parse
 
-               let tag2 ← BParsec.attempt Tag.parse
+               let tag2 ← Tag.parse
                let wt2Matches := (@Field.checkWireType KeyT) tag2.wireType
                if not wt2Matches then
                     throw s!"WireType mismatch"

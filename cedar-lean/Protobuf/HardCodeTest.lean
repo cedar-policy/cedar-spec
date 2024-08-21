@@ -49,7 +49,7 @@ def parseField (t: Tag) : BParsec (StateM HardCodeStruct Unit) := do
   match t.fieldNum with
     | 6 =>
       (@Field.guardWireType (Packed UInt32)) t.wireType
-      let x: Packed UInt32 ← BParsec.attempt Field.parse
+      let x: Packed UInt32 ← Field.parse
       pure (modifyGet fun s => Prod.mk () (s.merge_6 x))
     | _ =>
       t.wireType.skip

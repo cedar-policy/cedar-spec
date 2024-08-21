@@ -12,10 +12,8 @@ import Protobuf.Structures
 import Protobuf.Packed
 import Protobuf.Message
 
-import CedarProto.Request
-import CedarProto.Entities
-import CedarProto.LiteralPolicySet
 import CedarProto.AuthorizationRequest
+import CedarProto.ValidationRequest
 import DiffTest
 
 open Proto
@@ -46,26 +44,25 @@ def readFileBytes (filename: String) : IO ByteArray := do
     stream.read bufsize
 
 @[inline]
-def processJson (result_str: String): IO Cedar.Spec.AuthorizationRequest := do
+def processJson (result_str: String): IO Cedar.Validation.Proto.ValidationRequest := do
   match Lean.Json.parse result_str with
     | .error _ =>
       println! s!"Failed to parse JSON input"
       pure default
     | .ok json => do
-      let request := DiffTest.getJsonField json "request" >>= DiffTest.jsonToRequest
-      let entities := DiffTest.getJsonField json "entities" >>= DiffTest.jsonToEntities
+      let schema := DiffTest.getJsonField json "schema" >>= DiffTest.jsonToSchema
       let policies := DiffTest.getJsonField json "policies" >>= DiffTest.jsonToPolicies
-      match request, entities, policies with
-        | (.ok request), (.ok entities), (.ok policies)  =>
+      match schema, policies with
+        | (.ok schema), (.ok policies)  =>
           println! s!"JSON parse successful"
-          pure (Cedar.Spec.AuthorizationRequest.mk request entities policies)
-        | _, _, _ =>
-          println! "Failed to create Authorization Request Message"
+          pure (Cedar.Validation.Proto.ValidationRequest.mk schema policies)
+        | _, _ =>
+          println! "Failed to create Validation Request Message"
           pure default
 
 @[inline]
-def processProto (result_bytes: ByteArray): IO Cedar.Spec.AuthorizationRequest := do
-  let result: Except String Cedar.Spec.AuthorizationRequest := Message.interpret? result_bytes
+def processProto (result_bytes: ByteArray): IO Cedar.Validation.Proto.ValidationRequest := do
+  let result: Except String Cedar.Validation.Proto.ValidationRequest := Message.interpret? result_bytes
   match result with
     | .error e =>
       println! "Protobuf failed to parse {e}"
@@ -101,15 +98,18 @@ def main (args: List String) : IO UInt32 := do
 
   -- Cedar.Spec.Policies is a list that has no guarentee on it's ordering
   -- for comparison, we need to sort first
-  let p1 := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) proto_sec.data.policies
-  let p2 := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) json_sec.data.policies
+  -- let p1 := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) proto_sec.data.policies
+  -- let p2 := List.canonicalize (fun p: Cedar.Spec.Policy => p.id) json_sec.data.policies
 
-  let x1: Cedar.Spec.AuthorizationRequest := {proto_sec.data with
-    policies := p1
-  }
-  let x2: Cedar.Spec.AuthorizationRequest := {json_sec.data with
-    policies := p2
-  }
+  -- let x1: Cedar.Spec.AuthorizationRequest := {proto_sec.data with
+    -- policies := p1
+  -- }
+  -- let x2: Cedar.Spec.AuthorizationRequest := {json_sec.data with
+    -- policies := p2
+  -- }
+
+  let x1 := proto_sec.data
+  let x2 := json_sec.data
 
   println! s!"Representations equal? {decide (x1 = x2)}"
 

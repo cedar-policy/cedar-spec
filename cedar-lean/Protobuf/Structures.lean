@@ -38,7 +38,7 @@ deriving Repr, DecidableEq
 namespace VarInt
   @[inline]
   def skip : BParsec Unit := do
-    let slice ← BParsec.attempt find_next_varint
+    let slice ← find_next_varint
     BParsec.forward (slice.last - slice.first)
 end VarInt
 

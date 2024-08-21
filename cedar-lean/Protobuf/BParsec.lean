@@ -77,7 +77,7 @@ returns an Except to capture both successes and failures -/
 def run (p : BParsec α) (ba : ByteArray) : Except String α :=
   match p ba.iter with
   | ParseResult.success _ res => Except.ok res
-  | ParseResult.error it err  => Except.error s!"offset {repr it.pos}: {err}"
+  | ParseResult.error it err  => Except.error s!"offset {it.pos}: {err}"
 
 /- Execute parser combinators on a byte array, panics on error -/
 @[inline]
