@@ -16,14 +16,13 @@
 
 use cedar_policy_core::ast::{Id, InternalName};
 use cedar_policy_validator::json_schema::{
-    ApplySpec, EntityAttributeType, EntityAttributeTypeInternal, EntityAttributes,
+    self, ApplySpec, EntityAttributeType, EntityAttributeTypeInternal, EntityAttributes,
     EntityAttributesInternal, EntityType, RecordAttributeType, RecordType, Type, TypeVariant,
 };
 use cedar_policy_validator::RawName;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use cedar_policy_validator::json_schema;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
@@ -89,6 +88,12 @@ pub trait Equiv {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String>;
 }
 
+impl<'a, T: Equiv> Equiv for &'a T {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(*lhs, *rhs)
+    }
+}
+
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
     for json_schema::NamespaceDefinition<N>
 {
@@ -112,6 +117,19 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
                     action_type_equivalence(name.as_ref(), lhs_action, rhs_action)
                 })
                 .fold(Ok(()), Result::and)
+        }
+    }
+}
+
+/// `Equiv` for `HashSet` requires that the items in the set are exactly equal,
+/// not equivalent by `Equiv`. (It would be hard to line up which item is
+/// supposed to correspond to which, given an arbitrary `Equiv` implementation.)
+impl<V: Eq + Hash> Equiv for HashSet<V> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs != rhs {
+            Err("sets are not equal".into())
+        } else {
+            Ok(())
         }
     }
 }
@@ -184,6 +202,17 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for EntityTy
     }
 }
 
+impl Equiv for cedar_policy_validator::ValidatorEntityType {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.descendants, &rhs.descendants)?;
+        Equiv::equiv(
+            &lhs.attributes().collect::<HashMap<_, _>>(),
+            &rhs.attributes().collect::<HashMap<_, _>>(),
+        )?;
+        Ok(())
+    }
+}
+
 impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttributes<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         match (lhs, rhs) {
@@ -220,6 +249,15 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttribut
             return Err("attributes differ in required flag".into());
         }
         Equiv::equiv(&lhs.ty, &rhs.ty)
+    }
+}
+
+impl Equiv for cedar_policy_validator::types::AttributeType {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs.is_required != rhs.is_required {
+            return Err("attributes differ in required flag".into());
+        }
+        Equiv::equiv(&lhs.attr_type, &rhs.attr_type)
     }
 }
 
@@ -261,6 +299,16 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for Type<N> {
             (Type::CommonTypeRef { type_name: lhs }, Type::Type(rhs)) => Err(format!(
                 "lhs is common type `{lhs}`, rhs is ordinary type `{rhs:?}`"
             )),
+        }
+    }
+}
+
+impl Equiv for cedar_policy_validator::types::Type {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs != rhs {
+            Err(format!("types are not equal: {lhs} != {rhs}"))
+        } else {
+            Ok(())
         }
     }
 }
@@ -485,36 +533,24 @@ fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
 
 impl Equiv for cedar_policy_validator::ValidatorSchema {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
-        // Just compare entity attribute types and context types are equivalent
-        let entity_attr_tys_lhs: HashMap<
-            &cedar_drt::ast::EntityType,
-            HashMap<&smol_str::SmolStr, &cedar_policy_validator::types::AttributeType>,
-        > = HashMap::from_iter(
-            lhs.entity_types()
-                .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
-        );
-        let entity_attr_tys_rhs = HashMap::from_iter(
-            rhs.entity_types()
-                .map(|(name, ty)| (name, HashMap::from_iter(ty.attributes()))),
-        );
-        if entity_attr_tys_lhs != entity_attr_tys_rhs {
-            return Err("entity attributes not equivalent".into());
-        }
-        let context_ty_lhs: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
-            lhs.action_entities()
+        Equiv::equiv(
+            &lhs.entity_types().collect::<HashMap<_, _>>(),
+            &rhs.entity_types().collect::<HashMap<_, _>>(),
+        )
+        .map_err(|e| format!("entity attributes are not equivalent: {e}"))?;
+        Equiv::equiv(
+            &lhs.action_entities()
                 .unwrap()
                 .iter()
-                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type()),
-        );
-        let context_ty_rhs: HashSet<&cedar_policy_validator::types::Type> = HashSet::from_iter(
-            rhs.action_entities()
+                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type())
+                .collect::<HashSet<_>>(),
+            &rhs.action_entities()
                 .unwrap()
                 .iter()
-                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type()),
-        );
-        if context_ty_lhs != context_ty_rhs {
-            return Err("contexts not equivalent".into());
-        }
+                .map(|e| rhs.get_action_id(e.uid()).unwrap().context_type())
+                .collect::<HashSet<_>>(),
+        )
+        .map_err(|e| format!("contexts are not equivalent: {e}"))?;
         Ok(())
     }
 }
