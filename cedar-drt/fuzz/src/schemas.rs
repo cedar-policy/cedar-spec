@@ -124,10 +124,25 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
 /// `Equiv` for `HashSet` requires that the items in the set are exactly equal,
 /// not equivalent by `Equiv`. (It would be hard to line up which item is
 /// supposed to correspond to which, given an arbitrary `Equiv` implementation.)
-impl<V: Eq + Hash> Equiv for HashSet<V> {
+impl<V: Eq + Hash + Display> Equiv for HashSet<V> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs != rhs {
-            Err("sets are not equal".into())
+            let missing_elems = lhs.symmetric_difference(&rhs).join(", ");
+            Err(format!("missing set elements: {missing_elems}"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// `Equiv` for `BTreeSet` requires that the items in the set are exactly equal,
+/// not equivalent by `Equiv`. (It would be hard to line up which item is
+/// supposed to correspond to which, given an arbitrary `Equiv` implementation.)
+impl<V: Eq + Ord + Display> Equiv for BTreeSet<V> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if lhs != rhs {
+            let missing_elems = lhs.symmetric_difference(&rhs).join(", ");
+            Err(format!("missing set elements: {missing_elems}"))
         } else {
             Ok(())
         }
@@ -190,15 +205,12 @@ impl<K: Eq + Ord + Display, V: Equiv> Equiv for BTreeMap<K, V> {
 
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for EntityType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
-        if !vector_equiv(&lhs.member_of_types, &rhs.member_of_types) {
-            Err(format!(
-                "lhs and rhs membership are not equal. LHS: [{}], RHS: [{}].",
-                lhs.member_of_types.iter().join(","),
-                rhs.member_of_types.iter().join(",")
-            ))
-        } else {
-            Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))
-        }
+        Equiv::equiv(
+            &lhs.member_of_types.iter().collect::<BTreeSet<_>>(),
+            &rhs.member_of_types.iter().collect::<BTreeSet<_>>(),
+        )
+        .map_err(|e| format!("memberOfTypes are not equal: {e}"))?;
+        Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))
     }
 }
 
@@ -444,15 +456,6 @@ fn is_internal_type<N: TypeName + Clone>(type_name: &N, expected: &str) -> bool 
             == vec!["__cedar"]
 }
 
-/// Vectors are equivalent if they contain the same items, regardless of order
-fn vector_equiv<N: Ord>(lhs: &[N], rhs: &[N]) -> bool {
-    let mut lhs = lhs.iter().collect::<Vec<_>>();
-    let mut rhs = rhs.iter().collect::<Vec<_>>();
-    lhs.sort();
-    rhs.sort();
-    lhs == rhs
-}
-
 /// Trait for taking either `N` to a concrete type we can do equality over
 pub trait TypeName {
     fn qualify(self) -> InternalName;
@@ -516,14 +519,16 @@ impl<N: TypeName + Clone + PartialEq + Ord + Debug + Display> Equiv for ApplySpe
         // ApplySpecs are equivalent iff
         // A) the principal and resource type lists are equal
         // B) the context shapes are equivalent
-        if Equiv::equiv(&lhs.context.0, &rhs.context.0).is_ok()
-            && vector_equiv(&lhs.principal_types, &rhs.principal_types)
-            && vector_equiv(&lhs.resource_types, &rhs.resource_types)
-        {
-            Ok(())
-        } else {
-            Err("ApplySpecs are not equivalent".into())
-        }
+        Equiv::equiv(&lhs.context.0, &rhs.context.0)?;
+        Equiv::equiv(
+            &lhs.principal_types.iter().collect::<BTreeSet<_>>(),
+            &rhs.principal_types.iter().collect::<BTreeSet<_>>(),
+        )?;
+        Equiv::equiv(
+            &lhs.resource_types.iter().collect::<BTreeSet<_>>(),
+            &rhs.resource_types.iter().collect::<BTreeSet<_>>(),
+        )?;
+        Ok(())
     }
 }
 
