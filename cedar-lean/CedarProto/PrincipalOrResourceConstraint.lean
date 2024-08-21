@@ -23,31 +23,174 @@ open Proto
 
 namespace Cedar.Spec
 
-namespace ScopeTemplate
+namespace Proto
+-- Constructors for ScopeTemplate
 
-inductive ScopeType where
+inductive ScopeTemplate.Ty where
   | any
-  | in
-  | eq
-  | is
-  | isIn
 deriving Inhabited
 
-namespace ScopeType
+def ScopeTemplate.In := ScopeTemplate
+instance : Inhabited ScopeTemplate.In where
+  default := .mem default
+
+def ScopeTemplate.Eq := ScopeTemplate
+instance : Inhabited ScopeTemplate.Eq where
+  default := .eq default
+
+def ScopeTemplate.Is := ScopeTemplate
+instance : Inhabited ScopeTemplate.Is where
+  default := .is default
+
+def ScopeTemplate.IsIn := ScopeTemplate
+instance : Inhabited ScopeTemplate.IsIn where
+  default := .isMem default default
+
+end Proto
+
+namespace Proto.ScopeTemplate.Ty
 @[inline]
-def fromInt (n: Int): Except String ScopeType :=
+def fromInt (n: Int): Except String ScopeTemplate.Ty :=
   match n with
     | 0 => .ok .any
-    | 1 => .ok .in
-    | 2 => .ok .eq
-    | 3 => .ok .is
-    | 4 => .ok .isIn
     | n => .error s!"Field {n} does not exist in enum"
 
-instance : ProtoEnum ScopeType := {
+instance : ProtoEnum ScopeTemplate.Ty := {
   fromInt := fromInt
 }
-end ScopeType
+end Proto.ScopeTemplate.Ty
+
+namespace Proto.ScopeTemplate.In
+def mergeER (result: ScopeTemplate.In) (e2: EntityUIDOrSlot) : ScopeTemplate.In :=
+  match result with
+    | .mem e1 => .mem (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+
+def merge (x1 x2: ScopeTemplate.In) : ScopeTemplate.In :=
+  have e2 := match x2 with
+    | .mem e => e
+    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+  match x1 with
+    | .mem e1 => .mem (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+
+def parseField (t: Tag) : BParsec (StateM ScopeTemplate.In Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityUIDOrSlot) t.wireType
+      let x: EntityUIDOrSlot ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ScopeTemplate.In := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ScopeTemplate.In
+
+namespace Proto.ScopeTemplate.Eq
+def mergeER (result: ScopeTemplate.Eq) (e2: EntityUIDOrSlot) : ScopeTemplate.Eq :=
+  match result with
+    | .eq e1 => .eq (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+
+def merge (x1 x2: ScopeTemplate.Eq) : ScopeTemplate.Eq :=
+  have e2 := match x2 with
+    | .eq e => e
+    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+  match x1 with
+    | .eq e1 => .eq (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+
+def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Eq Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityUIDOrSlot) t.wireType
+      let x: EntityUIDOrSlot ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ScopeTemplate.Eq := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ScopeTemplate.Eq
+
+namespace Proto.ScopeTemplate.Is
+def mergeET (result: ScopeTemplate.Is) (e2: EntityType) : ScopeTemplate.Is :=
+  match result with
+    | .is e1 => .is (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+
+def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
+  have e2 := match x2 with
+    | .is e => e
+    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+  match x1 with
+    | .is e1 => .is (Field.merge e1 e2)
+    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+
+def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Is Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityType) t.wireType
+      let x: EntityType ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeET s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ScopeTemplate.Is := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ScopeTemplate.Is
+
+
+namespace Proto.ScopeTemplate.IsIn
+def mergeER (result: ScopeTemplate.IsIn) (er2: EntityUIDOrSlot) : ScopeTemplate.IsIn :=
+  match result with
+    | .isMem et er1 => .isMem et (Field.merge er1 er2)
+    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+
+def mergeET (result: ScopeTemplate.Is) (et2: EntityType) : ScopeTemplate.Is :=
+  match result with
+    | .isMem et1 er => .isMem (Field.merge et1 et2) er
+    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+
+def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
+  have ⟨et2, er2⟩ := match x2 with
+    | .isMem et er => (et, er)
+    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+  match x1 with
+    | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
+    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+
+def parseField (t: Tag) : BParsec (StateM ScopeTemplate.IsIn Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityUIDOrSlot) t.wireType
+      let x: EntityUIDOrSlot ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+    | 2 =>
+      (@Field.guardWireType EntityType) t.wireType
+      let x: EntityType ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeET s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ScopeTemplate.IsIn := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ScopeTemplate.IsIn
+
+namespace ScopeTemplate
 
 -- Already defined
 -- inductive ScopeTemplate where
@@ -57,84 +200,50 @@ end ScopeType
 --   | is (ety : EntityType)
 --   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
 
--- Note: EntityType and EntityUIDOrSlot do not uniquely
--- tell us which constructor to call. Also slot information is not carried
--- within the Protobuf representation of this message.
-
--- Therefore we create an intermediate
--- representation which we can post process later
 
 deriving instance Inhabited for EntityUIDOrSlot
 
-structure PrincipalOrResourceConstraint where
-  ty: ScopeType
-  er: EntityUIDOrSlot
-  na: EntityType
-deriving Inhabited
-
-namespace PrincipalOrResourceConstraint
 @[inline]
-def mergeTy (result: PrincipalOrResourceConstraint) (x: ScopeType) : PrincipalOrResourceConstraint :=
-  {result with
-    ty := Field.merge result.ty x
-  }
-
-@[inline]
-def mergeEr (result: PrincipalOrResourceConstraint) (x: EntityUIDOrSlot): PrincipalOrResourceConstraint :=
-  {result with
-    er := Field.merge result.er x
-  }
-
-@[inline]
-def mergeNa (result: PrincipalOrResourceConstraint) (x: EntityType) : PrincipalOrResourceConstraint :=
-  {result with
-    na := Field.merge result.na x
-  }
-
-@[inline]
-def merge (x: PrincipalOrResourceConstraint) (y: PrincipalOrResourceConstraint) : PrincipalOrResourceConstraint :=
-  {x with
-    ty := Field.merge x.ty y.ty
-    er := Field.merge x.er y.er
-    na := Field.merge x.na y.na
-  }
-
-
-def parseField (t: Tag) : BParsec (StateM PrincipalOrResourceConstraint Unit) := do
-  match t.fieldNum with
-    | 1 =>
-      (@Field.guardWireType ScopeType) t.wireType
-      let x: ScopeType ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
-    | 2 =>
-      (@Field.guardWireType EntityUIDOrSlot) t.wireType
-      let x: EntityUIDOrSlot ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEr s x))
-    | 3 =>
-      (@Field.guardWireType EntityType) t.wireType
-      let x: EntityType ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeNa s x))
-    | _ =>
-      t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
-
-instance : Message PrincipalOrResourceConstraint := {
-  parseField := parseField
-  merge := merge
-}
-
-deriving instance Inhabited for ScopeTemplate
-
-@[inline]
-def toScopeTemplate (x: PrincipalOrResourceConstraint) (s: SlotID): ScopeTemplate :=
-  match x.ty with
+def mergeTy (_: ScopeTemplate) (x: Proto.ScopeTemplate.Ty) : ScopeTemplate :=
+  match x with
     | .any => .any
-    | .in => .mem (x.er.withSlot s)
-    | .eq => .eq (x.er.withSlot s)
-    | .is => .is x.na
-    | .isIn => .isMem x.na (x.er.withSlot s)
 
-end PrincipalOrResourceConstraint
+@[inline]
+def mergeIn (result: ScopeTemplate) (x: Proto.ScopeTemplate.In): ScopeTemplate :=
+  have er2 := match x with
+    | .mem e => e
+    | _ => panic!("Proto.ScopeTemplate.In expected to have constructor .mem")
+  match result with
+    | .mem er1 => .mem (Field.merge er1 er2)
+    | _ => .mem er2
+
+@[inline]
+def mergeEq (result: ScopeTemplate) (x: Proto.ScopeTemplate.Eq) : ScopeTemplate :=
+  have er2 := match x with
+    | .eq e => e
+    | _ => panic!("Proto.ScopeTemplate.Eq expected to have constructor .eq")
+  match result with
+    | .eq er1 => .eq (Field.merge er1 er2)
+    | _ => .eq er2
+
+@[inline]
+def mergeIs (result: ScopeTemplate) (x: Proto.ScopeTemplate.Is): ScopeTemplate :=
+  have et2 := match x with
+    | .is e => e
+    | _ => panic!("Proto.ScopeTemplate.Is expected to have constructor .is")
+  match result with
+    | .is et1 => .is (Field.merge et1 et2)
+    | _ => .is et2
+
+@[inline]
+def mergeIsIn (result: ScopeTemplate) (x: Proto.ScopeTemplate.IsIn): ScopeTemplate :=
+  have ⟨et2, er2⟩ := match x with
+    | .isMem et er => (et, er)
+    | _ => panic!("Proto.ScopeTemplate.IsIn expected to have constructor .isMem")
+  match result with
+    | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
+    | _ => .isMem et2 er2
+
 
 @[inline]
 def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
@@ -155,6 +264,47 @@ def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
     | .isMem n1 e1 => .isMem (Field.merge n1 n2) (EntityUIDOrSlot.merge e1 e2)
     | _ => x2
 
+
+def parseField (t: Tag) : BParsec (StateM ScopeTemplate Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType Proto.ScopeTemplate.Ty) t.wireType
+      let x: Proto.ScopeTemplate.Ty ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
+    | 2 =>
+      (@Field.guardWireType Proto.ScopeTemplate.In) t.wireType
+      let x: Proto.ScopeTemplate.In ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeIn s x))
+    | 3 =>
+      (@Field.guardWireType Proto.ScopeTemplate.Eq) t.wireType
+      let x: Proto.ScopeTemplate.Eq ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeEq s x))
+    | 4 =>
+      (@Field.guardWireType Proto.ScopeTemplate.Is) t.wireType
+      let x: Proto.ScopeTemplate.Is ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeIs s x))
+    | 5 =>
+      (@Field.guardWireType Proto.ScopeTemplate.IsIn) t.wireType
+      let x: Proto.ScopeTemplate.IsIn ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeIsIn s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+deriving instance Inhabited for ScopeTemplate
+instance : Message ScopeTemplate := {
+  parseField := parseField
+  merge := merge
+}
+
+@[inline]
+def withSlot (x: ScopeTemplate) (s: SlotID): ScopeTemplate :=
+  match x with
+    | .any => .any
+    | .mem er => .mem (er.withSlot s)
+    | .eq er => .eq (er.withSlot s)
+    | .is et => .is et
+    | .isMem et er => .isMem et (er.withSlot s)
 
 end ScopeTemplate
 

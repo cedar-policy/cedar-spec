@@ -23,37 +23,34 @@ open Proto
 
 namespace Cedar.Spec
 
-namespace EntityUIDOrSlot
-
+namespace Proto
 inductive EntityReferenceType where
   | slot
-  | euid
 deriving Inhabited
 
 namespace EntityReferenceType
+@[inline]
 def fromInt (n: Int): Except String EntityReferenceType :=
   match n with
     | 0 => .ok .slot
-    | 1 => .ok .euid
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum EntityReferenceType := {
   fromInt := fromInt
 }
 end EntityReferenceType
+end Proto
+
+namespace EntityUIDOrSlot
 
 @[inline]
-def mergeTy (result: EntityUIDOrSlot) (x: EntityReferenceType) : EntityUIDOrSlot :=
+def mergeTy (result: EntityUIDOrSlot) (x: Proto.EntityReferenceType) : EntityUIDOrSlot :=
   -- For enums, if result is already of the same type, then we don't do anything
   -- otherwise, we construct a default object of the new type.
   match x with
-    | .euid => match result with
-      | .entityUID _ => result
-      | .slot _ => .entityUID default
     | .slot => match result with
       | .entityUID _ => .slot default
       | .slot _ => result
-
 
 @[inline]
 def mergeEuid (result: EntityUIDOrSlot) (x: EntityUID): EntityUIDOrSlot :=
@@ -69,11 +66,12 @@ def merge (x: EntityUIDOrSlot) (y: EntityUIDOrSlot) : EntityUIDOrSlot :=
       | .entityUID _ => y
       | .slot s1 => .slot (Field.merge s1 s2)
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlot Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType EntityReferenceType) t.wireType
-      let x: EntityReferenceType ← BParsec.attempt Field.parse
+      (@Field.guardWireType Proto.EntityReferenceType) t.wireType
+      let x: Proto.EntityReferenceType ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType

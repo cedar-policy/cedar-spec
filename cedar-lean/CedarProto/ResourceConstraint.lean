@@ -25,9 +25,9 @@ namespace Cedar.Spec
 namespace ResourceScopeTemplate
 
 @[inline]
-def mergeConstraint (result: ResourceScopeTemplate) (x: ScopeTemplate.PrincipalOrResourceConstraint) : ResourceScopeTemplate :=
+def mergeConstraint (result: ResourceScopeTemplate) (x: ScopeTemplate) : ResourceScopeTemplate :=
   let ⟨ sc1 ⟩ := result
-  .resourceScope (ScopeTemplate.merge sc1 (x.toScopeTemplate "?resource"))
+  .resourceScope (ScopeTemplate.merge sc1 (x.withSlot "?resource"))
 
 @[inline]
 def merge (x: ResourceScopeTemplate) (y: ResourceScopeTemplate) : ResourceScopeTemplate :=
@@ -38,8 +38,8 @@ def merge (x: ResourceScopeTemplate) (y: ResourceScopeTemplate) : ResourceScopeT
 def parseField (t: Tag) : BParsec (StateM ResourceScopeTemplate Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType ScopeTemplate.PrincipalOrResourceConstraint) t.wireType
-      let x: ScopeTemplate.PrincipalOrResourceConstraint ← BParsec.attempt Field.parse
+      (@Field.guardWireType ScopeTemplate) t.wireType
+      let x: ScopeTemplate ← BParsec.attempt Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeConstraint s x))
     | _ =>
       t.wireType.skip
