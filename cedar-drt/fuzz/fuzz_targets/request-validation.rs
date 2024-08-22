@@ -17,9 +17,10 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::*;
-use cedar_policy_core::ast;
+use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::{
-    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    abac::ABACRequest, hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema::Schema,
+    settings::ABACSettings,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
@@ -31,8 +32,14 @@ pub struct FuzzTargetInput {
     /// generated schema
     #[serde(skip)]
     pub schema: Schema,
-    /// generated policy
-    pub policy: ABACPolicy,
+    /// generated hierarchy
+    #[serde(skip)]
+    pub hierarchy: Hierarchy,
+
+    /// the requests to try for this schema and hierarchy. We try 8 requests per
+    /// schema/hierarchy
+    #[serde(skip)]
+    pub requests: [ABACRequest; 8],
 }
 
 /// settings for this fuzz target
@@ -54,15 +61,35 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let policy = schema.arbitrary_policy(&hierarchy, u)?;
-        Ok(Self { schema, policy })
+        let requests = [
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+            schema.arbitrary_request(&hierarchy, u)?,
+        ];
+        Ok(Self {
+            schema,
+            hierarchy,
+            requests,
+        })
     }
 
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
             HierarchyGenerator::size_hint(depth),
-            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
+            Schema::arbitrary_request_size_hint(depth),
         ])
     }
 }
@@ -75,16 +102,22 @@ fuzz_target!(|input: FuzzTargetInput| {
     // generate a schema
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
-
-        // generate a policy
-        let mut policyset = ast::PolicySet::new();
-        let policy: ast::StaticPolicy = input.policy.into();
-        policyset.add_static(policy).unwrap();
-        debug!("Policies: {policyset}");
-
-        // run the policy through both validators and compare the result
-        let (_, total_dur) =
-            time_function(|| run_val_test(&def_impl, schema, &policyset, ValidationMode::Strict));
-        info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+        let requests = input
+            .requests
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<_>>();
+        for request in requests.iter().cloned() {
+            debug!("Request: {request}");
+            let (_, total_dur) = time_function(|| {
+                run_req_val_test(
+                    &def_impl,
+                    schema.clone(),
+                    request,
+                    Extensions::all_available(),
+                )
+            });
+            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
+        }
     }
 });

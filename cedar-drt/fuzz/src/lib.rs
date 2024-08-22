@@ -43,6 +43,8 @@ use std::collections::HashSet;
 /// Times for cedar-policy authorization and validation.
 pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
 pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
+pub const RUST_ENT_VALIDATION_MSG: &str = "rust_entity_validation (ns) : ";
+pub const RUST_REQ_VALIDATION_MSG: &str = "rust_request_validation (ns) : ";
 
 /// Compare the behavior of the partial evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
@@ -60,7 +62,7 @@ pub fn run_pe_test(
         Extensions::none()
     };
 
-    let eval = Evaluator::new(request.clone(), entities, &exts);
+    let eval = Evaluator::new(request.clone(), entities, exts);
     use cedar_policy_core::ast::PartialValue;
     use cedar_testing::cedar_test_impl::ExprOrValue;
     use log::debug;
@@ -117,7 +119,7 @@ pub fn run_eval_test(
     } else {
         Extensions::none()
     };
-    let eval = Evaluator::new(request.clone(), entities, &exts);
+    let eval = Evaluator::new(request.clone(), entities, exts);
     let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
         Ok(v) => Some(v),
         Err(_) => None,
@@ -289,6 +291,87 @@ pub fn run_val_test(
                     }
                     ValidationComparisonMode::AgreeOnValid => {} // ignore
                 };
+            }
+        }
+    }
+}
+
+pub fn run_req_val_test(
+    custom_impl: &impl CedarTestImplementation,
+    schema: ValidatorSchema,
+    request: ast::Request,
+    extensions: &Extensions<'_>,
+) {
+    let (rust_res, rust_auth_dur) = time_function(|| {
+        ast::Request::new_with_unknowns(
+            request.principal().clone(),
+            request.action().clone(),
+            request.resource().clone(),
+            request.context().cloned(),
+            Some(&schema),
+            extensions,
+        )
+    });
+    info!("{}{}", RUST_REQ_VALIDATION_MSG, rust_auth_dur.as_nanos());
+
+    let definitional_res = custom_impl.validate_request(&schema, &request);
+    match definitional_res {
+        TestResult::Failure(_) => {
+            panic!("request validation test: failed to parse");
+        }
+        TestResult::Success(definitional_res) => {
+            if rust_res.is_ok() {
+                assert!(
+                    definitional_res.validation_passed(),
+                    "Definitional Errors: {:?}\n, Rust output: {:?}",
+                    definitional_res.errors,
+                    rust_res.unwrap()
+                );
+            } else {
+                assert!(
+                    !definitional_res.validation_passed(),
+                    "Errors: {:?}",
+                    definitional_res.errors
+                );
+            }
+        }
+    }
+}
+
+pub fn run_ent_val_test(
+    custom_impl: &impl CedarTestImplementation,
+    schema: ValidatorSchema,
+    entities: Entities,
+    extensions: &Extensions<'_>,
+) {
+    let (rust_res, rust_auth_dur) = time_function(|| {
+        Entities::from_entities(
+            entities.iter().cloned(),
+            Some(&cedar_policy_validator::CoreSchema::new(&schema)),
+            TCComputation::AssumeAlreadyComputed,
+            extensions,
+        )
+    });
+    info!("{}{}", RUST_ENT_VALIDATION_MSG, rust_auth_dur.as_nanos());
+    let definitional_res = custom_impl.validate_entities(&schema, &entities);
+    match definitional_res {
+        TestResult::Failure(_) => {
+            panic!("entity validation test: failed to parse");
+        }
+        TestResult::Success(definitional_res) => {
+            if rust_res.is_ok() {
+                assert!(
+                    definitional_res.validation_passed(),
+                    "Definitional Errors: {:?}\n, Rust output: {:?}",
+                    definitional_res.errors,
+                    rust_res.unwrap()
+                );
+            } else {
+                assert!(
+                    !definitional_res.validation_passed(),
+                    "Errors: {:?}",
+                    definitional_res.errors
+                );
             }
         }
     }

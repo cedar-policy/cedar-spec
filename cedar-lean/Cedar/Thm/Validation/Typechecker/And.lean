@@ -59,12 +59,12 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     rename_i res₂
     split at h₁ <;> simp at h₁ <;>
     have ⟨hty, hc⟩ := h₁ <;> subst hty hc
-    case inr.ok.h_1 hty₂ =>
+    case isFalse.ok.h_1 hty₂ =>
       exists BoolType.ff, res₂.snd ; simp [←hty₂]
-    case inr.ok.h_2 hty₂ =>
+    case isFalse.ok.h_2 hty₂ =>
       exists BoolType.tt, res₂.snd ; simp [←hty₂, hc₁]
       cases bty₁ <;> simp at h₃ <;> simp [lubBool]
-    case inr.ok.h_3 bty₂ h₄ h₅ hty₂ =>
+    case isFalse.ok.h_3 bty₂ h₄ h₅ hty₂ =>
       exists BoolType.anyBool, res₂.snd
       cases bty₂ <;> simp at *
       simp [←hty₂, hc₁, lubBool]
@@ -87,7 +87,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃
   subst hb₁
   split at h₅
-  case inl h₆ =>
+  case isTrue h₆ =>
     subst h₆
     have ⟨hty, hc⟩ := h₅
     subst hty hc
@@ -99,10 +99,10 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
     try exact type_is_inhabited (CedarType.bool BoolType.ff)
     exact false_is_instance_of_ff
-  case inr h₆ =>
+  case isFalse h₆ =>
     have ⟨bty₂, rc₂, hₜ, h₇⟩ := h₅
     split at h₇ <;> have ⟨hty, hc⟩ := h₇ <;> subst hty hc
-    case inl h₈ =>
+    case isTrue h₈ =>
       subst h₈
       apply And.intro empty_guarded_capabilities_invariant
       exists false ; simp [false_is_instance_of_ff]
@@ -124,7 +124,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         have h₈ := instance_of_ff_is_false ih₂₃
         subst h₈
         simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
-    case inr h₈ =>
+    case isFalse h₈ =>
       cases b₁
       case false =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>

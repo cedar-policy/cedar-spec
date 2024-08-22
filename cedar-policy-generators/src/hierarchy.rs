@@ -17,12 +17,13 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_attrs_or_context, Schema};
+use crate::schema::{attrs_from_ea, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
+use cedar_policy_validator::json_schema;
 use nanoid::nanoid;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -317,7 +318,7 @@ pub struct HierarchyGenerator<'a, 'u> {
     /// `Unstructured` used for making random choices
     pub u: &'a mut Unstructured<'u>,
     /// Extensions active for the attribute values in the hierarchy
-    pub extensions: Extensions<'a>,
+    pub extensions: &'a Extensions<'a>,
 }
 
 // can't auto-derive `Debug` because of the `Unstructured`
@@ -503,7 +504,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
             .collect::<Result<HashMap<ast::EntityType, HashSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
         let entitytypes_by_type: Option<
-            HashMap<ast::EntityType, &cedar_policy_validator::EntityType<ast::Name>>,
+            HashMap<ast::EntityType, &json_schema::EntityType<ast::InternalName>>,
         > = match &self.mode {
             HierarchyGeneratorMode::SchemaBased { schema } => Some(
                 schema
@@ -540,9 +541,12 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             .expect("typename should have an EntityType")
                             .member_of_types
                         {
-                            let allowed_parent_typename = ast::EntityType::from(
-                                allowed_parent_typename.qualify_with(schema.namespace.as_ref()),
-                            );
+                            let allowed_parent_typename = ast::Name::try_from(
+                                allowed_parent_typename
+                                    .qualify_with_name(schema.namespace.as_ref()),
+                            )
+                            .unwrap()
+                            .into();
                             for possible_parent_uid in
                                 // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
                                 // It should be very unlikely where loops involving multiple entity types occur in the schemas
@@ -588,7 +592,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        let attributes = attrs_from_attrs_or_context(
+                        let attributes = attrs_from_ea(
                             &schema.schema,
                             &entitytypes_by_type
                                 .get(name)
@@ -632,7 +636,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             if ty.required || self.u.ratio::<u8>(1, 2)? {
                                 let attr_val = schema
                                     .exprgenerator(Some(&hierarchy_no_attrs))
-                                    .generate_attr_value_for_schematype(
+                                    .generate_attr_value_for_eatypeinternal(
                                         &ty.ty,
                                         schema.settings.max_depth,
                                         self.u,

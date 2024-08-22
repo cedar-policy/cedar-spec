@@ -661,7 +661,7 @@ theorem mapMOnValues_some_wf_alt_proof [LT α] [DecidableLT α] [StrictLT α] {f
 := by
   simp only [wf_iff_sorted, toList]
   intro wf h₁
-  simp [mapMOnValues] at h₁
+  simp only [mapMOnValues, Option.pure_def, do_some] at h₁
   replace ⟨xs, h₁, h₂⟩ := h₁
   subst h₂
   simp [kvs]

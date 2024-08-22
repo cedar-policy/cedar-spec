@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
 
+pub use std::collections::hash_map::Entry;
+
 /// Helper struct representing a fixed (ie, deterministic) hash function
 #[derive(Debug, Default)]
 pub struct FixedHash();

@@ -47,6 +47,11 @@ notation together with `Except` and `Option`.
   (bind Option.none f : Option β) = Option.none
 := by rfl
 
+theorem do_some {opt : Option α} {f : α → β} :
+  (do let v ← opt ; some (f v)) = some b ↔
+  ∃ a, opt = some a ∧ f a = b
+:= by cases opt <;> simp
+
 theorem do_error {res : Except ε α} {e : ε} {f : α → β} :
   (do let v ← res ; .ok (f v)) = .error e ↔
   res = .error e
