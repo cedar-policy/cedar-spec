@@ -247,10 +247,50 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttribut
                 Equiv::equiv(&attrs_l.attributes, &attrs_r.attributes)
                     .map_err(|e| format!("entity attributes not equivalent: {e}"))
             }
-            (_, _) => {
-                // these could still be equivalent in some cases
-                unimplemented!()
-            }
+            (
+                EntityAttributes::RecordAttributes(rca),
+                EntityAttributes::EntityAttributes(EntityAttributesInternal { attrs, .. }),
+            )
+            | (
+                EntityAttributes::EntityAttributes(EntityAttributesInternal { attrs, .. }),
+                EntityAttributes::RecordAttributes(rca),
+            ) => match &rca.0 {
+                Type::CommonTypeRef { .. } => {
+                    Err("common type is not equivalent to explicit record type".into())
+                }
+                Type::Type(TypeVariant::Record(rty)) => {
+                    if rty.additional_attributes != attrs.additional_attributes {
+                        return Err("attributes differ in additional_attributes flag".into());
+                    }
+                    if rty.attributes.len() != attrs.attributes.len() {
+                        let lhs_keys: HashSet<_> = rty.attributes.keys().collect();
+                        let rhs_keys: HashSet<_> = attrs.attributes.keys().collect();
+                        let missing_keys = lhs_keys.symmetric_difference(&rhs_keys).join(", ");
+                        return Err(format!("Missing attributes: {missing_keys}"));
+                    }
+                    for (k, v1) in &rty.attributes {
+                        let v2 = attrs
+                            .attributes
+                            .get(k)
+                            .ok_or_else(|| format!("missing attribute {k}"))?;
+                        if v1.required != v2.required {
+                            return Err(format!("attribute `{k}` differs in required flag"));
+                        }
+                        match &v2.ty {
+                            EntityAttributeTypeInternal::EAMap { .. } => {
+                                return Err(format!("in attribute `{k}`, EAMap is not equivalent to non-EAMap type: {} != {}", &v2.ty, &v1.ty));
+                            }
+                            EntityAttributeTypeInternal::Type(ty) => {
+                                Equiv::equiv(&v1.ty, ty)?;
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                ty @ Type::Type(_) => Err(format!(
+                    "expected `RecordOrContextAttributes` to contain a record type, but got {ty:?}"
+                )),
+            },
         }
     }
 }
@@ -287,7 +327,12 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for EntityAttribut
                     value_type: val_ty_r,
                 },
             ) => Equiv::equiv(val_ty_l, val_ty_r),
-            (_, _) => Err("EAMap is not equivalent to non-EAMap type".into()),
+            (EntityAttributeTypeInternal::Type(_), EntityAttributeTypeInternal::EAMap { .. })
+            | (EntityAttributeTypeInternal::EAMap { .. }, EntityAttributeTypeInternal::Type(_)) => {
+                Err(format!(
+                    "EAMap is not equivalent to non-EAMap type: {lhs} != {rhs}"
+                ))
+            }
         }
     }
 }
