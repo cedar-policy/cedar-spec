@@ -71,7 +71,8 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
         simp only [Subst.subst_concrete_value, EvaluateValue.eval_spec_value, Except.ok.injEq]
         rw [Subst.req_subst_preserves_known_principal h₁ h_req]
       case unknown u =>
-        simp [h₁, Partial.Request.subst, Partial.UidOrUnknown.subst] at h_req
+        simp only [Partial.Request.subst, Partial.UidOrUnknown.subst, h₁, Option.bind_eq_bind,
+          Option.bind_eq_some, Option.some.injEq] at h_req
         replace ⟨p, h_p, a, h_a, r, h_r, h_req⟩ := h_req
         subst req'
         simp only
@@ -87,7 +88,8 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
         simp only [Subst.subst_concrete_value, EvaluateValue.eval_spec_value, Except.ok.injEq]
         rw [Subst.req_subst_preserves_known_action h₁ h_req]
       case unknown u =>
-        simp [h₁, Partial.Request.subst, Partial.UidOrUnknown.subst] at h_req
+        simp only [Partial.Request.subst, Partial.UidOrUnknown.subst, h₁, Option.bind_eq_bind,
+          Option.bind_eq_some, Option.some.injEq] at h_req
         replace ⟨p, h_p, a, h_a, r, h_r, h_req⟩ := h_req
         subst req'
         simp only
@@ -103,7 +105,8 @@ theorem reeval_eqv_substituting_first_evaluateVar (var : Var) (entities : Partia
         simp only [Subst.subst_concrete_value, EvaluateValue.eval_spec_value, Except.ok.injEq]
         rw [Subst.req_subst_preserves_known_resource h₁ h_req]
       case unknown u =>
-        simp [h₁, Partial.Request.subst, Partial.UidOrUnknown.subst] at h_req
+        simp only [Partial.Request.subst, Partial.UidOrUnknown.subst, h₁, Option.bind_eq_bind,
+          Option.bind_eq_some, Option.some.injEq] at h_req
         replace ⟨p, h_p, a, h_a, r, h_r, h_req⟩ := h_req
         subst req'
         simp only

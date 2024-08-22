@@ -583,13 +583,14 @@ theorem attrsOf_subst_preserves_attrs {v₁ : Spec.Value} {entities : Partial.En
   gives the same result as if we first substitute the `req` and then do
   `Spec.Expr.substToPartialValue`
 -/
-theorem subst_substToPartialValue (x : Spec.Expr) {req : Partial.Request} {subsmap : Subsmap} :
+theorem subst_substToPartialValue (x : Spec.Expr) {req req' : Partial.Request} {subsmap : Subsmap} :
   req.subst subsmap = some req' →
   (x.substToPartialValue req).subst subsmap = x.substToPartialValue req'
 := by
   cases x
   case var v =>
-    simp [Partial.Request.subst]
+    simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      forall_exists_index, and_imp]
     intro p' h_p' a' h_a' r' h_r' h_req ; subst h_req
     cases v <;> simp only [Spec.Expr.substToPartialValue]
     case principal =>
@@ -648,14 +649,15 @@ theorem subst_substToPartialValue (x : Spec.Expr) {req : Partial.Request} {subsm
     · exact subst_substToPartialValue x₂ h_req
     · exact subst_substToPartialValue x₃ h_req
   case set xs | call xs =>
-    simp [List.map₁_eq_map]
+    simp only [List.map₁_eq_map, List.map_map, Function.comp_apply]
     intro h_req
     apply List.map_congr
     intro x _
     simp only [Function.comp_apply]
     exact subst_substToPartialValue x h_req
   case record attrs =>
-    simp [List.map_attach₂_snd]
+    simp only [List.map_attach₂_snd, List.map_map, Function.comp_apply,
+      Prod.mk.injEq, true_and]
     intro h_req
     apply List.map_congr
     intro (a, x) hx

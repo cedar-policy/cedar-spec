@@ -1218,7 +1218,7 @@ theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List �
   x ≠ y → (x :: xs).removeAll [y] = x :: (xs.removeAll [y])
 := by
   intro _
-  simp only [removeAll, notElem, elem_eq_mem, mem_singleton, filter_cons, Bool.not_eq_true',
+  simp only [removeAll, elem_eq_mem, mem_singleton, filter_cons, Bool.not_eq_true',
     decide_eq_false_iff_not, ite_not, ite_eq_right_iff]
   intro _
   contradiction
@@ -1226,13 +1226,13 @@ theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List �
 theorem removeAll_singleton_cons_of_eq [DecidableEq α] (x : α) (xs : List α) :
   (x :: xs).removeAll [x] = xs.removeAll [x]
 := by
-  simp only [removeAll, notElem, elem_eq_mem, mem_singleton, decide_True, Bool.not_true,
-    Bool.false_eq_true, not_false_eq_true, filter_cons_of_neg]
+  simp only [removeAll, elem_eq_mem, mem_singleton, decide_True, Bool.not_true, Bool.false_eq_true,
+    not_false_eq_true, filter_cons_of_neg]
 
 theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
   x ∉ xs.removeAll [x]
 := by
-  simp only [removeAll, notElem, elem_eq_mem, mem_singleton]
+  simp only [removeAll, elem_eq_mem, mem_singleton]
   by_contra h
   simp only [mem_filter, decide_True, Bool.not_true, Bool.false_eq_true, and_false] at h
 
@@ -1262,8 +1262,7 @@ theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
 theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
   (xs.removeAll ys).length ≤ xs.length
 := by
-  simp only [List.length_cons, Nat.succ_eq_add_one,
-    List.removeAll, List.notElem, List.elem_eq_mem, List.mem_singleton]
+  simp only [removeAll]
   have _ := List.length_filter_le (fun x => !elem x ys) xs
   omega
 

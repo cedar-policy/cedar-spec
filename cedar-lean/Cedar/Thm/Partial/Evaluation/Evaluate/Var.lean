@@ -228,7 +228,8 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
       split at h₁ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₁ ; subst h₁
       rename_i m h₁
       -- `m` is the `Spec.Value`-valued version of `context_ev` (which we know has only concrete values from h₁)
-      simp [Partial.Request.subst] at h_req
+      simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some,
+        Option.some.injEq] at h_req
       replace ⟨p, _, a, _, r, _, h_req⟩ := h_req
       subst req' ; simp [Map.mapMOnValues_mapOnValues]
       cases h₃ : req.context.mapMOnValues λ pv => Partial.evaluateValue (pv.subst subsmap) (entities.subst subsmap)
@@ -320,7 +321,8 @@ theorem subst_preserves_evaluateVar_to_error {var : Var} {req req' : Partial.Req
       replace ⟨pv, hpv, h₁⟩ := Map.mapMOnValues_error_implies_exists_error h₁
       have ⟨e₂, h₂⟩ := EvaluateValue.subst_preserves_errors (wf_r.right pv hpv) wf_e wf_s h₁
       have hpv' : (pv.subst subsmap) ∈ req'.context.values := by
-        simp [Partial.Request.subst] at h_req
+        simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some,
+          Option.some.injEq] at h_req
         replace ⟨p, _, a, _, r, _, hc⟩ := h_req ; clear h_req ; subst req'
         simp [Map.values_mapOnValues]
         exists pv
