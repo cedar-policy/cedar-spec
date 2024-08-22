@@ -22,62 +22,132 @@ import CedarProto.EntityUID
 open Proto
 
 namespace Cedar.Spec
+
 -- Already defined
 -- inductive ActionScope where
 --   | actionScope (scope : Scope)
 --   | actionInAny (ls : List EntityUID)
 
+namespace Proto
+-- Constructors for ActionScope
+
+inductive ActionScope.Ty where
+  | any
+deriving Inhabited
+
+def ActionScope.In := ActionScope
+def ActionScope.Eq := ActionScope
+end Proto
+
+namespace Proto.ActionScope.Ty
+def fromInt (n: Int): Except String ActionScope.Ty :=
+  match n with
+  | 0 => .ok .any
+    | n => .error s!"Field {n} does not exist in enum"
+
+instance : ProtoEnum ActionScope.Ty := {
+  fromInt := fromInt
+}
+end Proto.ActionScope.Ty
+
+namespace Proto.ActionScope.In
+instance : Inhabited ActionScope.In where
+  default := .actionInAny default
+
+def mergeEuids (result: ActionScope.In) (e2: Array EntityUID) : ActionScope.In :=
+  match result with
+    | .actionInAny e1 => .actionInAny (e2.toList ++ e1)
+    | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+
+def merge (x1 x2: ActionScope.In) : ActionScope.In :=
+  have e2 := match x2 with
+    | .actionInAny e => e
+    | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+  match x1 with
+    | .actionInAny e1 => .actionInAny (e2 ++ e1)
+    | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+
+def parseField (t: Tag) : BParsec (StateM ActionScope.In Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType (Repeated EntityUID)) t.wireType
+      let x: Repeated EntityUID ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeEuids s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ActionScope.In := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ActionScope.In
+
+namespace Proto.ActionScope.Eq
+instance : Inhabited ActionScope.Eq where
+  default := .actionScope (.eq default)
+@[inline]
+def mergeEuid (result: ActionScope.Eq) (e2: EntityUID) : ActionScope.Eq :=
+  match result with
+    | .actionScope s => match s with
+      | .eq e1 => .actionScope (.eq (Field.merge e1 e2))
+      | _ => panic!("ActionScope.Eq expected ActionScope constructor to be set to .actionScope .eq")
+    | _ => panic!("ActionScope.Eq expected ActionScope constructor to be set to .actionScope")
+
+@[inline]
+def merge (x1 x2: ActionScope.Eq) : ActionScope.Eq :=
+  have e2 := match x2 with
+    | .actionScope s => match s with
+      | .eq e => e
+      | _ => panic!("ActionScope.Eq expected ActionScope constructor to be set to .actionScope .eq")
+    | _ => panic!("ActionScope.Eq expected ActionScope constructor to be set to .actionScope")
+  mergeEuid x1 e2
+
+def parseField (t: Tag) : BParsec (StateM ActionScope.Eq Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityUID) t.wireType
+      let x: EntityUID ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ActionScope.Eq := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.ActionScope.Eq
 
 namespace ActionScope
 
-inductive ActionConstraintType where
-  | any
-  | in
-  | eq
-deriving Inhabited
-
-namespace ActionConstraintType
-def get? (n: Int) : Except String ActionConstraintType :=
-  match n with
-    | 0 => .ok ActionConstraintType.any
-    | 1 => .ok ActionConstraintType.in
-    | 2 => .ok ActionConstraintType.eq
-    | n => .error s!"Field {n} does not exist in enum"
-
-instance : ProtoEnum ActionConstraintType where
-  fromInt := get?
-end ActionConstraintType
-
 @[inline]
-def mergeTy (result: ActionScope) (x: ActionConstraintType) : ActionScope :=
-  -- ActionConstraintTypes don't contain any data, but exists to tell
-  -- us which constructor we need to use. If it matches the current constructor
-  -- chosen within ActionScope, then we don't do anything. Otherwise, we switch
-  -- to the new constructor with default arguments
+def mergeTy (_: ActionScope) (x: Proto.ActionScope.Ty) : ActionScope :=
   match x with
     | .any => .actionScope (Scope.any)
-    | .eq => match result with
-      | .actionScope s => match s with
-        | .eq _ => result
-        | _ => .actionScope (Scope.eq default)
-      | .actionInAny _ => .actionScope (Scope.eq default)
-    | .in => match result with
-      | .actionScope _ => .actionInAny default
-      | .actionInAny _ => result
 
 @[inline]
-def mergeEuids (result: ActionScope) (x: Array EntityUID): ActionScope :=
+def mergeIn (result: ActionScope) (x: Proto.ActionScope.In): ActionScope :=
+  have e2 := match x with
+    | .actionInAny e => e
+    | _ => panic!("Proto.ActionScope.In expected to have constructor .actionInAny")
   match result with
-    | .actionInAny l => .actionInAny (x.toList ++ l)
-    | _ => .actionInAny x.toList
+    | .actionInAny e1 => .actionInAny (e2 ++ e1)
+    | _ => .actionInAny e2
+
 
 @[inline]
-def mergeEuid (result: ActionScope) (x2: EntityUID): ActionScope :=
+def mergeEq (result: ActionScope) (x: Proto.ActionScope.Eq): ActionScope :=
+  have e2 := match x with
+    | .actionScope s => match s with
+      | .eq e => e
+      | _ => panic!("Proto.ActionScope.Eq expected to have constructor .actionScope .eq")
+    | _ => panic!("Proto.ActionScope.Eq expected to have constructor .actionScope")
   match result with
     | .actionScope s => match s with
-      | .eq x1 => .actionScope (.eq (Field.merge x1 x2))
-      | _ => .actionScope (.eq x2)
-    | _ => .actionScope (.eq x2)
+      | .eq e1 => .actionScope (.eq (Field.merge e1 e2))
+      | _ => .actionScope (.eq e2)
+    | _ => .actionScope (.eq e2)
 
 @[inline]
 def merge (x1 x2: ActionScope) : ActionScope :=
@@ -98,17 +168,17 @@ def merge (x1 x2: ActionScope) : ActionScope :=
 def parseField (t: Tag) : BParsec (StateM ActionScope Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType ActionConstraintType) t.wireType
-      let x: ActionConstraintType ← BParsec.attempt Field.parse
+      (@Field.guardWireType Proto.ActionScope.Ty) t.wireType
+      let x: Proto.ActionScope.Ty ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
-      (@Field.guardWireType (Repeated EntityUID)) t.wireType
-      let x: Repeated EntityUID ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuids s x))
+      (@Field.guardWireType Proto.ActionScope.In) t.wireType
+      let x: Proto.ActionScope.In ← BParsec.attempt Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeIn s x))
     | 3 =>
-      (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
+      (@Field.guardWireType Proto.ActionScope.Eq) t.wireType
+      let x: Proto.ActionScope.Eq ← BParsec.attempt Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeEq s x))
     | _ =>
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)

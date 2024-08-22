@@ -31,21 +31,9 @@ inductive ScopeTemplate.Ty where
 deriving Inhabited
 
 def ScopeTemplate.In := ScopeTemplate
-instance : Inhabited ScopeTemplate.In where
-  default := .mem default
-
 def ScopeTemplate.Eq := ScopeTemplate
-instance : Inhabited ScopeTemplate.Eq where
-  default := .eq default
-
 def ScopeTemplate.Is := ScopeTemplate
-instance : Inhabited ScopeTemplate.Is where
-  default := .is default
-
 def ScopeTemplate.IsIn := ScopeTemplate
-instance : Inhabited ScopeTemplate.IsIn where
-  default := .isMem default default
-
 end Proto
 
 namespace Proto.ScopeTemplate.Ty
@@ -61,19 +49,22 @@ instance : ProtoEnum ScopeTemplate.Ty := {
 end Proto.ScopeTemplate.Ty
 
 namespace Proto.ScopeTemplate.In
+instance : Inhabited ScopeTemplate.In where
+  default := .mem default
+@[inline]
 def mergeER (result: ScopeTemplate.In) (e2: EntityUIDOrSlot) : ScopeTemplate.In :=
   match result with
     | .mem e1 => .mem (Field.merge e1 e2)
     | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
 
+@[inline]
 def merge (x1 x2: ScopeTemplate.In) : ScopeTemplate.In :=
   have e2 := match x2 with
     | .mem e => e
     | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
-  match x1 with
-    | .mem e1 => .mem (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+  mergeER x1 e2
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate.In Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -91,19 +82,23 @@ instance : Message ScopeTemplate.In := {
 end Proto.ScopeTemplate.In
 
 namespace Proto.ScopeTemplate.Eq
+instance : Inhabited ScopeTemplate.Eq where
+  default := .eq default
+
+@[inline]
 def mergeER (result: ScopeTemplate.Eq) (e2: EntityUIDOrSlot) : ScopeTemplate.Eq :=
   match result with
     | .eq e1 => .eq (Field.merge e1 e2)
     | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
 
+@[inline]
 def merge (x1 x2: ScopeTemplate.Eq) : ScopeTemplate.Eq :=
   have e2 := match x2 with
     | .eq e => e
     | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
-  match x1 with
-    | .eq e1 => .eq (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+  mergeER x1 e2
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Eq Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -121,19 +116,23 @@ instance : Message ScopeTemplate.Eq := {
 end Proto.ScopeTemplate.Eq
 
 namespace Proto.ScopeTemplate.Is
+instance : Inhabited ScopeTemplate.Is where
+  default := .is default
+
+@[inline]
 def mergeET (result: ScopeTemplate.Is) (e2: EntityType) : ScopeTemplate.Is :=
   match result with
     | .is e1 => .is (Field.merge e1 e2)
     | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
 
+@[inline]
 def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
   have e2 := match x2 with
     | .is e => e
     | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
-  match x1 with
-    | .is e1 => .is (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+  mergeET x1 e2
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Is Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -150,18 +149,23 @@ instance : Message ScopeTemplate.Is := {
 }
 end Proto.ScopeTemplate.Is
 
-
 namespace Proto.ScopeTemplate.IsIn
+instance : Inhabited ScopeTemplate.IsIn where
+  default := .isMem default default
+
+@[inline]
 def mergeER (result: ScopeTemplate.IsIn) (er2: EntityUIDOrSlot) : ScopeTemplate.IsIn :=
   match result with
     | .isMem et er1 => .isMem et (Field.merge er1 er2)
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
+@[inline]
 def mergeET (result: ScopeTemplate.Is) (et2: EntityType) : ScopeTemplate.Is :=
   match result with
     | .isMem et1 er => .isMem (Field.merge et1 et2) er
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
+@[inline]
 def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
   have ⟨et2, er2⟩ := match x2 with
     | .isMem et er => (et, er)
@@ -170,6 +174,7 @@ def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
     | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate.IsIn Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -252,16 +257,16 @@ def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
   match x2 with
    | .any => x2
    | .mem e2 => match x1 with
-    | .mem e1 => .mem (EntityUIDOrSlot.merge e1 e2)
+    | .mem e1 => .mem (Field.merge e1 e2)
     | _ => x2
    | .eq e2 => match x1 with
-    | .eq e1 => .eq (EntityUIDOrSlot.merge e1 e2)
+    | .eq e1 => .eq (Field.merge e1 e2)
     | _ => x2
    | .is n2 => match x1 with
     | .is n1 => .is (Field.merge n1 n2)
     | _ => x2
    | .isMem n2 e2 => match x1 with
-    | .isMem n1 e1 => .isMem (Field.merge n1 n2) (EntityUIDOrSlot.merge e1 e2)
+    | .isMem n1 e1 => .isMem (Field.merge n1 n2) (Field.merge e1 e2)
     | _ => x2
 
 
