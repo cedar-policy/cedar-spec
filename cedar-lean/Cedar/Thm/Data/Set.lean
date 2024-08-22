@@ -387,10 +387,10 @@ theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
     simp only [List.mem_cons, true_or, decide_True, List.filter_cons_of_pos, List.cons.injEq, true_and]
     rw [eq_comm]
     rw (config := {occs := .pos [1]}) [← ih]
-    rw [List.filter_congr']
-    simp only [decide_eq_true_eq]
+    rw [List.filter_congr]
+    simp only [Bool.decide_or, Bool.iff_or_self, decide_eq_true_eq]
     intro _ h
-    simp only [h, or_true]
+    simp only [h, implies_true]
 
 theorem intersects_def {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {s₁ s₂ : Set α} :
  s₁.intersects s₂ = ¬ (s₁ ∩ s₂).isEmpty
