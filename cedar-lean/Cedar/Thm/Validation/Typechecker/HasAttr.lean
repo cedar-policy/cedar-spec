@@ -74,11 +74,11 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     cases h₆ : (Map.contains r a) <;> simp
     rename_i h₇ _
     cases h₇
-    case inl.h₁.false.inl _ h₇ =>
+    case isTrue.h₁.false.inl _ h₇ =>
       simp [CapabilitiesInvariant] at h₁
       specialize h₁ x₁ a h₇
       simp [EvaluatesTo, evaluate, h₄, hasAttr, attrsOf, h₆] at h₁
-    case inl.h₁.false.inr h₇ _ h₈ =>
+    case isTrue.h₁.false.inr h₇ _ h₈ =>
       simp [Qualified.isRequired] at h₈
       split at h₈ <;> simp at h₈
       have h₉ := required_attribute_is_present h₅ h₇

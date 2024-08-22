@@ -58,7 +58,7 @@ theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α 
     split <;> rename_i h₂
     · exact SortedBy.cons_cons h₂ h₁
     · split
-      case inl h₃ =>
+      case isTrue h₃ =>
         cases h₁
         case cons_nil =>
           apply SortedBy.cons_cons h₃
@@ -79,12 +79,11 @@ theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α 
               case cons_nil => exact SortedBy.cons_nil
               case cons_cons z zs h₉ h₁₀ =>
                 exact SortedBy.cons_cons (by simp [h₈, h₁₀]) h₉
-      case inr h₃ =>
+      case isFalse h₃ =>
         have h₄ := StrictLT.if_not_lt_gt_then_eq (f x) (f hd) h₂ h₃
         cases h₁
         case cons_nil => exact SortedBy.cons_nil
-        case cons_cons h₅ h₆ =>
-          exact SortedBy.cons_cons (by simp only [h₄, h₆]) h₅
+        case cons_cons h₅ h₆ => exact SortedBy.cons_cons (by simp only [h₄, h₆]) h₅
 
 theorem insertCanonical_cases [LT β] [DecidableLT β] (f : α → β) (x y : α) (ys : List α) :
   (f x < f y ∧ insertCanonical f x (y :: ys) = x :: y :: ys) ∨
@@ -127,14 +126,14 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
   case cons hd tl ih =>
     simp only [id_eq, gt_iff_lt]
     split
-    case inl => exact Equiv.refl
-    case inr _ _ h₁ =>
+    case isTrue => exact Equiv.refl
+    case isFalse h₁ =>
       split
-      case inr _ _ h₂ =>
+      case isFalse h₂ =>
         have h₃ := StrictLT.if_not_lt_gt_then_eq x hd h₁ h₂
         subst h₃
         exact dup_head_equiv x tl
-      case inl _ _ h₂ =>
+      case isTrue h₂ =>
         cases tl
         case nil =>
           simp only [insertCanonical_singleton id x]

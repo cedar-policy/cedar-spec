@@ -60,7 +60,7 @@ abbrev IPv4Prefix := IPNetPrefix V4_WIDTH
 abbrev IPv6Prefix := IPNetPrefix V6_WIDTH
 
 def IPNetPrefix.ofNat (w : Nat) (pre : Nat) : IPNetPrefix w :=
-  if pre < ADDR_SIZE w then .some pre#w else .none
+  if pre < ADDR_SIZE w then .some pre else .none
 
 def IPNetPrefix.toNat {w} : IPNetPrefix w → Nat
   | .none         => ADDR_SIZE w
@@ -83,7 +83,7 @@ def CIDR.subnetWidth {w} (cidr : CIDR w) : BitVec (ADDR_SIZE w) :=
   let n := ADDR_SIZE w
   match cidr.pre with
   | .none            => 0#n
-  | .some prefixSize => n#n - (prefixSize.zeroExtend n)
+  | .some prefixSize => n - (prefixSize.zeroExtend n)
 
 def CIDR.range {w} (cidr : CIDR w) : (IPNetAddr w) × (IPNetAddr w) :=
   let n := ADDR_SIZE w
@@ -145,7 +145,7 @@ private def parseNumV4 (str : String) : Option (BitVec 8) :=
   if 0 < len && len ≤ 3 && (str.startsWith "0" → str = "0")
   then do
     let n ← str.toNat?
-    if n ≤ 0xff then .some n#8 else .none
+    if n ≤ 0xff then .some n else .none
   else .none
 
 private def parseSegsV4 (str : String) : Option IPv4Addr :=
@@ -187,7 +187,7 @@ private def parseNumV6 (str : String) : Option (BitVec 16) :=
   if 0 < len && len ≤ 4 && str.all isHexDigit
   then
     let n := str.foldl (fun n c => n * 16 + toHexNat c) 0
-    if n ≤ 0xffff then .some n#16 else .none
+    if n ≤ 0xffff then .some n else .none
   else .none
 
 private def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=

@@ -114,11 +114,11 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   split at hty
   case h_1 =>
     split at hty <;> subst hty
-    case inl heq _ _ =>
+    case isTrue heq _ _ =>
       subst heq
       simp [EvaluatesTo, evaluate, apply₂]
       exact true_is_instance_of_tt
-    case inr p₁ p₂ heq _ _ =>
+    case isFalse p₁ p₂ heq _ _ =>
       simp [EvaluatesTo, evaluate, apply₂]
       cases h₃ : Value.prim p₁ == Value.prim p₂ <;>
       simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₃
@@ -432,8 +432,8 @@ theorem actionUID?_some_implies_action_lit {x : Expr} {euid : EntityUID} {acts :
   replace h₂ := entityUID?_some_implies_entity_lit h₂
   rename_i euid'
   replace ⟨h₀, h₁⟩ := h₁
-  subst h₀
-  simp [h₁, h₂]
+  subst euid'
+  simp [h₀, h₂]
 
 theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
   (h₁ : entityUIDs? x = some euids) :
@@ -441,22 +441,25 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
 := by
   simp [entityUIDs?] at h₁
   split at h₁ <;> try simp at h₁
-  rw [←List.mapM'_eq_mapM] at h₁ ; rename_i xs
+  rename_i xs
+  simp [List.mapM_some_iff_forall₂] at *
   cases euids
   case nil =>
-    cases hxs : xs <;> subst xs <;> simp at *
+    cases xs <;> simp only [List.Forall₂.nil, List.map_nil] at *
+    case cons hd tl => simp only [List.forall₂_nil_right_iff] at h₁
   case cons hd tl =>
-    cases hxs : xs <;> subst xs <;> simp [pure, Except.pure] at *
-    rename_i hd' tl'
-    cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
-    cases h₃ : List.mapM' entityUID? tl' <;> simp [h₃] at h₁
-    have ⟨hhd, htl⟩ := h₁ ; clear h₁ ; rw [eq_comm] at hhd htl ; subst hhd htl
-    replace h₂ := entityUID?_some_implies_entity_lit h₂
-    simp [h₂]
-    rw [List.mapM'_eq_mapM] at h₃
-    have h₄ := @entityUIDs?_some_implies_entity_lits (.set tl') tl
-    simp [entityUIDs?, h₃] at h₄
-    exact h₄
+    cases xs <;> simp [pure, Except.pure] at *
+    case nil => simp only [List.forall₂_nil_left_iff] at h₁
+    case cons hd' tl' =>
+      cases h₂ : entityUID? hd' <;> simp [h₂] at h₁
+      replace ⟨h₁', h₁⟩ := h₁
+      replace h₂ := entityUID?_some_implies_entity_lit h₂
+      subst hd hd'
+      simp only [true_and]
+      have h₄ := @entityUIDs?_some_implies_entity_lits (.set tl') tl
+      simp [entityUIDs?] at h₄
+      apply h₄ ; clear h₄
+      simp only [List.mapM_some_iff_forall₂, h₁]
 
 theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {env : Environment} {entities : Entities}
   (h₁ : InstanceOfEntitySchema entities env.ets)
