@@ -65,6 +65,8 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
         | .some qty => instanceOfType v qty.getType
         | _ => true))) &&
     rty.keys.all (requiredAttributePresent r rty)
+  | .record r, .attribute_map aty =>
+    (r.kvs.attach₂.all (λ ⟨(_, v), _⟩ => instanceOfType v aty))
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
@@ -73,7 +75,7 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
       case _ h₁ =>
         have := Set.sizeOf_lt_of_mem h₁
         omega
-      case _ h₁ =>
+      case _ h₁ | _ h₁ =>
         cases r
         simp only [Map.kvs] at h₁
         simp only [Map.mk.sizeOf_spec]
