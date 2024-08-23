@@ -8,7 +8,7 @@ REP="$3"
 TIME="$4"
 BRANCH="$5"
 
-if [ -z "$CONFIG" ]; then
+if [ -z "$BRANCH" ]; then
     echo "USAGE: ./run_bolero.sh CONFIG BENCHMARK REP TIME BRANCH" > /dev/stderr
     exit 1
 fi
@@ -20,7 +20,7 @@ else
 fi
 
 git checkout $BRANCH
-git pull origin $BRANCH
+git pull
 PATH=$PATH:/home/ubuntu/.elan/bin:/home/ubuntu/.cargo/bin
 
 RESULTS_DIR="results/$BENCHMARK/$CONFIG/rep_$REP"
