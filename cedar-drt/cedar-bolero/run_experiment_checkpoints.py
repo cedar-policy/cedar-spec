@@ -28,7 +28,8 @@ def main():
     for checkpoint in range(0, 13):
         for fuzzer in fuzzers:
             seeds_dir = os.path.join(args.queue_dir, f"queue_{checkpoint}")
-            shutil.rmtree(f"tests/{args.target}/corpus")
+            if os.path.exists(f"tests/{args.target}/corpus"):
+                shutil.rmtree(f"tests/{args.target}/corpus")
             shutil.copytree(seeds_dir, f"tests/{args.target}/corpus")
             print(f"Copy {seeds_dir}")
             target_name = f"{args.target}_{fuzzer}_queue_{checkpoint}_rep_{args.experiment}"
