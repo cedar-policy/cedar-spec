@@ -30,7 +30,7 @@ use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, S
 use cedar_policy_generators::settings::ABACSettings;
 use log::debug;
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
@@ -97,9 +97,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 impl TestCaseFormat for FuzzTargetInput {
     fn to_fuzz_test_case(&self) -> FuzzTestCase {
         // Access the serialized expression
+        let serialized = serde_json::to_string(&self).unwrap();
+        let value: Value = serde_json::from_str(&serialized).unwrap();
         let representation = json!({
             "entities": self.entities,
-            "expression": self.expression,
+            "expression": value.get("expression").unwrap().to_string(),
             "request": format!("{}", &self.request),
         });
         FuzzTestCase {
