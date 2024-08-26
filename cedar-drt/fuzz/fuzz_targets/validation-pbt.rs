@@ -86,6 +86,7 @@ const LOG_FILENAME_ERR_CONTEXT: &str = "./logs/err_context.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
 const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
+const LOG_FILENAME_SCHEMA_ERROR: &str = "./logs/err_schema.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -116,6 +117,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
         match &res {
             Err(Error::EntitiesError(_)) => {
                 checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
+            }
+            Err(Error::SchemaError(_)) => {
+                checkpoint(LOG_FILENAME_SCHEMA_ERROR.to_string() + "_" + doing_what)
             }
             Err(Error::NotEnoughData) => {
                 checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
