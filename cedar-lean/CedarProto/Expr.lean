@@ -82,20 +82,19 @@ def merge (p1: Prim) (p2: Prim) : Prim :=
 @[inline]
 def parseField (t: Tag) : BParsec (StateM Prim Unit) := do
   match t.fieldNum with
-    -- NOTE: Skipping parsing 1 for now since I may make this a oneof
-    | 2 =>
+    | 1 =>
       (@Field.guardWireType Bool) t.wireType
       let x ← BParsec.attempt (Field.parse: (BParsec Bool))
       pure (modifyGet fun s => Prod.mk () (s.merge_bool x))
-    | 3 =>
+    | 2 =>
       (@Field.guardWireType Int64) t.wireType
       let x ← BParsec.attempt (Field.parse: (BParsec Int64))
       pure (modifyGet fun s => Prod.mk () (s.merge_int x))
-    | 4 =>
+    | 3 =>
       (@Field.guardWireType String) t.wireType
       let x ← BParsec.attempt (Field.parse: (BParsec String))
       pure (modifyGet fun s => Prod.mk () (s.merge_string x))
-    | 5 =>
+    | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x ← BParsec.attempt (Field.parse: (BParsec EntityUID))
       pure (modifyGet fun s => Prod.mk () (s.merge_euid x))
