@@ -75,8 +75,8 @@ fuzz_target!(|i: Input| {
     let (parsed, _) =
         json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available())
             .expect("Failed to parse converted human readable schema");
-    let downgraded = downgrade_frag_to_raw(i.schema.clone());
-    if let Err(msg) = equivalence_check(downgraded.clone(), parsed.clone()) {
+    let downgraded = downgrade_frag_to_raw(i.schema);
+    if let Err(msg) = equivalence_check(&downgraded, &parsed) {
         println!("Schema: {src}");
         println!(
             "{}",

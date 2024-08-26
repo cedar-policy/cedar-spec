@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-use cedar_policy_core::ast::{Id, InternalName};
+use cedar_policy_core::ast::{Id, InternalName, Name};
 use cedar_policy_validator::json_schema::{
     self, ApplySpec, EntityAttributeType, EntityAttributeTypeInternal, EntityAttributes,
-    EntityAttributesInternal, EntityType, RecordAttributeType, RecordType, Type, TypeVariant,
+    EntityAttributesInternal, EntityType, NamespaceDefinition, RecordAttributeType, RecordType,
+    Type, TypeVariant,
 };
 use cedar_policy_validator::RawName;
 use itertools::Itertools;
@@ -45,43 +46,40 @@ use std::hash::Hash;
 /// used. Whether or not there are applicable resources is useless.
 ///
 pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord>(
-    lhs: json_schema::Fragment<N>,
-    rhs: json_schema::Fragment<N>,
+    lhs: &json_schema::Fragment<N>,
+    rhs: &json_schema::Fragment<N>,
 ) -> Result<(), String> {
-    // We need to remove trivial empty namespaces because both `{}`
-    // and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
-    // in the Cedar schema format
-    let mut lhs = lhs;
-    let mut rhs = rhs;
-    remove_trivial_empty_namespace(&mut lhs);
-    remove_trivial_empty_namespace(&mut rhs);
-    if lhs.0.len() == rhs.0.len() {
-        lhs.0
-            .into_iter()
+    if nontrivial_namespaces(lhs).count() == nontrivial_namespaces(rhs).count() {
+        nontrivial_namespaces(lhs)
             .map(|(name, lhs_namespace)| {
                 let rhs_namespace = rhs
                     .0
                     .get(&name)
-                    .ok_or_else(|| format!("`{name:?}` does not exist in RHS schema"))?;
-                Equiv::equiv(&lhs_namespace, rhs_namespace)
+                    .ok_or_else(|| format!("namespace `{name:?}` does not exist in RHS schema"))?;
+                Equiv::equiv(lhs_namespace, rhs_namespace)
             })
             .fold(Ok(()), Result::and)
     } else {
-        Err("schema differ in number of namespaces".to_string())
+        Err("schemas differ in number of namespaces".to_string())
     }
 }
 
-fn remove_trivial_empty_namespace<N>(schema: &mut json_schema::Fragment<N>) {
-    match schema.0.get(&None) {
-        Some(def)
-            if def.entity_types.is_empty()
-                && def.actions.is_empty()
-                && def.common_types.is_empty() =>
-        {
-            schema.0.remove(&None);
-        }
-        _ => {}
-    }
+/// Iterate over the namespace defs in the [`json_schema::Fragment`], omitting
+/// the empty namespace if it has no items.
+///
+/// We need to ignore trivial empty namespaces because both `{}`
+/// and `{"": {"entityTypes": {}, "actions": {}}}` translate to empty strings
+/// in the Cedar schema format
+fn nontrivial_namespaces<N>(
+    frag: &json_schema::Fragment<N>,
+) -> impl Iterator<Item = (&Option<Name>, &NamespaceDefinition<N>)> {
+    frag.0
+        .iter()
+        .filter(|(name, nsdef)| name.is_some() || !is_trivial_namespace(nsdef))
+}
+
+fn is_trivial_namespace<N>(nsdef: &NamespaceDefinition<N>) -> bool {
+    nsdef.entity_types.is_empty() && nsdef.actions.is_empty() && nsdef.common_types.is_empty()
 }
 
 pub trait Equiv {

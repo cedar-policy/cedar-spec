@@ -21,7 +21,7 @@ use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
     schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
 };
-use cedar_policy_validator::{json_schema, RawName};
+use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -66,18 +66,16 @@ impl<'a> Arbitrary<'a> for Input {
 }
 
 fuzz_target!(|i: Input| {
-    let json = serde_json::to_value(i.schema.clone()).unwrap();
-    let json_ast: json_schema::Fragment<RawName> =
-        json_schema::Fragment::from_json_value(json).unwrap();
-    assert_eq!(
-        json_ast,
-        downgrade_frag_to_raw(i.schema.clone()),
-        "JSON roundtrip failed"
-    );
+    let raw_schema = downgrade_frag_to_raw(i.schema);
+    let json = serde_json::to_value(raw_schema.clone()).unwrap();
+    let json_ast = json_schema::Fragment::from_json_value(json).unwrap();
+    if let Err(e) = equivalence_check(&raw_schema, &json_ast) {
+        panic!("JSON roundtrip failed: {e}\nOrig:\n```\n{raw_schema}\n```\nRoundtripped:\n```\n{json_ast}\n```");
+    }
     let src = json_ast.to_cedarschema().unwrap();
     let (final_ast, _) =
         json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available()).unwrap();
-    if let Err(e) = equivalence_check(downgrade_frag_to_raw(i.schema), final_ast) {
-        panic!("Cedar roundtrip failed: {}\nSrc:\n```\n{}\n```", e, src);
+    if let Err(e) = equivalence_check(&raw_schema, &final_ast) {
+        panic!("Cedar roundtrip failed: {e}\nSrc:\n```\n{src}\n```");
     }
 });
