@@ -388,10 +388,10 @@ theorem reeval_eqv_substituting_first {attrs : List (Attr × Spec.Expr)} {req re
                 replace ⟨(k', v'), hv', h₃⟩ := List.mapM_some_implies_all_some h₃ (k, pval') h_pval'
                 split at h₃ <;> simp only [Option.some.injEq, Prod.mk.injEq] at h₃
                 replace ⟨h₃, h₃'⟩ := h₃ ; subst k' v' ; rename_i v' hv''
-                suffices v = v' by subst this ; exact Map.mem_list_mem_make hsorted_avs' hv'
                 specialize ih (k, x) hx
                 simp [hxs, h₂, hattrs'] at ih ; subst pval'
-                simpa using hv''
+                simp at hv'' ; subst v'
+                exact Map.mem_list_mem_make hsorted_avs' hv'
               · replace hkv := Map.make_mem_list_mem hkv
                 replace ⟨(k', pval'), h_pval', h₃⟩ := List.mapM_some_implies_all_from_some h₃ (k, v) hkv
                 split at h₃ <;> simp at h₃
@@ -413,10 +413,10 @@ theorem reeval_eqv_substituting_first {attrs : List (Attr × Spec.Expr)} {req re
                 split at h₄ <;> simp at h₄
                 subst h₄ ; rename_i v hv'
                 simp only at hv'
-                suffices v = v' by subst this ; exact Map.mem_list_mem_make hsorted_avs hv
                 specialize ih (k, x) hx
                 simp [hxs, h₂, hxs'] at ih ; subst ih
-                simpa using hv'.symm
+                simp at hv' ; subst v'
+                exact Map.mem_list_mem_make hsorted_avs hv
             · -- but re-evaluating `pvals` with substitution produced `pvals_re` which is not fully concrete
               exfalso
               replace ⟨(k, pval), h_pval, h₄⟩ := List.mapM_none_iff_exists_none.mp h₄
