@@ -31,7 +31,10 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::{json_schema, RawName, SchemaError, ValidatorSchema};
+use cedar_policy_validator::{
+    json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
+    ValidatorSchema, ValidatorSchemaFragment,
+};
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 
@@ -947,37 +950,18 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
         let namespace_internal: Option<&ast::InternalName> = namespace.as_ref().map(AsRef::as_ref);
-        let nsdef = nsdef.conditionally_qualify_type_references(namespace_internal);
-        let unreserved_to_def = |unreserved: UnreservedId| -> ast::InternalName {
-            RawName::new_from_unreserved(unreserved).qualify_with(namespace_internal)
-        };
-        let action_id_to_def = |id: SmolStr| -> ast::EntityUID {
-            json_schema::ActionEntityUID::default_type(id)
-                .qualify_with(namespace_internal)
-                .try_into()
-                .unwrap()
-        };
-        let all_common_defs = nsdef
-            .common_types
-            .keys()
-            .cloned()
-            .map(unreserved_to_def)
-            .collect();
-        let all_entity_defs = nsdef
-            .entity_types
-            .keys()
-            .cloned()
-            .map(unreserved_to_def)
-            .collect();
-        let all_action_defs = nsdef
-            .actions
-            .keys()
-            .cloned()
-            .map(action_id_to_def)
-            .collect();
+        let all_defs = AllDefs::single_fragment(&ValidatorSchemaFragment::from_namespaces([
+            ValidatorNamespaceDef::from_namespace_definition(
+                namespace.clone().map(Into::into),
+                nsdef.clone(),
+                ActionBehavior::PermitAttributes,
+                Extensions::all_available(),
+            )?,
+        ]));
         Self::from_nsdef(
             nsdef
-                .fully_qualify_type_references(&all_common_defs, &all_entity_defs, &all_action_defs)
+                .conditionally_qualify_type_references(namespace_internal)
+                .fully_qualify_type_references(&all_defs)
                 .unwrap(),
             namespace,
             settings,
