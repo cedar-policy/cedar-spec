@@ -30,21 +30,21 @@ fuzz_target!(|src: String| {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let ceadr_src = parsed
+        let cedar_src = parsed
             .to_cedarschema()
             .expect("Failed to convert the JSON schema into a Cedar schema");
-        let (ceadr_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
-            &ceadr_src,
+        let (cedar_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
+            &cedar_src,
             Extensions::all_available(),
         )
         .expect("Failed to parse converted Cedar schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), ceadr_parsed.clone()) {
+        if let Err(msg) = equivalence_check(&parsed, &cedar_parsed) {
             println!("Schema: {src}");
             println!(
                 "{}",
                 SimpleDiff::from_str(
                     &format!("{:#?}", parsed),
-                    &format!("{:#?}", ceadr_parsed),
+                    &format!("{:#?}", cedar_parsed),
                     "Parsed JSON",
                     "Cedar Round tripped"
                 )
