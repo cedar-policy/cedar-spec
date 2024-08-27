@@ -31,6 +31,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::extensions::Extensions;
+use cedar_policy_validator::json_schema::CommonTypeId;
 use cedar_policy_validator::{
     json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
     ValidatorSchema, ValidatorSchemaFragment,
@@ -307,7 +308,8 @@ pub fn lookup_common_type<'a>(
     // For now, we assume that in DRT, both definitions and references are
     // always all in the same single namespace, so it's safe to strip the
     // namespace and look it up in the current namespace's `common_types`
-    let base_type_name = common_type_name.basename().clone().try_into().unwrap();
+    let base_type_name =
+        CommonTypeId::unchecked(common_type_name.basename().clone().try_into().unwrap());
     schema.common_types.get(&base_type_name)
 }
 
@@ -626,7 +628,7 @@ struct Bindings {
     // The `ids` field ensures that `UnreservedId`s are unique.
     // Note that the `json_schema::Type`s in the `bindings` map should not
     // contain any common type references.
-    bindings: BTreeMap<json_schema::Type<ast::InternalName>, Vec<UnreservedId>>,
+    bindings: BTreeMap<json_schema::Type<ast::InternalName>, Vec<CommonTypeId>>,
     // The set of `UnreservedId`s used in the bindings
     ids: HashSet<SmolStr>,
 }
@@ -641,19 +643,24 @@ impl Bindings {
     // Add a `json_schema::Type` and `UnreservedId` binding.
     // Note that this function always succeeds even if the `UnreservedId` already exists.
     // Under that situation, we create a new `UnreservedId` based on the existing `UnreservedId`.
-    fn add_binding(&mut self, binding: (json_schema::Type<ast::InternalName>, UnreservedId)) {
+    fn add_binding(&mut self, binding: (json_schema::Type<ast::InternalName>, CommonTypeId)) {
         let (ty, id) = binding;
+        let id: UnreservedId = id.into();
         // create a new id when the provided id has been used
         let id_smolstr: &str = id.as_ref();
         let new_id = if self.ids.contains(id_smolstr) {
             let mut new_id = id.to_string();
             while self.ids.contains(new_id.as_str()) {
                 new_id.push('_');
+                new_id.push('_');
+                new_id.push('_');
             }
             new_id.parse().unwrap()
         } else {
             id
         };
+        // `new_id` must be a valid `CommonTypeId`
+        let new_id = CommonTypeId::unchecked(new_id);
 
         self.ids.insert(new_id.clone().to_smolstr());
         if let Some(binding_for_ty) = self.bindings.get_mut(&ty) {
@@ -680,7 +687,8 @@ impl Bindings {
                 Ok(json_schema::Type::Type(json_schema::TypeVariant::Set {
                     element: Box::new(if let Some(ids) = self.bindings.get(element) {
                         json_schema::Type::CommonTypeRef {
-                            type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()).into(),
+                            type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into())
+                                .into(),
                         }
                     } else {
                         self.rewrite_type(u, element)?
@@ -808,7 +816,7 @@ impl Bindings {
     ) -> Result<json_schema::Type<ast::InternalName>> {
         if let Some(ids) = self.bindings.get(ty) {
             Ok(json_schema::Type::CommonTypeRef {
-                type_name: ast::Name::unqualified_name(u.choose(ids)?.clone()).into(),
+                type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into()).into(),
             })
         } else {
             self.rewrite_type(u, ty)
@@ -827,7 +835,7 @@ impl Bindings {
     fn to_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<HashMap<UnreservedId, json_schema::Type<ast::InternalName>>> {
+    ) -> Result<HashMap<CommonTypeId, json_schema::Type<ast::InternalName>>> {
         let mut common_types = HashMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
@@ -838,7 +846,8 @@ impl Bindings {
                     common_types.insert(
                         ids[i].clone(),
                         json_schema::Type::CommonTypeRef {
-                            type_name: ast::Name::unqualified_name(ids[i + 1].clone()).into(),
+                            type_name: ast::Name::unqualified_name(ids[i + 1].clone().into())
+                                .into(),
                         },
                     );
                     common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
