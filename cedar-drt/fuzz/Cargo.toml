@@ -39,6 +39,7 @@ features = ["v4", "fast-rng"]
 [features]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
 log = []
+entity-manifest = ["cedar-policy/entity-manifest"]
 
 [lib]
 path = "src/lib.rs"
@@ -108,6 +109,13 @@ name = "validation-pbt-type-directed"
 path = "fuzz_targets/validation-pbt-type-directed.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "entity-slicing-drt-type-directed"
+path = "fuzz_targets/entity-slicing-drt-type-directed.rs"
+test = false
+doc = false
+
 
 [[bin]]
 name = "validation-drt"
