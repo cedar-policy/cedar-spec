@@ -15,7 +15,8 @@
 -/
 
 import Cedar.Partial.Evaluator
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Spec.Expr
+import Cedar.Thm.Partial.WellFormed
 
 /-!
   This file contains definitions of `Prop`s used by multiple files in the
@@ -26,39 +27,40 @@ namespace Cedar.Thm.Partial
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
+open Cedar.Spec (Expr)
 
 /--
   Prop that partial evaluation and concrete evaluation of the same concrete
-  expression produce the same result
+  expression/request/entities produce the same result
 -/
-def PartialEvalEquivConcreteEval (expr : Spec.Expr) (request : Spec.Request) (entities : Spec.Entities) : Prop :=
+def PartialEvalEquivConcreteEval (expr : Expr) (request : Spec.Request) (entities : Spec.Entities) : Prop :=
   Partial.evaluate expr request entities = (Spec.evaluate expr request entities).map Partial.Value.value
 
 /--
   Prop that partial evaluation returns a concrete value
 -/
-def EvaluatesToConcrete (expr : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
+def EvaluatesToConcrete (expr : Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
   ∃ v, Partial.evaluate expr request entities = .ok (.value v)
 
 /--
   Prop that .subst preserves evaluation to a concrete value
 -/
-def SubstPreservesEvaluationToConcrete (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
+def SubstPreservesEvaluationToConcrete (expr : Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
   req.subst subsmap = some req' →
   ∀ v,
     Partial.evaluate expr req entities = .ok (.value v) →
-    Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .ok (.value v)
+    Partial.evaluate expr req' (entities.subst subsmap) = .ok (.value v)
 
 /--
   Prop that .subst preserves evaluation to an error
 
   (not necessarily the same error, but some error)
 -/
-def SubstPreservesEvaluationToError (expr : Partial.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
+def SubstPreservesEvaluationToError (expr : Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
   req.subst subsmap = some req' →
   ∀ e,
     Partial.evaluate expr req entities = .error e →
-    ∃ e', Partial.evaluate (expr.subst subsmap) req' (entities.subst subsmap) = .error e'
+    ∃ e', Partial.evaluate expr req' (entities.subst subsmap) = .error e'
 
 /--
   Prop that a list of partial values is actually a list of concrete values
@@ -69,7 +71,7 @@ def IsAllConcrete (pvals : List Partial.Value) : Prop :=
 /--
   Prop that partial evaluation returns a well-formed value
 -/
-def EvaluatesToWellFormed (expr : Partial.Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
+def EvaluatesToWellFormed (expr : Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
   ∀ pval, Partial.evaluate expr request entities = .ok pval → pval.WellFormed
 
 end Cedar.Thm.Partial

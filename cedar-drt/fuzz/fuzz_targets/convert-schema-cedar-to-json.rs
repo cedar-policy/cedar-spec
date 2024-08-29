@@ -17,32 +17,34 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
-use cedar_policy_validator::{RawName, SchemaFragment};
+use cedar_policy_core::extensions::Extensions;
+use cedar_policy_validator::{json_schema, RawName};
 use similar_asserts::SimpleDiff;
 
-// JSON String -> SchemaFragment -> Natural String -> SchemaFragment
-// Assert that schema fragments are equivalent. By starting with a JSON String
-// we test for the existence of schema that are valid in JSON but with an
-// invalid natural schema conversion.
+// Natural String -> json_schema::Fragment -> JSON String -> json_schema::Fragment
+// Assert that schema fragments are equivalent. By starting with a Natural
+// String we test for the existence of schema that are valid in the Cedar
+// format but with an invalid json schema conversion.
 fuzz_target!(|src: String| {
-    if let Ok(parsed) = SchemaFragment::<RawName>::from_json_str(&src) {
+    if let Ok((parsed, _)) =
+        json_schema::Fragment::<RawName>::from_cedarschema_str(&src, Extensions::all_available())
+    {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let natural_src = parsed
-            .as_natural_schema()
-            .expect("Failed to convert the JSON schema into a human readable schema");
-        let (natural_parsed, _) = SchemaFragment::<RawName>::from_str_natural(&natural_src)
-            .expect("Failed to parse converted human readable schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
+        let json =
+            serde_json::to_value(parsed.clone()).expect("Failed to convert Cedar schema to JSON");
+        let json_parsed = json_schema::Fragment::from_json_value(json)
+            .expect("Failed to parse converted JSON schema");
+        if let Err(msg) = equivalence_check(&parsed, &json_parsed) {
             println!("Schema: {src}");
             println!(
                 "{}",
                 SimpleDiff::from_str(
                     &format!("{:#?}", parsed),
-                    &format!("{:#?}", natural_parsed),
-                    "Parsed JSON",
-                    "Human Round tripped"
+                    &format!("{:#?}", json_parsed),
+                    "Parsed Cedar",
+                    "JSON round-tripped"
                 )
             );
             panic!("{msg}");

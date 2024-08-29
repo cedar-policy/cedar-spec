@@ -28,17 +28,21 @@ use cedar_policy_generators::{
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use logos::Logos;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
 use smol_str::SmolStr;
 use std::collections::HashMap;
-use uuid::Uuid;
+use uuid::Builder;
 
 // A thin wrapper for policy
 #[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     // the generated policy
     policy: ABACPolicy,
+    // seed to generate random UUIDs
+    seed: u64,
 }
 
 // settings for this fuzz target
@@ -62,7 +66,8 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
-        Ok(Self { policy })
+        let seed = u.arbitrary()?;
+        Ok(Self { policy, seed })
     }
 
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
@@ -70,16 +75,20 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             Schema::arbitrary_size_hint(depth),
             HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            <u64 as Arbitrary>::size_hint(depth),
         ])
     }
 }
 
 // Attach each token two uuids as leading comment and one uuid as trailing comment
-fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
+fn attach_comment(p: &str, uuids: &mut Vec<String>, seed: u64) -> String {
+    let mut rng = SmallRng::seed_from_u64(seed);
+    let mut build_uuid = || Builder::from_random_bytes(rng.gen()).into_uuid();
+
     Token::lexer(p)
         .spanned()
         .map(|t| {
-            let mut ids: Vec<String> = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()]
+            let mut ids: Vec<String> = [build_uuid(), build_uuid(), build_uuid()]
                 .iter()
                 .map(|u| u.to_string())
                 .collect();
@@ -99,13 +108,13 @@ fn attach_comment(p: &str, uuids: &mut Vec<String>) -> String {
 
 // round-tripping of a policy
 // i.e., print a policy to string, format it, and parse it back
-fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors> {
+fn round_trip(p: &StaticPolicy, seed: u64) -> Result<StaticPolicy, parser::err::ParseErrors> {
     let config = Config {
         indent_width: 2,
         line_width: 80,
     };
     let mut uuids = Vec::new();
-    let commented = attach_comment(&p.to_string(), &mut uuids);
+    let commented = attach_comment(&p.to_string(), &mut uuids, seed);
     let formatted_policy_str =
         &policies_str_to_pretty(&commented, &config).expect("pretty-printing should not fail");
     // check if pretty-printing drops any comment
@@ -136,6 +145,7 @@ fn round_trip(p: &StaticPolicy) -> Result<StaticPolicy, parser::err::ParseErrors
 
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
+    let seed = input.seed;
     let p: StaticPolicy = input.policy.into();
     let (t, _) = Template::link_static_policy(p.clone());
 
@@ -143,7 +153,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     // round-tripping over it should preserve syntactical equivalence.
     // Note that we are ignoring IDs, because Cedar does not
     // get ids from policy text
-    match round_trip(&p) {
+    match round_trip(&p, seed) {
         Ok(roundtripped) => {
             assert!(
                 t.slots().collect::<Vec<_>>().is_empty(),

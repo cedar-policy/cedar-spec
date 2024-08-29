@@ -18,7 +18,9 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
+use cedar_policy_generators::{
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
 use serde::Serialize;
@@ -59,6 +61,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth),
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ])
     }

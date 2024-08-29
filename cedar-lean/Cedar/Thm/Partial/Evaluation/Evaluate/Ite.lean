@@ -18,28 +18,28 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Ite
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Ite
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Result)
+open Cedar.Spec (Expr Result)
 
 /--
-  Inductive argument that partial evaluating a concrete `Partial.Expr.ite`
-  expression gives the same output as concrete-evaluating the `Spec.Expr.ite`
-  with the same subexpressions
+  Inductive argument that, for an `Expr.ite` with concrete request/entities,
+  partial evaluation and concrete evaluation give the same output
 -/
-theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} :
+theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Expr} {request : Spec.Request} {entities : Spec.Entities} :
   PartialEvalEquivConcreteEval x₁ request entities →
   PartialEvalEquivConcreteEval x₂ request entities →
   PartialEvalEquivConcreteEval x₃ request entities →
-  PartialEvalEquivConcreteEval (Spec.Expr.ite x₁ x₂ x₃) request entities
+  PartialEvalEquivConcreteEval (Expr.ite x₁ x₂ x₃) request entities
 := by
   unfold PartialEvalEquivConcreteEval
   intro ih₁ ih₂ ih₃
-  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
+  unfold Partial.evaluate Spec.evaluate
   simp only [ih₁, ih₂, ih₃]
   simp only [Except.map, Result.as, Coe.coe]
   cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
@@ -51,25 +51,25 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ x₃ : Spec.Expr} {request : Sp
       case bool b => cases b <;> simp
 
 /--
-  Inductive argument that if partial-evaluating a `Partial.Expr.ite` expression
+  Inductive argument that if partial-evaluating an `Expr.ite` expression
   produces `ok` with some value, that value is well-formed as well
 -/
-theorem partial_eval_wf {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities}
+theorem partial_eval_wf {x₁ x₂ x₃ : Expr} {request : Partial.Request} {entities : Partial.Entities}
   (ih₂ : EvaluatesToWellFormed x₂ request entities)
   (ih₃ : EvaluatesToWellFormed x₃ request entities) :
-  EvaluatesToWellFormed (Partial.Expr.ite x₁ x₂ x₃) request entities
+  EvaluatesToWellFormed (Expr.ite x₁ x₂ x₃) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
   cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
   case ok pval₁ =>
-    cases pval₁ <;> simp
-    case residual r₁ => simp [Partial.Value.WellFormed]
+    cases pval₁ <;> simp only [Except.ok.injEq, forall_eq']
+    case residual r₁ => simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
     case value v₁ =>
-      cases v₁ <;> simp [Spec.Value.asBool]
+      cases v₁ <;> simp only [Spec.Value.asBool, Except.bind_err, false_implies, implies_true]
       case prim p₁ =>
-        cases p₁ <;> simp
+        cases p₁ <;> simp only [Except.bind_ok, Except.bind_err, false_implies, implies_true]
         case bool b₁ =>
-          cases b₁ <;> simp
+          cases b₁ <;> simp only [Bool.false_eq_true, reduceIte]
           case true =>
             cases hx₂ : Partial.evaluate x₂ request entities <;> simp [hx₂]
             case ok pval => exact ih₂ pval hx₂
@@ -78,15 +78,15 @@ theorem partial_eval_wf {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Reque
             case ok pval => exact ih₃ pval hx₃
 
 /--
-  If partial-evaluating a `Partial.Expr.ite` produces `ok` with a concrete
+  If partial-evaluating an `Expr.ite` produces `ok` with a concrete
   value, then partial-evaluating the guard produces either concrete `true` or
   `false`, and partial-evaluating whichever operand isn't short-circuited out
   produces `ok` with a concrete value
 -/
-theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Partial.Expr} {request : Partial.Request} {entities : Partial.Entities} :
-  EvaluatesToConcrete (Partial.Expr.ite x₁ x₂ x₃) request entities →
-  (Partial.evaluate x₁ request entities = .ok (.value (.prim (.bool true))) ∧ EvaluatesToConcrete x₂ request entities) ∨
-  (Partial.evaluate x₁ request entities = .ok (.value (.prim (.bool false))) ∧ EvaluatesToConcrete x₃ request entities)
+theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Expr} {request : Partial.Request} {entities : Partial.Entities} :
+  EvaluatesToConcrete (Expr.ite x₁ x₂ x₃) request entities →
+  (Partial.evaluate x₁ request entities = .ok (.value true) ∧ EvaluatesToConcrete x₂ request entities) ∨
+  (Partial.evaluate x₁ request entities = .ok (.value false) ∧ EvaluatesToConcrete x₃ request entities)
 := by
   unfold EvaluatesToConcrete
   intro h₁
@@ -116,17 +116,17 @@ theorem evals_to_concrete_then_operands_eval_to_concrete {x₁ x₂ x₃ : Parti
       case ext x => cases x <;> simp at h₁
 
 /--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.ite` returns
+  Inductive argument that if partial-evaluation of an `Expr.ite` returns
   a concrete value, then it returns the same value after any substitution of
   unknowns
 -/
-theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap)
   (ih₂₃ :
-    (Partial.evaluate x₁ req entities = .ok (.value (.prim (.bool true))) ∧ SubstPreservesEvaluationToConcrete x₂ req req' entities subsmap) ∨
-    (Partial.evaluate x₁ req entities = .ok (.value (.prim (.bool false))) ∧ SubstPreservesEvaluationToConcrete x₃ req req' entities subsmap)
+    (Partial.evaluate x₁ req entities = .ok (.value true) ∧ SubstPreservesEvaluationToConcrete x₂ req req' entities subsmap) ∨
+    (Partial.evaluate x₁ req entities = .ok (.value false) ∧ SubstPreservesEvaluationToConcrete x₃ req req' entities subsmap)
   ) :
-  SubstPreservesEvaluationToConcrete (Partial.Expr.ite x₁ x₂ x₃) req req' entities subsmap
+  SubstPreservesEvaluationToConcrete (Expr.ite x₁ x₂ x₃) req req' entities subsmap
 := by
   unfold SubstPreservesEvaluationToConcrete Partial.evaluate Spec.Value.asBool
   intro h_req v
@@ -134,21 +134,19 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req
   rcases ih₂₃ with ⟨hx₁, ih₂⟩ | ⟨hx₁, ih₃⟩
   · specialize ih₂ h_req
     specialize ih₁ (.prim (.bool true)) hx₁
-    unfold Partial.Expr.subst
     simp only [hx₁, Except.bind_ok, reduceIte]
     intro h₁
     simp only [ih₁, Except.bind_ok, reduceIte]
     exact ih₂ v h₁
   · specialize ih₃ h_req
     specialize ih₁ (.prim (.bool false)) hx₁
-    unfold Partial.Expr.subst
     simp only [hx₁, Except.bind_ok, reduceIte]
     intro h₁
     simp only [ih₁, Except.bind_ok, reduceIte]
     exact ih₃ v h₁
 
 /--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.ite` returns
+  Inductive argument that if partial-evaluation of an `Expr.ite` returns
   an error, then it also returns an error (not necessarily the same error) after
   any substitution of unknowns
 
@@ -157,21 +155,21 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ x₃ : Partial.Expr} {req
   import `Thm/Partial/Evaluation.lean` to access it.
   See #372.
 -/
-theorem subst_preserves_errors {x₁ x₂ x₃ : Partial.Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+theorem subst_preserves_errors {x₁ x₂ x₃ : Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
   (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
   (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap)
   (ih₂ : SubstPreservesEvaluationToError x₂ req req' entities subsmap)
   (ih₃ : SubstPreservesEvaluationToError x₃ req req' entities subsmap) :
-  SubstPreservesEvaluationToError (Partial.Expr.ite x₁ x₂ x₃) req req' entities subsmap
+  SubstPreservesEvaluationToError (Expr.ite x₁ x₂ x₃) req req' entities subsmap
 := by
   unfold SubstPreservesEvaluationToError at *
-  unfold Partial.evaluate Partial.Expr.subst
+  unfold Partial.evaluate
   intro h_req ; specialize ih₁ h_req ; specialize ih₂ h_req ; specialize ih₃ h_req
   exact match hx₁ : Partial.evaluate x₁ req entities with
   | .error e₁ => by
     replace ⟨e₁', ih₁⟩ := ih₁ e₁ hx₁
     simp only [ih₁, Except.bind_err, Except.error.injEq, exists_eq', implies_true]
-  | .ok (.residual r₁) => by simp [hx₁]
+  | .ok (.residual r₁) => by simp only [Except.bind_ok, false_implies, implies_true]
   | .ok (.value v₁) => by
     simp only [h_spetv x₁ h_req v₁ hx₁, Except.bind_ok]
     cases v₁
@@ -184,12 +182,12 @@ theorem subst_preserves_errors {x₁ x₂ x₃ : Partial.Expr} {req req' : Parti
         case true =>
           exact match hx₂ : Partial.evaluate x₂ req entities with
           | .error e' => by simp [hx₂, ih₂ e']
-          | .ok (.residual r₂) => by simp [hx₂]
+          | .ok (.residual r₂) => by simp only [false_implies, implies_true]
           | .ok (.value v₂) => by simp [h_spetv x₂ h_req v₂ hx₂, hx₂]
         case false =>
           exact match hx₃ : Partial.evaluate x₃ req entities with
           | .error e' => by simp [hx₃, ih₃ e']
-          | .ok (.residual r₃) => by simp [hx₃]
+          | .ok (.residual r₃) => by simp only [false_implies, implies_true]
           | .ok (.value v₃) => by simp [h_spetv x₃ h_req v₃ hx₃, hx₃]
 
-end Cedar.Thm.Partial.Evaluation.Ite
+end Cedar.Thm.Partial.Evaluation.Evaluate.Ite

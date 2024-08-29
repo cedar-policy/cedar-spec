@@ -21,7 +21,7 @@ import Cedar.Partial.Authorizer
 import Cedar.Partial.Response
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Partial.Evaluation
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 
 /-!
   This file contains lemmas about the behavior of partial authorization on
@@ -47,7 +47,7 @@ theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Re
 := by
   unfold Partial.Response.mayBeSatisfied Spec.satisfiedPolicies Spec.satisfiedWithEffect Spec.satisfied Partial.isAuthorized
   simp only [List.filterMap_filterMap, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq]
-  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
+  simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf, Except.map]
   simp only [Set.make_make_eqv, List.Equiv, List.subset_def]
   simp only [List.mem_filterMap, Option.bind_eq_some, ite_some_none_eq_some, forall_exists_index, and_imp]
   constructor <;> intro pid policy h₁
@@ -58,37 +58,27 @@ theorem mayBeSatisfied_eq_satisfiedPolicies {policies : Policies} {req : Spec.Re
     split at h₂ <;> simp only [Option.some.injEq] at h₂
     <;> subst h₂
     <;> simp only [Residual.mayBeSatisfied] at h₃
-    <;> split at h₃ <;> simp only [ite_some_none_eq_some] at h₃
-    <;> rename_i pid' eff' cond _ h₄
-    <;> replace ⟨h₃, h₃'⟩ := h₃
-    <;> subst eff' pid'
-    <;> simp only [Residual.residual.injEq] at h₄
-    <;> replace ⟨h₄, h₄', h₄''⟩ := h₄
-    <;> subst pid eff cond
-    <;> rename_i h₂ _ _
+    <;> split at h₃ <;> simp only [Option.some.injEq] at h₃
+    <;> rename_i h₂ h₄
+    <;> subst eff pid
     <;> split at h₂ <;> simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₂
     subst h₂
-    rename_i v h₂ _ _
+    rename_i v h₂ h₃
     simp only [h₂, Except.ok.injEq, true_and, and_true]
-    have h₃ := policy_produces_bool_or_error policy req entities
-    simp only [h₂] at h₃
-    split at h₃ <;> rename_i h₄ <;> simp only [Except.ok.injEq, imp_self, implies_true] at h₄
+    simp only [Partial.Value.value.injEq, imp_false] at h₃
+    have h₄ := policy_produces_bool_or_error policy req entities
+    simp only [h₂, Bool.false_eq_true] at h₄
+    split at h₄ <;> rename_i h₅ <;> simp only [Except.ok.injEq, imp_self, implies_true] at h₅
     <;> try contradiction
-    subst h₄ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
-    rename_i h₄ _ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq] at h₄
-    by_contra h₅ ; simp only [ne_eq, Bool.not_eq_true] at h₅ ; exact h₄ h₅
+    subst h₅ ; simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq]
+    simp only [Spec.Value.prim.injEq, Spec.Prim.bool.injEq] at h₃
+    simp only [h₃]
   case right =>
     intro h₂ h₃ h₄
     subst h₂ h₄
     exists policy
     apply And.intro h₁
-    simp only [h₃, Residual.mayBeSatisfied, Option.some.injEq, exists_eq_left']
-    split <;> rename_i h₂ <;> simp only [Residual.residual.injEq, and_imp,
-      forall_apply_eq_imp_iff, forall_eq', forall_apply_eq_imp_iff₂, ite_some_none_eq_some] at *
-    <;> replace ⟨h₂', h₂'', h₂⟩ := h₂
-    <;> subst h₂' h₂''
-    · simp only [Spec.Value.asPartialExpr, Partial.Expr.lit.injEq, Spec.Prim.bool.injEq] at h₂
-    · simp only [and_self]
+    simp only [h₃, Residual.mayBeSatisfied, Option.some.injEq, exists_eq_left', reduceIte]
 
 /--
   corollary of the above
@@ -113,35 +103,28 @@ theorem forbids_eq_satisfied_forbids {policies : Policies} {req : Spec.Request} 
 /--
   on concrete inputs, the `cond` of all residuals is literal `true`
 -/
-theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {id : PolicyID} {eff : Effect} {cond : Partial.Expr}
+theorem all_residuals_are_true_residuals {policies : Policies} {req : Spec.Request} {entities : Spec.Entities} {id : PolicyID} {eff : Effect} {cond : Partial.Value}
   (wf : req.context.WellFormed) :
   (Residual.residual id eff cond) ∈ (Partial.isAuthorized req entities policies).residuals →
-  cond = .lit (.bool true)
+  cond = .value true
 := by
-  intro h₁
-  unfold Partial.isAuthorized at h₁
-  simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf, Except.map,
-    List.mem_filterMap] at h₁
-  replace ⟨policy, _, h₁⟩ := h₁
+  unfold Partial.isAuthorized
+  simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf, Except.map,
+    List.mem_filterMap, forall_exists_index, and_imp]
+  intro policy _
   have h₂ := policy_produces_bool_or_error (p := policy) (request := req) (entities := entities)
   split at h₂ <;> simp only at h₂
   · rename_i b h₃
-    simp only [h₃] at h₁
-    split at h₁ <;> simp only [Option.some.injEq, Residual.residual.injEq] at h₁
-    case h_2 v h₄ h₅ =>
-      replace ⟨h₁, _, h₆⟩ := h₁
-      subst h₁ h₆
+    simp only [h₃]
+    split <;> simp only [Option.some.injEq, Residual.residual.injEq, and_imp, false_implies]
+    · rename_i pv h₄ h₅
+      intro h₁ h₆ h₇ ; subst h₁ h₆ h₇
       simp only [Except.ok.injEq, Partial.Value.value.injEq] at h₅
       subst h₅
-      simp only [Spec.Value.asPartialExpr, Partial.Expr.lit.injEq, Spec.Prim.bool.injEq]
       match b with
       | true => rfl
       | false => simp only [forall_const] at h₄
-    case h_3 cond' h₄ =>
-      replace ⟨h₁, _, h₅⟩ := h₁
-      subst h₁ h₅
-      simp only [Except.ok.injEq] at h₄
-  · rename_i e h₃ ; simp only [h₃, Option.some.injEq] at h₁
+  · rename_i e h₃ ; simp only [h₃, Option.some.injEq, false_implies]
 
 /--
   on concrete inputs, `mustBeSatisfied` and `mayBeSatisfied` are the same
@@ -218,16 +201,16 @@ theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request
     cases r <;> simp only [Option.some.injEq] at h₂
     case error pid' e =>
       subst pid'
-      simp only [Partial.isAuthorized, Spec.errored, Spec.hasError, List.mem_filterMap,
-        ite_some_none_eq_some] at *
+      simp only [Partial.isAuthorized, Spec.errored, Spec.hasError,
+        List.mem_filterMap, ite_some_none_eq_some] at *
       replace ⟨policy, h₁, h₂⟩ := h₁
       exists policy
       apply And.intro h₁
-      simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf] at h₂
+      simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf] at h₂
       split <;> split at h₂
       <;> simp only [Option.some.injEq, Residual.error.injEq] at h₂
       <;> try simp only [h₂, and_true, and_self]
-      case h_1.h_4 h₃ _ e' h₄ => simp only [h₃, Except.map] at h₄
+      case h_1.h_3 h₃ _ e h₄ => simp only [h₃, Except.map] at h₄
   case right =>
     intro pid policy h₁ h₂
     unfold Spec.errored Spec.hasError at h₂
@@ -239,7 +222,7 @@ theorem errorPolicies_eq_errorPolicies {policies : Policies} {req : Spec.Request
       exists (.error policy.id e)
       simp only [and_true]
       unfold Partial.isAuthorized
-      simp only [Partial.Evaluation.on_concrete_eqv_concrete_eval _ req entities wf,
+      simp only [Partial.Evaluation.Evaluate.on_concrete_eqv_concrete_eval _ req entities wf,
         List.mem_filterMap]
       exists policy
       apply And.intro h₁

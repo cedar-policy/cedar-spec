@@ -18,24 +18,25 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.LT
+import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
-namespace Cedar.Thm.Partial.Evaluation.Var
+namespace Cedar.Thm.Partial.Evaluation.Evaluate.Var
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Error Prim Var)
+open Cedar.Spec (Attr Error Expr Prim Var)
 
 /--
   `Partial.evaluateVar` on concrete arguments gives the same output as
   `Spec.evaluate` on those arguments
 -/
-theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
+theorem evaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.context.WellFormed) :
-  Partial.evaluateVar v request = (Spec.evaluate (Spec.Expr.var v) request entities).map Partial.Value.value
+  Partial.evaluateVar v request = (Spec.evaluate (Expr.var v) request entities).map Partial.Value.value
 := by
   unfold Partial.evaluateVar Spec.evaluate
   cases v <;> simp only [Spec.Request.asPartialRequest, Except.map]
@@ -77,20 +78,20 @@ theorem partialEvaluateVar_on_concrete_eqv_concrete_eval (v : Var) (request : Sp
         simp [List.mem_map] at h₁
 
 /--
-  Partial-evaluating a concrete `Var` expression gives the same output as
-  concrete-evaluating the `Var`
+  Inductive argument that, for an `Expr.var` with concrete request/entities,
+  partial evaluation and concrete evaluation give the same output
 -/
 theorem on_concrete_eqv_concrete_eval (v : Var) (request : Spec.Request) (entities : Spec.Entities)
   (wf : request.context.WellFormed) :
-  PartialEvalEquivConcreteEval (Spec.Expr.var v) request entities
+  PartialEvalEquivConcreteEval (Expr.var v) request entities
 := by
-  unfold PartialEvalEquivConcreteEval Spec.Expr.asPartialExpr Partial.evaluate
-  exact partialEvaluateVar_on_concrete_eqv_concrete_eval v request entities wf
+  unfold PartialEvalEquivConcreteEval Partial.evaluate
+  exact evaluateVar_on_concrete_eqv_concrete_eval v request entities wf
 
 /--
   if `Partial.evaluateVar` returns `ok` with some value, it is a well-formed value
 -/
-theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
+theorem evaluateVar_wf {v : Var} {request : Partial.Request}
   (wf_r : request.WellFormed) :
   ∀ pval, Partial.evaluateVar v request = .ok pval → pval.WellFormed
 := by
@@ -98,16 +99,15 @@ theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
   cases v <;> simp
   case principal =>
     cases request.principal
-    <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+    <;> simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
   case action =>
     cases request.action
-    <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+    <;> simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
   case resource =>
     cases request.resource
-    <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
+    <;> simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
   case context =>
-    unfold Partial.Request.WellFormed at wf_r
-    split <;> simp [Partial.Value.WellFormed, Spec.Value.WellFormed]
+    split <;> simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed, Spec.Value.WellFormed]
     · rename_i m h₁
       apply And.intro (Map.mapMOnValues_some_wf wf_r.left h₁)
       intro (k, v) h₂
@@ -124,27 +124,28 @@ theorem partialEvaluateVar_wf {v : Var} {request : Partial.Request}
 -/
 theorem partial_eval_wf {v : Var} {request : Partial.Request} {entities : Partial.Entities}
   (wf_r : request.WellFormed) :
-  EvaluatesToWellFormed (Partial.Expr.var v) request entities
+  EvaluatesToWellFormed (Expr.var v) request entities
 := by
   unfold EvaluatesToWellFormed Partial.evaluate
-  exact partialEvaluateVar_wf wf_r
+  exact evaluateVar_wf wf_r
 
 /--
   Lemma: If `context` has only concrete values before substitution, then it has
   only concrete values after substitution
 -/
 theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Subsmap}
-  (wf : req.WellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_s : subsmap.WellFormed) :
   req.subst subsmap = some req' →
   req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
   (k, pval') ∈ req'.context.kvs →
   ∃ v, pval' = .value v ∧ (k, .value v) ∈ req.context.kvs
 := by
   intro h_req h₁ h₂
-  have wf_req' : req'.WellFormed := Subst.req_subst_preserves_wf wf h_req
-  unfold Partial.Request.WellFormed at wf wf_req'
+  have wf_req' : req'.WellFormed := Subst.req_subst_preserves_wf wf_r wf_s h_req
+  unfold Partial.Request.WellFormed at wf_r wf_req'
   have h_keys := Subst.req_subst_preserves_keys_of_context h_req
-  have wf_keys := Map.keys_wf req.context wf.left
+  have wf_keys := Map.keys_wf req.context wf_r.left
   have ⟨keys, h₃⟩ := Set.if_wellformed_then_exists_make req.context.keys wf_keys
   rw [h₃] at h_keys
   unfold Map.keys at h_keys h₃
@@ -158,40 +159,37 @@ theorem subst_preserves_all_concrete {req req' : Partial.Request} {subsmap : Sub
   simp only at h_keys
   replace ⟨(k', pval), h₃, h₃'⟩ := h₃ h_keys
   simp only at h₃' ; subst k'
+  replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, pval) h₃
   cases pval
+  case residual r => simp only [and_false, exists_const] at h₁
   case value v =>
     have h₄ := Subst.req_subst_preserves_concrete_context_vals h₃ h_req
     have h₅ := Map.key_maps_to_one_value k _ _ _ wf_req'.left h₂ h₄
     exists v
-  case residual r =>
-    replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₃
-    simp only [and_false, exists_const] at h₁
 
 /--
   If evaluating a request context returns a concrete value, then it returns the
   same value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Request} {subsmap : Subsmap}
-  (wf : req.WellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_s : subsmap.WellFormed) :
   req.subst subsmap = some req' →
   req.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m →
   req'.context.mapMOnValues (λ v => match v with | .value v => some v | .residual _ => none) = some m
 := by
   intro h_req h₁
   suffices req.context = req'.context by rw [← this] ; exact h₁
-  have wf_req' : req'.WellFormed := Subst.req_subst_preserves_wf wf h_req
+  have wf_req' : req'.WellFormed := Subst.req_subst_preserves_wf wf_r wf_s h_req
   unfold Partial.Request.WellFormed at wf_req'
-  apply (Map.eq_iff_kvs_equiv wf.left wf_req'.left).mp
+  apply (Map.eq_iff_kvs_equiv wf_r.left wf_req'.left).mp
   simp only [List.Equiv, List.subset_def]
   constructor <;> intro (k, pval') h₄
-  · cases pval'
-    case value v =>
-      exact Subst.req_subst_preserves_concrete_context_vals h₄ h_req
-    case residual r =>
-      exfalso
-      replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, .residual r) h₄
-      simp only [and_false, exists_const] at h₁
-  · have ⟨v, h₃, h₅⟩ := subst_preserves_all_concrete wf h_req h₁ h₄
+  · replace h₁ := Map.mapMOnValues_some_implies_all_some h₁ (k, pval') h₄
+    cases pval'
+    case value v => exact Subst.req_subst_preserves_concrete_context_vals h₄ h_req
+    case residual r => simp only [and_false, exists_const] at h₁
+  · have ⟨v, h₃, h₅⟩ := subst_preserves_all_concrete wf_r wf_s h_req h₁ h₄
     subst pval'
     exact h₅
 
@@ -200,7 +198,8 @@ theorem subst_preserves_evaluate_req_context_to_value {req req' : Partial.Reques
   value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Request} {v : Spec.Value} {subsmap : Subsmap}
-  (wf : req.WellFormed) :
+  (wf_r : req.WellFormed)
+  (wf_s : subsmap.WellFormed) :
   req.subst subsmap = some req' →
   Partial.evaluateVar var req = .ok (.value v) →
   Partial.evaluateVar var req' = .ok (.value v)
@@ -231,7 +230,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
     split <;> simp only [Except.ok.injEq, Partial.Value.value.injEq, Spec.Value.record.injEq]
     · rename_i m' h₂
       -- `m'` is the `Spec.Value`-valued version of `req'.context` (which we know has only concrete values from h₂)
-      replace h₁ := subst_preserves_evaluate_req_context_to_value wf h_req h₁
+      replace h₁ := subst_preserves_evaluate_req_context_to_value wf_r wf_s h_req h₁
       suffices some m = some m' by simpa using this.symm
       rw [← h₁, ← h₂]
       rfl
@@ -240,7 +239,7 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
       cases pval <;> simp only at h₃
       case residual r =>
         replace ⟨k, h₂⟩ := Map.in_values_exists_key h₂
-        have ⟨v, h₄⟩ := subst_preserves_all_concrete wf h_req h₁ h₂
+        have ⟨v, h₄⟩ := subst_preserves_all_concrete wf_r wf_s h_req h₁ h₂
         simp at h₄
 
 /--
@@ -248,12 +247,13 @@ theorem subst_preserves_evaluateVar_to_value {var : Var} {req req' : Partial.Req
   same value after any substitution of unknowns
 -/
 theorem subst_preserves_evaluation_to_value (var : Var) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap)
-  (wf : req.WellFormed) :
-  SubstPreservesEvaluationToConcrete (Partial.Expr.var var) req req' entities subsmap
+  (wf_r : req.WellFormed)
+  (wf_s : subsmap.WellFormed) :
+  SubstPreservesEvaluationToConcrete (Expr.var var) req req' entities subsmap
 := by
-  unfold SubstPreservesEvaluationToConcrete Partial.Expr.subst Partial.evaluate
+  unfold SubstPreservesEvaluationToConcrete Partial.evaluate
   intro h_req v
-  exact subst_preserves_evaluateVar_to_value wf h_req
+  exact subst_preserves_evaluateVar_to_value wf_r wf_s h_req
 
 /--
   If `Partial.evaluateVar` returns an error, then it returns the same error
@@ -272,10 +272,10 @@ theorem subst_preserves_evaluateVar_to_error {var : Var} {req req' : Partial.Req
 -/
 theorem subst_preserves_errors {var : Var} {req req' : Partial.Request} {e : Error} {subsmap : Subsmap} :
   req.subst subsmap = some req' →
-  Partial.evaluate (Partial.Expr.var var) req entities = .error e →
-  Partial.evaluate ((Partial.Expr.var var).subst subsmap) req' (entities.subst subsmap) = .error e
+  Partial.evaluate (Expr.var var) req entities = .error e →
+  Partial.evaluate (Expr.var var) req' (entities.subst subsmap) = .error e
 := by
-  simp only [Partial.evaluate, Partial.Expr.subst] at *
+  simp only [Partial.evaluate]
   exact subst_preserves_evaluateVar_to_error
 
-end Cedar.Thm.Partial.Evaluation.Var
+end Cedar.Thm.Partial.Evaluation.Evaluate.Var

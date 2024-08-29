@@ -48,7 +48,7 @@ enum AbstractPolicy {
 
 impl AbstractPolicy {
     /// Convert the `AbstractPolicy` into a `Policy` with the given `id`
-    fn into_policy(self, id: String) -> ast::StaticPolicy {
+    fn into_policy(self, id: ast::PolicyID) -> ast::StaticPolicy {
         match self {
             AbstractPolicy::PermitTrue => {
                 parser::parse_policy(Some(id), "permit(principal, action, resource);")
@@ -93,7 +93,7 @@ fuzz_target!(|input: AuthorizerInputAbstractEvaluator| {
         .iter()
         .cloned()
         .enumerate()
-        .map(|(i, p)| p.into_policy(format!("policy{i}")));
+        .map(|(i, p)| p.into_policy(ast::PolicyID::from_string(format!("policy{i}"))));
     let mut policyset = ast::PolicySet::new();
     for policy in policies {
         policyset.add_static(policy).unwrap();

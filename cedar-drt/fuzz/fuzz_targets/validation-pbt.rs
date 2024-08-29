@@ -28,9 +28,7 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{
-    ApplySpec, NamespaceDefinition, ValidationMode, Validator, ValidatorSchema,
-};
+use cedar_policy_validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use serde::Serialize;
@@ -88,6 +86,7 @@ const LOG_FILENAME_ERR_CONTEXT: &str = "./logs/err_context.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
 const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
+const LOG_FILENAME_SCHEMA_ERROR: &str = "./logs/err_schema.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -118,6 +117,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
         match &res {
             Err(Error::EntitiesError(_)) => {
                 checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
+            }
+            Err(Error::SchemaError(_)) => {
+                checkpoint(LOG_FILENAME_SCHEMA_ERROR.to_string() + "_" + doing_what)
             }
             Err(Error::NotEnoughData) => {
                 checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
@@ -164,7 +166,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
     res
 }
 
-fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &str) {
+fn maybe_log_schemastats<N>(schema: Option<&json_schema::NamespaceDefinition<N>>, suffix: &str) {
     if std::env::var("FUZZ_LOG_STATS").is_ok() {
         let schema = schema.expect("should be SOME if FUZZ_LOG_STATS is ok");
         checkpoint(
@@ -184,7 +186,7 @@ fn maybe_log_schemastats<N>(schema: Option<&NamespaceDefinition<N>>, suffix: &st
         for action in schema.actions.values() {
             match action.applies_to.as_ref() {
                 None => checkpoint(LOG_FILENAME_APPLIES_TO_NONE.to_string() + "_" + suffix),
-                Some(ApplySpec {
+                Some(json_schema::ApplySpec {
                     principal_types,
                     resource_types,
                     ..

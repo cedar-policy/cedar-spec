@@ -21,13 +21,15 @@ use crate::hierarchy::{
     arbitrary_specified_uid, generate_uid_with_type, EntityUIDGenMode, Hierarchy,
 };
 use crate::schema::{
-    attrs_from_attrs_or_context, entity_type_name_to_schema_type, uid_for_action_name, Schema,
+    attr_names_from_ea, entity_type_name_to_schema_type, lookup_common_type, uid_for_action_name,
+    Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use cedar_policy_core::ast::{self, Id};
+use cedar_policy_core::ast::{self, UnreservedId};
+use cedar_policy_validator::json_schema;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -514,7 +516,7 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type bool
                         1 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Boolean,
+                                json_schema::TypeVariant::Boolean,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -533,7 +535,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Boolean,
+                                        json_schema::TypeVariant::Boolean,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -553,20 +555,13 @@ impl<'a> ExprGenerator<'a> {
                                         .expect("Failed to select entity index."),
                                 )
                                 .expect("Failed to select entity from map.");
-                            let attr_names: Vec<&SmolStr> =
-                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
-                                    .attrs
-                                    .keys()
-                                    .collect::<Vec<_>>();
+                            let attr_names: Vec<SmolStr> = attr_names_from_ea(&self.schema.schema, &entity_type.shape).collect();
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
-                                    &cedar_policy_validator::SchemaType::Type(
-                                        cedar_policy_validator::SchemaTypeVariant::Entity {
-                                            // This does not use an explicit namespace because entity types
-                                            // implicitly use the schema namespace if an explicit one is not
-                                            // provided.
-                                            name: ast::Name::from(entity_name.clone()),
+                                    &json_schema::Type::Type(
+                                        json_schema::TypeVariant::Entity {
+                                            name: ast::Name::from(entity_name.clone()).into(),
                                         }
                                     ),
                                     max_depth - 1,
@@ -681,7 +676,7 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type long
                         4 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Long,
+                                json_schema::TypeVariant::Long,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -700,7 +695,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Long,
+                                        json_schema::TypeVariant::Long,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -751,7 +746,7 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type string
                         4 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::String,
+                                json_schema::TypeVariant::String,
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -770,7 +765,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::String,
+                                        json_schema::TypeVariant::String,
                                     ),
                                     max_depth - 1,
                                     u,
@@ -847,7 +842,7 @@ impl<'a> ExprGenerator<'a> {
                         3 => {
                             let attr_name: SmolStr =
                                 self.constant_pool.arbitrary_string_constant(u)?;
-                            let attr_ty: cedar_policy_validator::SchemaType<ast::Name> =
+                            let attr_ty: json_schema::Type<ast::InternalName> =
                                 match self.schema.try_into_schematype(target_type, u)? {
                                     Some(schematy) => schematy,
                                     None => return Err(Error::IncorrectFormat {
@@ -919,11 +914,11 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with type record
                         4 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Record {
+                                json_schema::TypeVariant::Record(json_schema::RecordType {
                                     // TODO: should we put in some other attributes that appear in schema?
                                     attributes: BTreeMap::new(),
                                     additional_attributes: true,
-                                },
+                                }),
                                 u,
                             )?;
                             Ok(ast::Expr::get_attr(
@@ -942,10 +937,10 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Record {
+                                        json_schema::TypeVariant::Record(json_schema::RecordType {
                                             attributes: BTreeMap::new(),
                                             additional_attributes: true,
-                                        },
+                                        }),
                                     ),
                                     max_depth - 1,
                                     u,
@@ -1052,8 +1047,8 @@ impl<'a> ExprGenerator<'a> {
                         })];
                         Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
                     } else {
-                        let type_name: Id = match target_type {
-                            Type::IPAddr => "ipaddr".parse::<Id>().unwrap(),
+                        let type_name: UnreservedId = match target_type {
+                            Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
                             Type::Decimal => "decimal".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
                         };
@@ -1085,7 +1080,7 @@ impl<'a> ExprGenerator<'a> {
                         // getting an attr (on an entity) with extension type
                         2 => {
                             let (entity_type, attr_name) = self.schema.arbitrary_attr_for_schematype(
-                                cedar_policy_validator::SchemaTypeVariant::Extension {
+                                json_schema::TypeVariant::Extension {
                                     name: type_name,
                                 },
                                 u,
@@ -1106,7 +1101,7 @@ impl<'a> ExprGenerator<'a> {
                                 self.generate_expr_for_schematype(
                                     &record_schematype_with_attr(
                                         attr_name.clone(),
-                                        cedar_policy_validator::SchemaTypeVariant::Extension {
+                                        json_schema::TypeVariant::Extension {
                                             name: type_name,
                                         },
                                     ),
@@ -1122,7 +1117,8 @@ impl<'a> ExprGenerator<'a> {
         }
     }
 
-    /// get an arbitrary expression of a given schematype conforming to the schema
+    /// get an arbitrary expression of a given [`json_schema::Type`] conforming to
+    /// the schema
     ///
     /// If `hierarchy` is present, any literal UIDs included in the Expr will
     /// (usually) exist in the hierarchy.
@@ -1132,32 +1128,42 @@ impl<'a> ExprGenerator<'a> {
     /// `depth` parameter to size_hint.
     pub fn generate_expr_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &json_schema::Type<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        use cedar_policy_validator::SchemaType;
-        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_expr_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+            json_schema::Type::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
-            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_expr_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it as we treat entity references
+                        self.generate_expr_for_schematype(
+                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
+            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
                 self.generate_expr_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
                 self.generate_expr_for_type(&Type::long(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::String) => {
+            json_schema::Type::Type(json_schema::TypeVariant::String) => {
                 self.generate_expr_for_type(&Type::string(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Set {
+            json_schema::Type::Type(json_schema::TypeVariant::Set {
                 element: element_ty,
             }) => {
                 if max_depth == 0 || u.len() < 10 {
@@ -1230,10 +1236,12 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed
                     Err(Error::TooDeep)
@@ -1345,7 +1353,7 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed, so, just do `principal`, `action`, or `resource`
                     Ok(ast::Expr::var(*u.choose(&[
@@ -1357,7 +1365,7 @@ impl<'a> ExprGenerator<'a> {
                     gen!(u,
                     // UID literal
                     13 => {
-                        let entity_type_name = ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                        let entity_type_name = ast::Name::try_from(name.qualify_with_name(self.schema.namespace())).unwrap().into();
                         Ok(ast::Expr::val(self.arbitrary_uid_with_type(
                             &entity_type_name, u,
                         )?))
@@ -1425,11 +1433,13 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_ref() {
-                "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
-                "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
-                _ => panic!("unrecognized extension type: {name:?}"),
-            },
+            json_schema::Type::Type(json_schema::TypeVariant::Extension { name }) => {
+                match name.as_ref() {
+                    "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
+                    "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                    _ => panic!("unrecognized extension type: {name:?}"),
+                }
+            }
         }
     }
 
@@ -1508,40 +1518,52 @@ impl<'a> ExprGenerator<'a> {
     }
 
     /// internal helper function: get an extension-function-call expression that
-    /// returns the given schematype
+    /// returns the given [`json_schema::Type`]
     ///
     /// `max_depth`: maximum depth of each argument expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
     fn generate_ext_func_call_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &json_schema::Type<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        use cedar_policy_validator::SchemaType;
-        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_ext_func_call_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
-                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-                max_depth,
-                u,
-            ),
-            SchemaType::Type(ty) => match ty {
-                SchemaTypeVariant::Boolean => {
+            json_schema::Type::CommonTypeRef { type_name } => self
+                .generate_ext_func_call_for_schematype(
+                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
+                        panic!("reference to undefined common type: {type_name}")
+                    }),
+                    max_depth,
+                    u,
+                ),
+            json_schema::Type::Type(ty) => match ty {
+                json_schema::TypeVariant::EntityOrCommon { type_name } => {
+                    match lookup_common_type(&self.schema.schema, type_name) {
+                        Some(ty) => self.generate_ext_func_call_for_schematype(ty, max_depth, u),
+                        None => {
+                            // must be an entity reference, so treat it how we treat entity references
+                            self.generate_ext_func_call_for_schematype(
+                                &json_schema::Type::Type(json_schema::TypeVariant::Entity {
+                                    name: type_name.clone(),
+                                }),
+                                max_depth,
+                                u,
+                            )
+                        }
+                    }
+                }
+                json_schema::TypeVariant::Boolean => {
                     self.generate_ext_func_call_for_type(&Type::bool(), max_depth, u)
                 }
-                SchemaTypeVariant::Long => {
+                json_schema::TypeVariant::Long => {
                     self.generate_ext_func_call_for_type(&Type::long(), max_depth, u)
                 }
-                SchemaTypeVariant::String => {
+                json_schema::TypeVariant::String => {
                     self.generate_ext_func_call_for_type(&Type::string(), max_depth, u)
                 }
-                SchemaTypeVariant::Extension { name } => match name.as_ref() {
+                json_schema::TypeVariant::Extension { name } => match name.as_ref() {
                     "ipaddr" => self.generate_ext_func_call_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
@@ -1549,15 +1571,15 @@ impl<'a> ExprGenerator<'a> {
                     _ => panic!("unrecognized extension type: {name:?}"),
                 },
                 // no existing extension functions return set type
-                SchemaTypeVariant::Set { .. } => Err(Error::EmptyChoose {
+                json_schema::TypeVariant::Set { .. } => Err(Error::EmptyChoose {
                     doing_what: "getting an extension function returning set type".into(),
                 }),
                 // no existing extension functions return record type
-                SchemaTypeVariant::Record { .. } => Err(Error::EmptyChoose {
+                json_schema::TypeVariant::Record { .. } => Err(Error::EmptyChoose {
                     doing_what: "getting an extension function returning record type".into(),
                 }),
                 // no existing extension functions return entity type
-                SchemaTypeVariant::Entity { .. } => Err(Error::EmptyChoose {
+                json_schema::TypeVariant::Entity { .. } => Err(Error::EmptyChoose {
                     doing_what: "getting an extension function returning entity type".into(),
                 }),
             },
@@ -1665,8 +1687,11 @@ impl<'a> ExprGenerator<'a> {
                     let mut r = HashMap::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                        let attr_val =
-                            self.generate_attr_value_for_schematype(&attr_ty, max_depth - 1, u)?;
+                        let attr_val = self.generate_attr_value_for_eatypeinternal(
+                            &attr_ty,
+                            max_depth - 1,
+                            u,
+                        )?;
                         r.insert(attr_name, attr_val);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
@@ -1703,39 +1728,52 @@ impl<'a> ExprGenerator<'a> {
         })
     }
 
-    /// get an AttrValue of the given SchemaType which conforms to this schema
+    /// get an [`AttrValue`] of the given [`json_schema::Type`] which conforms
+    /// to this schema
     ///
     /// `max_depth`: maximum depth of the attribute value expression.
     /// For instance, maximum depth of nested sets. Not to be confused with the
     /// `depth` parameter to size_hint.
     pub fn generate_attr_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &json_schema::Type<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
-        use cedar_policy_validator::SchemaType;
-        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_attr_value_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
-                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-                max_depth,
-                u,
-            ),
-            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+            json_schema::Type::CommonTypeRef { type_name } => self
+                .generate_attr_value_for_schematype(
+                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
+                        panic!("reference to undefined common type: {type_name}")
+                    }),
+                    max_depth,
+                    u,
+                ),
+            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_attr_value_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it how we treat entity references
+                        self.generate_attr_value_for_schematype(
+                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
+            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
                 self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
                 self.generate_attr_value_for_type(&Type::long(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::String) => {
+            json_schema::Type::Type(json_schema::TypeVariant::String) => {
                 self.generate_attr_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Set {
+            json_schema::Type::Type(json_schema::TypeVariant::Set {
                 element: element_ty,
             }) => {
                 // the only valid Set-typed attribute value is a set literal
@@ -1755,10 +1793,12 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1769,7 +1809,7 @@ impl<'a> ExprGenerator<'a> {
                         // maybe add some "additional" attributes not mentioned in schema
                         u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                             let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                            let attr_val = self.generate_attr_value_for_schematype(
+                            let attr_val = self.generate_attr_value_for_eatypeinternal(
                                 &attr_ty,
                                 max_depth - 1,
                                 u,
@@ -1808,24 +1848,28 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Record(r))
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
-                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
+                        .unwrap()
+                        .into();
                 Ok(AttrValue::UIDLit(
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
             }
-            SchemaType::Type(SchemaTypeVariant::Extension { .. })
+            json_schema::Type::Type(json_schema::TypeVariant::Extension { .. })
                 if !self.settings.enable_extensions =>
             {
-                panic!("shouldn't have SchemaTypeVariant::Extension with extensions disabled")
+                panic!("shouldn't have TypeVariant::Extension with extensions disabled")
             }
-            SchemaType::Type(SchemaTypeVariant::Extension { name }) => match name.as_ref() {
-                "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
-                "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
-                _ => unimplemented!("extension type {name:?}"),
-            },
+            json_schema::Type::Type(json_schema::TypeVariant::Extension { name }) => {
+                match name.as_ref() {
+                    "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
+                    "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                    _ => unimplemented!("extension type {name:?}"),
+                }
+            }
         }
     }
 
@@ -1908,7 +1952,7 @@ impl<'a> ExprGenerator<'a> {
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
                         let attr_val =
-                            self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
+                            self.generate_value_for_eatypeinternal(&attr_ty, max_depth - 1, u)?;
                         r.insert(attr_name, attr_val);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
@@ -1919,36 +1963,46 @@ impl<'a> ExprGenerator<'a> {
         }
     }
 
-    /// generate an arbitrary `Value` of the given `target_type`
+    /// generate an arbitrary [`ast::Value`] of the given [`json_schema::Type`]
     fn generate_value_for_schematype(
         &self,
-        target_type: &cedar_policy_validator::SchemaType<ast::Name>,
+        target_type: &json_schema::Type<ast::InternalName>,
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Value> {
         use ast::Value;
-        use cedar_policy_validator::SchemaType;
-        use cedar_policy_validator::SchemaTypeVariant;
         match target_type {
-            SchemaType::TypeDef { type_name } => self.generate_value_for_schematype(
-                self.schema
-                    .schema
-                    .common_types
-                    .get(&type_name.clone().try_into().unwrap())
+            json_schema::Type::CommonTypeRef { type_name } => self.generate_value_for_schematype(
+                lookup_common_type(&self.schema.schema, type_name)
                     .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
                 max_depth,
                 u,
             ),
-            SchemaType::Type(SchemaTypeVariant::Boolean) => {
+            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+                match lookup_common_type(&self.schema.schema, type_name) {
+                    Some(ty) => self.generate_value_for_schematype(ty, max_depth, u),
+                    None => {
+                        // must be an entity reference, so treat it how we treat entity references
+                        self.generate_value_for_schematype(
+                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
+                                name: type_name.clone(),
+                            }),
+                            max_depth,
+                            u,
+                        )
+                    }
+                }
+            }
+            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
                 self.generate_value_for_type(&Type::bool(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Long) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
                 self.generate_value_for_type(&Type::long(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::String) => {
+            json_schema::Type::Type(json_schema::TypeVariant::String) => {
                 self.generate_value_for_type(&Type::string(), max_depth, u)
             }
-            SchemaType::Type(SchemaTypeVariant::Set {
+            json_schema::Type::Type(json_schema::TypeVariant::Set {
                 element: element_ty,
             }) => {
                 // the only valid Set-typed attribute value is a set literal
@@ -1964,10 +2018,12 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::set(l, None))
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Record {
-                attributes,
-                additional_attributes,
-            }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Record(
+                json_schema::RecordType {
+                    attributes,
+                    additional_attributes,
+                },
+            )) => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -1979,7 +2035,7 @@ impl<'a> ExprGenerator<'a> {
                         u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                             let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
                             let attr_val =
-                                self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
+                                self.generate_value_for_eatypeinternal(&attr_ty, max_depth - 1, u)?;
                             r.insert(attr_name, attr_val);
                             Ok(std::ops::ControlFlow::Continue(()))
                         })?;
@@ -2011,19 +2067,88 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::record(r, None))
                 }
             }
-            SchemaType::Type(SchemaTypeVariant::Entity { name }) => {
+            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
                 // the only valid entity-typed attribute value is a UID literal
 
                 // The namespace for the entity type is the namespace of the
-                // SchemaType if one is present. Otherwise, it is the schema
+                // Type if one is present. Otherwise, it is the schema
                 // namespace if that is present. The type is unqualified if
                 // neither is present.
                 let entity_type_name =
-                    ast::EntityType::from(name.qualify_with(self.schema.namespace()));
+                    ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
+                        .unwrap()
+                        .into();
                 let euid = self.arbitrary_uid_with_type(&entity_type_name, u)?;
                 Ok(Value::from(euid))
             }
             _ => Err(Error::ExtensionsDisabled),
+        }
+    }
+
+    /// generate an arbitrary [`ast::Value`] of the given [`json_schema::EntityAttributeTypeInternal`]
+    fn generate_value_for_eatypeinternal(
+        &self,
+        target_type: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Value> {
+        match target_type {
+            json_schema::EntityAttributeTypeInternal::Type(ty) => {
+                self.generate_value_for_schematype(ty, max_depth, u)
+            }
+            json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
+                if max_depth == 0 {
+                    // no recursion allowed: just return empty-record
+                    Ok(ast::Value::empty_record(None))
+                } else {
+                    let mut r = HashMap::new();
+                    // add an arbitrary number of attributes with the appropriate type
+                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
+                        let attr_name: SmolStr = u.arbitrary()?;
+                        let attr_val =
+                            self.generate_value_for_schematype(&value_type, max_depth - 1, u)?;
+                        r.insert(attr_name, attr_val);
+                        Ok(std::ops::ControlFlow::Continue(()))
+                    })?;
+                    Ok(ast::Value::record(r, None))
+                }
+            }
+        }
+    }
+
+    /// get an [`AttrValue`] of the given [`json_schema::EntityAttributeTypeInternal`]
+    /// which conforms to this schema
+    ///
+    /// `max_depth`: maximum depth of the attribute value expression.
+    /// For instance, maximum depth of nested sets. Not to be confused with the
+    /// `depth` parameter to size_hint.
+    pub fn generate_attr_value_for_eatypeinternal(
+        &self,
+        target_type: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
+        max_depth: usize,
+        u: &mut Unstructured<'_>,
+    ) -> Result<AttrValue> {
+        match target_type {
+            json_schema::EntityAttributeTypeInternal::Type(ty) => {
+                self.generate_attr_value_for_schematype(ty, max_depth, u)
+            }
+            json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
+                if max_depth == 0 {
+                    // no recursion allowed: just return empty-record
+                    Ok(AttrValue::Record(HashMap::new()))
+                } else {
+                    let mut r = HashMap::new();
+                    // add an arbitrary number of attributes with the appropriate type
+                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
+                        let attr_name: SmolStr = u.arbitrary()?;
+                        let attr_val =
+                            self.generate_attr_value_for_schematype(&value_type, max_depth - 1, u)?;
+                        r.insert(attr_name, attr_val);
+                        Ok(std::ops::ControlFlow::Continue(()))
+                    })?;
+                    Ok(AttrValue::Record(r))
+                }
+            }
         }
     }
 
@@ -2186,16 +2311,16 @@ impl<'a> ExprGenerator<'a> {
     }
 }
 
-/// internal helper function, get a SchemaType representing a Record with (at
-/// least) one attribute of the specified name and SchemaType.
+/// internal helper function, get a [`json_schema::Type`] representing a Record
+/// with (at least) one attribute of the specified name and type.
 fn record_schematype_with_attr<N>(
     attr_name: SmolStr,
-    attr_type: impl Into<cedar_policy_validator::SchemaType<N>>,
-) -> cedar_policy_validator::SchemaType<N> {
-    cedar_policy_validator::SchemaType::Type(cedar_policy_validator::SchemaTypeVariant::Record {
+    attr_type: impl Into<json_schema::Type<N>>,
+) -> json_schema::Type<N> {
+    json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType {
         attributes: [(
             attr_name,
-            cedar_policy_validator::TypeOfAttribute {
+            json_schema::RecordAttributeType {
                 ty: attr_type.into(),
                 required: true,
             },
@@ -2203,5 +2328,5 @@ fn record_schematype_with_attr<N>(
         .into_iter()
         .collect(),
         additional_attributes: true,
-    })
+    }))
 }

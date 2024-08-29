@@ -17,16 +17,18 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
-use cedar_policy_core::ast;
-use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
-use cedar_policy_validator::{RawName, SchemaFragment};
+use cedar_policy_core::{ast, extensions::Extensions};
+use cedar_policy_generators::{
+    schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
+};
+use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
-    pub schema: SchemaFragment<ast::Name>,
+    pub schema: json_schema::Fragment<ast::InternalName>,
 }
 
 /// settings for this fuzz target
@@ -53,7 +55,7 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 
-        let schema = SchemaFragment(HashMap::from([(name, namespace)]));
+        let schema = json_schema::Fragment(HashMap::from([(name, namespace)]));
 
         Ok(Self { schema })
     }
@@ -64,32 +66,16 @@ impl<'a> Arbitrary<'a> for Input {
 }
 
 fuzz_target!(|i: Input| {
-    let json = serde_json::to_value(i.schema.clone()).unwrap();
-    let json_ast: SchemaFragment<RawName> = SchemaFragment::from_json_value(json).unwrap();
-    let json_ast: SchemaFragment<ast::Name> = SchemaFragment(
-        json_ast
-            .0
-            .into_iter()
-            .map(|(namespace, nsdef)| {
-                let nsdef = nsdef.qualify_type_references(namespace.as_ref());
-                (namespace, nsdef)
-            })
-            .collect(),
-    );
-    assert_eq!(json_ast, i.schema, "JSON rountrip failed");
-    let src = json_ast.as_natural_schema().unwrap();
-    let (final_ast, _) = SchemaFragment::from_str_natural(&src).unwrap();
-    let final_ast: SchemaFragment<ast::Name> = SchemaFragment(
-        final_ast
-            .0
-            .into_iter()
-            .map(|(namespace, nsdef)| {
-                let nsdef = nsdef.qualify_type_references(namespace.as_ref());
-                (namespace, nsdef)
-            })
-            .collect(),
-    );
-    if let Err(e) = equivalence_check(i.schema, final_ast) {
-        panic!("Roundtrip Mismatch: {}\nSrc:\n```\n{}\n```", e, src);
+    let raw_schema = downgrade_frag_to_raw(i.schema);
+    let json = serde_json::to_value(raw_schema.clone()).unwrap();
+    let json_ast = json_schema::Fragment::from_json_value(json).unwrap();
+    if let Err(e) = equivalence_check(&raw_schema, &json_ast) {
+        panic!("JSON roundtrip failed: {e}\nOrig:\n```\n{raw_schema}\n```\nRoundtripped:\n```\n{json_ast}\n```");
+    }
+    let src = json_ast.to_cedarschema().unwrap();
+    let (final_ast, _) =
+        json_schema::Fragment::from_cedarschema_str(&src, Extensions::all_available()).unwrap();
+    if let Err(e) = equivalence_check(&raw_schema, &final_ast) {
+        panic!("Cedar roundtrip failed: {e}\nSrc:\n```\n{src}\n```");
     }
 });

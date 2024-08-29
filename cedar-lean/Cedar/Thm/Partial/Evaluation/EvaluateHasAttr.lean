@@ -20,14 +20,14 @@ import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
 
-namespace Cedar.Thm.Partial.Evaluation.HasAttr
+namespace Cedar.Thm.Partial.Evaluation.EvaluateHasAttr
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Attr Error Prim Result)
+open Cedar.Spec (Attr Error Expr Prim Result)
 
 /--
   `Partial.attrsOf` on concrete arguments is the same as `Spec.attrsOf` on those
@@ -78,27 +78,10 @@ theorem hasAttr_on_concrete_eqv_concrete {v : Spec.Value} {entities : Spec.Entit
   `Partial.evaluateHasAttr` on concrete arguments is the same as `Spec.hasAttr`
   on those arguments
 -/
-theorem evaluateHasAttr_on_concrete_eqv_concrete {v : Spec.Value} {a : Attr} {entities : Spec.Entities} :
+theorem on_concrete_eqv_concrete {v : Spec.Value} {a : Attr} {entities : Spec.Entities} :
   Partial.evaluateHasAttr v a entities = Spec.hasAttr v a entities
 := by
   simp [Partial.evaluateHasAttr, hasAttr_on_concrete_eqv_concrete, pure, Except.pure]
-
-/--
-  Inductive argument that partial evaluating a concrete `Partial.Expr.hasAttr`
-  expression gives the same output as concrete-evaluating the
-  `Spec.Expr.hasAttr` with the same subexpressions
--/
-theorem on_concrete_eqv_concrete_eval {x₁ : Spec.Expr} {request : Spec.Request} {entities : Spec.Entities} {attr : Attr} :
-  PartialEvalEquivConcreteEval x₁ request entities →
-  PartialEvalEquivConcreteEval (Spec.Expr.hasAttr x₁ attr) request entities
-:= by
-  unfold PartialEvalEquivConcreteEval
-  intro ih₁
-  unfold Partial.evaluate Spec.evaluate Spec.Expr.asPartialExpr
-  simp only [ih₁]
-  cases Spec.evaluate x₁ request entities <;> simp only [Except.bind_err, Except.bind_ok]
-  case error e => simp only [Except.map, Except.bind_err]
-  case ok v₁ => exact evaluateHasAttr_on_concrete_eqv_concrete
 
 /--
   if `Partial.hasAttr` returns `ok` with some value, that is a well-formed value
@@ -110,40 +93,29 @@ theorem partialHasAttr_wf {v₁ : Spec.Value} {attr : Attr} {entities : Partial.
   cases Partial.attrsOf v₁ λ uid => .ok (entities.attrsOrEmpty uid) <;> simp
   case ok m => simp [Spec.Value.WellFormed, Prim.WellFormed]
 
-
 /--
   if `Partial.evaluateHasAttr` returns `ok` with some value, that is a
   well-formed value
 -/
-theorem partialEvaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+theorem evaluateHasAttr_wf {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
   ∀ pval, Partial.evaluateHasAttr pval₁ attr entities = .ok pval → pval.WellFormed
 := by
   unfold Partial.evaluateHasAttr
   split
   · rename_i v
-    cases h₁ : Partial.hasAttr v attr entities <;> simp
+    cases h₁ : Partial.hasAttr v attr entities
+    case error e => simp only [Except.bind_err, false_implies, implies_true]
     case ok v =>
-      simp [Partial.Value.WellFormed]
+      simp only [Partial.Value.WellFormed, Except.bind_ok, Except.ok.injEq, forall_eq']
       exact partialHasAttr_wf v h₁
-  · intro pval h₁ ; simp at h₁ ; subst h₁ ; simp [Partial.Value.WellFormed]
-
-/--
-  if partial-evaluating a `Partial.Expr.hasAttr` returns `ok` with some value,
-  that is a well-formed value
--/
-theorem partial_eval_wf {x₁ : Partial.Expr} {attr : Attr} {entities : Partial.Entities} {request : Partial.Request} :
-  EvaluatesToWellFormed (Partial.Expr.hasAttr x₁ attr) request entities
-:= by
-  unfold EvaluatesToWellFormed Partial.evaluate
-  cases hx₁ : Partial.evaluate x₁ request entities <;> simp [hx₁]
-  case ok pval₁ =>
-    exact HasAttr.partialEvaluateHasAttr_wf
+  · intro pval h₁ ; simp only [Except.ok.injEq] at h₁ ; subst h₁
+    simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
 
 /--
   If `Partial.evaluateHasAttr` produces `ok` with a concrete value, then so
   would partial-evaluating its operand
 -/
-theorem evaluateHasAttr_returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
+theorem returns_concrete_then_operand_evals_to_concrete {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} :
   Partial.evaluateHasAttr pval₁ attr entities = .ok (.value v) →
   ∃ v₁, pval₁ = .value v₁
 := by
@@ -152,25 +124,6 @@ theorem evaluateHasAttr_returns_concrete_then_operand_evals_to_concrete {pval₁
   cases pval₁
   case value v₁ => exists v₁
   case residual r₁ => simp only [Except.ok.injEq] at h₁
-
-/--
-  If partial-evaluating a `Partial.Expr.hasAttr` produces `ok` with a concrete
-  value, then so would partial-evaluating its operand
--/
-theorem evals_to_concrete_then_operand_evals_to_concrete {x₁ : Partial.Expr} {attr : Attr} {request : Partial.Request} {entities : Partial.Entities} :
-  EvaluatesToConcrete (Partial.Expr.hasAttr x₁ attr) request entities →
-  EvaluatesToConcrete x₁ request entities
-:= by
-  unfold EvaluatesToConcrete
-  intro h₁
-  unfold Partial.evaluate at h₁
-  replace ⟨v, h₁⟩ := h₁
-  cases hx₁ : Partial.evaluate x₁ request entities
-  <;> simp only [hx₁, Except.bind_ok, Except.bind_err] at h₁
-  case ok pval₁ =>
-    have ⟨v₁, hv₁⟩ := evaluateHasAttr_returns_concrete_then_operand_evals_to_concrete h₁
-    subst pval₁
-    exists v₁
 
 /--
   The return value of `Partial.hasAttr` is not affected by substitution of
@@ -192,7 +145,7 @@ theorem hasAttr_subst_const {v₁ : Spec.Value} {attr : Attr} {entities : Partia
   If `Partial.evaluateHasAttr` returns a concrete value, then it returns the
   same value after any substitution of unknowns in `entities`
 -/
-theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
+theorem subst_preserves_evaluation_to_value {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} {subsmap : Subsmap}
   (wf : entities.WellFormed) :
   Partial.evaluateHasAttr pval₁ attr entities = .ok (.value v) →
   Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .ok (.value v)
@@ -200,31 +153,6 @@ theorem evaluateHasAttr_subst_preserves_evaluation_to_value {pval₁ : Partial.V
   unfold Partial.evaluateHasAttr
   cases pval₁ <;> simp only [Except.ok.injEq, imp_self]
   case value v₁ => simp only [← hasAttr_subst_const wf, imp_self]
-
-/--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.hasAttr`
-  returns a concrete value, then it returns the same value after any
-  substitution of unknowns
--/
-theorem subst_preserves_evaluation_to_value {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
-  (wf : entities.WellFormed)
-  (ih₁ : SubstPreservesEvaluationToConcrete x₁ req req' entities subsmap) :
-  SubstPreservesEvaluationToConcrete (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap
-:= by
-  unfold SubstPreservesEvaluationToConcrete at *
-  unfold Partial.evaluate Spec.Value.asBool
-  intro h_req v
-  specialize ih₁ h_req
-  unfold Partial.Expr.subst
-  cases hx₁ : Partial.evaluate x₁ req entities
-  <;> simp only [hx₁, false_implies, forall_const, Except.bind_err, Except.bind_ok, Except.ok.injEq] at *
-  case ok pval₁  =>
-    cases pval₁
-    case value v₁ =>
-      simp only [Partial.Value.value.injEq, forall_eq'] at *
-      simp only [ih₁, Except.bind_ok]
-      exact evaluateHasAttr_subst_preserves_evaluation_to_value wf
-    case residual r₁ => simp only [Partial.evaluateHasAttr, Except.ok.injEq, false_implies]
 
 /--
   If `Partial.hasAttr` returns an error, then it also returns an error (not
@@ -246,7 +174,7 @@ theorem hasAttr_subst_preserves_errors {v₁ : Spec.Value} {attr : Attr} {entiti
   (not necessarily the same error) after any substitution of unknowns in
   `entities`
 -/
-theorem evaluateHasAttr_subst_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} (subsmap : Subsmap) :
+theorem subst_preserves_errors {pval₁ : Partial.Value} {attr : Attr} {entities : Partial.Entities} (subsmap : Subsmap) :
   Partial.evaluateHasAttr pval₁ attr entities = .error e →
   ∃ e', Partial.evaluateHasAttr pval₁ attr (entities.subst subsmap) = .error e'
 := by
@@ -258,42 +186,3 @@ theorem evaluateHasAttr_subst_preserves_errors {pval₁ : Partial.Value} {attr :
     have ⟨e', h₂⟩ := hasAttr_subst_preserves_errors subsmap h₁
     exists e'
     simp only [h₂, Except.bind_err]
-
-/--
-  Inductive argument that if partial-evaluation of a `Partial.Expr.hasAttr`
-  returns an error, then it also returns an error (not necessarily the same
-  error) after any substitution of unknowns
-
-  The proof of `subst_preserves_evaluation_to_value` for this
-  request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
-  See #372.
--/
-theorem subst_preserves_errors {x₁ : Partial.Expr} {attr : Attr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
-  (h_spetv : ∀ x, SubstPreservesEvaluationToConcrete x req req' entities subsmap)
-  (ih₁ : SubstPreservesEvaluationToError x₁ req req' entities subsmap) :
-  SubstPreservesEvaluationToError (Partial.Expr.hasAttr x₁ attr) req req' entities subsmap
-:= by
-  unfold SubstPreservesEvaluationToError at *
-  unfold Partial.evaluate Partial.Expr.subst
-  intro h_req ; specialize ih₁ h_req
-  cases hx₁ : Partial.evaluate x₁ req entities
-  <;> simp only [hx₁, false_implies, implies_true, Except.error.injEq] at ih₁
-  case error e₁ =>
-    replace ⟨e₁', ih₁⟩ := ih₁ e₁ rfl
-    simp [ih₁]
-  case ok pval₁ =>
-    simp only [Except.bind_ok]
-    intro e₁ h₁
-    cases hx₁' : Partial.evaluate (x₁.subst subsmap) req' (entities.subst subsmap)
-    case error e₁' => exists e₁'
-    case ok pval₁' =>
-      simp only [Except.bind_ok]
-      cases pval₁
-      case value v₁ =>
-        simp only [h_spetv x₁ h_req v₁ hx₁, Except.ok.injEq] at hx₁' ; subst pval₁'
-        exact evaluateHasAttr_subst_preserves_errors subsmap h₁
-      case residual r₁ => exists e₁
-
-
-end Cedar.Thm.Partial.Evaluation.HasAttr

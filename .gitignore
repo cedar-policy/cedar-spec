@@ -24,3 +24,4 @@ cedar-drt/fuzz/artifacts
 # We expect a copy of `cedar-policy/cedar` present in this directory, but do
 # not track it in version control.
 cedar/
+!cedar-lean/Cedar

@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Data.SizeOf
 import Cedar.Partial.Entities
 import Cedar.Partial.Request
 import Cedar.Partial.Value
@@ -23,7 +24,8 @@ import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
 
 /-!
-  This file defines `WellFormed` for various Spec and Partial types
+  The definition of `WellFormed` used by the `Partial` authorization and
+  evaluation theorems
 -/
 
 namespace Cedar.Spec
@@ -63,9 +65,13 @@ end Cedar.Spec
 
 namespace Cedar.Partial
 
+/-- All `ResidualExpr`s are structurally WellFormed. -/
+def ResidualExpr.WellFormed : Partial.ResidualExpr → Prop
+  | _ => true
+
 def Value.WellFormed : Partial.Value → Prop
   | .value v => v.WellFormed
-  | .residual _ => true
+  | .residual r => r.WellFormed
 
 def Request.WellFormed : Partial.Request → Prop
   | { context, .. } => context.WellFormed ∧ ∀ pval ∈ context.values, pval.WellFormed
@@ -78,5 +84,8 @@ def EntityData.WellFormed : Partial.EntityData → Prop
 
 def Entities.WellFormed : Partial.Entities → Prop
   | { es } => es.WellFormed ∧ ∀ edata ∈ es.values, edata.WellFormed
+
+def Subsmap.WellFormed : Subsmap → Prop
+  | { m } => m.WellFormed ∧ ∀ v ∈ m.values, v.WellFormed
 
 end Cedar.Partial
