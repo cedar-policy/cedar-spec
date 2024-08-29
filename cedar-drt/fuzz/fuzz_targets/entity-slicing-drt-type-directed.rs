@@ -18,9 +18,8 @@
 use cedar_drt::initialize_log;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
+use cedar_policy_core::authorizer::Authorizer;
 use cedar_policy_core::entities::Entities;
-use cedar_policy_core::evaluator::EvaluationError;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     hierarchy::{Hierarchy, HierarchyGenerator},
@@ -116,35 +115,32 @@ fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool 
 
 // The main fuzz target. This is for PBT on the validator
 fuzz_target!(|input: FuzzTargetInput| {
-    // only do something when entity manifests are enabled
     initialize_log();
-    // preserve the schema in string format, which may be needed for error messages later
-    let schemafile_string = input.schema.schemafile_string();
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
-            let validator = Validator::new(schema);
+            let validator = Validator::new(schema.clone());
             let mut policyset = ast::PolicySet::new();
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
             if passes_validation(&validator, &policyset) {
                 // policy successfully validated, do entity slicing
-                let manifest = compute_entity_manifest(&schema, entities)
+                let manifest = compute_entity_manifest(&schema, &policyset)
                     .expect("failed to produce entity manifest");
-                let entity_slice = manifest.slice_entities(&entities, &request);
 
                 let authorizer = Authorizer::new();
                 debug!("Policies: {policyset}");
                 debug!("Entities: {entities}");
-                debug!("Entity slice: {entity_slice}");
-                for r in input.requests.into_iter() {
-                    let q = ast::Request::from(r);
-                    debug!("Request: {q}");
-                    let ans_original = authorizer.is_authorized(q.clone(), &policyset, &entities);
-                    let ans_slice = authorizer.is_authorized(q, &policyset, &entity_slice);
+                for abac_request in input.requests.into_iter() {
+                    let request = ast::Request::from(abac_request);
+                    debug!("Request: {request}");
+                    let entity_slice = manifest.slice_entities(&entities, &request).expect("failed to slice entities");
+                    debug!("Entity slice: {entity_slice}");
+                    let ans_original = authorizer.is_authorized(request.clone(), &policyset, &entities);
+                    let ans_slice = authorizer.is_authorized(request, &policyset, &entity_slice);
                     assert_eq!(
-                        ans_original.decision(),
-                        ans_slice.decision(),
+                        ans_original.decision,
+                        ans_slice.decision,
                         "Authorization decision differed with and without entity slicing!"
                     );
                 }
