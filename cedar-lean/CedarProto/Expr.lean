@@ -325,8 +325,8 @@ namespace Op
 @[inline]
 def fromInt (n: Int) : Except String Op :=
   match n with
-    | 1 => .ok .not
-    | 2 => .ok .neg
+    | 0 => .ok .not
+    | 1 => .ok .neg
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum Op := {
@@ -379,16 +379,16 @@ namespace Op
 @[inline]
 def fromInt (n: Int) : Except String Op :=
   match n with
-    | 1 => .ok .eq
-    | 2 => .ok .less
-    | 3 => .ok .lesseq
-    | 4 => .ok .add
-    | 5 => .ok .sub
-    | 6 => .ok .mul
-    | 7 => .ok .in
-    | 8 => .ok .contains
-    | 9 => .ok .containsAll
-    | 10 => .ok .containsAny
+    | 0 => .ok .eq
+    | 1 => .ok .less
+    | 2 => .ok .lesseq
+    | 3 => .ok .add
+    | 4 => .ok .sub
+    | 5 => .ok .mul
+    | 6 => .ok .in
+    | 7 => .ok .contains
+    | 8 => .ok .containsAll
+    | 9 => .ok .containsAny
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum Op := {

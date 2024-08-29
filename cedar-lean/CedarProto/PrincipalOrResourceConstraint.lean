@@ -120,7 +120,7 @@ instance : Inhabited ScopeTemplate.Is where
   default := .is default
 
 @[inline]
-def mergeET (result: ScopeTemplate.Is) (e2: EntityType) : ScopeTemplate.Is :=
+def mergeET (result: ScopeTemplate.Is) (e2: EntityTypeProto) : ScopeTemplate.Is :=
   match result with
     | .is e1 => .is (Field.merge e1 e2)
     | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
@@ -136,8 +136,8 @@ def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Is Unit) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType EntityType) t.wireType
-      let x: EntityType ← Field.parse
+      (@Field.guardWireType EntityTypeProto) t.wireType
+      let x: EntityTypeProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeET s x))
     | _ =>
       t.wireType.skip
@@ -160,13 +160,13 @@ def mergeER (result: ScopeTemplate.IsIn) (er2: EntityUIDOrSlot) : ScopeTemplate.
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
-def mergeET (result: ScopeTemplate.Is) (et2: EntityType) : ScopeTemplate.Is :=
+def mergeET (result: ScopeTemplate.IsIn) (et2: EntityTypeProto) : ScopeTemplate.IsIn :=
   match result with
     | .isMem et1 er => .isMem (Field.merge et1 et2) er
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
-def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
+def merge (x1 x2: ScopeTemplate.IsIn) : ScopeTemplate.IsIn :=
   have ⟨et2, er2⟩ := match x2 with
     | .isMem et er => (et, er)
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
@@ -182,8 +182,8 @@ def parseField (t: Tag) : BParsec (StateM ScopeTemplate.IsIn Unit) := do
       let x: EntityUIDOrSlot ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeER s x))
     | 2 =>
-      (@Field.guardWireType EntityType) t.wireType
-      let x: EntityType ← Field.parse
+      (@Field.guardWireType EntityTypeProto) t.wireType
+      let x: EntityTypeProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeET s x))
     | _ =>
       t.wireType.skip

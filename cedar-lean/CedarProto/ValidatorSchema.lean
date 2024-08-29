@@ -60,6 +60,12 @@ def EntityTypeWithTypesMap := Array (Spec.EntityTypeProto × ValidatorEntityType
 
 def EntityUidWithActionsIdMap := Array (Spec.EntityUID × ValidatorActionId)
   deriving Inhabited, Field
+
+structure ValidatorSchema where
+  ets : EntityTypeWithTypesMap
+  acts : EntityUidWithActionsIdMap
+deriving Inhabited
+
 end Cedar.Validation.Proto
 
 namespace Cedar.Validation.Proto.EntityTypeWithTypesMap
@@ -74,21 +80,9 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
     (λ (k,v) => (k,
       {
         ancestors := ancestorMap.find! k,
-        attrs := v.attrs
+        attrs := Data.Map.make v.attrs.kvs
       })) ets))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
-
-namespace Cedar.Validation.EntitySchema
-def merge (x1 x2: EntitySchema) : EntitySchema :=
-  have x1 : Data.Map Spec.EntityType EntitySchemaEntry := x1
-  have x2 : Data.Map Spec.EntityType EntitySchemaEntry := x2
-  match x1.kvs with
-    | [] => x2
-    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
-
-instance : Field EntitySchema :=
-  Field.fromInterField Proto.EntityTypeWithTypesMap.toEntitySchema merge
-end Cedar.Validation.EntitySchema
 
 namespace Cedar.Validation.Proto.EntityUidWithActionsIdMap
 -- Needed for panic
@@ -115,17 +109,50 @@ def toActionSchema (acts: EntityUidWithActionsIdMap): ActionSchema :=
     ) acts)
 end Cedar.Validation.Proto.EntityUidWithActionsIdMap
 
-namespace Cedar.Validation.ActionSchema
-def merge (x1 x2: ActionSchema) : ActionSchema :=
-  have x1 : Data.Map Spec.EntityUID ActionSchemaEntry := x1
-  have x2 : Data.Map Spec.EntityUID ActionSchemaEntry := x2
-  match x1.kvs with
-    | [] => x2
-    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
+namespace Cedar.Validation.Proto.ValidatorSchema
+@[inline]
+def mergeEntityTypes (result: ValidatorSchema) (x: EntityTypeWithTypesMap) : ValidatorSchema :=
+  {result with
+    ets := Field.merge result.ets x
+  }
 
-instance : Field ActionSchema :=
-  Field.fromInterField Proto.EntityUidWithActionsIdMap.toActionSchema merge
-end Cedar.Validation.ActionSchema
+@[inline]
+def mergeActionIds (result: ValidatorSchema) (x: EntityUidWithActionsIdMap): ValidatorSchema :=
+  {result with
+    acts := Field.merge result.acts x
+  }
+
+@[inline]
+def merge (x y: ValidatorSchema) : ValidatorSchema :=
+  {x with
+    ets := Field.merge x.ets y.ets
+    acts := Field.merge x.acts y.acts
+  }
+
+def parseField (t: Tag) : BParsec (StateM ValidatorSchema Unit) := do
+  match t.fieldNum with
+    | 1 =>
+      (@Field.guardWireType EntityTypeWithTypesMap) t.wireType
+      let x: EntityTypeWithTypesMap ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeEntityTypes s x))
+    | 2 =>
+      (@Field.guardWireType EntityUidWithActionsIdMap) t.wireType
+      let x: EntityUidWithActionsIdMap ← Field.parse
+      pure (modifyGet fun s => Prod.mk () (mergeActionIds s x))
+    | _ =>
+      t.wireType.skip
+      pure (modifyGet fun s => Prod.mk () s)
+
+instance : Message ValidatorSchema := {
+  parseField := parseField
+  merge := merge
+}
+
+def toSchema (v: ValidatorSchema): Schema :=
+  .mk v.ets.toEntitySchema v.acts.toActionSchema
+
+end Cedar.Validation.Proto.ValidatorSchema
+
 
 namespace Cedar.Validation.Schema
 
@@ -134,43 +161,28 @@ namespace Cedar.Validation.Schema
 --   ets : EntitySchema
 --   acts : ActionSchema
 
-@[inline]
-def mergeEntityTypes (result: Schema) (x: EntitySchema) : Schema :=
-  {result with
-    ets := Field.merge result.ets x
-  }
+private def ES.merge (x1 x2: EntitySchema) : EntitySchema :=
+  have x1 : Data.Map Spec.EntityType EntitySchemaEntry := x1
+  have x2 : Data.Map Spec.EntityType EntitySchemaEntry := x2
+  match x1.kvs with
+    | [] => x2
+    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
 
-@[inline]
-def mergeActionIds (result: Schema) (x: ActionSchema): Schema :=
-  {result with
-    acts := Field.merge result.acts x
-  }
+private def AS.merge (x1 x2: ActionSchema) : ActionSchema :=
+  have x1 : Data.Map Spec.EntityUID ActionSchemaEntry := x1
+  have x2 : Data.Map Spec.EntityUID ActionSchemaEntry := x2
+  match x1.kvs with
+    | [] => x2
+    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
 
-@[inline]
-def merge (x y: Schema) : Schema :=
-  {x with
-    ets := Field.merge x.ets y.ets
-    acts := Field.merge x.acts y.acts
+def merge (x1 x2: Schema): Schema :=
+  {x1 with
+    ets := ES.merge x1.ets x2.ets
+    acts := AS.merge x1.acts x2.acts
   }
-
-def parseField (t: Tag) : BParsec (StateM Schema Unit) := do
-  match t.fieldNum with
-    | 1 =>
-      (@Field.guardWireType EntitySchema) t.wireType
-      let x: EntitySchema ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEntityTypes s x))
-    | 2 =>
-      (@Field.guardWireType ActionSchema) t.wireType
-      let x: ActionSchema ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeActionIds s x))
-    | _ =>
-      t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
 
 deriving instance Inhabited for Schema
-instance : Message Schema := {
-  parseField := parseField
-  merge := merge
-}
+instance : Field Schema := Field.fromInterField Proto.ValidatorSchema.toSchema merge
+
 
 end Cedar.Validation.Schema
