@@ -43,12 +43,8 @@ private def extExprToValue (xfn : ExtFun) (args : List Expr) : Value :=
   | .decimal, [.lit (.string s)] => match Spec.Ext.Decimal.decimal s with
     | .some v => .ext (.decimal v)
     | .none => panic! s!"exprToValue: failed to parse decimal {s}"
-  | .ip, [.lit (.string s)] =>
-    dbg_trace s!"{s}"
-    match Spec.Ext.IPAddr.ip s with
-    | .some v =>
-      dbg_trace s!"{repr v}"
-      .ext (.ipaddr v)
+  | .ip, [.lit (.string s)] => match Spec.Ext.IPAddr.ip s with
+    | .some v => .ext (.ipaddr v)
     | .none => panic! s!"exprToValue: failed to parse ip {s}"
   | _,_ => panic! ("exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args)))
 
