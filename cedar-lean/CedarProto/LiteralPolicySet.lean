@@ -33,20 +33,20 @@ namespace LiteralPolicySet
 @[inline]
 def mergeTemplates (result: LiteralPolicySet) (x: Array (String × Template)) : LiteralPolicySet :=
   {result with
-    templates := x.toList ++ result.templates
+    templates := result.templates ++ x.toList
   }
 
 @[inline]
 def mergeLinks (result: LiteralPolicySet) (x: Array (String × TemplateLinkedPolicy)): LiteralPolicySet :=
   {result with
-    links := x.toList ++ result.links
+    links := result.links ++ x.toList
   }
 
 @[inline]
 def merge (x y: LiteralPolicySet) : LiteralPolicySet :=
   {x with
-    templates := y.templates ++ x.templates
-    links := y.links ++ x.links
+    templates := x.templates ++ y.templates
+    links := x.links ++ y.links
   }
 
 
@@ -84,7 +84,7 @@ def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
 
 @[inline]
 private def merge (x y : Policies): Policies :=
-  y ++ x
+  x ++ y
 
 instance : Field Policies := Field.fromInterField fromLiteralPolicySet merge
 

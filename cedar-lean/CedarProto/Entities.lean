@@ -38,13 +38,13 @@ namespace EntitiesProto
 def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
   have x : Array EntityProto := x.map (fun xi => {xi with data := xi.data.mkWf })
   have result : List EntityProto := result
-  x.toList ++ result
+  result ++ x.toList
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
   have x : List EntityProto := x
   have y : List EntityProto := y
-  y ++ x
+  x ++ y
 
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with

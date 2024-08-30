@@ -50,7 +50,7 @@ def mergeAppliesTo (result: ValidatorActionId) (x: ValidatorApplySpec) : Validat
 @[inline]
 def mergeDescendants (result: ValidatorActionId) (x: Array Spec.EntityUID): ValidatorActionId :=
   {result with
-    descendants := x ++ result.descendants
+    descendants := result.descendants ++ x
   }
 
 @[inline]
@@ -63,7 +63,7 @@ def mergeContext (result: ValidatorActionId) (x: CedarType): ValidatorActionId :
 def merge (x y: ValidatorActionId) : ValidatorActionId :=
   {x with
     appliesTo := Field.merge x.appliesTo y.appliesTo
-    descendants := y.descendants ++ x.descendants
+    descendants := x.descendants ++ y.descendants
     context := Field.merge x.context y.context
   }
 

@@ -56,7 +56,7 @@ instance : Inhabited ActionScope.In where
 
 def mergeEuids (result: ActionScope.In) (e2: Array EntityUID) : ActionScope.In :=
   match result with
-    | .actionInAny e1 => .actionInAny (e2.toList ++ e1)
+    | .actionInAny e1 => .actionInAny (e1 ++ e2.toList)
     | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
 
 def merge (x1 x2: ActionScope.In) : ActionScope.In :=
@@ -64,7 +64,7 @@ def merge (x1 x2: ActionScope.In) : ActionScope.In :=
     | .actionInAny e => e
     | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
   match x1 with
-    | .actionInAny e1 => .actionInAny (e2 ++ e1)
+    | .actionInAny e1 => .actionInAny (e1 ++ e2)
     | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
 
 def parseField (t: Tag) : BParsec (StateM ActionScope.In Unit) := do
@@ -132,7 +132,7 @@ def mergeIn (result: ActionScope) (x: Proto.ActionScope.In): ActionScope :=
     | .actionInAny e => e
     | _ => panic!("Proto.ActionScope.In expected to have constructor .actionInAny")
   match result with
-    | .actionInAny e1 => .actionInAny (e2 ++ e1)
+    | .actionInAny e1 => .actionInAny (e1 ++ e2)
     | _ => .actionInAny e2
 
 
@@ -162,7 +162,7 @@ def merge (x1 x2: ActionScope) : ActionScope :=
       | _ => x2
     | .actionInAny l2 => match x1 with
       -- Merge entity uids
-      | .actionInAny l1 => .actionInAny (l2 ++ l1)
+      | .actionInAny l1 => .actionInAny (l1 ++ l2)
       | _ => x2
 
 def parseField (t: Tag) : BParsec (StateM ActionScope Unit) := do

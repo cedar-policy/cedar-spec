@@ -119,6 +119,9 @@ def fromInt (n: Int) : Except String Var :=
     | 3 => .ok .context
     | n => .error s!"Field {n} does not exist in enum"
 
+instance : Inhabited Var where
+  default := .principal
+
 instance : ProtoEnum Var := {
   fromInt := fromInt
 }
@@ -228,7 +231,7 @@ def Expr.merge (e1: Expr) (e2: Expr) : Expr :=
     | .record m1 => .record (m1 ++ m2)
     | _ => e2
   | .call fnName2 args2 => match e1 with
-    | .call _ args1 => .call fnName2 (args2 ++ args1)
+    | .call _ args1 => .call fnName2 (args1 ++ args2)
     | _ => e2
 
 namespace Proto.ExprKind.If
@@ -329,6 +332,9 @@ def fromInt (n: Int) : Except String Op :=
     | 1 => .ok .neg
     | n => .error s!"Field {n} does not exist in enum"
 
+instance : Inhabited Op where
+  default := .not
+
 instance : ProtoEnum Op := {
   fromInt := fromInt
 }
@@ -391,6 +397,9 @@ def fromInt (n: Int) : Except String Op :=
     | 9 => .ok .containsAny
     | n => .error s!"Field {n} does not exist in enum"
 
+instance : Inhabited Op where
+  default := .eq
+
 instance : ProtoEnum Op := {
   fromInt := fromInt
 }
@@ -438,15 +447,27 @@ end Proto.ExprKind.BinaryApp
 
 namespace Proto.ExprKind.ExtensionFunctionApp
 @[inline]
-def mergeName (result: ExprKind.ExtensionFunctionApp) (_: Name): ExprKind.ExtensionFunctionApp :=
+def mergeName (result: ExprKind.ExtensionFunctionApp) (xfn: Name): ExprKind.ExtensionFunctionApp :=
   match result with
-  | .call _ _ => panic!("Proto.ExprKind.ExtensionFunctionApp: Not Implemented")
+  | .call _ es => match xfn.id with
+    | "decimal" => .call .decimal es
+    | "lessThan" => .call .lessThan es
+    | "lessThanOrEqual" => .call .lessThanOrEqual es
+    | "greaterThan" => .call .greaterThan es
+    | "greaterThanOrEqual" => .call .greaterThanOrEqual es
+    | "ip" => .call .ip es
+    | "isIpv4" => .call .isIpv4 es
+    | "isIpv6" => .call .isIpv6 es
+    | "isLoopback" => .call .isLoopback es
+    | "isMulticast" => .call .isMulticast es
+    | "isInRange" => .call .isInRange es
+    | xfn => panic! s!"mergeName: unknown extension function {xfn}"
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
 @[inline]
 def mergeArgs (result: ExprKind.ExtensionFunctionApp) (es2: Array Expr): ExprKind.ExtensionFunctionApp :=
   match result with
-  | .call n1 es1 => .call n1 (es2.toList ++ es1)
+  | .call n1 es1 => .call n1 (es1 ++ es2.toList)
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
 @[inline]
@@ -455,7 +476,7 @@ def merge (x1 x2: ExprKind.ExtensionFunctionApp): ExprKind.ExtensionFunctionApp 
   | .call fnName args => (fnName, args)
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
   match x1 with
-  | .call _ es1 => .call n2 (es2 ++ es1)
+  | .call _ es1 => .call n2 (es1 ++ es2)
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
 -- parseFIeld requires mutual recursion and can be found at the end of the file
@@ -577,7 +598,7 @@ def mergeExpr (result: ExprKind.Like) (e2: Expr): ExprKind.Like :=
 @[inline]
 def mergePattern (result: ExprKind.Like) (pat2: Array PatElem): ExprKind.Like :=
   match result with
-  | .unaryApp (.like pat1) e => .unaryApp (.like (pat2.toList ++ pat1)) e
+  | .unaryApp (.like pat1) e => .unaryApp (.like (pat1 ++ pat2.toList)) e
   | _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
 
 @[inline]
@@ -586,7 +607,7 @@ def merge (x1 x2: ExprKind.Like): ExprKind.Like :=
   | .unaryApp (.like pat) expr => (pat, expr)
   | _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
   match x1 with
-  | .unaryApp (.like pat1) e1 => .unaryApp (.like (pat2 ++ pat1)) (Expr.merge e1 e2)
+  | .unaryApp (.like pat1) e1 => .unaryApp (.like (pat1 ++ pat2)) (Expr.merge e1 e2)
   | _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
 
 -- parseField relies on mutual recursion and can be found at the end of the file
@@ -621,7 +642,7 @@ namespace Proto.ExprKind.Set
 @[inline]
 def mergeElems (result: ExprKind.Set) (es2: Array Expr) : ExprKind.Set :=
   match result with
-  | .set es1 => .set (es2.toList ++ es1)
+  | .set es1 => .set (es1 ++ es2.toList)
   | _ => panic!("Expected ExprKind.Set to have the .set constructor")
 
 @[inline]
@@ -630,7 +651,7 @@ def merge (x1 x2: ExprKind.Set): ExprKind.Set :=
     | .set elements => elements
     | _ => panic!("Expected ExprKind.Set to have the .set constructor")
   match x1 with
-  | .set es1 => .set (es2 ++ es1)
+  | .set es1 => .set (es1 ++ es2)
   | _ => panic!("Expected ExprKind.Set to have the .set constructor ")
 
 -- parseField relies on mutual recursion and can be found at the
@@ -641,7 +662,7 @@ namespace Proto.ExprKind.Record
 @[inline]
 def mergeItems (result: ExprKind.Record) (its2: Array (String × Expr)) : ExprKind.Record :=
   match result with
-  | .record its1 => .record (its2.toList ++ its1)
+  | .record its1 => .record (its1 ++ its2.toList)
   | _ => panic!("Expected ExprKind.Record to have constructor .record")
 
 @[inline]
@@ -650,7 +671,7 @@ def merge (x1 x2: ExprKind.Record): ExprKind.Record :=
     | .record items => items
     | _ => panic!("Expected ExprKind.Record to have constructor .record")
   match x1 with
-  | .record its1 => .record (its2 ++ its1)
+  | .record its1 => .record (its1 ++ its2)
   | _ => panic!("Expected ExprKind.Record to have constructor .record")
 
 -- parseField relies on mutual recursion and can be found at the
@@ -857,7 +878,6 @@ partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t: Tag): BParsec (St
       (@Field.guardWireType (Repeated Expr)) t.wireType
       let x: Repeated Expr ← Field.parse
       pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.ExtensionFunctionApp.mergeArgs s x))
-
     | _ =>
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)

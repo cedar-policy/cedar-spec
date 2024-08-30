@@ -32,6 +32,10 @@ def fromInt (n: Int): Except String Effect :=
     | 1 => .ok .permit
     | n => .error s!"Field {n} does not exist in enum"
 
+instance : Inhabited Effect := {
+  default := .forbid
+}
+
 instance : ProtoEnum Effect := {
   fromInt := fromInt
 }
@@ -63,12 +67,16 @@ namespace Template
 --   actionScope : ActionScope
 --   resourceScope : ResourceScopeTemplate
 --   condition : Conditions
+deriving instance Inhabited for Template
 
 @[inline]
 def mergeEffect (result: Template) (x: Effect): Template :=
-  {result with
-    effect := Field.merge result.effect x
-  }
+  match x with
+    | .forbid => panic! "FORBID FOUND"
+    | _ =>
+      {result with
+        effect := Field.merge result.effect x
+      }
 
 @[inline]
 def mergePrincipalScope (result: Template) (x: PrincipalScopeTemplate) : Template :=
@@ -132,7 +140,6 @@ def parseField (t: Tag) : BParsec (StateM Template Unit) := do
       t.wireType.skip
       pure (modifyGet fun s => Prod.mk () s)
 
-deriving instance Inhabited for Template
 instance : Message Template := {
   parseField := parseField
   merge := merge

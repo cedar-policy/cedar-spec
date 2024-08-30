@@ -39,7 +39,7 @@ namespace ValidatorEntityType
 @[inline]
 def mergeDescendants (result: ValidatorEntityType) (x: Array Spec.EntityTypeProto) : ValidatorEntityType :=
   {result with
-    descendants := x ++ result.descendants
+    descendants := result.descendants ++ x
   }
 
 @[inline]

@@ -36,7 +36,7 @@ def mergeId (result: Name) (x: String) : Name :=
 @[inline]
 def mergePath (result: Name) (path_elem: Repeated String): Name :=
   {result with
-    path := path_elem.toList ++ result.path
+    path := result.path ++ path_elem.toList
   }
 
 @[inline]

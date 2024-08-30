@@ -34,20 +34,20 @@ namespace ValidatorApplySpec
 @[inline]
 def mergePas (result: ValidatorApplySpec) (x: Array Spec.EntityTypeProto) : ValidatorApplySpec :=
   {result with
-    principalApplySpec := x ++ result.principalApplySpec
+    principalApplySpec := result.principalApplySpec ++ x
   }
 
 @[inline]
 def mergeRas (result: ValidatorApplySpec) (x: Array Spec.EntityTypeProto): ValidatorApplySpec :=
   {result with
-    resourceApplySpec := x ++ result.resourceApplySpec
+    resourceApplySpec := result.resourceApplySpec ++ x
   }
 
 @[inline]
 def merge (x y: ValidatorApplySpec) : ValidatorApplySpec :=
   {x with
-    principalApplySpec := y.principalApplySpec ++ x.principalApplySpec
-    resourceApplySpec := y.resourceApplySpec ++ x.resourceApplySpec
+    principalApplySpec := x.principalApplySpec ++ y.principalApplySpec
+    resourceApplySpec := x.resourceApplySpec ++ y.resourceApplySpec
   }
 
 def parseField (t: Tag) : BParsec (StateM ValidatorApplySpec Unit) := do

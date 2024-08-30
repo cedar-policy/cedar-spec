@@ -72,7 +72,7 @@ private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec Str
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
   let pos ← BParsec.pos
   let c ← utf8DecodeChar pos
-  let elementSize := String.csize c
+  let elementSize := Char.utf8Size c
   BParsec.forward (elementSize)
   parseStringHelper (remaining - elementSize) (r.push c)
 -- Note: Can likely prove temrination if I show that ∀ c: Char, String.csize c > 0

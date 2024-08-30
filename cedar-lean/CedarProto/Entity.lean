@@ -48,21 +48,21 @@ def mergeUid (result: EntityProto) (x: EntityUID) : EntityProto :=
 @[inline]
 def mergeAttrs (result: EntityProto) (x: Array (String × Value)) : EntityProto :=
   {result with
-    data.attrs := Cedar.Data.Map.mk (x.toList ++ result.data.attrs.kvs)
+    data.attrs := Cedar.Data.Map.mk (result.data.attrs.kvs ++ x.toList)
   }
 
 @[inline]
 def mergeAncestors (result: EntityProto) (x: Array EntityUID) : EntityProto :=
   {result with
-    data.ancestors := Cedar.Data.Set.mk (x.toList ++ result.data.ancestors.elts)
+    data.ancestors := Cedar.Data.Set.mk (result.data.ancestors.elts ++ x.toList)
   }
 
 @[inline]
 def merge (x: EntityProto) (y: EntityProto) : EntityProto :=
   {x with
     uid := Field.merge x.uid y.uid
-    data.attrs := Cedar.Data.Map.mk (y.data.attrs.kvs ++ x.data.attrs.kvs)
-    data.ancestors := Cedar.Data.Set.mk (y.data.ancestors.elts ++ x.data.ancestors.elts)
+    data.attrs := Cedar.Data.Map.mk (x.data.attrs.kvs ++ y.data.attrs.kvs)
+    data.ancestors := Cedar.Data.Set.mk (x.data.ancestors.elts ++ y.data.ancestors.elts)
   }
 
 @[inline]

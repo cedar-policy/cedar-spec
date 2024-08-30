@@ -61,7 +61,7 @@ def merge (x: TemplateLinkedPolicy) (y: TemplateLinkedPolicy) : TemplateLinkedPo
   {x with
     id := Field.merge x.id y.id
     templateId := Field.merge x.id y.id
-    slotEnv := Cedar.Data.Map.mk (y.slotEnv.kvs ++ x.slotEnv.kvs)
+    slotEnv := Cedar.Data.Map.mk (x.slotEnv.kvs ++ y.slotEnv.kvs)
   }
 
 def parseField (t: Tag) : BParsec (StateM TemplateLinkedPolicy Unit) := do

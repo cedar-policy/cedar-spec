@@ -50,7 +50,7 @@ end Proto
 
 namespace RecordType
 def mergeAttrs (result: RecordType) (x: Array (String × QualifiedType)) : RecordType :=
-  Cedar.Data.Map.mk (x.toList ++ result.kvs)
+  Cedar.Data.Map.mk (result.kvs ++ x.toList)
 
 def merge (x1 x2: RecordType) : RecordType :=
   Cedar.Data.Map.mk (x1.kvs ++ x2.kvs)
