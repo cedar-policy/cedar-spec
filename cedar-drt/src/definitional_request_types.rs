@@ -18,14 +18,14 @@ pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 use cedar_testing::cedar_test_impl::ExprOrValue;
 pub use entities::Entities;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 pub mod proto {
     #![allow(missing_docs)]
     include!(concat!(env!("OUT_DIR"), "/cedar_drt.rs"));
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AuthorizationRequestMsg {
     pub request: ast::Request,
     pub policies: ast::PolicySet,
