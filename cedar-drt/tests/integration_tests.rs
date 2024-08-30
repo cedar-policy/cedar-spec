@@ -30,9 +30,8 @@ use std::time::Duration;
 use walkdir::WalkDir;
 
 use cedar_testing::integration_testing::*;
-use statrs::statistics::{Data, Distribution};
 use prost::Message;
-
+use statrs::statistics::{Data, Distribution};
 
 /// Path of the folder containing the (handwritten) integration tests
 fn integration_test_folder() -> &'static Path {
@@ -114,8 +113,8 @@ fn protobuf_roundtrip() {
         let test_name: String = jsonfile.display().to_string();
         let jsonstr = std::fs::read_to_string(jsonfile.as_path())
             .unwrap_or_else(|e| panic!("error reading from file {test_name}: {e}"));
-        let test: JsonTest =
-            serde_json::from_str(&jsonstr).unwrap_or_else(|e| panic!("error parsing {test_name}: {e}"));
+        let test: JsonTest = serde_json::from_str(&jsonstr)
+            .unwrap_or_else(|e| panic!("error parsing {test_name}: {e}"));
         let policies = parse_policies_from_test(&test);
         let schema = parse_schema_from_test(&test);
         let entities = parse_entities_from_test(&test, &schema);
@@ -130,7 +129,7 @@ fn protobuf_roundtrip() {
             let request_msg = AuthorizationRequestMsg {
                 request: request.clone(),
                 policies: policies.clone(),
-                entities: entities.clone()
+                entities: entities.clone(),
             };
 
             // Perform a roundtrip serialize/de-serialize from protobuf and AST
@@ -138,47 +137,65 @@ fn protobuf_roundtrip() {
             let request_msg_rt = AuthorizationRequestMsg::from(&request_msg_proto);
 
             // Checking request equality (ignores loc field)
-            assert_eq!(request_msg.request.principal().uid(), request_msg_rt.request.principal().uid());
-            assert_eq!(request_msg.request.action().uid(), request_msg_rt.request.action().uid());
-            assert_eq!(request_msg.request.resource().uid(), request_msg_rt.request.resource().uid());
-            assert_eq!(request_msg.request.context(), request_msg_rt.request.context());
+            assert_eq!(
+                request_msg.request.principal().uid(),
+                request_msg_rt.request.principal().uid()
+            );
+            assert_eq!(
+                request_msg.request.action().uid(),
+                request_msg_rt.request.action().uid()
+            );
+            assert_eq!(
+                request_msg.request.resource().uid(),
+                request_msg_rt.request.resource().uid()
+            );
+            assert_eq!(
+                request_msg.request.context(),
+                request_msg_rt.request.context()
+            );
 
             // Checking policy set equality
             assert_eq!(request_msg.policies, request_msg_rt.policies);
-            
+
             // Checking entities equality
             assert_eq!(request_msg.entities, request_msg_rt.entities);
 
             // Time protobuf serialization from AST -> bytes
             let mut request_msg_proto: Vec<u8> = vec![];
-            let (_, proto_serialize_dur) : ((), Duration) = time_function(
-                ||  {
-                    let protomsg = proto::AuthorizationRequestMsg::from(&request_msg);
-                    request_msg_proto.reserve(protomsg.encoded_len());
-                    protomsg
-                        .encode(&mut request_msg_proto)
-                        .expect("Failed to serialize AuthorizationRequestMsg Proto")
-                }
-            );
+            let (_, proto_serialize_dur): ((), Duration) = time_function(|| {
+                let protomsg = proto::AuthorizationRequestMsg::from(&request_msg);
+                request_msg_proto.reserve(protomsg.encoded_len());
+                protomsg
+                    .encode(&mut request_msg_proto)
+                    .expect("Failed to serialize AuthorizationRequestMsg Proto")
+            });
 
             // Time protobuf deserialization from bytes -> AST
-            let (_request_msg_rt, proto_deserialize_dur) = time_function(
-                || AuthorizationRequestMsg::from(
+            let (_request_msg_rt, proto_deserialize_dur) = time_function(|| {
+                AuthorizationRequestMsg::from(
                     &proto::AuthorizationRequestMsg::decode(&request_msg_proto[..])
-                        .expect("Failed to deserialize AuthorizationRequestMsg proto")
-             ));
+                        .expect("Failed to deserialize AuthorizationRequestMsg proto"),
+                )
+            });
 
             // Log protobuf timings and size of byte representation
             proto_serialize_durs.push(proto_serialize_dur.as_micros() as f64);
-            proto_serialize_sizes.push((std::mem::size_of::<Vec<u8>>() + request_msg_proto.capacity() * std::mem::size_of::<u8>()) as f64);
+            proto_serialize_sizes.push(
+                (std::mem::size_of::<Vec<u8>>()
+                    + request_msg_proto.capacity() * std::mem::size_of::<u8>())
+                    as f64,
+            );
             proto_deserialize_durs.push(proto_deserialize_dur.as_micros() as f64);
 
             // Time JSON serialization to a string
-            let (request_json, json_serialize_dur) = time_function(|| serde_json::to_string(&AuthorizationRequest {
-                request: &request,
-                policies: &policies,
-                entities: &entities,
-            }).expect("Failed to seralize Authorization request"));
+            let (request_json, json_serialize_dur) = time_function(|| {
+                serde_json::to_string(&AuthorizationRequest {
+                    request: &request,
+                    policies: &policies,
+                    entities: &entities,
+                })
+                .expect("Failed to seralize Authorization request")
+            });
 
             // Log JSON serialization time and size of string
             json_serialize_durs.push(json_serialize_dur.as_micros() as f64);

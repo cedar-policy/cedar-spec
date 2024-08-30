@@ -38,8 +38,9 @@ impl From<&proto::AuthorizationRequestMsg> for AuthorizationRequestMsg {
 
         Self {
             request: request,
-            policies: ast::PolicySet::try_from(v.policies.as_ref().unwrap()).expect("Failed to parse policy set"),
-            entities: Entities::from(v.entities.as_ref().unwrap())
+            policies: ast::PolicySet::try_from(v.policies.as_ref().unwrap())
+                .expect("Failed to parse policy set"),
+            entities: Entities::from(v.entities.as_ref().unwrap()),
         }
     }
 }
@@ -49,7 +50,7 @@ impl From<&AuthorizationRequestMsg> for proto::AuthorizationRequestMsg {
         Self {
             request: Some(ast::proto::Request::from(&v.request)),
             policies: Some(ast::proto::LiteralPolicySet::from(&v.policies)),
-            entities: Some(ast::proto::Entities::from(&v.entities))
+            entities: Some(ast::proto::Entities::from(&v.entities)),
         }
     }
 }
@@ -64,8 +65,11 @@ impl From<&proto::ValidationRequestMsg> for ValidationRequestMsg {
     fn from(v: &proto::ValidationRequestMsg) -> Self {
         Self {
             schema: ValidatorSchema::from(v.schema.as_ref().unwrap()),
-            policies: ast::PolicySet::try_from(v.policies.as_ref().unwrap()).expect("Failed to parse policy set"),
-            mode: ValidationMode::from(&cedar_policy_validator::proto::ValidationMode::try_from(v.mode).unwrap())
+            policies: ast::PolicySet::try_from(v.policies.as_ref().unwrap())
+                .expect("Failed to parse policy set"),
+            mode: ValidationMode::from(
+                &cedar_policy_validator::proto::ValidationMode::try_from(v.mode).unwrap(),
+            ),
         }
     }
 }
@@ -73,13 +77,14 @@ impl From<&proto::ValidationRequestMsg> for ValidationRequestMsg {
 impl From<&ValidationRequestMsg> for proto::ValidationRequestMsg {
     fn from(v: &ValidationRequestMsg) -> Self {
         Self {
-            schema: Some(cedar_policy_validator::proto::ValidatorSchema::from(&v.schema)),
+            schema: Some(cedar_policy_validator::proto::ValidatorSchema::from(
+                &v.schema,
+            )),
             policies: Some(ast::proto::LiteralPolicySet::from(&v.policies)),
-            mode: cedar_policy_validator::proto::ValidationMode::from(&v.mode).into()
+            mode: cedar_policy_validator::proto::ValidationMode::from(&v.mode).into(),
         }
     }
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct AuthorizationRequest<'a> {

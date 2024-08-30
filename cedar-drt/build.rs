@@ -30,7 +30,14 @@ fn main() {
     let mut config = prost_build::Config::new();
     config.extern_path(".cedar_policy_core", "::cedar_policy_core::ast::proto");
     config.extern_path(".cedar_policy_validator", "::cedar_policy_validator::proto");
-    config.compile_protos(
-        &["./schema/Messages.proto"],
-        &["./schema", "../cedar/cedar-policy-core/schema", "../cedar/cedar-policy-validator/schema"]).unwrap();
+    config
+        .compile_protos(
+            &["./schema/Messages.proto"],
+            &[
+                "./schema",
+                "../cedar/cedar-policy-core/schema",
+                "../cedar/cedar-policy-validator/schema",
+            ],
+        )
+        .unwrap();
 }
