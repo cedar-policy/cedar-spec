@@ -37,11 +37,26 @@ def merge (v1: Value) (v2: Value) : Value :=
       | _ => v2
     | .ext _ => v2
 
+
+private def extExprToValue (xfn : ExtFun) (args : List Expr) : Value :=
+  match xfn, args with
+  | .decimal, [.lit (.string s)] => match Spec.Ext.Decimal.decimal s with
+    | .some v => .ext (.decimal v)
+    | .none => panic! s!"exprToValue: failed to parse decimal {s}"
+  | .ip, [.lit (.string s)] =>
+    dbg_trace s!"{s}"
+    match Spec.Ext.IPAddr.ip s with
+    | .some v =>
+      dbg_trace s!"{repr v}"
+      .ext (.ipaddr v)
+    | .none => panic! s!"exprToValue: failed to parse ip {s}"
+  | _,_ => panic! ("exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args)))
+
 private partial def exprToValue : Expr → Value
   | .lit p => .prim p
   | .record r => .record (Cedar.Data.Map.make (r.map (fun ⟨attr, e⟩ => ⟨attr, exprToValue e⟩)))
   | .set s => .set (Cedar.Data.Set.make (s.map exprToValue))
-  | .call _ _ => panic!("TODO: Not Implemented")
+  | .call xfn args => extExprToValue xfn args
   | _ => panic!("exprToValue: invalid input expression")
 
 instance : Field Value := Field.fromInterField exprToValue merge
