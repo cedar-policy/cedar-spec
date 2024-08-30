@@ -21,6 +21,8 @@ import Cedar.Validation
 import DiffTest.Util
 import DiffTest.Parser
 import Cedar.Partial.Evaluator
+import CedarProto
+import Protobuf
 
 /-! This file defines the public interfaces for the Lean implementation.
     The input and output are stringified JSON objects. -/
@@ -29,6 +31,7 @@ namespace DiffTest
 
 open Cedar.Spec
 open Cedar.Validation
+open Proto
 
 structure Timed (α : Type) where
   data : α
@@ -44,17 +47,15 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     duration := stop - start
   }
 
-@[export isAuthorizedDRT] unsafe def isAuthorizedDRT (req : String) : String :=
-  let result : ParseResult (Timed Response) :=
-    match Lean.Json.parse req with
-    | .error e => .error s!"isAuthorizedDRT: failed to parse input: {e}"
-    | .ok json => do
-      let request ← getJsonField json "request" >>= jsonToRequest
-      let entities ← getJsonField json "entities" >>= jsonToEntities
-      let policies ← getJsonField json "policies" >>= jsonToPolicies
-      let result := runAndTime (λ () => isAuthorized request entities policies)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+@[export isAuthorizedDRT] unsafe def isAuthorizedDRT (req: ByteArray) : String :=
+    let result: ParseResult (Timed Response) :=
+      match (@Message.interpret? AuthorizationRequest) req with
+      | .error e =>
+        .error s!"isAuthorizedDRT: failed to parse input: {e}"
+      | .ok p =>
+        let result := runAndTime (λ () => isAuthorized p.request p.entities p.policies)
+        .ok (unsafeBaseIO result)
+    toString (Lean.toJson result)
 
 @[export validateDRT] unsafe def validateDRT (req : String) : String :=
   let result : ParseResult (Timed ValidationResult) :=
