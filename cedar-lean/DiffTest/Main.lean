@@ -57,16 +57,15 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
         .ok (unsafeBaseIO result)
     toString (Lean.toJson result)
 
-@[export validateDRT] unsafe def validateDRT (req : String) : String :=
-  let result : ParseResult (Timed ValidationResult) :=
-    match Lean.Json.parse req with
-    | .error e => .error s!"validateDRT: failed to parse input: {e}"
-    | .ok json => do
-      let policies ← getJsonField json "policies" >>= jsonToPolicies
-      let schema ← getJsonField json "schema" >>= jsonToSchema
-      let result := runAndTime (λ () => validate policies schema)
-      .ok (unsafeBaseIO result)
-  toString (Lean.toJson result)
+@[export validateDRT] unsafe def validateDRT (req : ByteArray) : String :=
+    let result: ParseResult (Timed ValidationResult) :=
+      match (@Message.interpret? ValidationRequest) req with
+      | .error e =>
+        .error s!"validateDRT: failed to parse input: {e}"
+      | .ok v =>
+        let result := runAndTime (λ () => validate v.policies v.schema)
+        .ok (unsafeBaseIO result)
+    toString (Lean.toJson result)
 
 @[export evaluateDRT] unsafe def evaluateDRT (req : String) : String :=
   let result : ParseResult (Timed Bool) :=
