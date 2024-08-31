@@ -304,10 +304,13 @@ def mergeEr (result: CedarType) (x: Proto.EntityRecordKind): CedarType :=
     | _ => x
   | _ => panic!("Expected EntityRecordKind to be CedarType.record or CedarType.entity")
 
--- Is this supposed to be an extension type?
 @[inline]
-def mergeName (_: CedarType) (_: Cedar.Spec.Name): CedarType :=
-  panic!("Not Implemented")
+def mergeName (_: CedarType) (xty: Cedar.Spec.Name): CedarType :=
+  match xty.id with
+  | "ipaddr" => .ext .ipAddr
+  | "decimal" => .ext .decimal
+  | xty => panic! s!"mergeName: unknown extension type {xty}"
+
 
 end CedarType
 
