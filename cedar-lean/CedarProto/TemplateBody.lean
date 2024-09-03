@@ -112,29 +112,29 @@ def merge (x y: Template) : Template :=
     condition := Field.merge x.condition y.condition
   }
 
-
+@[inline]
 def parseField (t: Tag) : BParsec (StateM Template Unit) := do
   match t.fieldNum with
     -- NOTE: Doesn't look like id gets utilized in this message
     | 4 =>
       (@Field.guardWireType Effect) t.wireType
-      let x: Effect ← BParsec.attempt Field.parse
+      let x: Effect ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEffect s x))
     | 5 =>
       (@Field.guardWireType PrincipalScopeTemplate) t.wireType
-      let x: PrincipalScopeTemplate ← BParsec.attempt Field.parse
+      let x: PrincipalScopeTemplate ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergePrincipalScope s x))
     | 6 =>
       (@Field.guardWireType ActionScope) t.wireType
-      let x: ActionScope ← BParsec.attempt Field.parse
+      let x: ActionScope ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeActionScope s x))
     | 7 =>
       (@Field.guardWireType ResourceScopeTemplate) t.wireType
-      let x: ResourceScopeTemplate ← BParsec.attempt Field.parse
+      let x: ResourceScopeTemplate ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeResourceScope s x))
     | 8 =>
       (@Field.guardWireType Conditions) t.wireType
-      let x: Conditions ← BParsec.attempt Field.parse
+      let x: Conditions ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeConditions s x))
     | _ =>
       t.wireType.skip

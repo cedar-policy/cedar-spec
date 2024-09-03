@@ -42,6 +42,7 @@ def mergeName (x1: EntityTypeProto) (x2: Name) : EntityTypeProto :=
 def merge (x1: EntityTypeProto) (x2: EntityTypeProto) : EntityTypeProto :=
   mergeName x1 x2
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM EntityTypeProto Unit) := do
   match t.fieldNum with
     | 1 =>

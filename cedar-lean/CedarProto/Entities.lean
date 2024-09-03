@@ -46,11 +46,12 @@ def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
   have y : List EntityProto := y
   x ++ y
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated EntityProto)) t.wireType
-      let x: Repeated EntityProto ← BParsec.attempt Field.parse
+      let x: Repeated EntityProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEntities s x))
     -- Ignoring 3 | mode
     | _ =>

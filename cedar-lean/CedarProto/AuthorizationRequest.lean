@@ -57,19 +57,20 @@ def merge (x y: AuthorizationRequest) : AuthorizationRequest :=
     policies := Field.merge x.policies y.policies
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM AuthorizationRequest Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Request) t.wireType
-      let x: Request ← BParsec.attempt Field.parse
+      let x: Request ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeRequest s x))
     | 2 =>
       (@Field.guardWireType Policies) t.wireType
-      let x: Policies ← BParsec.attempt Field.parse
+      let x: Policies ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergePolicies s x))
     | 3 =>
       (@Field.guardWireType Entities) t.wireType
-      let x: Entities ← BParsec.attempt Field.parse
+      let x: Entities ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEntities s x))
     | _ =>
       t.wireType.skip

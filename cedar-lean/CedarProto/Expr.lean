@@ -84,19 +84,19 @@ def parseField (t: Tag) : BParsec (StateM Prim Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Bool) t.wireType
-      let x ← BParsec.attempt (Field.parse: (BParsec Bool))
+      let x: Bool ← Field.parse
       pure (modifyGet fun s => Prod.mk () (s.merge_bool x))
     | 2 =>
       (@Field.guardWireType Int64) t.wireType
-      let x ← BParsec.attempt (Field.parse: (BParsec Int64))
+      let x: Int64 ← Field.parse
       pure (modifyGet fun s => Prod.mk () (s.merge_int x))
     | 3 =>
       (@Field.guardWireType String) t.wireType
-      let x ← BParsec.attempt (Field.parse: (BParsec String))
+      let x: String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (s.merge_string x))
     | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
-      let x ← BParsec.attempt (Field.parse: (BParsec EntityUID))
+      let x: EntityUID ← Field.parse
       pure (modifyGet fun s => Prod.mk () (s.merge_euid x))
     | _ =>
       t.wireType.skip
@@ -572,11 +572,11 @@ def parseField (t: Tag) : BParsec (StateM PatElem Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Ty) t.wireType
-      let x: Ty ← BParsec.attempt Field.parse
+      let x: Ty ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
       (@Field.guardWireType String) t.wireType
-      let x: String ← BParsec.attempt Field.parse
+      let x: String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeC s x))
     | _ =>
       t.wireType.skip

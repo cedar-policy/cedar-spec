@@ -46,6 +46,7 @@ def merge (x y: Name) : Name :=
     path := x.path ++ y.path
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM Name Unit) := do
   match t.fieldNum with
     | 1 =>

@@ -50,6 +50,7 @@ def merge (x y: ValidatorApplySpec) : ValidatorApplySpec :=
     resourceApplySpec := x.resourceApplySpec ++ y.resourceApplySpec
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ValidatorApplySpec Unit) := do
   match t.fieldNum with
     | 1 =>

@@ -55,6 +55,7 @@ def guardWireType {α: Type} [Field α] (wt: WireType) : BParsec Unit := do
   if not wtMatches then
     throw s!"WireType mismatch"
 
+@[inline]
 def fromInterField {α β: Type} [Inhabited α] [Field α] (convert: α → β) (merge: β → β → β) : Field β := {
   parse := do
     let intMessage: α ← Field.parse

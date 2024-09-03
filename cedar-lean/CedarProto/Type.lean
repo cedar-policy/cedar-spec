@@ -58,12 +58,15 @@ def merge (x1 x2: RecordType) : RecordType :=
 end RecordType
 
 namespace QualifiedType
+
+@[inline]
 def mergeType (result: QualifiedType) (x: CedarType) : QualifiedType :=
   -- Replace the type information, keep the qualified constructor
   match result with
     | .required _ => .required x
     | .optional _ => .optional x
 
+@[inline]
 def mergeIsRequired (result: QualifiedType) (x: Bool) : QualifiedType :=
   -- Replace constructor, keep data
   if x then
@@ -81,6 +84,7 @@ inductive Ty where
   | AnyEntity
 
 namespace Ty
+@[inline]
 def fromInt (n: Int) : Except String Ty :=
   match n with
     | 0 => .ok .AnyEntity
@@ -109,21 +113,24 @@ def merge (x1 x2: Record): Record :=
 end Record
 
 namespace Entity
+@[inline]
 def mergeE (result: Entity) (e2: Spec.EntityTypeProto): Entity :=
   match result with
     | .entity e1 => .entity (Field.merge e1 e2)
     | _ => panic!("Entity expected CedarType constructor to be .entity")
 
+@[inline]
 def merge (x1 x2: Entity): Entity :=
   match x1, x2 with
     | .entity e1, .entity e2 => .entity (Field.merge e1 e2)
     | _, _ => panic!("Entity expected CedarType constructor to be .entity")
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM Entity Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Spec.EntityTypeProto) t.wireType
-      let x: Spec.EntityTypeProto ← BParsec.attempt Field.parse
+      let x: Spec.EntityTypeProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeE s x))
     | _ =>
       t.wireType.skip
@@ -139,22 +146,24 @@ namespace ActionEntity
 -- Note: Ignore the Attributes in the ActionEntity message
 -- since this isn't represented in the formal model
 
+@[inline]
 def mergeName (result: ActionEntity) (e2: Spec.EntityTypeProto) : ActionEntity :=
   match result with
     | .entity e1 => .entity (Field.merge e1 e2)
     | _ => panic!("ActionEntity expected CedarType constructor to be .entity")
 
+@[inline]
 def merge (x1 x2: ActionEntity) : ActionEntity :=
   match x1, x2 with
     | .entity e1, .entity e2 => .entity (Field.merge e1 e2)
     | _, _ => panic!("ActionEntity expected CedarType constructor to be .entity")
 
-def parseField (t: Tag) : BParsec (StateM ActionEntity Unit) :=
-do
+@[inline]
+def parseField (t: Tag) : BParsec (StateM ActionEntity Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Spec.EntityTypeProto) t.wireType
-      let x: Spec.EntityTypeProto ← BParsec.attempt Field.parse
+      let x: Spec.EntityTypeProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeName s x))
     | _ =>
       t.wireType.skip
@@ -241,6 +250,7 @@ inductive Ty where
 deriving Inhabited
 
 namespace Ty
+@[inline]
 def fromInt(n: Int): Except String Ty :=
   match n with
   | 0 => .ok .never
@@ -314,6 +324,7 @@ def mergeName (_: CedarType) (xty: Cedar.Spec.Name): CedarType :=
 
 end CedarType
 
+@[inline]
 def QualifiedType.merge (x1 x2: QualifiedType) : QualifiedType :=
   match x2 with
     | .required t2 => match x1 with
@@ -330,7 +341,7 @@ partial def RecordType.parseField (t: Tag) : BParsec (StateM RecordType Unit) :=
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Array (String × QualifiedType))) t.wireType
-      let x: Array (String × QualifiedType) ← BParsec.attempt Field.parse
+      let x: Array (String × QualifiedType) ← Field.parse
       pure (modifyGet fun s => Prod.mk () (RecordType.mergeAttrs s x))
     | _ =>
       t.wireType.skip
@@ -341,11 +352,11 @@ partial def QualifiedType.parseField (t: Tag) : BParsec (StateM QualifiedType Un
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType CedarType) t.wireType
-      let x: CedarType ← BParsec.attempt Field.parse
+      let x: CedarType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (QualifiedType.mergeType s x))
     | 2 =>
       (@Field.guardWireType Bool) t.wireType
-      let x: Bool ← BParsec.attempt Field.parse
+      let x: Bool ← Field.parse
       pure (modifyGet fun s => Prod.mk () (QualifiedType.mergeIsRequired s x))
     | _ =>
       t.wireType.skip
@@ -356,15 +367,15 @@ partial def Proto.EntityRecordKind.parseField (t: Tag) : BParsec (StateM Proto.E
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.EntityRecordKind.Ty) t.wireType
-      let x: Proto.EntityRecordKind.Ty ← BParsec.attempt Field.parse
+      let x: Proto.EntityRecordKind.Ty ← Field.parse
       pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeTy s x))
     | 2 =>
       (@Field.guardWireType Proto.EntityRecordKind.Record) t.wireType
-      let x: Proto.EntityRecordKind.Record ← BParsec.attempt Field.parse
+      let x: Proto.EntityRecordKind.Record ← Field.parse
       pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeRecord s x))
     | 3 =>
       (@Field.guardWireType Proto.EntityRecordKind.Entity) t.wireType
-      let x : Proto.EntityRecordKind.Entity ← BParsec.attempt Field.parse
+      let x : Proto.EntityRecordKind.Entity ← Field.parse
       pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeEntity s x))
     | _ =>
       t.wireType.skip
@@ -375,7 +386,7 @@ partial def Proto.EntityRecordKind.Record.parseField (t: Tag) : BParsec (StateM 
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType RecordType) t.wireType
-      let x: RecordType ← BParsec.attempt Field.parse
+      let x: RecordType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.Record.mergeAttributes s x))
     | _ =>
       t.wireType.skip
@@ -387,19 +398,19 @@ partial def CedarType.parseField (t: Tag) : BParsec (StateM CedarType Unit) := d
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType CedarType.Ty) t.wireType
-      let x: CedarType.Ty ← BParsec.attempt Field.parse
+      let x: CedarType.Ty ← Field.parse
       pure (modifyGet fun s => Prod.mk () (CedarType.mergeTy s x))
     | 2 =>
       (@Field.guardWireType CedarType) t.wireType
-      let x: CedarType ← BParsec.attempt Field.parse
+      let x: CedarType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (CedarType.mergeType s x))
     | 3 =>
       (@Field.guardWireType Proto.EntityRecordKind) t.wireType
-      let x: Proto.EntityRecordKind ← BParsec.attempt Field.parse
+      let x: Proto.EntityRecordKind ← Field.parse
       pure (modifyGet fun s => Prod.mk () (CedarType.mergeEr s x))
     | 4 =>
       (@Field.guardWireType Cedar.Spec.Name) t.wireType
-      let x: Cedar.Spec.Name ← BParsec.attempt Field.parse
+      let x: Cedar.Spec.Name ← Field.parse
       pure (modifyGet fun s => Prod.mk () (CedarType.mergeName s x))
     | _ =>
       t.wireType.skip

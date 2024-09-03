@@ -55,15 +55,16 @@ def merge (x y: ValidatorEntityType) : ValidatorEntityType :=
     attrs := Field.merge x.attrs y.attrs
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ValidatorEntityType Unit) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType (Repeated Spec.EntityTypeProto)) t.wireType
-      let x: Repeated Spec.EntityTypeProto ← BParsec.attempt Field.parse
+      let x: Repeated Spec.EntityTypeProto ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeDescendants s x))
     | 3 =>
       (@Field.guardWireType RecordType) t.wireType
-      let x: RecordType ← BParsec.attempt Field.parse
+      let x: RecordType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeAttributes s x))
     | _ =>
       t.wireType.skip

@@ -270,6 +270,7 @@ def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
     | _ => x2
 
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ScopeTemplate Unit) := do
   match t.fieldNum with
     | 1 =>

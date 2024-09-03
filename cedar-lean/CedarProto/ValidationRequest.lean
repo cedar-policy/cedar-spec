@@ -58,6 +58,7 @@ def merge (x y: ValidationRequest) : ValidationRequest :=
     policies := x.policies ++ y.policies
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ValidationRequest Unit) := do
   match t.fieldNum with
     | 1 =>

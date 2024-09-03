@@ -67,19 +67,20 @@ def merge (x y: ValidatorActionId) : ValidatorActionId :=
     context := Field.merge x.context y.context
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ValidatorActionId Unit) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType ValidatorApplySpec) t.wireType
-      let x: ValidatorApplySpec ← BParsec.attempt Field.parse
+      let x: ValidatorApplySpec ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeAppliesTo s x))
     | 3 =>
       (@Field.guardWireType (Repeated Spec.EntityUID)) t.wireType
-      let x: Repeated Spec.EntityUID ← BParsec.attempt Field.parse
+      let x: Repeated Spec.EntityUID ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeDescendants s x))
     | 4 =>
       (@Field.guardWireType CedarType) t.wireType
-      let x: CedarType ← BParsec.attempt Field.parse
+      let x: CedarType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeContext s x))
     | _ =>
       t.wireType.skip

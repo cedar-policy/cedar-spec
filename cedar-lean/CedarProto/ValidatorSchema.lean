@@ -37,15 +37,18 @@ formalization standardizes on ancestor information.
 The definitions and utility functions below are used to convert the descendant
 representation to the ancestor representation.
 -/
+@[inline]
 private def findInMapValues [LT α] [DecidableEq α] [Data.DecidableLT α] (m : Data.Map α (Data.Set α)) (k₁ : α) : Data.Set α :=
   let setOfSets := List.map (λ (k₂,v) => if v.contains k₁ then Data.Set.singleton k₂ else Data.Set.empty) m.toList
   setOfSets.foldl (λ acc v => acc.union v) Data.Set.empty
 
+@[inline]
 private def descendantsToAncestors [LT α] [DecidableEq α] [Data.DecidableLT α] (descendants : Data.Map α (Data.Set α)) : Data.Map α (Data.Set α) :=
   Data.Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
 -- Add special "unspecified" entity type with no attributes or ancestors
+@[inline]
 private def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
   let unspecifiedEntry : EntitySchemaEntry :=
   {
@@ -69,6 +72,7 @@ deriving Inhabited
 end Cedar.Validation.Proto
 
 namespace Cedar.Validation.Proto.EntityTypeWithTypesMap
+@[inline]
 def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
   let ets := ets.toList
   let descendantMap := Data.Map.make (List.map (λ (k,v) =>
@@ -88,6 +92,7 @@ namespace Cedar.Validation.Proto.EntityUidWithActionsIdMap
 -- Needed for panic
 deriving instance Inhabited for ActionSchemaEntry
 
+@[inline]
 def toActionSchema (acts: EntityUidWithActionsIdMap): ActionSchema :=
   let acts := acts.toList
   let descendantMap := Data.Map.make (List.map (λ (k,v) =>
@@ -129,6 +134,7 @@ def merge (x y: ValidatorSchema) : ValidatorSchema :=
     acts := Field.merge x.acts y.acts
   }
 
+@[inline]
 def parseField (t: Tag) : BParsec (StateM ValidatorSchema Unit) := do
   match t.fieldNum with
     | 1 =>
@@ -148,6 +154,7 @@ instance : Message ValidatorSchema := {
   merge := merge
 }
 
+@[inline]
 def toSchema (v: ValidatorSchema): Schema :=
   .mk v.ets.toEntitySchema v.acts.toActionSchema
 
@@ -161,6 +168,7 @@ namespace Cedar.Validation.Schema
 --   ets : EntitySchema
 --   acts : ActionSchema
 
+@[inline]
 private def ES.merge (x1 x2: EntitySchema) : EntitySchema :=
   have x1 : Data.Map Spec.EntityType EntitySchemaEntry := x1
   have x2 : Data.Map Spec.EntityType EntitySchemaEntry := x2
@@ -168,6 +176,7 @@ private def ES.merge (x1 x2: EntitySchema) : EntitySchema :=
     | [] => x2
     | _ => Data.Map.make (x2.kvs ++ x1.kvs)
 
+@[inline]
 private def AS.merge (x1 x2: ActionSchema) : ActionSchema :=
   have x1 : Data.Map Spec.EntityUID ActionSchemaEntry := x1
   have x2 : Data.Map Spec.EntityUID ActionSchemaEntry := x2
@@ -175,6 +184,7 @@ private def AS.merge (x1 x2: ActionSchema) : ActionSchema :=
     | [] => x2
     | _ => Data.Map.make (x2.kvs ++ x1.kvs)
 
+@[inline]
 def merge (x1 x2: Schema): Schema :=
   {x1 with
     ets := ES.merge x1.ets x2.ets
@@ -183,6 +193,5 @@ def merge (x1 x2: Schema): Schema :=
 
 deriving instance Inhabited for Schema
 instance : Field Schema := Field.fromInterField Proto.ValidatorSchema.toSchema merge
-
 
 end Cedar.Validation.Schema

@@ -48,7 +48,7 @@ def parseField (t: Tag) : BParsec (StateM Context Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Value) t.wireType
-      let x: Value ← BParsec.attempt Field.parse
+      let x: Value ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeValue s x))
     | _ =>
       t.wireType.skip

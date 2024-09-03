@@ -71,11 +71,11 @@ def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlot Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.EntityReferenceType) t.wireType
-      let x: Proto.EntityReferenceType ← BParsec.attempt Field.parse
+      let x: Proto.EntityReferenceType ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTy s x))
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      let x: EntityUID ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
     | _ =>
       t.wireType.skip

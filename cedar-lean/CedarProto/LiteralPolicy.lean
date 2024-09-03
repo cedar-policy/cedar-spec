@@ -68,19 +68,19 @@ def parseField (t: Tag) : BParsec (StateM TemplateLinkedPolicy Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType String) t.wireType
-      let x: String ← BParsec.attempt Field.parse
+      let x: String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTemplateId s x))
     | 2 =>
       (@Field.guardWireType String) t.wireType
-      let x: String ← BParsec.attempt Field.parse
+      let x: String ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeId s x))
     | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      let x: EntityUID ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergePrincipalEuid s x))
     | 5 =>
       (@Field.guardWireType EntityUID) t.wireType
-      let x: EntityUID ← BParsec.attempt Field.parse
+      let x: EntityUID ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeResourceEuid s x))
     | _ =>
       t.wireType.skip

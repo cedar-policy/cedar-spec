@@ -49,16 +49,16 @@ def merge (x y: LiteralPolicySet) : LiteralPolicySet :=
     links := x.links ++ y.links
   }
 
-
+@[inline]
 def parseField (t: Tag) : BParsec (StateM LiteralPolicySet Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Array (String × Template))) t.wireType
-      let x: Array (String × Template) ← BParsec.attempt Field.parse
+      let x: Array (String × Template) ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeTemplates s x))
     | 2 =>
       (@Field.guardWireType (Array (String × TemplateLinkedPolicy))) t.wireType
-      let x: Array (String × TemplateLinkedPolicy) ← BParsec.attempt Field.parse
+      let x: Array (String × TemplateLinkedPolicy) ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeLinks s x))
     | _ =>
       t.wireType.skip

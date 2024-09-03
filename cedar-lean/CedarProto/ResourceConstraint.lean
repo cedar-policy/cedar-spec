@@ -39,7 +39,7 @@ def parseField (t: Tag) : BParsec (StateM ResourceScopeTemplate Unit) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType ScopeTemplate) t.wireType
-      let x: ScopeTemplate ← BParsec.attempt Field.parse
+      let x: ScopeTemplate ← Field.parse
       pure (modifyGet fun s => Prod.mk () (mergeConstraint s x))
     | _ =>
       t.wireType.skip
