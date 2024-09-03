@@ -32,13 +32,12 @@ deriving Repr, DecidableEq, Inhabited
 
 structure Len where
   size: Nat
-  payload: Slice
-deriving Repr, DecidableEq
+deriving Repr
 
 namespace VarInt
   @[inline]
   def skip : BParsec Unit := do
-    let slice ← find_next_varint
+    let slice ← find_end_varint
     BParsec.forward (slice.last - slice.first)
 end VarInt
 
@@ -49,11 +48,9 @@ namespace Len
     match isize with
     | Int.negSucc _ => throw "Expected positive size in len payload"
     | Int.ofNat size =>
-        let pos ← BParsec.pos
-        let slice := Slice.mk pos (pos + size)
-        pure (Len.mk size slice)
+        pure (Len.mk size)
 
-  /-- Skips not only the LEN size but also the payload -/
+  /-- Skips the LEN and its payload-/
   @[inline]
   def skip : BParsec Unit := do
     let isize ← parse_int32

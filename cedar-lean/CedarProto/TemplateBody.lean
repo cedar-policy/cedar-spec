@@ -71,12 +71,9 @@ deriving instance Inhabited for Template
 
 @[inline]
 def mergeEffect (result: Template) (x: Effect): Template :=
-  match x with
-    | .forbid => panic! "FORBID FOUND"
-    | _ =>
-      {result with
-        effect := Field.merge result.effect x
-      }
+  {result with
+    effect := Field.merge result.effect x
+  }
 
 @[inline]
 def mergePrincipalScope (result: Template) (x: PrincipalScopeTemplate) : Template :=

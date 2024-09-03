@@ -11,7 +11,7 @@ class Message (α : Type) [Inhabited α] where
 export Message (parseField)
 namespace Message
 
-private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (remaining: Nat) (result: StateM α Unit) : BParsec (StateM α Unit) := do
+private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (remaining: Nat) (result: α) : BParsec α := do
   if remaining = 0 then
     pure result
   else
@@ -25,31 +25,32 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
   let tag ← Tag.parse
 
-  let result2: StateM α Unit ← parseField tag
+  let f: StateM α Unit ← parseField tag
 
   let endPos ← BParsec.pos
   let elementSize := (endPos - startPos)
 
-  (parseMessageHelper (remaining - elementSize) (result >>= fun () => result2))
+  (parseMessageHelper (remaining - elementSize) (StateT.run f result).snd)
+
+
 
 @[inline]
 def parse {α: Type} [Inhabited α] [Message α] : BParsec α := do
   let remaining ← BParsec.remaining
-  let initial: StateM α Unit := pure ()
-  let message_m: StateM α Unit ← parseMessageHelper remaining initial
+  let message: α ← parseMessageHelper remaining default
   BParsec.eof
-  pure (StateT.run message_m default).snd
+  pure message
 
 @[inline]
 def parseWithLen {α: Type} [Inhabited α] [Message α] : BParsec α := do
   let len ← Len.parse
-  let message_m: StateM α Unit ← parseMessageHelper len.size (pure ())
-  pure (StateT.run message_m default).snd
+  let message: α ← parseMessageHelper len.size default
+  pure message
 
 @[inline]
 def parseWithSize {α: Type} [Inhabited α] [Message α] (size: Nat) : BParsec α := do
-  let message_m: StateM α Unit ← parseMessageHelper size (pure ())
-  pure (StateT.run message_m default).snd
+  let message: α ← parseMessageHelper size default
+  pure message
 
 @[inline]
 def interpret? {α: Type} [Inhabited α] [Message α] (b: ByteArray) : Except String α :=

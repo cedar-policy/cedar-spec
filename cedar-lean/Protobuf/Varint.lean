@@ -59,10 +59,10 @@ def find_end_of_varint : BParsec Nat := find_end_of_varint_helper 0
 /- Find the start and end indices of the next varint -/
 -- NOTE: Does not progress iterator
 @[inline]
-def find_next_varint : BParsec Slice := do
+def find_end_varint : BParsec Slice := do
   let start_idx ← BParsec.pos
   let end_idx ← find_end_of_varint
-  let slice ← fun it => BParsec.ParseResult.success it (Slice.mk start_idx end_idx)
+  let slice ← fun it => .success it (Slice.mk start_idx end_idx)
   pure slice
 
 
@@ -80,7 +80,7 @@ private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec 
 
 @[inline]
 def parse_uint64 : BParsec UInt64 := do
-  let slice ← find_next_varint
+  let slice ← find_end_varint
   let remaining := slice.last - slice.first
   parse_uint64_helper remaining 0 0
 
@@ -104,7 +104,7 @@ private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec 
 
 @[inline]
 def parse_uint32 : BParsec UInt32 := do
-  let slice ← find_next_varint
+  let slice ← find_end_varint
   let remaining ← pure (slice.last - slice.first)
   parse_uint32_helper remaining 0 0
 
