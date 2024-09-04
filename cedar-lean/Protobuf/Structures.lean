@@ -37,27 +37,24 @@ deriving Repr
 namespace VarInt
   @[inline]
   def skip : BParsec Unit := do
-    let slice ← find_end_varint
-    BParsec.forward (slice.last - slice.first)
+    let size ← find_varint_size
+    BParsec.forward size
 end VarInt
 
 namespace Len
   @[inline]
-  def parse : BParsec Len := do
+  def parseSize : BParsec Nat := do
     let isize ← parse_int32
     match isize with
     | Int.negSucc _ => throw "Expected positive size in len payload"
     | Int.ofNat size =>
-        pure (Len.mk size)
+        pure size
 
   /-- Skips the LEN and its payload-/
   @[inline]
   def skip : BParsec Unit := do
-    let isize ← parse_int32
-    match isize with
-    | Int.negSucc _ => throw "Expected positive size in len payload"
-    | Int.ofNat size =>
-        BParsec.forward size
+    let size ← Len.parseSize
+    BParsec.forward size
 
 end Len
 

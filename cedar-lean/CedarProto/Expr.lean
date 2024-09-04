@@ -80,27 +80,27 @@ def merge (p1: Prim) (p2: Prim) : Prim :=
     | .entityUID e2 => merge_euid p1 e2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM Prim Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn Prim) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Bool) t.wireType
       let x: Bool ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.merge_bool x))
+      pure (fun s => s.merge_bool x)
     | 2 =>
       (@Field.guardWireType Int64) t.wireType
       let x: Int64 ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.merge_int x))
+      pure (fun s => s.merge_int x)
     | 3 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.merge_string x))
+      pure (fun s => s.merge_string x)
     | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.merge_euid x))
+      pure (fun s => s.merge_euid x)
     | _ =>
       t.wireType.skip
-      pure (pure ())
+      pure (fun s => s)
 
 instance : Message Prim := {
   parseField := parseField
@@ -568,19 +568,19 @@ def merge (_: PatElem) (y: PatElem) : PatElem :=
   y
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM PatElem Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn PatElem) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Ty) t.wireType
       let x: Ty ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
+      pure (fun s => mergeTy s x)
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeC s x))
+      pure (fun s => mergeC s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message PatElem := {
   parseField := parseField
@@ -784,187 +784,187 @@ end Expr
 -- where many of the constructors depend on Epxr
 mutual
 
-partial def Proto.ExprKind.If.parseField (t: Tag) : BParsec (StateM Proto.ExprKind.If Unit) := do
+partial def Proto.ExprKind.If.parseField (t: Tag) : BParsec (Proto.ExprKind.If → Proto.ExprKind.If) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x : Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.If.mergeTestExpr s x))
+      pure (fun s => Proto.ExprKind.If.mergeTestExpr s x)
     | 2 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.If.mergeThenExpr s x))
+      pure (fun s => Proto.ExprKind.If.mergeThenExpr s x)
     | 3 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.If.mergeElseExpr s x))
+      pure (fun s => Proto.ExprKind.If.mergeElseExpr s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.And.parseField (t: Tag) : BParsec (StateM Proto.ExprKind.And Unit) := do
+partial def Proto.ExprKind.And.parseField (t: Tag) : BParsec (Proto.ExprKind.And → Proto.ExprKind.And) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.And.mergeLeft s x))
+      pure (fun s => Proto.ExprKind.And.mergeLeft s x)
     | 2 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.And.mergeRight s x))
+      pure (fun s => Proto.ExprKind.And.mergeRight s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.Or.parseField (t: Tag) : BParsec (StateM Proto.ExprKind.Or Unit) := do
+partial def Proto.ExprKind.Or.parseField (t: Tag) : BParsec (Proto.ExprKind.Or → Proto.ExprKind.Or) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Or.mergeLeft s x))
+      pure (fun s => Proto.ExprKind.Or.mergeLeft s x)
     | 2 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Or.mergeRight s x))
+      pure (fun s => Proto.ExprKind.Or.mergeRight s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.UnaryApp.parseField (t: Tag) : BParsec (StateM Proto.ExprKind.UnaryApp Unit) := do
+partial def Proto.ExprKind.UnaryApp.parseField (t: Tag) : BParsec (Proto.ExprKind.UnaryApp → Proto.ExprKind.UnaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.ExprKind.UnaryApp.Op) t.wireType
       let x: Proto.ExprKind.UnaryApp.Op ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.UnaryApp.mergeOp s x))
+      pure (fun s => Proto.ExprKind.UnaryApp.mergeOp s x)
     | 2 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.UnaryApp.mergeArg s x))
+      pure (fun s => Proto.ExprKind.UnaryApp.mergeArg s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.BinaryApp.parseField (t: Tag): BParsec (StateM Proto.ExprKind.BinaryApp Unit) := do
+partial def Proto.ExprKind.BinaryApp.parseField (t: Tag): BParsec (Proto.ExprKind.BinaryApp → Proto.ExprKind.BinaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.ExprKind.BinaryApp.Op) t.wireType
       let x: Proto.ExprKind.BinaryApp.Op ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.BinaryApp.mergeOp s x))
+      pure (fun s => Proto.ExprKind.BinaryApp.mergeOp s x)
     | 2 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.BinaryApp.mergeLeft s x))
+      pure (fun s => Proto.ExprKind.BinaryApp.mergeLeft s x)
     | 3 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.BinaryApp.mergeRight s x))
+      pure (fun s => Proto.ExprKind.BinaryApp.mergeRight s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t: Tag): BParsec (StateM Proto.ExprKind.ExtensionFunctionApp Unit) := do
+partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t: Tag): BParsec (Proto.ExprKind.ExtensionFunctionApp → Proto.ExprKind.ExtensionFunctionApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Name) t.wireType
       let x: Name ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.ExtensionFunctionApp.mergeName s x))
+      pure (fun s => Proto.ExprKind.ExtensionFunctionApp.mergeName s x)
     | 2 =>
       (@Field.guardWireType (Repeated Expr)) t.wireType
       let x: Repeated Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.ExtensionFunctionApp.mergeArgs s x))
+      pure (fun s => Proto.ExprKind.ExtensionFunctionApp.mergeArgs s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.GetAttr.parseField (t: Tag) : BParsec (StateM Proto.ExprKind.GetAttr Unit) := do
+partial def Proto.ExprKind.GetAttr.parseField (t: Tag) : BParsec (Proto.ExprKind.GetAttr → Proto.ExprKind.GetAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.GetAttr.mergeExpr s x))
+      pure (fun s => Proto.ExprKind.GetAttr.mergeExpr s x)
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.GetAttr.mergeAttr s x))
+      pure (fun s => Proto.ExprKind.GetAttr.mergeAttr s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.HasAttr.parseField (t: Tag): BParsec (StateM Proto.ExprKind.HasAttr Unit) := do
+partial def Proto.ExprKind.HasAttr.parseField (t: Tag): BParsec (Proto.ExprKind.HasAttr → Proto.ExprKind.HasAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.HasAttr.mergeExpr s x))
+      pure (fun s => Proto.ExprKind.HasAttr.mergeExpr s x)
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.HasAttr.mergeAttr s x))
+      pure (fun s => Proto.ExprKind.HasAttr.mergeAttr s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.Like.parseField (t: Tag): BParsec (StateM Proto.ExprKind.Like Unit) := do
+partial def Proto.ExprKind.Like.parseField (t: Tag): BParsec (Proto.ExprKind.Like → Proto.ExprKind.Like) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Like.mergeExpr s x))
+      pure (fun s => Proto.ExprKind.Like.mergeExpr s x)
     | 2 =>
       (@Field.guardWireType (Repeated PatElem)) t.wireType
       let x: Repeated PatElem ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Like.mergePattern s x))
+      pure (fun s => Proto.ExprKind.Like.mergePattern s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.Is.parseField (t: Tag): BParsec (StateM Proto.ExprKind.Is Unit) := do
+partial def Proto.ExprKind.Is.parseField (t: Tag): BParsec (Proto.ExprKind.Is → Proto.ExprKind.Is) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Expr) t.wireType
       let x: Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Is.mergeExpr s x))
+      pure (fun s => Proto.ExprKind.Is.mergeExpr s x)
     | 2 =>
       (@Field.guardWireType EntityTypeProto) t.wireType
       let x: EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Is.mergeEt s x))
+      pure (fun s => Proto.ExprKind.Is.mergeEt s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.Set.parseField (t: Tag): BParsec (StateM Proto.ExprKind.Set Unit) := do
+partial def Proto.ExprKind.Set.parseField (t: Tag): BParsec (Proto.ExprKind.Set → Proto.ExprKind.Set) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated Expr)) t.wireType
       let x: Repeated Expr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Set.mergeElems s x))
+      pure (fun s => Proto.ExprKind.Set.mergeElems s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.Record.parseField (t: Tag): BParsec (StateM Proto.ExprKind.Record Unit) := do
+partial def Proto.ExprKind.Record.parseField (t: Tag): BParsec (Proto.ExprKind.Record → Proto.ExprKind.Record) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType (Array (String × Expr))) t.wireType
-      let x: Array (String × Expr) ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.Record.mergeItems s x))
+      (@Field.guardWireType (Proto.Map String Expr)) t.wireType
+      let x: Proto.Map String Expr ← Field.parse
+      pure (fun s => Proto.ExprKind.Record.mergeItems s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.ExprKind.parseField (t: Tag): BParsec (StateM Proto.ExprKind Unit) := do
+partial def Proto.ExprKind.parseField (t: Tag): BParsec (Proto.ExprKind → Proto.ExprKind) := do
   have : Message Proto.ExprKind.If := { parseField := Proto.ExprKind.If.parseField, merge := Proto.ExprKind.If.merge }
   have : Message Proto.ExprKind.And := { parseField := Proto.ExprKind.And.parseField, merge := Proto.ExprKind.And.merge }
   have : Message Proto.ExprKind.Or := { parseField := Proto.ExprKind.Or.parseField, merge := Proto.ExprKind.Or.merge }
@@ -983,73 +983,73 @@ partial def Proto.ExprKind.parseField (t: Tag): BParsec (StateM Proto.ExprKind U
     | 1 =>
       (@Field.guardWireType Prim) t.wireType
       let x: Prim ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergePrim s x))
+      pure (fun s => Proto.ExprKind.mergePrim s x)
     | 2 =>
       (@Field.guardWireType Var) t.wireType
       let x: Var ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeVar s x))
+      pure (fun s => Proto.ExprKind.mergeVar s x)
     | 4 =>
       (@Field.guardWireType Proto.ExprKind.If) t.wireType
       let x: Proto.ExprKind.If ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeIf s x))
+      pure (fun s => Proto.ExprKind.mergeIf s x)
     | 5 =>
       (@Field.guardWireType Proto.ExprKind.And) t.wireType
       let x: Proto.ExprKind.And ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeAnd s x))
+      pure (fun s => Proto.ExprKind.mergeAnd s x)
     | 6 =>
       (@Field.guardWireType Proto.ExprKind.Or) t.wireType
       let x: Proto.ExprKind.Or ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeOr s x))
+      pure (fun s => Proto.ExprKind.mergeOr s x)
     | 7 =>
       (@Field.guardWireType Proto.ExprKind.UnaryApp) t.wireType
       let x: Proto.ExprKind.UnaryApp ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeUApp s x))
+      pure (fun s => Proto.ExprKind.mergeUApp s x)
     | 8 =>
       (@Field.guardWireType Proto.ExprKind.BinaryApp) t.wireType
       let x: Proto.ExprKind.BinaryApp ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeBApp s x))
+      pure (fun s => Proto.ExprKind.mergeBApp s x)
     | 9 =>
       (@Field.guardWireType Proto.ExprKind.ExtensionFunctionApp) t.wireType
       let x: Proto.ExprKind.ExtensionFunctionApp ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeExtApp s x))
+      pure (fun s => Proto.ExprKind.mergeExtApp s x)
     | 10 =>
       (@Field.guardWireType Proto.ExprKind.GetAttr) t.wireType
       let x: Proto.ExprKind.GetAttr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeGetAttr s x))
+      pure (fun s => Proto.ExprKind.mergeGetAttr s x)
     | 11 =>
       (@Field.guardWireType Proto.ExprKind.HasAttr) t.wireType
       let x: Proto.ExprKind.HasAttr ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeHasAttr s x))
+      pure (fun s => Proto.ExprKind.mergeHasAttr s x)
     | 12 =>
       (@Field.guardWireType Proto.ExprKind.Like) t.wireType
       let x: Proto.ExprKind.Like ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeLike s x))
+      pure (fun s => Proto.ExprKind.mergeLike s x)
     | 13 =>
       (@Field.guardWireType Proto.ExprKind.Is) t.wireType
       let x: Proto.ExprKind.Is ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeIs s x))
+      pure (fun s => Proto.ExprKind.mergeIs s x)
     | 14 =>
       (@Field.guardWireType Proto.ExprKind.Set) t.wireType
       let x: Proto.ExprKind.Set ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeSet s x))
+      pure (fun s => Proto.ExprKind.mergeSet s x)
     | 15 =>
       (@Field.guardWireType Proto.ExprKind.Record) t.wireType
       let x: Proto.ExprKind.Record ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.ExprKind.mergeRecord s x))
+      pure (fun s => Proto.ExprKind.mergeRecord s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Expr.parseField (t: Tag): BParsec (StateM Expr Unit) := do
+partial def Expr.parseField (t: Tag): BParsec (Expr → Expr) := do
   have : Message Proto.ExprKind := { parseField := Proto.ExprKind.parseField, merge := Proto.ExprKind.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.ExprKind) t.wireType
       let x: Proto.ExprKind ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Expr.mergeExprKind s x))
+      pure (fun s => Expr.mergeExprKind s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 end
 

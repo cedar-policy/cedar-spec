@@ -126,15 +126,15 @@ def merge (x1 x2: Entity): Entity :=
     | _, _ => panic!("Entity expected CedarType constructor to be .entity")
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM Entity Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn Entity) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Spec.EntityTypeProto) t.wireType
       let x: Spec.EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeE s x))
+      pure (fun s => mergeE s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message Entity := {
   parseField := parseField
@@ -159,15 +159,15 @@ def merge (x1 x2: ActionEntity) : ActionEntity :=
     | _, _ => panic!("ActionEntity expected CedarType constructor to be .entity")
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ActionEntity Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ActionEntity) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Spec.EntityTypeProto) t.wireType
       let x: Spec.EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeName s x))
+      pure (fun s => mergeName s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ActionEntity := {
   parseField := parseField
@@ -336,85 +336,85 @@ def QualifiedType.merge (x1 x2: QualifiedType) : QualifiedType :=
 
 
 mutual
-partial def RecordType.parseField (t: Tag) : BParsec (StateM RecordType Unit) := do
+partial def RecordType.parseField (t: Tag) : BParsec (RecordType → RecordType) := do
   have : Message QualifiedType := { parseField := QualifiedType.parseField, merge := QualifiedType.merge }
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType (Array (String × QualifiedType))) t.wireType
-      let x: Array (String × QualifiedType) ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (RecordType.mergeAttrs s x))
+      (@Field.guardWireType (Proto.Map String QualifiedType)) t.wireType
+      let x: Proto.Map String QualifiedType ← Field.parse
+      pure (fun s => RecordType.mergeAttrs s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def QualifiedType.parseField (t: Tag) : BParsec (StateM QualifiedType Unit) := do
+partial def QualifiedType.parseField (t: Tag) : BParsec (QualifiedType → QualifiedType) := do
   have : Message CedarType := { parseField := CedarType.parseField, merge := CedarType.merge}
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType CedarType) t.wireType
       let x: CedarType ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (QualifiedType.mergeType s x))
+      pure (fun s => QualifiedType.mergeType s x)
     | 2 =>
       (@Field.guardWireType Bool) t.wireType
       let x: Bool ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (QualifiedType.mergeIsRequired s x))
+      pure (fun s => QualifiedType.mergeIsRequired s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.EntityRecordKind.parseField (t: Tag) : BParsec (StateM Proto.EntityRecordKind Unit) := do
+partial def Proto.EntityRecordKind.parseField (t: Tag) : BParsec (Proto.EntityRecordKind → Proto.EntityRecordKind) := do
   have : Message Proto.EntityRecordKind.Record := { parseField := Proto.EntityRecordKind.Record.parseField, merge := Proto.EntityRecordKind.Record.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.EntityRecordKind.Ty) t.wireType
       let x: Proto.EntityRecordKind.Ty ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeTy s x))
+      pure (fun s => Proto.EntityRecordKind.mergeTy s x)
     | 2 =>
       (@Field.guardWireType Proto.EntityRecordKind.Record) t.wireType
       let x: Proto.EntityRecordKind.Record ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeRecord s x))
+      pure (fun s => Proto.EntityRecordKind.mergeRecord s x)
     | 3 =>
       (@Field.guardWireType Proto.EntityRecordKind.Entity) t.wireType
       let x : Proto.EntityRecordKind.Entity ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.mergeEntity s x))
+      pure (fun s => Proto.EntityRecordKind.mergeEntity s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def Proto.EntityRecordKind.Record.parseField (t: Tag) : BParsec (StateM Proto.EntityRecordKind.Record Unit) := do
+partial def Proto.EntityRecordKind.Record.parseField (t: Tag) : BParsec (Proto.EntityRecordKind.Record → Proto.EntityRecordKind.Record) := do
   have : Message RecordType := { parseField := RecordType.parseField, merge := RecordType.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType RecordType) t.wireType
       let x: RecordType ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (Proto.EntityRecordKind.Record.mergeAttributes s x))
+      pure (fun s => Proto.EntityRecordKind.Record.mergeAttributes s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-partial def CedarType.parseField (t: Tag) : BParsec (StateM CedarType Unit) := do
+partial def CedarType.parseField (t: Tag) : BParsec (CedarType → CedarType) := do
   have : Message CedarType := {parseField := CedarType.parseField, merge := CedarType.merge }
   have : Message Proto.EntityRecordKind := {parseField := Proto.EntityRecordKind.parseField, merge := Proto.EntityRecordKind.merge }
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType CedarType.Ty) t.wireType
       let x: CedarType.Ty ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (CedarType.mergeTy s x))
+      pure (fun s => CedarType.mergeTy s x)
     | 2 =>
       (@Field.guardWireType CedarType) t.wireType
       let x: CedarType ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (CedarType.mergeType s x))
+      pure (fun s => CedarType.mergeType s x)
     | 3 =>
       (@Field.guardWireType Proto.EntityRecordKind) t.wireType
       let x: Proto.EntityRecordKind ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (CedarType.mergeEr s x))
+      pure (fun s => CedarType.mergeEr s x)
     | 4 =>
       (@Field.guardWireType Cedar.Spec.Name) t.wireType
       let x: Cedar.Spec.Name ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (CedarType.mergeName s x))
+      pure (fun s => CedarType.mergeName s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 end
 
 namespace RecordType

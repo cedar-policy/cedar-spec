@@ -44,15 +44,15 @@ def merge (x1: Context) (x2: Context) : Context :=
     | _ => Cedar.Data.Map.make (x2.kvs ++ x1.kvs)
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM Context Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn Context) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Value) t.wireType
       let x: Value ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeValue s x))
+      pure (fun s => mergeValue s x)
     | _ =>
       t.wireType.skip
-      pure (pure ())
+      pure (fun s => s)
 
 instance : Message Context := {
   parseField := parseField

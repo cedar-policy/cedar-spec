@@ -65,15 +65,15 @@ def merge (x1 x2: ScopeTemplate.In) : ScopeTemplate.In :=
   mergeER x1 e2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ScopeTemplate.In Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ScopeTemplate.In) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUIDOrSlot) t.wireType
       let x: EntityUIDOrSlot ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+      pure (fun s => mergeER s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ScopeTemplate.In := {
   parseField := parseField
@@ -99,15 +99,15 @@ def merge (x1 x2: ScopeTemplate.Eq) : ScopeTemplate.Eq :=
   mergeER x1 e2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Eq Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ScopeTemplate.Eq) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUIDOrSlot) t.wireType
       let x: EntityUIDOrSlot ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+      pure (fun s => mergeER s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ScopeTemplate.Eq := {
   parseField := parseField
@@ -133,15 +133,15 @@ def merge (x1 x2: ScopeTemplate.Is) : ScopeTemplate.Is :=
   mergeET x1 e2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ScopeTemplate.Is Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ScopeTemplate.Is) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityTypeProto) t.wireType
       let x: EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeET s x))
+      pure (fun s => mergeET s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ScopeTemplate.Is := {
   parseField := parseField
@@ -175,19 +175,19 @@ def merge (x1 x2: ScopeTemplate.IsIn) : ScopeTemplate.IsIn :=
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ScopeTemplate.IsIn Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ScopeTemplate.IsIn) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUIDOrSlot) t.wireType
       let x: EntityUIDOrSlot ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeER s x))
+      pure (fun s => mergeER s x)
     | 2 =>
       (@Field.guardWireType EntityTypeProto) t.wireType
       let x: EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeET s x))
+      pure (fun s => mergeET s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ScopeTemplate.IsIn := {
   parseField := parseField
@@ -204,6 +204,7 @@ namespace ScopeTemplate
 --   | mem (entityOrSlot : EntityUIDOrSlot)
 --   | is (ety : EntityType)
 --   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
+deriving instance Inhabited for ScopeTemplate
 
 
 deriving instance Inhabited for EntityUIDOrSlot
@@ -271,33 +272,32 @@ def merge (x1: ScopeTemplate) (x2: ScopeTemplate) : ScopeTemplate :=
 
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ScopeTemplate Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ScopeTemplate) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.ScopeTemplate.Ty) t.wireType
       let x: Proto.ScopeTemplate.Ty ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
+      pure (fun s => mergeTy s x)
     | 2 =>
       (@Field.guardWireType Proto.ScopeTemplate.In) t.wireType
       let x: Proto.ScopeTemplate.In ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeIn s x))
+      pure (fun s => mergeIn s x)
     | 3 =>
       (@Field.guardWireType Proto.ScopeTemplate.Eq) t.wireType
       let x: Proto.ScopeTemplate.Eq ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEq s x))
+      pure (fun s => mergeEq s x)
     | 4 =>
       (@Field.guardWireType Proto.ScopeTemplate.Is) t.wireType
       let x: Proto.ScopeTemplate.Is ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeIs s x))
+      pure (fun s => mergeIs s x)
     | 5 =>
       (@Field.guardWireType Proto.ScopeTemplate.IsIn) t.wireType
       let x: Proto.ScopeTemplate.IsIn ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeIsIn s x))
+      pure (fun s => mergeIsIn s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-deriving instance Inhabited for ScopeTemplate
 instance : Message ScopeTemplate := {
   parseField := parseField
   merge := merge

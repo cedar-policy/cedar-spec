@@ -3,7 +3,6 @@ import Lean.Data.Json.FromToJson
 import Lean.Data.Json.Parser
 import Lean.Data.Json.Basic
 
-import Protobuf.Util
 import Protobuf.ByteArray
 import Protobuf.BParsec
 import Protobuf.Varint
@@ -85,10 +84,16 @@ def runAndTime (f : IO α) : IO (Timed α) := do
     duration := stop - start
   }
 
+def main_helper (f: IO α) (gas: Nat) : IO Unit := do
+  if gas > 0 then
+    let result ← runAndTime f
+    main_helper f (gas - 1)
+
 def main (args: List String) : IO UInt32 := do
   if args.length != 2 then panic! "Usage ./Protobuf [Proto File] [JSON File]"
 
   let proto_bytes ← readFileBytes (args.get! 0)
+  -- main_helper (processProto proto_bytes) 10000
   let proto_sec ← runAndTime (processProto proto_bytes)
   println! s!"ProtoTime: {proto_sec.duration}"
 

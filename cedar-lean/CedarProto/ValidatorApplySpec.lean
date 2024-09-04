@@ -51,19 +51,19 @@ def merge (x y: ValidatorApplySpec) : ValidatorApplySpec :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ValidatorApplySpec Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ValidatorApplySpec) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated Spec.EntityTypeProto)) t.wireType
       let x: Repeated Spec.EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergePas s x))
+      pure (fun s => mergePas s x)
     | 2 =>
       (@Field.guardWireType (Repeated Spec.EntityTypeProto)) t.wireType
       let x: Repeated Spec.EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeRas s x))
+      pure (fun s => mergeRas s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ValidatorApplySpec := {
   parseField := parseField

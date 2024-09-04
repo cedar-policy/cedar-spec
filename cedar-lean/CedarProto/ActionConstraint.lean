@@ -71,15 +71,15 @@ def merge (x1 x2: ActionScope.In) : ActionScope.In :=
     | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ActionScope.In Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ActionScope.In) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated EntityUID)) t.wireType
       let x: Repeated EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuids s x))
+      pure (fun s => mergeEuids s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ActionScope.In := {
   parseField := parseField
@@ -109,15 +109,15 @@ def merge (x1 x2: ActionScope.Eq) : ActionScope.Eq :=
   mergeEuid x1 e2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ActionScope.Eq Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ActionScope.Eq) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
+      pure (fun s => mergeEuid s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ActionScope.Eq := {
   parseField := parseField
@@ -172,23 +172,23 @@ def merge (x1 x2: ActionScope) : ActionScope :=
       | _ => x2
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ActionScope Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ActionScope) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.ActionScope.Ty) t.wireType
       let x: Proto.ActionScope.Ty ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
+      pure (fun s => mergeTy s x)
     | 2 =>
       (@Field.guardWireType Proto.ActionScope.In) t.wireType
       let x: Proto.ActionScope.In ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeIn s x))
+      pure (fun s => mergeIn s x)
     | 3 =>
       (@Field.guardWireType Proto.ActionScope.Eq) t.wireType
       let x: Proto.ActionScope.Eq ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEq s x))
+      pure (fun s => mergeEq s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ActionScope := {
   parseField := parseField

@@ -81,8 +81,8 @@ private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec Str
 
 @[inline]
 def parse_string: BParsec String := do
-  let len ← Len.parse
-  parseStringHelper len.size ""
+  let len_size ← Len.parseSize
+  parseStringHelper len_size ""
 
 instance : Field String := {
   parse := parse_string

@@ -29,7 +29,7 @@ namespace Cedar.Spec
 -- we need to parse an intermediate representation EntityProto
 -- which contains that and transform it to the appropriate types.
 
-def EntitiesProto: Type := List EntityProto
+def EntitiesProto: Type := Array EntityProto
 deriving instance Inhabited for EntitiesProto
 
 namespace EntitiesProto
@@ -37,26 +37,26 @@ namespace EntitiesProto
 @[inline]
 def mergeEntities (result: EntitiesProto) (x: Repeated EntityProto) : EntitiesProto :=
   have x : Array EntityProto := x.map (fun xi => {xi with data := xi.data.mkWf })
-  have result : List EntityProto := result
-  result ++ x.toList
+  have result : Array EntityProto := result
+  result ++ x
 
 @[inline]
 def merge (x: EntitiesProto) (y: EntitiesProto) : EntitiesProto :=
-  have x : List EntityProto := x
-  have y : List EntityProto := y
+  have x : Array EntityProto := x
+  have y : Array EntityProto := y
   x ++ y
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM EntitiesProto Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn EntitiesProto) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType (Repeated EntityProto)) t.wireType
       let x: Repeated EntityProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEntities s x))
+      pure (fun s => mergeEntities s x)
     -- Ignoring 3 | mode
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message EntitiesProto := {
   parseField := parseField
@@ -65,7 +65,7 @@ instance : Message EntitiesProto := {
 
 @[inline]
 def toEntities (e: EntitiesProto): Entities :=
-  Cedar.Data.Map.make (e.map (fun entity => ⟨entity.uid, entity.data⟩))
+  Cedar.Data.Map.make (e.toList.map (fun entity => ⟨entity.uid, entity.data⟩))
 
 end EntitiesProto
 

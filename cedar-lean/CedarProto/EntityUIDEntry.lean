@@ -39,15 +39,15 @@ def mergeEuid (x1: EntityUIDEntry) (x2: EntityUID) : EntityUIDEntry :=
 def merge (x1: EntityUIDEntry) (x2: EntityUIDEntry) : EntityUIDEntry :=
   mergeEuid x1 x2
 
-def parseField (t: Tag) : BParsec (StateM EntityUIDEntry Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn EntityUIDEntry) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.mergeEuid x))
+      pure (fun s => s.mergeEuid x)
     | _ =>
       t.wireType.skip
-      pure (pure ())
+      pure (fun s => s)
 
 instance : Message EntityUIDEntry := {
   parseField := parseField

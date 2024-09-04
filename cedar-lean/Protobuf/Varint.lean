@@ -19,7 +19,6 @@ Protobuf Types
 -/
 import Protobuf.BParsec
 import Protobuf.Field
-import Protobuf.Util
 import Protobuf.Types
 namespace Proto
 
@@ -59,11 +58,10 @@ def find_end_of_varint : BParsec Nat := find_end_of_varint_helper 0
 /- Find the start and end indices of the next varint -/
 -- NOTE: Does not progress iterator
 @[inline]
-def find_end_varint : BParsec Slice := do
+def find_varint_size : BParsec Nat := do
   let start_idx ← BParsec.pos
   let end_idx ← find_end_of_varint
-  let slice ← fun it => .success it (Slice.mk start_idx end_idx)
-  pure slice
+  pure (end_idx - start_idx)
 
 
 -- Note: Panic indexing used but may be able to remove with some work
@@ -80,8 +78,7 @@ private def parse_uint64_helper (remaining: Nat) (p: Nat) (r: UInt64) : BParsec 
 
 @[inline]
 def parse_uint64 : BParsec UInt64 := do
-  let slice ← find_end_varint
-  let remaining := slice.last - slice.first
+  let remaining ← find_varint_size
   parse_uint64_helper remaining 0 0
 
 
@@ -95,7 +92,7 @@ private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec 
   if remaining = 0 then pure r else
   let empty ← BParsec.empty -- NOTE: Might be able to remove if we add a hypotheses in the definition
   if empty then throw "Expected more bytes" else
-  let byte ← fun it => BParsec.ParseResult.success it it.data[it.pos]!
+  let byte ← fun it => .success it it.data[it.pos]!
   BParsec.next -- Progress iterator
   have byte2 := clear_msb8 byte
   have byte3 := byte2.toUInt32 <<< (7 * p.toUInt32)
@@ -104,8 +101,7 @@ private def parse_uint32_helper (remaining: Nat) (p: Nat) (r: UInt32) : BParsec 
 
 @[inline]
 def parse_uint32 : BParsec UInt32 := do
-  let slice ← find_end_varint
-  let remaining ← pure (slice.last - slice.first)
+  let remaining ← find_varint_size
   parse_uint32_helper remaining 0 0
 
 instance : Field UInt32 := {
@@ -123,9 +119,10 @@ instance : Neg Int32 := { neg := Int.neg }
 @[inline]
 def parse_int32: BParsec Int32 := do
   let r ← parse_uint32
-    match msb_set32 r with
-    | true => pure (Int.neg (~~~(r - (1: UInt32))).toNat)
-    | false => pure (Int.ofNat r.toNat)
+  if msb_set32 r then
+    pure (Int.neg (~~~(r - (1: UInt32))).toNat)
+  else
+    pure (Int.ofNat r.toNat)
 
 
 instance : Field Int32 := {

@@ -56,19 +56,19 @@ def merge (x y: ValidatorEntityType) : ValidatorEntityType :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ValidatorEntityType Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ValidatorEntityType) := do
   match t.fieldNum with
     | 2 =>
       (@Field.guardWireType (Repeated Spec.EntityTypeProto)) t.wireType
       let x: Repeated Spec.EntityTypeProto ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeDescendants s x))
+      pure (fun s => mergeDescendants s x)
     | 3 =>
       (@Field.guardWireType RecordType) t.wireType
       let x: RecordType ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeAttributes s x))
+      pure (fun s => mergeAttributes s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ValidatorEntityType := {
   parseField := parseField

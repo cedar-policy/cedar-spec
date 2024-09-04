@@ -43,6 +43,8 @@ end Proto
 
 namespace EntityUIDOrSlot
 
+deriving instance Inhabited for EntityUIDOrSlot
+
 @[inline]
 def mergeTy (result: EntityUIDOrSlot) (x: Proto.EntityReferenceType) : EntityUIDOrSlot :=
   -- For enums, if result is already of the same type, then we don't do anything
@@ -66,22 +68,22 @@ def merge (x: EntityUIDOrSlot) (y: EntityUIDOrSlot) : EntityUIDOrSlot :=
       | .entityUID _ => y
       | .slot s1 => .slot (Field.merge s1 s2)
 
+
 @[inline]
-def parseField (t: Tag) : BParsec (StateM EntityUIDOrSlot Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn EntityUIDOrSlot) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Proto.EntityReferenceType) t.wireType
       let x: Proto.EntityReferenceType ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTy s x))
+      pure (fun s => mergeTy s x)
     | 2 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEuid s x))
+      pure (fun s => mergeEuid s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-deriving instance Inhabited for EntityUIDOrSlot
 instance : Message EntityUIDOrSlot := {
   parseField := parseField
   merge := merge

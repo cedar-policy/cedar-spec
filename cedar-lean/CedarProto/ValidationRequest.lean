@@ -59,19 +59,19 @@ def merge (x y: ValidationRequest) : ValidationRequest :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ValidationRequest Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ValidationRequest) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType Schema) t.wireType
       let x: Schema ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeSchema s x))
+      pure (fun s => mergeSchema s x)
     | 2 =>
       (@Field.guardWireType Spec.Policies) t.wireType
       let x: Spec.Policies ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergePolicies s x))
+      pure (fun s => mergePolicies s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ValidationRequest := {
   parseField := parseField

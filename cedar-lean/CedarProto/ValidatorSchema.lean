@@ -25,6 +25,17 @@ open Proto
 
 namespace Cedar.Validation.Proto
 
+def EntityTypeWithTypesMap := Proto.Map Spec.EntityTypeProto ValidatorEntityType
+  deriving Inhabited, Field
+
+def EntityUidWithActionsIdMap := Proto.Map Spec.EntityUID ValidatorActionId
+  deriving Inhabited, Field
+
+structure ValidatorSchema where
+  ets : EntityTypeWithTypesMap
+  acts : EntityUidWithActionsIdMap
+deriving Inhabited
+
 instance : Data.DecidableLT Spec.EntityTypeProto := by
   unfold Spec.EntityTypeProto
   apply inferInstance
@@ -56,18 +67,6 @@ private def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
     attrs := Data.Map.empty
   }
   Data.Map.make (ets.toList ++ [({id := "<Unspecified>", path := []}, unspecifiedEntry)])
-
-
-def EntityTypeWithTypesMap := Array (Spec.EntityTypeProto × ValidatorEntityType)
-  deriving Inhabited, Field
-
-def EntityUidWithActionsIdMap := Array (Spec.EntityUID × ValidatorActionId)
-  deriving Inhabited, Field
-
-structure ValidatorSchema where
-  ets : EntityTypeWithTypesMap
-  acts : EntityUidWithActionsIdMap
-deriving Inhabited
 
 end Cedar.Validation.Proto
 
@@ -135,19 +134,19 @@ def merge (x y: ValidatorSchema) : ValidatorSchema :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM ValidatorSchema Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn ValidatorSchema) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityTypeWithTypesMap) t.wireType
       let x: EntityTypeWithTypesMap ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeEntityTypes s x))
+      pure (fun s => mergeEntityTypes s x)
     | 2 =>
       (@Field.guardWireType EntityUidWithActionsIdMap) t.wireType
       let x: EntityUidWithActionsIdMap ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeActionIds s x))
+      pure (fun s => mergeActionIds s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message ValidatorSchema := {
   parseField := parseField

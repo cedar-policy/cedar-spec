@@ -69,27 +69,27 @@ def merge (x: Request) (y: Request) : Request :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM Request Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn Request) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType EntityUIDEntry) t.wireType
       let x: EntityUIDEntry ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.mergePrincipal x))
+      pure (fun s => s.mergePrincipal x)
     | 2 =>
       (@Field.guardWireType EntityUIDEntry) t.wireType
       let x: EntityUIDEntry ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.mergeAction x))
+      pure (fun s => s.mergeAction x)
     | 3 =>
       (@Field.guardWireType EntityUIDEntry) t.wireType
       let x: EntityUIDEntry ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.mergeResource x))
+      pure (fun s => s.mergeResource x)
     | 4 =>
       (@Field.guardWireType Context) t.wireType
       let x: Context ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.mergeContext x))
+      pure (fun s => s.mergeContext x)
     | _ =>
       t.wireType.skip
-      pure (pure ())
+      pure (fun s => s)
 
 instance : Message Request := {
   parseField := parseField

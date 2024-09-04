@@ -24,8 +24,8 @@ open Proto
 namespace Cedar.Spec
 
 structure LiteralPolicySet where
-  templates: List (String × Template)
-  links: List (String × TemplateLinkedPolicy)
+  templates: Array (String × Template)
+  links: Array (String × TemplateLinkedPolicy)
 deriving Inhabited
 
 namespace LiteralPolicySet
@@ -33,13 +33,13 @@ namespace LiteralPolicySet
 @[inline]
 def mergeTemplates (result: LiteralPolicySet) (x: Array (String × Template)) : LiteralPolicySet :=
   {result with
-    templates := result.templates ++ x.toList
+    templates := result.templates ++ x
   }
 
 @[inline]
 def mergeLinks (result: LiteralPolicySet) (x: Array (String × TemplateLinkedPolicy)): LiteralPolicySet :=
   {result with
-    links := result.links ++ x.toList
+    links := result.links ++ x
   }
 
 @[inline]
@@ -50,19 +50,19 @@ def merge (x y: LiteralPolicySet) : LiteralPolicySet :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM LiteralPolicySet Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn LiteralPolicySet) := do
   match t.fieldNum with
     | 1 =>
-      (@Field.guardWireType (Array (String × Template))) t.wireType
-      let x: Array (String × Template) ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTemplates s x))
+      (@Field.guardWireType (Proto.Map String Template)) t.wireType
+      let x: Proto.Map String Template ← Field.parse
+      pure (fun s => mergeTemplates s x)
     | 2 =>
-      (@Field.guardWireType (Array (String × TemplateLinkedPolicy))) t.wireType
-      let x: Array (String × TemplateLinkedPolicy) ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeLinks s x))
+      (@Field.guardWireType (Proto.Map String TemplateLinkedPolicy)) t.wireType
+      let x: Proto.Map String TemplateLinkedPolicy ← Field.parse
+      pure (fun s => mergeLinks s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message LiteralPolicySet := {
   parseField := parseField
@@ -76,9 +76,9 @@ namespace Policies
 
 @[inline]
 def fromLiteralPolicySet (x: LiteralPolicySet) : Policies :=
-  let templates := Cedar.Data.Map.make x.templates
-  let links := x.links.mapTR (fun ⟨id, p⟩ => (p.mergeId id).mkWf)
-  match link? templates links with
+  let templates := Cedar.Data.Map.make x.templates.toList
+  let links := x.links.map (fun ⟨id, p⟩ => (p.mergeId id).mkWf)
+  match link? templates links.toList with
   | .some policies => policies
   | .none => panic!("fromLiteralPolicySet: failed to link templates")
 

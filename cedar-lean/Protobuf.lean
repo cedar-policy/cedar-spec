@@ -23,5 +23,4 @@ import Protobuf.Packed
 import Protobuf.String
 import Protobuf.Structures
 import Protobuf.Types
-import Protobuf.Util
 import Protobuf.Varint

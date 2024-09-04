@@ -47,19 +47,19 @@ def merge (x y: Name) : Name :=
   }
 
 @[inline]
-def parseField (t: Tag) : BParsec (StateM Name Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn Name) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeId s x))
+      pure (fun s => mergeId s x)
     | 2 =>
       (@Field.guardWireType (Repeated String)) t.wireType
       let x: Repeated String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergePath s x))
+      pure (fun s => mergePath s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
 instance : Message Name := {
   parseField := parseField

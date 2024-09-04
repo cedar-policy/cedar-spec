@@ -21,9 +21,16 @@ import Protobuf.Field
 import Protobuf.Structures
 namespace Proto
 
+def Map (KeyT ValueT : Type) [Field KeyT] [Field ValueT] := Array (KeyT × ValueT)
+
+namespace Map
+
+instance {α β: Type} [Field α] [Field β]: Inhabited (Map α β) where
+     default := #[]
+
 @[inline]
-def parseMapElem (KeyT: Type) (ValueT: Type) [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT]: BParsec (Array (KeyT × ValueT)) := do
-     let len ← Len.parse
+def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BParsec (Map KeyT ValueT) := do
+     let len_size ← Len.parseSize
      let startPos ← BParsec.pos
 
      let tag1 ← Tag.parse
@@ -37,7 +44,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Inhabited KeyT] [Inhabited ValueT]
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
-               if curPos - startPos == len.size then
+               if curPos - startPos == len_size then
                     pure #[(Prod.mk key (default: ValueT))]
                else
 
@@ -60,7 +67,7 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Inhabited KeyT] [Inhabited ValueT]
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
-               if curPos - startPos == len.size then
+               if curPos - startPos == len_size then
                     pure #[(Prod.mk (default: KeyT) value)]
                else
 
@@ -79,15 +86,15 @@ def parseMapElem (KeyT: Type) (ValueT: Type) [Inhabited KeyT] [Inhabited ValueT]
 
      let endPos ← BParsec.pos
 
-     if endPos - startPos != len.size then
-          throw s!"[Map parse] LEN size invariant not maintained: expected {len.size}, parsed {endPos - startPos}"
+     if endPos - startPos != len_size then
+          throw s!"[Map parse] LEN size invariant not maintained: expected {len_size}, parsed {endPos - startPos}"
 
      pure result
 
-instance {α β: Type} [Inhabited α] [Inhabited β] [Field α] [Field β]: Field (Array (α × β)) := {
-  parse := parseMapElem α β
+instance {α β: Type} [Inhabited α] [Inhabited β] [Field α] [Field β]: Field (Map α β) := {
+  parse := parse
   checkWireType := fun (w: WireType) => WireType.LEN = w
   merge := Field.Merge.concatenate
 }
-
+end Map
 end Proto

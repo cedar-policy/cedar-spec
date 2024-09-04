@@ -4,8 +4,10 @@ import Protobuf.Packed
 import Protobuf.Types
 namespace Proto
 
+def MergeFn (α: Type) : Type := (α → α)
+
 class Message (α : Type) [Inhabited α] where
-  parseField : Tag → BParsec (StateM α Unit)
+  parseField : Tag → BParsec (MergeFn α)
   merge: α → α → α
 
 export Message (parseField)
@@ -25,12 +27,14 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
   let tag ← Tag.parse
 
-  let f: StateM α Unit ← parseField tag
+  let f: MergeFn α ← parseField tag
 
   let endPos ← BParsec.pos
+
+  let newResult := f result
   let elementSize := (endPos - startPos)
 
-  (parseMessageHelper (remaining - elementSize) (StateT.run f result).snd)
+  (parseMessageHelper (remaining - elementSize) newResult)
 
 
 
@@ -43,8 +47,8 @@ def parse {α: Type} [Inhabited α] [Message α] : BParsec α := do
 
 @[inline]
 def parseWithLen {α: Type} [Inhabited α] [Message α] : BParsec α := do
-  let len ← Len.parse
-  let message: α ← parseMessageHelper len.size default
+  let len_size ← Len.parseSize
+  let message: α ← parseMessageHelper len_size default
   pure message
 
 @[inline]

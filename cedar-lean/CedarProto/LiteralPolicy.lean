@@ -29,6 +29,8 @@ namespace TemplateLinkedPolicy
 --   id : PolicyID
 --   templateId : TemplateID
 --   slotEnv : SlotEnv
+deriving instance Inhabited for TemplateLinkedPolicy
+
 
 @[inline]
 def mergeId (result: TemplateLinkedPolicy) (x: String) : TemplateLinkedPolicy :=
@@ -64,29 +66,28 @@ def merge (x: TemplateLinkedPolicy) (y: TemplateLinkedPolicy) : TemplateLinkedPo
     slotEnv := Cedar.Data.Map.mk (x.slotEnv.kvs ++ y.slotEnv.kvs)
   }
 
-def parseField (t: Tag) : BParsec (StateM TemplateLinkedPolicy Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn TemplateLinkedPolicy) := do
   match t.fieldNum with
     | 1 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeTemplateId s x))
+      pure (fun s => mergeTemplateId s x)
     | 2 =>
       (@Field.guardWireType String) t.wireType
       let x: String ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeId s x))
+      pure (fun s => mergeId s x)
     | 4 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergePrincipalEuid s x))
+      pure (fun s => mergePrincipalEuid s x)
     | 5 =>
       (@Field.guardWireType EntityUID) t.wireType
       let x: EntityUID ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (mergeResourceEuid s x))
+      pure (fun s => mergeResourceEuid s x)
     | _ =>
       t.wireType.skip
-      pure (modifyGet fun s => Prod.mk () s)
+      pure (fun s => s)
 
-deriving instance Inhabited for TemplateLinkedPolicy
 instance : Message TemplateLinkedPolicy := {
   parseField := parseField
   merge := merge
