@@ -122,6 +122,9 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     | .ok json => do
         let schema ← getJsonField json "schema" >>= jsonToSchema
         let entities ← getJsonField json "entities" >>= jsonToEntities
+        let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
+        let entities := Cedar.Data.Map.make (entities.kvs ++ actionEntities.kvs)
+        let schema := updateSchema schema actionEntities
         let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)

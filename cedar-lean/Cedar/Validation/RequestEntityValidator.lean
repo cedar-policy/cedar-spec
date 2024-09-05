@@ -60,11 +60,11 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty)
   | .record r, .record rty =>
-    r.keys.all rty.keys.contains &&
+    r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
         | .some qty => instanceOfType v qty.getType
         | _ => true))) &&
-    rty.keys.all (requiredAttributePresent r rty)
+    rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
@@ -156,9 +156,6 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
       (ty, ese)
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-  let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
-  let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-  let schema := updateSchema schema actionEntities
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 
 -- json
