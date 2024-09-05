@@ -37,8 +37,46 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   simp [wf_schema, Map.WellFormed, Map.toList]
   intro wfe₀ wfa₀ wfe₁ wfa₁ h₀ uid actsEntry h₁
   simp only [updateSchema] at h₀
-  
-  sorry
+  exists Prod.snd <| updateSchema.makeEntitySchemaEntries uid.ty (schema.acts.mapOnValues actionSchemaEntryToEntityData)
+  constructor
+  case left =>
+    simp [h₀]
+    generalize h₂ : (updateSchema.makeEntitySchemaEntries uid.ty (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)) = etsPair
+    have ⟨ety, etsEntry⟩ := etsPair
+    simp only
+    generalize h₃ : (Map.make
+        (Map.kvs schema.ets ++
+          (Map.make
+              (List.map
+                (fun x =>
+                  updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
+                (Set.make
+                    (Set.map (fun x => x.ty)
+                        (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts)).kvs)) = m₀
+    have h₄ : Map.WellFormed m₀
+    := by
+      have h₅ := Map.make_wf ((Map.kvs schema.ets ++
+      (Map.make
+          (List.map
+            (fun x =>
+              updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
+            (Set.make
+                (Set.map (fun x => x.ty)
+                    (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts)).kvs))
+      rw [← h₃]
+      exact h₅
+    rw [← Map.in_list_iff_find?_some h₄]
+    rw [← h₃]
+    generalize h₅ : (List.map
+              (fun x =>
+                updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
+              (Set.make
+                  (Set.map (fun x => x.ty)
+                      (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts) = m₁
+    sorry
+  case right =>
+    intro ancestor ain
+    sorry
 
 def schemaIsWellFormed (schema newSchema : Schema) :
   wf_schema schema →

@@ -289,14 +289,6 @@ theorem make_of_make_is_id [LT α] [DecidableLT α] [StrictLT α] (xs : List (α
   unfold id at h₁
   exact h₁
 
-theorem find_append_in_one [LT α] [DecidableLT α] [BEq α] (xs ys : List (α × β)) (k : α) (v : β) :
-  Map.find? (Map.make (xs ++ ys)) k = some v → Map.find? (Map.make xs) k = some v ∨ Map.find? (Map.make ys) k = some v
-:= by
-  intro h₀
-  simp only [Map.make, Map.find?] at *
-  sorry
-
-
 /-! ### find?, findOrErr, and mapOnValues -/
 
 /--
