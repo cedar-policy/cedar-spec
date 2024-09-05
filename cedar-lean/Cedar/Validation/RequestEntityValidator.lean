@@ -142,7 +142,7 @@ def updateSchema (schema : Schema) : Schema :=
   let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
   let newEntitySchemaEntries := Map.make (uniqueTys.elts.map (makeEntitySchemaEntries · actionSchemaEntities))
   {
-    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries.kvs),
+    ets := schema.ets ++ newEntitySchemaEntries,
     acts := schema.acts
   }
   where

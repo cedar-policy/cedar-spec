@@ -193,6 +193,7 @@ theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
 
+
 /-! ### make and mk -/
 
 theorem make_wf [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) :
@@ -933,5 +934,19 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   rw [do_error] at h₁
   have h_values := in_list_in_values hkv
   exists v
+
+theorem mem_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} (k : α) (v : β) :
+  (k, v) ∈ m₁.kvs ∨ (k, v) ∈ m₂.kvs →
+  (k, v) ∈ (m₁ ++ m₂).kvs
+:= by
+  intro h₀
+  sorry
+
+theorem wf_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} :
+  Map.WellFormed m₁ →
+  Map.WellFormed m₂ →
+  Map.WellFormed (m₁ ++ m₂)
+:= by
+sorry
 
 end Cedar.Data.Map

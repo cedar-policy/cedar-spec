@@ -25,6 +25,7 @@ open Cedar.Validation
 
 def wf_schema (schema : Schema) : Prop :=
 Map.WellFormed schema.ets ∧ Map.WellFormed schema.acts
+∧ (∀ k ∈ schema.acts, k.ty ∉ schema.ets)
 
 def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   wf_schema schema →
@@ -34,8 +35,9 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   ∃ etsEntry, newSchema.ets.find? uid.ty = some etsEntry ∧
   ∀ ancestor ∈ actsEntry.ancestors, ancestor.ty ∈ etsEntry.ancestors)
 := by
-  simp [wf_schema, Map.WellFormed, Map.toList]
-  intro wfe₀ wfa₀ wfe₁ wfa₁ h₀ uid actsEntry h₁
+  simp [wf_schema]
+  -- simp [wf_schema, Map.WellFormed, Map.toList]
+  intro wfe₀ wfa₀ sch₀ wfe₁ wfa₁ sch₁ h₀ uid actsEntry h₁
   simp only [updateSchema] at h₀
   exists Prod.snd <| updateSchema.makeEntitySchemaEntries uid.ty (schema.acts.mapOnValues actionSchemaEntryToEntityData)
   constructor
@@ -44,36 +46,15 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     generalize h₂ : (updateSchema.makeEntitySchemaEntries uid.ty (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)) = etsPair
     have ⟨ety, etsEntry⟩ := etsPair
     simp only
-    generalize h₃ : (Map.make
-        (Map.kvs schema.ets ++
-          (Map.make
-              (List.map
-                (fun x =>
-                  updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
-                (Set.make
-                    (Set.map (fun x => x.ty)
-                        (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts)).kvs)) = m₀
-    have h₄ : Map.WellFormed m₀
-    := by
-      have h₅ := Map.make_wf ((Map.kvs schema.ets ++
-      (Map.make
-          (List.map
-            (fun x =>
-              updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
-            (Set.make
-                (Set.map (fun x => x.ty)
-                    (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts)).kvs))
-      rw [← h₃]
-      exact h₅
-    rw [← Map.in_list_iff_find?_some h₄]
-    rw [← h₃]
-    generalize h₅ : (List.map
-              (fun x =>
-                updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
-              (Set.make
-                  (Set.map (fun x => x.ty)
-                      (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts) = m₁
+    generalize h₃ : (List.map
+          (fun x => updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
+          (Set.make
+              (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts) = m₀
+    rw [← Map.in_list_iff_find?_some]
+    apply Map.mem_append
     sorry
+    have h₄ : Map.WellFormed (Map.make m₀) := by simp [Map.make_wf m₀]
+    apply Map.wf_append wfe₀ h₄
   case right =>
     intro ancestor ain
     sorry
@@ -88,7 +69,7 @@ def schemaIsWellFormed (schema newSchema : Schema) :
   ∨ ((¬ schema.ets.find? ty = some etsEntry) ∧ (∃ uid actsEntry, uid.ty = ty ∧ schema.acts.find? uid = some actsEntry)))
 := by
   simp [wf_schema, Map.WellFormed, Map.toList]
-  intro wfe₀ wfa₀ wfe₁ wfa₁ h₀
+  intro wfe₀ wfa₀ sch₀ wfe₁ wfa₁ sch₁ h₀
   constructor
   case left =>
     simp only [updateSchema] at h₀
