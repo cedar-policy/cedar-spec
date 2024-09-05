@@ -140,9 +140,9 @@ by inspecting the concrete hierarchy.
 def updateSchema (schema : Schema) : Schema :=
   let actionSchemaEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
   let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
-  let newEntitySchemaEntries := uniqueTys.elts.map (makeEntitySchemaEntries · actionSchemaEntities)
+  let newEntitySchemaEntries := Map.make (uniqueTys.elts.map (makeEntitySchemaEntries · actionSchemaEntities))
   {
-    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries),
+    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries.kvs),
     acts := schema.acts
   }
   where

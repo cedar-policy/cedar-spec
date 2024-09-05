@@ -21,31 +21,42 @@ open Cedar.Validation
 
 -- From these, some auxiliary lemmas should follow easily. For example, if an entity is InstanceOfEntitySchema for the original schema, then it's also InstanceOfEntitySchema for the updated schema. And same for InstanceOfActionSchema.
 
-def actionSchemaConsistentWithUpdateSchemaResults (schema newSchema : Schema) :
+
+
+def wf_schema (schema : Schema) : Prop :=
+Map.WellFormed schema.ets ∧ Map.WellFormed schema.acts
+
+def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
+  wf_schema schema →
+  wf_schema newSchema →
   newSchema = updateSchema schema →
   (∀ uid actsEntry, schema.acts.find? uid = some actsEntry →
   ∃ etsEntry, newSchema.ets.find? uid.ty = some etsEntry ∧
   ∀ ancestor ∈ actsEntry.ancestors, ancestor.ty ∈ etsEntry.ancestors)
 := by
-  intro h₀ uid actsEntry h₁
-  simp only [updateSchema, updateSchema.makeEntitySchemaEntries] at h₀
+  simp [wf_schema, Map.WellFormed, Map.toList]
+  intro wfe₀ wfa₀ wfe₁ wfa₁ h₀ uid actsEntry h₁
+  simp only [updateSchema] at h₀
+  
   sorry
 
 def schemaIsWellFormed (schema newSchema : Schema) :
+  wf_schema schema →
+  wf_schema newSchema →
   newSchema = updateSchema schema →
   newSchema.acts = schema.acts ∧
   ∀ ty etsEntry, newSchema.ets.find? ty = some etsEntry →
-  ((schema.ets.find? ty = some etsEntry) ∧ ¬ ((∃ uid actsEntry, uid.ty = ty ∧ schema.acts.find? uid = some actsEntry))
+  ((schema.ets.find? ty = some etsEntry)
   ∨ ((¬ schema.ets.find? ty = some etsEntry) ∧ (∃ uid actsEntry, uid.ty = ty ∧ schema.acts.find? uid = some actsEntry)))
 := by
-  intro h₀
+  simp [wf_schema, Map.WellFormed, Map.toList]
+  intro wfe₀ wfa₀ wfe₁ wfa₁ h₀
   constructor
   case left =>
     simp only [updateSchema] at h₀
     simp [h₀]
   case right =>
     intro ty etsEntry h₁
-    simp only [exists_and_left]
     simp only [updateSchema] at h₀
     generalize h₂ : List.map
             (fun x =>
@@ -53,4 +64,23 @@ def schemaIsWellFormed (schema newSchema : Schema) :
             (Set.make
                 (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = f
     rw [h₂] at h₀
-    sorry
+    rw [h₀] at h₁
+    simp only at h₁
+    cases h₃ : Map.find? schema.ets ty with
+    | none =>
+      right
+      constructor
+      simp only [not_false_eq_true]
+      sorry
+    | some ese =>
+      left
+      simp only [Option.some.injEq]
+      sorry
+    -- have h₃ := Map.find_append_in_one (Map.kvs schema.ets) f ty etsEntry h₁
+    -- cases h₃ with
+    -- | inl h₃ =>
+    --   left
+    --   rw [← wfe₀] at h₃
+    --   exact h₃
+    -- | inr h₃ =>
+    --   right

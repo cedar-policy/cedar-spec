@@ -35,7 +35,7 @@ def EvaluatesToBool (expr : Expr) (request : Request) (entities : Entities) : Pr
 def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Entities) : Prop :=
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
-def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
+def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
   ∃ env ∈ schema.toEnvironments,
   RequestAndEntitiesMatchEnvironment env request entities
 
@@ -111,5 +111,5 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
     specialize h₄ env h₀
     obtain ⟨ty, ⟨h₄, h₅⟩⟩ := h₄
     exact typecheck_policy_is_sound policy env ty request entities h₁ h₅
-    
+
 end Cedar.Thm
