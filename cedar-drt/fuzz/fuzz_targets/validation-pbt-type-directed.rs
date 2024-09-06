@@ -107,9 +107,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 /// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
+fn passes_validation(validator: &Validator, policyset: &ast::PolicySet, mode: ValidationMode) -> bool {
     validator
-        .validate(policyset, ValidationMode::default())
+        .validate(policyset, mode)
         .validation_passed()
 }
 
@@ -125,7 +125,9 @@ fuzz_target!(|input: FuzzTargetInput| {
             let mut policyset = ast::PolicySet::new();
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
-            if passes_validation(&validator, &policyset) {
+            let passes_strict = passes_validation(&validator, &policyset, ValidationMode::Strict);
+            let passes_permissive = passes_validation(&validator, &policyset, ValidationMode::Permissive);
+            if passes_permissive {
                 // policy successfully validated, let's make sure we don't get any
                 // dynamic type errors
                 let authorizer = Authorizer::new();
@@ -172,6 +174,13 @@ fuzz_target!(|input: FuzzTargetInput| {
                         "validated policy produced unexpected errors {unexpected_errs:?}!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
                     )
                 }
+            }
+            else {
+                assert_eq!(
+                    false,
+                    passes_strict,
+                    "policy fails permissive validation but passes strict validation!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\n",
+                );
             }
         }
     }
