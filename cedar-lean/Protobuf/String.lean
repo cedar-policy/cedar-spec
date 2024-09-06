@@ -24,17 +24,22 @@ namespace Proto
 
 -- NOTE: Will panic if there's not enough bytes to determine the next character
 -- NOTE: Does not progress iterator
+-- Returns the size of the character as well
 @[inline]
-def utf8DecodeChar (i : Nat) : BParsec Char := fun it =>
+def utf8DecodeChar (i : Nat) : BParsec (Char × Nat) := fun it =>
   let c := it.data[i]!
   if c &&& 0x80 == 0 then
-    .success it ⟨c.toUInt32, .inl (Nat.lt_trans c.1.2 (by decide))⟩
+    have char := ⟨c.toUInt32, .inl (Nat.lt_trans c.1.2 (by decide))⟩
+    .success it ⟨char, 1⟩
   else if c &&& 0xe0 == 0xc0 then
     let c1 := it.data[i+1]!
     if c1 &&& 0xc0 != 0x80 then .error it "Not a valid UTF8 Char" else
     let r := ((c &&& 0x1f).toUInt32 <<< 6) ||| (c1 &&& 0x3f).toUInt32
     if 0x80 > r then .error it "Not a valid UTF8 Char" else
-    if h : r < 0xd800 then .success it ⟨r, .inl h⟩ else .error it s!"Not valid UTF8 Char: {c} {c1}"
+    if h : r < 0xd800 then
+      have char := ⟨r, .inl h⟩
+      .success it ⟨char, 2⟩
+    else .error it s!"Not valid UTF8 Char: {c} {c1}"
   else if c &&& 0xf0 == 0xe0 then
     let c1 := it.data[i+1]!
     let c2 := it.data[i+2]!
@@ -46,7 +51,10 @@ def utf8DecodeChar (i : Nat) : BParsec Char := fun it =>
       ((c1 &&& 0x3f).toUInt32 <<< 6) |||
       (c2 &&& 0x3f).toUInt32
     if (0x800 > r) then .error it "Not a valid UTF8 Char" else
-    if h : r < 0xd800 ∨ 0xdfff < r ∧ r < 0x110000 then .success it ⟨r, h⟩ else .error it s!"Not valid UTF8 Char: {c} {c1} {c2}"
+    if h : r < 0xd800 ∨ 0xdfff < r ∧ r < 0x110000 then
+        have char := ⟨r, h⟩
+       .success it ⟨char, 3⟩
+    else .error it s!"Not valid UTF8 Char: {c} {c1} {c2}"
   else if c &&& 0xf8 == 0xf0 then
     let c1 := it.data[i+1]!
     let c2 := it.data[i+2]!
@@ -60,7 +68,8 @@ def utf8DecodeChar (i : Nat) : BParsec Char := fun it =>
       ((c2 &&& 0x3f).toUInt32 <<< 6) |||
       (c3 &&& 0x3f).toUInt32
     if h : 0x10000 ≤ r ∧ r < 0x110000 then
-      .success it ⟨r, .inr ⟨Nat.lt_of_lt_of_le (by decide) h.1, h.2⟩⟩
+      have char :=  ⟨r, .inr ⟨Nat.lt_of_lt_of_le (by decide) h.1, h.2⟩⟩
+      .success it ⟨ char, 4 ⟩
     else .error it s!"Not valid UTF8 Char: {c} {c1} {c2} {c3}"
   else
     .error it s!"Not valid UTF8 Char: {c}"
@@ -73,11 +82,10 @@ private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec Str
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
   let pos ← BParsec.pos
-  let c ← utf8DecodeChar pos
-  let elementSize := Char.utf8Size c
+  let ⟨c, elementSize⟩ ← utf8DecodeChar pos
   BParsec.forward (elementSize)
   parseStringHelper (remaining - elementSize) (r.push c)
--- Note: Can likely prove temrination if I show that ∀ c: Char, String.csize c > 0
+-- Note: Can likely prove temrination if I show that elementSize > 0
 
 @[inline]
 def parse_string: BParsec String := do
