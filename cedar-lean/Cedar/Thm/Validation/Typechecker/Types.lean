@@ -525,6 +525,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
     rename_i h₃
     subst h₁ h₃ hty₁ hty₂
     exact h₂
+termination_by (sizeOf ty₁, sizeOf ty₂)
 
 theorem instance_of_lub {v : Value} {ty ty₁ ty₂ : CedarType}
   (h₁ : (ty₁ ⊔ ty₂) = .some ty)
