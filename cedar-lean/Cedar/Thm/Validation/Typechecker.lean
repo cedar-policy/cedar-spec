@@ -97,4 +97,3 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
       intro xᵢ _
       exact @type_of_is_sound xᵢ
     exact type_of_call_is_sound h₁ h₂ h₃ ih
-termination_by sizeOf e

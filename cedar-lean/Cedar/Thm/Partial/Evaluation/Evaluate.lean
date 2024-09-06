@@ -418,7 +418,6 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
       have := List.sizeOf_lt_of_mem h₂
       exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx
     exact Call.subst_preserves_evaluation_to_value ih h_req v h₁
-termination_by expr
 
 /--
   If partial evaluation returns an error, then it also returns an error (not
@@ -510,7 +509,6 @@ theorem subst_preserves_errors {expr : Expr} {req req' : Partial.Request} {entit
       have := List.sizeOf_lt_of_mem hx
       exact subst_preserves_errors wf_r wf_e wf_s h_req
     }
-termination_by expr
 
 /--
   Corollary (contrapositive) of the above:

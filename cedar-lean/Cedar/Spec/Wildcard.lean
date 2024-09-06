@@ -69,10 +69,6 @@ def wildcardMatchIdx (text : List Char) (pattern : Pattern) (i j : Nat)
     r := charMatch (text.get ⟨i, (by omega)⟩) (pattern.get ⟨j, (by omega)⟩) &&
          (← wildcardMatchIdx text pattern (i + 1) (j + 1) (by omega) (by omega))
   modifyGet λ cache => (r, cache.insert (i, j) r)
-termination_by
-  (text.length - i) + (pattern.length - j)
-decreasing_by
-  all_goals { simp_wf ; omega }
 
 def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
   wildcardMatchIdx text.toList pattern 0 0 (by simp) (by simp) |>.run' HashMap.empty

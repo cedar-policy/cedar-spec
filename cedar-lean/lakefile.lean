@@ -18,7 +18,7 @@ import Lake
 open Lake DSL
 
 meta if get_config? env = some "dev" then -- dev is so not everyone has to build it
-require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "c7f4ac84b973b6efd8f24ba2b006cad1b32c9c53"
+require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "593ac5bd2ca98c5294675b5cccf3d89b300a76eb" -- v4.10.0
 
 require "leanprover-community" / "batteries"
 

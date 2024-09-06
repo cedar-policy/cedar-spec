@@ -861,7 +861,6 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
         replace ⟨k', h₁⟩ := in_values_exists_key h₁
         replace ⟨y, _, h₅⟩ := h₅ (k', v) h₁
         simp [h₂] at h₅
-termination_by m
 
 /--
   Note that the converse is not true:
