@@ -107,10 +107,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 /// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet, mode: ValidationMode) -> bool {
-    validator
-        .validate(policyset, mode)
-        .validation_passed()
+fn passes_validation(
+    validator: &Validator,
+    policyset: &ast::PolicySet,
+    mode: ValidationMode,
+) -> bool {
+    validator.validate(policyset, mode).validation_passed()
 }
 
 // The main fuzz target. This is for PBT on the validator
@@ -126,7 +128,8 @@ fuzz_target!(|input: FuzzTargetInput| {
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
             let passes_strict = passes_validation(&validator, &policyset, ValidationMode::Strict);
-            let passes_permissive = passes_validation(&validator, &policyset, ValidationMode::Permissive);
+            let passes_permissive =
+                passes_validation(&validator, &policyset, ValidationMode::Permissive);
             if passes_permissive {
                 // policy successfully validated, let's make sure we don't get any
                 // dynamic type errors
@@ -174,8 +177,7 @@ fuzz_target!(|input: FuzzTargetInput| {
                         "validated policy produced unexpected errors {unexpected_errs:?}!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\nrequest:\n{q}\n",
                     )
                 }
-            }
-            else {
+            } else {
                 assert_eq!(
                     false,
                     passes_strict,

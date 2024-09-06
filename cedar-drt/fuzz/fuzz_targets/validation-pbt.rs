@@ -306,10 +306,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 /// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet, mode: ValidationMode) -> bool {
-    validator
-        .validate(policyset, mode)
-        .validation_passed()
+fn passes_validation(
+    validator: &Validator,
+    policyset: &ast::PolicySet,
+    mode: ValidationMode,
+) -> bool {
+    validator.validate(policyset, mode).validation_passed()
 }
 
 // The main fuzz target. This is for PBT on the validator
@@ -333,7 +335,8 @@ fuzz_target!(|input: FuzzTargetInput| {
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
             let passes_strict = passes_validation(&validator, &policyset, ValidationMode::Strict);
-            let passes_permissive = passes_validation(&validator, &policyset, ValidationMode::Permissive);
+            let passes_permissive =
+                passes_validation(&validator, &policyset, ValidationMode::Permissive);
             if passes_permissive {
                 checkpoint(LOG_FILENAME_VALIDATION_PASS);
                 let suffix = if passes_strict { "vyes" } else { "vpermissive" };
