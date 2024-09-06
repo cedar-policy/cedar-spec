@@ -31,6 +31,7 @@ jobs:
               wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
               bash elan-init.sh -y
       - name: Download dependencies
+        working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake -R -Kenv=dev update
       - name: Build proofs
