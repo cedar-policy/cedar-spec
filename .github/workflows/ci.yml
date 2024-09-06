@@ -42,13 +42,14 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && ./test_cli.sh
+      - name: Download doc-gen4
+        working-directory: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && lake update «doc-gen4»
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
-        run: |
-             source ~/.profile
-             lake update «doc-gen4»
-             lake -R -Kenv=dev build Cedar:docs
+        run: source ~/.profile && lake -R -Kenv=dev build Cedar:docs
         
 
   build_and_test_drt:
