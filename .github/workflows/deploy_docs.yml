@@ -37,11 +37,11 @@ jobs:
       - name: Download doc-gen4
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && sed -i '/^meta if get_config? env = some "dev" then/d' lakefile.lean && lake update doc-gen4
+        run: source ~/.profile && lake update «doc-gen4»
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && lake -Kenv=dev build Cedar:docs
+        run: source ~/.profile && lake -R -Kenv=dev build Cedar:docs
       - name: Move documentation to `docs/docs`
         run: |
               mkdir docs
