@@ -42,6 +42,8 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && ./test_cli.sh
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Download doc-gen4
         working-directory: ./cedar-lean
         shell: bash
