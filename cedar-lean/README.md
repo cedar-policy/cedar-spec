@@ -16,6 +16,7 @@ To build code and proofs from the command line:
 
 ```shell
 cd cedar-lean
+lake update
 lake build Cedar
 ```
 
@@ -34,14 +35,10 @@ lake exe Cli validate Cli/json-inputs/validate/example2a.json
 
 ## Updating the Lean toolchain
 
-Cedar depends on [`std4`](https://github.com/leanprover/std4), and it is configured to use the same version of Lean as `std4`.
+To change the version of Lean used, you will need to update two files:
 
-Follow these instructions to update to the latest version of `std4` and Lean:
-
-```shell
-curl https://raw.githubusercontent.com/leanprover/std4/main/lean-toolchain -o lean-toolchain
-lake update
-```
+* `lean-toolchain` controls the Lean version. You can find all available versions [here](https://github.com/leanprover/lean4/releases).
+* `lakefile.lean` lists the project dependencies. Make sure that `batteries` and `doc-gen4` are pinned to commits that match the Lean version.
 
 ## Contributing
 
