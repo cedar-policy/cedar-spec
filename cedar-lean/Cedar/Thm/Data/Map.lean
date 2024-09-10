@@ -945,8 +945,11 @@ theorem mem_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
 theorem wf_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} :
   Map.WellFormed m₁ →
   Map.WellFormed m₂ →
+  -- if in m1 then not in m2
   Map.WellFormed (m₁ ++ m₂)
 := by
+simp [Map.WellFormed]
+intro wf₁ wf₂
 sorry
 
 end Cedar.Data.Map
