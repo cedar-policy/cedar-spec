@@ -18,6 +18,13 @@ def wf_schema (schema : Schema) : Prop :=
 Map.WellFormed schema.ets ∧ Map.WellFormed schema.acts
 ∧ (∀ k ∈ schema.acts, k.ty ∉ schema.ets)
 
+
+-- temporarily , will add to the right place when proved
+theorem List.map_sortedBy_id [LT β] [StrictLT β] {f : α → β} {xs : List α} :
+  List.SortedBy id (List.map f xs) → List.SortedBy f xs
+:= by
+  sorry
+
 def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   wf_schema schema →
   wf_schema newSchema →
@@ -61,23 +68,29 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     rw [← Set.in_list_iff_in_set] at h₅
     simp [h₅] at h₆
     rw [← Set.in_list_iff_in_set] at h₆
-    have h₁₁ := h₃
-    -- this section has generalization for convenience of proof but can be omitted after the fact
-    generalize h₇ : (fun x => updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)) = f
-    rw [h₇] at h₃
-    generalize h₈ : (Set.make (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = s
-    rw [h₈] at h₃
-    rw [h₈] at h₆
+    generalize h₇ : (fun x => updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)) = f at *
+    generalize h₈ : (Set.make (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts) = s at *
     have h₉ := List.mem_map_of_mem f h₆
     rw [h₃] at h₉
     rw [← h₇] at h₉
     simp only at h₉
     rw [h₂] at h₉
     apply Map.mem_list_mem_make
-    -- need to prove that for some wf map M, M.toList = m₀
-    -- this isnt an ideal thing to prove, and it would probably be better if m₀ was
-    -- a map, but that would involve changing the way the updateSchema function is written
-    sorry
+    have h₁₀ : Set.WellFormed s := by
+      subst h₈
+      simp only [Set.make_wf]
+    rw [Set.wf_iff_sorted] at h₁₀
+    simp [List.Sorted] at h₁₀
+    subst h₃
+    have h₁₂ : List.SortedBy id (List.map Prod.fst (List.map f s.elts)) := by
+      simp only [List.map_map]
+      subst h₇
+      simp only [updateSchema.makeEntitySchemaEntries]
+      unfold Function.comp
+      simp only [List.map_id']
+      exact h₁₀
+    apply List.map_sortedBy_id
+    exact h₁₂
     exact h₉
     have h₄ : Map.WellFormed (Map.make m₀) := by simp [Map.make_wf m₀]
     apply Map.wf_append wfe₀ h₄
@@ -85,7 +98,7 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     intro ancestor ain
     simp [updateSchema.makeEntitySchemaEntries]
     have h₂ := Map.find?_mem_toList h₁
-    have h₃ : actionSchemaEntryToEntityData actsEntry ∈ (Map.filter (fun k x => k.ty == uid.ty)
+    have h₃ : actionSchemaEntryToEntityData actsEntry ∈ (Map.filter (fun k _ => k.ty == uid.ty)
             (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)).values := by
       simp [Map.filter, Map.values]
       exists (uid, actionSchemaEntryToEntityData actsEntry)
@@ -96,9 +109,7 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
       simp only [Map.in_kvs_in_mapOnValues h₂]
       simp only [beq_self_eq_true]
       simp only
-    generalize h₄ : (Map.filter (fun k x => k.ty == uid.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)).values = vs at *
-    rw [← Set.make_mem]
-    rw [List.mem_join]
+    rw [← Set.make_mem, List.mem_join]
     exists (List.map (fun x => x.ty) (actionSchemaEntryToEntityData actsEntry).ancestors.elts)
     simp only [List.mem_map]
     constructor
@@ -121,26 +132,31 @@ def schemaIsWellFormed (schema newSchema : Schema) :
     simp only [updateSchema] at h₀
     simp [h₀]
   case right =>
-    intro ty etsEntry h₁
-    simp only [updateSchema] at h₀
-    generalize h₂ : List.map
-            (fun x =>
-              updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
-            (Set.make
-                (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = f
-    rw [h₂] at h₀
-    rw [h₀] at h₁
-    simp only at h₁
-    cases h₃ : Map.find? schema.ets ty with
-    | none =>
-      right
-      constructor
-      simp only [not_false_eq_true]
-      sorry
-    | some ese =>
-      left
-      simp only [Option.some.injEq]
-      sorry
+
+    sorry
+
+
+
+
+    -- intro ty etsEntry h₁
+    -- simp only [updateSchema] at h₀
+    -- generalize h₂ : List.map
+    --         (fun x =>
+    --           updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
+    --         (Set.make
+    --             (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = f at *
+    -- rw [h₀] at h₁
+    -- simp only at h₁
+    -- cases h₃ : Map.find? schema.ets ty with
+    -- | none =>
+    --   right
+    --   constructor
+    --   simp only [not_false_eq_true]
+
+    -- | some ese =>
+    --   left
+    --   simp only [Option.some.injEq]
+    --   sorry
     -- have h₃ := Map.find_append_in_one (Map.kvs schema.ets) f ty etsEntry h₁
     -- cases h₃ with
     -- | inl h₃ =>
