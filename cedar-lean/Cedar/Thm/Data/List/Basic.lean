@@ -428,6 +428,32 @@ theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β
         rw [← h₁ x hd' hgx]
         exact sortedBy_implies_head_lt_tail h₂ x hx
 
+theorem map_sortedBy_id [LT β] [StrictLT β] {f : α → β} {xs : List α} :
+  List.SortedBy id (xs.map f) → List.SortedBy f xs
+:= by
+  generalize hxs : xs.map f = ys
+  intro h
+  induction h generalizing xs
+  case nil =>
+    simp only [map_eq_nil] at hxs
+    subst hxs
+    exact List.SortedBy.nil
+  case cons_nil =>
+    cases xs <;> simp only [map_nil, map_cons, cons.injEq] at hxs
+    rename_i x₁ xs
+    cases xs <;> simp only [map_nil, and_true, map_cons, and_false] at hxs
+    exact List.SortedBy.cons_nil
+  case cons_cons y₁ y₂ ys hlt _ ih =>
+    cases xs <;> simp only [map_nil, map_cons, cons.injEq] at hxs
+    rename_i x₁ xs
+    cases xs <;> simp only [map_nil, and_false, map_cons, cons.injEq] at hxs
+    rename_i x₂ xs
+    apply List.SortedBy.cons_cons
+    · simp only [id_eq] at hlt
+      simp only [hxs, hlt]
+    · apply ih
+      simp only [map_cons, hxs]
+      
 /-! ### Forallᵥ -/
 
 def Forallᵥ {α β γ} (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) : Prop :=
