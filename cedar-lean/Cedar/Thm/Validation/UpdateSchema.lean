@@ -18,6 +18,8 @@ def wf_schema (schema : Schema) : Prop :=
 Map.WellFormed schema.ets ∧ Map.WellFormed schema.acts
 ∧ (∀ k ∈ schema.acts, k.ty ∉ schema.ets)
 
+/-- this theorem states that `updateSchema` adds an entry to the entity type store,
+that is consistent with its associated action type store entry. -/
 def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   wf_schema schema →
   newSchema = updateSchema schema →
@@ -108,57 +110,45 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     exists actionSchemaEntryToEntityData actsEntry
     exists ancestor
 
-def schemaIsWellFormed (schema newSchema : Schema) :
-  wf_schema schema →
-  wf_schema newSchema →
+-- this theorem states that updateSchema does not modify the action type store.
+def updateSchemaPreservesActionSchema (schema newSchema : Schema) :
   newSchema = updateSchema schema →
-  newSchema.acts = schema.acts ∧
-  ∀ ty etsEntry, newSchema.ets.find? ty = some etsEntry →
-  ((schema.ets.find? ty = some etsEntry)
-  ∨ ((¬ schema.ets.find? ty = some etsEntry) ∧ (∃ uid actsEntry, uid.ty = ty ∧ schema.acts.find? uid = some actsEntry)))
+  newSchema.acts = schema.acts
 := by
-  simp [wf_schema, Map.WellFormed, Map.toList]
-  intro wfe₀ wfa₀ sch₀ wfe₁ wfa₁ sch₁ h₀
-  constructor
-  case left =>
-    simp only [updateSchema] at h₀
-    simp [h₀]
-  case right =>
-    intro ty etsEntry h₁
-    cases h₂ : Map.find? schema.ets ty with
-    | none =>
-      right
-      constructor
-      simp only [not_false_eq_true]
-      sorry
-    | some val => sorry
+  intro h₀
+  simp only [updateSchema] at h₀
+  simp [h₀]
 
-
-
-    -- intro ty etsEntry h₁
-    -- simp only [updateSchema] at h₀
-    -- generalize h₂ : List.map
-    --         (fun x =>
-    --           updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts))
-    --         (Set.make
-    --             (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = f at *
-    -- rw [h₀] at h₁
-    -- simp only at h₁
-    -- cases h₃ : Map.find? schema.ets ty with
-    -- | none =>
-    --   right
-    --   constructor
-    --   simp only [not_false_eq_true]
-
-    -- | some ese =>
-    --   left
-    --   simp only [Option.some.injEq]
-    --   sorry
-    -- have h₃ := Map.find_append_in_one (Map.kvs schema.ets) f ty etsEntry h₁
-    -- cases h₃ with
-    -- | inl h₃ =>
-    --   left
-    --   rw [← wfe₀] at h₃
-    --   exact h₃
-    -- | inr h₃ =>
-    --   right
+/-- for every entry in the entity type store of the updated schema, it is either an entry in the entity type store of the original schema, or there exists some uid such that its type matches the entry, and it has an entry in the action type store of the original schema. note that there can be multiple uids that have the same type, we only want to prove that one exists.
+-/
+def updateSchemaProducesWellFormedEntitySchema (schema newSchema : Schema) :
+  newSchema = updateSchema schema →
+  (∀ ty etsEntry, newSchema.ets.find? ty = some etsEntry →
+  schema.ets.find? ty = some etsEntry ∨
+  (schema.ets.find? ty = none ∧ ∃ uid actsEntry, uid.ty = ty ∧ schema.acts.find? uid = some actsEntry))
+:= by
+  intro h₀ ty etsEntry h₁
+  cases h₂ : Map.find? schema.ets ty with
+  | none =>
+    right
+    constructor
+    rfl
+    sorry
+  | some val =>
+    left
+    simp only [Option.some.injEq]
+    simp only [updateSchema, updateSchema.makeEntitySchemaEntries] at h₀
+    generalize h₃ : Map.make
+          (List.map
+            (fun x =>
+              (x,
+                {
+                  ancestors :=
+                    Set.make
+                      (List.map (fun edt => List.map (fun x => x.ty) edt.ancestors.elts)
+                          (Map.filter (fun k x_1 => k.ty == x)
+                              (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)).values).join,
+                  attrs := Map.empty } ) : EntityType → EntityType × EntitySchemaEntry)
+            (Set.make
+                (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts) = m₀ at *
+    sorry

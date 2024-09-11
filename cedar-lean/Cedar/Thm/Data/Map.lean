@@ -935,12 +935,24 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
+theorem append_kvs {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} (k : α) (v : β) :
+  (k, v) ∈ m₁.kvs ++ m₂.kvs →
+  (k, v) ∈ (m₁ ++ m₂).kvs
+:= by
+  intro h₀
+  simp only [List.mem_append] at h₀
+  cases h₀ with
+  | inl h₁ => sorry
+  | inr h₁ => sorry
+
 theorem mem_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} (k : α) (v : β) :
   (k, v) ∈ m₁.kvs ∨ (k, v) ∈ m₂.kvs →
   (k, v) ∈ (m₁ ++ m₂).kvs
 := by
   intro h₀
-  sorry
+  apply Map.append_kvs
+  simp only [List.mem_append]
+  assumption
 
 theorem wf_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} :
   Map.WellFormed m₁ →
