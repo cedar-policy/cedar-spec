@@ -8,21 +8,12 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-
--- For example, we could prove that actionSchema data is consistent with the result of updateSchema according to the constraints given in InstanceOfEntitySchema.
-
--- def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
---   ∀ uid data, entities.find? uid = some data →
---     ∃ entry, ets.find? uid.ty = some entry ∧
---       InstanceOfType data.attrs (.record entry.attrs) ∧
---       ∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors
-
--- We can also prove that the contents of a schema are always included in updateSchema, and finally, that nothing other than action type data is added by updateSchema.
-
--- From these, some auxiliary lemmas should follow easily. For example, if an entity is InstanceOfEntitySchema for the original schema, then it's also InstanceOfEntitySchema for the updated schema. And same for InstanceOfActionSchema.
-
-
-
+/-- a schema is well formed if the entity and action type stores are well formed maps,
+and any uid present in the action type store is not present in the entity type store.
+the last assumption is true of generated schemas, and having it explicitly be a
+pre-condition makes proofs a bit easier (i think) (i might be wrong in which case
+it is a fairly simple refactor).
+-/
 def wf_schema (schema : Schema) : Prop :=
 Map.WellFormed schema.ets ∧ Map.WellFormed schema.acts
 ∧ (∀ k ∈ schema.acts, k.ty ∉ schema.ets)
@@ -36,7 +27,6 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
   ∀ ancestor ∈ actsEntry.ancestors, ancestor.ty ∈ etsEntry.ancestors)
 := by
   simp [wf_schema]
-  -- simp [wf_schema, Map.WellFormed, Map.toList]
   intro wfe₀ wfa₀ sch₀ wfe₁ wfa₁ sch₁ h₀ uid actsEntry h₁
   simp only [updateSchema] at h₀
   exists Prod.snd <| updateSchema.makeEntitySchemaEntries uid.ty (schema.acts.mapOnValues actionSchemaEntryToEntityData)
@@ -71,6 +61,8 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     rw [← Set.in_list_iff_in_set] at h₅
     simp [h₅] at h₆
     rw [← Set.in_list_iff_in_set] at h₆
+    have h₁₁ := h₃
+    -- this section has generalization for convenience of proof but can be omitted after the fact
     generalize h₇ : (fun x => updateSchema.makeEntitySchemaEntries x (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)) = f
     rw [h₇] at h₃
     generalize h₈ : (Set.make (Set.map (fun x => x.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts).keys).elts).elts = s
@@ -82,14 +74,36 @@ def updateSchemaPreservesEntityTypes (schema newSchema : Schema) :
     simp only at h₉
     rw [h₂] at h₉
     apply Map.mem_list_mem_make
-
+    -- need to prove that for some wf map M, M.toList = m₀
+    -- this isnt an ideal thing to prove, and it would probably be better if m₀ was
+    -- a map, but that would involve changing the way the updateSchema function is written
     sorry
     exact h₉
     have h₄ : Map.WellFormed (Map.make m₀) := by simp [Map.make_wf m₀]
     apply Map.wf_append wfe₀ h₄
   case right =>
     intro ancestor ain
-    sorry
+    simp [updateSchema.makeEntitySchemaEntries]
+    have h₂ := Map.find?_mem_toList h₁
+    have h₃ : actionSchemaEntryToEntityData actsEntry ∈ (Map.filter (fun k x => k.ty == uid.ty)
+            (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)).values := by
+      simp [Map.filter, Map.values]
+      exists (uid, actionSchemaEntryToEntityData actsEntry)
+      constructor
+      rw [List.mem_filter]
+      constructor
+      simp [Map.toList] at h₂
+      simp only [Map.in_kvs_in_mapOnValues h₂]
+      simp only [beq_self_eq_true]
+      simp only
+    generalize h₄ : (Map.filter (fun k x => k.ty == uid.ty) (Map.mapOnValues actionSchemaEntryToEntityData schema.acts)).values = vs at *
+    rw [← Set.make_mem]
+    rw [List.mem_join]
+    exists (List.map (fun x => x.ty) (actionSchemaEntryToEntityData actsEntry).ancestors.elts)
+    simp only [List.mem_map]
+    constructor
+    exists actionSchemaEntryToEntityData actsEntry
+    exists ancestor
 
 def schemaIsWellFormed (schema newSchema : Schema) :
   wf_schema schema →
