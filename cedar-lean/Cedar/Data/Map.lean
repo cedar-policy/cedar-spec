@@ -111,6 +111,11 @@ instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n 
 instance : Membership α (Map α β) where
   mem a m := List.Mem a (m.kvs.map Prod.fst)
 
+instance [LT α] [DecidableLT α]: Append (Map α β) where
+  append m₁ m₂ := Map.make (m₁.kvs ++ m₂.kvs)
+
+instance [LT α] [DecidableLT α] : HAppend (Map α β) (Map α β) (Map α β)
+:= instHAppendOfAppend
 end Map
 
 end Cedar.Data

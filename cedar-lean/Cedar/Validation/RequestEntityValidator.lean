@@ -137,15 +137,16 @@ Update the entity schema with the entities created for action schema entries.
 This involves the construction of the ancestor information for the associated types
 by inspecting the concrete hierarchy.
 -/
-def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
+def updateSchema (schema : Schema) : Schema :=
+  let actionSchemaEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
   let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
-  let newEntitySchemaEntries := uniqueTys.elts.map makeEntitySchemaEntries
+  let newEntitySchemaEntries := Map.make (uniqueTys.elts.map (makeEntitySchemaEntries · actionSchemaEntities))
   {
-    ets := Map.make (schema.ets.kvs ++ newEntitySchemaEntries),
+    ets := schema.ets ++ newEntitySchemaEntries,
     acts := schema.acts
   }
   where
-    makeEntitySchemaEntries ty :=
+    makeEntitySchemaEntries ty actionSchemaEntities :=
       let entriesWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
       let allAncestorsForType := List.join (entriesWithType.values.map (λ edt =>
         edt.ancestors.elts.map (·.ty) ))
