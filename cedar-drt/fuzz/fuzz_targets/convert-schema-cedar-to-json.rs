@@ -36,7 +36,7 @@ fuzz_target!(|src: String| {
             serde_json::to_value(parsed.clone()).expect("Failed to convert Cedar schema to JSON");
         let json_parsed = json_schema::Fragment::from_json_value(json)
             .expect("Failed to parse converted JSON schema");
-        if let Err(msg) = equivalence_check(parsed.clone(), json_parsed.clone()) {
+        if let Err(msg) = equivalence_check(&parsed, &json_parsed) {
             println!("Schema: {src}");
             println!(
                 "{}",

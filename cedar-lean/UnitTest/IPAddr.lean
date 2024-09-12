@@ -23,14 +23,14 @@ namespace UnitTest.IPAddr
 
 open Cedar.Spec.Ext.IPAddr
 
-theorem test1 : toString ((parse "192.168.0.1/32").get!) = "192.168.0.1/32" := by decide
-theorem test2 : toString ((parse "0.0.0.0/1").get!) = "0.0.0.0/1" := by decide
-theorem test3 : toString ((parse "8.8.8.8/24").get!) = "8.8.8.8/24" := by decide
-theorem test4 : toString ((parse "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by decide
-theorem test5 : toString ((parse "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by decide
-theorem test6 : toString ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by decide
-theorem test7 : toString ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by decide
-theorem test8 : toString ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by decide
+theorem test1 : toString ((parse "192.168.0.1/32").get!) = "192.168.0.1/32" := by native_decide
+theorem test2 : toString ((parse "0.0.0.0/1").get!) = "0.0.0.0/1" := by native_decide
+theorem test3 : toString ((parse "8.8.8.8/24").get!) = "8.8.8.8/24" := by native_decide
+theorem test4 : toString ((parse "1:2:3:4:a:b:c:d/128").get!) = "0001:0002:0003:0004:000a:000b:000c:000d/128" := by native_decide
+theorem test5 : toString ((parse "1:22:333:4444:a:bb:ccc:dddd/128").get!) = "0001:0022:0333:4444:000a:00bb:0ccc:dddd/128" := by native_decide
+theorem test6 : toString ((parse "7:70:700:7000::a00/128").get!) = "0007:0070:0700:7000:0000:0000:0000:0a00/128" := by native_decide
+theorem test7 : toString ((parse "::ffff/128").get!) = "0000:0000:0000:0000:0000:0000:0000:ffff/128" := by native_decide
+theorem test8 : toString ((parse "ffff::/4").get!) = "ffff:0000:0000:0000:0000:0000:0000:0000/4" := by native_decide
 
 private def ipv4 (a₀ a₁ a₂ a₃ : BitVec 8) (pre : Nat) : IPNet :=
   IPNet.V4 ⟨IPv4Addr.mk a₀ a₁ a₂ a₃, pre⟩

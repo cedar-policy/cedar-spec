@@ -86,6 +86,7 @@ const LOG_FILENAME_ERR_CONTEXT: &str = "./logs/err_context.txt";
 const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt";
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
 const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
+const LOG_FILENAME_SCHEMA_ERROR: &str = "./logs/err_schema.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -116,6 +117,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
         match &res {
             Err(Error::EntitiesError(_)) => {
                 checkpoint(LOG_FILENAME_ENTITIES_ERROR.to_string() + "_" + doing_what)
+            }
+            Err(Error::SchemaError(_)) => {
+                checkpoint(LOG_FILENAME_SCHEMA_ERROR.to_string() + "_" + doing_what)
             }
             Err(Error::NotEnoughData) => {
                 checkpoint(LOG_FILENAME_ERR_NOT_ENOUGH_DATA.to_string() + "_" + doing_what)
@@ -302,10 +306,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 }
 
 /// helper function that just tells us whether a policyset passes validation
-fn passes_validation(validator: &Validator, policyset: &ast::PolicySet) -> bool {
-    validator
-        .validate(policyset, ValidationMode::default())
-        .validation_passed()
+fn passes_validation(
+    validator: &Validator,
+    policyset: &ast::PolicySet,
+    mode: ValidationMode,
+) -> bool {
+    validator.validate(policyset, mode).validation_passed()
 }
 
 // The main fuzz target. This is for PBT on the validator
@@ -328,11 +334,15 @@ fuzz_target!(|input: FuzzTargetInput| {
             let mut policyset = ast::PolicySet::new();
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
-            if passes_validation(&validator, &policyset) {
+            let passes_strict = passes_validation(&validator, &policyset, ValidationMode::Strict);
+            let passes_permissive =
+                passes_validation(&validator, &policyset, ValidationMode::Permissive);
+            if passes_permissive {
                 checkpoint(LOG_FILENAME_VALIDATION_PASS);
-                maybe_log_schemastats(schemafile.as_ref(), "vyes");
-                maybe_log_hierarchystats(&input.hierarchy, "vyes");
-                maybe_log_policystats(&policy, "vyes");
+                let suffix = if passes_strict { "vyes" } else { "vpermissive" };
+                maybe_log_schemastats(schemafile.as_ref(), suffix);
+                maybe_log_hierarchystats(&input.hierarchy, suffix);
+                maybe_log_policystats(&policy, suffix);
                 // policy successfully validated, let's make sure we don't get any
                 // dynamic type errors
                 let authorizer = Authorizer::new();
@@ -383,6 +393,11 @@ fuzz_target!(|input: FuzzTargetInput| {
                 maybe_log_schemastats(schemafile.as_ref(), "vno");
                 maybe_log_hierarchystats(&input.hierarchy, "vno");
                 maybe_log_policystats(&policy, "vno");
+                assert_eq!(
+                    false,
+                    passes_strict,
+                    "policy fails permissive validation but passes strict validation!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\n",
+                );
             }
         }
     }

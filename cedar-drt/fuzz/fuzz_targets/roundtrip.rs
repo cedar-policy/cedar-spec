@@ -89,7 +89,6 @@ fn round_trip_json(p: StaticPolicy) -> StaticPolicy {
     let json = serde_json::to_value(est).expect("failed to convert EST to JSON");
     // read back
     let est: est::Policy = serde_json::from_value(json).expect("failed to parse EST from JSON");
-    println!("{est}");
     let template = est
         .try_into_ast_policy_or_template(None)
         .expect("failed to convert EST to AST");
