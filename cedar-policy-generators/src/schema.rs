@@ -67,31 +67,30 @@ pub struct Schema {
     /// list of entity types that occur as a valid resource for at least one
     /// action in the `schema`
     pub resource_types: Vec<ast::EntityType>,
-    /// list of (attribute, attribute type) pairs that occur in the `schema`
-    attributes: Vec<(
-        SmolStr,
-        json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-    )>,
+    /// list of (attribute, type) pairs that occur in the `schema`
+    attributes: Vec<(SmolStr, json_schema::Type<ast::InternalName>)>,
     /// map from type to (entity type, attribute name) pairs indicating
-    /// attributes in the `schema` that have that type
+    /// attributes in the `schema` that have that type.
+    /// note that we can't make a similar map for json_schema::Type because it
+    /// isn't Hash or Ord
     attributes_by_type: HashMap<Type, Vec<(ast::EntityType, SmolStr)>>,
 }
 
-/// internal helper function, basically `impl Arbitrary for RecordOrContextAttributes`
-fn arbitrary_rca<N: From<ast::Name>>(
+/// internal helper function, basically `impl Arbitrary for AttributesOrContext`
+fn arbitrary_attrspec<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     u: &mut Unstructured<'_>,
-) -> Result<json_schema::RecordOrContextAttributes<N>> {
+) -> Result<json_schema::AttributesOrContext<N>> {
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
         .map_err(|e| while_doing("generating attribute names for an attrspec".into(), e))?;
-    Ok(json_schema::RecordOrContextAttributes(json_schema::Type::Type(
+    Ok(json_schema::AttributesOrContext(json_schema::Type::Type(
         json_schema::TypeVariant::Record(json_schema::RecordType {
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
-                    let mut ty = arbitrary_recordattributetype_with_bounded_depth::<N>(
+                    let mut ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
                         settings,
                         entity_types,
                         settings.max_depth,
@@ -100,7 +99,7 @@ fn arbitrary_rca<N: From<ast::Name>>(
                     if !settings.enable_extensions {
                         // can't have extension types. regenerate until morale improves
                         while ty.ty.is_extension().expect("DRT does not generate schema type using type defs, so `is_extension` should be `Some`") {
-                            ty = arbitrary_recordattributetype_with_bounded_depth::<N>(
+                            ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
                                 settings,
                                 entity_types,
                                 settings.max_depth,
@@ -119,32 +118,19 @@ fn arbitrary_rca<N: From<ast::Name>>(
         }),
     )))
 }
-/// size hint for [`arbitrary_rca()`]
-fn arbitrary_rca_size_hint(depth: usize) -> (usize, Option<usize>) {
+/// size hint for arbitrary_attrspec
+fn arbitrary_attrspec_size_hint(depth: usize) -> (usize, Option<usize>) {
     arbitrary::size_hint::recursion_guard(depth, |depth| {
         arbitrary::size_hint::and_all(&[
             <Vec<ast::Id> as Arbitrary>::size_hint(depth),
-            arbitrary_recordattributetype_size_hint(depth),
+            arbitrary_typeofattribute_size_hint(depth),
             <bool as Arbitrary>::size_hint(depth),
         ])
     })
 }
 
-/// internal helper function, basically `impl Arbitrary for EntityAttributes`
-fn arbitrary_entityattributes<N: From<ast::Name>>(
-    settings: &ABACSettings,
-    entity_types: &[ast::EntityType],
-    u: &mut Unstructured<'_>,
-) -> Result<json_schema::EntityAttributes<N>> {
-    // RFC 68 is not yet fully supported.
-    // Currently, we never generate `EAMap`s in this function.
-    Ok(json_schema::EntityAttributes::RecordAttributes(
-        arbitrary_rca(settings, entity_types, u)?,
-    ))
-}
-
 /// internal helper function, an alternative to the `Arbitrary` impl for
-/// [`json_schema::RecordAttributeType`] that implements a bounded maximum depth.
+/// `TypeOfAttribute` that implements a bounded maximum depth.
 /// For instance, if `max_depth` is 3, then Set types (or Record types)
 /// won't be nested more than 3 deep.
 ///
@@ -155,19 +141,19 @@ fn arbitrary_entityattributes<N: From<ast::Name>>(
 /// settings.enable_additional_attributes; it always behaves as if that setting
 /// is `true` (ie, it may generate `additional_attributes` as either `true` or
 /// `false`).
-fn arbitrary_recordattributetype_with_bounded_depth<N: From<ast::Name>>(
+fn arbitrary_typeofattribute_with_bounded_depth<N: From<ast::Name>>(
     settings: &ABACSettings,
     entity_types: &[ast::EntityType],
     max_depth: usize,
     u: &mut Unstructured<'_>,
-) -> Result<json_schema::RecordAttributeType<N>> {
-    Ok(json_schema::RecordAttributeType {
+) -> Result<json_schema::TypeOfAttribute<N>> {
+    Ok(json_schema::TypeOfAttribute {
         ty: arbitrary_schematype_with_bounded_depth::<N>(settings, entity_types, max_depth, u)?,
         required: u.arbitrary()?,
     })
 }
-/// size hint for [`arbitrary_recordattributetype_with_bounded_depth()`]
-fn arbitrary_recordattributetype_size_hint(depth: usize) -> (usize, Option<usize>) {
+/// size hint for arbitrary_typeofattribute_with_bounded_depth
+fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
     arbitrary::size_hint::and(
         arbitrary_schematype_size_hint(depth),
         <bool as Arbitrary>::size_hint(depth),
@@ -236,7 +222,7 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
                             .map(|attr_name| {
                                 Ok((
                                     attr_name.into(),
-                                    arbitrary_recordattributetype_with_bounded_depth(
+                                    arbitrary_typeofattribute_with_bounded_depth(
                                         settings,
                                         entity_types,
                                         max_depth - 1,
@@ -349,118 +335,34 @@ fn schematype_to_type(
     }
 }
 
-/// internal helper function, convert a
-/// [`json_schema::EntityAttributeTypeInternal`] to a [`Type`] (loses some
-/// information)
-fn eatypeinternal_to_type(
-    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
-    eatypeinternal: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-) -> Type {
-    match eatypeinternal {
-        json_schema::EntityAttributeTypeInternal::Type(ty) => schematype_to_type(schema, ty),
-        json_schema::EntityAttributeTypeInternal::EAMap { .. } => Type::record(), // For these purposes, EAMaps are just records, as runtime values of type EAMap are valid runtime values of type Record
-    }
-}
-
 /// Get an arbitrary namespace for a schema. The namespace may be absent.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
     u.arbitrary()
         .map_err(|e| while_doing("generating namespace".into(), e))
 }
 
-/// Information about record or context attributes
-pub(crate) struct RecordOrContextAttributes<'a> {
+/// Information about attributes from the schema
+pub(crate) struct Attributes<'a> {
     /// the actual attributes
-    pub attrs: &'a BTreeMap<SmolStr, json_schema::RecordAttributeType<ast::InternalName>>,
+    pub attrs: &'a BTreeMap<SmolStr, json_schema::TypeOfAttribute<ast::InternalName>>,
     /// whether `additional_attributes` is set
     pub additional_attrs: bool,
 }
 
-/// Information about entity attributes
-pub(crate) struct EntityAttributes {
-    /// the actual attributes
-    pub attrs: BTreeMap<SmolStr, json_schema::EntityAttributeType<ast::InternalName>>,
-    /// whether `additional_attributes` is set
-    pub additional_attrs: bool,
-}
-
-/// Given a [`json_schema::RecordOrContextAttributes`], get the
-/// [`RecordOrContextAttributes`] describing it
-pub(crate) fn attrs_from_rca<'a>(
+/// Given a [`json_schema::AttributesOrContext`], get the actual attributes map
+/// from it, and whether it has `additional_attributes` set
+pub(crate) fn attrs_from_attrs_or_context<'a>(
     schema: &'a json_schema::NamespaceDefinition<ast::InternalName>,
-    rca: &'a json_schema::RecordOrContextAttributes<ast::InternalName>,
-) -> RecordOrContextAttributes<'a> {
-    match &rca.0 {
+    attrsorctx: &'a json_schema::AttributesOrContext<ast::InternalName>,
+) -> Attributes<'a> {
+    match &attrsorctx.0 {
         json_schema::Type::CommonTypeRef { type_name } => match lookup_common_type(schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
             json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
-            json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => RecordOrContextAttributes { attrs: attributes, additional_attrs: *additional_attributes },
+            json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
         json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
-        json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => RecordOrContextAttributes { attrs: attributes, additional_attrs: *additional_attributes },
+        json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
         json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
-    }
-}
-
-/// Given a [`json_schema::EntityAttributes`], get the [`EntityAttributes`]
-/// describing it
-pub(crate) fn attrs_from_ea(
-    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
-    ea: &json_schema::EntityAttributes<ast::InternalName>,
-) -> EntityAttributes {
-    match ea {
-        json_schema::EntityAttributes::RecordAttributes(rca) => {
-            let RecordOrContextAttributes {
-                attrs,
-                additional_attrs,
-            } = attrs_from_rca(schema, rca);
-            EntityAttributes {
-                attrs: attrs
-                    .iter()
-                    .map(|(k, v)| {
-                        (
-                            k.clone(),
-                            json_schema::EntityAttributeType {
-                                ty: json_schema::EntityAttributeTypeInternal::Type(v.ty.clone()),
-                                required: v.required,
-                            },
-                        )
-                    })
-                    .collect(),
-                additional_attrs,
-            }
-        }
-        json_schema::EntityAttributes::EntityAttributes(
-            json_schema::EntityAttributesInternal {
-                attrs:
-                    json_schema::RecordType {
-                        attributes,
-                        additional_attributes,
-                    },
-                ..
-            },
-        ) => EntityAttributes {
-            attrs: attributes
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
-            additional_attrs: *additional_attributes,
-        },
-    }
-}
-
-/// Given a [`json_schema::EntityAttributes`], get just the attribute names in it
-pub(crate) fn attr_names_from_ea<'a>(
-    schema: &'a json_schema::NamespaceDefinition<ast::InternalName>,
-    ea: &'a json_schema::EntityAttributes<ast::InternalName>,
-) -> Box<dyn Iterator<Item = SmolStr> + 'a> {
-    match ea {
-        json_schema::EntityAttributes::RecordAttributes(rca) => {
-            let attrs = attrs_from_rca(schema, rca);
-            Box::new(attrs.attrs.keys().cloned())
-        }
-        json_schema::EntityAttributes::EntityAttributes(rty) => {
-            Box::new(rty.attrs.attributes.keys().cloned())
-        }
     }
 }
 
@@ -469,14 +371,7 @@ pub(crate) fn attr_names_from_ea<'a>(
 fn attrs_in_schematype(
     schema: &json_schema::NamespaceDefinition<ast::InternalName>,
     schematype: &json_schema::Type<ast::InternalName>,
-) -> Box<
-    dyn Iterator<
-        Item = (
-            SmolStr,
-            json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-        ),
-    >,
-> {
+) -> Box<dyn Iterator<Item = (SmolStr, json_schema::Type<ast::InternalName>)>> {
     match schematype {
         json_schema::Type::Type(variant) => match variant {
             json_schema::TypeVariant::Boolean => Box::new(std::iter::empty()),
@@ -502,16 +397,11 @@ fn attrs_in_schematype(
             json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }) => {
                 let toplevel = attributes
                     .iter()
-                    .map(|(k, v)| {
-                        (
-                            k.clone(),
-                            json_schema::EntityAttributeTypeInternal::Type(v.ty.clone()),
-                        )
-                    })
+                    .map(|(k, v)| (k.clone(), v.ty.clone()))
                     .collect::<Vec<_>>();
                 let recursed = toplevel
                     .iter()
-                    .flat_map(|(_, v)| attrs_in_eatypeinternal(schema, v))
+                    .flat_map(|(_, v)| attrs_in_schematype(schema, v))
                     .collect::<Vec<_>>();
                 Box::new(toplevel.into_iter().chain(recursed))
             }
@@ -521,65 +411,6 @@ fn attrs_in_schematype(
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
         ),
-    }
-}
-
-/// Given a [`json_schema::EntityType`], return all (attribute,
-/// type) pairs that occur inside it
-fn attrs_in_etype(
-    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
-    etype: &json_schema::EntityType<ast::InternalName>,
-) -> Box<
-    dyn Iterator<
-        Item = (
-            SmolStr,
-            json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-        ),
-    >,
-> {
-    match &etype.shape {
-        json_schema::EntityAttributes::RecordAttributes(
-            json_schema::RecordOrContextAttributes(ty),
-        ) => attrs_in_schematype(schema, ty),
-        json_schema::EntityAttributes::EntityAttributes(
-            json_schema::EntityAttributesInternal {
-                attrs: json_schema::RecordType { attributes, .. },
-                ..
-            },
-        ) => {
-            let toplevel = attributes
-                .iter()
-                .map(|(k, v)| (k.clone(), v.ty.clone()))
-                .collect::<Vec<_>>();
-            let recursed = toplevel
-                .iter()
-                .flat_map(|(_, v)| attrs_in_eatypeinternal(schema, v))
-                .collect::<Vec<_>>();
-            Box::new(toplevel.into_iter().chain(recursed))
-        }
-    }
-}
-
-/// Given a [`json_schema::EntityAttributeTypeInternal`], return all
-/// (attribute, type) pairs that occur inside it
-fn attrs_in_eatypeinternal(
-    schema: &json_schema::NamespaceDefinition<ast::InternalName>,
-    eatypeinternal: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-) -> Box<
-    dyn Iterator<
-        Item = (
-            SmolStr,
-            json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-        ),
-    >,
-> {
-    match eatypeinternal {
-        json_schema::EntityAttributeTypeInternal::Type(ty) => attrs_in_schematype(schema, ty),
-        json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
-            // we can't return any attributes from the EAMap itself because we
-            // are not guaranteed that any particular attribute names exist
-            attrs_in_schematype(schema, value_type)
-        }
     }
 }
 
@@ -599,20 +430,16 @@ fn build_attributes_by_type<'a>(
         .map(|(name, et)| {
             (
                 ast::EntityType::from(ast::Name::from(name.clone())).qualify_with(namespace),
-                attrs_from_ea(schema, &et.shape),
+                attrs_from_attrs_or_context(schema, &et.shape),
             )
         })
         .flat_map(|(tyname, attributes)| {
-            attributes
-                .attrs
-                .iter()
-                .map(move |(attr_name, ty)| {
-                    (
-                        eatypeinternal_to_type(schema, &ty.ty),
-                        (tyname.clone(), attr_name.clone()),
-                    )
-                })
-                .collect::<Vec<_>>()
+            attributes.attrs.iter().map(move |(attr_name, ty)| {
+                (
+                    schematype_to_type(schema, &ty.ty),
+                    (tyname.clone(), attr_name.clone()),
+                )
+            })
         });
     let mut hm: HashMap<Type, Vec<(ast::EntityType, SmolStr)>> = HashMap::new();
     for (ty, pair) in triples {
@@ -708,7 +535,7 @@ impl Bindings {
                             .map(|(attr, attr_ty)| {
                                 Ok((
                                     attr.to_owned(),
-                                    json_schema::RecordAttributeType {
+                                    json_schema::TypeOfAttribute {
                                         ty: self.rewrite_type(u, &attr_ty.ty)?,
                                         required: attr_ty.required.to_owned(),
                                     },
@@ -729,98 +556,27 @@ impl Bindings {
         u: &mut Unstructured<'_>,
         et: &json_schema::EntityType<ast::InternalName>,
     ) -> Result<json_schema::EntityType<ast::InternalName>> {
+        let ty = &et.shape.0;
         Ok(json_schema::EntityType {
             member_of_types: et.member_of_types.clone(),
-            shape: self.rewrite_entity_attributes(u, &et.shape)?,
+            shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
         })
     }
 
-    /// Replace attribute types in a [`json_schema::EntityAttributes`] with common types
-    fn rewrite_entity_attributes(
-        &self,
-        u: &mut Unstructured<'_>,
-        ea: &json_schema::EntityAttributes<ast::InternalName>,
-    ) -> Result<json_schema::EntityAttributes<ast::InternalName>> {
-        match ea {
-            json_schema::EntityAttributes::RecordAttributes(attrs) => Ok(
-                json_schema::EntityAttributes::RecordAttributes(self.rewrite_rca(u, attrs)?),
-            ),
-            json_schema::EntityAttributes::EntityAttributes(attrs) => Ok(
-                json_schema::EntityAttributes::from(self.rewrite_record_type(u, &attrs.attrs)?),
-            ),
-        }
-    }
-
-    /// Replace attribute types in a [`json_schema::RecordOrContextAttributes`] with common types
-    fn rewrite_rca(
-        &self,
-        u: &mut Unstructured<'_>,
-        rca: &json_schema::RecordOrContextAttributes<ast::InternalName>,
-    ) -> Result<json_schema::RecordOrContextAttributes<ast::InternalName>> {
-        Ok(json_schema::RecordOrContextAttributes(
-            self.rewrite_or_replace_type(u, &rca.0)?,
-        ))
-    }
-
+    /// Replace attribute types in a record type with common types
     fn rewrite_record_type(
-        &self,
-        u: &mut Unstructured<'_>,
-        rty: &json_schema::RecordType<json_schema::EntityAttributeType<ast::InternalName>>,
-    ) -> Result<json_schema::RecordType<json_schema::EntityAttributeType<ast::InternalName>>> {
-        Ok(json_schema::RecordType {
-            attributes: rty
-                .attributes
-                .iter()
-                .map(|(k, v)| Ok((k.clone(), self.rewrite_eatype(u, v)?)))
-                .collect::<Result<_>>()?,
-            additional_attributes: rty.additional_attributes,
-        })
-    }
-
-    fn rewrite_eatype(
-        &self,
-        u: &mut Unstructured<'_>,
-        eatype: &json_schema::EntityAttributeType<ast::InternalName>,
-    ) -> Result<json_schema::EntityAttributeType<ast::InternalName>> {
-        Ok(json_schema::EntityAttributeType {
-            ty: self.rewrite_eatypeinternal(u, &eatype.ty)?,
-            required: eatype.required,
-        })
-    }
-
-    fn rewrite_eatypeinternal(
-        &self,
-        u: &mut Unstructured<'_>,
-        eatypeinternal: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-    ) -> Result<json_schema::EntityAttributeTypeInternal<ast::InternalName>> {
-        match eatypeinternal {
-            json_schema::EntityAttributeTypeInternal::Type(ty) => {
-                Ok(json_schema::EntityAttributeTypeInternal::Type(
-                    self.rewrite_or_replace_type(u, ty)?,
-                ))
-            }
-            json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
-                Ok(json_schema::EntityAttributeTypeInternal::EAMap {
-                    value_type: self.rewrite_or_replace_type(u, value_type)?,
-                })
-            }
-        }
-    }
-
-    /// Replace the type with a common-type reference, or rewrite the type to
-    /// possibly replace subcomponents of the type with common-type references
-    fn rewrite_or_replace_type(
         &self,
         u: &mut Unstructured<'_>,
         ty: &json_schema::Type<ast::InternalName>,
     ) -> Result<json_schema::Type<ast::InternalName>> {
-        if let Some(ids) = self.bindings.get(ty) {
-            Ok(json_schema::Type::CommonTypeRef {
+        let new_ty = if let Some(ids) = self.bindings.get(ty) {
+            json_schema::Type::CommonTypeRef {
                 type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into()).into(),
-            })
+            }
         } else {
-            self.rewrite_type(u, ty)
-        }
+            self.rewrite_type(u, ty)?
+        };
+        Ok(new_ty)
     }
 
     // Generate common types based on the bindings
@@ -897,9 +653,7 @@ impl Schema {
     ) -> Result<json_schema::NamespaceDefinition<ast::InternalName>> {
         let mut bindings = Bindings::new();
         for (_, ty) in &self.attributes {
-            if let json_schema::EntityAttributeTypeInternal::Type(ty) = ty {
-                bind_type(ty, u, &mut bindings)?;
-            }
+            bind_type(ty, u, &mut bindings)?;
         }
 
         let common_types = bindings.to_common_types(u)?;
@@ -925,8 +679,8 @@ impl Schema {
                                 Some(applies) => Some(json_schema::ApplySpec {
                                     resource_types: applies.resource_types.clone(),
                                     principal_types: applies.principal_types.clone(),
-                                    context: json_schema::RecordOrContextAttributes(
-                                        bindings.rewrite_or_replace_type(u, &applies.context.0)?,
+                                    context: json_schema::AttributesOrContext(
+                                        bindings.rewrite_record_type(u, &applies.context.0)?,
                                     ),
                                 }),
                                 None => None,
@@ -998,11 +752,12 @@ impl Schema {
             }
         }
         let mut attributes = Vec::new();
-        for schematype in nsdef.common_types.values() {
+        for schematype in nsdef
+            .common_types
+            .values()
+            .chain(nsdef.entity_types.values().map(|etype| &etype.shape.0))
+        {
             attributes.extend(attrs_in_schematype(&nsdef, schematype));
-        }
-        for etype in nsdef.entity_types.values() {
-            attributes.extend(attrs_in_etype(&nsdef, etype));
         }
         let attributes_by_type =
             build_attributes_by_type(&nsdef, &nsdef.entity_types, namespace.as_ref());
@@ -1135,7 +890,7 @@ impl Schema {
                         id.clone(),
                         json_schema::EntityType {
                             member_of_types: vec![],
-                            shape: arbitrary_entityattributes(&settings, &entity_type_names, u)?,
+                            shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
                         },
                     ))
                 })
@@ -1228,7 +983,7 @@ impl Schema {
                             Some(json_schema::ApplySpec {
                                 resource_types: picked_resource_types,
                                 principal_types: picked_principal_types,
-                                context: arbitrary_rca(&settings, &entity_type_names, u)?,
+                                context: arbitrary_attrspec(&settings, &entity_type_names, u)?,
                             })
                         },
                         member_of: if settings.enable_action_groups_and_attrs {
@@ -1268,33 +1023,18 @@ impl Schema {
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
         };
-        let entity_attributes = nsdef
-            .entity_types
-            .values()
-            .map(|et| attrs_from_ea(&nsdef, &et.shape))
-            .flat_map(|attrs| {
-                attrs.attrs.into_iter().map(|(s, ty)| {
+        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
+            .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
+        let attributes: Vec<(SmolStr, json_schema::Type<_>)> = attrsorcontexts
+            .flat_map(|attributes| {
+                attributes.attrs.iter().map(|(s, ty)| {
                     (
                         s.parse().expect("attribute names should be valid Ids"),
-                        ty.ty,
+                        ty.ty.clone(),
                     )
                 })
-            });
-        let context_attributes = nsdef
-            .actions
-            .iter()
-            .filter_map(|(_, action)| action.applies_to.as_ref())
-            .map(|a| attrs_from_rca(&nsdef, &a.context))
-            .flat_map(|attrs| {
-                attrs.attrs.into_iter().map(|(s, ty)| {
-                    (
-                        s.parse().expect("attribute names should be valid Ids"),
-                        json_schema::EntityAttributeTypeInternal::Type(ty.ty.clone()),
-                    )
-                })
-            });
-        let attributes: Vec<(SmolStr, json_schema::EntityAttributeTypeInternal<_>)> =
-            entity_attributes.chain(context_attributes).collect();
+            })
+            .collect();
         let attributes_by_type =
             build_attributes_by_type(&nsdef, nsdef.entity_types.iter(), namespace.as_ref());
         let actions_eids = nsdef
@@ -1329,13 +1069,13 @@ impl Schema {
     pub fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
             <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
-            arbitrary_rca_size_hint(depth), // actually we do one of these per Name that was generated
-            size_hint_for_ratio(1, 2),      // actually many of these calls
+            arbitrary_attrspec_size_hint(depth), // actually we do one of these per Name that was generated
+            size_hint_for_ratio(1, 2),           // actually many of these calls
             <HashSet<String> as Arbitrary>::size_hint(depth),
             size_hint_for_ratio(1, 8), // actually many of these calls
             size_hint_for_ratio(1, 4), // zero to many of these calls
             size_hint_for_ratio(1, 2), // zero to many of these calls
-            arbitrary_rca_size_hint(depth),
+            arbitrary_attrspec_size_hint(depth),
             size_hint_for_ratio(1, 2), // actually many of these calls
             <ConstantPool as Arbitrary>::size_hint(depth),
         ])
@@ -1428,14 +1168,11 @@ impl Schema {
         .map(json_schema::Type::Type))
     }
 
-    /// get an attribute name and its attribute type, from the schema
+    /// get an attribute name and its `json_schema::Type`, from the schema
     pub fn arbitrary_attr(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<&(
-        SmolStr,
-        json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-    )> {
+    ) -> Result<&(SmolStr, json_schema::Type<ast::InternalName>)> {
         u.choose(&self.attributes)
             .map_err(|e| while_doing("getting arbitrary attr from schema".into(), e))
     }
@@ -1478,14 +1215,14 @@ impl Schema {
                 (
                     ast::EntityType::from(ast::Name::from(name.clone()))
                         .qualify_with(self.namespace()),
-                    attrs_from_ea(&self.schema, &et.shape),
+                    attrs_from_attrs_or_context(&self.schema, &et.shape),
                 )
             })
             .flat_map(|(tyname, attributes)| {
                 attributes
                     .attrs
-                    .into_iter()
-                    .filter(|(_, ty)| matches!(&ty.ty, json_schema::EntityAttributeTypeInternal::Type(t) if t == &target_type))
+                    .iter()
+                    .filter(|(_, ty)| ty.ty == target_type)
                     .map(move |(attr_name, _)| (tyname.clone(), attr_name.clone()))
             })
             .collect();
@@ -1700,7 +1437,7 @@ impl Schema {
                 let mut attributes: Vec<_> = action
                     .applies_to
                     .as_ref()
-                    .map(|a| attrs_from_rca(&self.schema, &a.context))
+                    .map(|a| attrs_from_attrs_or_context(&self.schema, &a.context))
                     .iter()
                     .flat_map(|attributes| attributes.attrs.iter())
                     .collect();
@@ -1851,21 +1588,21 @@ fn downgrade_schematypevariant_to_raw(
         }) => json_schema::TypeVariant::Record(json_schema::RecordType {
             attributes: attributes
                 .into_iter()
-                .map(|(k, v)| (k, downgrade_rat_to_raw(v)))
+                .map(|(k, v)| (k, downgrade_toa_to_raw(v)))
                 .collect(),
             additional_attributes,
         }),
     }
 }
 
-/// Utility function to "downgrade" a [`json_schema::RecordAttributeType`] with fully-qualified
+/// Utility function to "downgrade" a [`TypeOfAttribute`] with fully-qualified
 /// names into one with [`RawName`]s. See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_rat_to_raw(
-    rat: json_schema::RecordAttributeType<ast::InternalName>,
-) -> json_schema::RecordAttributeType<RawName> {
-    json_schema::RecordAttributeType {
-        ty: downgrade_schematype_to_raw(rat.ty),
-        required: rat.required,
+fn downgrade_toa_to_raw(
+    toa: json_schema::TypeOfAttribute<ast::InternalName>,
+) -> json_schema::TypeOfAttribute<RawName> {
+    json_schema::TypeOfAttribute {
+        ty: downgrade_schematype_to_raw(toa.ty),
+        required: toa.required,
     }
 }
 
@@ -1881,79 +1618,17 @@ fn downgrade_entitytype_to_raw(
             .into_iter()
             .map(RawName::from_name)
             .collect(),
-        shape: downgrade_ea_to_raw(entitytype.shape),
+        shape: downgrade_aoc_to_raw(entitytype.shape),
     }
 }
 
-/// Utility function to "downgrade" a [`json_schema::RecordOrContextAttributes`]
-/// with fully-qualified names into one with [`RawName`]s. See notes on
+/// Utility function to "downgrade" a [`AttributesOrContext`] with
+/// fully-qualified names into one with [`RawName`]s. See notes on
 /// [`downgrade_frag_to_raw()`].
-fn downgrade_rca_to_raw(
-    rca: json_schema::RecordOrContextAttributes<ast::InternalName>,
-) -> json_schema::RecordOrContextAttributes<RawName> {
-    json_schema::RecordOrContextAttributes(downgrade_schematype_to_raw(rca.0))
-}
-
-/// Utility function to "downgrade" a [`json_schema::EntityAttributes`]
-/// with fully-qualified names into one with [`RawName`]s. See notes on
-/// [`downgrade_frag_to_raw()`].
-fn downgrade_ea_to_raw(
-    ea: json_schema::EntityAttributes<ast::InternalName>,
-) -> json_schema::EntityAttributes<RawName> {
-    match ea {
-        json_schema::EntityAttributes::RecordAttributes(rca) => {
-            json_schema::EntityAttributes::RecordAttributes(downgrade_rca_to_raw(rca))
-        }
-        json_schema::EntityAttributes::EntityAttributes(
-            json_schema::EntityAttributesInternal { attrs, .. },
-        ) => downgrade_rty_to_raw(attrs).into(),
-    }
-}
-
-/// Utility function to "downgrade" a [`json_schema::RecordType`]
-/// with fully-qualified names into one with [`RawName`]s.
-/// See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_rty_to_raw(
-    rty: json_schema::RecordType<json_schema::EntityAttributeType<ast::InternalName>>,
-) -> json_schema::RecordType<json_schema::EntityAttributeType<RawName>> {
-    json_schema::RecordType {
-        attributes: rty
-            .attributes
-            .into_iter()
-            .map(|(k, v)| (k, downgrade_eatype_to_raw(v)))
-            .collect(),
-        additional_attributes: rty.additional_attributes,
-    }
-}
-
-/// Utility function to "downgrade" a [`json_schema::EntityAttributeType`]
-/// with fully-qualified names into one with [`RawName`]s.
-/// See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_eatype_to_raw(
-    eatype: json_schema::EntityAttributeType<ast::InternalName>,
-) -> json_schema::EntityAttributeType<RawName> {
-    json_schema::EntityAttributeType {
-        ty: downgrade_eatypeinternal_to_raw(eatype.ty),
-        required: eatype.required,
-    }
-}
-
-/// Utility function to "downgrade" a [`json_schema::EntityAttributeTypeInternal`]
-/// with fully-qualified names into one with [`RawName`]s.
-/// See notes on [`downgrade_frag_to_raw()`].
-fn downgrade_eatypeinternal_to_raw(
-    eatypeinternal: json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-) -> json_schema::EntityAttributeTypeInternal<RawName> {
-    match eatypeinternal {
-        json_schema::EntityAttributeTypeInternal::Type(ty) => {
-            json_schema::EntityAttributeTypeInternal::Type(downgrade_schematype_to_raw(ty))
-        }
-        json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
-            json_schema::EntityAttributeTypeInternal::EAMap {
-                value_type: downgrade_schematype_to_raw(value_type),
-            }
-        }
-    }
+fn downgrade_aoc_to_raw(
+    aoc: json_schema::AttributesOrContext<ast::InternalName>,
+) -> json_schema::AttributesOrContext<RawName> {
+    json_schema::AttributesOrContext(downgrade_schematype_to_raw(aoc.0))
 }
 
 /// Utility function to "downgrade" an [`ActionType`] with fully-qualified names
@@ -1986,7 +1661,7 @@ fn downgrade_applyspec_to_raw(
             .into_iter()
             .map(RawName::from_name)
             .collect(),
-        context: downgrade_rca_to_raw(applyspec.context),
+        context: downgrade_aoc_to_raw(applyspec.context),
     }
 }
 

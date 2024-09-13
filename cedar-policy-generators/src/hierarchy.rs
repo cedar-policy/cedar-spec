@@ -17,7 +17,7 @@
 use crate::abac::Type;
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
-use crate::schema::{attrs_from_ea, Schema};
+use crate::schema::{attrs_from_attrs_or_context, Schema};
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
@@ -592,7 +592,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        let attributes = attrs_from_ea(
+                        let attributes = attrs_from_attrs_or_context(
                             &schema.schema,
                             &entitytypes_by_type
                                 .get(name)
@@ -636,7 +636,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             if ty.required || self.u.ratio::<u8>(1, 2)? {
                                 let attr_val = schema
                                     .exprgenerator(Some(&hierarchy_no_attrs))
-                                    .generate_attr_value_for_eatypeinternal(
+                                    .generate_attr_value_for_schematype(
                                         &ty.ty,
                                         schema.settings.max_depth,
                                         self.u,
