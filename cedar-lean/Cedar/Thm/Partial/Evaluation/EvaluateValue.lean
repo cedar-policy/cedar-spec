@@ -50,56 +50,46 @@ theorem sizeOf_lt_ite (pv₁ pv₂ pv₃ : Partial.Value) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.ite pv₁ pv₂ pv₃) ∧
   sizeOf pv₂ < sizeOf (Partial.ResidualExpr.ite pv₁ pv₂ pv₃) ∧
   sizeOf pv₃ < sizeOf (Partial.ResidualExpr.ite pv₁ pv₂ pv₃)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_and (pv₁ pv₂ : Partial.Value) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.and pv₁ pv₂) ∧
   sizeOf pv₂ < sizeOf (Partial.ResidualExpr.and pv₁ pv₂)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_or (pv₁ pv₂ : Partial.Value) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.or pv₁ pv₂) ∧
   sizeOf pv₂ < sizeOf (Partial.ResidualExpr.or pv₁ pv₂)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_unaryApp (op : UnaryOp) (pv₁ : Partial.Value) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.unaryApp op pv₁)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_binaryApp (op : BinaryOp) (pv₁ pv₂ : Partial.Value) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.binaryApp op pv₁ pv₂) ∧
   sizeOf pv₂ < sizeOf (Partial.ResidualExpr.binaryApp op pv₁ pv₂)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_getAttr (pv₁ : Partial.Value) (attr : Attr) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.getAttr pv₁ attr)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_hasAttr (pv₁ : Partial.Value) (attr : Attr) :
   sizeOf pv₁ < sizeOf (Partial.ResidualExpr.hasAttr pv₁ attr)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_set (pvs : List Partial.Value) :
   sizeOf pvs < sizeOf (Partial.ResidualExpr.set pvs)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_record (pvs : List (Attr × Partial.Value)) :
   sizeOf pvs < sizeOf (Partial.ResidualExpr.record pvs)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 theorem sizeOf_lt_call (xfn : ExtFun) (pvs : List Partial.Value) :
   sizeOf pvs < sizeOf (Partial.ResidualExpr.call xfn pvs)
-:= by
-  sorry
+:= by simp_wf ; omega
 
 mutual
 
@@ -503,6 +493,8 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
     false_implies, Bool.not_eq_true']
   <;> simp only [Partial.ResidualExpr.WellFormed] at wf_r
   case and pv₁ pv₂ | or pv₁ pv₂ =>
+    have := sizeOf_lt_and pv₁ pv₂
+    have := sizeOf_lt_or pv₁ pv₂
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
     case error e₁ =>
@@ -537,6 +529,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
                 case ok b₂' => simp only [Except.bind_ok, exists_false, imp_self]
           }
   case ite pv₁ pv₂ pv₃ =>
+    have := sizeOf_lt_ite pv₁ pv₂ pv₃
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
     case error e₁ =>
@@ -554,6 +547,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
           case true => exact subst_preserves_errors wf_r.right.left wf_e wf_s
           case false => exact subst_preserves_errors wf_r.right.right wf_e wf_s
   case binaryApp op pv₁ pv₂ =>
+    have := sizeOf_lt_binaryApp op pv₁ pv₂
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> cases hpv₂ : Partial.evaluateValue pv₂ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
@@ -577,6 +571,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
           have ⟨e', h₂⟩ := EvaluateBinaryApp.subst_preserves_errors subsmap h₁
           sorry
   case unaryApp op pv₁ =>
+    have := sizeOf_lt_unaryApp op pv₁
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
     case error e₁ =>
@@ -589,6 +584,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
       case ok pv₁'' =>
         sorry
   case getAttr pv₁ attr =>
+    have := sizeOf_lt_getAttr pv₁ attr
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
     case error e₁ =>
@@ -610,6 +606,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
         · intro _ _ _
           apply evalResidual_subst_preserves_evaluation_to_value
   case hasAttr pv₁ attr =>
+    have := sizeOf_lt_hasAttr pv₁ attr
     cases hpv₁ : Partial.evaluateValue pv₁ entities
     <;> simp only [Except.bind_ok, Except.bind_err, Except.error.injEq]
     case error e₁ =>
@@ -627,6 +624,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
         · intro _ _ _
           exact evalResidual_subst_preserves_evaluation_to_value
   case set pvs =>
+    have := sizeOf_lt_set pvs
     rw [
       List.mapM₁_eq_mapM (Partial.evaluateValue · entities),
       List.mapM₁_eq_mapM (Partial.evaluateValue · (entities.subst subsmap)),
@@ -643,6 +641,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
       have ⟨e'', h₂⟩ := List.element_error_implies_mapM_error (f := λ pv => Partial.evaluateValue (pv.subst subsmap) (entities.subst subsmap)) hpv h₁
       simp only [h₂, Except.bind_err, Except.error.injEq, exists_eq']
   case record apvs =>
+    have := sizeOf_lt_record apvs
     rw [
       List.map_attach₂_snd,
       Evaluate.Record.mapM₂_eq_mapM_partial_bindAttr (Partial.evaluateValue · entities),
@@ -663,6 +662,7 @@ theorem evalResidual_subst_preserves_errors {r : Partial.ResidualExpr} {entities
       )
       simp only [h₂, Except.bind_err, Except.error.injEq, exists_eq']
   case call xfn pvs =>
+    have := sizeOf_lt_call xfn pvs
     rw [
       List.mapM₁_eq_mapM (Partial.evaluateValue · entities),
       List.mapM₁_eq_mapM (Partial.evaluateValue · (entities.subst subsmap)),
