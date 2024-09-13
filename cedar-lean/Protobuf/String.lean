@@ -85,7 +85,6 @@ private partial def parseStringHelper (remaining: Nat) (r: String) : BParsec Str
   let ⟨c, elementSize⟩ ← utf8DecodeChar pos
   BParsec.forward (elementSize)
   parseStringHelper (remaining - elementSize) (r.push c)
--- Note: Can likely prove temrination if I show that elementSize > 0
 
 @[inline]
 def parse_string: BParsec String := do

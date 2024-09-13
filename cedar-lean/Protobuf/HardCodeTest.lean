@@ -45,15 +45,15 @@ def merge (x: HardCodeStruct) (y: HardCodeStruct) : HardCodeStruct :=
     f6 := (@Field.merge (Packed UInt32)) x.f6 y.f6
   }
 
-def parseField (t: Tag) : BParsec (StateM HardCodeStruct Unit) := do
+def parseField (t: Tag) : BParsec (MergeFn HardCodeStruct) := do
   match t.fieldNum with
     | 6 =>
       (@Field.guardWireType (Packed UInt32)) t.wireType
       let x: Packed UInt32 ← Field.parse
-      pure (modifyGet fun s => Prod.mk () (s.merge_6 x))
+      pure (fun s => merge_6 s x)
     | _ =>
       t.wireType.skip
-      pure (pure ())
+      pure (fun s => s)
 
 instance : Message HardCodeStruct := {
   parseField := parseField

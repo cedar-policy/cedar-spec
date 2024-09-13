@@ -32,6 +32,20 @@ namespace BParsec
 instance (α : Type) : Inhabited (BParsec α) := ⟨λ it => .error it ""⟩
 
 @[inline]
+def map {α β : Type}  (g : α → β) (f : BParsec α) : BParsec β := λ it =>
+  match f it with
+  | .success it a => .success it (g a)
+  | .error it msg => .error it msg
+
+@[inline]
+def mapConst {α β : Type} (x: α) (f: BParsec β) : BParsec α := λ it =>
+  match f it with
+  | .success it _ => .success it x
+  | .error it msg => .error it msg
+
+instance : Functor BParsec := { map, mapConst }
+
+@[inline]
 def pure (a : α) : BParsec α := λ it => .success it a
 
 @[inline]
@@ -92,47 +106,29 @@ def run! [Inhabited α] (p: BParsec α) (ba: ByteArray) : α :=
 def hasNext : BParsec Bool :=
   fun it => .success it it.hasNext
 
-@[simp] theorem has_next_eq (it: ByteArray.Iterator) :
-  (hasNext it) = .success it it.hasNext := rfl
-
 @[inline]
 def next : BParsec Unit :=
   fun it => .success (it.next) ()
-
-@[simp] theorem next_eq (it: ByteArray.Iterator) : (next it) = .success (it.next) () := rfl
 
 @[inline]
 def forward (n: Nat) : BParsec Unit :=
   fun it => .success (it.forward n) ()
 
-@[simp] theorem forward_eq (it: ByteArray.Iterator) (n: Nat) :
-   (forward n) it = .success (it.forward n) () := rfl
-
 @[inline]
 def size : BParsec Nat :=
   fun it => .success it it.size
-
-@[simp] theorem size_eq (it: ByteArray.Iterator) : size it = .success it it.size := rfl
 
 @[inline]
 def remaining : BParsec Nat :=
   fun it => .success it it.remaining
 
-
-@[simp] theorem remaining_eq (it: ByteArray.Iterator):
-  remaining it = .success it it.remaining := rfl
-
 @[inline]
 def empty : BParsec Bool :=
   fun it => .success it it.empty
 
-@[simp] theorem empty_eq (it: ByteArray.Iterator) : empty it = .success it it.empty := rfl
-
 @[inline]
 def pos : BParsec Nat :=
   fun it => .success it it.pos
-
-@[simp] theorem pos_eq (it: ByteArray.Iterator) : pos it = .success it it.pos := rfl
 
 @[specialize] def foldlHelper {α β : Type} (f: BParsec α) (g: β → α → β) (remaining: Nat) (result: β) : BParsec β := do
   if remaining = 0 then

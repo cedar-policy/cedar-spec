@@ -13,7 +13,7 @@ class Message (α : Type) [Inhabited α] where
 export Message (parseField)
 namespace Message
 
-private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (remaining: Nat) (result: α) : BParsec α := do
+private def parseMessageHelper {α: Type} [Inhabited α] [Message α] (remaining: Nat) (result: α) : BParsec α := do
   if remaining = 0 then
     pure result
   else
@@ -33,6 +33,9 @@ private partial def parseMessageHelper {α: Type} [Inhabited α] [Message α] (r
 
   let newResult := f result
   let elementSize := (endPos - startPos)
+  if elementSize = 0 then
+    throw "[parseMessageHelper] f did not progress ByteArray"
+  else
 
   (parseMessageHelper (remaining - elementSize) newResult)
 
