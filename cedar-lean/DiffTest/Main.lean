@@ -115,6 +115,28 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
       .ok { data := test_passed , duration }
   toString (Lean.toJson result)
 
+@[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : String) : String :=
+  let result : ParseResult (Timed EntityValidationResult) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
+    | .ok json => do
+        let schema ← getJsonField json "schema" >>= jsonToSchema
+        let entities ← getJsonField json "entities" >>= jsonToEntities
+        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
+        .ok (unsafeBaseIO result)
+  toString (Lean.toJson result)
+
+@[export validateRequestDRT] unsafe def validateRequestDRT (req : String) : String :=
+  let result : ParseResult (Timed RequestValidationResult) :=
+    match Lean.Json.parse req with
+    | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
+    | .ok json => do
+        let schema ← getJsonField json "schema" >>= jsonToSchema
+        let request ← getJsonField json "request" >>= jsonToRequest
+        let result := runAndTime (λ () => Cedar.Validation.validateRequest schema request )
+        .ok (unsafeBaseIO result)
+  toString (Lean.toJson result)
+
 -- variant of `evaluateDRT` that returns the result of evaluation; used in the Cli
 def evaluate (req : String) : ParseResult (Result Value) :=
   match Lean.Json.parse req with

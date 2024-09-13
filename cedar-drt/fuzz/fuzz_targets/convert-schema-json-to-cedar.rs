@@ -25,6 +25,7 @@ use cedar_policy_validator::SchemaFragment;
 use cedar_policy_validator::{RawName, SchemaFragment};
 use libfuzzer_sys::arbitrary::{self, size_hint, Arbitrary, Unstructured};
 use serde::Serialize;
+use cedar_policy_validator::{json_schema, RawName};
 use similar_asserts::SimpleDiff;
 use std::io::Write;
 use std::path::Path;
@@ -33,7 +34,7 @@ use std::str::FromStr;
 /// Input expected by this fuzz target: a JSON string of schema
 #[derive(Debug, Clone, Serialize, Arbitrary)]
 pub struct FuzzTargetInput {
-    pub schema: SchemaFragment,
+    pub schema: json_schema::Fragment<RawName>,
 }
 
 /// settings for this fuzz target
@@ -62,14 +63,13 @@ const SETTINGS: ABACSettings = ABACSettings {
 //     }
 // }
 
-// JSON String -> SchemaFragment -> Natural String -> SchemaFragment
+// JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
 // Assert that schema fragments are equivalent. By starting with a JSON String
 // we test for the existence of schema that are valid in JSON but with an
 // invalid natural schema conversion.
 fuzz_target!(|input: FuzzTargetInput| {
     let json = serde_json::to_value(input.schema.clone()).unwrap();
-    println!("orig schema json: {:?}", json.to_string());
-    let parsed = SchemaFragment::from_json_value(json);
+    let parsed = json_schema::Fragment::<RawName>::from_json_value(json);
     if let Ok(parsed) = parsed {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
@@ -78,9 +78,9 @@ fuzz_target!(|input: FuzzTargetInput| {
             .as_natural_schema()
             .expect("Failed to convert the JSON schema into a human readable schema");
         println!("natural: {}", natural_src);
-        let natural_parsed = SchemaFragment::from_str_natural(&natural_src);
+        let natural_parsed = json_schema::Fragment::<RawName>::from_str_natural(&natural_src);
         if let Ok((natural_parsed, _)) = natural_parsed {
-            if let Err(msg) = equivalence_check(parsed.clone(), natural_parsed.clone()) {
+            if let Err(msg) = equivalence_check(&parsed, natural_parsed.clone()) {
                 println!("Schema: {}", parsed.clone());
                 println!(
                     "{}",

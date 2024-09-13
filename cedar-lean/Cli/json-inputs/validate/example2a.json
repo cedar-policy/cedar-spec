@@ -103,28 +103,20 @@
         "actionIds": [
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "delete"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "delete"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Photo"
-                            }
+                            "Photo"
                         ]
                     },
                     "descendants": [],
@@ -171,28 +163,20 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "comment"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "comment"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Photo"
-                            }
+                            "Photo"
                         ]
                     },
                     "descendants": [],
@@ -239,28 +223,20 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "listPhotos"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "listPhotos"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Album"
-                            }
+                            "Album"
                         ]
                     },
                     "descendants": [],
@@ -307,28 +283,20 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "listAlbums"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "listAlbums"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Account"
-                            }
+                            "Account"
                         ]
                     },
                     "descendants": [],
@@ -375,28 +343,20 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "addPhoto"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "addPhoto"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Album"
-                            }
+                            "Album"
                         ]
                     },
                     "descendants": [],
@@ -443,28 +403,20 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "edit"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "edit"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "User"
-                            }
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Photo"
-                            }
+                            "Photo"
                         ]
                     },
                     "descendants": [],
@@ -511,34 +463,22 @@
             ],
             [
                 {
-                    "ty": {
-                        "Specified": "Action"
-                    },
+                    "ty": "Action",
                     "eid": "view"
                 },
                 {
                     "name": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "view"
                     },
                     "appliesTo": {
                         "principalApplySpec": [
-                            {
-                                "Specified": "Administrator"
-                            },
-                            {
-                                "Specified": "User"
-                            }
+                            "Administrator",
+                            "User"
                         ],
                         "resourceApplySpec": [
-                            {
-                                "Specified": "Video"
-                            },
-                            {
-                                "Specified": "Photo"
-                            }
+                            "Video",
+                            "Photo"
                         ]
                     },
                     "descendants": [],
@@ -595,9 +535,7 @@
                     "constraint": {
                         "In": {
                             "EUID": {
-                                "ty": {
-                                    "Specified": "UserGroup"
-                                },
+                                "ty": "UserGroup",
                                 "eid": "jane_friends"
                             }
                         }
@@ -605,9 +543,7 @@
                 },
                 "action_constraint": {
                     "Eq": {
-                        "ty": {
-                            "Specified": "Action"
-                        },
+                        "ty": "Action",
                         "eid": "view"
                     }
                 },
@@ -615,9 +551,7 @@
                     "constraint": {
                         "Eq": {
                             "EUID": {
-                                "ty": {
-                                    "Specified": "Photo"
-                                },
+                                "ty": "Photo",
                                 "eid": "VacationPhoto94.jpg"
                             }
                         }

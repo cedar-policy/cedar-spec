@@ -16,7 +16,7 @@
 
 import Cedar.Partial.Evaluator
 import Cedar.Spec.Expr
-import Cedar.Thm.Partial.Evaluation.WellFormed
+import Cedar.Thm.Partial.WellFormed
 
 /-!
   This file contains definitions of `Prop`s used by multiple files in the
