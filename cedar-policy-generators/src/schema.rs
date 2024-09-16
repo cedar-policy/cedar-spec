@@ -560,6 +560,7 @@ impl Bindings {
         Ok(json_schema::EntityType {
             member_of_types: et.member_of_types.clone(),
             shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
+            tags: None,
         })
     }
 
@@ -891,6 +892,7 @@ impl Schema {
                         json_schema::EntityType {
                             member_of_types: vec![],
                             shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                            tags: None,
                         },
                     ))
                 })
@@ -1619,6 +1621,7 @@ fn downgrade_entitytype_to_raw(
             .map(RawName::from_name)
             .collect(),
         shape: downgrade_aoc_to_raw(entitytype.shape),
+        tags: entitytype.tags.map(downgrade_schematype_to_raw),
     }
 }
 
