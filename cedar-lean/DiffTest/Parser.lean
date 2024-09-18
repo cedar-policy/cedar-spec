@@ -571,6 +571,19 @@ partial def jsonToRecordType (json : Lean.Json) : ParseResult RecordType := do
   let kvs ←  mapMValues kvs_json jsonToQualifiedCedarType
   .ok (Map.make kvs)
 
+partial def jsonToLevel (json : Lean.Json) : ParseResult Level := do
+  let (tag, body) ← unpackJsonSum json
+  match tag with
+  | "infinite" => return Level.infinite
+  | "finite" => do
+    let l ← getJsonField body "num"  >>= jsonToNat
+    return (.finite l)
+  | _ => .error s!"jsonToLevel: invalid tag {tag}"
+
+
+
+
+
 partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType := do
   let (tag,body) ← unpackJsonSum json
   match tag with
@@ -580,8 +593,9 @@ partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType 
   | "Entity" => do
     let lubArr ← getJsonField body "lub_elements" >>= jsonToArray
     let lub ← Array.mapM jsonToName lubArr
+    let level ← getJsonField body "level" >>= jsonToLevel
     if lub.size == 1
-    then .ok (.entity lub[0]!)
+    then .ok (.entity lub[0]! level)
     else .error s!"jsonToEntityOrRecordType: expected lub to have exactly one element\n{json.pretty}"
   | tag => .error s!"jsonToEntityOrRecordType: unknown tag {tag}"
 

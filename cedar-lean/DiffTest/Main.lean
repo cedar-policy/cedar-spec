@@ -63,7 +63,8 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     | .ok json => do
       let policies ← getJsonField json "policies" >>= jsonToPolicies
       let schema ← getJsonField json "schema" >>= jsonToSchema
-      let result := runAndTime (λ () => validate policies schema)
+      let level ← getJsonField json "level" >>= jsonToLevel
+      let result := runAndTime (λ () => validate policies schema level)
       .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
@@ -121,11 +122,12 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
     | .ok json => do
         let schema ← getJsonField json "schema" >>= jsonToSchema
+        let level ← getJsonField json "level" >>= jsonToLevel
         let entities ← getJsonField json "entities" >>= jsonToEntities
         let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
         let entities := Cedar.Data.Map.make (entities.kvs ++ actionEntities.kvs)
         let schema := updateSchema schema actionEntities
-        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
+        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities level)
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
@@ -135,8 +137,9 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
     | .ok json => do
         let schema ← getJsonField json "schema" >>= jsonToSchema
+        let level ← getJsonField json "level" >>= jsonToLevel
         let request ← getJsonField json "request" >>= jsonToRequest
-        let result := runAndTime (λ () => Cedar.Validation.validateRequest schema request )
+        let result := runAndTime (λ () => Cedar.Validation.validateRequest schema request level)
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
