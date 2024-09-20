@@ -129,7 +129,8 @@ def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityV
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,
-  attrs := Map.empty
+  attrs := Map.empty,
+  tags := Map.empty
 }
 
 /--

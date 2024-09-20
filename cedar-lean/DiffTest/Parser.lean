@@ -26,7 +26,6 @@ import Cedar.Spec.Ext
 import Cedar.Validation
 
 import DiffTest.Util
-import Cedar.Partial
 
 namespace DiffTest
 
@@ -214,71 +213,6 @@ partial def jsonToExpr (json : Lean.Json) : ParseResult Expr := do
   | "Unknown" => .error s!"expression contained unknown"
   | tag => .error s!"jsonToExpr: unknown tag {tag}"
 
-/-
-Defined as partial to avoid writing the proof of termination, which isn't required
-since we don't prove correctness of the parser.
--/
-partial def jsonToPartialValue (json : Lean.Json) : ParseResult Cedar.Partial.Value := do
-  let json ← getJsonField json "expr_kind"
-  let (tag, body) ← unpackJsonSum json
-  match tag with
-  | "Lit" => do
-    let prim ← jsonToPrim body
-    .ok (.value prim)
-  | "Var" => .error s!"vars are not supported in partial-value residuals"
-  | "And" => do
-    let lhs ← getJsonField body "left" >>= jsonToPartialValue
-    let rhs ← getJsonField body "right" >>= jsonToPartialValue
-    .ok (.residual (.and lhs rhs))
-  | "Or" => do
-    let lhs ← getJsonField body "left" >>= jsonToPartialValue
-    let rhs ← getJsonField body "right" >>= jsonToPartialValue
-    .ok (.residual (.or lhs rhs))
-  | "If" => do
-    let i ← getJsonField body "test_expr" >>= jsonToPartialValue
-    let t ← getJsonField body "then_expr" >>= jsonToPartialValue
-    let e ← getJsonField body "else_expr" >>= jsonToPartialValue
-    .ok (.residual (.ite i t e))
-  | "UnaryApp" => do
-    let op ← getJsonField body "op" >>= jsonToUnaryOp
-    let arg ← getJsonField body "arg" >>= jsonToPartialValue
-    .ok (.residual (.unaryApp op arg))
-  | "Like" => do
-    let pat ← getJsonField body "pattern" >>= jsonToPattern
-    let expr ← getJsonField body "expr" >>= jsonToPartialValue
-    .ok (.residual (.unaryApp (.like pat) expr))
-  | "Is" => do
-    let ety ← getJsonField body "entity_type" >>= jsonToName
-    let expr ← getJsonField body "expr" >>= jsonToPartialValue
-    .ok (.residual (.unaryApp (.is ety) expr))
-  | "BinaryApp" => do
-    let op ← getJsonField body "op" >>= jsonToBinaryOp
-    let arg1 ← getJsonField body "arg1" >>= jsonToPartialValue
-    let arg2 ← getJsonField body "arg2" >>= jsonToPartialValue
-    .ok (.residual (.binaryApp op arg1 arg2))
-  | "GetAttr" => do
-    let e ← getJsonField body "expr" >>= jsonToPartialValue
-    let attr ← getJsonField body "attr" >>= jsonToString
-    .ok (.residual (.getAttr e attr))
-  | "HasAttr" => do
-    let e ← getJsonField body "expr" >>= jsonToPartialValue
-    let attr ← getJsonField body "attr" >>= jsonToString
-    .ok (.residual (.hasAttr e attr))
-  | "Record" => do
-    let kvs_json ← jsonObjToKVList body
-    let kvs ← mapMValues kvs_json jsonToPartialValue
-    .ok (.residual (.record kvs))
-  | "Set" => do
-    let arr_json ← jsonToArray body
-    let arr ← List.mapM jsonToPartialValue arr_json.toList
-    .ok (.residual (.set arr))
-  | "ExtensionFunctionApp" => do
-    let fn ← getJsonField body "fn_name" >>= jsonToExtFun
-    let args_json ← getJsonField body "args" >>= jsonToArray
-    let args ← List.mapM jsonToPartialValue args_json.toList
-    .ok (.residual (.call fn args))
-  | "Unknown" => .error s!"expression contained unknown"
-  | tag => .error s!"jsonToExpr: unknown tag {tag}"
 
 def extExprToValue (xfn : ExtFun) (args : List Expr) : ParseResult Value :=
   match xfn, args with
@@ -309,30 +243,10 @@ partial def exprToValue : Expr → ParseResult Value
 def jsonToValue (json : Lean.Json) : ParseResult Value :=
   jsonToExpr json >>= exprToValue
 
-
-def jsonToPartialValue' (json : Lean.Json) : ParseResult Cedar.Partial.Value := do
-  match json.getObjVal? "Value" with
-    | .ok v => Cedar.Partial.Value.value <$> (jsonToValue v)
-    | .error _ => match json.getObjVal? "Expr" with
-      | .ok e => jsonToPartialValue e
-      | .error _ => .error "Expected either `Expr` or `Value`"
-
-def jsonToOptionalPartialValue (json : Lean.Json) : ParseResult (Option Cedar.Partial.Value) := do
-  match json with
-  | Lean.Json.null => .ok none
-  | _ => do .ok (some (← jsonToPartialValue' json))
-
 def jsonToOptionalValue (json : Lean.Json) : ParseResult (Option Value) :=
   match json with
   | Lean.Json.null => .ok .none
   | _ => do .ok (some (← jsonToValue json))
-
-def jsonToPartialContext (json : Lean.Json) : (ParseResult (Map Attr Cedar.Partial.Value)) := do
-  let value ← jsonToPartialValue json
-  match value with
-  | .value (.record m) => .ok (m.mapOnValues Cedar.Partial.Value.value)
-  | .residual (.record kvs) => .ok (Cedar.Data.Map.make kvs)
-  |_ => .error ("jsonToPartialContext: context must be a record\n" ++ toString (repr value))
 
 def jsonToContext (json : Lean.Json) : ParseResult (Map Attr Value) := do
   let value ← jsonToValue json
@@ -340,18 +254,6 @@ def jsonToContext (json : Lean.Json) : ParseResult (Map Attr Value) := do
   | .record kvs => .ok kvs
   | _ => .error ("jsonToContext: context must be a record\n" ++ toString (repr value))
 
-
-def jsonToPartialRequest (json : Lean.Json) : ParseResult Cedar.Partial.Request := do
-  let principal ← getJsonField json "principal" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
-  let action ← getJsonField json "action" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
-  let resource ← getJsonField json "resource" >>= (getJsonField · "Known") >>= (getJsonField · "euid") >>= jsonToEuid
-  let context ← getJsonField json "context" >>= jsonToPartialContext
-  .ok {
-    principal := .known principal,
-    action := .known action,
-    resource := .known resource,
-    context := context
-  }
 
 /-
 The "Known" in this function refers to "known" vs. "unknown" entities.
@@ -376,9 +278,15 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
   let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
   let attrs ← mapMValues attrsKVs jsonToValue
+  -- TODO: change this code to reflect the JSON format for entity tags.
+  -- This is a placeholder that assumes the "tags" field is at the same
+  -- level as "attrs".
+  let tagsKVs ← getJsonField json "tags" >>= jsonObjToKVList
+  let tags ← mapMValues tagsKVs jsonToValue
   .ok {
     ancestors := Set.make ancestors,
-    attrs := Map.make attrs
+    attrs := Map.make attrs,
+    tags := Map.make tags
   }
 
 def jsonToEntities (json : Lean.Json) : ParseResult Entities := do
