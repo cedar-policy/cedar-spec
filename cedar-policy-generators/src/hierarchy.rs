@@ -654,7 +654,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 // create the actual ast::Entity object
                 let entity = ast::Entity::new(
                     uid.clone(),
-                    attrs.into_iter().collect(),
+                    attrs.into_iter(),
                     parents.into_iter().collect(),
                     &self.extensions,
                 )
