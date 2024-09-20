@@ -106,6 +106,8 @@ def jsonToBinaryOp (json : Lean.Json) : ParseResult BinaryOp := do
   match op with
   | "Eq" => .ok .eq
   | "In" => .ok .mem
+  | "hasTag" => .ok .hasTag
+  | "getTag" => .ok .getTag
   | "Less" => .ok .less
   | "LessEq" => .ok .lessEq
   | "Add" => .ok .add
