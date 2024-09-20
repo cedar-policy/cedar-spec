@@ -84,6 +84,12 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
       .ok { data, duration }
   toString (Lean.toJson result)
 
+@[export partialAuthorizeDRT] unsafe def partialAuthorizeDRT (req : String) : String :=
+  s!"partialAuthorizeDRT: failed to parse input: not supported"
+
+@[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
+  s!"partialEvaluateDRT: not supported"
+
 @[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : String) : String :=
   let result : ParseResult (Timed EntityValidationResult) :=
     match Lean.Json.parse req with
