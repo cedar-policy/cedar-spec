@@ -847,5 +847,7 @@ theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   | .containsAll
   | .containsAny => exact type_of_containsA_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .mem         => exact type_of_mem_is_sound h₁ h₂ h₃ ih₁ ih₂
+  | .hasTag      => sorry
+  | .getTag      => sorry
 
 end Cedar.Thm

@@ -28,7 +28,7 @@ open Cedar.Validation
 
 theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (ty, c₂)) :
-  (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ a) ∧
+  (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ (.attr a)) ∧
   ∃ c₁',
     (∃ ety, typeOf x₁ c₁ env = Except.ok (.entity ety, c₁')) ∨
     (∃ rty, typeOf x₁ c₁ env = Except.ok (.record rty, c₁'))

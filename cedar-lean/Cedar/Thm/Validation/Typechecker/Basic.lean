@@ -62,7 +62,7 @@ On input to the typechecking function, for any (e,k) in the Capabilities,
 e is a record- or entity-typed expression that has key k.
 -/
 def CapabilitiesInvariant (c : Capabilities) (request : Request) (entities : Entities) : Prop :=
-  ∀ (e : Expr) (k : Attr), (e, k) ∈ c → EvaluatesTo (.hasAttr e k) request entities true
+  ∀ (e : Expr) (k : Attr), (e, .attr k) ∈ c → EvaluatesTo (.hasAttr e k) request entities true
 
 /--
 The Capabilities output by the typechecking function will satisfy
@@ -97,7 +97,7 @@ theorem empty_guarded_capabilities_invariant {e: Expr} {request : Request} {enti
 theorem capability_implies_record_attribute {x₁ : Expr} {a : Attr} {c₁ : Capabilities} {request : Request} {entities : Entities} {r : Map Attr Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : evaluate x₁ request entities = Except.ok (Value.record r))
-  (h₃ : (x₁, a) ∈ c₁) :
+  (h₃ : (x₁, .attr a) ∈ c₁) :
   ∃ vₐ, r.find? a = some vₐ
 := by
   simp [CapabilitiesInvariant] at h₁
@@ -109,7 +109,7 @@ theorem capability_implies_entity_attribute {x₁ : Expr} {a : Attr} {c₁ : Cap
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
   (h₃ : Map.find? entities uid = some d)
-  (h₄ : (x₁, a) ∈ c₁) :
+  (h₄ : (x₁, .attr a) ∈ c₁) :
   ∃ vₐ, d.attrs.find? a = some vₐ
 := by
   simp [CapabilitiesInvariant] at h₁
