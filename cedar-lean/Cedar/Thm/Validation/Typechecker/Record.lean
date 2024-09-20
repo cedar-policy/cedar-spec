@@ -74,6 +74,7 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         simp [h₁]
       }
 
+
 theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₁ : typeOf (Expr.record axs) c env (l == .infinite) = Except.ok (ty, c')) :
   c' = ∅ ∧
@@ -89,6 +90,79 @@ theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilitie
   simp [List.mapM₂, List.attach₂] at h₂
   simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => requiredAttr x.fst (typeOf x.snd c env (l == .infinite)))] at h₂
   exact type_of_record_inversion_forall h₂
+
+theorem type_of_record_inversion_forall' (axs : List (Attr × Expr)) (attr_types : List (Attr × QualifiedType))  {c : Capabilities} {env : Environment} {l : Level} (a : Attr) (e : Expr)
+  (h₁ : axs.mapM (λ pair => requiredAttr pair.fst (typeOf pair.snd c env (l == .infinite))) = .ok attr_types)
+  (h₂ : (a,e) ∈ axs) :
+  ∃ ty', (a,ty')  ∈ attr_types ∧ AttrExprHasAttrType c env l (a,e) (a,ty')
+  := by
+  cases axs
+  case _ =>
+    cases h₂
+  case _ head axs_tail =>
+
+    rw [List.mapM_cons] at h₁
+    have ⟨a', e'⟩ := head
+    simp at h₁
+    cases head_prop : requiredAttr a' (typeOf e' c env (l == .infinite))
+      <;> simp [head_prop] at h₁
+    cases tail_prop : axs_tail.mapM (λ pair => requiredAttr pair.fst (typeOf pair.snd c env (l == .infinite)))
+      <;> simp [tail_prop] at h₁
+    rename_i head attr_tail
+    have ⟨a'', ty''⟩ := head
+    simp [pure, Except.pure] at h₁
+    cases h₂
+    case head =>
+      exists ty''
+      simp [requiredAttr, Except.map] at head_prop
+      cases well_typed : typeOf e c env (l == .infinite)
+        <;> simp [well_typed] at head_prop
+      have ⟨head_prop₁, head_prop₂⟩ := head_prop
+      clear head_prop
+      subst head_prop₁
+      rename_i result_pair
+      rw [← h₁]
+      simp [AttrExprHasAttrType]
+      exists result_pair.fst
+      simp [head_prop₂]
+      exists result_pair.snd
+    case tail in_tail =>
+      have ih := type_of_record_inversion_forall' axs_tail attr_tail a e tail_prop  in_tail
+      have ⟨ty', ih₁, ih₂⟩ := ih
+      exists ty'
+      constructor
+      case _ =>
+        rw [← h₁]
+        simp [ih₁]
+      case _ =>
+        assumption
+
+theorem type_of_record_inversion' {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.record axs) c env (l == .infinite) = .ok (ty, c')) :
+  c' = ∅ ∧
+  ∃ (rty : List (Attr × QualifiedType)),
+    ty = .record (Map.make rty) ∧
+    ∀ a e,
+      (a,e) ∈ axs →
+      ∃ ty',
+        (a,ty') ∈ rty ∧  AttrExprHasAttrType c env l (a,e) (a,ty')
+  := by
+  simp [typeOf, ok] at h₁
+  simp [List.mapM₂, List.attach₂] at h₁
+  simp [List.mapM_pmap_subtype (λ (pair : (Attr × Expr)) => requiredAttr pair.fst (typeOf pair.snd c env (l == .infinite)))] at h₁
+  cases hmap : axs.mapM (λ pair => requiredAttr pair.fst (typeOf pair.snd c env (l == .infinite)))
+    <;> simp [hmap] at h₁
+  replace ⟨h₁, h₂⟩ := h₁
+  subst h₂
+  rename_i attr_types
+  simp [Set.empty]
+  exists attr_types
+  simp [h₁]
+  intros a e in_expr
+  apply type_of_record_inversion_forall'
+  apply hmap
+  apply in_expr
+
 
 theorem mk_vals_instance_of_mk_types₁ {a : Attr} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
   (h₁ : List.Forall₂ AttrValueHasAttrType avs rty)

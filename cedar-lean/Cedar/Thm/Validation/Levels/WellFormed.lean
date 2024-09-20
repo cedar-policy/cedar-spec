@@ -1112,6 +1112,435 @@ theorem evaluate_empty_record (request : Request) (entities : Entities) :
   evaluate (.record []) request entities = .ok (Value.record (Map.make [])) := by
   simp [evaluate, List.mapM₂, List.attach₂]
 
+theorem record_eval_step₁ (attrs : List (Attr × Expr)) (v : Map Attr Value) {request : Request} {entities : Entities}
+  (h : evaluate (.record attrs) request entities = .ok (Value.record v)) :
+  ∃ (vs : List (Attr × Value)),
+    attrs.mapM (λ pair => bindAttr pair.fst (evaluate pair.snd request entities)) = .ok vs  ∧
+    ∀ (a' v'),
+      (a', v') ∈ v.kvs → (a', v') ∈ vs
+  := by
+  simp [evaluate]  at h
+
+  simp [ List.mapM₂, List.attach₂] at h
+  simp [List.mapM_pmap_subtype (λ (pair : (Attr × Expr)) => bindAttr pair.fst (evaluate pair.snd request entities))] at h
+  cases hmapM : (attrs.mapM (λ pair => bindAttr pair.fst (evaluate pair.snd request entities)))
+  case _ =>
+    simp [hmapM] at h
+  case _ vs =>
+    exists vs
+    constructor <;> try rfl
+    intros a' v' in_map
+    simp [hmapM] at h
+    subst h
+    apply Map.make_mem_list_mem
+    assumption
+
+theorem record_eval_step₂ (attrs : List (Attr × Expr)) (vs : List (Attr × Value)) (a : Attr) (v : Value) {request : Request} {entities : Entities}
+  (h₁ : attrs.mapM (λ pair => bindAttr pair.fst (evaluate pair.snd request entities)) = .ok vs)
+  (h₂ : (a,v) ∈ vs) :
+  ∃ e,
+    (a, e) ∈ attrs ∧ evaluate e request entities = .ok v
+  := by
+  cases attrs
+  case nil =>
+    simp [pure, Except.pure] at h₁
+    subst h₁
+    cases h₂
+  case cons head attr_tail =>
+    have ⟨attr, e⟩ := head
+    rw [List.mapM_cons] at h₁
+    cases head_eq : bindAttr attr (evaluate e request entities)
+      <;> simp [head_eq] at h₁
+    cases tail_eq : attr_tail.mapM (λ pair => bindAttr pair.fst (evaluate pair.snd request entities))
+      <;> simp [tail_eq] at h₁
+    rename_i head value_tail
+    have ⟨attr', v'⟩ := head
+    simp [pure, Except.pure] at h₁
+    subst h₁
+    cases h₂
+    case head =>
+      exists e
+      cases eval : evaluate e request entities
+        <;> simp [eval, bindAttr] at head_eq
+      have ⟨head_eq₁, head_eq₂⟩ := head_eq
+      subst head_eq₁
+      subst head_eq₂
+      simp
+    case tail in_tail =>
+      have ih := record_eval_step₂ attr_tail value_tail a v tail_eq in_tail
+      replace ⟨e, ih⟩ := ih
+      exists e
+      constructor <;> simp [ih]
+
+theorem record_eval_step₃ (attrs : List (Attr × Expr)) (v_rec : Map Attr Value) (a : Attr) (v : Value) {request : Request} {entities : Entities}
+  (h₁ : evaluate (.record attrs) request entities = .ok (.record v_rec))
+  (h₂ : v_rec.find? a = some v) :
+  ∃ e,
+    (a, e) ∈ attrs ∧ evaluate e request entities = .ok v
+  := by
+  have step₁ := record_eval_step₁ attrs v_rec h₁
+  have ⟨vs, step₁₁, step₁₂⟩ := step₁
+  have hin : (a,v) ∈ vs := by
+    apply step₁₂
+    exact Map.find_means_mem h₂
+  exact record_eval_step₂ attrs vs a v step₁₁ hin
+
+def AttributeRelation {α β : Type} (r : (Attr × α) → (Attr × β) → Prop) : Prop :=
+  ∀ lhs rhs,
+    r lhs rhs →
+    lhs.fst = rhs.fst
+
+
+def SameAttrs {α β : Type} (lhs : List (Attr × α)) (rhs : List (Attr × β)) :=
+  lhs.map Prod.fst = rhs.map Prod.fst
+
+
+def EvaluatesToOk (request : Request) (entities : Entities) (lhs : (Attr × Expr)) (rhs : Attr × Value) : Prop :=
+  lhs.fst = rhs.fst ∧ evaluate lhs.snd request entities = .ok rhs.snd
+
+theorem evalutesToOk_is_AttributeRelation (request : Request) (entities : Entities) :
+  AttributeRelation (EvaluatesToOk request entities)
+  := by
+  simp [AttributeRelation, EvaluatesToOk]
+  intros
+  simp only [*]
+
+def AttrBind (f : (Attr × α) → Except e (Attr × β)) : Prop :=
+  ∀ attr attr' x y,
+    f (attr,x) = .ok (attr', y) → attr = attr'
+
+def BuildsRelation (f : (Attr × α) → Except e (Attr × β)) (r : (Attr × α) → (Attr × β) → Prop) : Prop :=
+  ∀ attr a b,
+    f (attr, a) = .ok (attr, b) →
+    r (attr, a) (attr, b)
+
+
+theorem attr_list_walk (attrs : List (Attr × α)) (values : List (Attr × β)) (f : (Attr × α) → (Except e (Attr × β))) (r : (Attr × α) → (Attr × β) → Prop)
+  (h₁ : attrs.mapM f = .ok values)
+  (h₂ : AttrBind f)
+  (h₃ : BuildsRelation f r) :
+  List.Forall₂ r attrs values ∧ SameAttrs attrs values
+  := by
+  cases attrs
+  case nil =>
+    simp [List.mapM, List.mapM.loop, pure, Except.pure] at h₁
+    subst h₁
+    constructor
+    · constructor
+    · simp [SameAttrs]
+  case cons head attrs_tail =>
+    rw [List.mapM_cons] at h₁
+    cases head_prop : f head
+      <;> simp [head_prop] at h₁
+    rename_i result_tuple
+    have ⟨attr, a⟩ := head
+    have ⟨attr', v⟩ := result_tuple
+    have heq : attr = attr' := by
+      apply h₂
+      apply head_prop
+    subst heq
+    cases tail_prop : attrs_tail.mapM f
+      <;> simp [tail_prop, pure, Except.pure] at h₁
+    rename_i values_tail
+    have ih := attr_list_walk attrs_tail values_tail f r tail_prop h₂ h₃
+    constructor
+    case _ =>
+      rw [← h₁]
+      constructor
+      case _ =>
+        apply h₃
+        apply head_prop
+      case _ =>
+        simp [ih]
+    case _ =>
+      rw [← h₁]
+      simp [SameAttrs]
+      simp [SameAttrs] at ih
+      have ⟨_, ih⟩ := ih
+      assumption
+
+
+
+theorem record_evaluation (attrs : List (Attr × Expr)) (map : Map Attr Value) {request : Request} {entities : Entities}
+  (h : evaluate (.record attrs) request entities = .ok (.record map)) :
+  ∃ (vs : List (Attr × Value)),
+    List.Forall₂ (EvaluatesToOk request entities) attrs vs ∧ SameAttrs attrs vs ∧ map = Map.make vs
+  := by
+  simp [evaluate, List.mapM₂, List.attach₂] at h
+  simp [List.mapM_pmap_subtype (λ (pair : (Attr × Expr)) => bindAttr pair.fst (evaluate pair.snd request entities))] at h
+  cases eval : attrs.mapM (λ pair => bindAttr pair.fst (evaluate pair.snd request entities))
+    <;> simp [eval] at h
+  rename_i values
+  exists values
+  simp [h]
+  apply attr_list_walk attrs values _ (EvaluatesToOk request entities)
+  apply eval
+  simp [AttrBind]
+  intros attr attr' x y h'
+  simp [bindAttr] at h'
+  cases eval' : evaluate x request entities
+    <;> simp [eval'] at h'
+  simp [h']
+  simp [BuildsRelation]
+  intros attr a b h'
+  simp [bindAttr] at h'
+  cases eval' : evaluate a request entities
+    <;> simp [eval'] at h'
+  subst h'
+  simp [EvaluatesToOk]
+  assumption
+
+
+theorem record_typing (attrs : List (Attr × Expr)) (ty : CedarType) {env : Environment} {c₁ c₂ : Capabilities} {l : Level}
+  (h₁ : typeOf (.record attrs) c₁ env (l == .infinite) = .ok (ty, c₂)) :
+  ∃ (tys : List (Attr × QualifiedType)),
+    List.Forall₂ (AttrExprHasAttrType c₁ env l) attrs tys ∧ SameAttrs attrs tys
+  := by
+  simp [typeOf, List.mapM₂, List.attach₂] at h₁
+  simp [List.mapM_pmap_subtype (λ (pair : (Attr × Expr)) => requiredAttr pair.fst (typeOf pair.snd c₁ env (l == .infinite)))] at h₁
+  cases well_typed : attrs.mapM (λ pair => requiredAttr pair.fst (typeOf pair.snd c₁ env (l == .infinite)))
+    <;> simp [well_typed, ok] at h₁
+  rename_i tys
+  exists tys
+  apply attr_list_walk attrs tys (λ pair => requiredAttr pair.fst (typeOf pair.snd c₁ env (l == .infinite))) (AttrExprHasAttrType c₁ env l)
+  apply well_typed
+  simp [AttrBind]
+  intros attr attr' x y h'
+  simp [requiredAttr] at h'
+  cases well_typed' : typeOf x c₁ env (l == .infinite)
+    <;> try simp [Except.map, well_typed'] at h'
+  simp [h']
+  simp [BuildsRelation]
+  intros attr attr' qty h'
+  simp [AttrExprHasAttrType]
+  simp [requiredAttr] at h'
+  cases well_typed' : typeOf attr' c₁ env (l == .infinite)
+    <;> try simp [Except.map, well_typed'] at h'
+  rename_i result
+  have ⟨ty', c'⟩ := result
+  exists ty'
+  simp [h']
+
+
+theorem canonicalize_preserves_attr_relations {α β}
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (h₁ : List.Forall₂ r kvs₁ kvs₂)
+  (h₂ : AttributeRelation r)
+  (h₃ : SameAttrs kvs₁ kvs₂) :
+  List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) ∧
+  SameAttrs (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
+  := by
+  cases h₁
+  case nil =>
+    constructor
+    · simp [List.canonicalize_nil]
+    · simp [SameAttrs, List.map]
+  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄ =>
+     simp only [List.canonicalize]
+     sorry
+
+  --   apply insertCanonical_preserves_forallᵥ h₂ h₄
+
+def List.find_indx_inner? {α : Type} (p : α → Bool) (l : List α) (idx : Nat) : Option (α × Nat) :=
+  match l with
+  | [] => none
+  | List.cons head tail =>
+    if p head then
+      some (head, idx)
+    else
+      List.find_indx_inner? p tail (idx + 1)
+
+
+def List.find_indx? {α : Type} (p : α → Bool) (l : List α) : Option (α × Nat) :=
+  List.find_indx_inner? p l 0
+
+def Map.find_indx? {α β : Type} [BEq α] (m : Map α β) (k : α) : Option ((α × β) × Nat) :=
+  List.find_indx? (λ ⟨key,_⟩ => k == key ) m.kvs
+
+theorem SameAttrs_step {α β : Type} {attr attr' : Attr} {a : α} {b : β} {kvs₁ : List (Attr × α)} {kvs₂ : List (Attr × β)}
+  (h : SameAttrs ((attr,a) :: kvs₁) ((attr',b) :: kvs₂)) :
+  attr = attr' ∧ SameAttrs kvs₁ kvs₂
+  := by
+  simp [SameAttrs] at h
+  simp [SameAttrs]
+  simp [h]
+
+
+theorem map_preserves_attrprops₁ {α β : Type}
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (k : Attr) (v₁ : α) (v₂ : β)
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (h₁ : AttributeRelation r)
+  (h₂ : List.Forall₂ r kvs₁ kvs₂)
+  (h₃ : SameAttrs kvs₁ kvs₂)
+  (h₄ : (List.find? (λ ⟨k',_⟩ => k' == k ) kvs₁) = some (k, v₁))
+  (h₅ : (List.find? (λ ⟨k',_⟩ => k' == k ) kvs₂) = some (k, v₂)) :
+  r (k, v₁) (k, v₂)
+  := by
+  cases kvs₁ <;> cases kvs₂
+  case _ =>
+    simp [List.find?] at h₄
+  case _ =>
+    simp [List.find?] at h₄
+  case _ =>
+    simp [List.find?] at h₅
+  case _ =>
+    rename_i a_head a_tail b_head b_tail
+    have ⟨a_key, a_val⟩ := a_head
+    have ⟨b_key, b_val⟩ := b_head
+    have ⟨step₁, step₂⟩ := SameAttrs_step h₃
+    subst step₁
+    cases eq : decide (a_key = k) <;> simp at eq
+    case true =>
+      subst eq
+      simp at h₄
+      subst h₄
+      simp at h₅
+      subst h₅
+      cases h₂
+      assumption
+    case _ =>
+      have not_beq : (a_key == k) = false := by
+        exact beq_false_of_ne eq
+      simp [List.find?, not_beq] at h₄
+      simp [List.find?, not_beq] at h₅
+      cases h₂
+      apply map_preserves_attrprops₁ a_tail b_tail
+      repeat assumption
+
+theorem find_same_key {α β : Type} [DecidableEq α] {lst : List (α × β)} {k k' : α} {v : β}
+  (h : lst.find? (λ pair => pair.fst == k) = some (k', v)) :
+  k' = k
+  := by
+  cases lst
+  case nil =>
+    simp [List.find?] at h
+  case cons head tail =>
+    have ⟨lhs, rhs⟩ := head
+    cases eq : decide (lhs = k)  <;> simp at eq
+    case true =>
+      subst eq
+      have beq : (lhs == lhs) = true := by
+        exact (beq_iff_eq lhs lhs).mpr rfl
+      simp [List.find?, beq] at h
+      simp [h]
+    case _ =>
+      have not_beq : (lhs == k) = false := by
+        apply beq_false_of_ne
+        exact eq
+      simp [List.find?, not_beq] at h
+      apply find_same_key
+      repeat assumption
+
+theorem map_find_other_key {α β : Type}
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (k : Attr) (v₁ : α) (r : (Attr × α) → (Attr × β) → Prop)
+  (h₁ : AttributeRelation r)
+  (h₂ : List.Forall₂ r kvs₁ kvs₂)
+  (h₃ : SameAttrs kvs₁ kvs₂)
+  (h₄ : (Map.mk kvs₁).find? k = some v₁) :
+  ∃ v₂,
+    (Map.mk kvs₂).find? k = some v₂
+  := by
+  cases kvs₁ <;> cases kvs₂
+  case _ =>
+    simp [Map.find?, List.find?] at h₄
+  case _ =>
+    simp [SameAttrs] at h₃
+  case _ =>
+    simp [SameAttrs] at h₃
+  case _ =>
+    rename_i a_head a_tail b_head b_tail
+    have ⟨a_key, a_value⟩ := a_head
+    have ⟨b_key, b_value⟩ := b_head
+    have ⟨step₁, step₂⟩ := SameAttrs_step h₃
+    subst step₁
+    simp [Map.find?, List.find?] at h₄
+    cases eq : decide (a_key = k) <;> simp at eq
+    case true =>
+      subst eq
+      exists b_value
+      simp [Map.find?, List.find?]
+    case false =>
+      cases h₂
+      rename_i head_prop tail_prop
+      have not_beq : (a_key == k) = false := by
+        exact beq_false_of_ne eq
+      simp [not_beq] at h₄
+      split at h₄
+        <;> rename_i find
+        <;> simp [find] at h₄
+      have h₄' : (Map.mk a_tail).find? k = some v₁ := by
+        simp [Map.find?, find, h₄]
+      have ih := map_find_other_key a_tail b_tail k v₁ r h₁ tail_prop step₂ h₄'
+      replace ⟨v₂, ih⟩ := ih
+      exists v₂
+      simp [Map.find?] at ih
+      split at ih
+        <;> rename_i find₂
+        <;> simp [find₂] at ih
+      simp [Map.find?, List.find?, not_beq, find₂, ih]
+
+
+
+
+theorem map_preserves_attrprops₂ {α β : Type}
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (k : Attr) (v₁ : α) (v₂ : β)
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (h₁ : AttributeRelation r)
+  (h₂ : List.Forall₂ r kvs₁ kvs₂)
+  (h₃ : SameAttrs kvs₁ kvs₂)
+  (h₄ : (Map.mk kvs₁).find? k = some v₁)
+  (h₅ : (Map.mk kvs₂).find? k = some v₂) :
+  r (k, v₁) (k, v₂)
+  := by
+  apply map_preserves_attrprops₁
+  repeat assumption
+  simp [Map.find?] at h₄
+  cases find₁ : List.find? (λ x => x.fst == k) kvs₁
+    <;> simp [find₁] at h₄
+  rename_i pair
+  have ⟨k', v'⟩  := pair
+  simp at h₄
+  simp [h₄]
+  apply find_same_key
+  apply find₁
+  simp [Map.find?] at h₅
+  cases find₂ : List.find? (λ x => x.fst == k) kvs₂
+    <;> simp [find₂] at h₅
+  rename_i pair
+  have ⟨k', v'⟩ := pair
+  simp at h₅
+  simp [h₅]
+  apply find_same_key
+  apply find₂
+
+theorem map_preserves_attrprops₃ {α β : Type}
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (k : Attr) (v₁ : α) (v₂ : β)
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (h₁ : AttributeRelation r)
+  (h₂ : List.Forall₂ r kvs₁ kvs₂)
+  (h₃ : SameAttrs kvs₁ kvs₂)
+  (h₄ : (Map.make kvs₁).find? k = some v₁)
+  (h₅ : (Map.make kvs₂).find? k = some v₂) :
+  r (k, v₁) (k, v₂)
+  := by
+  simp [Map.make] at h₄
+  simp [Map.make] at h₅
+  have ⟨step₁, step₂⟩  : List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) ∧ SameAttrs (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) := by
+    exact canonicalize_preserves_attr_relations r kvs₁ kvs₂ h₂ h₁ h₃
+  apply map_preserves_attrprops₂
+  apply h₁
+  apply step₁
+  apply step₂
+  apply h₄
+  apply h₅
+
+
+
 theorem evaluates_to_well_formed_record {attrs : List (Attr × Expr)} {v : Value} {request : Request} {entities : Entities} {env : Environment} {c₁ c₂ : Capabilities} {l₁ : Level}
   (h₁ : l₁ < .infinite)
   (h₂ : RequestAndEntitiesMatchEnvironmentLeveled env request entities l₁)
@@ -1128,26 +1557,55 @@ theorem evaluates_to_well_formed_record {attrs : List (Attr × Expr)} {v : Value
   clear hsound₂
   have hinv := type_of_record_inversion h₃
   replace ⟨_, rty, hinv₁, hinv⟩ := hinv
+
   subst hinv₁
   cases hsound₃
   rename_i attr_map hsound₃ hsound₄ hsound₅
-  cases attrs
-  case nil =>
-    cases hinv
-    simp [evaluate_empty_record, Map.make, List.canonicalize] at h₅
-    rw [← h₅]
-    apply WellFormed.record
-    case _ =>
-      intros k  hcontains
-      simp [Map.contains, Map.find?, List.find?] at hcontains
-    case _ =>
-      intros k v qty hfind_value hfind_type
-      simp [Map.find?, List.find?] at hfind_value
-    case _ =>
-      intros k qty hfind
-      simp [Map.find?, List.find?] at hfind
-  case cons attr attrs =>
+  apply WellFormed.record
+  case _ =>
+    intros k hin
+    apply hsound₃
+    assumption
+  case _ =>
+    intros k v qty hin_value hin_type
+    have evals := record_evaluation attrs attr_map h₅
+    replace ⟨vs, evals, evals_sameattrs, eval_map_eq⟩ := evals
+    have well_typed := record_typing attrs (.record (Map.make rty)) h₃
+    replace ⟨tys, well_typed, typed_sameattrs⟩ := well_typed
+    have exprmap : ∃ m, m = Map.make attrs := by
+      exists Map.make attrs
+    replace ⟨exprmap, hexprmap⟩ := exprmap
+    cases exprmap
+    rename_i attrs_canonical
+
+
+
     sorry
+
+
+
+
+
+
+
+
+
+
+    -- have hstep := record_eval_step₃ attrs attr_map k v h₅ hin_value
+    -- have ⟨e, hstep₁, hstep₂⟩ := hstep
+
+    -- have htyped := record_typing_step attrs ((rty)) k e qty h₃ hin_type hstep₁
+    -- replace ⟨c₂', htyped⟩ := htyped
+    -- apply ih
+    -- apply hstep₁
+    -- apply h₁
+    -- apply h₂
+    -- apply htyped
+    -- apply hstep₂
+    -- assumption
+  case _ =>
+    apply hsound₅
+
 
 theorem evaluates_to_well_formed {x : Expr} {v : Value} {ty: CedarType} {request : Request} {entities: Entities} {env : Environment} {c₁ c₂ : Capabilities} {l₁ : Level}
   (h₁ : l₁ < .infinite)
