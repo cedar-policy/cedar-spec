@@ -76,7 +76,7 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
     cases h₇
     case isTrue.h₁.false.inl _ h₇ =>
       simp [CapabilitiesInvariant] at h₁
-      specialize h₁ x₁ a h₇
+      replace h₁ := h₁.left x₁ a h₇
       simp [EvaluatesTo, evaluate, h₄, hasAttr, attrsOf, h₆] at h₁
     case isTrue.h₁.false.inr h₇ _ h₈ =>
       simp [Qualified.isRequired] at h₈
@@ -123,7 +123,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     cases h₈ : Map.contains (Entities.attrsOrEmpty entities uid) a <;> simp
     rename_i _ _ _ _  h₉
     simp [CapabilitiesInvariant] at h₁
-    specialize h₁ x₁ a h₉
+    replace h₁ := h₁.left x₁ a h₉
     simp [EvaluatesTo, evaluate, h₅, hasAttr, attrsOf, h₈] at h₁
   case h_1.h_2 =>
     simp [ok] at h₃
@@ -171,7 +171,9 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   apply And.intro
   case left =>
     simp [GuardedCapabilitiesInvariant, CapabilitiesInvariant]
-    intro h₆ x aₓ h₇
+    intro h₆
+    constructor <;>
+    intro x aₓ h₇ <;>
     cases h₅ <;> rename_i h₈ <;> subst h₈ <;> simp [Capabilities.singleton] at h₇
     have ⟨h₇, h₈⟩ := h₇
     subst h₇; subst h₈

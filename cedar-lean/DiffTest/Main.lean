@@ -85,7 +85,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
   toString (Lean.toJson result)
 
 @[export partialAuthorizeDRT] unsafe def partialAuthorizeDRT (req : String) : String :=
-  s!"partialAuthorizeDRT: failed to parse input: not supported"
+  s!"partialAuthorizeDRT: not supported"
 
 @[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
   s!"partialEvaluateDRT: not supported"

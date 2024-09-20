@@ -58,11 +58,14 @@ def EvaluatesTo (e: Expr) (request : Request) (entities : Entities) (v : Value) 
   evaluate e request entities = .ok v
 
 /--
-On input to the typechecking function, for any (e,k) in the Capabilities,
-e is a record- or entity-typed expression that has key k.
+On input to the typechecking function, for any (e, .attr k) in the Capabilities,
+e is a record- or entity-typed expression that has attribute k.
+Similarly, for any (e, .tag k) in the Capabilities,
+e is an entity-typed expression that has tag k.
 -/
 def CapabilitiesInvariant (c : Capabilities) (request : Request) (entities : Entities) : Prop :=
-  ∀ (e : Expr) (k : Attr), (e, .attr k) ∈ c → EvaluatesTo (.hasAttr e k) request entities true
+  (∀ (e : Expr) (k : Attr), (e, .attr k) ∈ c → EvaluatesTo (.hasAttr e k) request entities true) ∧
+  (∀ (e k : Expr), (e, .tag k) ∈ c → EvaluatesTo (.binaryApp .hasTag e k) request entities true)
 
 /--
 The Capabilities output by the typechecking function will satisfy
@@ -85,7 +88,8 @@ def TypeOfIsSound (x₁ : Expr) : Prop :=
 theorem empty_capabilities_invariant (request : Request) (entities : Entities) :
   CapabilitiesInvariant ∅ request entities
 := by
-  intro e k h
+  constructor <;>
+  intro e k h <;>
   contradiction
 
 theorem empty_guarded_capabilities_invariant {e: Expr} {request : Request} {entities : Entities} :
@@ -101,7 +105,7 @@ theorem capability_implies_record_attribute {x₁ : Expr} {a : Attr} {c₁ : Cap
   ∃ vₐ, r.find? a = some vₐ
 := by
   simp [CapabilitiesInvariant] at h₁
-  specialize h₁ x₁ a h₃
+  replace h₁ := h₁.left x₁ a h₃
   simp [EvaluatesTo, evaluate, h₂, hasAttr, attrsOf, Map.contains_iff_some_find?] at h₁
   exact h₁
 
@@ -113,7 +117,7 @@ theorem capability_implies_entity_attribute {x₁ : Expr} {a : Attr} {c₁ : Cap
   ∃ vₐ, d.attrs.find? a = some vₐ
 := by
   simp [CapabilitiesInvariant] at h₁
-  specialize h₁ x₁ a h₄
+  replace h₁ := h₁.left x₁ a h₄
   simp [EvaluatesTo, evaluate, h₂, hasAttr, attrsOf, Entities.attrsOrEmpty, h₃, Map.contains_iff_some_find?] at h₁
   exact h₁
 
@@ -122,17 +126,29 @@ theorem capability_union_invariant {c₁ c₂ : Capabilities} {request : Request
   (h₂ : CapabilitiesInvariant c₂ request entities) :
   CapabilitiesInvariant (c₁ ∪ c₂) request entities
 := by
-  simp [CapabilitiesInvariant] at *
-  intro x a h₃
-  specialize h₁ x a ; specialize h₂ x a
-  cases h₃ <;> rename_i h₃ <;> simp [h₃] at * <;> assumption
+  simp only [CapabilitiesInvariant, List.mem_union_iff] at *
+  constructor <;>
+  intro x k h₃
+  case' left =>
+    replace h₁ := h₁.left x k
+    replace h₂ := h₂.left x k
+  case' right =>
+    replace h₁ := h₁.right x k
+    replace h₂ := h₂.right x k
+  all_goals {
+    cases h₃ <;> rename_i h₃ <;> simp [h₃] at * <;> assumption
+  }
 
 theorem capability_intersection_invariant {c₁ c₂ : Capabilities} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities ∨ CapabilitiesInvariant c₂ request entities) :
   CapabilitiesInvariant (c₁ ∩ c₂) request entities
 := by
-  simp [CapabilitiesInvariant] at *
-  intro x a h₃ h₄
-  cases h₁ <;> rename_i h₁ <;> apply h₁ x a <;> assumption
+  simp only [CapabilitiesInvariant, List.mem_inter_iff, and_imp] at *
+  constructor <;>
+  intro x k h₂ h₃
+  case left =>
+    cases h₁ <;> rename_i h₁ <;> apply h₁.left x k <;> assumption
+  case right =>
+    cases h₁ <;> rename_i h₁ <;> apply h₁.right x k <;> assumption
 
 end Cedar.Thm
