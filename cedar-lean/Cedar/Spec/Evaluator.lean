@@ -57,6 +57,8 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .containsAny, .set vs₁, .set vs₂                       => .ok (vs₁.intersects vs₂)
   | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok (inₑ uid₁ uid₂ es)
   | .mem, .prim (.entityUID uid₁), .set (vs)               => inₛ uid₁ vs es
+  | .hasTag, .prim (.entityUID uid₁), .prim (.string tag)  => .ok ((es.tagsOrEmpty uid₁).contains tag)
+  | .getTag, .prim (.entityUID uid₁), .prim (.string tag)  => (es.tagsOrEmpty uid₁).findOrErr tag .tagDoesNotExist
   | _, _, _                                                => .error .typeError
 
 def attrsOf (v : Value) (lookup : EntityUID → Result (Map Attr Value)) : Result (Map Attr Value) :=

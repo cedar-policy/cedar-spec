@@ -278,9 +278,6 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
   let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
   let attrs ← mapMValues attrsKVs jsonToValue
-  -- TODO: change this code to reflect the JSON format for entity tags.
-  -- This is a placeholder that assumes the "tags" field is at the same
-  -- level as "attrs".
   let tagsKVs ← getJsonField json "tags" >>= jsonObjToKVList
   let tags ← mapMValues tagsKVs jsonToValue
   .ok {
@@ -421,6 +418,7 @@ def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (descendant
 structure JsonEntitySchemaEntry where
   descendants : Cedar.Data.Set EntityType
   attrs : RecordType
+  tags : Option CedarType
 
 abbrev JsonEntitySchema := Map EntityType JsonEntitySchemaEntry
 
@@ -440,7 +438,8 @@ def invertJsonEntitySchema (ets : JsonEntitySchema) : EntitySchema :=
     (λ (k,v) => (k,
       {
         ancestors := ancestorMap.find! k,
-        attrs := v.attrs
+        attrs := v.attrs,
+        tags := v.tags
       })) ets)
 
 def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
@@ -456,12 +455,13 @@ def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
         context := v.context
       })) acts)
 
--- Add special "unspecified" entity type with no attributes or ancestors
+-- Add special "unspecified" entity type with no attributes or ancestors or tags
 def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
   let unspecifiedEntry : EntitySchemaEntry :=
   {
     ancestors := Set.empty
     attrs := Map.empty
+    tags := Option.none
   }
   Map.make (ets.toList ++ [({id := "<Unspecified>", path := []}, unspecifiedEntry)])
 
@@ -510,9 +510,14 @@ partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySch
   let descendants_json ← getJsonField json "descendants" >>= jsonToArray
   let descendants ← List.mapM jsonToName descendants_json.toList
   let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
+  let tags ← -- the "tags" field may be absent
+    match getJsonField json "tags" with
+    | .ok jty  => (jsonToCedarType jty).map .some
+    | .error _ => .ok .none
   .ok {
     descendants := Set.make descendants,
-    attrs := attrs
+    attrs := attrs,
+    tags := tags
   }
 
 partial def jsonToActionSchemaEntry (json : Lean.Json) : ParseResult JsonActionSchemaEntry := do

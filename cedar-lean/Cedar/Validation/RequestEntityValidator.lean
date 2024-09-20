@@ -152,7 +152,8 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
         edt.ancestors.elts.map (·.ty) ))
       let ese : EntitySchemaEntry := {
         ancestors := Set.make allAncestorsForType,
-        attrs := Map.empty
+        attrs := Map.empty,
+        tags := Option.none
       }
       (ty, ese)
 
