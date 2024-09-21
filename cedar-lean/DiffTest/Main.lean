@@ -85,10 +85,10 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
   toString (Lean.toJson result)
 
 @[export partialAuthorizeDRT] unsafe def partialAuthorizeDRT (req : String) : String :=
-  s!"partialAuthorizeDRT: not supported"
+  s!"partialAuthorizeDRT: not supported {req}"
 
 @[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
-  s!"partialEvaluateDRT: not supported"
+  s!"partialEvaluateDRT: not supported {req}"
 
 @[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : String) : String :=
   let result : ParseResult (Timed EntityValidationResult) :=

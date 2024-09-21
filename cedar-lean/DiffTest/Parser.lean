@@ -106,8 +106,8 @@ def jsonToBinaryOp (json : Lean.Json) : ParseResult BinaryOp := do
   match op with
   | "Eq" => .ok .eq
   | "In" => .ok .mem
-  | "hasTag" => .ok .hasTag
-  | "getTag" => .ok .getTag
+  | "HasTag" => .ok .hasTag
+  | "GetTag" => .ok .getTag
   | "Less" => .ok .less
   | "LessEq" => .ok .lessEq
   | "Add" => .ok .add
@@ -280,7 +280,10 @@ def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
   let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
   let attrs ← mapMValues attrsKVs jsonToValue
-  let tagsKVs ← getJsonField json "tags" >>= jsonObjToKVList
+  let tagsKVs ← -- the "tags" field may be absent
+    match getJsonField json "tags" with
+    | .ok kvs  => jsonObjToKVList kvs
+    | .error _ => .ok []
   let tags ← mapMValues tagsKVs jsonToValue
   .ok {
     ancestors := Set.make ancestors,
