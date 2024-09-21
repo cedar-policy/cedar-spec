@@ -1230,6 +1230,52 @@ def equiv_trans [LT α] [DecidableLT α] [BEq α] : ∀ (m₁ m₂ m₃ : Map α
   intros k
   simp [h₁, h₂]
 
+theorem in_map_in_list
+  {α β : Type}
+  [LT α] [DecidableLT α] [DecidableEq α] [SizeOf α] [SizeOf β]
+  (lst : List (α × β)) (k : α) (v : β)
+  (h : (mk lst).find? k = some v) :
+  (k,v) ∈ lst
+  := by
+  simp [find?, List.find?, kvs] at h
+  cases lst
+  case nil =>
+    simp at h
+  case cons head tail =>
+    have ⟨k', v'⟩ := head
+    simp [List.find?] at h
+    cases eq : decide (k' = k) <;> simp at eq
+    case true =>
+      subst eq
+      simp at h
+      subst h
+      simp
+    case false =>
+      simp
+      apply Or.inr
+      apply in_map_in_list tail k v
+      have not_beq : (k' == k) = false := by
+        exact beq_false_of_ne eq
+      simp [not_beq] at h
+      simp [find?]
+      assumption
+
+
+theorem in_map_in_constructor
+  {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] [SizeOf α] [SizeOf β]
+  (lst : List (α × β)) (k : α) (v : β)
+  (h : (make lst).find? k = some v) :
+  (k,v) ∈ lst
+  := by
+  simp [make] at h
+  have in_canoncial : (k,v) ∈ List.canonicalize Prod.fst lst := by
+    apply in_map_in_list
+    assumption
+  apply @List.in_canonicalize_in_list α (α × β) _ _ _ Prod.fst (k,v) lst
+  assumption
+
+
 
 
 end Cedar.Data.Map
