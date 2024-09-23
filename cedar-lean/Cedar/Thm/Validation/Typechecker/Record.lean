@@ -35,6 +35,28 @@ def AttrExprHasAttrType (c : Capabilities) (env : Environment) (l : Level) (ax :
     aqty = (ax.fst, .required ty') ∧
     typeOf ax.snd c env (l == .infinite) = Except.ok (ty', c')
 
+def AttrExprHasAttrType' (c : Capabilities) (env : Environment) (l : Level) (x : Expr) (qty : QualifiedType) : Prop :=
+  ∃ ty' c',
+    qty = .required ty' ∧
+    typeOf x c env (l == .infinite) = Except.ok (ty', c')
+
+
+theorem AttrExprHasAttrType_same_keys (c : Capabilities) (env : Environment) (l : Level) (ax : Attr × Expr) (aqty : Attr × QualifiedType) :
+  ax.fst = aqty.fst ∧ AttrExprHasAttrType' c env l ax.snd aqty.snd ↔ AttrExprHasAttrType c env l ax aqty
+  := by
+  simp [AttrExprHasAttrType, AttrExprHasAttrType']
+  constructor
+  case _ =>
+    intros h
+    have ⟨h₁,ty, h₂, c', h₃⟩ := h
+    exists ty
+    simp [h₁,h₂,h₃]
+    rw [← h₂]
+  case _ =>
+    intros h
+    have ⟨ty, h₁, c', h₂ ⟩ := h
+    simp [h₁,h₂]
+
 theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabilities} {env : Environment} {rty : List (Attr × QualifiedType)} {l : Level}
   (h₁ : List.mapM (fun x => requiredAttr x.fst (typeOf x.snd c env (l == .infinite))) axs = Except.ok rty) :
   List.Forall₂ (AttrExprHasAttrType c env l) axs rty

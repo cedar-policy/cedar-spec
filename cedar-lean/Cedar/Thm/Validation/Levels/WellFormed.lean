@@ -1235,6 +1235,15 @@ theorem SameAttrs_inv₂ {α β : Type} {lhs : List (Attr × α)} {rhs : List (A
 def EvaluatesToOk (request : Request) (entities : Entities) (lhs : (Attr × Expr)) (rhs : Attr × Value) : Prop :=
   lhs.fst = rhs.fst ∧ evaluate lhs.snd request entities = .ok rhs.snd
 
+def EvaluatesToOk' (request : Request) (entities : Entities) (lhs : Expr) (rhs : Value) : Prop :=
+  evaluate lhs request entities = .ok rhs
+
+theorem EvaluatesToOk_same_keys {request : Request} {entities : Entities} {lhs : (Attr × Expr)} {rhs : Attr × Value} :
+  lhs.fst = rhs.fst ∧ EvaluatesToOk' request entities lhs.snd rhs.snd ↔ EvaluatesToOk request entities lhs rhs := by
+  simp [EvaluatesToOk, EvaluatesToOk']
+
+
+
 theorem evalutesToOk_is_AttributeRelation (request : Request) (entities : Entities) :
   AttributeRelation (EvaluatesToOk request entities)
   := by
@@ -1366,85 +1375,138 @@ theorem record_typing (attrs : List (Attr × Expr)) (ty_map : Map Attr Qualified
   exists ty'
   simp [h']
 
-theorem insertCanonical_preserves_attr_relation {α β}
-  {r : (Attr × α) → (Attr × β) → Prop}
-  {kv₁ : Attr × α} {kv₂ : Attr × β} {kvs₁ : List (Attr × α)} {kvs₂ : List (Attr × β)}
-  (h₁ : kv₁.fst = kv₂.fst ∧ r kv₁ kv₂)
-  (h₂ : List.Forall₂ r kvs₁ kvs₂)
-  (h₃ : AttributeRelation r)
-  (h₄ : SameAttrs kvs₁ kvs₂) :
-  List.Forall₂ r  (List.insertCanonical Prod.fst kv₁ kvs₁) (List.insertCanonical Prod.fst kv₂ kvs₂)
-  ∧ SameAttrs (List.insertCanonical Prod.fst kv₁ kvs₁) (List.insertCanonical Prod.fst kv₂ kvs₂)
+theorem forall_same_lengths {α β : Type} (r : α → β → Prop) (lhs : List α) (rhs : List β)
+  (h : List.Forall₂ r lhs rhs) :
+  lhs.length = rhs.length
   := by
-  cases h₂
-  case nil =>
+  cases h
+  case _ =>
+    simp
+  case _ =>
+    simp
+    apply forall_same_lengths
+    assumption
+
+
+theorem forall_attr_relation_implies_same_attrs {α β : Type}
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (h₁ : List.Forall₂ r kvs₁ kvs₂)
+  (h₂ : AttributeRelation r) :
+  SameAttrs kvs₁ kvs₂
+  := by
+  cases h₁
+  case _ =>
+    simp [SameAttrs]
+  case _ =>
+    apply SameAttrs_cons
+    case _ =>
+      simp [AttributeRelation] at h₂
+      apply h₂
+      assumption
+    case _ =>
+      apply forall_attr_relation_implies_same_attrs
+      repeat assumption
+
+
+theorem forallᵥ_is_forall₂ {α β : Type}
+  (r : α → β → Prop)
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (h₁ : List.Forallᵥ r kvs₁ kvs₂) :
+  List.Forall₂ (λ lhs rhs => lhs.fst = rhs.fst ∧ r lhs.snd rhs.snd) kvs₁ kvs₂
+  := by
+  simp [List.Forallᵥ] at h₁
+  cases h₁
+  case _ =>
+    constructor
+  case _ head₁ tail₁ head₂ tail₂ head_prop tail_prop =>
     constructor
     case _ =>
-      simp only [List.insertCanonical_singleton, h₁, List.forall₂_cons, List.Forall₂.nil, and_true]
+      apply head_prop
     case _ =>
-      simp [SameAttrs, List.map, h₁]
-  case cons hd₁ hd₂ tl₁ tl₂ h₅ h₆ =>
-    simp only [List.insertCanonical, gt_iff_lt]
-    split <;> split <;> rename_i h₇ h₈
-    case _ =>
-      constructor
-      case _ =>
-        constructor
-        case _ =>
-          simp [h₁]
-        case _ =>
-          constructor
-          case _ =>
-            assumption
-          case _ =>
-            assumption
-      case _ =>
-        apply SameAttrs_cons
-        simp [h₁]
-        apply SameAttrs_cons
-        apply SameAttrs_inv₁
-        apply h₄
-        apply SameAttrs_inv₂
-        apply h₄
-    case _ =>
+      apply tail_prop
 
-      sorry
-    all_goals sorry
-    -- · apply Forall₂.cons (by exact h₁)
-    --   exact Forall₂.cons (by exact h₃) (by exact h₄)
-    -- · simp only [h₁, h₃] at h₅
-    --   have _ := StrictLT.asymmetric kv₂.fst hd₂.fst h₅
-    --   split <;> contradiction
-    -- · simp only [h₁, h₃] at h₅ h₆
-    --   split
-    --   · contradiction
-    --   · apply Forall₂.cons (by exact h₃)
-    --     exact insertCanonical_preserves_forallᵥ h₁ h₄
-    -- · simp only [h₁, h₃] at h₅ h₆
-    --   split
-    --   · contradiction
-    --   · exact Forall₂.cons (by exact h₁) (by exact h₄)
+theorem forall₂_is_forallᵥ {α β : Type}
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (r' : α → β → Prop)
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (h₁ : List.Forall₂ r kvs₁ kvs₂)
+  (h₂ : AttributeRelation r)
+  (h₃ : ∀ kv₁ kv₂, kv₁.fst = kv₂.fst ∧ r' kv₁.snd kv₂.snd ↔ r kv₁ kv₂) :
+  List.Forallᵥ r' kvs₁ kvs₂
+  := by
+  cases h₁
+  case _ =>
+    constructor
+  case _ head₁ tail₁ head₂ tail₂ head_prop tail_prop =>
+    constructor
+    case _ =>
+      rw [h₃]
+      assumption
+    case _ =>
+      apply forall₂_is_forallᵥ
+      repeat assumption
+
+theorem forall₂_weakening {α β : Type} (r r' : α → β → Prop) (lhs : List α) (rhs : List β)
+  (h₁ : List.Forall₂ r' lhs rhs)
+  (h₂ : ∀ a b, r' a b → r a b) :
+  List.Forall₂ r lhs rhs
+  := by
+  cases h₁ <;> constructor
+  case _ =>
+    apply h₂
+    assumption
+  case _ =>
+    apply forall₂_weakening
+    repeat assumption
+
+
+
+
+theorem canonicalize_preserves_attr_relations' {α β}
+  (r : (Attr × α) → (Attr × β) → Prop)
+  (r' : α → β → Prop)
+  (h₄ : ∀ kv₁ kv₂, kv₁.fst = kv₂.fst ∧ r' kv₁.snd kv₂.snd ↔ r kv₁ kv₂)
+  (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
+  (h₁ : List.Forall₂ r kvs₁ kvs₂)
+  (h₂ : AttributeRelation r) :
+  List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
+  := by
+  have step₁ : List.Forallᵥ r' kvs₁ kvs₂ := by
+    apply forall₂_is_forallᵥ
+    repeat assumption
+  have step₂ : List.Forallᵥ r' (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) := by
+    apply List.canonicalize_preserves_forallᵥ
+    apply step₁
+  have step₃ : List.Forall₂ (λ lhs rhs => lhs.fst = rhs.fst ∧ r' lhs.snd rhs.snd) (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) := by
+    apply forallᵥ_is_forall₂
+    apply step₂
+  apply forall₂_weakening
+  repeat assumption
+  intros a b h
+  rw [h₄] at h
+  apply h
+
 
 
 theorem canonicalize_preserves_attr_relations {α β}
   (r : (Attr × α) → (Attr × β) → Prop)
+  (r' : α → β → Prop)
+  (h₄ : ∀ kv₁ kv₂, kv₁.fst = kv₂.fst ∧ r' kv₁.snd kv₂.snd ↔ r kv₁ kv₂)
   (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
   (h₁ : List.Forall₂ r kvs₁ kvs₂)
   (h₂ : AttributeRelation r)
-  (h₃ : SameAttrs kvs₁ kvs₂) :
+  (_h₃ : SameAttrs kvs₁ kvs₂)
+  :
   List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) ∧
   SameAttrs (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
   := by
-  cases h₁
-  case nil =>
-    constructor
-    · simp [List.canonicalize_nil]
-    · simp [SameAttrs, List.map]
-  case cons hd₁ hd₂ tl₁ tl₂ h₃ h₄ =>
-     simp only [List.canonicalize]
-     sorry
-
-  --   apply insertCanonical_preserves_forallᵥ h₂ h₄
+  have step : List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) := by
+    apply canonicalize_preserves_attr_relations'
+    repeat assumption
+  simp [step]
+  apply forall_attr_relation_implies_same_attrs
+  repeat assumption
 
 def List.find_indx_inner? {α : Type} (p : α → Bool) (l : List α) (idx : Nat) : Option (α × Nat) :=
   match l with
@@ -1629,6 +1691,8 @@ theorem map_preserves_attrprops₃ {α β : Type}
   (kvs₁ : List (Attr × α)) (kvs₂ : List (Attr × β))
   (k : Attr) (v₁ : α) (v₂ : β)
   (r : (Attr × α) → (Attr × β) → Prop)
+  (r' : α → β → Prop)
+  (h₆ : ∀ kv₁ kv₂, kv₁.fst = kv₂.fst ∧ r' kv₁.snd kv₂.snd ↔ r kv₁ kv₂)
   (h₁ : AttributeRelation r)
   (h₂ : List.Forall₂ r kvs₁ kvs₂)
   (h₃ : SameAttrs kvs₁ kvs₂)
@@ -1639,7 +1703,7 @@ theorem map_preserves_attrprops₃ {α β : Type}
   simp [Map.make] at h₄
   simp [Map.make] at h₅
   have ⟨step₁, step₂⟩  : List.Forall₂ r (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) ∧ SameAttrs (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂) := by
-    exact canonicalize_preserves_attr_relations r kvs₁ kvs₂ h₂ h₁ h₃
+    exact canonicalize_preserves_attr_relations r r' h₆ kvs₁ kvs₂ h₂ h₁ h₃
   apply map_preserves_attrprops₂
   apply h₁
   apply step₁
@@ -1723,7 +1787,9 @@ theorem evaluates_to_well_formed_record {attrs : List (Attr × Expr)} {v : Value
       simp [Map.make] at hexprmap
       rw [hexprmap]
       refine
-        canonicalize_preserves_attr_relations (EvaluatesToOk request entities) attrs vs evals ?h₂
+        canonicalize_preserves_attr_relations (EvaluatesToOk request entities) (EvaluatesToOk' request entities)
+          (by simp [EvaluatesToOk, EvaluatesToOk'])
+          attrs vs evals ?h₂
           evals_sameattrs
       exact evalutesToOk_is_AttributeRelation request entities
     have matching_expr : ∃ e, (Map.mk attrs_canonical).find? k = some e ∧ (flip (EvaluatesToOk request entities)) (k, v) (k, e) := by
@@ -1743,7 +1809,9 @@ theorem evaluates_to_well_formed_record {attrs : List (Attr × Expr)} {v : Value
       rw [hexprmap]
       simp [Map.make] at h_ty_map
       rw [← h_ty_map]
-      apply canonicalize_preserves_attr_relations
+      apply canonicalize_preserves_attr_relations (AttrExprHasAttrType c₁ env l₁) (AttrExprHasAttrType' c₁ env l₁)
+      intros kv₁ kv₂
+      apply AttrExprHasAttrType_same_keys
       assumption
       apply attrExprHasAttrType_is_AttributeRelation
       assumption
