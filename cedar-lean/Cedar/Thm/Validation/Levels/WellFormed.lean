@@ -1191,6 +1191,7 @@ def AttributeRelation {α β : Type} (r : (Attr × α) → (Attr × β) → Prop
     lhs.fst = rhs.fst
 
 
+-- This should really be an inductive
 def SameAttrs {α β : Type} (lhs : List (Attr × α)) (rhs : List (Attr × β)) :=
   lhs.map Prod.fst = rhs.map Prod.fst
 
@@ -1200,6 +1201,35 @@ theorem SameAttrs_com {α β : Type} {lhs : List (Attr × α)} {rhs : List (Attr
   := by
   simp [SameAttrs] at *
   simp [h]
+
+theorem SameAttrs_cons {α β : Type} {lhs : List (Attr × α)} {rhs : List (Attr × β)}
+  {kv₁ : (Attr × α)} {kv₂ : (Attr × β)}
+  (h₁ : kv₁.fst = kv₂.fst)
+  (h₂ : SameAttrs lhs rhs) :
+  SameAttrs (kv₁ :: lhs) (kv₂ :: rhs)
+  := by
+  simp [SameAttrs]
+  simp [SameAttrs] at h₂
+  simp [h₁,h₂]
+
+theorem SameAttrs_inv₁ {α β : Type} {lhs : List (Attr × α)} {rhs : List (Attr × β)}
+  {kv₁ : (Attr × α)} {kv₂ : (Attr × β)}
+  (h₁ : SameAttrs (kv₁ :: lhs) (kv₂ :: rhs)) :
+  kv₁.fst = kv₂.fst
+  := by
+  simp [SameAttrs] at h₁
+  simp [h₁]
+
+theorem SameAttrs_inv₂ {α β : Type} {lhs : List (Attr × α)} {rhs : List (Attr × β)}
+  {kv₁ : (Attr × α)} {kv₂ : (Attr × β)}
+  (h₁ : SameAttrs (kv₁ :: lhs) (kv₂ :: rhs)) :
+  SameAttrs lhs rhs
+  := by
+  simp [SameAttrs]
+  simp [SameAttrs] at h₁
+  simp [h₁]
+
+
 
 
 def EvaluatesToOk (request : Request) (entities : Entities) (lhs : (Attr × Expr)) (rhs : Attr × Value) : Prop :=
@@ -1335,6 +1365,65 @@ theorem record_typing (attrs : List (Attr × Expr)) (ty_map : Map Attr Qualified
   have ⟨ty', c'⟩ := result
   exists ty'
   simp [h']
+
+theorem insertCanonical_preserves_attr_relation {α β}
+  {r : (Attr × α) → (Attr × β) → Prop}
+  {kv₁ : Attr × α} {kv₂ : Attr × β} {kvs₁ : List (Attr × α)} {kvs₂ : List (Attr × β)}
+  (h₁ : kv₁.fst = kv₂.fst ∧ r kv₁ kv₂)
+  (h₂ : List.Forall₂ r kvs₁ kvs₂)
+  (h₃ : AttributeRelation r)
+  (h₄ : SameAttrs kvs₁ kvs₂) :
+  List.Forall₂ r  (List.insertCanonical Prod.fst kv₁ kvs₁) (List.insertCanonical Prod.fst kv₂ kvs₂)
+  ∧ SameAttrs (List.insertCanonical Prod.fst kv₁ kvs₁) (List.insertCanonical Prod.fst kv₂ kvs₂)
+  := by
+  cases h₂
+  case nil =>
+    constructor
+    case _ =>
+      simp only [List.insertCanonical_singleton, h₁, List.forall₂_cons, List.Forall₂.nil, and_true]
+    case _ =>
+      simp [SameAttrs, List.map, h₁]
+  case cons hd₁ hd₂ tl₁ tl₂ h₅ h₆ =>
+    simp only [List.insertCanonical, gt_iff_lt]
+    split <;> split <;> rename_i h₇ h₈
+    case _ =>
+      constructor
+      case _ =>
+        constructor
+        case _ =>
+          simp [h₁]
+        case _ =>
+          constructor
+          case _ =>
+            assumption
+          case _ =>
+            assumption
+      case _ =>
+        apply SameAttrs_cons
+        simp [h₁]
+        apply SameAttrs_cons
+        apply SameAttrs_inv₁
+        apply h₄
+        apply SameAttrs_inv₂
+        apply h₄
+    case _ =>
+
+      sorry
+    all_goals sorry
+    -- · apply Forall₂.cons (by exact h₁)
+    --   exact Forall₂.cons (by exact h₃) (by exact h₄)
+    -- · simp only [h₁, h₃] at h₅
+    --   have _ := StrictLT.asymmetric kv₂.fst hd₂.fst h₅
+    --   split <;> contradiction
+    -- · simp only [h₁, h₃] at h₅ h₆
+    --   split
+    --   · contradiction
+    --   · apply Forall₂.cons (by exact h₃)
+    --     exact insertCanonical_preserves_forallᵥ h₁ h₄
+    -- · simp only [h₁, h₃] at h₅ h₆
+    --   split
+    --   · contradiction
+    --   · exact Forall₂.cons (by exact h₁) (by exact h₄)
 
 
 theorem canonicalize_preserves_attr_relations {α β}
@@ -1598,12 +1687,12 @@ theorem evaluates_to_well_formed_record {attrs : List (Attr × Expr)} {v : Value
   entities ⊢ v : ty := by
   have hsound : GuardedCapabilitiesInvariant (.record attrs) c₂ request entities ∧ ∃ v, EvaluatesTo (.record attrs) request entities v ∧ InstanceOfType v ty := by
     type_soundness
-  have ⟨hsound₁, v', hsound₂, hsound₃⟩ := hsound
+  have ⟨_, v', hsound₂, hsound₃⟩ := hsound
   clear hsound
   dril_to_value hsound₂ h₅
   clear hsound₂
   have hinv := type_of_record_inversion h₃
-  replace ⟨_, rty, hinv₁, hinv⟩ := hinv
+  replace ⟨_, rty, hinv₁, _⟩ := hinv
   subst hinv₁
   cases hsound₃
   rename_i attr_map hsound₃ hsound₄ hsound₅
