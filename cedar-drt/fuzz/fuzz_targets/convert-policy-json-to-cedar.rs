@@ -30,7 +30,8 @@ enum ESTParseError {
 }
 
 fuzz_target!(|est_json_str: String| {
-    if let Ok(ast_from_est) = serde_json::from_str::<cedar_policy_core::est::Policy>(&est_json_str)
+    if let Ok(ast_from_est) = serde_json::from_str::<serde_json::Value>(&est_json_str)
+        .and_then(|val| serde_json::from_value::<cedar_policy_core::est::Policy>(val))
         .map_err(ESTParseError::from)
         .and_then(|est| {
             est.try_into_ast_template(Some(PolicyID::from_string("policy0")))
