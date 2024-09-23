@@ -44,6 +44,12 @@ def inₛ (uid : EntityUID) (vs : Set Value) (es : Entities) : Result Value := d
   let uids ← vs.mapOrErr Value.asEntityUID .typeError
   .ok (uids.any (inₑ uid · es))
 
+def hasTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value :=
+  .ok ((es.tagsOrEmpty uid).contains tag)
+
+def getTag (uid : EntityUID) (tag : String) (es : Entities) : Result Value := do
+  (← es.tags uid).findOrErr tag .tagDoesNotExist
+
 def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Value :=
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (v₁ == v₂)
@@ -57,8 +63,8 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .containsAny, .set vs₁, .set vs₂                       => .ok (vs₁.intersects vs₂)
   | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) => .ok (inₑ uid₁ uid₂ es)
   | .mem, .prim (.entityUID uid₁), .set (vs)               => inₛ uid₁ vs es
-  | .hasTag, .prim (.entityUID uid₁), .prim (.string tag)  => .ok ((es.tagsOrEmpty uid₁).contains tag)
-  | .getTag, .prim (.entityUID uid₁), .prim (.string tag)  => (es.tagsOrEmpty uid₁).findOrErr tag .tagDoesNotExist
+  | .hasTag, .prim (.entityUID uid₁), .prim (.string tag)  => hasTag uid₁ tag es
+  | .getTag, .prim (.entityUID uid₁), .prim (.string tag)  => getTag uid₁ tag es
   | _, _, _                                                => .error .typeError
 
 def attrsOf (v : Value) (lookup : EntityUID → Result (Map Attr Value)) : Result (Map Attr Value) :=
