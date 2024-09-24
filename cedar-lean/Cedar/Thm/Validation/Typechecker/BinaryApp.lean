@@ -883,6 +883,19 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
     simp only [h₁] at h₂
   · exact map_empty_contains_instance_of_ff
 
+private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities}
+  {uid : EntityUID} {s : String}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
+  (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
+  (hin : (x₁, Key.tag x₂) ∈ c₁) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
+:= by
+  replace h₁ := h₁.right x₁ x₂ hin
+  simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
+    Value.prim.injEq, Prim.bool.injEq, false_or] at h₁
+  simp only [h₁, true_is_instance_of_tt]
+
 theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -921,9 +934,9 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
       replace ⟨h₃, h₆⟩ := h₃ <;>
       subst h₃ h₆
-      case isTrue =>
+      case isTrue hin =>
         simp only [hempty, implies_true, true_and]
-        sorry
+        exact mem_capabilities_implies_mem_tags h₁ ih₁ ih₂ hin
       case isFalse =>
         simp only [bool_is_instance_of_anyBool, and_true]
         sorry
