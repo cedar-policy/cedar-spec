@@ -17,6 +17,7 @@
 import Cedar.Partial.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
+import Cedar.Thm.Partial.Subst
 import Cedar.Thm.Partial.WellFormed
 
 namespace Cedar.Thm.Partial.Evaluation.Evaluate.AndOr
@@ -62,10 +63,14 @@ theorem on_concrete_eqv_concrete_eval {x₁ x₂ : Expr} {request : Spec.Request
   }
 
 /--
-  If partial-evaluating an `Expr.and` or `Expr.or` produces `ok`
-  with some value, that value is well-formed.
+  Inductive argument that if partial-evaluating an `Expr.and` or `Expr.or`
+  with well-formed arguments produces `ok` with some value, that value is
+  well-formed as well.
 -/
-theorem partial_eval_wf (x₁ x₂ : Expr) (request : Partial.Request) (entities : Partial.Entities) :
+theorem partial_eval_wf (x₁ x₂ : Expr) (request : Partial.Request) (entities : Partial.Entities)
+  (wf_r : request.WellFormed)
+  (ih₁ : EvaluatesToWellFormed x₁ request entities)
+  (ih₂ : EvaluatesToWellFormed x₂ request entities) :
   EvaluatesToWellFormed (Expr.and x₁ x₂) request entities ∧
   EvaluatesToWellFormed (Expr.or x₁ x₂) request entities
 := by
@@ -76,7 +81,12 @@ theorem partial_eval_wf (x₁ x₂ : Expr) (request : Partial.Request) (entities
     case error => simp
     case ok pval₁ =>
       cases pval₁
-      case residual r₁ => simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+      case residual r₁ =>
+        simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+        and_intros
+        · specialize ih₁ (.residual r₁) hx₁
+          simpa [Partial.Value.WellFormed] using ih₁
+        · exact Subst.substToPartialValue_wf x₂ wf_r
       case value v₁ =>
         cases v₁ <;> simp [Spec.Value.asBool]
         case prim p₁ =>
@@ -91,7 +101,13 @@ theorem partial_eval_wf (x₁ x₂ : Expr) (request : Partial.Request) (entities
             cases hx₂ : Partial.evaluate x₂ request entities <;> simp [hx₂]
             case ok pval₂ =>
               cases pval₂ <;> simp
-              case residual r₂ => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+              case residual r₂ =>
+                intro h₁ ; subst h₁
+                simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+                and_intros
+                · simp [Spec.Value.WellFormed, Prim.WellFormed]
+                · have h₁ := ih₂ (.residual r₂) hx₂
+                  simpa [Partial.Value.WellFormed] using h₁
               case value v₂ =>
                 cases v₂ <;> try simp
                 case prim p₂ =>
@@ -159,7 +175,7 @@ theorem subst_preserves_evaluation_to_value {x₁ x₂ : Expr} {req req' : Parti
 
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
+  import `Thm/Partial/Evaluation/Evaluate.lean` to access it.
   See #372.
 -/
 theorem subst_preserves_errors {x₁ x₂ : Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}

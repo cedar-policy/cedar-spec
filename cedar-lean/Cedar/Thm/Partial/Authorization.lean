@@ -16,9 +16,17 @@
 
 import Cedar.Partial.Authorizer
 import Cedar.Partial.Response
+import Cedar.Partial.Value
 import Cedar.Spec.Authorizer
 import Cedar.Spec.Response
+import Cedar.Spec.Value
 import Cedar.Thm.Authorization.Authorizer
+import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Map
+import Cedar.Thm.Data.Set
+import Cedar.Thm.Partial.EvaluatePolicy
+import Cedar.Thm.Partial.Evaluation
 import Cedar.Thm.Partial.Authorization.PartialOnConcrete
 import Cedar.Thm.Partial.Authorization.PartialResponse
 
@@ -27,7 +35,78 @@ import Cedar.Thm.Partial.Authorization.PartialResponse
 namespace Cedar.Thm.Partial.Authorization
 
 open Cedar.Data
-open Cedar.Spec (Policies PolicyID)
+open Cedar.Partial (Residual Subsmap Unknown)
+open Cedar.Spec (Policies Policy PolicyID)
+
+/--
+  Re-evaluating a residual with any substitution for the unknowns, gives the
+  same result as first performing the substitution and then evaluating the
+  original policy.
+-/
+theorem Residual.reeval_eqv_substituting_first {policy : Policy} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed)
+  (wf_s : subsmap.WellFormed) :
+  req.subst subsmap = some req' →
+  Partial.evaluatePolicy policy req entities = some residual →
+  residual.reEvaluateWithSubst subsmap (entities.subst subsmap) = Partial.evaluatePolicy policy req' (entities.subst subsmap)
+:= by
+  unfold Residual.reEvaluateWithSubst
+  intro h_req h₁
+  split
+  · exact (EvaluatePolicy.subst_preserves_err wf_r wf_e wf_s h_req h₁).symm
+  · rename_i pid eff cond
+    unfold Partial.evaluatePolicy at *
+    split at h₁ <;> simp at h₁
+    replace ⟨h₁, h₁', h₁''⟩ := h₁ ; subst pid eff cond ; rename_i pv h₂ h₁
+    cases pv <;> simp only [Partial.Value.value.injEq, imp_false, imp_self] at h₂
+    case value v =>
+      rw [Subst.subst_concrete_value, Partial.Evaluation.EvaluateValue.eval_spec_value v]
+      rw [Partial.Evaluation.Evaluate.subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req h₁]
+      rfl
+    case residual r =>
+      have h₂ := Partial.Evaluation.Reevaluation.reeval_eqv_substituting_first policy.toExpr req' subsmap wf_r wf_e wf_s h_req
+      simp only at h₂
+      split at h₂ <;> rename_i h₂'
+      <;> simp at h₂' <;> replace ⟨h₂', h₂''⟩ := h₂'
+      · -- the case where h₂' says they're both errors
+        rename_i e e'
+        simp only [h₁, Except.bind_ok] at h₂'
+        simp only [h₂', h₂'']
+      · rename_i hₑ -- the case where hₑ says they're not both errors
+        subst h₂' h₂''
+        simp only [h₁, Except.bind_ok] at h₂
+        simp only [h₂]
+        rfl
+
+/--
+  Main PE soundness theorem (for authorization):
+
+  Partial-authorizing with any partial inputs, then performing any (valid)
+  substitution for the unknowns and authorizing using the residuals, gives the
+  same result as first performing the substitution and then authorizing using
+  the original policies.
+
+  Also implied by this: if a substitution is valid for the Partial.Request, then
+  it is valid for `reEvaluateWithSubst`
+-/
+theorem authz_on_residuals_eqv_substituting_first {policies : Policies} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap}
+  (wf_r : req.WellFormed)
+  (wf_e : entities.WellFormed)
+  (wf_s : subsmap.WellFormed) :
+  req.subst subsmap = some req' →
+  (Partial.isAuthorized req entities policies).reEvaluateWithSubst subsmap = some (Partial.isAuthorized req' (entities.subst subsmap) policies)
+:= by
+  intro h_req
+  unfold Partial.Response.reEvaluateWithSubst Partial.isAuthorized
+  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Partial.Response.mk.injEq,
+    and_true, exists_eq_right_right]
+  rw [List.filterMap_filterMap]
+  apply List.filterMap_congr _
+  intro policy _
+  cases h₁ : Partial.evaluatePolicy policy req entities <;> simp
+  case none => exact (EvaluatePolicy.subst_preserves_none wf_r wf_e wf_s h_req h₁).symm
+  case some r => exact Residual.reeval_eqv_substituting_first wf_r wf_e wf_s h_req h₁
 
 /--
   Partial-authorizing with concrete inputs gives the same concrete decision as

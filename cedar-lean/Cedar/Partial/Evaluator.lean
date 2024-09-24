@@ -38,7 +38,7 @@ def evaluateUnaryApp (op₁ : UnaryOp) : Partial.Value → Result Partial.Value
   | .value v₁ => do
     let val ← Spec.apply₁ op₁ v₁
     .ok (.value val)
-  | pv => .ok (.residual (.unaryApp op₁ pv))
+  | .residual r₁ => .ok (.residual (.unaryApp op₁ (.residual r₁)))
 
 /-- Analogous to Spec.inₑ but for partial entities -/
 def inₑ (uid₁ uid₂ : EntityUID) (es : Partial.Entities) : Bool :=
@@ -97,37 +97,17 @@ def evaluateHasAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Re
   | .value v₁ => do
     let val ← Partial.hasAttr v₁ a es
     .ok (.value val)
-  | .residual r => .ok (.residual (.hasAttr (.residual r) a)) -- could be more precise; see cedar-spec#395
+  | .residual r₁ => .ok (.residual (.hasAttr (.residual r₁) a)) -- could be more precise; see cedar-spec#395
 
 /-- Analogous to Spec.getAttr but for partial entities -/
 def getAttr (v : Spec.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
   let r ← Partial.attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-/--
-  Partial-evaluate `pv[a]`. No analogue in Spec.Evaluator; this logic (that sits
-  between `Partial.evaluate` and `Partial.getAttr`) is not needed in the equivalent
-  Spec.Evaluator position
--/
-def evaluateGetAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
-  match pv with
-  | .value v₁ => Partial.getAttr v₁ a es
-  | .residual r => .ok (.residual (.getAttr (.residual r) a)) -- could be more precise; see cedar-spec#395
-
 /-- Analogous to Spec.bindAttr but for partial values -/
 def bindAttr (a : Attr) (res : Result Partial.Value) : Result (Attr × Partial.Value) := do
   let v ← res
   .ok (a, v)
-
-/-- Partial-evaluate a Var. No analogue in Spec.Evaluator; Spec.evaluate handles the `.var` case inline -/
-def evaluateVar (v : Var) (req : Partial.Request) : Result Partial.Value :=
-  match v with
-  | .principal => .ok req.principal
-  | .action    => .ok req.action
-  | .resource  => .ok req.resource
-  | .context   => match req.context.mapMOnValues λ v => match v with | .value v => some v | .residual _ => none with
-    | some m   => .ok (.value m)
-    | none     => .ok (.residual (.record req.context.kvs))
 
 /-- Call an extension function with partial values as arguments -/
 def evaluateCall (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Value :=
@@ -137,72 +117,39 @@ def evaluateCall (xfn : ExtFun) (args : List Partial.Value) : Result Partial.Val
     .ok (.value val)
   | none    => .ok (.residual (.call xfn args))
 
-/-- Analogous to Spec.evaluate but performs partial evaluation given partial request/entities -/
-def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
-  match x with
-  | .lit l           => .ok (.value l)
-  | .var v           => evaluateVar v req
-  | .ite x₁ x₂ x₃    => do
-    let pval ← Partial.evaluate x₁ req es
-    match pval with
-    | .value v => do
-      let b ← v.asBool
-      if b then Partial.evaluate x₂ req es else Partial.evaluate x₃ req es
-    | .residual r => .ok (.residual (.ite (.residual r) (x₂.substToPartialValue req) (x₃.substToPartialValue req)))
-  | .and x₁ x₂       => do
-    let pval ← Partial.evaluate x₁ req es
-    match pval with
-    | .value v => do
-      let b ← v.asBool
-      if !b then .ok (.value b) else do
-        let pval ← Partial.evaluate x₂ req es
-        match pval with
-        | .value v => do
-          let b ← v.asBool
-          .ok (.value b)
-        | .residual r => .ok (.residual r)
-    | .residual r => .ok (.residual (.and (.residual r) (x₂.substToPartialValue req)))
-  | .or x₁ x₂        => do
-    let pval ← Partial.evaluate x₁ req es
-    match pval with
-    | .value v => do
-      let b ← v.asBool
-      if b then .ok (.value b) else do
-        let pval ← Partial.evaluate x₂ req es
-        match pval with
-        | .value v => do
-          let b ← v.asBool
-          .ok (.value b)
-        | .residual r => .ok (.residual r)
-    | .residual r => .ok (.residual (.or (.residual r) (x₂.substToPartialValue req)))
-  | .unaryApp op₁ x₁  => do
-    let pval ← Partial.evaluate x₁ req es
-    evaluateUnaryApp op₁ pval
-  | .binaryApp op₂ x₁ x₂ => do
-    let pval₁ ← Partial.evaluate x₁ req es
-    let pval₂ ← Partial.evaluate x₂ req es
-    evaluateBinaryApp op₂ pval₁ pval₂ es
-  | .hasAttr x₁ a    => do
-    let pval₁ ← Partial.evaluate x₁ req es
-    evaluateHasAttr pval₁ a es
-  | .getAttr x₁ a    => do
-    let pval₁ ← Partial.evaluate x₁ req es
-    evaluateGetAttr pval₁ a es
-  | .set xs          => do
-    let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
-    match pvs.mapM (λ pval => match pval with | .value v => some v | .residual _ => none) with
-    | some vs => .ok (.value (Set.make vs))
-    | none    => .ok (.residual (.set pvs))
-  | .record axs      => do
-    let apvs ← axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => Partial.bindAttr a₁ (Partial.evaluate x₁ req es))
-    match apvs.mapM (λ (a, pval) => match pval with | .value v => some (a, v) | .residual _ => none) with
-    | some avs => .ok (.value (Map.make avs))
-    | none     => .ok (.residual (.record apvs))
-  | .call xfn xs     => do
-    let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
-    evaluateCall xfn pvs
-
 mutual
+
+/--
+  Partial-evaluate `pv[a]`. No analogue in Spec.Evaluator; this logic (that sits
+  between `Partial.evaluate` and `Partial.getAttr`) is not needed in the equivalent
+  Spec.Evaluator position
+-/
+def evaluateGetAttr (pv : Partial.Value) (a : Attr) (es : Partial.Entities) : Result Partial.Value := do
+  match pv with
+  | .value v₁ => do
+    let attr ← Partial.getAttr v₁ a es
+    -- any attribute value we get from `es` could be a nontrivial residual in
+    -- need of further evaluation (e.g., because a substitution was recently
+    -- performed). Thus we call `evaluateValue` on the attribute value.
+    evaluateValue attr es
+  | .residual r₁ => .ok (.residual (.getAttr (.residual r₁) a)) -- could be more precise; see cedar-spec#395
+termination_by 0
+decreasing_by sorry
+
+/-- Partial-evaluate a Var. No analogue in Spec.Evaluator; Spec.evaluate handles the `.var` case inline -/
+def evaluateVar (v : Var) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
+  match v with
+  | .principal => .ok req.principal
+  | .action    => .ok req.action
+  | .resource  => .ok req.resource
+  | .context   => do
+    -- any value we get from `req.context` could be a nontrivial residual in
+    -- need of further evaluation (e.g., because a substitution was recently
+    -- performed). Thus we call `evaluateValue` on each context value.
+    let evaluated ← req.context.mapMOnValues (evaluateValue · es)
+    match evaluated.mapMOnValues λ v => match v with | .value v => some v | .residual _ => none with
+    | some m   => .ok (.value m)
+    | none     => .ok (.residual (.record evaluated.kvs))
 
 /--
   Evaluate a `Partial.Value`, possibly reducing it. For instance, `3 + 5` will
@@ -213,6 +160,8 @@ def evaluateValue (pv : Partial.Value) (es : Partial.Entities) : Result Partial.
   match pv with
   | .value v => .ok (.value v)
   | .residual r => evaluateResidual r es
+termination_by 0
+decreasing_by sorry
 
 /--
   Evaluate a `ResidualExpr`, possibly reducing it. For instance, `3 + 5` will
@@ -240,7 +189,12 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
         | .value v₂' => do
           let b ← v₂'.asBool
           .ok (.value b)
-        | .residual r₂' => .ok (.residual r₂')
+        | .residual r₂' =>
+          -- you might think we could just return `pv₂'`, but this fails
+          -- soundness. Consider the case where `pv₂'` is a single unknown, and
+          -- that we substitute it with `37`. We need the
+          -- substitute-and-reevaluate operation to return type-error, not 37.
+          .ok (.residual (.and (.value true) (.residual r₂')))
     | .residual r₁' => .ok (.residual (.and (.residual r₁') pv₂))
   | .or pv₁ pv₂ => do
     let pv₁' ← Partial.evaluateValue pv₁ es
@@ -253,7 +207,12 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
         | .value v₂' => do
           let b ← v₂'.asBool
           .ok (.value b)
-        | .residual r₂' => .ok (.residual r₂')
+        | .residual r₂' =>
+          -- you might think we could just return `pv₂'`, but this fails
+          -- soundness. Consider the case where `pv₂'` is a single unknown, and
+          -- that we substitute it with `37`. We need the
+          -- substitute-and-reevaluate operation to return type-error, not 37.
+          .ok (.residual (.or (.value false) (.residual r₂')))
     | .residual r₁' => .ok (.residual (.or (.residual r₁') pv₂))
   | .unaryApp op₁ pv₁ => do
     let pv₁' ← Partial.evaluateValue pv₁ es
@@ -281,7 +240,84 @@ def evaluateResidual (x : Partial.ResidualExpr) (es : Partial.Entities) : Result
   | .call xfn pvs => do
     let pvs' ← pvs.mapM₁ (λ ⟨pv, _⟩ => Partial.evaluateValue pv es)
     evaluateCall xfn pvs'
+termination_by 0
+decreasing_by all_goals sorry
 
 end
+
+/-- Analogous to Spec.evaluate but performs partial evaluation given partial request/entities -/
+def evaluate (x : Expr) (req : Partial.Request) (es : Partial.Entities) : Result Partial.Value :=
+  match x with
+  | .lit l           => .ok (.value l)
+  | .var v           => evaluateVar v req es
+  | .ite x₁ x₂ x₃    => do
+    let pval ← Partial.evaluate x₁ req es
+    match pval with
+    | .value v => do
+      let b ← v.asBool
+      if b then Partial.evaluate x₂ req es else Partial.evaluate x₃ req es
+    | .residual r => .ok (.residual (.ite (.residual r) (x₂.substToPartialValue req) (x₃.substToPartialValue req)))
+  | .and x₁ x₂       => do
+    let pval ← Partial.evaluate x₁ req es
+    match pval with
+    | .value v => do
+      let b ← v.asBool
+      if !b then .ok (.value b) else do
+        let pval ← Partial.evaluate x₂ req es
+        match pval with
+        | .value v => do
+          let b ← v.asBool
+          .ok (.value b)
+        | .residual r =>
+          -- you might think we could just return `pval`, but this fails
+          -- soundness. Consider the case where `pval` is a single unknown, and
+          -- that we substitute it with `37`. We need the
+          -- substitute-and-reevaluate operation to return type-error, not 37.
+          .ok (.residual (.and (.value true) (.residual r)))
+    | .residual r => .ok (.residual (.and (.residual r) (x₂.substToPartialValue req)))
+  | .or x₁ x₂        => do
+    let pval ← Partial.evaluate x₁ req es
+    match pval with
+    | .value v => do
+      let b ← v.asBool
+      if b then .ok (.value b) else do
+        let pval ← Partial.evaluate x₂ req es
+        match pval with
+        | .value v => do
+          let b ← v.asBool
+          .ok (.value b)
+        | .residual r =>
+          -- you might think we could just return `pval`, but this fails
+          -- soundness. Consider the case where `pval` is a single unknown, and
+          -- that we substitute it with `37`. We need the
+          -- substitute-and-reevaluate operation to return type-error, not 37.
+          .ok (.residual (.or (.value false) (.residual r)))
+    | .residual r => .ok (.residual (.or (.residual r) (x₂.substToPartialValue req)))
+  | .unaryApp op₁ x₁  => do
+    let pval ← Partial.evaluate x₁ req es
+    evaluateUnaryApp op₁ pval
+  | .binaryApp op₂ x₁ x₂ => do
+    let pval₁ ← Partial.evaluate x₁ req es
+    let pval₂ ← Partial.evaluate x₂ req es
+    evaluateBinaryApp op₂ pval₁ pval₂ es
+  | .hasAttr x₁ a    => do
+    let pval₁ ← Partial.evaluate x₁ req es
+    evaluateHasAttr pval₁ a es
+  | .getAttr x₁ a    => do
+    let pval₁ ← Partial.evaluate x₁ req es
+    evaluateGetAttr pval₁ a es
+  | .set xs          => do
+    let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
+    match pvs.mapM (λ pval => match pval with | .value v => some v | .residual _ => none) with
+    | some vs => .ok (.value (Set.make vs))
+    | none    => .ok (.residual (.set pvs))
+  | .record axs      => do
+    let apvs ← axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => Partial.bindAttr a₁ (Partial.evaluate x₁ req es))
+    match apvs.mapM (λ (a, pval) => match pval with | .value v => some (a, v) | .residual _ => none) with
+    | some avs => .ok (.value (Map.make avs))
+    | none     => .ok (.residual (.record apvs))
+  | .call xfn xs     => do
+    let pvs ← xs.mapM₁ (λ ⟨x₁, _⟩ => Partial.evaluate x₁ req es)
+    evaluateCall xfn pvs
 
 end Cedar.Partial

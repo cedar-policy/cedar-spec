@@ -17,6 +17,7 @@
 import Cedar.Partial.Evaluator
 import Cedar.Partial.Value
 import Cedar.Spec.Evaluator
+import Cedar.Thm.Partial.Evaluation.EvaluateValue
 import Cedar.Thm.Partial.Evaluation.Evaluate.And
 import Cedar.Thm.Partial.Evaluation.Evaluate.AndOr
 import Cedar.Thm.Partial.Evaluation.Evaluate.Binary
@@ -24,6 +25,7 @@ import Cedar.Thm.Partial.Evaluation.Evaluate.Call
 import Cedar.Thm.Partial.Evaluation.Evaluate.GetAttr
 import Cedar.Thm.Partial.Evaluation.Evaluate.HasAttr
 import Cedar.Thm.Partial.Evaluation.Evaluate.Ite
+import Cedar.Thm.Partial.Evaluation.Evaluate.Lemmas
 import Cedar.Thm.Partial.Evaluation.Evaluate.Or
 import Cedar.Thm.Partial.Evaluation.Evaluate.Record
 import Cedar.Thm.Partial.Evaluation.Evaluate.Set
@@ -32,6 +34,7 @@ import Cedar.Thm.Partial.Evaluation.Evaluate.Var
 import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.List
 
 /-! This file contains theorems about the `Partial.evaluate` function specifically. -/
 
@@ -39,7 +42,7 @@ namespace Cedar.Thm.Partial.Evaluation.Evaluate
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Error Expr Prim Result)
+open Cedar.Spec (Attr Error Expr Prim Result)
 
 /--
   Partial evaluation with concrete inputs gives the same output as
@@ -53,7 +56,7 @@ theorem on_concrete_eqv_concrete_eval' (expr : Expr) (request : Spec.Request) (e
   cases expr
   case lit p => simp [Partial.evaluate, Spec.evaluate, Except.map]
   case var v =>
-    have h := Var.on_concrete_eqv_concrete_eval v request entities wf
+    have h := Var.on_concrete_eqv_concrete_eval v request entities
     unfold PartialEvalEquivConcreteEval at h ; exact h
   case and x₁ x₂ | or x₁ x₂ =>
     have ih₁ := on_concrete_eqv_concrete_eval' x₁ request entities wf
@@ -158,42 +161,47 @@ theorem partial_eval_wf {expr : Expr} {request : Partial.Request} {entities : Pa
     intro pval
     intro h₁ ; simp at h₁ ; subst h₁
     simp [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed]
-  case var v => exact Var.partial_eval_wf wf_r
+  case var v => exact Var.partial_eval_wf wf_r wf_e (EvaluateValue.evalValue_wf)
   case and x₁ x₂ | or x₁ x₂ =>
     intro pval
-    have := AndOr.partial_eval_wf x₁ x₂ request entities
+    have := AndOr.partial_eval_wf x₁ x₂ request entities wf_r
+      (partial_eval_wf wf_r wf_e (expr := x₁))
+      (partial_eval_wf wf_r wf_e (expr := x₂))
     first | exact this.left pval | exact this.right pval
-  case unaryApp op x₁ => exact Unary.partial_eval_wf
+  case unaryApp op x₁ =>
+    apply Unary.partial_eval_wf
+    · exact partial_eval_wf wf_r wf_e
   case binaryApp op x₁ x₂ =>
-    have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
-    have ih₂ := partial_eval_wf wf_r wf_e (expr := x₂) (request := request) (entities := entities)
-    exact Binary.partial_eval_wf ih₁ ih₂
-  case hasAttr x₁ attr => exact HasAttr.partial_eval_wf
+    apply Binary.partial_eval_wf
+    · exact partial_eval_wf wf_r wf_e
+    · exact partial_eval_wf wf_r wf_e
+  case hasAttr x₁ attr =>
+    apply HasAttr.partial_eval_wf
+    · exact partial_eval_wf wf_r wf_e
   case getAttr x₁ attr =>
-    have ih₁ := partial_eval_wf wf_r wf_e (expr := x₁) (request := request) (entities := entities)
-    exact GetAttr.partial_eval_wf ih₁ wf_e
+    apply GetAttr.partial_eval_wf _ _ wf_e
+    · exact partial_eval_wf wf_r wf_e
+    · intro _ _ wf₁ ; exact EvaluateValue.evalValue_wf wf₁ wf_e
   case ite x₁ x₂ x₃ =>
-    have ih₂ := partial_eval_wf wf_r wf_e (expr := x₂) (request := request) (entities := entities)
-    have ih₃ := partial_eval_wf wf_r wf_e (expr := x₃) (request := request) (entities := entities)
-    exact Ite.partial_eval_wf ih₂ ih₃
+    apply Ite.partial_eval_wf wf_r
+    · exact partial_eval_wf wf_r wf_e
+    · exact partial_eval_wf wf_r wf_e
+    · exact partial_eval_wf wf_r wf_e
   case set xs =>
-    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
-      intro x h₁
+    apply Set.partial_eval_wf
+    · intro x h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply partial_eval_wf wf_r wf_e
-    exact Set.partial_eval_wf ih
+      exact partial_eval_wf wf_r wf_e
   case record attrs =>
-    have ih : ∀ kv ∈ attrs, EvaluatesToWellFormed kv.snd request entities := by
-      intro kv h₁
+    apply Record.partial_eval_wf
+    · intro kv h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply partial_eval_wf wf_r wf_e
-    exact Record.partial_eval_wf ih
+      exact partial_eval_wf wf_r wf_e
   case call xfn xs =>
-    have ih : ∀ x ∈ xs, EvaluatesToWellFormed x request entities := by
-      intro x h₁
+    apply Call.partial_eval_wf
+    · intro x h₁
       have := List.sizeOf_lt_of_mem h₁
-      apply partial_eval_wf wf_r wf_e
-    exact Call.partial_eval_wf ih
+      exact partial_eval_wf wf_r wf_e
 termination_by expr
 decreasing_by
   all_goals simp_wf
@@ -202,6 +210,38 @@ decreasing_by
     conv at this => lhs ; unfold sizeOf Prod._sizeOf_inst Prod._sizeOf_1
     simp at this
     omega
+
+/--
+  `partial_eval_wf`, lifted to lists of `Spec.Expr`
+-/
+theorem partial_eval_wf_mapM {exprs : List Spec.Expr} {request : Partial.Request} {entities : Partial.Entities}
+  (wf_r : request.WellFormed)
+  (wf_e : entities.WellFormed) :
+  ∀ pvals,
+    exprs.mapM (Partial.evaluate · request entities) = .ok pvals →
+    ∀ pval ∈ pvals, pval.WellFormed
+:= by
+  intro pvals h₁ pval h_pval
+  replace ⟨x, _, h₁⟩ := List.mapM_ok_implies_all_from_ok h₁ pval h_pval
+  exact partial_eval_wf wf_r wf_e _ h₁
+
+/--
+  `partial_eval_wf`, lifted to lists of pairs `Attr × Spec.Expr`
+-/
+theorem partial_eval_wf_mapM_snd {pairs : List (Attr × Spec.Expr)} {request : Partial.Request} {entities : Partial.Entities}
+  (wf_r : request.WellFormed)
+  (wf_e : entities.WellFormed) :
+  ∀ pairs',
+    pairs.mapM (λ pair => Partial.bindAttr pair.fst (Partial.evaluate pair.snd request entities)) = .ok pairs' →
+    ∀ pval ∈ pairs'.map Prod.snd, pval.WellFormed
+:= by
+  intro pairs' h₁ pval h_pval
+  simp only [List.mem_map] at h_pval
+  replace ⟨(k, pval), hk, h_pval⟩ := h_pval ; simp only at h_pval ; subst h_pval
+  replace ⟨(k', x), _, h₁⟩ := List.mapM_ok_implies_all_from_ok h₁ _ hk
+  simp [Partial.bindAttr, do_ok] at h₁
+  replace ⟨h₁, h₁'⟩ := h₁ ; subst k'
+  exact partial_eval_wf wf_r wf_e _ h₁
 
 /--
   If partial evaluation returns a concrete value, then it returns the same value
@@ -222,10 +262,10 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
     intro _ h₁ ; subst h₁
     rfl
   case var var =>
-    have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r
+    have h₁ := Var.subst_preserves_evaluation_to_value var req req' entities subsmap wf_r wf_e
     unfold SubstPreservesEvaluationToConcrete at h₁
     intro h_req
-    exact h₁ wf_s h_req v
+    exact h₁ h_req v
   case and x₁ x₂ =>
     intro h_req h₁
     have h₂ := And.evals_to_concrete_then_operands_eval_to_concrete (by
@@ -360,10 +400,11 @@ theorem subst_preserves_evaluation_to_value {expr : Expr} {req req' : Partial.Re
         exact ih₃
   case getAttr x₁ attr =>
     intro h_req h₁
-    apply GetAttr.subst_preserves_evaluation_to_value wf_e wf_s _ h_req v h₁
+    apply GetAttr.subst_preserves_evaluation_to_value wf_r wf_e wf_s _ _ h_req v h₁
     · unfold SubstPreservesEvaluationToConcrete
       intro _ v₁' hx₁'
       exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req hx₁'
+    · intro x r es pv wf_r wf_es ; exact partial_eval_wf wf_r wf_es _
   case hasAttr x₁ attr =>
     intro h_req h₁
     apply HasAttr.subst_preserves_evaluation_to_value wf_e _ h_req v h₁
@@ -434,9 +475,7 @@ theorem subst_preserves_errors {expr : Expr} {req req' : Partial.Request} {entit
 := by
   cases expr <;> intro h_req h₁
   case lit => simp only [Partial.evaluate] at h₁
-  case var v =>
-    have h := Var.subst_preserves_errors h_req h₁
-    exists e
+  case var v => exact Var.subst_preserves_errors wf_r wf_e wf_s h_req h₁
   case and x₁ x₂ =>
     apply (AndOr.subst_preserves_errors (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req) _ _).left h_req e h₁
     all_goals {
@@ -473,7 +512,7 @@ theorem subst_preserves_errors {expr : Expr} {req req' : Partial.Request} {entit
       exact subst_preserves_errors wf_r wf_e wf_s h_req
     }
   case getAttr x₁ attr =>
-    apply GetAttr.subst_preserves_errors wf_e wf_s (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req) _ h_req e h₁
+    apply GetAttr.subst_preserves_errors wf_e wf_s (by intro x _ v ; exact subst_preserves_evaluation_to_value wf_r wf_e wf_s h_req) (by intro pv ; exact partial_eval_wf wf_r wf_e _) _ h_req e h₁
     all_goals {
       unfold SubstPreservesEvaluationToError
       intro _ e'
@@ -532,3 +571,108 @@ theorem subst_preserves_errors_mt {expr : Expr} {req req' : Partial.Request} {en
   case _ e h₄ =>
     have ⟨e', h₅⟩ := subst_preserves_errors wf_r wf_e wf_s h₁ h₄
     simp [h₅] at h₂
+
+/--
+  Possibly-surprising strong result: `Partial.evaluate` is equivalent to
+  `Expr.substToPartialValue` followed by `Partial.evaluateValue`
+
+  (since this actually holds, should we just have defined `Partial.evaluate`
+  this way? does that make sense as the definition/spec?)
+-/
+theorem evaluate_eqv_evalValue_substToPartialValue (expr : Expr) {req : Partial.Request} (entities : Partial.Entities)
+  (wf_r : req.WellFormed) :
+  Partial.evaluate expr req entities = Partial.evaluateValue (expr.substToPartialValue req) entities
+:= by
+  cases expr
+  case' var v => cases v
+  all_goals simp [Partial.evaluate, Partial.evaluateValue, Partial.evaluateResidual, Expr.substToPartialValue]
+  case var.principal | var.action | var.resource =>
+    simp [Partial.evaluateVar]
+    split <;> simp [Partial.evaluateValue, Partial.evaluateResidual]
+  case var.context =>
+    simp [Partial.evaluateVar]
+    rw [Record.mapM₂_eq_mapM_partial_bindAttr (Partial.evaluateValue · entities)]
+    simp [Map.mapMOnValues, Partial.bindAttr, pure, Except.pure, Option.bind]
+    apply do_eq_do_except
+    intro apvs hapvs
+    have hsorted₁ : apvs.SortedBy Prod.fst := by
+      apply mapM_Except_on_snd_preserves_sortedBy_fst _ hapvs (f := (Partial.evaluateValue · entities))
+      exact Map.wf_iff_sorted.mp wf_r.left
+    split <;> rename_i h₁
+    rw [Map.kvs_mk_id] at h₁
+    · rename_i m
+      split at h₁ <;> simp at h₁ ; subst m ; rename_i avs₁ h₁
+      have hsorted₂ : avs₁.SortedBy Prod.fst := by
+        apply mapM_Option_on_snd_preserves_sortedBy_fst _ h₁ (f := λ pv => match pv with | Partial.Value.value v => some v | Partial.Value.residual _ => none)
+        exact hsorted₁
+      split <;> rename_i h₂ <;> simp
+      · rename_i avs₂
+        have hsorted₃ : avs₂.SortedBy Prod.fst := mapM_Option_on_snd_preserves_sortedBy_fst' hsorted₁ h₂
+        rw [← Map.eq_iff_kvs_equiv (Map.mk_wf hsorted₂) (Map.make_wf avs₂), List.Equiv, List.subset_def]
+        rw [Map.kvs_mk_id]
+        and_intros <;> intro (k, v) h₃
+        · apply Map.mem_list_mem_make hsorted₃
+          replace ⟨(k', pv), h₄, h₁⟩ := List.mapM_some_implies_all_from_some h₁ (k, v) h₃
+          split at h₁ <;> simp at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst k' h₁' ; rename_i v h₁
+          split at h₁ <;> simp at h₁ ; subst h₁ ; rename_i v h₁
+          replace ⟨(k'', v'), h₅, h₂⟩ := List.mapM_some_implies_all_some h₂ (k, pv) h₄
+          split at h₂ <;> simp at h₂ ; replace ⟨h₂, h₂'⟩ := h₂ ; subst k'' v' ; rename_i v' h₂
+          simp only at * ; subst h₁
+          simp only [Partial.Value.value.injEq] at h₂ ; subst v'
+          exact h₅
+        · replace h₃ := Map.make_mem_list_mem h₃
+          replace ⟨(k', pv), h₄, h₂⟩ := List.mapM_some_implies_all_from_some h₂ (k, v) h₃
+          split at h₂ <;> simp at h₂ ; replace ⟨h₂, h₂'⟩ := h₂ ; subst k' v ; rename_i v h₂
+          simp only at h₂ ; subst pv
+          replace ⟨(k', v'), h₅, h₁⟩ := List.mapM_some_implies_all_some h₁ (k, .value v) h₄
+          split at h₁ <;> simp at h₁ ; replace ⟨h₁, h₁'⟩ := h₁ ; subst k' v' ; rename_i v' h₁
+          split at h₁ <;> simp at h₁ ; subst v' ; rename_i v' h₁
+          simp only [Partial.Value.value.injEq] at h₁ ; subst v'
+          exact h₅
+      · replace ⟨(k, v), h₂, h₃⟩ := List.mapM_none_iff_exists_none.mp h₂
+        split at h₃ <;> simp at h₃ ; rename_i r h₄
+        simp only at h₄ ; subst v
+        replace h₁ := List.mapM_some_implies_all_some h₁ (k, .residual r) h₂
+        simp at h₁
+    · split at h₁ <;> simp at h₁ ; rename_i h₂
+      rw [Map.kvs_mk_id] at h₂
+      replace ⟨(k, v), h₂, h₃⟩ := List.mapM_none_iff_exists_none.mp h₂
+      split at h₃ <;> simp at h₃ ; rename_i h₄
+      split at h₄ <;> simp at h₄ ; rename_i r h₅
+      simp only at h₅ ; subst v
+      split <;> rename_i h₅
+      · replace ⟨(k', v), h₅, h₆⟩ := List.mapM_some_implies_all_some h₅ (k, .residual r) h₂
+        split at h₆
+        · rename_i h₇ ; simp at h₇
+        · simp at h₆
+      · simp [Map.kvs_mk_id]
+  case and x₁ x₂ | or x₁ x₂ | ite x₁ x₂ x₃ =>
+    simp [evaluate_eqv_evalValue_substToPartialValue x₁ entities wf_r]
+    apply do_eq_do
+    intro pv
+    cases pv <;> simp
+    case a.value v =>
+      cases v.asBool <;> simp [evaluate_eqv_evalValue_substToPartialValue _ entities wf_r]
+  case unaryApp op x₁ | getAttr x₁ attr | hasAttr x₁ attr =>
+    simp [evaluate_eqv_evalValue_substToPartialValue x₁ entities wf_r]
+  case binaryApp op x₁ x₂ =>
+    simp [evaluate_eqv_evalValue_substToPartialValue x₁ entities wf_r]
+    simp [evaluate_eqv_evalValue_substToPartialValue x₂ entities wf_r]
+  case set xs | call xfn xs =>
+    simp [evaluate_eqv_evalValue_substToPartialValue _ entities wf_r]
+    rw [List.mapM₁_eq_mapM (Partial.evaluateValue · entities)]
+    rw [List.mapM₁_eq_mapM (λ x => Partial.evaluateValue (Expr.substToPartialValue req x) entities)]
+    rw [List.map₁_eq_map, List.mapM_map]
+  case record attrs =>
+    simp [evaluate_eqv_evalValue_substToPartialValue _ entities wf_r]
+    rw [Record.mapM₂_eq_mapM_partial_bindAttr (Partial.evaluateValue · entities)]
+    rw [Record.mapM₂_eq_mapM_partial_bindAttr (λ x => Partial.evaluateValue (Expr.substToPartialValue req x) entities)]
+    rw [List.map_attach₂_snd, List.mapM_map]
+termination_by expr
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  all_goals sorry
+
+
+end Cedar.Thm.Partial.Evaluation.Evaluate

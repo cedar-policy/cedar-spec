@@ -126,7 +126,7 @@ theorem subst_preserves_evaluation_to_value {args : List Expr} {req req' : Parti
 
   The proof of `subst_preserves_evaluation_to_value` for this
   request/entities/subsmap is passed in as an argument, because this file can't
-  import `Thm/Partial/Evaluation.lean` to access it.
+  import `Thm/Partial/Evaluation/Evaluate.lean` to access it.
   See #372.
 -/
 theorem subst_preserves_errors {xs : List Expr} {req req' : Partial.Request} {entities : Partial.Entities} {subsmap : Subsmap} {xfn : ExtFun}

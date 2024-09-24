@@ -23,6 +23,7 @@ import Cedar.Spec.Expr
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Partial.Evaluation.Props
+--import Cedar.Thm.Partial.IsRestricted
 import Cedar.Thm.Partial.WellFormed
 
 /-! ## Lemmas about `subst` operations -/
@@ -31,7 +32,7 @@ namespace Cedar.Thm.Partial.Subst
 
 open Cedar.Data
 open Cedar.Partial (Subsmap Unknown)
-open Cedar.Spec (Attr EntityUID Error Prim)
+open Cedar.Spec (Attr EntityUID Error Expr Prim)
 
 /--
   Partial.Value.subst on a concrete value is that value
@@ -66,31 +67,70 @@ theorem subst_concrete_values {pvals : List Partial.Value} {subsmap : Subsmap} :
       unfold IsAllConcrete
       exists vtl
 
+private theorem sizeOf_elem_lt_sizeOf_prod [SizeOf α] [SizeOf β] (a : α) (b : β) :
+  sizeOf b < sizeOf (a, b)
+:= by
+  conv => rhs ; simp [sizeOf, Prod._sizeOf_1]
+  conv => lhs ; simp [sizeOf]
+  omega
+
+mutual
+
 /--
   Partial.ResidualExpr.subst preserves well-formedness
 -/
 theorem residual_subst_preserves_wf {x : Partial.ResidualExpr} {subsmap : Subsmap} :
   x.WellFormed → subsmap.WellFormed → (x.subst subsmap).WellFormed
 := by
-  cases x
+  cases x <;>
+    simp only [Partial.ResidualExpr.WellFormed, Partial.ResidualExpr.subst,
+      Partial.Value.WellFormed, and_imp, implies_true, true_implies, imp_self]
   case unknown u =>
-    simp only [Partial.ResidualExpr.WellFormed, Partial.Value.WellFormed,
-      Partial.ResidualExpr.subst, true_implies]
     split
-    · rename_i h ; split at h
-      · subst h ; rename_i v _ h
-        replace h := Map.find?_mem_toList h
-        intro wf_s
-        suffices (Partial.Value.value v).WellFormed by simpa [Partial.Value.WellFormed] using this
-        apply wf_s.right
-        simp only [Map.toList] at h
+    · rename_i pv h
+      intro wf_s
+      simp only [Subsmap.WellFormed] at wf_s
+      apply wf_s.right
+      · replace h := Map.find?_mem_toList h
         exact Map.in_list_in_values h
-      · simp only at h
-    · simp only [implies_true]
-  all_goals {
-    simp only [Partial.ResidualExpr.WellFormed, Partial.Value.WellFormed,
-      Partial.ResidualExpr.subst, implies_true, imp_self]
-  }
+    · simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed, implies_true]
+  case getAttr pv₁ attr | hasAttr pv₁ attr | unaryApp op attr =>
+    exact val_subst_preserves_wf
+  case and pv₁ pv₂ | or pv₁ pv₂ | binaryApp op pv₁ pv₂ =>
+    intro wf₁ wf₂ wf_s
+    and_intros
+    · exact val_subst_preserves_wf wf₁ wf_s
+    · exact val_subst_preserves_wf wf₂ wf_s
+  case ite pv₁ pv₂ pv₃ =>
+    intro wf₁ wf₂ wf₃ wf_s
+    and_intros
+    · exact val_subst_preserves_wf wf₁ wf_s
+    · exact val_subst_preserves_wf wf₂ wf_s
+    · exact val_subst_preserves_wf wf₃ wf_s
+  case set pvs | call xfn pvs =>
+    rw [List.map₁_eq_map]
+    simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+    intro h₁ wf_s pv hpv
+    exact val_subst_preserves_wf (h₁ pv hpv) wf_s
+  case record apvs =>
+    rw [List.map_attach₂_snd]
+    simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+    intro h₁ wf_s (k, v) hkv
+    exact val_subst_preserves_wf (h₁ (k, v) hkv) wf_s
+termination_by sizeOf x
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ => -- set
+    have := List.sizeOf_lt_of_mem hpv
+    omega
+  case _ => -- record
+    have h₂ := List.sizeOf_lt_of_mem hkv
+    have h₃ := sizeOf_elem_lt_sizeOf_prod k v
+    omega
+  case _ => -- call
+    have := List.sizeOf_lt_of_mem hpv
+    omega
 
 /--
   Partial.Value.subst preserves well-formedness
@@ -107,6 +147,65 @@ theorem val_subst_preserves_wf {pv : Partial.Value} {subsmap : Subsmap} :
     rw [h_tmp] ; clear h_tmp
     simp only [Partial.Value.subst]
     exact residual_subst_preserves_wf
+termination_by sizeOf pv
+
+end
+
+/--
+  Expr.substToPartialValue produces well-formed partial values
+-/
+theorem substToPartialValue_wf (x : Expr) {req : Partial.Request}
+  (wf_r : req.WellFormed) :
+  (x.substToPartialValue req).WellFormed
+:= by
+  cases x
+  case var v =>
+    cases v <;> simp only [Expr.substToPartialValue]
+    case principal | action | resource =>
+      split <;> simp only [Partial.Value.WellFormed, Spec.Value.WellFormed, Prim.WellFormed, Partial.ResidualExpr.WellFormed]
+    case context =>
+      simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+      unfold Partial.Request.WellFormed at wf_r
+      split at wf_r ; rename_i context ; simp only
+      intro (k, pv) hpv
+      exact wf_r.right pv (Map.in_list_in_values hpv)
+  all_goals simp only [Expr.substToPartialValue, Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+  case lit p => simp only [Spec.Value.WellFormed, Prim.WellFormed]
+  case getAttr x₁ attr | hasAttr x₁ attr | unaryApp op x₁ =>
+    exact substToPartialValue_wf x₁ wf_r
+  case and x₁ x₂ | or x₁ x₂ | binaryApp op x₁ x₂ =>
+    and_intros
+    · exact substToPartialValue_wf x₁ wf_r
+    · exact substToPartialValue_wf x₂ wf_r
+  case ite x₁ x₂ x₃ =>
+    and_intros
+    · exact substToPartialValue_wf x₁ wf_r
+    · exact substToPartialValue_wf x₂ wf_r
+    · exact substToPartialValue_wf x₃ wf_r
+  case set xs | call xfn xs =>
+    rw [List.map₁_eq_map]
+    simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+    intro x _
+    exact substToPartialValue_wf x wf_r
+  case record axs =>
+    simp only [List.map_attach₂_snd, List.mem_map, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂]
+    intro (k, x) _
+    exact substToPartialValue_wf x wf_r
+termination_by x
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ h₁ => -- set
+    have := List.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    have h₂ := List.sizeOf_lt_of_mem h₁
+    have h₃ := sizeOf_elem_lt_sizeOf_prod k x
+    omega
+  case _ h₁ => -- call
+    have := List.sizeOf_lt_of_mem h₁
+    omega
 
 /--
   Partial.Request.subst preserves well-formedness
@@ -455,3 +554,114 @@ theorem entities_subst_preserves_contains_on_attrsOrEmpty (entities : Partial.En
     apply wf.right
     simp only [← Map.in_list_iff_find?_some wf.left] at h₁
     exact Map.in_list_in_values h₁
+
+/--
+  Variant of `entities_subst_preserves_attrs` for `Partial.attrsOf`
+-/
+theorem attrsOf_subst_preserves_attrs {v₁ : Spec.Value} {entities : Partial.Entities} (subsmap : Subsmap)
+  (wf_v : v₁.WellFormed) :
+  Partial.attrsOf v₁ entities.attrs = .ok attrs →
+  (k, pval) ∈ attrs.kvs →
+  ∃ attrs', Partial.attrsOf v₁ (entities.subst subsmap).attrs = .ok attrs' ∧ (k, pval.subst subsmap) ∈ attrs'.kvs
+:= by
+  cases v₁ <;> simp [Partial.attrsOf]
+  case prim p₁ =>
+    cases p₁ <;> simp
+    case entityUID uid => exact entities_subst_preserves_attrs subsmap
+  case record r₁ =>
+    simp only [Spec.Value.WellFormed] at wf_v
+    intro _ ; subst attrs
+    exact match pval with
+    | .value v => by simp [Subst.subst_concrete_value]
+    | .residual r => by
+      intro h₁
+      replace h₁ := Map.in_mapOnValues_in_kvs' wf_v.left h₁
+      simp at h₁
+
+/--
+  `Partial.Value.subst` on the result of `Spec.Expr.substToPartialValue`
+  gives the same result as if we first substitute the `req` and then do
+  `Spec.Expr.substToPartialValue`
+-/
+theorem subst_substToPartialValue (x : Spec.Expr) {req req' : Partial.Request} {subsmap : Subsmap} :
+  req.subst subsmap = some req' →
+  (x.substToPartialValue req).subst subsmap = x.substToPartialValue req'
+:= by
+  cases x
+  case var v =>
+    simp only [Partial.Request.subst, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      forall_exists_index, and_imp]
+    intro p' h_p' a' h_a' r' h_r' h_req ; subst h_req
+    cases v <;> simp only [Spec.Expr.substToPartialValue]
+    case principal =>
+      cases h_p : req.principal <;> cases p'
+      <;> simp [Partial.Value.subst, Partial.ResidualExpr.subst]
+      <;> simp [h_p, Partial.UidOrUnknown.subst] at h_p'
+      case known.known => exact h_p'
+      case unknown.unknown u₁ u₂ =>
+        split at h_p' <;> rename_i h_p'' <;> simp at h_p'
+        · subst u₂ ; rename_i u₂
+          simp [h_p'']
+        · subst u₂ ; simp [h_p'']
+      case unknown.known u uid =>
+        split at h_p' <;> rename_i h_p'' <;> simp at h_p'
+        subst h_p'
+        simp [h_p'']
+    case action =>
+      cases h_a : req.action <;> cases a'
+      <;> simp [Partial.Value.subst, Partial.ResidualExpr.subst]
+      <;> simp [h_a, Partial.UidOrUnknown.subst] at h_a'
+      case known.known => exact h_a'
+      case unknown.unknown u₁ u₂ =>
+        split at h_a' <;> rename_i h_a'' <;> simp at h_a'
+        · subst u₂ ; rename_i u₂
+          simp [h_a'']
+        · subst u₂ ; simp [h_a'']
+      case unknown.known u uid =>
+        split at h_a' <;> rename_i h_a'' <;> simp at h_a'
+        subst h_a'
+        simp [h_a'']
+    case resource =>
+      cases h_r : req.resource <;> cases r'
+      <;> simp [Partial.Value.subst, Partial.ResidualExpr.subst]
+      <;> simp [h_r, Partial.UidOrUnknown.subst] at h_r'
+      case known.known => exact h_r'
+      case unknown.unknown u₁ u₂ =>
+        split at h_r' <;> rename_i h_r'' <;> simp at h_r'
+        · subst u₂ ; rename_i u₂
+          simp [h_r'']
+        · subst u₂ ; simp [h_r'']
+      case unknown.known u uid =>
+        split at h_r' <;> rename_i h_r'' <;> simp at h_r'
+        subst h_r'
+        simp [h_r'']
+    case context =>
+      simp [Partial.Value.subst, Partial.ResidualExpr.subst, List.map_attach₂_snd, Map.mapOnValues]
+  all_goals simp [Spec.Expr.substToPartialValue, Partial.Value.subst, Partial.ResidualExpr.subst]
+  case and x₁ x₂ | or x₁ x₂ | binaryApp x₁ x₂ =>
+    intro h_req
+    exact And.intro (subst_substToPartialValue x₁ h_req) (subst_substToPartialValue x₂ h_req)
+  case unaryApp x₁ | getAttr x₁ _ | hasAttr x₁ _ => exact subst_substToPartialValue x₁
+  case ite x₁ x₂ x₃ =>
+    intro h_req
+    and_intros
+    · exact subst_substToPartialValue x₁ h_req
+    · exact subst_substToPartialValue x₂ h_req
+    · exact subst_substToPartialValue x₃ h_req
+  case set xs | call xs =>
+    simp only [List.map₁_eq_map, List.map_map, Function.comp_apply]
+    intro h_req
+    apply List.map_congr
+    intro x _
+    simp only [Function.comp_apply]
+    exact subst_substToPartialValue x h_req
+  case record attrs =>
+    simp only [List.map_attach₂_snd, List.map_map, Function.comp_apply,
+      Prod.mk.injEq, true_and]
+    intro h_req
+    apply List.map_congr
+    intro (a, x) hx
+    simp only [Function.comp_apply, Prod.mk.injEq, true_and]
+    have := List.sizeOf_snd_lt_sizeOf_list hx
+    exact subst_substToPartialValue x h_req
+termination_by x

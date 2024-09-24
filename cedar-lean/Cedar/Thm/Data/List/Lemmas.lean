@@ -598,13 +598,13 @@ theorem mapM'_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {
   case cons hd tl ih =>
     simp only [filterMap_cons]
     simp only [mapM'_cons, pure, Except.pure] at h
-    cases h₂ : f hd <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h
+    cases hhd : f hd <;> simp only [hhd, Except.bind_ok, Except.bind_err] at h
     case ok hd' =>
       simp only
-      cases h₃ : tl.mapM' f <;> simp only [h₃, Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
+      cases htl : tl.mapM' f <;> simp only [htl, Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
       case ok tl' =>
         subst ys
-        simp only [ih h₃]
+        simp only [ih htl]
 
 theorem mapM_ok_eq_filterMap {α β} {f : α → Except ε β} {xs : List α} {ys : List β} :
   xs.mapM f = .ok ys →

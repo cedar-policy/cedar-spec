@@ -74,4 +74,19 @@ def IsAllConcrete (pvals : List Partial.Value) : Prop :=
 def EvaluatesToWellFormed (expr : Expr) (request : Partial.Request) (entities : Partial.Entities) : Prop :=
   ∀ pval, Partial.evaluate expr request entities = .ok pval → pval.WellFormed
 
+/--
+  Prop that re-evaluation with a substitution on the residual expression, is
+  equivalent to substituting first and then evaluating on the original
+  expression, up to the kind of error. (If both re-evaluation and subst-first
+  produce errors, we don't require it's the same error, just that they either
+  both produce errors or both do not.)
+-/
+def ReevalEquivSubstFirst (expr : Spec.Expr) (req req' : Partial.Request) (entities : Partial.Entities) (subsmap : Subsmap) : Prop :=
+  req.subst subsmap = some req' →
+  let re_evaluated := Partial.evaluate expr req entities >>= λ residual => Partial.evaluateValue (residual.subst subsmap) (entities.subst subsmap)
+  let subst_first := Partial.evaluate expr req' (entities.subst subsmap)
+  match (re_evaluated, subst_first) with
+  | (Except.error _, Except.error _) => true -- don't require that the errors are equal
+  | (_, _) => re_evaluated = subst_first
+
 end Cedar.Thm.Partial

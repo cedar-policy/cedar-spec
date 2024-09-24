@@ -19,10 +19,10 @@ import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
-import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.Evaluation.Evaluate.Set
-import Cedar.Thm.Partial.WellFormed
+import Cedar.Thm.Partial.Evaluation.Props
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
 /-! Theorems about `Partial.evaluateCall` -/
 
@@ -82,6 +82,7 @@ theorem evaluateCall_wf {pvals : List Partial.Value} {xfn : ExtFun}
     cases pval <;> simp at wf h₂
     case value v' => subst v' ; exact wf
   · simp only [Except.ok.injEq] at h₁ ; subst h₁ ; simp only
+    exact wf
 
 /--
   If `Partial.evaluateCall` produces `ok` with a concrete value, then all of the
@@ -103,7 +104,7 @@ theorem returns_concrete_then_args_concrete {args : List Partial.Value} {xfn : E
     cases arg' <;> simp only [Except.ok.injEq] at h₁ h₄
 
 /--
-  something akin to `Partial.Evaluation.EvaluateValue.eval_spec_value`, lifted to lists of `Partial.Value`
+  something akin to `EvaluateValue.eval_spec_value`, lifted to lists of `Partial.Value`
 -/
 theorem mapM_eval_spec_value {pvals : List Partial.Value} (entities : Partial.Entities) :
   (pvals.mapM λ pval => match pval with | .value v => some v | .residual _ => none) = some vs →

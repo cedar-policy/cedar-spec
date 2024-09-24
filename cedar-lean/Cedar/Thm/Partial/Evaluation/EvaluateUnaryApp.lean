@@ -18,8 +18,8 @@ import Cedar.Partial.Evaluator
 import Cedar.Spec.Evaluator
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Partial.Evaluation.Props
-import Cedar.Thm.Partial.WellFormed
 import Cedar.Thm.Partial.Subst
+import Cedar.Thm.Partial.WellFormed
 
 /-! Theorems about `Partial.evaluateUnaryApp` -/
 
@@ -60,15 +60,17 @@ theorem specApply₁_wf {v : Spec.Value} {op : UnaryOp} :
 /--
   if `Partial.evaluateUnaryApp` on a well-formed value returns `ok` with some
   value, that is a well-formed value as well
-
-  This theorem does not actually require that the input value is WellFormed
 -/
-theorem evaluateUnaryApp_wf {pval : Partial.Value} {op : UnaryOp} :
+theorem evaluateUnaryApp_wf {pval : Partial.Value} {op : UnaryOp}
+  (wf : pval.WellFormed) :
   Partial.evaluateUnaryApp op pval = .ok pval' → pval'.WellFormed
 := by
   unfold Partial.evaluateUnaryApp
   cases pval <;> simp only [Except.ok.injEq]
-  case residual r => intro h₁ ; subst h₁ ; simp [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed]
+  case residual r =>
+    intro h₁ ; subst h₁
+    simp only [Partial.Value.WellFormed, Partial.ResidualExpr.WellFormed] at *
+    exact wf
   case value v =>
     cases h₁ : Spec.apply₁ op v
     case error e => simp only [Except.bind_err, false_implies]
@@ -111,3 +113,47 @@ theorem subst_preserves_errors {pval₁ : Partial.Value} {op : UnaryOp} {subsmap
 := by
   cases pval₁ <;> simp [Partial.evaluateUnaryApp]
   case value v₁ => simp [Subst.subst_concrete_value, do_error]
+
+/--
+  If `Partial.evaluateUnaryApp` returns an error, but reducing its arg succeeds,
+  then it returns the same error on the reduced arg
+-/
+theorem reducing_arg_preserves_errors {pval₁ : Partial.Value} {op : UnaryOp} {entities : Partial.Entities} :
+  Partial.evaluateUnaryApp op pval₁ = .error e →
+  Partial.evaluateValue pval₁ entities = .ok pval' →
+  Partial.evaluateUnaryApp op pval' = .error e
+:= by
+  cases pval₁ <;> simp [Partial.evaluateUnaryApp]
+  case value v₁ =>
+    simp [Partial.evaluateValue]
+    intro h₁ _ ; subst pval'
+    simp [h₁]
+
+/--
+  If reducing the arg then `Partial.evaluateUnaryApp` returns a concrete value,
+  then any subst before that process shouldn't make a difference.
+
+  This is like `subst_preserves_evaluation_to_value` but with a reduce operation
+  in front of the `Partial.evaluateUnaryApp` in both cases
+
+  Takes an inductive hypothesis `ih` which says that
+  `subst_preserves_evaluation_to_value` holds for `pv₁`
+-/
+theorem subst_preserves_reduce_evaluation_to_value {pv₁ pv₂ : Partial.Value} {op : UnaryOp} {entities : Partial.Entities} (subsmap : Subsmap)
+  (ih : ∀ v, Partial.evaluateValue pv₁ entities = .ok (.value v) → Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap) = .ok (.value v)) :
+  Partial.evaluateValue pv₁ entities = .ok pv₂ →
+  Partial.evaluateUnaryApp op pv₂ = .ok (.value v) →
+  ∃ pv₃,
+    Partial.evaluateValue (pv₁.subst subsmap) (entities.subst subsmap) = .ok pv₃ ∧
+    Partial.evaluateUnaryApp op pv₃ = .ok (.value v)
+:= by
+  cases pv₁ <;> simp [Partial.evaluateUnaryApp]
+  case value v₁ =>
+    simp [Subst.subst_concrete_value, Partial.evaluateValue]
+    intro _ ; subst pv₂ ; simp only [imp_self]
+  case residual r₁ =>
+    cases pv₂ <;> simp only [Except.ok.injEq, false_implies, implies_true]
+    case value v₂ =>
+      intro h₁ h₂
+      specialize ih v₂ h₁
+      exists (.value v₂)
