@@ -870,6 +870,19 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
     simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
+private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : env.ets.tags? uid.ty = .none) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Entities.tagsOrEmpty]
+  split
+  · rename_i d hf
+    replace ⟨e, h₁, _, _, _⟩ := h₁ uid d hf
+    simp only [EntitySchema.tags?, Option.map_eq_none'] at h₂
+    simp only [h₁] at h₂
+  · exact map_empty_contains_instance_of_ff
+
 theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -916,10 +929,11 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
         sorry
     case h_3 heq =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+      rename_i hact
       replace ⟨h₃, h₆⟩ := h₃
       subst h₃ h₆
       simp only [hempty, implies_true, true_and]
-      sorry
+      exact no_type_implies_no_tags h₂.right.left heq
   all_goals {
     simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, Except.bind_err, Except.bind_ok, false_implies, true_and]
     exact type_is_inhabited ty
