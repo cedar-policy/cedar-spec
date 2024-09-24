@@ -873,26 +873,30 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     simp only [apply₂, hasTag, Except.ok.injEq, false_or, exists_eq_left']
     simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, apply₂, Except.bind_ok]
     simp only [typeOfHasTag, List.empty_eq] at h₃
+    have hempty := empty_capabilities_invariant request entities
+    simp only [List.empty_eq] at hempty
     split at h₃ <;> simp [ok, err] at h₃
     case h_1 heq =>
       replace ⟨h₃, h₆⟩ := h₃
       subst h₃ h₆
-      constructor
-      · intro ; exact empty_capabilities_invariant request entities
-      · sorry
+      simp only [hempty, implies_true, true_and]
+      sorry
     case h_2 tty heq =>
-      split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+      split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
+      replace ⟨h₃, h₆⟩ := h₃ <;>
+      subst h₃ h₆
       case isTrue =>
+        simp only [hempty, implies_true, true_and]
         sorry
       case isFalse =>
+        simp only [bool_is_instance_of_anyBool, and_true]
         sorry
     case h_3 heq =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
       replace ⟨h₃, h₆⟩ := h₃
       subst h₃ h₆
-      constructor
-      · intro ; exact empty_capabilities_invariant request entities
-      · sorry
+      simp only [hempty, implies_true, true_and]
+      sorry
   all_goals {
     simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, Except.bind_err, Except.bind_ok, false_implies, true_and]
     exact type_is_inhabited ty
