@@ -883,8 +883,7 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
     simp only [h₁] at h₂
   · exact map_empty_contains_instance_of_ff
 
-private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities}
-  {uid : EntityUID} {s : String}
+private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
   (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
@@ -895,6 +894,20 @@ private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Cap
   simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
     Value.prim.injEq, Prim.bool.injEq, false_or] at h₁
   simp only [h₁, true_is_instance_of_tt]
+
+private theorem hasTag_true_implies_cap_inv {x₁ x₂ : Expr} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+  (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
+  (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
+  (ht : hasTag uid s entities = Except.ok (Value.prim (Prim.bool true))) :
+  CapabilitiesInvariant (Capabilities.singleton x₁ (Key.tag x₂)) request entities
+:= by
+  constructor <;>
+  intro e k hin <;>
+  simp only [Capabilities.singleton, List.mem_singleton, Prod.mk.injEq, and_false, Key.tag.injEq] at hin
+  replace ⟨hin, hin'⟩ := hin
+  subst hin hin'
+  simp only [hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at ht
+  simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, ht, or_true]
 
 theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -939,7 +952,8 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
         exact mem_capabilities_implies_mem_tags h₁ ih₁ ih₂ hin
       case isFalse =>
         simp only [bool_is_instance_of_anyBool, and_true]
-        sorry
+        intro ht
+        exact hasTag_true_implies_cap_inv ih₁ ih₂ ht
     case h_3 heq =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
       rename_i hact
