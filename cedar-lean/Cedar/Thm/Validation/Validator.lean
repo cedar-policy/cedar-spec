@@ -35,27 +35,27 @@ def EvaluatesToBool (expr : Expr) (request : Request) (entities : Entities) : Pr
 def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Entities) : Prop :=
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
-def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
-  ∃ env ∈ schema.toEnvironments,
+def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) (l : Level) :Prop :=
+  ∃ env ∈ schema.toEnvironments l,
   RequestAndEntitiesMatchEnvironment env request entities
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  request.action = env.reqty.action
+  request.action = env.reqty.action.fst
 := by
   intro h₀
   simp only [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) (l : Level) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  typecheckPolicy policy env = .ok ty →
+  typecheckPolicy policy l env = .ok ty →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₁ h₂
   simp only [typecheckPolicy] at h₂
-  cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
+  cases h₃ : typeOf (substituteAction env.reqty.action.fst policy.toExpr) [] env (l == .infinite) <;>
   simp only [List.empty_eq, h₃] at h₂
   split at h₂ <;> simp only [Except.ok.injEq] at h₂
   rename_i cp ht
@@ -94,14 +94,14 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
         rw [action_matches_env]
         repeat assumption
 
-theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
+theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) (l : Level) :
   (∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →
-  typecheckPolicyWithEnvironments policy envs = .ok () →
+  typecheckPolicyWithEnvironments l policy envs = .ok () →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₀ h₂
   simp only [typecheckPolicyWithEnvironments] at h₂
-  cases h₃ : List.mapM (typecheckPolicy policy) envs with
+  cases h₃ : List.mapM (typecheckPolicy policy l) envs with
   | error => simp only [h₃, Except.bind_err] at h₂
   | ok ts =>
     simp only [h₃, Except.bind_ok, ite_eq_right_iff, imp_false, Bool.not_eq_true, allFalse] at h₂
@@ -109,7 +109,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
     rw [List.mapM_ok_iff_forall₂] at h₃
     have h₄ := List.forall₂_implies_all_left h₃
     specialize h₄ env h₀
-    obtain ⟨ty, ⟨h₄, h₅⟩⟩ := h₄
-    exact typecheck_policy_is_sound policy env ty request entities h₁ h₅
-    
+    obtain ⟨ty, ⟨_, h₅⟩⟩ := h₄
+    exact typecheck_policy_is_sound policy env ty request entities l h₁ h₅
+
 end Cedar.Thm

@@ -1279,4 +1279,23 @@ theorem mem_pmap_subtype
 := by
   induction as <;> simp [*]
 
+theorem in_lists_means_smaller [SizeOf α] (x : α) (list : List α)
+  (h : x ∈ list) :
+  sizeOf x < sizeOf list
+  := by
+  cases list
+  case nil =>
+    cases h
+  case cons head tail =>
+    cases h
+    case _ =>
+      simp
+      omega
+    case _ in_tail =>
+      have step : sizeOf x < sizeOf tail := by
+        apply in_lists_means_smaller
+        assumption
+      simp
+      omega
+
 end List

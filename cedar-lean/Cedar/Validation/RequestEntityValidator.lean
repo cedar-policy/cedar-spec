@@ -57,7 +57,7 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety
+  | .prim (.entityUID e), .entity ety _ => instanceOfEntityType e ety
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
@@ -80,9 +80,9 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
         omega
 
 def instanceOfRequestType (request : Request) (reqty : RequestType) : Bool :=
-  instanceOfEntityType request.principal reqty.principal &&
-  request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource &&
+  instanceOfEntityType request.principal reqty.principal.fst &&
+  request.action == reqty.action.fst &&
+  instanceOfEntityType request.resource reqty.resource.fst &&
   instanceOfType request.context (.record reqty.context)
 
 /--
@@ -119,8 +119,8 @@ where
 
 def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env.reqty
 
-def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
-  if ((schema.toEnvironments.any (requestMatchesEnvironment · request)))
+def validateRequest (schema : Schema) (request : Request) (l : Level) : RequestValidationResult :=
+  if (((schema.toEnvironments l).any (requestMatchesEnvironment · request)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
 
@@ -155,8 +155,8 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
       }
       (ty, ese)
 
-def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-  schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
+def validateEntities (schema : Schema) (entities : Entities) (l : Level) : EntityValidationResult :=
+  (schema.toEnvironments l).forM (entitiesMatchEnvironment · entities)
 
 -- json
 

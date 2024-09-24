@@ -67,11 +67,11 @@ theorem foldlM_of_lub_assoc (ty₁ ty₂ : CedarType) (tys : List CedarType) :
 
 theorem type_of_set_tail
   {x xhd : Expr } {xtl : List Expr} {c : Capabilities}
-  {env : Environment} {ty hd : CedarType } {tl : List CedarType}
-  (h₁ : (List.mapM₁ (xhd :: xtl) fun x => justType (typeOf x.val c env)) = Except.ok (hd :: tl))
+  {env : Environment} {ty hd : CedarType } {tl : List CedarType} {l : Level}
+  (h₁ : (List.mapM₁ (xhd :: xtl) fun x => justType (typeOf x.val c env (l == .infinite))) = Except.ok (hd :: tl))
   (h₂ : List.foldlM lub? hd tl = some ty)
   (h₃ : List.Mem x xtl) :
-  ∃ ty', typeOf (Expr.set xtl) c env = Except.ok (.set ty', []) ∧
+  ∃ ty', typeOf (Expr.set xtl) c env (l == .infinite) = Except.ok (.set ty', []) ∧
   (ty' ⊔ ty) = some ty
 := by
   cases xtl
@@ -84,14 +84,14 @@ theorem type_of_set_tail
     case nil =>
       simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
         bind_assoc, pure_bind] at h₁
-      simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
-      cases h₄ : justType (typeOf xhd c env) <;> simp [h₄] at h₁
-      cases h₅ : justType (typeOf xhd' c env) <;> simp [h₅] at h₁
-      cases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl' <;> simp [h₆] at h₁
+      simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env (l == .infinite)))] at h₁
+      cases h₄ : justType (typeOf xhd c env (l == .infinite)) <;> simp [h₄] at h₁
+      cases h₅ : justType (typeOf xhd' c env (l == .infinite)) <;> simp [h₅] at h₁
+      cases h₆ : List.mapM (fun x => justType (typeOf x c env (l == .infinite))) xtl' <;> simp [h₆] at h₁
       simp [pure, Except.pure] at h₁
     case cons hd' tl' =>
       simp only [List.mapM₁, List.attach_def] at h₁
-      rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁
+      rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env (l == .infinite)))] at h₁
       have h₁ := List.mapM_head_tail h₁
       rw [←List.mapM₁_eq_mapM] at h₁
       simp only [h₁, typeOfSet, List.empty_eq, Except.bind_ok]
@@ -112,18 +112,18 @@ theorem type_of_set_tail
         subst h₆
         assumption
 
-theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : CedarType}
-  (h₁ : typeOf (Expr.set xs) c env = Except.ok (sty, c')) :
+theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.set xs) c env (l == .infinite) = Except.ok (sty, c')) :
   c' = ∅ ∧
   ∃ ty,
     sty = .set ty ∧
     ∀ xᵢ, xᵢ ∈ xs →
       ∃ tyᵢ cᵢ,
-        typeOf xᵢ c env = Except.ok (tyᵢ, cᵢ) ∧
+        typeOf xᵢ c env (l == .infinite) = Except.ok (tyᵢ, cᵢ) ∧
         (tyᵢ ⊔ ty) = .some ty
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   simp [typeOfSet] at h₁
   split at h₁ <;> simp [ok, err] at h₁
@@ -137,10 +137,10 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   cases h₄
   case head xtl =>
     simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons] at h₂
-    rcases h₅ : justType (typeOf x c env) <;>
+    rcases h₅ : justType (typeOf x c env (l == .infinite)) <;>
     simp only [h₅, Except.bind_err] at h₂
-    simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), Except.bind_ok] at h₂
-    rcases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl <;>
+    simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env (l == .infinite))), Except.bind_ok] at h₂
+    rcases h₆ : List.mapM (fun x => justType (typeOf x c env (l == .infinite))) xtl <;>
     simp only [h₆, pure, Except.pure, Except.bind_err, Except.bind_ok, Except.ok.injEq, List.cons.injEq] at h₂
     have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
@@ -154,7 +154,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     · exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
-    have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty')
+    have h₇ := @type_of_set_inversion xtl c ∅ env (.set ty') l
     simp only [h₅, List.empty_eq, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and,
       true_implies] at h₇
     specialize h₇ x h₄
@@ -173,19 +173,19 @@ theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   apply h₁
   simp [h₂]
 
-theorem list_is_typed_implies_tail_is_typed {hd : Expr} {tl : List Expr} {c₁ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty) :
-  ∀ (xᵢ : Expr), xᵢ ∈ tl → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty
+theorem list_is_typed_implies_tail_is_typed {hd : Expr} {tl : List Expr} {c₁ : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env (l == .infinite) = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty) :
+  ∀ (xᵢ : Expr), xᵢ ∈ tl → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env (l == .infinite) = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty
 := by
   intro xᵢ h₂
   apply h₁
   simp [h₂]
 
-theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {err : Error}
+theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {err : Error} {l : Level}
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₄ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
+  (h₄ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env (l == .infinite) = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
   (h₅ : (xs.mapM fun x => evaluate x request entities) = Except.error err) :
   err = Error.entityDoesNotExist ∨
   err = Error.extensionError ∨
@@ -212,17 +212,17 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
     simp [h₁₀, pure, Except.pure] at h₅ ; rw [eq_comm] at h₅
     subst h₅
     apply @type_of_set_is_sound_err
-      tl c₁ env ty request entities err
+      tl c₁ env ty request entities err l
       (list_is_sound_implies_tail_is_sound ih)
       h₁ h₂
       (list_is_typed_implies_tail_is_typed h₄)
     exact h₁₀
 
-theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env : Environment } { request : Request } { entities : Entities } { ty : CedarType } { v : Value } { vs : List Value }
+theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env : Environment } { request : Request } { entities : Entities } { ty : CedarType } { v : Value } { vs : List Value } {l : Level}
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
+  (h₃ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, typeOf xᵢ c₁ env (l == .infinite) = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
   (h₄ : (xs.mapM fun x => evaluate x request entities) = Except.ok vs)
   (h₅ : v ∈ vs):
   InstanceOfType v ty
@@ -257,17 +257,17 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
       exact instance_of_lub_left h₆ ihr
     case tail h₉ =>
       apply @type_of_set_is_sound_ok
-        tl c₁ env request entities ty v vtl
+        tl c₁ env request entities ty v vtl l
         (list_is_sound_implies_tail_is_sound ih)
         h₁ h₂
         (list_is_typed_implies_tail_is_typed h₃)
         _ h₉
       simp [List.mapM₁, List.attach, List.mapM_pmap_subtype (evaluate · request entities), h₈]
 
-theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {sty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {sty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.set xs) c₁ env = Except.ok (sty, c₂))
+  (h₃ : typeOf (Expr.set xs) c₁ env (l == .infinite) = Except.ok (sty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.set xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType v sty

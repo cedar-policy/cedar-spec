@@ -54,9 +54,9 @@ inductive InstanceOfType : Value → CedarType → Prop :=
       InstanceOfType (.prim (.int _)) .int
   | instance_of_string :
       InstanceOfType (.prim (.string _)) .string
-  | instance_of_entity (e : EntityUID) (ety: EntityType)
+  | instance_of_entity (e : EntityUID) (ety: EntityType) (l : Level)
       (h₁ : InstanceOfEntityType e ety) :
-      InstanceOfType (.prim (.entityUID e)) (.entity ety)
+      InstanceOfType (.prim (.entityUID e)) (.entity ety l)
   | instance_of_set (s : Set Value) (ty : CedarType)
       (h₁ : forall v, v ∈ s → InstanceOfType v ty) :
       InstanceOfType (.set s) (.set ty)
@@ -74,10 +74,140 @@ inductive InstanceOfType : Value → CedarType → Prop :=
       InstanceOfType (.ext x) (.ext xty)
 
 def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
-  InstanceOfEntityType request.principal reqty.principal ∧
-  request.action = reqty.action ∧
-  InstanceOfEntityType request.resource reqty.resource ∧
+  InstanceOfEntityType request.principal reqty.principal.fst ∧
+  request.action = reqty.action.fst ∧
+  InstanceOfEntityType request.resource reqty.resource.fst ∧
   InstanceOfType request.context (.record reqty.context)
+
+def InstanceOfRequestTypeLevel (request : Request) (reqty : RequestType) (l : Level) : Prop :=
+  InstanceOfEntityType request.principal reqty.principal.fst ∧
+  reqty.principal.snd = l ∧
+  reqty.action.snd = l ∧
+  reqty.resource.snd = l ∧
+  request.action = reqty.action.fst ∧
+  InstanceOfEntityType request.resource reqty.resource.fst ∧
+  InstanceOfType request.context (.record reqty.context)
+
+
+section
+set_option hygiene false
+
+notation:10 μ " ⊢ " e " : " τ => WellFormed μ e τ
+
+inductive WellFormed : Entities → Value → CedarType → Prop :=
+  | bool (μ : Entities) (b : Bool) (bty : BoolType)
+      (h₁ : InstanceOfBoolType b bty) :
+      μ  ⊢ .prim (.bool b) : .bool bty
+  | int (μ : Entities) :
+    μ ⊢ .prim (.int _) : .int
+  | string (μ : Entities) :
+    μ ⊢ .prim (.string _) : .string
+  | set (μ : Entities) (s : Cedar.Data.Set Value) (ty : CedarType)
+    (h₁ : forall v, v ∈ s → (μ ⊢ v : ty)) :
+    μ ⊢ .set s : .set ty
+  | record (μ : Entities) (r : Cedar.Data.Map Attr Value) (rty : RecordType)
+      -- if an attribute is present in the record, then it is present in the type
+      (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
+      -- if an attribute is present, then it has the expected type
+      (h₂ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
+        r.find? k = some v → rty.find? k = some qty → (μ ⊢ v : qty.getType))
+      -- required attributes are present
+      (h₃ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
+      μ ⊢ .record r : .record rty
+  | ext (μ : Entities) (x : Ext) (xty : ExtType)
+      (h₁ : InstanceOfExtType x xty) :
+      μ ⊢ .ext x : .ext xty
+  -- Now for the wacky cases: Entities
+  -- Any entity is well formed at level 0
+  | entity₀ (μ : Entities) (e : EntityUID) (ety: EntityType)
+    (h₁ : InstanceOfEntityType e ety) :
+    μ ⊢ .prim (.entityUID e) : .entity ety (.finite 0)
+  -- Entities can be given `n` as long as all entities in the attributes can be given a level bounded from below by `n - 1`
+  | entityₙ (μ : Entities) (e : EntityUID) (ety : EntityType) (attrs : Cedar.Data.Map Attr Value) {l : Level}
+    (h₁ : InstanceOfEntityType e ety)
+    (h₂ : μ.attrs e = .ok attrs)
+    -- All attributes must be well formed
+    (h₃ : ∀ k v t',
+      (k,v) ∈ attrs.kvs →
+      (μ ⊢ v : t')
+    )
+    -- All attributes must be bounded by `l - 1`
+    (h₄ : ∀ k v t',
+      (k,v) ∈ attrs.kvs →
+      level t' ≥ l.sub1
+    ) :
+    μ ⊢ .prim (.entityUID e) : .entity ety l
+
+end
+
+
+theorem WellFormed_is_instanceOf (μ : Entities) (v : Value) (t : CedarType) :
+  (μ ⊢ v : t) →
+  InstanceOfType v t
+  := by
+  intros h
+  cases v  <;> cases h
+  case _ =>
+    apply InstanceOfType.instance_of_bool
+    assumption
+  case _ =>
+    apply InstanceOfType.instance_of_int
+  case _ =>
+    apply InstanceOfType.instance_of_string
+  case _ =>
+    apply InstanceOfType.instance_of_entity
+    assumption
+  case _ =>
+    apply InstanceOfType.instance_of_entity
+    assumption
+  case _ =>
+    apply InstanceOfType.instance_of_set
+    rename_i s ty h₁
+    intros v h₂
+    have h_v_wf := h₁ v h₂
+    apply WellFormed_is_instanceOf
+    apply h_v_wf
+  case _ =>
+    rename_i attrs rty h₁ h₂ h₃
+    apply InstanceOfType.instance_of_record <;> try assumption
+    intros k v qty h₄ h₅
+    have h_v_wf := h₃ k v qty h₄ h₅
+    apply WellFormed_is_instanceOf
+    assumption
+  case _ =>
+    apply InstanceOfType.instance_of_ext
+    assumption
+termination_by sizeOf v
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ =>
+    rename_i heq _ _ _ _ _ _ _ _ _ _ _ _
+    subst heq
+    rename_i s _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    simp
+    have hsize : sizeOf v < sizeOf s := by
+      apply Set.sizeOf_lt_of_mem
+      assumption
+    omega
+  case _ =>
+    rename_i m heq _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    rw [heq]
+    simp
+    have hsize : sizeOf v < sizeOf m := by
+      have h₁ : sizeOf (k,v) < sizeOf m.kvs := by
+        apply List.sizeOf_lt_of_mem
+        apply Map.find_means_mem
+        assumption
+      have h₂ : sizeOf v < sizeOf (k,v) := by
+        simp
+        omega
+      have h₃ : sizeOf m.kvs < sizeOf m := by
+        apply Map.sizeOf_lt_of_kvs
+      omega
+    omega
+
+
 
 /--
 For every entity in the store,
@@ -107,6 +237,15 @@ def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (
   InstanceOfRequestType request env.reqty ∧
   InstanceOfEntitySchema entities env.ets ∧
   InstanceOfActionSchema entities env.acts
+
+def RequestAndEntitiesMatchEnvironmentLeveled (env : Environment) (request : Request) (entities : Entities) (l : Level) : Prop :=
+  InstanceOfRequestTypeLevel request env.reqty l ∧
+  InstanceOfEntitySchema entities env.ets ∧
+  InstanceOfActionSchema entities env.acts ∧
+  (entities ⊢ request.principal : .entity env.reqty.principal.fst env.reqty.principal.snd) ∧
+  (entities ⊢ request.resource : .entity env.reqty.resource.fst env.reqty.resource.snd) ∧
+  (entities ⊢ request.action : .entity env.reqty.action.fst.ty env.reqty.action.snd) ∧
+  (entities ⊢ request.context : .record env.reqty.context)
 
 ----- Theorems -----
 
@@ -182,7 +321,7 @@ theorem instance_of_string_is_string {v₁ : Value} :
   exists y
 
 theorem instance_of_entity_type_is_entity {ety : EntityType} :
-  InstanceOfType v₁ (.entity ety) →
+  InstanceOfType v₁ (.entity ety l) →
   ∃ euid, euid.ty = ety ∧ v₁ = .prim (.entityUID euid)
 := by
   intro h₁
@@ -385,10 +524,10 @@ theorem type_is_inhabited (ty : CedarType) :
   | .string =>
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
-  | .entity ety =>
+  | .entity ety l =>
     have ⟨euid, h₁⟩ := entity_type_is_inhabited ety
     exists (.prim (.entityUID euid))
-    apply InstanceOfType.instance_of_entity _ _ h₁
+    apply InstanceOfType.instance_of_entity _ _ _ h₁
   | .set ty₁ =>
     exists (.set Set.empty)
     apply InstanceOfType.instance_of_set
@@ -496,7 +635,30 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
     intro w h₅
     specialize h₄ w h₅
     apply instance_of_lub_left h₃ (by simp [h₄])
-  case h_3 _ _ rty₁ rty₂ =>
+  case h_3 ety₁ l₁ ety₂ l₂ =>
+    cases heq : decide (ety₁ = ety₂) <;> simp at heq
+    case false =>
+      rw [if_neg] at  h₁
+      contradiction
+      simp
+      apply heq
+    case true =>
+      rw [if_pos] at h₁
+      simp at h₁
+      cases ty₁' <;> simp at hty₁
+      rename_i ety' l'
+      have ⟨h₃, _h₄⟩ := hty₁
+      cases ty <;> simp at h₁
+      cases h₂
+      apply InstanceOfType.instance_of_entity
+      have ⟨h₁, _h₂ ⟩ := h₁
+      rename_i h
+      rw [← h₁]
+      rw [h₃]
+      apply h
+      rw [heq]
+      simp
+  case h_4 _ _ rty₁ rty₂ =>
     cases h₃ : lubRecordType rty₁ rty₂ <;> simp [h₃] at h₁
     rename_i rty
     have hl := lubRecordType_is_lub_of_record_types h₃
@@ -520,7 +682,7 @@ theorem instance_of_lub_left {v : Value} {ty ty₁ ty₂ : CedarType}
       have ⟨qty₁, h₉, h₁₀⟩ := lubRecord_find_implies_find_left hl h₇
       apply h₆ a qty₁ h₉
       simp [h₁₀, h₈]
-  case h_4 =>
+  case h_5 =>
     split at h₁ <;> simp at h₁
     rename_i h₃
     subst h₁ h₃ hty₁ hty₂
@@ -536,6 +698,28 @@ theorem instance_of_lub {v : Value} {ty ty₁ ty₂ : CedarType}
   · exact instance_of_lub_left h₁ h₃
   · rw [lub_comm] at h₁
     exact instance_of_lub_left h₁ h₃
+
+theorem request_leveled_instance_implies_instance {request : Request} {reqty : RequestType} {l : Level} :
+  InstanceOfRequestTypeLevel request reqty l →
+  InstanceOfRequestType request reqty
+  := by
+  intros h
+  unfold InstanceOfRequestType
+  unfold InstanceOfRequestTypeLevel at h
+  simp [h]
+
+theorem request_and_entity_match_level_implies_regular {env : Environment} {request : Request} {entities : Entities} {l : Level} :
+  RequestAndEntitiesMatchEnvironmentLeveled env request entities l →
+  RequestAndEntitiesMatchEnvironment env request entities
+  := by
+  intros h
+  unfold RequestAndEntitiesMatchEnvironment
+  unfold RequestAndEntitiesMatchEnvironmentLeveled at h
+  simp [h]
+  apply request_leveled_instance_implies_instance
+  have ⟨h₁, _⟩ := h
+  apply h₁
+
 
 
 end Cedar.Thm

@@ -118,3 +118,13 @@ def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
     call xfn vs
 
 end Cedar.Spec
+
+namespace Cedar.Spec.Monadic
+
+def Trap (m : Type  → Type ) (α : Type ) : Type  :=
+  m α → (Bool × α)
+
+
+
+
+end Cedar.Spec.Monadic

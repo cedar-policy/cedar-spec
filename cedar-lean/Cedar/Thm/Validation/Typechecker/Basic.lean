@@ -58,6 +58,41 @@ def EvaluatesTo (e: Expr) (request : Request) (entities : Entities) (v : Value) 
   evaluate e request entities = .ok v
 
 /--
+The leveled type soundness property says that if the typechecker assigns a type to an
+expression, then it must be the case that the expression `EvaluatesTo` a value
+of that type. The `EvaluatesTo` predicate covers the (obvious) case where
+evaluation has no errors, but it also allows for errors of type
+`extensionError`, and `arithBoundsError`.
+
+The typechecker cannot protect against these errors because they depend on runtime
+arithmetic overflow errors. All other errors (`attrDoesNotExist` and `typeError`) can be
+prevented statically.
+
+_Note_: Currently, `extensionError`s can also be ruled out at validation time
+because the only extension functions that can error are constructors, and all
+constructors are required to be applied to string literals, meaning that they
+can be fully evaluated during validation. This is not guaranteed to be the case
+in the future.
+
+_Note_: We plan to implement a range analysis that will be able to rule out
+`arithBoundsError`s.
+-/
+def EvaluatesToLeveled (e : Expr) (request : Request) (entities : Entities) (v : Value) : Prop :=
+  evaluate e request entities = .error .extensionError ∨
+  evaluate e request entities = .error .arithBoundsError ∨
+  evaluate e request entities = .ok v
+
+theorem leveldSafeImpliesRegularSafe {e : Expr} {request : Request} {entities : Entities} {v : Value} :
+  EvaluatesToLeveled e request entities v →
+  EvaluatesTo e request entities v
+  := by
+  intros h
+  unfold EvaluatesToLeveled at h
+  unfold EvaluatesTo
+  simp [h]
+
+
+/--
 On input to the typechecking function, for any (e,k) in the Capabilities,
 e is a record- or entity-typed expression that has key k.
 -/
@@ -73,12 +108,21 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
   CapabilitiesInvariant c request entities
 
 def TypeOfIsSound (x₁ : Expr) : Prop :=
-  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities},
+  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level},
     CapabilitiesInvariant c₁ request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
-    typeOf x₁ c₁ env = Except.ok (ty, c₂) →
+    typeOf x₁ c₁ env (l == Level.infinite) = Except.ok (ty, c₂) →
     GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
     ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty
+
+def TypeOfIsSoundLeveled (x₁ : Expr) : Prop :=
+  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level},
+    l < .infinite →
+    CapabilitiesInvariant c₁ request entities →
+    RequestAndEntitiesMatchEnvironmentLeveled env request entities l →
+    typeOf x₁ c₁ env (l == Level.infinite) = Except.ok (ty, c₂) →
+    GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
+    ∃ v, EvaluatesToLeveled x₁ request entities v ∧ InstanceOfType v ty
 
 ----- Capability lemmas -----
 

@@ -29,22 +29,22 @@ open Cedar.Data
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def ActionSchemaEntry.toRequestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
+def ActionSchemaEntry.toRequestTypes (level : Level) (action : EntityUID) (entry : ActionSchemaEntry)  : List RequestType :=
   entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
         {
-          principal := principal,
-          action := action,
-          resource := resource,
+          principal := (principal, level),
+          action := (action, level),
+          resource := (resource, level),
           context := entry.context
         })
     reqtys ++ acc) ∅
 
 /-- Return every schema-defined environment. -/
-def Schema.toEnvironments (schema : Schema) : List Environment :=
+def Schema.toEnvironments (schema : Schema) (l : Level) : List Environment :=
   let requestTypes : List RequestType :=
-    schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
+    schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes l action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
     acts := schema.acts,
@@ -105,9 +105,9 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   mapOnVars f expr
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
-  let expr := substituteAction env.reqty.action policy.toExpr
-  match typeOf expr ∅ env with
+def typecheckPolicy (policy : Policy) (l : Level) (env : Environment) : Except ValidationError CedarType := do
+  let expr := substituteAction env.reqty.action.fst policy.toExpr
+  match typeOf expr ∅ env (l == Level.infinite) with
   | .ok (ty, _) =>
     if ty ⊑ .bool .anyBool
     then .ok ty
@@ -118,17 +118,17 @@ def allFalse (tys : List CedarType) : Bool :=
   tys.all (· == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
-def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) : ValidationResult := do
-  let policyTypes ← envs.mapM (typecheckPolicy policy)
+def typecheckPolicyWithEnvironments (l : Level) (policy : Policy) (envs : List Environment) : ValidationResult := do
+  let policyTypes ← envs.mapM (typecheckPolicy policy l)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /--
 Analyze a set of policies to checks that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
-def validate (policies : Policies) (schema : Schema) : ValidationResult :=
-  let envs := schema.toEnvironments
-  policies.forM (typecheckPolicyWithEnvironments · envs)
+def validate (policies : Policies) (schema : Schema) (l : Level) : ValidationResult :=
+  let envs := schema.toEnvironments l
+  policies.forM ((typecheckPolicyWithEnvironments l) · envs)
 
 ----- Derivations -----
 
@@ -139,6 +139,7 @@ Lossy serialization of errors to Json. This serialization provides some extra
 information to DRT without having to derive `Lean.ToJson` for `Expr` and `CedarType`.
 -/
 def validationErrorToJson : ValidationError → Lean.Json
+  | .typeError _ (.levelError _) => "Level Error"
   | .typeError _ (.lubErr _ _) => "lubErr"
   | .typeError _ (.unexpectedType _) => "unexpectedType"
   | .typeError _ (.attrNotFound _ _) => "attrNotFound"
