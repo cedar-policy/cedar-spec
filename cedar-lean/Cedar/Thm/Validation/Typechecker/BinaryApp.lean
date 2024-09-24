@@ -1015,26 +1015,31 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   subst hv₁ hv₂ hty₁
   simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
   simp only [getTag, Entities.tags]
-  have hf := Map.findOrErr_returns entities uid Error.entityDoesNotExist
-  rcases hf with ⟨d, hf⟩ | hf <;>
-  simp only [hf, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
+  have hf₁ := Map.findOrErr_returns entities uid Error.entityDoesNotExist
+  rcases hf₁ with ⟨d, hf₁⟩ | hf₁ <;>
+  simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
     type_is_inhabited, and_self]
-  rw [Map.findOrErr_ok_iff_find?_some] at hf
-  replace ⟨entry, hf, _, _, h₂⟩  := h₂.right.left uid d hf
+  rw [Map.findOrErr_ok_iff_find?_some] at hf₁
+  replace ⟨entry, hf₂, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂
   simp only [EntitySchema.tags?, Option.map_eq_some'] at h₅
   replace ⟨_, h₅, h₇⟩ := h₅
-  simp only [hf, Option.some.injEq] at h₅
+  simp only [hf₂, Option.some.injEq] at h₅
   subst h₅
   simp only [h₇] at h₂
-  have hf' := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
-  rcases hf' with ⟨v, hf'⟩ | hf' <;>
-  simp only [hf', false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
+  have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
+  rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
+  simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
     Except.ok.injEq, false_or, exists_eq_left']
   · simp only [← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and]
     apply h₂
-    exact Map.findOrErr_ok_implies_in_values hf'
-  · sorry
+    exact Map.findOrErr_ok_implies_in_values hf₃
+  · replace h₁ := h₁.right x₁ x₂ h₆
+    simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
+      Value.prim.injEq, Prim.bool.injEq, false_or] at h₁
+    simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
+    replace ⟨_, h₁⟩ := h₁
+    simp only [Map.findOrErr_err_iff_find?_none, h₁] at hf₃
 
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
