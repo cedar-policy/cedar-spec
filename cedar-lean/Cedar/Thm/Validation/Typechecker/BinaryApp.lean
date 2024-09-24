@@ -986,7 +986,8 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   rename_i h₄ h₅
   replace ⟨h₁, h₁'⟩ := h₁
   subst h₁ h₁'
-  simp [h₄, h₅]
+  simp only [Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq, true_and, h₅, and_true,
+    exists_and_left, exists_and_right, exists_eq', exists_eq_left', h₄, and_self]
 
 theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -1031,7 +1032,8 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [hf', false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
     Except.ok.injEq, false_or, exists_eq_left']
   · simp only [← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and]
-    sorry
+    apply h₂
+    exact Map.findOrErr_ok_implies_in_values hf'
   · sorry
 
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
