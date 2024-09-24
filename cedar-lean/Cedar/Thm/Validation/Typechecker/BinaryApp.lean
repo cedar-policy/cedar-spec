@@ -867,27 +867,36 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
     simp only [ih₂, Except.bind_err, Except.bind_ok, Except.error.injEq, or_self, or_false, or_true, true_and]
   case inr.inr.inr =>
-
-    sorry
+    replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
+    replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
+    subst hv₁ hv₂
+    simp only [apply₂, hasTag, Except.ok.injEq, false_or, exists_eq_left']
+    simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, apply₂, Except.bind_ok]
+    simp only [typeOfHasTag, List.empty_eq] at h₃
+    split at h₃ <;> simp [ok, err] at h₃
+    case h_1 heq =>
+      replace ⟨h₃, h₆⟩ := h₃
+      subst h₃ h₆
+      constructor
+      · intro ; exact empty_capabilities_invariant request entities
+      · sorry
+    case h_2 tty heq =>
+      split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+      case isTrue =>
+        sorry
+      case isFalse =>
+        sorry
+    case h_3 heq =>
+      split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+      replace ⟨h₃, h₆⟩ := h₃
+      subst h₃ h₆
+      constructor
+      · intro ; exact empty_capabilities_invariant request entities
+      · sorry
   all_goals {
     simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, Except.bind_err, Except.bind_ok, false_implies, true_and]
     exact type_is_inhabited ty
   }
-  -- simp only [typeOfHasTag, List.empty_eq] at h₃
-  -- split at h₃
-  -- case h_2 tty heq =>
-  --   sorry
-  -- case' h_1 =>
-  --   simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h₃
-  --   replace ⟨h₃, h₆⟩ := h₃
-  --   subst h₃ h₆
-  --   sorry
-  -- case' h_3 heq =>
-  --   split at h₃ <;> simp only [ok, err, Except.ok.injEq, Prod.mk.injEq] at h₃
-  --   simp [EntitySchema.tags?] at heq
-  --   sorry
-
-
 
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
