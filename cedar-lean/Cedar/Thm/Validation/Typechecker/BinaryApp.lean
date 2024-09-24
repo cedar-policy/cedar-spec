@@ -943,7 +943,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       subst h₃ h₆
       simp only [hempty, implies_true, true_and]
       exact no_tags_type_implies_no_tags h₂.right.left heq
-    case h_2 tty _ =>
+    case h_2 =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
       replace ⟨h₃, h₆⟩ := h₃ <;>
       subst h₃ h₆
@@ -966,6 +966,42 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     exact type_is_inhabited ty
   }
 
+theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
+  ∃ ety c₁' c₂' ty,
+    typeOf x₁ c₁ env = .ok (.entity ety, c₁') ∧
+    typeOf x₂ c₁ env = .ok (.string, c₂') ∧
+    env.ets.tags? ety = some (some ty) ∧
+    (x₁, .tag x₂) ∈ c₁
+:= by
+  simp only [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h₁
+  cases h₃ : typeOf x₂ c₁ env <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
+  rename_i tyc₁ tyc₂
+  cases tyc₁
+  cases tyc₂
+  rename_i ty₁ c₁' ty₂ c₂'
+  simp only at h₁
+  cases ty₁ <;> cases ty₂ <;>
+  simp only [typeOfBinaryApp, err] at h₁
+  rename_i ety
+  simp only [typeOfGetTag, List.empty_eq] at h₁
+  split at h₁ <;> simp only [ok, err] at h₁
+  split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
+  rename_i ty _ _
+  exists ety, c₁', c₂', ty
+
+theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (ih₁ : TypeOfIsSound x₁)
+  (ih₂ : TypeOfIsSound x₂) :
+  GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v ty
+:= by
+  sorry
+
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -987,6 +1023,6 @@ theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   | .containsAny => exact type_of_containsA_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .mem         => exact type_of_mem_is_sound h₁ h₂ h₃ ih₁ ih₂
   | .hasTag      => exact type_of_hasTag_is_sound h₁ h₂ h₃ ih₁ ih₂
-  | .getTag      => sorry
+  | .getTag      => exact type_of_getTag_is_sound h₁ h₂ h₃ ih₁ ih₂
 
 end Cedar.Thm
