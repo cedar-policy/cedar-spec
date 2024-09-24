@@ -963,10 +963,10 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
 theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
   (h₁ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
   c₂ = [] ∧
-  ∃ ety c₁' c₂' tty,
+  ∃ ety c₁' c₂',
     typeOf x₁ c₁ env = .ok (.entity ety, c₁') ∧
     typeOf x₂ c₁ env = .ok (.string, c₂') ∧
-    env.ets.tags? ety = some (some tty) ∧
+    env.ets.tags? ety = some (some ty) ∧
     (x₁, .tag x₂) ∈ c₁
 := by
   simp only [typeOf] at h₁
@@ -983,9 +983,10 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   simp only [typeOfGetTag, List.empty_eq] at h₁
   split at h₁ <;> simp only [ok, err] at h₁
   split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
-  rename_i ty _ _
-  simp only [h₁, true_and]
-  exists ety, c₁', c₂', ty
+  rename_i h₄ h₅
+  replace ⟨h₁, h₁'⟩ := h₁
+  subst h₁ h₁'
+  simp [h₄, h₅]
 
 theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -996,7 +997,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v ty
 := by
-  replace ⟨hc, ety, c₁', c₂', tty, h₃, h₄, h₅, h₆⟩ := type_of_getTag_inversion h₃
+  replace ⟨hc, ety, c₁', c₂', h₃, h₄, h₅, h₆⟩ := type_of_getTag_inversion h₃
   subst hc
   replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
   replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₄
@@ -1019,6 +1020,12 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     type_is_inhabited, and_self]
   rw [Map.findOrErr_ok_iff_find?_some] at hf
   replace ⟨entry, hf, _, _, h₂⟩  := h₂.right.left uid d hf
+  simp only [InstanceOfEntityTags] at h₂
+  simp only [EntitySchema.tags?, Option.map_eq_some'] at h₅
+  replace ⟨_, h₅, h₇⟩ := h₅
+  simp only [hf, Option.some.injEq] at h₅
+  subst h₅
+  simp only [h₇] at h₂
   have hf' := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
   rcases hf' with ⟨v, hf'⟩ | hf' <;>
   simp only [hf', false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
