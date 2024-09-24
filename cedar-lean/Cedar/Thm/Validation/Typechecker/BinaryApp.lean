@@ -919,8 +919,8 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType v ty
 := by
   replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
-  replace ⟨hgc₁, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₄
-  replace ⟨hgc₂, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₅
+  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₄
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₅
   simp only [EvaluatesTo] at *
   simp only [evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
@@ -943,7 +943,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       subst h₃ h₆
       simp only [hempty, implies_true, true_and]
       exact no_tags_type_implies_no_tags h₂.right.left heq
-    case h_2 tty heq =>
+    case h_2 tty _ =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
       replace ⟨h₃, h₆⟩ := h₃ <;>
       subst h₃ h₆
