@@ -847,6 +847,29 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   rename_i ety
   exists ety, c₁', c₂'
 
+private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} :
+  InstanceOfType (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
+
+private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : env.ets.tags? uid.ty = .some .none) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Entities.tagsOrEmpty]
+  split
+  · rename_i d hf
+    replace ⟨e, hf', _, _, h₁⟩ := h₁ uid d hf
+    simp only [InstanceOfEntityTags] at h₁
+    simp only [EntitySchema.tags?, Option.map_eq_some'] at h₂
+    replace ⟨e', h₂, h₃⟩ := h₂
+    simp only [hf', Option.some.injEq] at h₂
+    subst h₂
+    simp only [h₃] at h₁
+    simp only [h₁, map_empty_contains_instance_of_ff]
+  · exact map_empty_contains_instance_of_ff
+
 theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -869,7 +892,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   case inr.inr.inr =>
     replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
     replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
-    subst hv₁ hv₂
+    subst hv₁ hv₂ hty₁
     simp only [apply₂, hasTag, Except.ok.injEq, false_or, exists_eq_left']
     simp only [GuardedCapabilitiesInvariant, evaluate, ih₁, ih₂, apply₂, Except.bind_ok]
     simp only [typeOfHasTag, List.empty_eq] at h₃
@@ -880,7 +903,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       replace ⟨h₃, h₆⟩ := h₃
       subst h₃ h₆
       simp only [hempty, implies_true, true_and]
-      sorry
+      exact no_tags_type_implies_no_tags h₂.right.left heq
     case h_2 tty heq =>
       split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
       replace ⟨h₃, h₆⟩ := h₃ <;>
