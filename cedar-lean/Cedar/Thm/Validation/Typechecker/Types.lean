@@ -247,6 +247,14 @@ def RequestAndEntitiesMatchEnvironmentLeveled (env : Environment) (request : Req
   (entities ⊢ request.action : .entity env.reqty.action.fst.ty env.reqty.action.snd) ∧
   (entities ⊢ request.context : .record env.reqty.context)
 
+def StoreIsWellFormed (env : Environment) (request : Request) (entities : Entities) (l : Level) : Prop :=
+  InstanceOfRequestTypeLevel request env.reqty l ∧
+  InstanceOfEntitySchema entities env.ets ∧
+  (entities ⊢ request.principal : .entity env.reqty.principal.fst env.reqty.principal.snd) ∧
+  (entities ⊢ request.resource : .entity env.reqty.resource.fst env.reqty.resource.snd) ∧
+  (entities ⊢ request.action : .entity env.reqty.action.fst.ty env.reqty.action.snd) ∧
+  (entities ⊢ request.context : .record env.reqty.context)
+
 ----- Theorems -----
 
 theorem false_is_instance_of_ff :

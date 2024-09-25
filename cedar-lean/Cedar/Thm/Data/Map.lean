@@ -1275,6 +1275,14 @@ theorem in_map_in_constructor
   apply @List.in_canonicalize_in_list α (α × β) _ _ _ Prod.fst (k,v) lst
   assumption
 
+theorem in_constructor_in_map {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  (kvs : List (α × β)) (k : α) (v : β)
+  (h : (k,v) ∈ kvs) :
+  ∃ (v' : β),
+    (Map.make kvs).find? k = some v
+  := by
+  sorry
 
 
 

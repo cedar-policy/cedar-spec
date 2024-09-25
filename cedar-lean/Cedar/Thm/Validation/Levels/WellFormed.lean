@@ -754,6 +754,7 @@ macro "bool_constant" hinv:(ident) hsound₃:(ident) : tactic =>
     )
   ))
 
+
 theorem evaluates_to_well_formed_and {lhs rhs : Expr} {v : Value} {request : Request} {entities : Entities} {c₁ c₂ : Capabilities} {l₁ : Level}
   (h₂ : RequestAndEntitiesMatchEnvironmentLeveled env request entities l₁)
   (h₃ : typeOf (.and lhs rhs) c₁ env (l₁ == .infinite) = Except.ok (ty, c₂))

@@ -7,52 +7,63 @@ namespace Cedar.Spec
 open Cedar.Data
 open Cedar.Spec
 
-def Prim.findEuids (p : Prim) : List EntityUID :=
+def Prim.findEuids (p : Prim) (entities : Entities) : Option (List (EntityUID × EntityData)) :=
   match p with
-  | .bool _ => []
-  | .int _ => []
-  | .string _ => []
-  | .entityUID euid => [euid]
+  | .bool _ => return []
+  | .int _ => return []
+  | .string _ => return []
+  | .entityUID euid => do
+    let data ← entities.find? euid
+    return [(euid, data)]
 
 
 
 
-def Value.findEuids (value : Value) : List EntityUID :=
+
+def Value.findEuids (value : Value) (entities : Entities) : Option (List (EntityUID × EntityData)):=
   match value with
-  | .prim p => p.findEuids
-  | .set members =>
-    (members.toList.map₁ (λ pair => pair.val.findEuids ) ).join
-  | .record members => (members.values.map₁  (λ pair => pair.val.findEuids)).join
-  | .ext _ => []
+  | .prim p => p.findEuids entities
+  | .set s => do
+    let euids ← s.toList.mapM₁ (λ pair => pair.val.findEuids entities)
+    return euids.join
+  | .record kvs => do
+    let euids ← kvs.values.mapM₁ (λ pair => pair.val.findEuids entities)
+    return euids.join
+  | .ext _ => return []
 termination_by sizeOf value
 decreasing_by
   all_goals simp_wf
+  all_goals try omega
   case _ =>
-    have step₁ : sizeOf (members.toList) < sizeOf members := by
-      cases members
-      rename_i members
-      simp [Set.toList, Set.elts]
-      omega
-    have step₂ : sizeOf pair.val < sizeOf members.toList := by
+    cases s
+    rename_i members
+    have step₁ : sizeOf pair.val < sizeOf members := by
       apply List.in_lists_means_smaller
       apply pair.property
+    have step₂ : sizeOf members < sizeOf (Set.mk members) := by
+      simp
+      omega
     omega
   case _ =>
-    have step₁ : sizeOf pair.val < sizeOf members := by
+    have step : sizeOf pair.val < sizeOf kvs := by
       apply Map.sizeOf_lt_of_in_values
       apply pair.property
     omega
 
 
 
-def findEuids (context : Map Attr Value) : List EntityUID :=
-  (context.values.map Value.findEuids).join
+
+def loadEuids (context : Map Attr Value) (entities : Entities) : Option (List (EntityUID × EntityData)) := do
+  (Value.record context).findEuids entities
+
 
 def simpleSlice (req : Request) (entities : Entities) : Option Entities := do
   let p ← entities.find? req.principal
   let a ← entities.find? req.action
   let r ← entities.find? req.resource
-  return Map.make ([(req.principal, p), (req.action, a), (req.resource, r)])
+  let fromContext ← loadEuids req.context entities
+  let kvs := (req.principal, p) :: (req.action, a) :: (req.resource, r)  :: fromContext
+  return Map.make kvs
 
 
 
