@@ -142,6 +142,7 @@ def validationErrorToJson : ValidationError → Lean.Json
   | .typeError _ (.lubErr _ _) => "lubErr"
   | .typeError _ (.unexpectedType _) => "unexpectedType"
   | .typeError _ (.attrNotFound _ _) => "attrNotFound"
+  | .typeError _ (.tagNotFound _ _) => "tagNotFound"
   | .typeError _ (.unknownEntity _) => "unknownEntity"
   | .typeError _ (.extensionErr _) => "extensionErr"
   | .typeError _ .emptySetErr => "emptySetErr"
