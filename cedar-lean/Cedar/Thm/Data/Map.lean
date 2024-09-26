@@ -1275,14 +1275,91 @@ theorem in_map_in_constructor
   apply @List.in_canonicalize_in_list α (α × β) _ _ _ Prod.fst (k,v) lst
   assumption
 
+theorem in_kv_list {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  (kvs : List (α × β)) (k : α) (v : β)
+  (h : (k,v) ∈ kvs) :
+  ∃ (v' : β),
+    kvs.find? (λ pair => pair.fst == k) = some (k, v')
+  := by
+  cases kvs
+  case nil =>
+    cases h
+  case cons head tail =>
+    have ⟨k',v'⟩ := head
+    cases h
+    case head =>
+      simp
+    case tail in_tail =>
+      simp [List.find?]
+      cases eq_key : decide (k' = k) <;> simp at eq_key
+      case true =>
+        exists v'
+        subst eq_key
+        simp
+      case false =>
+        have neq : (k' == k) = false := by
+          exact beq_false_of_ne eq_key
+        simp [neq]
+        apply in_kv_list
+        repeat assumption
+
+theorem in_mk_in_map {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  (kvs : List (α × β)) (k : α) (v : β)
+  (h : (k,v) ∈ kvs) :
+  ∃ (v' : β),
+    (mk kvs).find? k = some v'
+  := by
+  have ⟨v', in_list⟩  : ∃ v', kvs.find? (λ pair => pair.fst == k) = some (k, v') := by
+    apply in_kv_list
+    repeat assumption
+  exists v'
+  simp [find?, Map.kvs, in_list]
+
 theorem in_constructor_in_map {α β : Type}
   [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
   (kvs : List (α × β)) (k : α) (v : β)
   (h : (k,v) ∈ kvs) :
   ∃ (v' : β),
-    (Map.make kvs).find? k = some v
+    (make kvs).find? k = some v'
   := by
-  sorry
+  simp [make]
+  have ⟨kvs_canonical, h'⟩ : ∃ lst, lst = List.canonicalize Prod.fst kvs := by
+    exists List.canonicalize Prod.fst kvs
+  rw [← h']
+  apply in_mk_in_map
+  apply List.in_list_in_canonical_fst
+  rw [h']
+  apply h
+
+
+theorem in_constructor_in_kvs {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  (kvs : List (α × β)) (k : α) (v : β)
+  (h : (k,v) ∈ kvs) :
+  ∃ (v' : β),
+    (k, v') ∈ (make kvs).kvs
+  := by
+  have step : ∃ v, (make kvs).find? k = some v := by
+    apply in_constructor_in_map
+    assumption
+  replace ⟨v',step⟩ := step
+  exists v'
+  exact find_means_mem step
+
+theorem in_constructor_in_keys {α β : Type}
+  [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  (kvs : List (α × β)) (k : α) (v : β)
+  (h : (k,v) ∈ kvs) :
+  k ∈ (make kvs).keys
+  := by
+  have step : ∃ (v' : β), (k, v') ∈ (make kvs).kvs := by
+    apply in_constructor_in_kvs
+    assumption
+  replace ⟨v', step⟩ := step
+  exact in_list_in_keys step
+
 
 
 

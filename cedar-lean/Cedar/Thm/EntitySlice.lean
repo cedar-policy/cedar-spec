@@ -82,18 +82,22 @@ theorem in_joins_in_member' {α : Type} (head_list : List α) (tail_list : List 
     apply Or.inr
     apply in_tail
 
-
-
-
-
-
-
 def in_list_in_join {α : Type} (list : List α) (lists : List (List α)) (a : α)
   (in_list : a ∈ list)
   (in_lists : list ∈ lists) :
   a ∈ lists.join
   := by
   exact List.mem_join_of_mem in_lists in_list
+
+def join_cons {α : Type} (list : List α) (lists : List (List α)) (a : α) :
+  a ∈ lists.join →
+  a ∈ (list :: lists).join
+  := by
+  intros h
+  simp [List.join]
+  apply Or.inr
+  simp at h
+  apply h
 
 
 def SimpleSliceContxtSoundness (v : Value) : Prop :=
@@ -155,27 +159,55 @@ theorem simpleSlice_set (members : List Value) (euid : EntityUID) (edata : Entit
       simp [in_tail]
 
 
+theorem simpleSlice_context_record (kvs : Map Attr  Value) (euid : EntityUID) (edata : EntityData) (entities slice : Entities)
+  (h : (Value.record kvs).findEuids entities = some list)
+  (in_slice : slice.find? euid = some edata)
+  (in_list : (euid, edata) ∈ list)
+  (ih : ∀ v, v ∈ kvs.values → SimpleSliceContxtSoundness v) :
+  slice.find? euid = entities.find? euid
+  := by
+  simp [Value.findEuids, List.mapM₁, List.attach, List.attachWith] at h
+  simp [List.mapM_pmap_subtype (λ (value : Value) => value.findEuids entities)] at h
+  cases mapping : kvs.values.mapM (λ value => value.findEuids entities)
+  <;> simp [mapping] at h
+  rename_i llist
+  apply simpleSlice_set kvs.values
+  apply mapping
+  apply in_slice
+  rw [h]
+  apply in_list
+  apply ih
 
 theorem simpleSlice_context_value (v : Value) (euid : EntityUID) (edata : EntityData) (entities slice : Entities) (context_entities : List (EntityUID × EntityData))
   (context_entities_def : v.findEuids entities = some context_entities)
   (in_slice : slice.find? euid = some edata)
-  (in_context_entiites : (euid, edata) ∈ context_entities) :
+  (in_context_entities : (euid, edata) ∈ context_entities) :
   slice.find? euid = entities.find? euid
   := by
   cases v
   case prim p =>
-    cases p <;> try
-      (
-      simp [Value.findEuids, Prim.findEuids] at context_entities_def ;
+    cases p
+    case bool b =>
+      exfalso
+      simp [Value.findEuids, Prim.findEuids] at context_entities_def
       subst context_entities_def
-      cases in_context_entiites
-      )
+      simp at in_context_entities
+    case int i =>
+      exfalso
+      simp [Value.findEuids, Prim.findEuids] at context_entities_def
+      subst context_entities_def
+      simp at in_context_entities
+    case string s =>
+      exfalso
+      simp [Value.findEuids, Prim.findEuids] at context_entities_def
+      subst context_entities_def
+      simp at in_context_entities
     case entityUID euid' =>
       simp [Value.findEuids, Prim.findEuids] at context_entities_def
       cases find : entities.find? euid'
         <;> simp [find] at context_entities_def
       subst context_entities_def
-      cases in_context_entiites
+      cases in_context_entities
       case tail h =>
         cases h
       case head =>
@@ -190,14 +222,45 @@ theorem simpleSlice_context_value (v : Value) (euid : EntityUID) (edata : Entity
     apply simpleSlice_set
     apply mapping
     apply in_slice
-    rw [← context_entities_def] at in_context_entiites
-    apply in_context_entiites
+    rw [← context_entities_def] at in_context_entities
+    apply in_context_entities
     intros v in_values
     apply simpleSlice_context_value
   case record =>
-    sorry
+    apply simpleSlice_context_record
+    repeat assumption
+    rename_i kvs
+    intros v in_map
+    apply simpleSlice_context_value
   case ext =>
-    sorry
+    simp [Value.findEuids] at context_entities_def
+    subst context_entities_def
+    simp at in_context_entities
+termination_by (sizeOf v)
+decreasing_by
+  all_goals simp_wf
+  all_goals try omega
+  case _ =>
+    rename Value => v'
+    rename Set Value => set
+    rename v = Value.set set => eq
+    rw [eq]
+    have step₁ : sizeOf v' < sizeOf set := by
+      apply Set.sizeOf_lt_of_mem
+      exact in_values
+    simp
+    omega
+  case _ =>
+    rename Value => v'
+    rename Map Attr Value => map
+    rename v = Value.record map => eq
+    rw [eq]
+    have step : sizeOf v' < sizeOf map := by
+      exact Map.sizeOf_lt_of_in_values in_map
+    simp
+    omega
+
+
 
 theorem simpleSlice_context (req : Request) (euid : EntityUID) (edata : EntityData) (entities slice : Entities) (context_entities : List (EntityUID × EntityData))
   (context_entities_def : loadEuids req.context entities = some context_entities)
@@ -206,10 +269,11 @@ theorem simpleSlice_context (req : Request) (euid : EntityUID) (edata : EntityDa
   slice.find? euid = entities.find? euid
   := by
   simp [loadEuids] at context_entities_def
+  apply simpleSlice_context_value
+  apply context_entities_def
+  apply in_slice
+  apply in_context_entiites
 
-
-
-  sorry
 
 
 theorem simpleSlice_is_subslice (req : Request) (entities slice : Entities)
@@ -252,51 +316,6 @@ theorem simpleSlice_is_subslice (req : Request) (entities slice : Entities)
   repeat assumption
 
 
-
-
-
-
-
-
-
-theorem simpleSlice_is_subslice (req : Request) (entities slice : Entities)
-  (h : simpleSlice req entities = some slice) :
-  subslice slice entities
-  := by
-  simp [subslice]
-  intros euid edata h'
-  simp [simpleSlice] at h
-  cases find_principal : entities.find? req.principal
-    <;> simp [find_principal] at h
-  cases find_action : entities.find? req.action
-    <;> simp [find_action] at h
-  cases find_resource : entities.find? req.resource
-    <;> simp [find_resource] at h
-  rename_i principal action resource
-  have location : (euid, edata) ∈ [(req.principal, principal),  (req.action, action),  (req.resource, resource)] := by
-    have in_map : (euid, edata) ∈ slice.kvs := by
-      exact Map.find_means_mem h'
-    apply Map.make_mem_list_mem
-    rw [h]
-    assumption
-  rcases location with location | location
-  case _ =>
-    rw [h']
-    rw [find_principal]
-  rename_i location
-  rcases location with location | location
-  case _ =>
-    rw [h']
-    rw [find_action]
-  rename_i location
-  rcases location with location | location
-  case _ =>
-    rw [h']
-    rw [find_resource]
-  rename_i location
-  cases location
-
-
 theorem simpleSlice_respects_entity_schema (req : Request) (entities slice : Entities) (env : Environment)
   (h₁ : simpleSlice req entities = some slice)
   (h₂ : InstanceOfEntitySchema entities env.ets) :
@@ -313,6 +332,91 @@ theorem simpleSlice_respects_entity_schema (req : Request) (entities slice : Ent
     apply in_slice
   apply h₂
   simp [in_full_store]
+
+
+
+theorem find_euids_in_list (euid : EntityUID) (members : Set Value) (list : List (List (EntityUID × EntityData))) (entities : Entities)
+  (list_def : members.toList.mapM (λ v => v.findEuids entities) = some list)
+  (in_members : (.prim (.entityUID euid)) ∈ members) :
+  ∃ edata,
+    (euid, edata) ∈ list.join
+  := by
+  sorry
+
+
+
+theorem findEuids_complete (v₁ v₂ : Value) (euid : EntityUID) (entities : Entities) (list : List (EntityUID × EntityData))
+  (found_entities : v₂.findEuids entities = some list)
+  (is_euid : v₁ = .prim (.entityUID euid))
+  (is_subvalue : SubValue v₁ v₂) :
+  ∃ edata, (euid, edata) ∈ list
+  := by
+  induction is_subvalue
+  case _ v' v'' is_in_value  =>
+    cases is_in_value
+    case inSet members in_members =>
+      simp [Value.findEuids, List.mapM₁, List.attach, List.atachWith] at found_entities
+
+
+
+      sorry
+    sorry
+  case _ =>
+    sorry
+
+
+
+
+
+
+theorem simpleSlice_complete (euid : EntityUID) (request : Request) (entities slice : Entities)
+  (slice_def : simpleSlice request entities = some slice )
+  (euid_correct : euid = request.principal ∨ euid = request.action ∨ euid = request.resource ∨ SubValue (.prim (.entityUID euid)) (.record request.context) ) :
+  euid ∈ slice.keys
+  := by
+  simp [simpleSlice] at slice_def
+  cases find_principal : Map.find? entities request.principal
+    <;> simp [find_principal] at slice_def
+  cases find_action : Map.find? entities request.action
+    <;> simp [find_action] at slice_def
+  cases find_resource : Map.find? entities request.resource
+    <;> simp [find_resource] at slice_def
+  cases find_context : loadEuids request.context entities
+    <;> simp [find_context] at slice_def
+  rename_i principal action resource context
+
+  rw [← slice_def]
+  rcases euid_correct with is_principal | is_action | is_resource | is_in_context
+  case _ =>
+    subst is_principal
+    apply Map.in_constructor_in_keys
+    simp
+    apply Or.inl
+    rfl
+  case _ =>
+    subst is_action
+    apply Map.in_constructor_in_keys
+    simp
+    inrl
+    rfl
+  case _ =>
+    subst is_resource
+    apply Map.in_constructor_in_keys
+    simp
+    inrrl
+    rfl
+  case _ =>
+    have ⟨edata, step⟩ : ∃ edata, (euid,edata) ∈ context := by
+      apply findEuids_complete
+      apply find_context
+      apply is_in_context
+    apply Map.in_constructor_in_keys _ euid edata
+    simp
+    inrrr
+    apply step
+
+
+
 
 def simpleSlice_soundness (e : Expr) : Prop  :=
   ∀ entities slice request env (c₁ c₂ : Capabilities) (ty : CedarType),
@@ -453,6 +557,7 @@ theorem simpleSlice_is_sound_getAttr (e : Expr) (attr : Attr) (entities slice : 
       repeat assumption
     rcases sound_subexpr with sound_subexpr | sound_subexpr | sound_subexpr
     <;> simp [sound_subexpr, eval_matches]
+
 
 
 

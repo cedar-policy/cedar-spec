@@ -284,6 +284,20 @@ macro "inrr" : tactic =>
     apply Or.inr
     ))
 
+macro "inrrl" : tactic =>
+  `(tactic | (
+    apply Or.inr
+    apply Or.inr
+    apply Or.inl
+    ))
+
+macro "inrrr" : tactic =>
+  `(tactic | (
+    apply Or.inr
+    apply Or.inr
+    apply Or.inr
+    ))
+
 macro "inrl" : tactic =>
   `(tactic | (
     apply Or.inr

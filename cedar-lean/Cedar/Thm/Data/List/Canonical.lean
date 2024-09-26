@@ -420,4 +420,46 @@ theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α
     simp only [canonicalize]
     exact insertCanonical_map_fst_canonicalize tl f hd
 
+
+theorem insert_in {α β : Type} [LT α] [StrictLT α] [DecidableLT α] (k : α) (v : β) (tail : List (α × β)) :
+  (k,v) ∈ (insertCanonical Prod.fst (k, v) tail )
+  := by
+  cases tail
+  case nil =>
+    simp [insertCanonical]
+  case cons head tail =>
+    simp [insertCanonical]
+    split
+    case isTrue =>
+      simp
+    case isFalse =>
+      split
+      case isTrue =>
+        simp
+        apply Or.inr
+        apply insert_in
+      case _ =>
+        simp
+
+
+
+
+
+theorem in_list_in_canonical_fst {α β} [LT α ] [StrictLT α] [DecidableLT α] (xs canonical : List (α × β)) k v :
+  List.canonicalize Prod.fst xs = canonical →
+  (k, v) ∈ xs →
+  (k, v) ∈ canonical
+  := by
+  intros canon in_xs
+  cases xs
+  case nil =>
+    simp at in_xs
+  case cons head tail =>
+    cases in_xs
+    case head =>
+      simp [canonicalize] at canon
+
+      sorry
+    sorry
+
 end List
