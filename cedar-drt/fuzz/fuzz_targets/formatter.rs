@@ -32,7 +32,6 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
-use smol_str::SmolStr;
 use std::collections::HashMap;
 use uuid::Builder;
 
@@ -161,12 +160,12 @@ fuzz_target!(|input: FuzzTargetInput| {
             );
             // just dump to standard hashmaps to check equality without order.
             // also ignore source locations, which are not preserved in this roundtrip
-            let roundtripped_anno: HashMap<&AnyId, &SmolStr> = roundtripped
+            let roundtripped_anno: HashMap<&AnyId, &str> = roundtripped
                 .annotations()
-                .map(|(k, v)| (k, &v.val))
+                .map(|(k, v)| (k, v.val()))
                 .collect();
-            let original_anno: HashMap<&AnyId, &SmolStr> =
-                t.annotations().map(|(k, v)| (k, &v.val)).collect();
+            let original_anno: HashMap<&AnyId, &str> =
+                t.annotations().map(|(k, v)| (k, v.val())).collect();
             assert_eq!(
                 original_anno, roundtripped_anno,
                 "\nannotations should be the same, found:\noriginal: {original_anno:?}\nroundtripped: {roundtripped_anno:?}\n",

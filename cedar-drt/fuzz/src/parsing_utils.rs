@@ -16,7 +16,6 @@
 
 use cedar_policy_core::ast::{AnyId, Template};
 use cedar_policy_core::parser::err::{ParseError, ParseErrors, ToASTErrorKind};
-use smol_str::SmolStr;
 use std::collections::HashMap;
 
 // Check that two policies are equivalent, ignoring policy ids and source
@@ -24,10 +23,8 @@ use std::collections::HashMap;
 pub fn check_policy_equivalence(p_old: &Template, p_new: &Template) {
     // just dump to standard hashmaps to check equality without order.
     // also ignore source locations, which are not preserved in general
-    let new_anno: HashMap<&AnyId, &SmolStr> =
-        p_new.annotations().map(|(k, v)| (k, &v.val)).collect();
-    let old_anno: HashMap<&AnyId, &SmolStr> =
-        p_old.annotations().map(|(k, v)| (k, &v.val)).collect();
+    let new_anno: HashMap<&AnyId, &str> = p_new.annotations().map(|(k, v)| (k, v.val())).collect();
+    let old_anno: HashMap<&AnyId, &str> = p_old.annotations().map(|(k, v)| (k, v.val())).collect();
     similar_asserts::assert_eq!(new_anno, old_anno);
     similar_asserts::assert_eq!(p_new.effect(), p_old.effect());
     similar_asserts::assert_eq!(p_new.principal_constraint(), p_old.principal_constraint(),);

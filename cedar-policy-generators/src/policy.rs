@@ -144,7 +144,7 @@ impl GeneratedPolicy {
 fn convert_annotations(annotations: HashMap<AnyId, SmolStr>) -> Annotations {
     annotations
         .into_iter()
-        .map(|(k, v)| (k, Annotation { val: v, loc: None }))
+        .map(|(k, v)| (k, Annotation::new(Some(v), None)))
         .collect()
 }
 
