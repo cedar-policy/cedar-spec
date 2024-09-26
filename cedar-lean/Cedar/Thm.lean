@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Thm.Data
 import Cedar.Thm.Authorization
 import Cedar.Thm.Slicing
 import Cedar.Thm.Typechecking
