@@ -60,11 +60,11 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
   | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty)
   | .record r, .record rty =>
-    r.keys.all rty.keys.contains &&
+    r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
         | .some qty => instanceOfType v qty.getType
         | _ => true))) &&
-    rty.keys.all (requiredAttributePresent r rty)
+    rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
   | _, _ => false
     termination_by v
@@ -91,16 +91,24 @@ For every entity in the store,
 2. The entity's attributes match the attribute types indicated in the type store.
 3. The entity's ancestors' types are consistent with the ancestor information
    in the type store.
+4. The entity's tags' types are consistent with the tags information in the type store.
 -/
 def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityValidationResult :=
   entities.toList.forM λ (uid, data) => instanceOfEntityData uid data
 where
+  instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
+    match entry.tags with
+    | .some tty => data.tags.values.all (instanceOfType · tty)
+    | .none     => data.tags == Map.empty
   instanceOfEntityData uid data :=
     match ets.find? uid.ty with
-    |  .some entry => if instanceOfType data.attrs (.record entry.attrs) then
-                        if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then .ok ()
-                        else .error (.typeError s!"entity ancestors inconsistent with type store information")
-                      else .error (.typeError "entity attributes do not match type store")
+    |  .some entry =>
+      if instanceOfType data.attrs (.record entry.attrs) then
+        if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then
+          if instanceOfEntityTags data entry then .ok ()
+          else .error (.typeError s!"entity tags inconsistent with type store")
+        else .error (.typeError s!"entity ancestors inconsistent with type store")
+      else .error (.typeError "entity attributes do not match type store")
     | _ => .error (.typeError "entity type not defined in type store")
 
 /--
@@ -129,7 +137,8 @@ def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityV
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,
-  attrs := Map.empty
+  attrs := Map.empty,
+  tags := Map.empty
 }
 
 /--
@@ -151,14 +160,12 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
         edt.ancestors.elts.map (·.ty) ))
       let ese : EntitySchemaEntry := {
         ancestors := Set.make allAncestorsForType,
-        attrs := Map.empty
+        attrs := Map.empty,
+        tags := Option.none
       }
       (ty, ese)
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-  let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
-  let entities := Map.make (entities.kvs ++ actionEntities.kvs)
-  let schema := updateSchema schema actionEntities
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
 
 -- json

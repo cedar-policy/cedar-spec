@@ -1266,4 +1266,17 @@ theorem length_removeAll_le {α : Type u_1} [BEq α] (xs ys : List α) :
   have _ := List.length_filter_le (fun x => !elem x ys) xs
   omega
 
+/- #### Mem -/
+
+theorem mem_pmap_subtype
+  {p : α → Prop}
+  (as : List α)
+  (h : ∀ a, a ∈ as → p a)
+  (a : α)
+  (ha : p a) :
+  ⟨a, ha⟩ ∈ (List.pmap Subtype.mk as h) ↔
+  a ∈ as
+:= by
+  induction as <;> simp [*]
+
 end List

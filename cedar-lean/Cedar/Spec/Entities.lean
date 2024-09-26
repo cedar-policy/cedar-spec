@@ -26,9 +26,12 @@ open Cedar.Data
 
 ----- Definitions -----
 
+abbrev Tag := String
+
 structure EntityData where
   attrs : Map Attr Value
   ancestors : Set EntityUID
+  tags : Map Tag Value
 
 abbrev Entities := Map EntityUID EntityData
 
@@ -48,6 +51,15 @@ def Entities.attrs (es : Entities) (uid : EntityUID) : Result (Map Attr Value) :
 def Entities.attrsOrEmpty (es : Entities) (uid : EntityUID) : Map Attr Value :=
   match es.find? uid with
   | some d => d.attrs
+  | none   => Map.empty
+
+def Entities.tags (es : Entities) (uid : EntityUID) : Result (Map Tag Value) := do
+  let d ← es.findOrErr uid .entityDoesNotExist
+  .ok d.tags
+
+def Entities.tagsOrEmpty (es : Entities) (uid : EntityUID) : Map Tag Value :=
+  match es.find? uid with
+  | some d => d.tags
   | none   => Map.empty
 
 ----- Derivations -----
