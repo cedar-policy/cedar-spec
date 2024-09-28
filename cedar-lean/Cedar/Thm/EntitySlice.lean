@@ -374,7 +374,136 @@ theorem simpleSlice_complete (euid : EntityUID) (request : Request) (entities sl
     inrrl
     rfl
 
+mutual
+inductive NoEuidTypesIn : CedarType → Prop where
+  | int : NoEuidTypesIn .int
+  | bool : ∀ bty, NoEuidTypesIn (.bool bty)
+  | string : NoEuidTypesIn .string
+  | ext : ∀ ext, NoEuidTypesIn (.ext ext)
+  | set : ∀ ty,
+    NoEuidTypesIn ty →
+    NoEuidTypesIn (.set ty)
+  | record :  ∀ kvs,
+    NoEuidTypesInList kvs →
+    NoEuidTypesIn (.record (Map.mk kvs))
 
+inductive NoEuidTypesInList : List (Attr × QualifiedType) → Prop where
+  | empty : NoEuidTypesInList []
+  | cons : ∀ k qty rest,
+    NoEuidTypesIn qty.getType →
+    NoEuidTypesInList rest →
+    NoEuidTypesInList ((k,qty)::rest)
+
+inductive NoEuidValues : Value → Prop where
+  | int : ∀ i, NoEuidValues (.prim (.int i))
+  | bool : ∀ b, NoEuidValues (.prim (.bool b))
+  | string : ∀ s, NoEuidValues (.prim (.string s))
+  | ext : ∀ extv, NoEuidValues (.ext extv)
+  | set : ∀ members,
+    NoEuidValuesInSet members →
+    NoEuidValues (.set (Set.mk members))
+  | record : ∀ kvs,
+    NoEuidValuesInRecord kvs →
+    NoEuidValues (.record (Map.mk kvs))
+
+
+inductive NoEuidValuesInSet : List Value → Prop where
+  | empty : NoEuidValuesInSet []
+  | cons : ∀ v vs,
+    NoEuidValues v →
+    NoEuidValuesInSet vs →
+    NoEuidValuesInSet (v::vs)
+
+inductive NoEuidValuesInRecord : List (Attr × Value) → Prop where
+  | empty : NoEuidValuesInRecord []
+  | cons : ∀ k v kvs,
+    NoEuidValues v →
+    NoEuidValuesInRecord kvs →
+    NoEuidValuesInRecord ((k,v)::kvs)
+
+end
+
+def NoEuidsInEnv (env : Environment) : Prop :=
+  NoEuidTypesIn (.record env.reqty.context)
+
+def NoEuidsInContext (req : Request) : Prop :=
+  NoEuidValues (.record req.context)
+
+theorem well_typed_without_euids_list (ty : CedarType) (list : List Value)
+  (well_typed : ∀ v, v ∈ list → InstanceOfType v ty)
+  (no_euids : NoEuidTypesIn ty)
+  (ih : ∀ ty v, v ∈ list → InstanceOfType v ty → NoEuidTypesIn ty → NoEuidValues v)
+  :
+  NoEuidValuesInSet list
+  := by
+  cases list <;> constructor
+  case _ head tail =>
+    apply ih
+    simp
+    apply well_typed
+    simp
+    apply no_euids
+  case _ head tail =>
+    apply well_typed_without_euids_list
+    intros v in_tail
+    apply well_typed
+    simp [in_tail]
+    apply no_euids
+    intros ty v in_tail wt' noeuids'
+    apply ih
+    simp [in_tail]
+    repeat assumption
+
+
+theorem well_typed-without_euids_record (map_values : List (Attr × ))
+
+
+theorem well_typed_without_euids (ty : CedarType) (v : Value)
+  (well_typed : InstanceOfType v ty)
+  (no_euids : NoEuidTypesIn ty) :
+  NoEuidValues v
+  := by
+  cases v
+  case prim p =>
+    cases p
+    case int _ =>
+      apply NoEuidValues.int
+    case bool _ =>
+      apply NoEuidValues.bool
+    case string _ =>
+      apply NoEuidValues.string
+    case entityUID  =>
+      cases well_typed
+      cases no_euids
+  case set members =>
+    cases well_typed
+    rename_i ty' well_typed_set
+    cases no_euids
+    rename_i no_euids
+    cases members
+    rename_i members
+    constructor
+    apply well_typed_without_euids_list
+    apply well_typed_set
+    apply no_euids
+    intros
+    apply well_typed_without_euids
+    repeat assumption
+  case record map_values =>
+    cases map_values
+    rename_i map_values
+    constructor
+    cases well_typed
+    rename_i rty h₁ h₂ h₃
+    cases no_euids
+    rename_i map_types h₄
+
+
+
+
+    sorry
+  case _ =>
+    sorry
 
 
 def simpleSlice_soundness (e : Expr) : Prop  :=
