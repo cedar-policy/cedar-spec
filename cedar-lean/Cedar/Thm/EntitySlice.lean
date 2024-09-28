@@ -335,43 +335,11 @@ theorem simpleSlice_respects_entity_schema (req : Request) (entities slice : Ent
 
 
 
-theorem find_euids_in_list (euid : EntityUID) (members : Set Value) (list : List (List (EntityUID × EntityData))) (entities : Entities)
-  (list_def : members.toList.mapM (λ v => v.findEuids entities) = some list)
-  (in_members : (.prim (.entityUID euid)) ∈ members) :
-  ∃ edata,
-    (euid, edata) ∈ list.join
-  := by
-  sorry
-
-
-
-theorem findEuids_complete (v₁ v₂ : Value) (euid : EntityUID) (entities : Entities) (list : List (EntityUID × EntityData))
-  (found_entities : v₂.findEuids entities = some list)
-  (is_euid : v₁ = .prim (.entityUID euid))
-  (is_subvalue : SubValue v₁ v₂) :
-  ∃ edata, (euid, edata) ∈ list
-  := by
-  induction is_subvalue
-  case _ v' v'' is_in_value  =>
-    cases is_in_value
-    case inSet members in_members =>
-      simp [Value.findEuids, List.mapM₁, List.attach, List.atachWith] at found_entities
-
-
-
-      sorry
-    sorry
-  case _ =>
-    sorry
-
-
-
-
 
 
 theorem simpleSlice_complete (euid : EntityUID) (request : Request) (entities slice : Entities)
   (slice_def : simpleSlice request entities = some slice )
-  (euid_correct : euid = request.principal ∨ euid = request.action ∨ euid = request.resource ∨ SubValue (.prim (.entityUID euid)) (.record request.context) ) :
+  (euid_correct : euid = request.principal ∨ euid = request.action ∨ euid = request.resource ) :
   euid ∈ slice.keys
   := by
   simp [simpleSlice] at slice_def
@@ -386,7 +354,7 @@ theorem simpleSlice_complete (euid : EntityUID) (request : Request) (entities sl
   rename_i principal action resource context
 
   rw [← slice_def]
-  rcases euid_correct with is_principal | is_action | is_resource | is_in_context
+  rcases euid_correct with is_principal | is_action | is_resource
   case _ =>
     subst is_principal
     apply Map.in_constructor_in_keys
@@ -405,15 +373,6 @@ theorem simpleSlice_complete (euid : EntityUID) (request : Request) (entities sl
     simp
     inrrl
     rfl
-  case _ =>
-    have ⟨edata, step⟩ : ∃ edata, (euid,edata) ∈ context := by
-      apply findEuids_complete
-      apply find_context
-      apply is_in_context
-    apply Map.in_constructor_in_keys _ euid edata
-    simp
-    inrrr
-    apply step
 
 
 
