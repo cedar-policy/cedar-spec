@@ -95,7 +95,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
       apply h₂
       exact Map.find?_mem_toList h₁
       intro k v qty h₁ h₂
-      have ⟨⟨h₃, h₄⟩, h₅⟩ := h₀
+      have ⟨⟨_, h₄⟩, _⟩ := h₀
       have h₆ : sizeOf (k,v).snd < 1 + sizeOf r.kvs
       := by
         have hin := Map.find?_mem_toList h₁
@@ -150,7 +150,7 @@ decreasing_by
     simp only [Value.set.sizeOf_spec]
     have := Set.sizeOf_lt_of_mem hv
     omega
-  case _ v' _ _ _ _ h₉ _ _ _ _ =>
+  case _ h₉ _ _ _ _ _ _ =>
     subst h₉
     have h₁ := Map.find?_mem_toList h₁
     simp only [Map.toList, Map.kvs] at h₁
@@ -199,17 +199,30 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
   case some entry =>
     exists entry
+    simp only [true_and]
+    split at h₀ <;> try simp only at h₀
+    rename_i h₃
     constructor
-    rfl
-    cases h₃ : instanceOfType (Value.record data.attrs) (CedarType.record entry.attrs) <;> simp [h₃] at h₀
-    simp only [Set.all, List.all_eq_true] at h₀
-    constructor
-    exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
-    intro anc ancin
-    simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₀
-    simp only [Membership.mem] at *
-    apply h₀
-    exact ancin
+    · exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
+    · split at h₀ <;> try simp only at h₀
+      rename_i h₄
+      simp only [Set.all, List.all_eq_true] at h₄
+      constructor
+      · intro anc ancin
+        simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
+        rw [← Set.in_list_iff_in_set] at ancin
+        exact h₄ anc ancin
+      · split at h₀ <;> try simp only at h₀
+        unfold InstanceOfEntityTags
+        rename_i h₅
+        simp only [instanceOfEntitySchema.instanceOfEntityTags] at h₅
+        split at h₅ <;> rename_i heq <;> simp only [heq]
+        · intro v hv
+          simp only [List.all_eq_true] at h₅
+          apply instance_of_type_refl
+          exact h₅ v hv
+        · simp only [beq_iff_eq] at h₅
+          exact h₅
 
 theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchema) :
   instanceOfActionSchema entities acts = .ok () → InstanceOfActionSchema entities acts

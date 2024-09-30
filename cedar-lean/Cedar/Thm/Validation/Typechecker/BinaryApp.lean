@@ -479,7 +479,7 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   split at h₃
   case h_1 data h₄ =>
     rw [Set.contains_prop_bool_equiv] at h₃
-    have ⟨entry, h₂₁, _, h₂₂⟩ := h₁ euid₁ data h₄
+    have ⟨entry, h₂₁, _, h₂₂, _⟩ := h₁ euid₁ data h₄
     specialize h₂₂ euid₂ h₃
     rw [←Set.contains_prop_bool_equiv] at h₂₂
     simp [h₂₁, h₂₂] at h₂
@@ -607,7 +607,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     cases h₆ : Map.find? entities euid <;>
     simp only [h₆, List.not_mem_nil] at h₅
     rename_i data
-    replace ⟨entry, h₁, _, h₇⟩ := h₁ euid data h₆
+    replace ⟨entry, h₁, _, h₇, _⟩ := h₁ euid data h₆
     specialize h₇ euid' h₅
     split at h₂ <;> try contradiction
     rename_i h₈
@@ -827,6 +827,220 @@ theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   · exact type_of_mem_is_soundₑ h₁ h₂ h₄ h₅ ih₁ ih₂
   · exact type_of_mem_is_soundₛ h₁ h₂ h₄ h₅ ih₁ ih₂
 
+theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.binaryApp .hasTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
+  ∃ ety c₁' c₂',
+    typeOf x₁ c₁ env = .ok (.entity ety, c₁') ∧
+    typeOf x₂ c₁ env = .ok (.string, c₂') ∧
+    typeOfHasTag ety x₁ x₂ c₁ env = .ok (ty, c₂)
+:= by
+  simp only [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h₁
+  cases h₃ : typeOf x₂ c₁ env <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
+  rename_i tyc₁ tyc₂
+  cases tyc₁
+  cases tyc₂
+  rename_i ty₁ c₁' ty₂ c₂'
+  simp only at h₁
+  cases ty₁ <;> cases ty₂ <;>
+  simp only [typeOfBinaryApp, err] at h₁
+  rename_i ety
+  exists ety, c₁', c₂'
+
+private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} :
+  InstanceOfType (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
+
+private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : env.ets.tags? uid.ty = .some .none) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Entities.tagsOrEmpty]
+  split
+  · rename_i d hf
+    replace ⟨e, hf', _, _, h₁⟩ := h₁ uid d hf
+    simp only [InstanceOfEntityTags] at h₁
+    simp only [EntitySchema.tags?, Option.map_eq_some'] at h₂
+    replace ⟨e', h₂, h₃⟩ := h₂
+    simp only [hf', Option.some.injEq] at h₂
+    subst h₂
+    simp only [h₃] at h₁
+    simp only [h₁, map_empty_contains_instance_of_ff]
+  · exact map_empty_contains_instance_of_ff
+
+private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
+  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₂ : env.ets.tags? uid.ty = .none) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+:= by
+  simp only [Entities.tagsOrEmpty]
+  split
+  · rename_i d hf
+    replace ⟨e, h₁, _, _, _⟩ := h₁ uid d hf
+    simp only [EntitySchema.tags?, Option.map_eq_none'] at h₂
+    simp only [h₁] at h₂
+  · exact map_empty_contains_instance_of_ff
+
+private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
+  (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
+  (hin : (x₁, Key.tag x₂) ∈ c₁) :
+  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
+:= by
+  replace h₁ := h₁.right x₁ x₂ hin
+  simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
+    Value.prim.injEq, Prim.bool.injEq, false_or] at h₁
+  simp only [h₁, true_is_instance_of_tt]
+
+private theorem hasTag_true_implies_cap_inv {x₁ x₂ : Expr} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+  (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
+  (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
+  (ht : (entities.tagsOrEmpty uid).contains s = true) :
+  CapabilitiesInvariant (Capabilities.singleton x₁ (Key.tag x₂)) request entities
+:= by
+  constructor <;>
+  intro e k hin <;>
+  simp only [Capabilities.singleton, List.mem_singleton, Prod.mk.injEq, and_false, Key.tag.injEq] at hin
+  replace ⟨hin, hin'⟩ := hin
+  subst hin hin'
+  simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, ht, or_true]
+
+theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.binaryApp .hasTag x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (ih₁ : TypeOfIsSound x₁)
+  (ih₂ : TypeOfIsSound x₂) :
+  GuardedCapabilitiesInvariant (Expr.binaryApp .hasTag x₁ x₂) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType v ty
+:= by
+  replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
+  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₄
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₅
+  simp only [EvaluatesTo] at *
+  simp only [GuardedCapabilitiesInvariant, evaluate]
+  rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
+  simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and]
+  any_goals (apply type_is_inhabited)
+  rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
+  simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and]
+  any_goals (apply type_is_inhabited)
+  replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
+  replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
+  subst hv₁ hv₂ hty₁
+  simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
+  simp only [typeOfHasTag, List.empty_eq] at h₃
+  have hempty := empty_capabilities_invariant request entities
+  simp only [List.empty_eq] at hempty
+  split at h₃ <;> simp [ok, err] at h₃
+  case h_1 heq =>
+    replace ⟨h₃, h₆⟩ := h₃
+    subst h₃ h₆
+    simp only [hempty, implies_true, true_and]
+    exact no_tags_type_implies_no_tags h₂.right.left heq
+  case h_2 =>
+    split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
+    replace ⟨h₃, h₆⟩ := h₃ <;>
+    subst h₃ h₆
+    case isTrue hin =>
+      simp only [hempty, implies_true, true_and]
+      exact mem_capabilities_implies_mem_tags h₁ ih₁ ih₂ hin
+    case isFalse =>
+      simp only [bool_is_instance_of_anyBool, and_true]
+      intro ht
+      exact hasTag_true_implies_cap_inv ih₁ ih₂ ht
+  case h_3 heq =>
+    split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃
+    rename_i hact
+    replace ⟨h₃, h₆⟩ := h₃
+    subst h₃ h₆
+    simp only [hempty, implies_true, true_and]
+    exact no_type_implies_no_tags h₂.right.left heq
+
+theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
+  (h₁ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
+  c₂ = [] ∧
+  ∃ ety c₁' c₂',
+    typeOf x₁ c₁ env = .ok (.entity ety, c₁') ∧
+    typeOf x₂ c₁ env = .ok (.string, c₂') ∧
+    env.ets.tags? ety = some (some ty) ∧
+    (x₁, .tag x₂) ∈ c₁
+:= by
+  simp only [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, Except.bind_ok, Except.bind_err] at h₁
+  cases h₃ : typeOf x₂ c₁ env <;> simp only [h₃, Except.bind_ok, Except.bind_err] at h₁
+  rename_i tyc₁ tyc₂
+  cases tyc₁
+  cases tyc₂
+  rename_i ty₁ c₁' ty₂ c₂'
+  simp only at h₁
+  cases ty₁ <;> cases ty₂ <;>
+  simp only [typeOfBinaryApp, err] at h₁
+  rename_i ety
+  simp only [typeOfGetTag, List.empty_eq] at h₁
+  split at h₁ <;> simp only [ok, err] at h₁
+  split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
+  rename_i h₄ h₅
+  replace ⟨h₁, h₁'⟩ := h₁
+  subst h₁ h₁'
+  simp only [Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq, true_and, h₅, and_true,
+    exists_and_left, exists_and_right, exists_eq', exists_eq_left', h₄, and_self]
+
+theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (ih₁ : TypeOfIsSound x₁)
+  (ih₂ : TypeOfIsSound x₂) :
+  GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v ty
+:= by
+  replace ⟨hc, ety, c₁', c₂', h₃, h₄, h₅, h₆⟩ := type_of_getTag_inversion h₃
+  subst hc
+  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₄
+  simp only [EvaluatesTo] at *
+  simp only [GuardedCapabilitiesInvariant, evaluate]
+  rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
+  simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and]
+  any_goals (apply type_is_inhabited)
+  rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
+  simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and]
+  any_goals (apply type_is_inhabited)
+  replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
+  replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
+  subst hv₁ hv₂ hty₁
+  simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
+  simp only [getTag, Entities.tags]
+  have hf₁ := Map.findOrErr_returns entities uid Error.entityDoesNotExist
+  rcases hf₁ with ⟨d, hf₁⟩ | hf₁ <;>
+  simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
+    type_is_inhabited, and_self]
+  rw [Map.findOrErr_ok_iff_find?_some] at hf₁
+  replace ⟨entry, hf₂, _, _, h₂⟩  := h₂.right.left uid d hf₁
+  simp only [InstanceOfEntityTags] at h₂
+  simp only [EntitySchema.tags?, Option.map_eq_some'] at h₅
+  replace ⟨_, h₅, h₇⟩ := h₅
+  simp only [hf₂, Option.some.injEq] at h₅
+  subst h₅
+  simp only [h₇] at h₂
+  have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
+  rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
+  simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
+    Except.ok.injEq, false_or, exists_eq_left']
+  · simp only [← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and]
+    apply h₂
+    exact Map.findOrErr_ok_implies_in_values hf₃
+  · replace h₁ := h₁.right x₁ x₂ h₆
+    simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
+      Value.prim.injEq, Prim.bool.injEq, false_or] at h₁
+    simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
+    replace ⟨_, h₁⟩ := h₁
+    simp only [Map.findOrErr_err_iff_find?_none, h₁] at hf₃
+
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -847,5 +1061,7 @@ theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   | .containsAll
   | .containsAny => exact type_of_containsA_is_sound (by simp) h₁ h₂ h₃ ih₁ ih₂
   | .mem         => exact type_of_mem_is_sound h₁ h₂ h₃ ih₁ ih₂
+  | .hasTag      => exact type_of_hasTag_is_sound h₁ h₂ h₃ ih₁ ih₂
+  | .getTag      => exact type_of_getTag_is_sound h₁ h₂ h₃ ih₁ ih₂
 
 end Cedar.Thm

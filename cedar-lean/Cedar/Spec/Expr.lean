@@ -42,6 +42,8 @@ inductive UnaryOp where
 inductive BinaryOp where
   | eq
   | mem -- represents Cedar's in operator
+  | hasTag
+  | getTag
   | less
   | lessEq
   | add

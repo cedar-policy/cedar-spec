@@ -109,7 +109,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
     rw [List.mapM_ok_iff_forall₂] at h₃
     have h₄ := List.forall₂_implies_all_left h₃
     specialize h₄ env h₀
-    obtain ⟨ty, ⟨h₄, h₅⟩⟩ := h₄
+    obtain ⟨ty, ⟨_, h₅⟩⟩ := h₄
     exact typecheck_policy_is_sound policy env ty request entities h₁ h₅
 
 end Cedar.Thm

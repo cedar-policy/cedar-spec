@@ -28,6 +28,7 @@ open Cedar.Data
 inductive Error where
   | entityDoesNotExist
   | attrDoesNotExist
+  | tagDoesNotExist
   | typeError
   | arithBoundsError
   | extensionError

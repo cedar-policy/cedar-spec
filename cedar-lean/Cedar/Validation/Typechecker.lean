@@ -26,15 +26,21 @@ inductive TypeError where
   | lubErr (ty₁ : CedarType) (ty₂ : CedarType)
   | unexpectedType (ty : CedarType)
   | attrNotFound (ty : CedarType) (attr : Attr)
+  | tagNotFound (ety : EntityType) (tag : Expr)
   | unknownEntity (ety : EntityType)
   | extensionErr (xs : List Expr)
   | emptySetErr
   | incompatibleSetTypes (ty : List CedarType)
 deriving Repr, DecidableEq
 
-abbrev Capabilities := List (Expr × Attr)
+inductive Key where
+  | attr (a : Attr)
+  | tag (x : Expr)
+deriving Repr, DecidableEq
 
-def Capabilities.singleton (e : Expr) (a : Attr) : Capabilities := [(e, a)]
+abbrev Capabilities := List (Expr × Key)
+
+def Capabilities.singleton (e : Expr) (k : Key) : Capabilities := [(e, k)]
 
 abbrev ResultType := Except TypeError (CedarType × Capabilities)
 
@@ -133,6 +139,9 @@ def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
   let uid ← entityUID? x
   if acts.contains uid then .some uid else .none
 
+def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
+  acts.keys.any (EntityUID.ty · == ety)
+
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
 def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
   match actionUID? x₁ env.acts, entityUID? x₂ with
@@ -157,16 +166,36 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
     then .anyBool
     else .ff
 
+def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+  match env.ets.tags? ety with
+  | .some .none     => ok (.bool .ff)
+  | .some (.some _) =>
+    if (x, .tag t) ∈ c
+    then ok (.bool .tt)
+    else ok (.bool .anyBool) (Capabilities.singleton x (.tag t))
+  | .none           =>
+    if actionType? ety env.acts
+    then ok (.bool .ff) -- action tags not allowed
+    else err (.unknownEntity ety)
+
+def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+  match env.ets.tags? ety with
+  | .some .none      => err (.tagNotFound ety t)
+  | .some (.some ty) => if (x, .tag t) ∈ c then ok ty else err (.tagNotFound ety t)
+  | .none            => err (.unknownEntity ety)
+
 def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
   match ty₁ ⊔ ty₂ with
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
-def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) (env : Environment) : ResultType :=
+def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
   match op₂, ty₁, ty₂ with
   | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
   | .mem, .entity ety₁, .entity ety₂        => ok (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
   | .mem, .entity ety₁, .set (.entity ety₂) => ok (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
+  | .hasTag, .entity ety₁, .string          => typeOfHasTag ety₁ x₁ x₂ c env
+  | .getTag, .entity ety₁, .string          => typeOfGetTag ety₁ x₁ x₂ c env
   | .less,   .int, .int                     => ok (.bool .anyBool)
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
   | .add,    .int, .int                     => ok .int
@@ -180,13 +209,10 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Ex
 def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) (knownToExist : Bool) : ResultType :=
   match rty.find? a with
   | .some qty =>
-    if (x, a) ∈ c || (qty.isRequired && knownToExist)
+    if (x, .attr a) ∈ c || (qty.isRequired && knownToExist)
     then ok (.bool .tt)
-    else ok (.bool .anyBool) (Capabilities.singleton x a)
+    else ok (.bool .anyBool) (Capabilities.singleton x (.attr a))
   | .none     => ok (.bool .ff)
-
-def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
-  acts.keys.any (EntityUID.ty · == ety)
 
 def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   match ty with
@@ -203,7 +229,7 @@ def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
   match rty.find? a with
   | .some (.required aty) => ok aty
-  | .some (.optional aty) => if (x, a) ∈ c then ok aty else err (.attrNotFound ty a)
+  | .some (.optional aty) => if (x, .attr a) ∈ c then ok aty else err (.attrNotFound ty a)
   | .none                 => err (.attrNotFound ty a)
 
 def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
@@ -275,7 +301,7 @@ def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
   | .binaryApp op₂ x₁ x₂ => do
     let (ty₁, _) ← typeOf x₁ c env
     let (ty₂, _) ← typeOf x₂ c env
-    typeOfBinaryApp op₂ ty₁ ty₂ x₁ x₂ env
+    typeOfBinaryApp op₂ ty₁ ty₂ x₁ x₂ c env
   | .hasAttr x₁ a => do
     let (ty₁, _) ← typeOf x₁ c env
     typeOfHasAttr ty₁ x₁ a c env

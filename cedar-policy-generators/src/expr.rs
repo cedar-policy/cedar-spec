@@ -21,8 +21,8 @@ use crate::hierarchy::{
     arbitrary_specified_uid, generate_uid_with_type, EntityUIDGenMode, Hierarchy,
 };
 use crate::schema::{
-    attr_names_from_ea, entity_type_name_to_schema_type, lookup_common_type, uid_for_action_name,
-    Schema,
+    attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
+    uid_for_action_name, Schema,
 };
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -555,7 +555,11 @@ impl<'a> ExprGenerator<'a> {
                                         .expect("Failed to select entity index."),
                                 )
                                 .expect("Failed to select entity from map.");
-                            let attr_names: Vec<SmolStr> = attr_names_from_ea(&self.schema.schema, &entity_type.shape).collect();
+                            let attr_names: Vec<&SmolStr> =
+                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
+                                    .attrs
+                                    .keys()
+                                    .collect::<Vec<_>>();
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
@@ -1687,11 +1691,8 @@ impl<'a> ExprGenerator<'a> {
                     let mut r = HashMap::new();
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                        let attr_val = self.generate_attr_value_for_eatypeinternal(
-                            &attr_ty,
-                            max_depth - 1,
-                            u,
-                        )?;
+                        let attr_val =
+                            self.generate_attr_value_for_schematype(&attr_ty, max_depth - 1, u)?;
                         r.insert(attr_name, attr_val);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
@@ -1809,7 +1810,7 @@ impl<'a> ExprGenerator<'a> {
                         // maybe add some "additional" attributes not mentioned in schema
                         u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                             let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
-                            let attr_val = self.generate_attr_value_for_eatypeinternal(
+                            let attr_val = self.generate_attr_value_for_schematype(
                                 &attr_ty,
                                 max_depth - 1,
                                 u,
@@ -1952,7 +1953,7 @@ impl<'a> ExprGenerator<'a> {
                     u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                         let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
                         let attr_val =
-                            self.generate_value_for_eatypeinternal(&attr_ty, max_depth - 1, u)?;
+                            self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
                         r.insert(attr_name, attr_val);
                         Ok(std::ops::ControlFlow::Continue(()))
                     })?;
@@ -2035,7 +2036,7 @@ impl<'a> ExprGenerator<'a> {
                         u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
                             let (attr_name, attr_ty) = self.schema.arbitrary_attr(u)?.clone();
                             let attr_val =
-                                self.generate_value_for_eatypeinternal(&attr_ty, max_depth - 1, u)?;
+                                self.generate_value_for_schematype(&attr_ty, max_depth - 1, u)?;
                             r.insert(attr_name, attr_val);
                             Ok(std::ops::ControlFlow::Continue(()))
                         })?;
@@ -2082,73 +2083,6 @@ impl<'a> ExprGenerator<'a> {
                 Ok(Value::from(euid))
             }
             _ => Err(Error::ExtensionsDisabled),
-        }
-    }
-
-    /// generate an arbitrary [`ast::Value`] of the given [`json_schema::EntityAttributeTypeInternal`]
-    fn generate_value_for_eatypeinternal(
-        &self,
-        target_type: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<ast::Value> {
-        match target_type {
-            json_schema::EntityAttributeTypeInternal::Type(ty) => {
-                self.generate_value_for_schematype(ty, max_depth, u)
-            }
-            json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
-                if max_depth == 0 {
-                    // no recursion allowed: just return empty-record
-                    Ok(ast::Value::empty_record(None))
-                } else {
-                    let mut r = HashMap::new();
-                    // add an arbitrary number of attributes with the appropriate type
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        let attr_name: SmolStr = u.arbitrary()?;
-                        let attr_val =
-                            self.generate_value_for_schematype(&value_type, max_depth - 1, u)?;
-                        r.insert(attr_name, attr_val);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
-                    Ok(ast::Value::record(r, None))
-                }
-            }
-        }
-    }
-
-    /// get an [`AttrValue`] of the given [`json_schema::EntityAttributeTypeInternal`]
-    /// which conforms to this schema
-    ///
-    /// `max_depth`: maximum depth of the attribute value expression.
-    /// For instance, maximum depth of nested sets. Not to be confused with the
-    /// `depth` parameter to size_hint.
-    pub fn generate_attr_value_for_eatypeinternal(
-        &self,
-        target_type: &json_schema::EntityAttributeTypeInternal<ast::InternalName>,
-        max_depth: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<AttrValue> {
-        match target_type {
-            json_schema::EntityAttributeTypeInternal::Type(ty) => {
-                self.generate_attr_value_for_schematype(ty, max_depth, u)
-            }
-            json_schema::EntityAttributeTypeInternal::EAMap { value_type } => {
-                if max_depth == 0 {
-                    // no recursion allowed: just return empty-record
-                    Ok(AttrValue::Record(HashMap::new()))
-                } else {
-                    let mut r = HashMap::new();
-                    // add an arbitrary number of attributes with the appropriate type
-                    u.arbitrary_loop(None, Some(self.settings.max_width as u32), |u| {
-                        let attr_name: SmolStr = u.arbitrary()?;
-                        let attr_val =
-                            self.generate_attr_value_for_schematype(&value_type, max_depth - 1, u)?;
-                        r.insert(attr_name, attr_val);
-                        Ok(std::ops::ControlFlow::Continue(()))
-                    })?;
-                    Ok(AttrValue::Record(r))
-                }
-            }
         }
     }
 
@@ -2320,7 +2254,7 @@ fn record_schematype_with_attr<N>(
     json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType {
         attributes: [(
             attr_name,
-            json_schema::RecordAttributeType {
+            json_schema::TypeOfAttribute {
                 ty: attr_type.into(),
                 required: true,
             },
