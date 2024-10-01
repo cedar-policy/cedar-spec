@@ -251,7 +251,24 @@ impl<'a> ExprGenerator<'a> {
                             self.generate_expr(max_depth - 1, u)?,
                             attr_name,
                         ))
-                    })
+                    },
+                    7 => {
+                        let tag_name = uniform!(u,
+                            self.generate_expr(max_depth - 1, u)?,
+                            ast::Expr::val(self.schema.arbitrary_attr(u)?.0.clone())
+                        );
+                        let e = self.generate_expr(max_depth - 1, u)?;
+                        Ok(ast::Expr::get_tag(e, tag_name))
+                    },
+                    4 => {
+                        let tag_name = uniform!(u,
+                            self.generate_expr(max_depth - 1, u)?,
+                            ast::Expr::val(self.schema.arbitrary_attr(u)?.0.clone())
+                        );
+                        let e = self.generate_expr(max_depth - 1, u)?;
+                        Ok(ast::Expr::has_tag(e, tag_name))
+                    }
+                )
             })
         }
     }
@@ -582,6 +599,19 @@ impl<'a> ExprGenerator<'a> {
                                 u,
                             )?,
                             self.constant_pool.arbitrary_string_constant(u)?,
+                        )),
+                        // hasTag expression on an entity, for an arbitrary tag name
+                        1 => Ok(ast::Expr::has_tag(
+                            self.generate_expr_for_type(
+                                &Type::entity(),
+                                max_depth - 1,
+                                u,
+                            )?,
+                            self.generate_expr_for_type(
+                                &Type::string(),
+                                max_depth - 1,
+                                u,
+                            )?,
                         )),
                         // has expression on a record
                         2 => Ok(ast::Expr::has_attr(
