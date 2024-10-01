@@ -935,33 +935,38 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
-theorem append_kvs {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} (k : α) (v : β) :
-  (k, v) ∈ m₁.kvs ++ m₂.kvs →
-  (k, v) ∈ (m₁ ++ m₂).kvs
+/-! ### append -/
+
+theorem mem_append {α β} [LT α] [StrictLT α] [DecidableLT α] (k : α) (v : β) (m₁ m₂ : Map α β) :
+  (k, v) ∈ (m₁ ++ m₂).kvs →
+  (k, v) ∈ m₁.kvs ∨ (k, v) ∈ m₂.kvs
 := by
   intro h₀
+  replace h₀ := make_mem_list_mem h₀
   simp only [List.mem_append] at h₀
-  cases h₀ with
-  | inl h₁ => sorry
-  | inr h₁ => sorry
+  assumption
 
-theorem mem_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} (k : α) (v : β) :
+theorem append_wf [LT α] [DecidableLT α] [StrictLT α] (m₁ m₂ : Map α β) :
+  (m₁ ++ m₂).WellFormed
+:= by apply make_wf
+
+def Disjoint {α β} (m₁ m₂ : Map α β) : Prop := ∀ k ∈ m₂, k ∉ m₁
+
+/--
+Limited converse of `mem_append` that requires the input maps to be disjoint.
+In the case where the maps are not dsjoint, this property may not hold. For
+example, consider `{"a": 1} ++ {"a": 2} = {"a": 1}`. In this case, the value 2
+is discarded.
+-/
+theorem mem_append_converse {α β} [LT α] [StrictLT α] [DecidableLT α] (k : α) (v : β) (m₁ m₂ : Map α β) :
+  Disjoint m₁ m₂ →
   (k, v) ∈ m₁.kvs ∨ (k, v) ∈ m₂.kvs →
   (k, v) ∈ (m₁ ++ m₂).kvs
 := by
-  intro h₀
-  apply Map.append_kvs
-  simp only [List.mem_append]
-  assumption
-
-theorem wf_append {α β} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] {m₁ m₂ : Map α β} :
-  Map.WellFormed m₁ →
-  Map.WellFormed m₂ →
-  -- if in m1 then not in m2
-  Map.WellFormed (m₁ ++ m₂)
-:= by
-simp [Map.WellFormed]
-intro wf₁ wf₂
-sorry
+  intro h₀ h₁
+  rw [← List.mem_append] at h₁
+  -- TODO: `m₁.kvs ++ m₂.kvs` and `(m₁ ++ m₂).kvs` should contain the same
+  -- elements due to the `Disjoint` predicate.
+  sorry
 
 end Cedar.Data.Map

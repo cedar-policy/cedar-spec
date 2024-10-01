@@ -141,30 +141,32 @@ def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   tags := Map.empty
 }
 
+def makeEntitySchemaEntry (ty : EntityType) (actionEntities : Map EntityUID EntityData) : (EntityType × EntitySchemaEntry) :=
+  let entriesWithType := actionEntities.filter (λ uid _ => uid.ty == ty)
+  let allAncestorsForType := List.join (entriesWithType.values.map (λ edt => edt.ancestors.elts.map (·.ty) ))
+  (
+    ty,
+    {
+      ancestors := Set.make allAncestorsForType,
+      attrs := Map.empty,
+      tags := Option.none
+    }
+  )
+
+def actionSchemaToEntitySchema (acts : ActionSchema) : EntitySchema :=
+  let actionEntities := acts.mapOnValues actionSchemaEntryToEntityData
+  let uniqueTys := Set.make (actionEntities.keys.map (·.ty)).elts
+  Map.make (uniqueTys.elts.map (makeEntitySchemaEntry · actionEntities))
+
 /--
-Update the entity schema with the entities created for action schema entries.
-This involves the construction of the ancestor information for the associated types
-by inspecting the concrete hierarchy.
+Utility function used in `DiffTest/Main.lean` to ensure that the schema produced
+by the Rust matches the expectations of the Lean formalization. This function
+adds definitions for action types to the entity type store.
 -/
-def updateSchema (schema : Schema) : Schema :=
-  let actionSchemaEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
-  let uniqueTys := Set.make (actionSchemaEntities.keys.map (·.ty)).elts
-  let newEntitySchemaEntries := Map.make (uniqueTys.elts.map (makeEntitySchemaEntries · actionSchemaEntities))
-  {
-    ets := schema.ets ++ newEntitySchemaEntries,
-    acts := schema.acts
-  }
-  where
-    makeEntitySchemaEntries ty actionSchemaEntities :=
-      let entriesWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
-      let allAncestorsForType := List.join (entriesWithType.values.map (λ edt =>
-        edt.ancestors.elts.map (·.ty) ))
-      let ese : EntitySchemaEntry := {
-        ancestors := Set.make allAncestorsForType,
-        attrs := Map.empty,
-        tags := Option.none
-      }
-      (ty, ese)
+def updateSchema (schema : Schema) : Schema := {
+  ets := schema.ets ++ actionSchemaToEntitySchema schema.acts,
+  acts := schema.acts
+}
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
