@@ -383,9 +383,10 @@ inductive NoEuidTypesIn : CedarType → Prop where
   | set : ∀ ty,
     NoEuidTypesIn ty →
     NoEuidTypesIn (.set ty)
-  | record :  ∀ kvs,
-    NoEuidTypesInList kvs →
-    NoEuidTypesIn (.record (Map.mk kvs))
+  | record :  ∀ m,
+    (∀ k qty, m.find? k = some qty →
+    NoEuidTypesIn qty.getType) →
+    NoEuidTypesIn (.record m)
 
 inductive NoEuidTypesInList : List (Attr × QualifiedType) → Prop where
   | empty : NoEuidTypesInList []
@@ -402,9 +403,10 @@ inductive NoEuidValues : Value → Prop where
   | set : ∀ members,
     NoEuidValuesInSet members →
     NoEuidValues (.set (Set.mk members))
-  | record : ∀ kvs,
-    NoEuidValuesInRecord kvs →
-    NoEuidValues (.record (Map.mk kvs))
+  | record : ∀ m ,
+    (∀ k v, m.find? k = some v →
+    NoEuidValues v) →
+    NoEuidValues (.record m)
 
 
 inductive NoEuidValuesInSet : List Value → Prop where
@@ -413,13 +415,6 @@ inductive NoEuidValuesInSet : List Value → Prop where
     NoEuidValues v →
     NoEuidValuesInSet vs →
     NoEuidValuesInSet (v::vs)
-
-inductive NoEuidValuesInRecord : List (Attr × Value) → Prop where
-  | empty : NoEuidValuesInRecord []
-  | cons : ∀ k v kvs,
-    NoEuidValues v →
-    NoEuidValuesInRecord kvs →
-    NoEuidValuesInRecord ((k,v)::kvs)
 
 end
 
@@ -457,85 +452,37 @@ theorem well_typed_without_euids_list (ty : CedarType) (list : List Value)
 
 
 
-
-theorem well_typed_without_euids_record' (map_values : List (Attr × Value)) (map_types : List (Attr × QualifiedType))
-  (well_typed : ∀ k v, (k,v) ∈  map_values → ∃ ty, (k, ty) ∈ map_types ∧ InstanceOfType v ty.getType ∧ NoEuidTypesIn ty.getType )
-  (ih : ∀ ty k v, (k,v) ∈ map_values → InstanceOfType v ty → NoEuidTypesIn ty → NoEuidValues v)
-  :
-  NoEuidValuesInRecord map_values
+theorem well_typed_without_euids_record (values : Map Attr Value) (types : Map Attr QualifiedType)
+  (well_typed : InstanceOfType (.record values) (.record types))
+  (no_euids : NoEuidTypesIn (.record types))
+  (ih : ∀ ty k v, values.find? k = some v → InstanceOfType v ty → NoEuidTypesIn ty → NoEuidValues v) :
+  NoEuidValues (.record values)
   := by
-  induction map_values
-  case nil =>
-    constructor
-  case cons head tail local_ih =>
-    have ⟨key, value⟩ := head
-    have ⟨ty, in_record_type, instance_of, no_euids⟩  := well_typed key value (by simp)
-    constructor
-    case _ =>
-      apply ih
-      simp
-      apply Or.inl
-      rfl
-      apply instance_of
-      apply no_euids
-    case _ =>
-      apply local_ih
-      intros k v in_tail
-      have ⟨ty, step⟩ : ∃ ty, (k, ty) ∈ map_types ∧ InstanceOfType v ty.getType ∧ NoEuidTypesIn ty.getType := by
-        apply well_typed
-        simp [in_tail]
-      exists ty
-      intros ty k v in_tail instance_of no_euids
-      apply ih
-      simp
-      apply Or.inr
-      apply in_tail
-      apply instance_of
-      apply no_euids
-
-
-
-
-theorem well_typed_without_euids_record (map_values : List (Attr × Value)) (map_types : List (Attr × QualifiedType))
-  (well_typed : InstanceOfType  (.record (.mk map_values)) (.record (.mk map_types)))
-  (no_euids_in_type : NoEuidTypesInList map_types)
-  (ih : ∀ ty k v, (k,v) ∈ map_values → InstanceOfType v ty → NoEuidTypesIn ty → NoEuidValues v)
-  :
-  NoEuidValuesInRecord map_values
-  := by
+  cases no_euids
+  rename_i no_euids
   cases well_typed
   rename_i h₁ h₂ h₃
-  apply well_typed_without_euids_record'
-  intros k v in_values
-  have ⟨ty, in_type⟩ : ∃ ty, (k,ty) ∈ map_types := by
-    have step : (Map.mk map_types).contains k = true := by
-      apply h₁
-      rw [Map.contains_iff_some_find?]
-      apply Map.in_mk_in_map
-      apply in_values
-    apply Map.in_list_if_contains
-    apply step
-  exists ty
+
+
   constructor
-  case _ =>
-    apply in_type
-  case _ =>
-    constructor
-    case _ =>
-      apply h₂
-      apply (Map.in_list_iff_find?_some ?_).mp
-      simp [Map.kvs]
-
-      sorry
-    case _ =>
-      sorry
+  intros k v in_values
+  have values_contains : values.contains k = true := by
+    refine Map.contains_iff_some_find?.mpr ?_
+    exists v
 
 
+  have ⟨qty, in_types⟩ : ∃ qty, types.find? k = some qty := by
+    exact Option.isSome_iff_exists.mp (h₁ k values_contains)
+
+  apply ih qty.getType
+  apply in_values
+  apply h₂
+  apply in_values
+  apply in_types
+  apply no_euids
+  apply in_types
 
 
-
-
-  sorry
 
 
 
@@ -571,17 +518,16 @@ theorem well_typed_without_euids (ty : CedarType) (v : Value)
     apply well_typed_without_euids
     repeat assumption
   case record map_values =>
-
-    cases map_values
-    rename_i map_values
-    constructor
     cases well_typed
-    rename_i rty h₁ h₂ h₃
-    cases no_euids
-    rename_i map_types h₄
+    rename_i types h₁ h₂ h₃
     apply well_typed_without_euids_record
-    repeat assumption
     apply InstanceOfType.instance_of_record
+    apply h₁
+    apply h₂
+    apply h₃
+    apply no_euids
+    intros ty k v in_values is_ty no_euids'
+    apply well_typed_without_euids
     repeat assumption
   case _ =>
     constructor
@@ -600,6 +546,20 @@ decreasing_by
     simp
     have step : sizeOf v' < sizeOf members := by
       apply List.sizeOf_lt_of_mem
+      assumption
+    omega
+  case _ =>
+    simp_wf
+    rename Map Attr Value => m
+    rename Value => v'
+    rename _ = m => eq
+    subst eq
+    rename Map Attr Value => m
+    rename v = .record m => eq
+    subst eq
+    simp
+    have step : sizeOf v' < sizeOf m := by
+      apply Map.find_means_smaller
       assumption
     omega
 
@@ -786,7 +746,17 @@ theorem evals_to_euid_ite (cond cons alt : Expr) entities request env c₁ c₂ 
       apply non_zero
       repeat assumption
 
+theorem evals_to_euid_and (lhs rhs : Expr) entities request env c₁ c₂ ety l euid
+  (well_typed : typeOf (.and lhs rhs) c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
+  (non_zero : l ≠ Level.zero)
+  (caps_inv : CapabilitiesInvariant c₁ request entities)
+  (req_well_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
+  (no_euids : NoEuidsInEnv env)
+  (is_euid : evaluate (.and lhs rhs) request entities = .ok (Value.prim (.entityUID euid))) :
+  (euid ∈ [request.principal, request.action, request.resource])
+  := by
 
+  sorry
 
 
 theorem evals_to_euid (e : Expr) entities request env c₁ c₂ ety l euid
@@ -1000,7 +970,7 @@ theorem simpleSlice_is_sound (e : Expr) (entities slice : Entities) (request : R
   (well_typed : typeOf e c₁ env false = .ok (ty, c₂))
   (slice_eq : simpleSlice request entities = .some slice)
   (caps_inv : CapabilitiesInvariant c₁ request entities)
-  (h : noEuidsInEnv env)
+  (h : NoEuidsInEnv env)
   (full_store_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1)) :
   evaluate e request slice = evaluate e request entities
   := by
