@@ -515,10 +515,11 @@ partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySch
   let descendants_json ← getJsonField json "descendants" >>= jsonToArray
   let descendants ← List.mapM jsonToName descendants_json.toList
   let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
-  let tags ← -- the "tags" field may be absent
+  let tags ← -- the "tags" field must be present
     match getJsonField json "tags" with
+    | .ok .null => .ok .none
     | .ok jty  => (jsonToCedarType jty).map .some
-    | .error _ => .ok .none
+    | _ => .error "`tags` field must exist"
   .ok {
     descendants := Set.make descendants,
     attrs := attrs,
