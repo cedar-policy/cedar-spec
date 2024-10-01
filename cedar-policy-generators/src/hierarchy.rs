@@ -656,6 +656,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     uid.clone(),
                     attrs.into_iter(),
                     parents.into_iter().collect(),
+                    [],
                     &self.extensions,
                 )
                 .map_err(|e| Error::EntitiesError(e.to_string()))?;
