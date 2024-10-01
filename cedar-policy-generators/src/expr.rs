@@ -252,14 +252,6 @@ impl<'a> ExprGenerator<'a> {
                             attr_name,
                         ))
                     },
-                    7 => {
-                        let tag_name = uniform!(u,
-                            self.generate_expr(max_depth - 1, u)?,
-                            ast::Expr::val(self.schema.arbitrary_attr(u)?.0.clone())
-                        );
-                        let e = self.generate_expr(max_depth - 1, u)?;
-                        Ok(ast::Expr::get_tag(e, tag_name))
-                    },
                     4 => {
                         let tag_name = uniform!(u,
                             self.generate_expr(max_depth - 1, u)?,
