@@ -24,7 +24,7 @@ use cedar_policy_generators::{
 use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize)]
 struct Input {
@@ -55,7 +55,7 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema;
         let name = arb_schema.namespace;
 
-        let schema = json_schema::Fragment(HashMap::from([(name, namespace)]));
+        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace)]));
 
         Ok(Self { schema })
     }
