@@ -592,8 +592,8 @@ impl Bindings {
     fn to_common_types(
         &self,
         u: &mut Unstructured<'_>,
-    ) -> Result<HashMap<CommonTypeId, json_schema::Type<ast::InternalName>>> {
-        let mut common_types = HashMap::new();
+    ) -> Result<BTreeMap<CommonTypeId, json_schema::Type<ast::InternalName>>> {
+        let mut common_types = BTreeMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
                 common_types.insert(ids.first().unwrap().clone(), self.rewrite_type(u, ty)?);
@@ -658,15 +658,15 @@ impl Schema {
         }
 
         let common_types = bindings.to_common_types(u)?;
-        let entity_types: HashMap<UnreservedId, json_schema::EntityType<ast::InternalName>> =
-            HashMap::from_iter(
+        let entity_types: BTreeMap<UnreservedId, json_schema::EntityType<ast::InternalName>> =
+            BTreeMap::from_iter(
                 self.schema
                     .entity_types
                     .iter()
                     .map(|(id, et)| Ok((id.clone(), bindings.rewrite_entity_type(u, et)?)))
                     .collect::<Result<Vec<_>>>()?,
             );
-        let actions = HashMap::from_iter(
+        let actions = BTreeMap::from_iter(
             self.schema
                 .actions
                 .iter()
@@ -1021,7 +1021,7 @@ impl Schema {
         }
 
         let nsdef = json_schema::NamespaceDefinition {
-            common_types: HashMap::new().into(),
+            common_types: BTreeMap::new().into(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
         };
@@ -1489,7 +1489,7 @@ impl Schema {
 
 impl From<Schema> for json_schema::Fragment<ast::InternalName> {
     fn from(schema: Schema) -> json_schema::Fragment<ast::InternalName> {
-        json_schema::Fragment(HashMap::from_iter([(schema.namespace, schema.schema)]).into())
+        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema)]).into())
     }
 }
 
