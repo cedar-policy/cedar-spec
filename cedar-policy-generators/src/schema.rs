@@ -892,7 +892,16 @@ impl Schema {
                         json_schema::EntityType {
                             member_of_types: vec![],
                             shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
-                            tags: None,
+                            tags: uniform!(
+                                u,
+                                None,
+                                Some(arbitrary_schematype_with_bounded_depth(
+                                    &settings,
+                                    &entity_type_names,
+                                    settings.max_depth,
+                                    u
+                                )?)
+                            ),
                         },
                     ))
                 })
