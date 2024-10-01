@@ -438,6 +438,7 @@ fn test_run_auth_test() {
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
         alice_attributes,
         std::collections::HashSet::new(),
+        std::iter::empty(),
         &Extensions::all_available(),
     )
     .unwrap();
