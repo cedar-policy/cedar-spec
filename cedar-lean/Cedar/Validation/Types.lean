@@ -83,6 +83,8 @@ inductive LevelLT : Level → Level → Prop where
 instance : LT Level where
   lt := LevelLT
 
+
+
 instance (l₁ l₂ : Level) : Decidable (l₁ < l₂) := by
   cases l₁ <;> cases l₂
   case some.some n₁ n₂ =>
@@ -111,7 +113,25 @@ instance (l₁ l₂ : Level) : Decidable (l₁ < l₂) := by
     intros h
     cases h
 
+instance : Min Level where
+  min l₁ l₂ := if l₁ < l₂ then l₁ else l₂
 deriving instance DecidableEq for Level
+
+example : ∀ (l : Level), min Level.infinite l = l
+  := by
+  intros l
+  cases l
+  case _ =>
+    simp [min]
+    intros
+    simp [Level.infinite]
+  case _ val =>
+    simp [min]
+    intros h
+    exfalso
+    cases h
+
+
 
 instance : LE Level where
   le l₁ l₂ := if l₁ == l₂ then true else if l₁ < l₂ then true else false

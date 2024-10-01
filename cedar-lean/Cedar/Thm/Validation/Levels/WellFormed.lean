@@ -30,6 +30,31 @@ def EvaluatesToWellFormed (x : Expr) : Prop :=
   CapabilitiesInvariant c₁ request entities →
    (entities ⊢ v : ty)
 
+
+
+theorem Level.le_trans (l₁ l₂ l₃ : Level) :
+  l₁ ≤ l₂ →
+  l₂ ≤ l₃ →
+  l₁ ≤ l₃
+  := by
+  exact fun a a_1 => Cedar.Thm.le_trans a a_1
+
+theorem Level.le_inversion {n₁ n₂ : Nat}
+  (h : Level.finite n₁ ≤ (Level.finite n₂)) :
+  n₁ ≤ n₂
+  := by
+  simp [LE.le] at h
+  cases h
+  case _ h =>
+    simp [Level.finite] at h
+    simp [h]
+  case _ h =>
+    cases h
+    omega
+
+
+
+
 -- A well formed value/type is still well formed at its lub
 theorem levels_lub {entities : Entities} {v : Value} {ty₁ ty₂ ty : CedarType}
   (h₁ : (ty₁ ⊔ ty₂) = some ty)
@@ -78,9 +103,10 @@ theorem levels_lub {entities : Entities} {v : Value} {ty₁ ty₂ ty : CedarType
     subst h₄
     cases h₂
     case entity₀ euid h₁ =>
-      cases l₂ <;> simp [min, Option.min, Level.finite, none]
-        <;> apply WellFormed.entity₀
-        <;> assumption
+      rw [Level.min_comm]
+      rw [Level.zero_is_minimum]
+      constructor
+      assumption
     case entityₙ euid attrs heq h₂ h₃ h₁ =>
       apply WellFormed.entityₙ
       assumption
@@ -108,20 +134,33 @@ theorem levels_lub {entities : Entities} {v : Value} {ty₁ ty₂ ty : CedarType
         simp at hstep
         assumption
       case _ n₁ n₂ =>
-        cases n₁ <;> cases n₂ <;> try (simp [min, Option.min, Level.sub1] ; apply zero_le_all)
-        case _ n₁ n₂ =>
+        have step₁ : min (some n₁) (some n₂) = (some n₁) ∨ min (some n₁) (some n₂) = some n₂ := by
+          exact Level.min_one_of (some n₁) (some n₂) (min (some n₁) (some n₂)) rfl
+        have ⟨lt_n₁, lt_n₂⟩ : min (some n₁) (some n₂) ≤ (some n₁) ∧ min (some n₁) (some n₂) ≤ some n₂ := by
+          exact Level.min_is_min (some n₁) (some n₂)
+        cases step₁
+        case _ step₁ =>
+          rw [step₁]
           simp [Level.sub1] at hstep
-          simp
-          have h : (min (n₁ + 1) (n₂ + 1) = n₁ + 1) ∨ (min (n₁ + 1) (n₂ + 1) = n₂ + 1) := by omega
-          cases h
-          case _ h =>
-            simp [Level.sub1, h]
+          apply hstep
+        case _ step₁ =>
+          simp [Level.sub1] at hstep
+          rw [step₁]
+          simp [Level.sub1]
+          have step₂ : some (n₂ - 1) ≤ some (n₂) := by
+            apply le_lift
+            omega
+          rw [step₁] at lt_n₁
+          rw [step₁] at lt_n₂
+          have step₃ := Level.le_inversion lt_n₁
+          have step₄ : n₂ - 1 ≤ n₁ - 1 := by
+            omega
+          have step₅ : some (n₂ - 1 ) ≤ some (n₁ - 1) := by
+            apply le_lift
             assumption
-          case _ h =>
-            simp [Level.sub1, h]
-            have h : some n₂ ≤ some n₁ := by apply le_lift ; omega
-            apply le_trans
-            repeat assumption
+          apply Level.le_trans
+          apply step₅
+          assumption
   case _ =>
     rename_i ty₁ ty₂ ty
     cases hlub : (ty₁ ⊔ ty₂) <;> simp [hlub] at h₁

@@ -189,6 +189,7 @@ theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
 
+
 theorem not_contains_of_empty {α β} [BEq α] (k : α) :
   ¬ (Map.empty : Map α β).contains k
 := by simp [contains, empty, find?, List.find?]
@@ -1359,6 +1360,18 @@ theorem in_constructor_in_keys {α β : Type}
     assumption
   replace ⟨v', step⟩ := step
   exact in_list_in_keys step
+
+
+theorem in_list_if_contains {α β} [DecidableEq α] [LT α] [DecidableLT α] {m : Map α β} {k : α}
+  (contains : m.contains k) :
+  ∃ v, (k,v) ∈ m.kvs
+  := by
+  have ⟨v, h⟩ : ∃ v, m.find? k = .some v := by
+    apply contains_iff_some_find?.mp
+    apply contains
+  exists v
+  apply find?_mem_toList
+  apply h
 
 
 
