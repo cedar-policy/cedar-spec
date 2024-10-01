@@ -52,12 +52,12 @@ initialize_corpus() {
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
 
-  convert-schema-json-to-human)
+  convert-schema-json-to-cedar)
     for f in ../cedar/**/*.cedarschema.json; do
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
 
-  convert-schema-human-to-json)
+  convert-schema-cedar-to-json)
     for f in ../cedar/**/*.cedarschema; do
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
