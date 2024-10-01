@@ -134,7 +134,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let hierarchy = RBACHierarchy(
             HierarchyGenerator {
                 mode: HierarchyGeneratorMode::Arbitrary {
-                    attributes_mode: AttributesMode::NoAttributes,
+                    attributes_mode: AttributesMode::NoAttributesOrTags,
                 },
                 uid_gen_mode: EntityUIDGenMode::default(),
                 num_entities: cedar_policy_generators::hierarchy::NumEntities::RangePerEntityType(
