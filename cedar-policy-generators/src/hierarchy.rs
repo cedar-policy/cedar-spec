@@ -25,6 +25,7 @@ use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::json_schema;
 use nanoid::nanoid;
+use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
 /// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
@@ -375,7 +376,7 @@ impl HierarchyGeneratorMode<'_> {
     /// Generate the default arbitrary mode
     pub fn arbitrary_default() -> Self {
         Self::Arbitrary {
-            attributes_mode: AttributesMode::NoAttributes,
+            attributes_mode: AttributesMode::NoAttributesOrTags,
         }
     }
 }
@@ -398,8 +399,8 @@ pub enum NumEntities {
 /// Settings for generating hierarchy attributes
 #[derive(Debug)]
 pub enum AttributesMode {
-    /// No attributes (RBAC)
-    NoAttributes,
+    /// No attributes or tags (RBAC)
+    NoAttributesOrTags,
     // For now, we don't support any other modes. Generating attributes is only
     // supported in schema-based mode. If you want arbitrary attributes without
     // a schema, consider first generating an arbitrary schema and then using
@@ -583,7 +584,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 let mut attrs = HashMap::new();
                 match &self.mode {
                     HierarchyGeneratorMode::Arbitrary {
-                        attributes_mode: AttributesMode::NoAttributes,
+                        attributes_mode: AttributesMode::NoAttributesOrTags,
                     } => {
                         // don't add any attributes
                     }
@@ -651,12 +652,58 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         }
                     }
                 }
+                // generate appropriate tags for the entity
+                let mut tags = HashMap::new();
+                match &self.mode {
+                    HierarchyGeneratorMode::Arbitrary {
+                        attributes_mode: AttributesMode::NoAttributesOrTags,
+                    } => {
+                        // don't add any tags
+                    }
+                    HierarchyGeneratorMode::SchemaBased { schema } => {
+                        // add tags
+                        let Some(entitytypes_by_type) = &entitytypes_by_type else {
+                            unreachable!("in schema-based mode, this should always be Some")
+                        };
+                        match &entitytypes_by_type
+                            .get(name)
+                            .expect("typename should have an EntityType")
+                            .tags
+                        {
+                            Some(tag_type) => {
+                                // add tags with the type `tag_type`
+                                self.u.arbitrary_loop(
+                                    None,
+                                    Some(schema.settings.max_width as u32),
+                                    |u| {
+                                        let tag_key: SmolStr = u.arbitrary()?;
+                                        tags.insert(
+                                            tag_key,
+                                            schema
+                                                .exprgenerator(Some(&hierarchy_no_attrs))
+                                                .generate_attr_value_for_schematype(
+                                                    tag_type,
+                                                    schema.settings.max_depth,
+                                                    u,
+                                                )?
+                                                .into(),
+                                        );
+                                        Ok(std::ops::ControlFlow::Continue(()))
+                                    },
+                                )?;
+                            }
+                            None => {
+                                // entity type doesn't have tags, so don't add any
+                            }
+                        }
+                    }
+                }
                 // create the actual ast::Entity object
                 let entity = ast::Entity::new(
                     uid.clone(),
-                    attrs.into_iter(),
+                    attrs,
                     parents.into_iter().collect(),
-                    [],
+                    tags,
                     &self.extensions,
                 )
                 .map_err(|e| Error::EntitiesError(e.to_string()))?;
