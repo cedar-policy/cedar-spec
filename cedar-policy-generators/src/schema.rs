@@ -1236,6 +1236,75 @@ impl Schema {
         })
     }
 
+    /// Given a type, get an entity type name that has tags of that type, if
+    /// that exists.
+    pub fn arbitrary_entity_type_with_tag_type(
+        &self,
+        target_type: &Type,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::EntityType> {
+        let candidates: Vec<ast::EntityType> = self
+            .schema
+            .entity_types
+            .iter()
+            .filter_map(|(name, et)| {
+                if let Some(tag_ty) = &et.tags {
+                    if &schematype_to_type(&self.schema, tag_ty) == target_type {
+                        Some(
+                            ast::EntityType::from(ast::Name::from(name.clone()))
+                                .qualify_with(self.namespace()),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        u.choose(&candidates).cloned().map_err(|e| {
+            while_doing(
+                format!("getting entity type with tag schematype {target_type:?}"),
+                e,
+            )
+        })
+    }
+
+    /// Given a [`json_schema::Type`], get an entity type name that has tags of
+    /// that type, if that exists.
+    pub fn arbitrary_entity_type_with_tag_schematype(
+        &self,
+        target_type: impl Into<json_schema::Type<ast::InternalName>>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::EntityType> {
+        let target_type: json_schema::Type<ast::InternalName> = target_type.into();
+        let candidates: Vec<ast::EntityType> = self
+            .schema
+            .entity_types
+            .iter()
+            .filter_map(|(name, et)| {
+                if let Some(tag_ty) = &et.tags {
+                    if json_schema::Type::from(tag_ty.clone()) == target_type {
+                        Some(
+                            ast::EntityType::from(ast::Name::from(name.clone()))
+                                .qualify_with(self.namespace()),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        u.choose(&candidates).cloned().map_err(|e| {
+            while_doing(
+                format!("getting entity type with tag schematype {target_type:?}"),
+                e,
+            )
+        })
+    }
+
     /// get an arbitrary policy conforming to this schema
     pub fn arbitrary_policy(
         &self,
