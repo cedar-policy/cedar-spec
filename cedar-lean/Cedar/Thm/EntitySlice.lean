@@ -579,27 +579,6 @@ theorem no_euids_in_reqty_means_no_euids_in_context : ∀ env request entities l
   case _ =>
     apply no_euids
 
-
-def evalsToRecord (e : Expr) : Prop :=
-  ∀ entities request env (c₁ c₂ : Capabilities) rty rv,
-    typeOf e c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂) →
-    CapabilitiesInvariant c₁ request entities →
-    RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1) →
-    NoEuidsInEnv env →
-    evaluate e request entities = .ok (Value.record rv) →
-    NoEuidValues (.record rv)
-
-theorem evals_to_record (e : Expr) entities request env c₁ c₂ rty rv
-  (well_typed : typeOf e c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂))
-  (non_zero : l ≠ Level.zero)
-  (caps_inv : CapabilitiesInvariant c₁ request entities)
-  (req_well_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
-  (no_euids : NoEuidsInEnv env)
-  (is_record : evaluate e request entities = .ok (Value.record rv)) :
-  NoEuidValues (.record rv)
-  := by
-  sorry
-
 def evalsToEuid (e : Expr) : Prop :=
   ∀ entities request env (c₁ c₂ : Capabilities) ety l euid,
     typeOf e c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂) →
@@ -609,6 +588,24 @@ def evalsToEuid (e : Expr) : Prop :=
     NoEuidsInEnv env →
     evaluate e request entities = .ok (Value.prim (.entityUID euid)) →
     (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
+
+def evalsToRecord (e : Expr) : Prop :=
+  ∀ entities request env c₁ c₂ rty rv,
+    typeOf e c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂) →
+    CapabilitiesInvariant c₁ request entities →
+    RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1) →
+    NoEuidsInEnv env →
+    evaluate e request entities = .ok (.record rv) →
+    (∀ k ety euid v l,
+      rty.find? k = some v →
+      v.getType = .entity ety l →
+      l ≠ Level.zero →
+      rv.find? k = some (.prim (.entityUID euid)) →
+      euid ∈ [request.principal, request.action, request.resource] ∧ l = .finite 1
+    )
+
+def evalsSpec (e : Expr) : Prop := evalsToEuid (e) ∧ evalsToRecord e
+
 
 theorem evals_to_euid_lit (p : Prim) entities request env c₁ c₂ ety l euid
   (well_typed : typeOf (.lit p) c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
@@ -634,6 +631,42 @@ theorem evals_to_euid_lit (p : Prim) entities request env c₁ c₂ ety l euid
     case _ =>
       simp [err] at well_typed
 
+theorem evals_to_record_lit (p : Prim) entities request env c₁ c₂ rty rv
+    (well_typed : typeOf (.lit p) c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂))
+    (caps_inv : CapabilitiesInvariant c₁ request entities)
+    (well_typed_req : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
+    (no_euids : NoEuidsInEnv env)
+    (eval : evaluate (.lit p) request entities = .ok (.record rv)) :
+    (∀ k ety euid v l,
+      rty.find? k = some v →
+      v.getType = .entity ety l →
+      l ≠ Level.zero →
+      rv.find? k = some (.prim (.entityUID euid)) →
+      euid ∈ [request.principal, request.action, request.resource] ∧ l = .finite 1
+    )
+    := by
+    exfalso
+    simp [typeOf, typeOfLit] at well_typed
+    cases p <;> try simp [ok] at well_typed
+    case _ b =>
+      cases b <;> simp [ok] at well_typed
+    case _ euid =>
+      split at well_typed <;> simp [err] at well_typed
+
+theorem eval_spec_lit (p : Prim) :
+  evalsSpec (.lit p)
+  := by
+  simp only [evalsSpec, evalsToEuid]
+  constructor
+  case _ =>
+    intros
+    apply evals_to_euid_lit
+    repeat assumption
+  case _ =>
+    intros
+    apply evals_to_record_lit
+    repeat assumption
+
 theorem evals_to_euid_var (v : Var) entities request env c₁ c₂ ety l euid
   (well_typed : typeOf (.var v) c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
   (req_well_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
@@ -652,6 +685,52 @@ theorem evals_to_euid_var (v : Var) entities request env c₁ c₂ ety l euid
     simp [h] at h₂
     simp [h₂]
   }
+
+theorem evals_to_record_var (v : Var) entities request env c₁ c₂ rty rv
+    (well_typed : typeOf (.var v) c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂))
+    (caps_inv : CapabilitiesInvariant c₁ request entities)
+    (well_typed_req : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
+    (no_euids : NoEuidsInEnv env)
+    (eval : evaluate (.var v) request entities = .ok (.record rv)) :
+    (∀ k ety euid v l,
+      rty.find? k = some v →
+      v.getType = .entity ety l →
+      l ≠ Level.zero →
+      rv.find? k = some (.prim (.entityUID euid)) →
+      euid ∈ [request.principal, request.action, request.resource] ∧ l = .finite 1
+    )
+    := by
+    cases v <;> simp [evaluate] at eval
+    subst eval
+    intros k ety euid v l in_rty type_is_entity level_zero in_rv
+    exfalso
+    have no_euids_in_context : NoEuidsInContext request := by
+      exact
+        no_euids_in_reqty_means_no_euids_in_context env request entities (Level.finite 1) no_euids
+          well_typed_req
+    simp [NoEuidsInContext] at no_euids_in_context
+    cases no_euids_in_context
+    rename_i no_euids_in_context
+    have contra : NoEuidValues (.prim (.entityUID euid)) := by
+      apply no_euids_in_context
+      apply in_rv
+    cases contra
+
+theorem eval_spec_var (v : Var) :
+  evalsSpec (.var v) := by
+  simp [evalsSpec]
+  constructor
+  case _ =>
+    simp only [evalsToEuid]
+    intros
+    apply evals_to_euid_var
+    repeat assumption
+  case _ =>
+    simp only [evalsToRecord]
+    intros
+    apply evals_to_record_var
+    repeat assumption
+
 
 theorem levels_nonzero {l l' : Level}
   (l_not_zero : l ≠ .finite 0)
@@ -789,20 +868,113 @@ theorem evals_to_euid_ite (cond cons alt : Expr) entities request env c₁ c₂ 
         simp [hinv]
       have typed_as_entity := hinv.right.left
       rw [step₁] at typed_as_entity
-      apply ih₂
-      apply typed_as_entity
       have step₂ : l ≤ l' := by
         apply lub_to_entity_level_bound ty₂ ety l' l
         rw [← step₁]
         simp [hinv]
-      have ⟨euid_is_good, lub_is_one⟩ := euid ∈ [request.principal, request]
-      apply levels_nonzero
-      apply non_zero
+      have ⟨euid_is_good, lub_is_one⟩ : euid ∈ [request.principal, request.action, request.resource] ∧ l' = .finite 1 := by
+        apply ih₂
+        apply typed_as_entity
+        apply levels_nonzero
+        apply non_zero
+        repeat assumption
+      simp [euid_is_good]
+      apply le_one_and_zero
       repeat assumption
 
-theorem evals_to_euid_and (lhs rhs : Expr) entities request euid
+
+
+theorem evals_to_record_ite (cond cons alt : Expr) entities request env c₁ c₂ rty rv
+    (well_typed : typeOf (.ite cond cons alt) c₁ env (.finite 1 == Level.infinite) = .ok (.record rty, c₂))
+    (caps_inv : CapabilitiesInvariant c₁ request entities)
+    (well_typed_req : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
+    (no_euids : NoEuidsInEnv env)
+    (eval : evaluate (.ite cond cons alt) request entities = .ok (.record rv))
+    (ih₁ : evalsToRecord cons)
+    (ih₂ : evalsToRecord alt) :
+    (∀ k ety euid v l,
+      rty.find? k = some v →
+      v.getType = .entity ety l →
+      l ≠ Level.zero →
+      rv.find? k = some (.prim (.entityUID euid)) →
+      euid ∈ [request.principal, request.action, request.resource] ∧ l = .finite 1
+    )
+    := by
+    have lt : .finite 1 < Level.infinite := by
+      constructor
+    have ⟨bty, c₁', ty₂, c₂', ty₃, c₃, type_of_cond, hinv⟩ := type_of_ite_inversion well_typed
+    have ⟨gcaps_inv, v_cond, sound₁, sound₂⟩ : GuardedCapabilitiesInvariant cond c₁' request entities ∧ ∃ v, EvaluatesToLeveled cond request entities v  ∧ InstanceOfType v (.bool bty) := by
+      apply type_of_is_sound_noninfinite
+      apply LevelLT.finite₂
+      apply 1
+      repeat assumption
+    cases bty <;> simp at hinv
+    case tt =>
+      have ⟨type_of_cons, ty_eq, caps⟩ := hinv
+      clear hinv
+      subst ty_eq
+      subst caps
+
+      rcases sound₁ with eval_cond | eval_cond | eval_cond
+      <;> simp [eval_cond, evaluate, Result.as, Coe.coe, Value.asBool] at eval
+      cases sound₂
+      rename_i bool sound₂
+      cases bool <;> simp [InstanceOfBoolType] at sound₂
+
+      intros k ety euid v l in_rty is_entity non_zero' in_rv
+      apply ih₁
+      apply type_of_cons
+      apply capability_union_invariant
+      assumption
+      apply gcaps_inv
+      apply eval_cond
+      assumption
+      assumption
+      simp at eval
+      apply eval
+      repeat assumption
+    case ff =>
+      have ⟨type_of_alt, ty_eq, c_eq⟩ := hinv
+      subst ty_eq
+      subst c_eq
+      rcases sound₁ with eval_cond | eval_cond | eval_cond
+      <;> simp [evaluate, eval_cond, Result.as, Coe.coe, Value.asBool] at eval
+      cases sound₂
+      rename_i bool sound₂
+      cases bool <;> simp [InstanceOfBoolType] at sound₂
+      simp at eval
+      intros k ety euid v l in_rty is_entity non_zero' in_rv
+      apply ih₂
+      repeat assumption
+    case anyBool =>
+      have ⟨type_of_cons, type_of_alt, ty_eq, c_eq⟩ := hinv
+      clear hinv
+      subst c_eq
+      rcases sound₁ with eval_cond | eval_cond | eval_cond
+      <;> simp [eval_cond, evaluate, Result.as, Coe.coe, Value.asBool] at eval
+      cases sound₂
+      rename Bool => b
+      cases b
+      case true =>
+        simp at eval
+        intros k ety euid v l in_rty is_entity non_zero' in_rv
+        apply ih₁
+
+        sorry
+      case false =>
+        sorry
+
+
+
+
+
+
+
+
+
+theorem evals_to_euid_and (lhs rhs : Expr) entities request euid l
   (is_euid : evaluate (.and lhs rhs) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
   := by
   cases eval_lhs : (evaluate lhs request entities) <;> cases eval_rhs : (evaluate rhs request entities)
     <;> simp [evaluate, eval_rhs, eval_lhs, Result.as, Coe.coe, Value.asBool] at is_euid
@@ -832,9 +1004,9 @@ theorem evals_to_euid_and (lhs rhs : Expr) entities request euid
     all_goals { simp at is_euid }
 
 
-theorem evals_to_euid_or (lhs rhs : Expr) entities request euid
+theorem evals_to_euid_or (lhs rhs : Expr) entities request euid l
   (is_euid : evaluate (.or lhs rhs) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
   := by
   cases eval_lhs : (evaluate lhs request entities) <;> simp [evaluate, eval_lhs, Result.as, Coe.coe, Value.asBool] at is_euid
   rename Value => v
@@ -852,9 +1024,9 @@ theorem evals_to_euid_or (lhs rhs : Expr) entities request euid
   cases b <;> simp [pure, Except.pure] at is_euid
 
 
-theorem evals_to_euid_unop (e : Expr) (o : UnaryOp) entities request euid
+theorem evals_to_euid_unop (e : Expr) (o : UnaryOp) entities request euid l
   (is_euid : evaluate (.unaryApp o e) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
   := by
   cases eval : evaluate e request entities <;> simp [evaluate, eval, Result.as]  at is_euid
   rename Value => v
@@ -871,9 +1043,9 @@ theorem evals_to_euid_unop (e : Expr) (o : UnaryOp) entities request euid
   case _ =>
     cases p <;> simp at is_euid
 
-theorem evals_to_euid_binop (o : BinaryOp) (lhs rhs : Expr) entities request euid
+theorem evals_to_euid_binop (o : BinaryOp) (lhs rhs : Expr) entities request euid l
   (is_euid : evaluate (.binaryApp o lhs rhs) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
   := by
   cases eval_lhs : evaluate lhs request entities <;> simp [evaluate, eval_lhs, Coe.coe] at is_euid
   cases eval_rhs : evaluate rhs request entities <;> simp [evaluate, eval_rhs, Coe.coe] at is_euid
@@ -956,33 +1128,83 @@ theorem evals_to_euid_binop (o : BinaryOp) (lhs rhs : Expr) entities request eui
     cases lhs <;> try simp at is_euid
     cases rhs <;> simp at is_euid
 
+theorem sub1_lemma ty ety l
+  (h : setLevel (Level.finite 1).sub1 ty = CedarType.entity ety l)
+  :
+  l = .finite 0
+  := by
+  simp [Level.sub1, Level.finite] at h
+  cases ty <;> simp [setLevel] at h
+  simp [Level.finite, h]
+
 theorem evals_to_euid_getAttr (attr : Attr) (e : Expr) entities request env c₁ c₂ ety l euid
   (well_typed : typeOf (e.getAttr attr) c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
   (non_zero : l ≠ Level.zero)
   (caps_inv : CapabilitiesInvariant c₁ request entities)
   (req_well_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
   (no_euids : NoEuidsInEnv env)
-  (is_euid : evaluate (e.getAttr attr) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+  (is_euid : evaluate (e.getAttr attr) request entities = .ok (Value.prim (.entityUID euid)))
+  (ih : evalsToEuid e)
+  :
+  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
   := by
   have hinv := type_of_getAttr_inversion_levels well_typed
   replace ⟨hinv₁, c₁', hinv⟩ := hinv
+  have lt : (.finite 1 < Level.infinite) := by
+    apply LevelLT.finite₂
   cases hinv
   case _ hinv =>
     replace ⟨ety', l₂, hinv₂, hinv⟩ := hinv
+    have ⟨gcaps, v, evals, instance_of⟩ : GuardedCapabilitiesInvariant e c₁' request entities ∧ ∃ v, EvaluatesToLeveled e request entities v ∧ InstanceOfType v (.entity ety' l₂) := by
+      apply type_of_is_sound_noninfinite
+      repeat assumption
+    cases instance_of
+    rename_i euid' inst
+    rcases evals with evals | evals | evals
+    <;> simp [evals, evaluate] at is_euid
+    have ⟨euid_good, level_one⟩ : euid' ∈ [request.principal, request.action, request.resource] ∧ l₂ = .finite 1 := by
+      apply ih
+      apply hinv₂
+      simp
+      unfold Not
+      intros contra
+      subst contra
+      cases hinv
+      omega
+      repeat assumption
+    subst level_one
     simp [typeOf, hinv₂, typeOfGetAttr] at well_typed
     rw [if_pos] at well_typed
-    cases find_types : env.ets.attrs? ety'
-    <;> simp [find_types, err]at well_typed
-
-
-
-
-
-
-
-    sorry
+    cases find : env.ets.attrs? ety'
+    <;> simp [find, err] at well_typed
+    rename_i rty
+    cases getAttr : (getAttrInRecord (.entity ety' (.finite 1)) rty e attr c₁)
+    <;> simp [getAttr] at well_typed
+    rename_i pair
+    have ⟨ty',c'⟩ := pair
+    simp at well_typed
+    exfalso
+    have contra : l = Level.finite 0 := by
+      apply sub1_lemma
+      apply well_typed.left
+    subst contra
+    simp [Level.finite, Level.zero] at non_zero
+    apply LevelLT.finite₁
+    omega
   case _ hinv =>
+    replace ⟨rty, hinv⟩ := hinv
+    have ⟨gcaps, v, evals, instance_of⟩ : GuardedCapabilitiesInvariant e c₁' request entities ∧ ∃ v, EvaluatesToLeveled e request entities v ∧ InstanceOfType v (.record rty) := by
+      apply type_of_is_sound_noninfinite
+      repeat assumption
+    cases instance_of
+    rename_i rv h₁ h₂ h₃
+    rcases evals with evals | evals | evals
+    <;> simp [evals,evaluate] at is_euid
+    have no_euids_in_record : NoEuidValues (.record rv) := by
+      apply evals_to_record
+      apply hinv
+      repeat assumption
+
     sorry
 
 theorem evals_to_euid (e : Expr) entities request env c₁ c₂ ety l euid
