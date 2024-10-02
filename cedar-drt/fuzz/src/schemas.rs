@@ -250,12 +250,20 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
                     ))
                 }
             }
-            (Self::Type(lhs), Self::CommonTypeRef { type_name: rhs }) => Err(format!(
-                "lhs is ordinary type `{lhs:?}`, rhs is common type `{rhs}`"
-            )),
-            (Self::CommonTypeRef { type_name: lhs }, Self::Type(rhs)) => Err(format!(
-                "lhs is common type `{lhs}`, rhs is ordinary type `{rhs:?}`"
-            )),
+            (Self::Type(tv), Self::CommonTypeRef { type_name })
+            | (Self::CommonTypeRef { type_name }, Self::Type(tv)) => {
+                match tv {
+                    json_schema::TypeVariant::EntityOrCommon {
+                        type_name: tv_type_name,
+                    } if type_name == tv_type_name => {
+                        // Consider common-type equivalent to entity-or-common of the same name
+                        Ok(())
+                    }
+                    _ => Err(format!(
+                        "Common-type `{type_name}` is not equivalent to non-common-type {tv:?}"
+                    )),
+                }
+            }
         }
     }
 }
@@ -433,13 +441,13 @@ fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + O
             (None, None) => Ok(()),
             (Some(lhs), Some(rhs)) => {
                 // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                if (either_empty(&lhs) && either_empty(&rhs)) || Equiv::equiv(lhs, rhs).is_ok() {
+                if either_empty(&lhs) && either_empty(&rhs) {
                     Ok(())
                 } else {
-                    Err(format!(
-                        "Mismatched applies to in `{name}`. lhs : `{:?}`,rhs: `{:?}`",
-                        lhs, rhs
-                    ))
+                    match Equiv::equiv(lhs, rhs) {
+                        Ok(()) => Ok(()),
+                        Err(e) => Err(format!("Mismatched appliesTo in `{name}`: {e}")),
+                    }
                 }
             }
             // An action w/ empty applies to list is equivalent to an action with _no_ applies to

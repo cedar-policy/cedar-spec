@@ -39,7 +39,8 @@ fuzz_target!(|src: String| {
         )
         .expect("Failed to parse converted Cedar schema");
         if let Err(msg) = equivalence_check(&parsed, &cedar_parsed) {
-            println!("Schema: {src}");
+            println!("Original JSON schema: {src}");
+            println!("Converted to Cedar format:\n{cedar_src}");
             println!(
                 "{}",
                 SimpleDiff::from_str(
