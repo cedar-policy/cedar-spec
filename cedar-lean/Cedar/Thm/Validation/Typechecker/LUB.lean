@@ -1426,6 +1426,61 @@ theorem lub_to_entity_level_bound (ty₁ : CedarType) (ety : EntityType) (l₁ l
       apply LevelLT.finite₁
       omega
 
+theorem lub_upper_bounds (ety : EntityType) (l₁ l₂ l : Level)
+  (h : ((.entity ety l₁) ⊔ (.entity ety l₂)) = some (.entity ety l)) :
+  l ≤ l₁ ∧ l ≤ l₂
+  := by
+  constructor
+  case _ =>
+    apply lub_to_entity_level_bound
+    rw [lub_comm]
+    apply h
+  case _ =>
+    apply lub_to_entity_level_bound
+    apply h
 
+theorem lub_record_inversion₁ (ty₁ ty₂ : CedarType) (rty : Map Attr QualifiedType)
+  (h : (ty₁ ⊔ ty₂) = some (.record rty)) :
+  ∃ rty', ty₂ = .record rty'
+  := by
+  cases ty₁ <;> cases ty₂ <;> try simp [lub?] at h
+  case set ty₁ ty₂ =>
+    exfalso
+    cases sublub : (ty₁ ⊔ ty₂) <;> simp [sublub] at h
+  case record rty₁ rty₂ =>
+    exists rty₂
+
+theorem lub_record_inversion₂ (ty₁ : CedarType) (rty rty₂ : Map Attr QualifiedType) (k : Cedar.Spec.Attr) (qty : QualifiedType) (ety : EntityType) (l : Level)
+  (lub_eq : (ty₁ ⊔ (.record rty₂)) = some (.record rty))
+  (in_rty : rty.find? k = some qty)
+  (is_entity : qty.getType = .entity ety l)  :
+  ∃ (l' : Level) (qty' : QualifiedType),
+    rty₂.find? k = some qty' ∧ qty'.getType = .entity ety l' ∧ l ≤ l'
+  := by
+  cases ty₁ <;> try simp [lub?] at lub_eq
+  rename_i rty₁
+  unfold lub? at lub_eq
+  cases inner : lubRecordType rty₁.1 rty₂.1
+  <;> simp [inner] at lub_eq
+  rename_i kvs
+  have rel : IsLubOfRecordTypes kvs rty₁.1 rty₂.1 := by
+    refine lubRecordType_is_lub_of_record_types inner
+  rw [← lub_eq] at in_rty
+  have ⟨qty₁, qty₂, _, find₂, lubbed⟩ := lubRecord_find_implies_find rel in_rty
+  have lub_getType : (qty₁.getType ⊔ qty₂.getType) = qty.getType := by
+    exact lubQualified_is_lub_of_getType lubbed
+  rw [is_entity] at lub_getType
+  have ⟨l₂, step₁⟩ : ∃ l, qty₂.getType = .entity ety l := by
+    apply lubs_to_entity
+    apply lub_getType
+  exists l₂
+  exists qty₂
+  cases rty₂
+  rename_i kvs₂
+  simp at find₂
+  simp [find₂, step₁]
+  apply lub_to_entity_level_bound
+  rw [step₁] at lub_getType
+  apply lub_getType
 
 end Cedar.Thm
