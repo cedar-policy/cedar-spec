@@ -39,7 +39,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   simp at h₃
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
-    rw [←h₃, ←h₄]
+    subst c₂ ty
     apply And.intro empty_guarded_capabilities_invariant
     first |
       exact true_is_instance_of_tt |
@@ -59,17 +59,33 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
   simp [typeOf, typeOfVar] at h₃
   have ⟨h₂, _⟩ := h₂
   simp [InstanceOfRequestType] at h₂
-  split at h₃ <;> simp <;> simp [ok] at h₃ <;>
-  have ⟨h₃, h₄⟩ := h₃ <;> rw [←h₃, ←h₄] <;>
-  constructor <;> try { exact empty_guarded_capabilities_invariant }
-  case h_1.right =>
-    apply InstanceOfType.instance_of_entity; simp [h₂]
-  case h_2.right =>
-    apply InstanceOfType.instance_of_entity
-    simp [h₂, InstanceOfEntityType]
-  case h_3.right =>
-    apply InstanceOfType.instance_of_entity; simp [h₂]
-  case h_4.right =>
-    simp [h₂]
+  cases var
+  <;> simp [ok] at h₃
+  <;> have ⟨h₃, h₄⟩ := h₃
+  <;> subst c₂ ty
+  <;> apply And.intro empty_guarded_capabilities_invariant
+  case principal =>
+    exists request.principal
+    apply And.intro
+    · simp [evaluate]
+    · apply InstanceOfType.instance_of_entity
+      simp only [h₂]
+  case action =>
+    exists request.action
+    apply And.intro
+    · simp [evaluate]
+    · apply InstanceOfType.instance_of_entity
+      simp only [h₂, InstanceOfEntityType]
+  case resource =>
+    exists request.resource
+    apply And.intro
+    · simp [evaluate]
+    · apply InstanceOfType.instance_of_entity
+      simp only [h₂]
+  case context =>
+    exists request.context
+    apply And.intro
+    · simp [evaluate]
+    · simp only [h₂]
 
 end Cedar.Thm

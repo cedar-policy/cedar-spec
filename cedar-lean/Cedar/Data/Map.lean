@@ -109,7 +109,7 @@ instance decLt [LT (Prod α β)] [DecidableRel (α:=(Prod α β)) (·<·)] : (n 
 
 -- enables ∈ notation for map keys
 instance : Membership α (Map α β) where
-  mem a m := List.Mem a (m.kvs.map Prod.fst)
+  mem m a := List.Mem a (m.kvs.map Prod.fst)
 
 end Map
 

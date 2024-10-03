@@ -119,9 +119,9 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     case cons hd₂ tl₂ =>
       cases tl₂
       case nil =>
-        rw [List.attach_def, List.pmap, List.mapM, List.mapM.loop, justType, Except.map] at h₁
+        rw [List.attach_def, List.pmap, List.mapM, List.mapM.loop, justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
-        rw [List.mapM.loop, justType, Except.map] at h₁
+        rw [List.mapM.loop, justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         simp [List.mapM.loop, pure, Except.pure] at h₁
         rename_i res₁ h₂ _ res₂ h₃
@@ -134,11 +134,11 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
       case cons hd₃ tl₃ =>
         simp only [List.attach_def, List.pmap, List.mapM_cons,
           List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
-        rw [justType, Except.map] at h₁
+        rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
-        rw [justType, Except.map] at h₁
+        rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
-        rw [justType, Except.map] at h₁
+        rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         rename_i res₁ _ _ res₂ _ _ res₃ _
         simp only [pure, Except.pure] at h₁
@@ -300,9 +300,9 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
     case cons hd₂ tl₂ =>
       simp only [List.attach_def, List.pmap, List.mapM_cons,
         List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
-      rw [justType, Except.map] at h₁
+      rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
-      rw [justType, Except.map] at h₁
+      rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
       rename_i res₁ _ _ res₂ _
       simp [pure, Except.pure] at h₁

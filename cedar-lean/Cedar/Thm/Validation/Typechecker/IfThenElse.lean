@@ -55,7 +55,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     simp only [and_self]
   case ok.h_2 =>
     exists BoolType.ff, res₁.snd ; simp [←ht₁]
-    exists ty
+    exact h₁
   case ok.h_3 =>
     exists BoolType.anyBool, res₁.snd ; simp [←ht₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁

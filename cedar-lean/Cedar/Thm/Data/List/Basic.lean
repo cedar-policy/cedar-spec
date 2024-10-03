@@ -349,7 +349,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
   constructor
   case mp =>
     intro h₂
-    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq] at h₁
+    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq, reduceCtorEq] at h₁
     case nil.nil => exact SortedBy.nil
     case cons.cons xhd xtl yhd ytl =>
       replace ⟨h₁, h₃⟩ := h₁
@@ -360,14 +360,14 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
         simp only [tail_sortedBy h₂, true_iff] at ih
         apply SortedBy.cons_cons _ ih
         rw [← h₁]
-        cases xtl <;> simp only [map_nil, map_cons, cons.injEq] at h₃
+        cases xtl <;> simp only [map_nil, map_cons, cons.injEq, reduceCtorEq] at h₃
         case cons xhd' xtl =>
           rw [← h₃.left]
           apply sortedBy_implies_head_lt_tail h₂
           simp only [mem_cons, true_or]
   case mpr =>
     intro h₂
-    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq] at h₁
+    cases xs <;> cases ys <;> simp only [map_nil, map_cons, cons.injEq, reduceCtorEq] at h₁
     case nil.nil => exact SortedBy.nil
     case cons.cons xhd xtl yhd ytl =>
       replace ⟨h₁, h₃⟩ := h₁
@@ -378,7 +378,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
         simp only [tail_sortedBy h₂, iff_true] at ih
         apply SortedBy.cons_cons _ ih
         rw [h₁]
-        cases ytl <;> simp only [map_nil, map_cons, cons.injEq] at h₃
+        cases ytl <;> simp only [map_nil, map_cons, cons.injEq, reduceCtorEq] at h₃
         case cons yhd' ytl =>
           rw [h₃.left]
           apply sortedBy_implies_head_lt_tail h₂

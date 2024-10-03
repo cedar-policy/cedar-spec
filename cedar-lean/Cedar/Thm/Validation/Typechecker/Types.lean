@@ -307,8 +307,9 @@ theorem bool_type_is_inhabited (bty : BoolType) :
 := by
   simp [InstanceOfBoolType]
   cases bty
-  case tt => exists true
-  all_goals { exists false }
+  case tt => simp only [or_true]
+  case ff => simp only [or_false]
+  case anyBool => simp only [or_self]
 
 theorem entity_type_is_inhabited (ety : EntityType) :
   ∃ euid, InstanceOfEntityType euid ety
@@ -423,7 +424,6 @@ theorem type_is_inhabited (ty : CedarType) :
           apply sizeOf_attribute_lt_sizeOf_qualified
         case a =>
           simp [Nat.add_assoc]
-          simp [←Nat.succ_eq_one_add]
       have ⟨rhd, h₂⟩ := type_is_inhabited hd.snd.getType
       have ⟨vtl, h₃⟩ := type_is_inhabited (.record (Map.mk tl))
       have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃

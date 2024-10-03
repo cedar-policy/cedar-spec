@@ -128,9 +128,7 @@ theorem lubRecordType_nil_some {rty₁ rty₂ : List (Attr × QualifiedType)} :
   lubRecordType [] rty₁ = some rty₂ →
   (rty₁ = [] ∧ rty₂ = [])
 := by
-  unfold lubRecordType
-  cases rty₁ <;> simp
-  intro h₁ ; simp [h₁]
+  cases rty₁ <;> simp [lubRecordType]
 
 theorem lubBool_comm {bty₁ bty₂ : BoolType} :
   lubBool bty₁ bty₂ = lubBool bty₂ bty₁
@@ -260,11 +258,14 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
   (qty₁.getType ⊔ qty₂.getType) = .some qty.getType
 := by
   unfold lubQualifiedType at h₁
-  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at h₁
   all_goals {
     rename_i aty₁ aty₂
-    cases h₂ : (aty₁ ⊔ aty₂) <;> simp only [Qualified.getType] <;> rw [h₂] <;> simp only [h₂, false_and, exists_const, exists_eq_left', Option.some.injEq] at h₁
-    simp only [Qualified.getType, ← h₁]
+    cases h₂ : (aty₁ ⊔ aty₂)
+    <;> simp only [Qualified.getType, reduceCtorEq]
+    <;> simp only [h₂, false_and, exists_const, exists_eq_left', Option.some.injEq, reduceCtorEq] at *
+    subst qty
+    simp only
   }
 
 
@@ -308,6 +309,7 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
     split
     case isTrue h₃ => simp [h₃]
     case isFalse h₃ h₄ h₅ h₆ =>
+      exfalso
       unfold lub? at h₁ h₂
       cases ty₁ <;> cases ty₂ <;> simp at h₁ <;>
       cases ty₃ <;> simp at h₂ <;> simp at h₆
