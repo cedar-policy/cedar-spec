@@ -95,23 +95,13 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
         lhs: &json_schema::NamespaceDefinition<N>,
         rhs: &json_schema::NamespaceDefinition<N>,
     ) -> Result<(), String> {
-        Equiv::equiv(&lhs.entity_types, &rhs.entity_types)?;
-        if &lhs.common_types != &rhs.common_types {
-            Err("Common types differ".to_string())
-        } else if lhs.actions.len() != rhs.actions.len() {
-            Err("Different number of actions".to_string())
-        } else {
-            lhs.actions
-                .iter()
-                .map(|(name, lhs_action)| {
-                    let rhs_action = rhs
-                        .actions
-                        .get(name)
-                        .ok_or_else(|| format!("Action `{name}` not present on rhs"))?;
-                    action_type_equivalence(name.as_ref(), lhs_action, rhs_action)
-                })
-                .fold(Ok(()), Result::and)
-        }
+        Equiv::equiv(&lhs.entity_types, &rhs.entity_types)
+            .map_err(|e| format!("mismatch in entity type declarations: {e}"))?;
+        Equiv::equiv(&lhs.common_types, &rhs.common_types)
+            .map_err(|e| format!("mismatch in common type declarations: {e}"))?;
+        Equiv::equiv(&lhs.actions, &rhs.actions)
+            .map_err(|e| format!("mismatch in action declarations: {e}"))?;
+        Ok(())
     }
 }
 
@@ -176,7 +166,9 @@ impl<K: Eq + Ord + Display, V: Equiv> Equiv for BTreeMap<K, V> {
             let errors = lhs
                 .iter()
                 .filter_map(|(k, lhs_v)| match rhs.get(k) {
-                    Some(rhs_v) => Equiv::equiv(lhs_v, rhs_v).err(),
+                    Some(rhs_v) => Equiv::equiv(lhs_v, rhs_v)
+                        .map_err(|e| format!("for key `{k}`: {e}"))
+                        .err(),
                     None => Some(format!("`{k}` missing from rhs")),
                 })
                 .collect::<Vec<_>>();
@@ -427,41 +419,36 @@ impl TypeName for InternalName {
     }
 }
 
-fn action_type_equivalence<N: PartialEq + Debug + Display + Clone + TypeName + Ord>(
-    name: &str,
-    lhs: &json_schema::ActionType<N>,
-    rhs: &json_schema::ActionType<N>,
-) -> Result<(), String> {
-    if &lhs.attributes != &rhs.attributes {
-        Err(format!("Attributes don't match for `{name}`"))
-    } else if &lhs.member_of != &rhs.member_of {
-        Err(format!("Member of don't match for `{name}`"))
-    } else {
-        match (&lhs.applies_to, &rhs.applies_to) {
-            (None, None) => Ok(()),
-            (Some(lhs), Some(rhs)) => {
-                // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                if either_empty(&lhs) && either_empty(&rhs) {
-                    Ok(())
-                } else {
-                    match Equiv::equiv(lhs, rhs) {
-                        Ok(()) => Ok(()),
-                        Err(e) => Err(format!("Mismatched appliesTo in `{name}`: {e}")),
+impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_schema::ActionType<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        if &lhs.attributes != &rhs.attributes {
+            Err(format!("Attributes don't match"))
+        } else if &lhs.member_of != &rhs.member_of {
+            Err(format!("Member-of doesn't match"))
+        } else {
+            match (&lhs.applies_to, &rhs.applies_to) {
+                (None, None) => Ok(()),
+                (Some(lhs), Some(rhs)) => {
+                    // If either of them has at least one empty appliesTo list, the other must have the same attribute.
+                    if either_empty(&lhs) && either_empty(&rhs) {
+                        Ok(())
+                    } else {
+                        Equiv::equiv(lhs, rhs).map_err(|e| format!("Mismatches appliesTo: {e}"))
                     }
                 }
+                // An action w/ empty applies to list is equivalent to an action with _no_ applies to
+                // section at all.
+                // This is because neither action can be legally applied to any principal/resources.
+                (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(applies_to) => {
+                    Ok(())
+                }
+                (Some(_), None) => Err(format!(
+                    "Mismatched appliesTo, lhs was `Some`, `rhs` was `None`"
+                )),
+                (None, Some(_)) => Err(format!(
+                    "Mismatched appliesTo, lhs was `None`, `rhs` was `Some`"
+                )),
             }
-            // An action w/ empty applies to list is equivalent to an action with _no_ applies to
-            // section at all.
-            // This is because neither action can be legally applied to any principal/resources.
-            (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(applies_to) => {
-                Ok(())
-            }
-            (Some(_), None) => Err(format!(
-                "Mismatched applies to in `{name}`, lhs was `Some`, `rhs` was `None`"
-            )),
-            (None, Some(_)) => Err(format!(
-                "Mismatched applies to in `{name}`, lhs was `None`, `rhs` was `Some`"
-            )),
         }
     }
 }
