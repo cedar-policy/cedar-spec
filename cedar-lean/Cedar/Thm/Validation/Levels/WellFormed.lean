@@ -872,11 +872,52 @@ theorem evaluates_to_well_formed_or {lhs rhs : Expr} {v : Value} {request : Requ
     replace ⟨_, bty₂, c₂', hinv⟩ := hinv
     cases bty₂ <;> bool_constant hinv hsound₃
 
-theorem evaluates_to_well_formed_getAttr_entity {e : Expr} {attr : Attr} {v : Value} {request : Request} {entities : Entities} {env : Environment} {c₁ c₁' : Capabilities} {l₁ l₂ : Level} {ety : EntityType}
+theorem setLevel_invariant (v : Value) (ty : CedarType) (l : Level)
+  (is_instance : InstanceOfType v ty) :
+  InstanceOfType v (setLevel l ty)
+  := by
+  cases ty
+  case int =>
+    simp [setLevel]
+    assumption
+  case _ =>
+    simp [setLevel]
+    assumption
+  case _ =>
+    simp [setLevel]
+    assumption
+  case _ ety l' =>
+    simp [setLevel]
+    cases is_instance
+    rename_i euid is_instance
+    simp [InstanceOfEntityType] at is_instance
+    subst is_instance
+    constructor
+    simp [InstanceOfEntityType]
+  case _ ty =>
+    simp [setLevel]
+    cases is_instance
+    rename_i set members_have_ty
+    constructor
+    intros v in_set
+    apply setLevel_invariant
+    apply members_have_ty
+    apply in_set
+  case _ rty =>
+
+
+
+    sorry
+  case _ =>
+    sorry
+
+
+theorem evaluates_to_well_formed_getAttr_entity {e : Expr} {attr : Attr} {v : Value} {request : Request} {entities : Entities} {env : Environment} {c₁ c₁' c₂ : Capabilities} {l₁ l₂ : Level} {ety : EntityType}
   (h₁ : l₁ < .infinite)
   (h₂ : RequestAndEntitiesMatchEnvironmentLeveled env request entities l₁)
   (h₄ : evaluate (.getAttr e attr) request entities = .ok v)
   (h₅ : CapabilitiesInvariant c₁ request entities)
+  (h₆' : typeOf (.getAttr e attr) c₁ env (l₁ == Level.infinite) = .ok (ty, c₂))
   (h₆ : typeOf e c₁ env (l₁ == Level.infinite) = Except.ok (CedarType.entity ety l₂, c₁'))
   (h₇ : l₂ > Level.finite 0)
   (ih : EvaluatesToWellFormed e) :
@@ -905,8 +946,57 @@ theorem evaluates_to_well_formed_getAttr_entity {e : Expr} {attr : Attr} {v : Va
     rename_i attrs ih₁ ih₂ ih₃ ih₄
     apply ih₁
     simp [getAttr, attrsOf, ih₁, evaluate, heval, ih₂] at h₄
-    apply Map.findOrErr_ok_implies_in_kvs
-    apply h₄
+    constructor
+    case _ =>
+      apply Map.findOrErr_ok_implies_in_kvs
+      apply h₄
+    case _ =>
+      simp [Entities.attrs] at ih₂
+      cases find_edata : entities.findOrErr euid Error.entityDoesNotExist
+      <;> simp [find_edata] at ih₂
+      rename_i edata
+      have ⟨entry, etype_entry, h, _⟩ := h₂.right.left euid edata (by exact Map.findOrErr_ok_iff_find?_some.mp find_edata)
+      cases h
+      rename_i h₁ h₂ h₃
+      simp [typeOf, h₆, typeOfGetAttr] at h₆'
+      rw [if_pos] at h₆'
+      simp [EntitySchema.attrs?, ] at h₆'
+      have type_eq : ety = euid.ty := by
+        exact hsound₃
+      subst type_eq
+      rw [etype_entry] at h₆'
+      simp [EntitySchemaEntry.attrs, Option.map, getAttrInRecord] at h₆'
+      split at h₆'
+      case _ qty ty' in_attrs_ty =>
+        simp [ok] at h₆'
+        have ty_eq := h₆'.left
+        have h' : InstanceOfType v (Qualified.required ty').getType := by
+          apply h₂
+          rename evaluate (e.getAttr attr) request entities = .ok v => evals
+          simp [evaluate, heval, getAttr, attrsOf, Entities.attrs, find_edata] at evals
+          exact Map.findOrErr_ok_iff_find?_some.mp evals
+          apply in_attrs_ty
+        rw [← ty_eq]
+        simp [Qualified.getType] at h'
+        apply setLevel_invariant
+        assumption
+      case _ =>
+
+        sorry
+      case _ =>
+        sorry
+
+
+
+
+
+
+
+
+
+
+
+      sorry
 
 theorem evaluates_to_well_formed_getAttr_record {e : Expr} {attr : Attr} {v : Value} {request : Request} {entities : Entities} {env : Environment} {c₁ c₂ c₁' : Capabilities} {l₁ : Level} {rty : RecordType}
   (h₁ : l₁ < .infinite)

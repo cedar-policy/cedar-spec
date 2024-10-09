@@ -912,91 +912,201 @@ theorem eval_spec_unop (e : Expr) (o : UnaryOp)  :
     have ⟨_, _, _, _, hinv, _⟩ := type_of_is_inversion well_typed
     simp at hinv
 
-
-theorem evals_to_euid_binop (o : BinaryOp) (lhs rhs : Expr) entities request euid l
-  (is_euid : evaluate (.binaryApp o lhs rhs) request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource]) ∧ l = Level.finite 1
+theorem eval_spec_eq  (lhs rhs : Expr) :
+  evalsSpec (.binaryApp .eq lhs rhs)
   := by
-  cases eval_lhs : evaluate lhs request entities <;> simp [evaluate, eval_lhs, Coe.coe] at is_euid
-  cases eval_rhs : evaluate rhs request entities <;> simp [evaluate, eval_rhs, Coe.coe] at is_euid
-  rename_i lhs rhs
-  simp [apply₂] at is_euid
+  constructor
+  case _ =>
+    simp [evalsToEuid]
+    intros entities request env c₁ c₂ ety l euid well_typed
+    exfalso
+    have ⟨_, hinv⟩ := type_of_eq_inversion well_typed
+    split at hinv
+    case _ =>
+      split at hinv <;> assumption
+    case _ =>
+      replace ⟨ty₁, _, ty₂, _, _, _, hinv⟩ := hinv
+      cases lub : (ty₁ ⊔ ty₂)
+      <;> simp [lub] at hinv
+  case _ =>
+    simp [evalsToRecord]
+    intros entities request env c₁ c₂ rty rv well_typed
+    exfalso
+    have ⟨_, hinv⟩ := type_of_eq_inversion well_typed
+    split at hinv
+    case _ =>
+      split at hinv <;> assumption
+    case _ =>
+      replace ⟨ty₁, _, ty₂, _, _, _, hinv⟩ := hinv
+      cases lub : (ty₁ ⊔ ty₂)
+      <;> simp [lub] at hinv
+
+theorem type_of_mem_is_bool (lhs rhs : Expr) env c₁ c₂ l ty :
+  typeOf (.binaryApp .mem lhs rhs) c₁ env (l == Level.infinite) = .ok (ty, c₂) →
+  ∃ bty, ty = .bool bty
+  := by
+  intros h
+  simp [typeOf] at h
+  cases lhs_ty : typeOf lhs c₁ env (l == .infinite) <;>
+  cases rhs_ty : typeOf rhs c₁ env (l == .infinite) <;>
+  simp [lhs_ty, rhs_ty, typeOfBinaryApp] at h
+  split at h <;> try contradiction
+  case _ =>
+    simp [typeOfInₑ] at h
+    split at h
+    <;> simp [ok, err] at h
+    rename_i o ty₁ ty₂ ety₁ l₁ ety₂ _ _ _ _ _
+    exists (typeOfInₑ.type ety₁  ety₂ lhs rhs env)
+    simp [h]
+  case _ =>
+    simp [typeOfInₛ] at h
+    split at h
+    <;> simp [ok, err] at h
+    rename_i ety₁ _ ety₂ _ _ _ _ _
+    exists (typeOfInₛ.type ety₁ ety₂ lhs rhs env)
+    simp [h]
+
+
+theorem eval_spec_mem (lhs rhs : Expr) :
+  evalsSpec (.binaryApp .mem lhs rhs)
+  := by
+  constructor
+  case _ =>
+    simp only [evalsToEuid]
+    intros entities request env c₁ c₂ ety l euid well_typed
+    have ⟨bty, is_bty⟩ := type_of_mem_is_bool lhs rhs env c₁ c₂ (.finite 1) (.entity ety l) well_typed
+    contradiction
+  case _ =>
+    simp only [evalsToRecord]
+    intros entities request env c₁ c₂ rty rv well_typed
+    have ⟨bty, is_bty⟩ := type_of_mem_is_bool lhs rhs env c₁ c₂ (.finite 1) (.record rty) well_typed
+    contradiction
+
+theorem eval_spec_int_cmp (o : BinaryOp) (lhs rhs : Expr)
+  (is_arith_cmp : o = .less ∨ o = .lessEq) :
+  evalsSpec (.binaryApp o lhs rhs)
+  := by
+  constructor
+  case _ =>
+    simp [evalsToEuid]
+    intros entities request env c₁ c₂ ety l euid well_typed
+    have ⟨_, h⟩ := int_cmp_is_bool is_arith_cmp well_typed
+    contradiction
+  case _ =>
+    simp [evalsToRecord]
+    intros entities request env c₁ c₂ rty rv well_typed
+    have ⟨_, h⟩ := int_cmp_is_bool is_arith_cmp well_typed
+    contradiction
+
+
+theorem eval_spec_int_arith (o : BinaryOp) (lhs rhs : Expr)
+  (is_arith : o = .add ∨ o = .sub ∨ o = .mul ) :
+  evalsSpec (.binaryApp o lhs rhs)
+  := by
+  constructor
+  case _ =>
+    simp [evalsToEuid]
+    intros entities request env c₁ c₂ ety l euid well_typed
+    have h := int_arith_is_int is_arith well_typed
+    contradiction
+  case _ =>
+    simp [evalsToRecord]
+    intros entities request env c₁ c₂ rty rv well_typed
+    have h := int_arith_is_int is_arith well_typed
+    contradiction
+
+theorem contains_is_bool (lhs rhs : Expr) {env c₁ c₂ l ty}
+  (well_typed : typeOf (.binaryApp .contains lhs rhs) c₁ env (l == Level.infinite) = .ok (ty, c₂)) :
+  ∃ bty, ty = .bool bty
+  := by
+  simp [typeOf] at well_typed
+  cases lhs_typed : typeOf lhs c₁ env (l == .infinite) <;>
+  cases rhs_typed : typeOf rhs c₁ env (l == .infinite) <;>
+  simp [lhs_typed, rhs_typed] at well_typed
+  rename_i lhs_ty rhs_ty
+  simp [typeOfBinaryApp] at well_typed
+  split at well_typed <;> try contradiction
+  simp [ifLubThenBool] at well_typed
+  split at well_typed
+  <;> simp [ok, err] at well_typed
+  exists .anyBool
+  simp [well_typed]
+
+
+
+theorem eval_spec_contains (lhs rhs : Expr) :
+  evalsSpec (.binaryApp .contains lhs rhs)
+  := by
+  constructor
+  case _ =>
+    simp [evalsToEuid]
+    intros entities request env c₁ c₂ ety l euid well_typed
+    have ⟨bty, is_bty⟩ := contains_is_bool lhs rhs well_typed
+    contradiction
+  case _ =>
+    simp [evalsToRecord]
+    intros entities request env c₁ c₂ rty rv well_typed
+    have ⟨bty, is_bty⟩ := contains_is_bool lhs rhs well_typed
+    contradiction
+
+theorem containsA_is_bool (o : BinaryOp) (lhs rhs : Expr) {env c₁ c₂ l ty}
+  (is_containsA : o = .containsAll ∨ o = .containsAny)
+  (well_typed : typeOf (.binaryApp o lhs rhs) c₁ env (l == Level.infinite) = .ok (ty, c₂)) :
+  ∃ bty, ty = .bool bty
+  := by
+  simp [typeOf] at well_typed
+  cases lhs_typed : typeOf lhs c₁ env (l == .infinite) <;>
+  cases rhs_typed : typeOf rhs c₁ env (l == .infinite) <;>
+  simp [lhs_typed, rhs_typed] at well_typed
+  rename_i lhs_ty rhs_ty
+  simp [typeOfBinaryApp] at well_typed
+  split at well_typed <;> try contradiction
+  all_goals {
+    simp [ifLubThenBool] at well_typed
+    split at well_typed <;> simp [ok,err] at well_typed
+    exists .anyBool
+    simp [well_typed]
+  }
+
+
+theorem eval_spec_containsA (o : BinaryOp) (lhs rhs : Expr)
+  (is_containsA : o = .containsAll ∨ o = .containsAny) :
+  evalsSpec (.binaryApp o lhs rhs)
+  := by
+  sorry
+
+theorem eval_spec_binop (o : BinaryOp) (lhs rhs : Expr) :
+  evalsSpec (.binaryApp o lhs rhs)
+  := by
   cases o
   case _ =>
-    cases lhs <;> cases rhs <;> simp at is_euid
+    apply eval_spec_eq
   case _ =>
-    cases lhs <;> cases rhs
-    case prim.prim =>
-      rename_i lhs rhs
-      cases lhs <;> cases rhs <;> simp at is_euid
-    case prim.set =>
-      rename_i lhs rhs
-      cases lhs <;> simp at is_euid
-      rename EntityUID => euid
-      simp [inₛ] at is_euid
-      cases find : rhs.mapOrErr Value.asEntityUID Error.typeError
-      <;> simp [find] at is_euid
-    all_goals { simp at is_euid }
+    apply eval_spec_mem
   case _ =>
-    cases lhs <;> try simp at is_euid
-    case prim p =>
-    cases p <;> try simp at is_euid
-    case int i =>
-    cases rhs  <;> try simp at is_euid
-    case prim p =>
-    cases p  <;> simp at is_euid
+    apply eval_spec_int_cmp
+    simp
   case _ =>
-    cases lhs <;> try simp at is_euid
-    case prim p =>
-    cases p <;> try simp at is_euid
-    case int i =>
-    cases rhs  <;> try simp at is_euid
-    case prim p =>
-    cases p  <;> simp at is_euid
+    apply eval_spec_int_cmp
+    simp
   case _ =>
-    cases lhs <;> try simp at is_euid
-    case prim p =>
-    cases p <;> try simp at is_euid
-    case int i =>
-    cases rhs  <;> try simp at is_euid
-    case prim p =>
-    cases p  <;> simp at is_euid
-    rename_i j
-    <;> simp [intOrErr] at is_euid
-    cases h : (i.add? j)
-    <;> simp [h]at is_euid
+    apply eval_spec_int_arith
+    simp
   case _ =>
-    cases lhs <;> try simp at is_euid
-    case prim p =>
-    cases p <;> try simp at is_euid
-    case int i =>
-    cases rhs  <;> try simp at is_euid
-    case prim p =>
-    cases p  <;> simp at is_euid
-    rename_i j
-    <;> simp [intOrErr] at is_euid
-    cases h : (i.sub? j)
-    <;> simp [h] at is_euid
+    apply eval_spec_int_arith
+    simp
   case _ =>
-    cases lhs <;> try simp at is_euid
-    case prim p =>
-    cases p <;> try simp at is_euid
-    case int i =>
-    cases rhs  <;> try simp at is_euid
-    case prim p =>
-    cases p  <;> simp at is_euid
-    rename_i j
-    <;> simp [intOrErr] at is_euid
-    cases h : (i.mul? j)
-    <;> simp [h] at is_euid
+    apply eval_spec_int_arith
+    simp
   case _ =>
-    cases lhs <;> simp at is_euid
+    apply eval_spec_contains
   case _ =>
-    cases lhs <;> try simp at is_euid
-    cases rhs <;> simp at is_euid
+    apply eval_spec_containsA
+    simp
   case _ =>
-    cases lhs <;> try simp at is_euid
-    cases rhs <;> simp at is_euid
+    apply eval_spec_containsA
+    simp
+
 
 theorem sub1_lemma ty ety l
   (h : setLevel (Level.finite 1).sub1 ty = CedarType.entity ety l)
@@ -1006,6 +1116,205 @@ theorem sub1_lemma ty ety l
   simp [Level.sub1, Level.finite] at h
   cases ty <;> simp [setLevel] at h
   simp [Level.finite, h]
+
+theorem gt_implies_ne : ∀  (l₁ l₂  : Level),
+  l₁ > l₂  → l₁ ≠ l₂
+  := by
+  intros l₁ l₂ h
+  cases l₁ <;> cases l₂ <;> cases h <;> simp
+  omega
+
+theorem evals_to_euid_getAttr (attr : Attr) (e : Expr) (ih : evalsSpec e) :
+  evalsToEuid (.getAttr e attr)
+  := by
+  have lt : .finite 1 < Level.infinite := by
+    apply LevelLT.finite₂
+  simp only [evalsToEuid]
+  intros entities request env c₁ c₂ ety l euid well_typed non_zero caps_inv req_ty no_euids evals_to_euid
+  have ⟨c₂_eq, c₁', hinv⟩ := type_of_getAttr_inversion_levels well_typed
+  subst c₂_eq
+  cases hinv
+  case _ hinv =>
+    replace ⟨ety', l₂, hinv, l₂_gt_zero⟩ := hinv
+    have ⟨gcaps_inv, euid_val, e_evals, e_well_typed⟩ : GuardedCapabilitiesInvariant e c₁' request entities ∧ ∃ v, EvaluatesToLeveled e request entities v ∧ InstanceOfType v (.entity ety' l₂) := by
+      apply type_of_is_sound_noninfinite
+      apply lt
+      apply caps_inv
+      apply req_ty
+      apply hinv
+    cases e_well_typed
+    rename_i euid' e_well_typed
+    rcases e_evals with e_evals | e_evals | e_evals
+    <;> simp [e_evals, evaluate, Result.as, getAttr] at evals_to_euid
+    cases find_attrs : attrsOf (.prim (.entityUID euid')) entities.attrs
+    <;> simp [find_attrs] at evals_to_euid
+    rename_i entity_attrs
+    have ⟨is_scope_var, level_one⟩ : euid' ∈ [request.principal, request.action, request.resource] ∧ l₂ = Level.finite 1 := by
+      have euid := ih.left
+      apply euid
+      apply hinv
+      apply gt_implies_ne
+      simp only [Level.zero]
+      apply l₂_gt_zero
+      apply caps_inv
+      apply req_ty
+      apply no_euids
+      apply e_evals
+    simp [typeOf, hinv, typeOfGetAttr, find_attrs, level_one] at well_typed
+    rw [if_pos] at well_typed
+    cases find_attr_type : env.ets.attrs? ety'
+    <;> simp [find_attr_type, err, ok] at well_typed
+    rename_i rty
+    cases getAttr : getAttrInRecord (.entity ety' (.finite 1)) rty e attr c₁
+    <;> simp [getAttr] at well_typed
+    rename_i pair
+    have is_zero : l = Level.finite 0 := by
+      apply sub1_lemma
+      apply well_typed.left
+    exfalso
+    simp [Level.zero] at non_zero
+    apply non_zero
+    apply is_zero
+    apply LevelLT.finite₁
+    omega
+  case _ hinv =>
+    replace ⟨rty, hinv⟩ := hinv
+    have ⟨gcaps_sound, v, e_evals_to, e_has_type⟩ : GuardedCapabilitiesInvariant e c₁' request entities ∧ ∃ v, EvaluatesToLeveled e request entities v ∧ InstanceOfType v (.record rty) := by
+      apply type_of_is_sound_noninfinite
+      repeat assumption
+    cases e_has_type
+    rename_i rv h₁ h₂ h₃
+    have to_record := ih.right
+    simp only [evalsToRecord] at to_record
+    simp [evaluate] at evals_to_euid
+    rcases e_evals_to with e_evals_to | e_evals_to | e_evals_to
+    <;> simp [e_evals_to, getAttr, attrsOf] at evals_to_euid
+    cases attrExists : rv.findOrErr attr Error.attrDoesNotExist
+    <;> simp [attrExists] at evals_to_euid
+    rename_i v
+
+    simp [typeOf, hinv, typeOfGetAttr, getAttrInRecord] at well_typed
+    cases type_find : rty.find? attr
+    <;> simp [type_find, err, ok] at well_typed
+    rename_i qty
+    have qty_is_ety : qty.getType = .entity ety l := by
+      split at well_typed <;> try contradiction
+      case _ =>
+        rename_i eq
+        simp at eq
+        simp [Qualified.getType, eq]
+        simp [Except.ok] at well_typed
+        assumption
+      case _ =>
+        rename_i eq
+        simp at eq
+        simp [eq, Qualified.getType, eq]
+        split at well_typed <;> try contradiction
+        simp [Except.ok] at well_typed
+        assumption
+    apply to_record entities request env c₁ c₁' rty rv
+    apply hinv
+    apply caps_inv
+    apply req_ty
+    apply no_euids
+    apply e_evals_to
+    apply type_find
+    apply qty_is_ety
+    apply non_zero
+    subst evals_to_euid
+    exact Map.findOrErr_ok_iff_find?_some.mp attrExists
+
+
+theorem getAttr_some_implies_in_kvs (attr : Attr) (euid : EntityUID) (attrs : Map Attr Value) (entities : Entities) (v : Value)
+  (is_attrs : entities.attrs euid = .ok attrs)
+  (got_attr : getAttr (.prim (.entityUID euid)) attr entities = .ok v) :
+  (attr, v) ∈ attrs.kvs
+  := by
+  simp [getAttr, attrsOf, Entities.attrs] at got_attr
+  cases find_attrs : entities.findOrErr euid Error.entityDoesNotExist
+  <;> simp [find_attrs] at got_attr
+  rename_i edata
+  cases find_attr : edata.attrs.findOrErr attr Error.attrDoesNotExist
+  <;> simp [find_attr] at got_attr
+  subst got_attr
+  rename_i v
+  simp [Entities.attrs, find_attrs] at is_attrs
+  subst is_attrs
+  exact Map.findOrErr_ok_implies_in_kvs find_attr
+
+
+theorem evals_to_record_getAttr (attr : Attr) (e : Expr) (ih : evalsSpec e) :
+  evalsToRecord (.getAttr e attr)
+  := by
+  simp [evalsToRecord]
+  intros entities request env c₁ c₂ rty rv well_typed caps_inv req_ty no_euids evals_to_record
+  have lt : Level.finite 1 < Level.infinite := by
+    apply LevelLT.finite₂
+  have ⟨c₂_eq, c₁', hinv⟩ := type_of_getAttr_inversion_levels well_typed
+  subst c₂_eq
+  cases hinv
+  case _ hinv =>
+    replace ⟨ety, l₂, hinv, level⟩ := hinv
+    have h := ih.left
+    have ⟨gcaps, v_euid, evals, instance_of⟩ : GuardedCapabilitiesInvariant e c₁' request entities ∧ ∃ v, EvaluatesToLeveled e request entities v ∧ InstanceOfType v (.entity ety l₂) := by
+      apply type_of_is_sound_noninfinite
+      repeat assumption
+    rcases evals with evals | evals | evals
+    <;> simp [evals, evaluate] at evals_to_record
+    cases instance_of
+    rename_i euid instance_of
+    have ⟨is_scope_var, is_level_one⟩ : euid ∈ [request.principal, request.action, request.resource] ∧ l₂ = Level.finite 1 := by
+      apply h
+      repeat assumption
+      exact gt_implies_ne l₂ Level.zero level
+      repeat assumption
+    subst is_level_one
+    simp at is_scope_var
+    rcases is_scope_var with is_principal | is_action | is_resource
+    case _ =>
+      subst is_principal
+      have wf := req_ty.right.right.right.left
+      have req_wt := req_ty.left.right.left
+      rw [req_wt] at wf
+      cases wf
+      rename_i attrs h₁ h₂ h₃ h₄
+      have step : entities ⊢ (.record rv) : (.int) := by
+        apply h₁
+        exact
+          getAttr_some_implies_in_kvs attr request.principal attrs entities (Value.record rv) h₂
+            evals_to_record
+
+
+
+
+
+
+
+
+
+
+
+      sorry
+    case _ =>
+      sorry
+    case _ =>
+      sorry
+  case _ =>
+    sorry
+
+
+
+
+
+theorem eval_spec_getAttr (attr : Attr) (e : Expr) (ih : evalsSpec e) :
+  evalsSpec (.getAttr e attr)
+  := by
+  constructor
+  case _ =>
+    apply evals_to_euid_getAttr
+    apply ih
+  case _ =>
+    sorry
 
 theorem evals_to_euid_getAttr (attr : Attr) (e : Expr) entities request env c₁ c₂ ety l euid
   (well_typed : typeOf (e.getAttr attr) c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
@@ -1077,45 +1386,27 @@ theorem evals_to_euid_getAttr (attr : Attr) (e : Expr) entities request env c₁
 
     sorry
 
-theorem evals_to_euid (e : Expr) entities request env c₁ c₂ ety l euid
-  (well_typed : typeOf e c₁ env (.finite 1 == Level.infinite) = .ok (.entity ety l, c₂))
-  (non_zero : l ≠ Level.zero)
-  (caps_inv : CapabilitiesInvariant c₁ request entities)
-  (req_well_typed : RequestAndEntitiesMatchEnvironmentLeveled env request entities (.finite 1))
-  (no_euids : NoEuidsInEnv env)
-  (is_euid : evaluate e request entities = .ok (Value.prim (.entityUID euid))) :
-  (euid ∈ [request.principal, request.action, request.resource])
+
+theorem eval_spec (e : Expr) :
+  evalsSpec e
   := by
   cases e
   case lit p =>
-    apply evals_to_euid_lit
-    repeat assumption
+    exact eval_spec_lit p
   case var v =>
-    apply evals_to_euid_var
-    repeat assumption
+    exact eval_spec_var v
   case ite cond cons alt =>
-    apply evals_to_euid_ite
-    repeat assumption
-    all_goals {
-      unfold evalsToEuid
-      intros
-      apply evals_to_euid
-      repeat assumption
-    }
+    refine eval_spec_ite cond cons alt ?ih₁ ?ih₂
+    repeat apply eval_spec
   case and lhs rhs =>
-    apply evals_to_euid_and
-    repeat assumption
-  case _ =>
-    apply evals_to_euid_or
-    repeat assumption
-  case _ =>
-    apply evals_to_euid_unop
-    repeat assumption
-  case _ =>
-    apply evals_to_euid_binop
-    repeat assumption
-  case _ =>
-
+    exact eval_spec_and lhs rhs
+  case or lhs rhs =>
+    exact eval_spec_or lhs rhs
+  case unaryApp o e =>
+    exact eval_spec_unop e o
+  case binaryApp o lhs rhs =>
+    exact eval_spec_binop o lhs rhs
+  case getAttr e attr =>
     sorry
   case _ =>
     sorry

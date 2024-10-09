@@ -128,12 +128,12 @@ inductive WellFormed : Entities → Value → CedarType → Prop :=
     (h₂ : μ.attrs e = .ok attrs)
     -- All attributes must be well formed
     (h₃ : ∀ k v t',
-      (k,v) ∈ attrs.kvs →
+      (k,v) ∈ attrs.kvs ∧ (InstanceOfType v t') →
       (μ ⊢ v : t')
     )
     -- All attributes must be bounded by `l - 1`
     (h₄ : ∀ k v t',
-      (k,v) ∈ attrs.kvs →
+      (k,v) ∈ attrs.kvs ∧ (InstanceOfType v t') →
       level t' ≥ l.sub1
     ) :
     μ ⊢ .prim (.entityUID e) : .entity ety l
