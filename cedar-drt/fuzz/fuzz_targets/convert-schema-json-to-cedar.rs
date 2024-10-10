@@ -30,27 +30,37 @@ fuzz_target!(|src: String| {
         if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
             return;
         }
-        let cedar_src = parsed
-            .to_cedarschema()
-            .expect("Failed to convert the JSON schema into a Cedar schema");
-        let (cedar_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
-            &cedar_src,
-            Extensions::all_available(),
-        )
-        .expect("Failed to parse converted Cedar schema");
-        if let Err(msg) = equivalence_check(&parsed, &cedar_parsed) {
-            println!("Original JSON schema: {src}");
-            println!("Converted to Cedar format:\n{cedar_src}");
-            println!(
-                "{}",
-                SimpleDiff::from_str(
-                    &format!("{:#?}", parsed),
-                    &format!("{:#?}", cedar_parsed),
-                    "Parsed JSON",
-                    "Cedar Round tripped"
+
+        match parsed.to_cedarschema() {
+            Ok(cedar_src) => {
+                let (cedar_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
+                    &cedar_src,
+                    Extensions::all_available(),
                 )
-            );
-            panic!("{msg}");
+                .expect("Failed to parse converted Cedar schema");
+                if let Err(msg) = equivalence_check(&parsed, &cedar_parsed) {
+                    println!("Original JSON schema: {src}");
+                    println!("Converted to Cedar format:\n{cedar_src}");
+                    println!(
+                        "{}",
+                        SimpleDiff::from_str(
+                            &format!("{:#?}", parsed),
+                            &format!("{:#?}", cedar_parsed),
+                            "Parsed JSON",
+                            "Cedar Round tripped"
+                        )
+                    );
+                    panic!("{msg}");
+                }
+            }
+            Err(
+                cedar_policy_validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::NameCollisions(
+                    _,
+                ),
+            ) => {
+                // Currently, we ignore name-collisions errors, as JSON schemas encountering name-collisions errors are not supported for conversion to Cedar format; see cedar#1272
+                return;
+            }
         }
     }
 });
