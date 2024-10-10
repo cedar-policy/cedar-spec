@@ -296,15 +296,16 @@ mutual
 theorem Value.lt_irrefl (v : Value) :
   ¬ Value.lt v v
 := by
-  cases v <;> simp [Value.lt] <;> rename_i w
-  case prim => exact StrictLT.irreflexive w
-  case set =>
-    cases w ; rename_i ws ; simp [Value.lt]
-    simp only [Values.lt_irrefl ws]
-  case record =>
-    cases w ; rename_i ws ; simp [Value.lt]
-    simp only [ValueAttrs.lt_irrefl ws]
-  case ext => exact StrictLT.irreflexive w
+  cases v <;> simp only [Value.lt, decide_eq_true_eq, Bool.not_eq_true]
+  case prim w | ext w => exact StrictLT.irreflexive w
+  case set s =>
+    cases s ; rename_i vals
+    simp only [Value.lt]
+    simp only [Values.lt_irrefl vals]
+  case record r =>
+    cases r ; rename_i avs
+    simp only [Value.lt]
+    simp only [ValueAttrs.lt_irrefl avs]
 termination_by sizeOf v
 decreasing_by
   all_goals { simp_wf ; omega }
@@ -327,9 +328,9 @@ theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   cases vs
   case nil => simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true]
   case cons hd tl =>
+    replace (a, v) := hd
     simp only [ValueAttrs.lt, String.lt_irrefl, decide_False, decide_True, Bool.true_and,
       Bool.false_or, Bool.and_self, Bool.or_eq_true, not_or, Bool.not_eq_true]
-    replace (a, v) := hd
     simp only [Value.lt_irrefl v, ValueAttrs.lt_irrefl tl, and_self]
 termination_by sizeOf vs
 decreasing_by

@@ -36,7 +36,7 @@ theorem determiningPolicies_wf {policies : Policies} {request : Request} {entiti
   simp only [Set.WellFormed, isAuthorized, Set.toList, Bool.and_eq_true, Bool.not_eq_true']
   cases (satisfiedPolicies .forbid policies request entities).isEmpty <;>
   cases (satisfiedPolicies .permit policies request entities).isEmpty <;>
-  simp only [and_true, and_false, and_self, ite_true, ite_false]
+  simp only [and_true, and_false, and_self, ite_true, ite_false, reduceCtorEq]
   all_goals {
     unfold satisfiedPolicies
     simp only [Set.make_make_eqv]
@@ -155,9 +155,7 @@ theorem sound_policy_slice_is_equierror {request : Request} {entities : Entities
   simp [List.Equiv, List.subset_def]
   rw [List.subset_def] at h₁
   apply And.intro <;>
-  intro policy <;>
-  simp [List.mem_filter] <;>
-  intro h₄ h₅ <;>
+  intro policy h₄ h₅ <;>
   apply And.intro
   · exact h₁ h₄
   · exact h₅
@@ -190,14 +188,9 @@ theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (reque
       · simp at h₂; exact h₂
     · contradiction
   case right =>
-    intro p h₁
+    intro pid p h₁ h₂ h₃
     exists p
-    simp [List.mem_filter] at h₁
-    apply And.intro h₁.left
-    unfold errored
-    split <;> rename_i h₃
-    · rfl
-    · simp [h₃] at h₁
+    simp only [h₁, errored, h₂, reduceIte, h₃, and_self]
 
 theorem errorPolicies_eq_for_sound_policy_slice {request : Request} {entities : Entities} {slice policies : Policies} :
   IsSoundPolicySlice request entities slice policies →

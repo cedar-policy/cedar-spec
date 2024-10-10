@@ -60,7 +60,7 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
     subst h₃
     simp only [List.forM_cons'] at h₀
     cases h₄ : (typecheckPolicyWithEnvironments h' schema.toEnvironments) <;>
-    simp only [h₄, Except.bind_err] at h₀
+    simp only [h₄, Except.bind_err, reduceCtorEq] at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
       cases pin with
