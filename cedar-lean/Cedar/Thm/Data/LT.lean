@@ -42,7 +42,7 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;>
     simp only [Nat.lt_irrefl, decide_False, not_false_eq_true,
-      false_implies, decide_eq_true_eq, Nat.not_lt]
+      false_implies, decide_eq_true_eq, Nat.not_lt, reduceCtorEq]
     all_goals { omega }
   transitive a b c := by
     simp only [LT.lt]
@@ -56,7 +56,7 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;>
     simp only [ne_eq, not_true_eq_false, Nat.lt_irrefl, decide_eq_true_eq,
-      decide_False, or_self, imp_self, not_false_eq_true, forall_const, Option.some.injEq]
+      decide_False, or_self, imp_self, not_false_eq_true, forall_const, Option.some.injEq, reduceCtorEq]
     · apply Or.inr ; omega
     · apply Or.inl ; omega
     · bv_omega
@@ -109,21 +109,21 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
     unfold Ext.IPAddr.IPNet.lt
     cases a <;> cases b <;>
     simp only [not_false_eq_true, imp_self,
-      decide_eq_true_eq, not_true_eq_false] <;>
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
     exact CIDR.strictLT.asymmetric _ _
   transitive a b c := by
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNet.lt
     cases a <;> cases b <;> cases c <;>
     simp only [decide_eq_true_eq, imp_self, implies_true,
-      false_implies, forall_const] <;>
+      false_implies, forall_const, reduceCtorEq] <;>
     exact CIDR.strictLT.transitive _ _ _
   connected  a b   := by
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNet.lt
     cases a <;> cases b <;>
     simp only [ne_eq, Ext.IPAddr.IPNet.V4.injEq, Ext.IPAddr.IPNet.V6.injEq,
-      decide_eq_true_eq, not_false_eq_true, or_false, or_true, imp_self] <;>
+      decide_eq_true_eq, not_false_eq_true, or_false, or_true, imp_self, reduceCtorEq] <;>
     exact CIDR.strictLT.connected _ _
 
 ----- `<` is strict on `Ext` -----
@@ -296,38 +296,45 @@ mutual
 theorem Value.lt_irrefl (v : Value) :
   ¬ Value.lt v v
 := by
-  cases v <;> simp [Value.lt] <;> rename_i w
-  case prim => exact StrictLT.irreflexive w
-  case set =>
-    cases w ; rename_i ws ; simp [Value.lt]
-    have h₁ := Values.lt_irrefl ws
-    simp [h₁]
-  case record =>
-    cases w ; rename_i ws ; simp [Value.lt]
-    have h₁ := ValueAttrs.lt_irrefl ws
-    simp [h₁]
-  case ext => exact StrictLT.irreflexive w
+  cases v <;> simp only [Value.lt, decide_eq_true_eq, Bool.not_eq_true]
+  case prim w | ext w => exact StrictLT.irreflexive w
+  case set s =>
+    cases s ; rename_i vals
+    simp only [Value.lt]
+    simp only [Values.lt_irrefl vals]
+  case record r =>
+    cases r ; rename_i avs
+    simp only [Value.lt]
+    simp only [ValueAttrs.lt_irrefl avs]
+termination_by sizeOf v
+decreasing_by
+  all_goals { simp_wf ; omega }
 
 theorem Values.lt_irrefl (vs : List Value) :
   ¬ Values.lt vs vs
 := by
-  cases vs <;>
-  simp only [Values.lt, decide_True, Bool.false_eq_true, not_false_eq_true,
-    Bool.true_and, Bool.or_eq_true, not_or, Bool.not_eq_true]
-  rename_i hd tl
-  simp only [Value.lt_irrefl hd, Values.lt_irrefl tl, and_self]
+  cases vs
+  case nil => simp only [Values.lt, Bool.false_eq_true, not_false_eq_true]
+  case cons hd tl =>
+    simp only [Values.lt, decide_True, Bool.true_and, Bool.or_eq_true, not_or, Bool.not_eq_true]
+    simp only [Value.lt_irrefl hd, Values.lt_irrefl tl, and_self]
+termination_by sizeOf vs
+decreasing_by
+  all_goals { simp_wf ; omega }
 
 theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   ¬ ValueAttrs.lt vs vs
 := by
-  cases vs <;>
-  simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true, Bool.not_eq_true]
-  rename_i hd tl
-  cases hd ; rename_i a v ;
-  simp only [ValueAttrs.lt, StrictLT.irreflexive a,
-    Value.lt_irrefl v, ValueAttrs.lt_irrefl tl,
-    decide_False, decide_True, Bool.and_false,
-    Bool.or_self, Bool.and_self]
+  cases vs
+  case nil => simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true]
+  case cons hd tl =>
+    replace (a, v) := hd
+    simp only [ValueAttrs.lt, String.lt_irrefl, decide_False, decide_True, Bool.true_and,
+      Bool.false_or, Bool.and_self, Bool.or_eq_true, not_or, Bool.not_eq_true]
+    simp only [Value.lt_irrefl v, ValueAttrs.lt_irrefl tl, and_self]
+termination_by sizeOf vs
+decreasing_by
+  all_goals { simp_wf ; omega }
 
 end
 

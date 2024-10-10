@@ -56,8 +56,8 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
   intro h₁ h₂
   simp only [typecheckPolicy] at h₂
   cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
-  simp only [List.empty_eq, h₃] at h₂
-  split at h₂ <;> simp only [Except.ok.injEq] at h₂
+  simp only [List.empty_eq, h₃, reduceCtorEq] at h₂
+  split at h₂ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₂
   rename_i cp ht
   have hc := empty_capabilities_invariant request entities
   have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
@@ -102,7 +102,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
   intro h₀ h₂
   simp only [typecheckPolicyWithEnvironments] at h₂
   cases h₃ : List.mapM (typecheckPolicy policy) envs with
-  | error => simp only [h₃, Except.bind_err] at h₂
+  | error => simp only [h₃, Except.bind_err, reduceCtorEq] at h₂
   | ok ts =>
     simp only [h₃, Except.bind_ok, ite_eq_right_iff, imp_false, Bool.not_eq_true, allFalse] at h₂
     obtain ⟨env, ⟨h₀, h₁⟩⟩ := h₀

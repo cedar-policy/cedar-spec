@@ -155,9 +155,9 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
   cases h₀ : axs with
   | nil =>
     rw [substitute_action_nil_record]
-  | cons h t =>
+  | cons hd tl =>
     simp only [SubstituteActionPreservesEvaluation] at ih₁
-    have h₁ := ih₁ h
+    have h₁ := ih₁ hd
     simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
     rw [substitute_action_cons_record]
     simp only [mapOnVars, evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
@@ -165,7 +165,7 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     simp only [List.mapM_cons, bind_assoc, Except.bind_ok, pure_bind]
     rw [h₁]
     simp only [List.mapM_map]
-    have h₂ : ∀ x ∈ t,
+    have h₂ : ∀ x ∈ tl,
     (do
       let v ← evaluate (substituteAction request.action x.snd) request entities
       Except.ok (x.fst, v)) =
@@ -173,10 +173,11 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
       let v ← evaluate x.snd request entities
       Except.ok (x.fst, v))
     := by
-      intro x xin
+      intro x hx
+      replace (a, x) := x
       simp [h₀] at ih₁
       obtain ⟨_, h₂⟩ := ih₁
-      simp [h₂ x xin]
+      simp [h₂ a x hx]
     rw [List.mapM_congr h₂]
 
 theorem substitute_action_nil_call : ∀ (uid : EntityUID) (xfn : ExtFun),

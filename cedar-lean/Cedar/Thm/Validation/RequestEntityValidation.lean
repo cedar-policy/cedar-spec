@@ -11,9 +11,9 @@ open Cedar.Validation
 theorem instance_of_bool_type_refl (b : Bool) (bty : BoolType) :
   instanceOfBoolType b bty = true → InstanceOfBoolType b bty
 := by
-  simp only [InstanceOfBoolType, instanceOfBoolType]
+  simp only [instanceOfBoolType, InstanceOfBoolType]
   intro h₀
-  cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only at *
+  cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
 theorem instance_of_entity_type_refl (e : EntityUID) (ety : EntityType) :
   instanceOfEntityType e ety = true → InstanceOfEntityType e ety
@@ -28,7 +28,7 @@ theorem instance_of_ext_type_refl (ext : Ext) (extty : ExtType) :
 := by
   simp only [InstanceOfExtType, instanceOfExtType]
   intro h₀
-  cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only at *
+  cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
 theorem instance_of_type_refl (v : Value) (ty : CedarType) :
   instanceOfType v ty = true → InstanceOfType v ty
@@ -200,11 +200,11 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
   case some entry =>
     exists entry
     simp only [true_and]
-    split at h₀ <;> try simp only at h₀
+    split at h₀ <;> try simp only [reduceCtorEq] at h₀
     rename_i h₃
     constructor
     · exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
-    · split at h₀ <;> try simp only at h₀
+    · split at h₀ <;> try simp only [reduceCtorEq] at h₀
       rename_i h₄
       simp only [Set.all, List.all_eq_true] at h₄
       constructor
@@ -212,7 +212,7 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
         simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
         rw [← Set.in_list_iff_in_set] at ancin
         exact h₄ anc ancin
-      · split at h₀ <;> try simp only at h₀
+      · split at h₀ <;> try simp only [reduceCtorEq] at h₀
         unfold InstanceOfEntityTags
         rename_i h₅
         simp only [instanceOfEntitySchema.instanceOfEntityTags] at h₅
@@ -258,7 +258,7 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl request env.reqty h₀
-  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok] at h₁
+  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   constructor
   exact instance_of_entity_schema_refl entities env.ets h₂
   exact instance_of_action_schema_refl entities env.acts h₁
@@ -270,8 +270,8 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
 := by
   intro h₀ h₁
   simp only [RequestAndEntitiesMatchSchema]
-  simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
-    Bool.not_eq_true, imp_false, Classical.not_forall, not_imp, Bool.not_eq_false] at h₀
+  simp only [validateRequest, List.any_eq_true, ite_eq_then, not_exists, not_and, Bool.not_eq_true,
+    reduceCtorEq, imp_false, Classical.not_forall, not_imp, Bool.not_eq_false] at h₀
   simp only [validateEntities] at h₁
   obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
   exists env

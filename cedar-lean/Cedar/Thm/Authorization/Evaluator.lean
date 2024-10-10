@@ -57,15 +57,15 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
   simp [evaluate, h₂, Result.as, Coe.coe, Value.asBool] at h₁
   generalize h₃ : (evaluate e₂ request entities) = r₂
   simp [h₃] at h₁
-  cases r₂ <;> simp only [Except.bind_err] at h₁
+  cases r₂ <;> simp only [Except.bind_err, reduceCtorEq] at h₁
   case ok v₂ =>
-    cases v₂ <;> try simp only [Except.bind_err] at h₁
+    cases v₂ <;> try simp only [Except.bind_err, reduceCtorEq] at h₁
     case _ p₂ =>
-      cases p₂ <;> simp only [Except.bind_ok, Except.bind_err] at h₁
+      cases p₂ <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
       case _ b =>
         cases b
         case false =>
-          simp only [pure, Except.pure, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq] at h₁
+          simp only [pure, Except.pure, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, reduceCtorEq] at h₁
         case true => rfl
 
 /- some shorthand to make things easier to read and write -/
@@ -113,7 +113,7 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
         cases b with
         | true =>
           simp only [true_and]
-          simp only [h_e₁] at h₁
+          simp only [h_e₁, reduceCtorEq] at h₁
           cases h_e₂ : (evaluate e₂ request entities) with
           | ok val =>
             cases val <;>
@@ -149,22 +149,21 @@ theorem and_produces_bool_or_error (e₁ e₂ : Expr) (request : Request) (entit
     case prim prim =>
       cases prim <;> simp
       case int | string | entityUID =>
-        split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
+        split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq] at h
         split at h
-        case _ => simp only [Except.ok.injEq, Value.prim.injEq] at h
+        case _ => simp only [Except.ok.injEq, Value.prim.injEq, reduceCtorEq] at h
         case _ =>
           split at h
-          case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Value.prim.injEq] at h
-          case _ => simp only [Except.bind_err] at h
+          case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Value.prim.injEq, reduceCtorEq] at h
+          case _ => simp only [Except.bind_err, reduceCtorEq] at h
     case set | record | ext =>
       exfalso
-      split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err] at h
+      split at h <;> split at h <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq] at h
       split at h
-      case _ => simp only [Except.ok.injEq] at h
-      case _ =>
-        split at h
-        case _ => split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq] at h
-        case _ => simp only [Except.bind_err] at h
+      · simp only [Except.ok.injEq, reduceCtorEq] at h
+      · split at h
+        · split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, reduceCtorEq] at h
+        · simp only [Except.bind_err, reduceCtorEq] at h
 
 /--
   Corollary of the above:

@@ -126,7 +126,7 @@ instance : EmptyCollection (Set α) where
 
 -- enables ∈
 instance : Membership α (Set α) where
-  mem v s := v ∈ s.elts
+  mem s v := v ∈ s.elts
 
 -- enables ⊆
 instance [DecidableEq α] : HasSubset (Set α) where

@@ -117,13 +117,13 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
     have ⟨i, h₈⟩ := instance_of_int_is_int h₇
     subst h₈
     simp [apply₁, intOrErr]
-    cases __ : i.neg?
+    cases i.neg?
     case none =>
-      simp only [or_false, or_true, true_and]
+      simp only [or_false, or_true, true_and, reduceCtorEq]
       exact type_is_inhabited CedarType.int
     case some i' =>
-      simp only [Except.ok.injEq, false_or, exists_eq_left']
-      apply InstanceOfType.instance_of_int
+      simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
+      exact InstanceOfType.instance_of_int
   all_goals {
     exact type_is_inhabited CedarType.int
   }

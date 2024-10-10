@@ -39,7 +39,7 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
 := by
   unfold insertCanonical
   cases xs
-  case nil => simp only [ne_eq, not_false_eq_true]
+  case nil => simp only [ne_eq, cons_ne_self, not_false_eq_true]
   case cons hd tl =>
     simp only [gt_iff_lt, ne_eq]
     intro h
@@ -113,9 +113,9 @@ theorem insertCanonical_subset [LT β] [DecidableLT β] (f : α → β) (x : α)
     · simp only [h₁, cons_subset, mem_cons, true_or, or_true, true_and]
       apply Subset.trans ih
       simp only [cons_subset, mem_cons, true_or, true_and]
-      exact Subset.trans (List.subset_cons hd tl) (List.subset_cons x (hd :: tl))
+      exact Subset.trans (List.subset_cons_self hd tl) (List.subset_cons_self x (hd :: tl))
     · simp only [h₁, cons_subset, mem_cons, true_or, true_and]
-      exact Subset.trans (List.subset_cons hd tl) (List.subset_cons x (hd :: tl))
+      exact Subset.trans (List.subset_cons_self hd tl) (List.subset_cons_self x (hd :: tl))
 
 theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (xs : List α) :
   x :: xs ≡ insertCanonical id x xs
@@ -163,7 +163,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               subst h₆
               unfold List.Equiv
               simp only [cons_subset, mem_cons, true_or, or_true, Subset.refl, and_self,
-                subset_cons]
+                subset_cons_self]
             case inl =>
               replace ⟨h₃, h₄, h₅⟩ := h₃
               simp only [h₅]
@@ -265,7 +265,7 @@ theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α �
   case mpr =>
     unfold canonicalize
     intro h₀
-    cases xs <;> simp only [ne_eq, not_true_eq_false, not_false_eq_true] at *
+    cases xs <;> simp only [ne_eq, reduceCtorEq, not_false_eq_true, not_true_eq_false] at *
 
 theorem canonicalize_cons [LT β] [DecidableLT β] (f : α → β) (xs : List α) (a : α) :
   canonicalize f xs = canonicalize f ys → canonicalize f (a :: xs) = canonicalize f (a :: ys)
@@ -305,7 +305,7 @@ theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α →
     apply Subset.trans h
     simp only [cons_subset, mem_cons, true_or, true_and]
     apply Subset.trans ih
-    simp only [subset_cons]
+    simp only [subset_cons_self]
 
 /-- Corollary of `canonicalize_subseteq` -/
 theorem in_canonicalize_in_list [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {x : α} {xs : List α} :
