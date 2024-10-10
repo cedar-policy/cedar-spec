@@ -1,0 +1,27 @@
+{
+    "A": {
+        "commonTypes": {
+            "Task": {
+                "type": "Record",
+                "attributes": {
+                    "id": {
+                   "type": "String"
+                    }
+                }
+            },
+            "Tasks": {
+                "type": "Set",
+                "element": {
+                    "type": "Task"
+                }
+            }
+        },
+        "entityTypes": {
+             "Tasks": {
+            }
+   },
+        "actions": {
+  }
+       }
+    }ÿÿÿit  
+     

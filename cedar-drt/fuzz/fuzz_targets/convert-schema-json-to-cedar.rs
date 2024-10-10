@@ -58,7 +58,7 @@ fuzz_target!(|src: String| {
                     _,
                 ),
             ) => {
-                // This is currently not supported, but may be supported in the future.
+                // Currently, we ignore name-collisions errors, as JSON schemas encountering name-collisions errors are not supported for conversion to Cedar format; see cedar#1272
                 return;
             }
         }
