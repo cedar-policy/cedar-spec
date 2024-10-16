@@ -635,4 +635,41 @@ theorem union_subset_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] 
   · rw [union_comm]
     exact subset_union _ _
 
+theorem elts_subset_of_constructor [LT α] [DecidableLT α] [StrictLT α] :
+  ∀ (as : List α),
+    (Set.make as).elts ⊆ as
+  := by
+  intros as
+  simp [make, elts]
+  apply List.canonicalize_subseteq
+
+theorem in_constructor_in_set [LT α] [DecidableLT α] [StrictLT α]  :
+  ∀ (as : List α) (a : α),
+    a ∈ (Set.make as) →
+    a ∈ as
+  := by
+  intros as a mem
+  simp [make] at mem
+  simp [Membership.mem] at mem
+  simp [elts] at mem
+  apply (@List.in_canonicalize_in_list α α)
+  assumption
+
+/-! ### sizeOf -/
+
+theorem in_set_means_smaller [SizeOf α] (s : Set α) (x : α)
+  (h : x ∈ s) :
+  sizeOf x < sizeOf s
+  := by
+  cases s
+  rename_i elts
+  have hin : x ∈ elts := by
+    rw [Set.in_list_iff_in_mk]
+    assumption
+  have step₁ : sizeOf x < sizeOf elts := by
+    apply List.in_lists_means_smaller
+    assumption
+  simp
+  omega
+
 end Cedar.Data.Set

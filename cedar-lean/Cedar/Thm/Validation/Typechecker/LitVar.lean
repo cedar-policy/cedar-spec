@@ -26,8 +26,8 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₃ : typeOf (Expr.lit l) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {level : Level}
+  (h₃ : typeOf (Expr.lit l) c₁ env  (level == .infinite) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v ty
 := by
@@ -49,9 +49,9 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
   }
 
-theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (ty, c₂)) :
+  (h₃ : typeOf (Expr.var var) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType v ty
 := by
