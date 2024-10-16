@@ -37,6 +37,12 @@ def getJsonField (json : Json) (field : String) : ParseResult Json :=
   | .ok v => .ok v
   | .error e => .error s!"getJsonField {field}: {e}\n{json.pretty}"
 
+def getJsonFieldOr {a : Type} (json : Json) (field : String) (f : Json -> ParseResult a) (default : a) : ParseResult a :=
+  match json.getObjVal? field with
+  | .ok v => f v
+  | .error _ => .ok default
+
+
 def jsonToString (json : Json) : ParseResult String :=
   match json.getStr? with
   | .ok s => .ok s

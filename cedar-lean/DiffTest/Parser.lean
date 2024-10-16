@@ -506,9 +506,9 @@ partial def jsonToEntityOrRecordType (json : Lean.Json) : ParseResult CedarType 
   | "Entity" => do
     let lubArr ← getJsonField body "lub_elements" >>= jsonToArray
     let lub ← Array.mapM jsonToName lubArr
-    let level ← getJsonField body "level" >>= jsonToLevel
+    -- let level ← getJsonField body "level" >>= jsonToLevel
     if lub.size == 1
-    then .ok (.entity lub[0]! level)
+    then .ok (.entity lub[0]! Level.infinite)
     else .error s!"jsonToEntityOrRecordType: expected lub to have exactly one element\n{json.pretty}"
   | tag => .error s!"jsonToEntityOrRecordType: unknown tag {tag}"
 

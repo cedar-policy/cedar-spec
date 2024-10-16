@@ -62,7 +62,7 @@ def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
     | .ok json => do
       let policies ← getJsonField json "policies" >>= jsonToPolicies
       let schema ← getJsonField json "schema" >>= jsonToSchema
-      let level ← getJsonField json "level" >>= jsonToLevel
+      let level ← getJsonFieldOr json "level" jsonToLevel (Level.infinite)
       let result := runAndTime (λ () => validate policies schema level)
       .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
