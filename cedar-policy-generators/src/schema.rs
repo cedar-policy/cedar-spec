@@ -35,7 +35,7 @@ use cedar_policy_validator::{
     ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
     SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
 };
-use smol_str::SmolStr;
+use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
 
 /// Contains the schema, but also pools of constants etc
@@ -439,7 +439,7 @@ struct Bindings {
     // Note that `SchemaType`s should not contain any common type references
     bindings: BTreeMap<SchemaType, Vec<Id>>,
     // The set of `Id`s used in the bindings
-    ids: HashSet<Id>,
+    ids: HashSet<SmolStr>,
 }
 
 impl Bindings {
@@ -456,11 +456,17 @@ impl Bindings {
     fn add_binding(&mut self, binding: (SchemaType, Id)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
-        let mut new_id = id;
-        while self.ids.contains(&new_id) {
-            new_id = format!("_{new_id}").parse().unwrap();
-        }
-        self.ids.insert(new_id.clone());
+        let new_id = if self.ids.contains(id.as_ref()) {
+            let mut new_id = id.to_string();
+            while self.ids.contains(new_id.as_str()) {
+                new_id.push('_');
+            }
+            new_id.parse().unwrap()
+        } else {
+            id
+        };
+
+        self.ids.insert(new_id.clone().to_smolstr());
         if let Some(binding_for_ty) = self.bindings.get_mut(&ty) {
             binding_for_ty.push(new_id);
         } else {
