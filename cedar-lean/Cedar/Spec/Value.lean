@@ -128,6 +128,19 @@ instance : Coe Value (Result (Data.Set Value)) where
 
 ----- Derivations -----
 
+instance : LawfulBEq Attr where
+  rfl := by
+    intros a
+    simp
+  eq_of_beq := by
+    intros a b h
+    unfold Attr at a
+    unfold Attr at b
+    apply LawfulBEq.eq_of_beq
+    assumption
+
+
+deriving instance Repr, DecidableEq, BEq, LT for Attr
 deriving instance Repr, DecidableEq, BEq for Except
 deriving instance Repr, DecidableEq for Error
 deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for Name
@@ -135,6 +148,8 @@ deriving instance Repr, DecidableEq, Inhabited for EntityType
 deriving instance Repr, DecidableEq, Inhabited for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr, Inhabited for Value
+
+
 
 mutual
 
@@ -188,6 +203,9 @@ instance : LT Name where
 
 instance Name.decLt (a b : Name) : Decidable (a < b) :=
   if h : Name.lt a b then isTrue h else isFalse h
+
+instance Attr.decLt (a b : Attr) : Decidable (a < b) :=
+  if h : a < b then isTrue h else isFalse h
 
 def EntityUID.lt (a b : EntityUID) : Bool :=
   (a.ty < b.ty) ∨ (a.ty = b.ty ∧ a.eid < b.eid)

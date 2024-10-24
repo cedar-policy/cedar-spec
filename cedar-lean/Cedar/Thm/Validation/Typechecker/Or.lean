@@ -26,14 +26,14 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.or x₁ x₂) c env = Except.ok (ty, c')) :
+theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.or x₁ x₂) c env (l == .infinite) = Except.ok (ty, c')) :
   ∃ bty₁ c₁,
-    typeOf x₁ c env = .ok (.bool bty₁, c₁) ∧
+    typeOf x₁ c env (l == .infinite) = .ok (.bool bty₁, c₁) ∧
     if bty₁ = BoolType.tt
     then ty = .bool BoolType.tt ∧ c' = ∅
     else ∃ bty₂ c₂,
-      typeOf x₂ c env = .ok (.bool bty₂, c₂) ∧
+      typeOf x₂ c env (l == .infinite) = .ok (.bool bty₂, c₂) ∧
       if bty₁ = BoolType.ff
       then ty = .bool bty₂ ∧ c' = c₂
       else if bty₂ = BoolType.tt
@@ -43,7 +43,7 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       else ty = .bool BoolType.anyBool ∧ c' = c₁ ∩ c₂
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at *
+  cases h₂ : typeOf x₁ c env (l == .infinite) <;> simp [h₂] at *
   rename_i res₁
   simp [typeOfOr] at h₁
   split at h₁ <;> simp [ok, err] at h₁ <;>
@@ -54,7 +54,7 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     have ⟨ht, hc⟩ := h₁
     simp [←ht₁, ←hc₁, hc, ←ht]
   case ok.h_2 c₁ =>
-    cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
+    cases h₃ : typeOf x₂ c env (l == .infinite) <;> simp [h₃] at *
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁
     rename_i bty₂ hr₂
@@ -68,7 +68,7 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     cases bty₁ <;> simp at hneq₁ hneq₂
     exists BoolType.anyBool, c₁
     simp [←ht₁, ←hc₁]
-    cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
+    cases h₃ : typeOf x₂ c env (l == .infinite) <;> simp [h₃] at *
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁ <;>
     rename_i hr₂ <;>
@@ -84,10 +84,10 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       simp [←hr₂, ←ht₁, ←hc₁]
       cases bty₂ <;> simp at *
 
-theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.or x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.or x₁ x₂) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.or x₁ x₂) c₂ request entities ∧

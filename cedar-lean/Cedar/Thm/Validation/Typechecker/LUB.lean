@@ -136,6 +136,26 @@ theorem lubBool_comm {bty₁ bty₂ : BoolType} :
   simp [lubBool] ; split <;> rename_i h <;>
   rw [eq_comm] at h <;> simp [h]
 
+macro "trivial_contradiction" : tactic => do
+  `(tactic | (
+    unfold Not
+    intros contra
+    cases contra
+  ))
+
+macro "negpos" : tactic => do
+  `(tactic | (
+    rw [if_neg]
+    rw [if_pos]
+  ))
+
+macro "posneg" : tactic => do
+  `(tactic | (
+    rw [if_pos]
+    rw [if_neg]
+    trivial_contradiction
+  ))
+
 mutual
 theorem lubQualified_comm {qty₁ qty₂ : Qualified CedarType} :
   lubQualifiedType qty₁ qty₂ = lubQualifiedType qty₂ qty₁
@@ -173,6 +193,363 @@ theorem lubRecord_comm {rty₁ rty₂ : List (Attr × Qualified CedarType)} :
     by_contra
     apply h₂ a₁ hd₂ tl₂ a₁ hd₁ tl₁ <;> rfl
 
+
+
+theorem Level.min_comm {l₁ l₂ : Level} :
+  min l₁ l₂ = min l₂ l₁
+  := by
+  cases l₁ <;> cases l₂ <;> simp [min]
+  case _ =>
+    negpos
+    apply LevelLT.finite₂
+    trivial_contradiction
+  case _ =>
+    posneg
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂
+    cases lt : decide (n₁ < n₂) <;> simp at lt
+    case _ =>
+      cases eq : decide (n₁ = n₂) <;> simp at eq
+      case _ =>
+        negpos
+        apply LevelLT.finite₁
+        omega
+        trivial_contradiction
+        omega
+      case _ =>
+        subst eq
+        simp
+    case _ =>
+      posneg
+      omega
+      apply LevelLT.finite₁
+      omega
+
+
+theorem Level.min_one_of (l₁ l₂ l : Level) :
+  min l₁ l₂ = l →
+  (l = l₁) ∨ (l = l₂)
+  := by
+  intros h
+  cases l₁ <;> cases l₂
+  case _ =>
+    simp [min] at h
+    simp [h]
+  case _ =>
+    simp [min] at h
+    rw [if_neg] at h
+    simp [h]
+    trivial_contradiction
+  case _ =>
+    simp [min] at h
+    rw [if_pos] at h
+    simp [h]
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂
+    cases lt : decide (n₁ < n₂) <;> simp at lt
+    case _ =>
+      simp [min] at h
+      rw [if_neg] at h
+      cases eq : decide (n₁ = n₂) <;> simp at eq <;> simp [h]
+      trivial_contradiction
+      omega
+    case _ =>
+      simp [min] at h
+      rw [if_pos] at h
+      simp [h]
+      apply LevelLT.finite₁
+      apply lt
+
+theorem Level.min_is_min (l₁ l₂ : Level) :
+  min l₁ l₂ ≤ l₁ ∧ min l₁ l₂ ≤ l₂
+  := by
+  cases l₁ <;> cases l₂
+  case _ =>
+    simp [min, LE.le]
+  case _ =>
+    simp [min]
+    constructor
+    case _ =>
+      rw [if_neg]
+      simp [LE.le]
+      apply LevelLT.finite₂
+      trivial_contradiction
+    case _ =>
+      rw [if_neg]
+      simp [LE.le]
+      trivial_contradiction
+  case _ =>
+    simp [min]
+    rw [if_pos]
+    simp [LE.le]
+    apply LevelLT.finite₂
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂
+    simp [min]
+    cases lt : decide (n₁ < n₂) <;> simp at lt
+    case _ =>
+      rw [if_neg]
+      cases eq : decide (n₁ = n₂) <;> simp at eq
+      case _ =>
+        constructor <;> try (simp [LE.le] ; apply Or.inr ; apply LevelLT.finite₁ ; omega)
+        simp [LE.le]
+      case _ =>
+        subst eq
+        constructor <;> simp [LE.le]
+      trivial_contradiction
+      omega
+    case _ =>
+      rw [if_pos]
+      constructor <;> simp [LE.le]
+      apply Or.inr
+      apply LevelLT.finite₁
+      omega
+      apply LevelLT.finite₁
+      omega
+
+
+theorem Level.min_same (l : Level) : min l l = l
+  := by
+  cases l <;> simp [min]
+
+
+
+theorem Level.min_left (l₁ l₂ l' l'' : Level) :
+  min l₁ l₂ = l' →
+  min l₁ l' = l'' →
+  l' = l''
+  := by
+  intros h₁ h₂
+  have h₃ := Level.min_one_of l₁ l₂ l' h₁
+  cases h₃
+  case inl h' =>
+    rw [h'] at h₂
+    rw [Level.min_same] at h₂
+    simp [*]
+  case inr h' =>
+    rw [h'] at h₂
+    rw [h₂] at h₁
+    simp [*]
+
+theorem Level.lub_none_assoc (ety : EntityType) (ty : CedarType) (l₁ l₂  : Level) :
+  (ty ⊔ .entity ety l₁) = .none →
+  (ty ⊔ .entity ety l₂) = .none
+  := by
+  intros h
+  cases ty <;> simp [lub?] at h <;> simp [lub?]
+  apply h
+
+theorem Level.zero_is_minimum (l : Level) :
+  min l (.finite 0) = .finite 0
+  := by
+  simp only [min]
+  cases l
+  case _ =>
+    rw [if_neg]
+    trivial_contradiction
+  case _ l =>
+    cases l
+    case zero =>
+      split <;> simp [Level.finite]
+    case succ l =>
+      rw [if_neg]
+      trivial_contradiction
+      omega
+
+
+theorem Level.min_lemma (l₁ l₂ l₃ l₄ l₅ : Level) :
+  min l₁ l₂ = l₄ →
+  min l₂ l₃ = l₅ →
+  (min l₄ l₃) = (min l₁ l₅)
+  := by
+  intros h₁ h₂
+  <;> cases l₁ <;> cases l₂ <;> cases l₃ <;> cases l₄ <;> cases l₅
+  <;> simp [min] <;> simp [min] at h₁ <;> simp [min] at h₂
+  <;> try assumption
+  case _ =>
+    cases h₁
+  case _ =>
+    rw [if_neg] at h₁
+    simp at h₁
+    subst h₁
+    assumption
+    trivial_contradiction
+  case _ =>
+    rw [if_neg] at h₁
+    simp at h₁
+    subst h₁
+    rw [if_pos]
+    rw [if_neg]
+    simp [h₂]
+    trivial_contradiction
+    apply LevelLT.finite₂
+    trivial_contradiction
+  case _ =>
+    cases h₁
+  case _ =>
+    cases h₁
+  case _ =>
+    split at h₂ <;> cases h₂
+  case _ =>
+    rename_i n₁ n₂ n₃ n₄
+    rw [if_neg] at h₁
+    simp at h₁
+    subst h₁
+    cases lt : decide (n₁ < n₂) <;> simp at lt
+    case _ =>
+      rw [if_neg]
+      rw [if_neg]
+      rw [if_neg] at h₂
+      assumption
+      trivial_contradiction
+      omega
+      trivial_contradiction
+      trivial_contradiction
+      omega
+    case _ =>
+      rw [if_pos]
+      rw [if_neg]
+      rw [if_pos] at h₂
+      assumption
+      apply LevelLT.finite₁
+      assumption
+      trivial_contradiction
+      apply LevelLT.finite₁
+      assumption
+    trivial_contradiction
+  case _ =>
+    exfalso
+    apply h₁
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂
+    repeat rw [if_pos]
+    simp [h₁]
+    repeat apply LevelLT.finite₂
+  case _ =>
+    cases h₂
+  case _ =>
+    exfalso
+    apply h₁
+    apply LevelLT.finite₂
+  case _ =>
+    cases h₂
+  case _ =>
+    rename_i n₁ n₂ n₃ n₄
+    rw [if_neg] at h₂
+    simp at h₂
+    subst h₂
+    have h := h₁.right
+    subst h
+    split <;> rfl
+    trivial_contradiction
+  case _ =>
+    exfalso
+    apply h₂
+    apply LevelLT.finite₂
+  case _ =>
+    split at h₁ <;> cases h₁
+  case _ =>
+    exfalso
+    apply h₂
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂ n₃ n₄
+    have h := h₂.right
+    subst h
+    split at h₁
+    case _ h =>
+      rw [if_pos]
+      rw [if_pos]
+      simp [h₁]
+      assumption
+      apply LevelLT.finite₂
+    case _ h =>
+      rw [if_pos]
+      rw [if_neg]
+      simp [h₁]
+      assumption
+      apply LevelLT.finite₂
+  case _ =>
+    split at h₁ <;> cases h₁
+  case _ =>
+    split at h₁ <;> cases h₁
+  case _ =>
+    split at h₂ <;> cases h₂
+  case _ =>
+    rename_i n₁ n₂ n₃ n₄ n₅
+    cases lt₁₂ : decide (n₁ < n₂) <;> simp at lt₁₂ <;>
+    cases lt₂₃ : decide (n₂ < n₃) <;> simp at lt₂₃
+    case _ =>
+      rw [if_neg] at h₁
+      simp at h₁
+      subst h₁
+      rw [if_neg] at h₂
+      simp at h₂
+      subst h₂
+      rw [if_neg]
+      rw [if_neg]
+      repeat (trivial_contradiction ; omega)
+    case _ =>
+      rw [if_neg] at h₁
+      simp at h₁
+      subst h₁
+      rw [if_pos] at h₂
+      simp at h₂
+      subst h₂
+      rw [if_pos]
+      rw [if_neg]
+      trivial_contradiction
+      omega
+      repeat (apply LevelLT.finite₁ ; omega)
+      trivial_contradiction
+      omega
+    case _ =>
+      rw [if_pos] at h₁
+      simp at h₁
+      subst h₁
+      rw [if_neg] at h₂
+      simp at h₂
+      subst h₂
+      cases lt₁₃ : decide (n₁ < n₃) <;> simp at lt₁₃
+      case _ =>
+        repeat (rw [if_neg])
+        repeat (trivial_contradiction ; omega)
+      case _ =>
+        repeat (rw [if_pos])
+        repeat (apply LevelLT.finite₁ ; assumption)
+      trivial_contradiction
+      omega
+      apply LevelLT.finite₁
+      assumption
+    case _ =>
+      rw [if_pos] at h₁
+      simp at h₁
+      subst h₁
+      rw [if_pos] at h₂
+      simp at h₂
+      subst h₂
+      cases lt₁₃ : decide (n₁ < n₃) <;> simp at lt₁₃
+      case _ =>
+        rw [if_neg]
+        rw [if_pos]
+        cases eq₁₃ : decide (n₁ = n₃) <;> simp at eq₁₃ <;> omega
+        apply LevelLT.finite₁
+        omega
+        trivial_contradiction
+        omega
+      case _ =>
+        repeat rw [if_pos]
+        repeat (apply LevelLT.finite₁ ; assumption)
+      repeat (apply LevelLT.finite₁ ; omega)
+
+theorem EntityType.eq_comm {t₁ t₂ : EntityType} : t₁ = t₂ → t₂ = t₁ := by
+  intros h
+  rw [h]
+
 theorem lub_comm {ty₁ ty₂ : CedarType} :
   (ty₁ ⊔ ty₂) = (ty₂ ⊔ ty₁)
 := by
@@ -184,22 +561,41 @@ theorem lub_comm {ty₁ ty₂ : CedarType} :
     have h := @lub_comm s₁ s₂
     simp [h]
   case h_3 =>
+    rename_i ety₁ l₁ ety₂ l₂
+    simp
+    rw [Level.min_comm]
+    cases h : (decide (ety₁ = ety₂))
+    case false =>
+      simp at h
+      rw [if_neg]
+      rw [if_neg]
+      intros h'
+      rw [h'] at h
+      apply h
+      rfl
+      apply h
+    case true =>
+      simp at h
+      rw [h]
+  case h_4 =>
     rename_i rty₁ rty₂
     have h := @lubRecord_comm rty₁ rty₂
     simp [h]
-  case h_4 =>
-    rename_i h₁ h₂ h₃
-    split <;> split <;> rename_i h₄
-    case isTrue.h_4 | isFalse.h_4 =>
-      rename_i _ _ h₅ _ _ _ _
-      rw [eq_comm] at h₅
-      simp [h₅]
+  case h_5 =>
+    rename_i h₁ h₂ h₃ h₄
+    split <;> split
+    case isTrue.h_5 | isFalse.h_5 =>
+      rename_i _ _ h _ _ _ _ _ _
+      rw [eq_comm] at h
+      simp [h]
+
     all_goals {
-      rename_i v₁ v₂
+      rename_i h₄ v₁ v₂ _
       by_contra
       try { apply h₁ v₂ v₁ <;> rfl  }
       try { apply h₂ v₂ v₁ <;> rfl  }
-      try { apply h₃ v₂ v₁ <;> rfl  }
+      try { apply h₃ v₁ v₂ <;> rfl  }
+      try { apply h₄ v₂ v₁ <;> rfl }
     }
 end
 
@@ -213,7 +609,9 @@ theorem lub_refl (ty : CedarType) :
   case h_2 eltTy =>
     have h₁ := lub_refl eltTy
     simp [h₁]
-  case h_3 rty =>
+  case h_3 ety level =>
+    cases level <;> simp [min, Option.min]
+  case h_4 rty =>
     have h₁ := lubRecordType_refl rty
     simp [h₁]
 
@@ -268,8 +666,104 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
     simp only
   }
 
-
+theorem Level.min_trans {l₁ l₂ l₃ : Level} :
+  min l₁ l₂ = l₂ →
+  min l₂ l₃ = l₃ →
+  min l₁ l₃ = l₃
+  := by
+  intros h₁ h₂
+  cases l₁ <;> cases l₂
+  case _ =>
+    simp [min] at *
+    intros h₃
+    apply h₂
+    apply h₃
+  case _ l₂ =>
+    simp only [min]
+    rw [if_neg]
+    trivial_contradiction
+  case _ l₁ =>
+    exfalso
+    simp only [min] at h₁
+    rw [if_pos] at h₁
+    contradiction
+    apply LevelLT.finite₂
+  case _ l₁ l₂ =>
+    cases lt : decide (l₁ < l₂) <;> simp at lt
+    case _ => -- false branch:  l₁ ≥ l₂
+      cases eq : decide (l₁ = l₂) <;> simp at eq
+      case _ => -- false branch: l₁ ≠ l₂
+        have gt : l₁ > l₂ := by omega
+        clear h₁ -- h₁ doesn't tell us anything
+        cases l₃
+        case _ =>
+          exfalso
+          simp only [min] at h₂
+          rw [if_pos] at h₂
+          contradiction
+          apply LevelLT.finite₂
+        case _ l₃ =>
+          simp only [min] at h₂
+          cases lt' : decide (l₂ < l₃) <;> simp at lt'
+          case _ => -- false branch: l₂ ≥ l₃
+            cases eq' : decide (l₂ = l₃) <;> simp at eq'
+            case _ => -- false bracnh: l₂ ≠ l₃ => l₂ > l₃
+              have gt' : l₂ > l₃ := by omega
+              simp only [min]
+              rw [if_neg]
+              trivial_contradiction
+              omega
+            case _ => -- true branch: l₂ = l₂
+              subst eq'
+              simp only [min]
+              rw [if_neg]
+              trivial_contradiction
+              omega
+          case _ => -- true branch l₂ < l₃
+            exfalso
+            rw [if_pos] at h₂
+            simp at h₂
+            subst h₂
+            omega
+            apply LevelLT.finite₁
+            assumption
+      case _ => -- true branch: l₁ = l₂
+        subst eq
+        cases l₃
+        case _ =>
+          exfalso
+          simp only [min] at h₂
+          rw [if_pos] at h₂
+          contradiction
+          apply LevelLT.finite₂
+        case _ l₃ =>
+          clear h₁
+          cases lt' : decide (l₁ < l₃) <;> simp at lt'
+          case _ => -- false branch: l₁ ≥ l₃
+            cases eq' : decide (l₁ = l₃) <;> simp at eq'
+            case _ => -- false branch: l₁ ≠ l₃
+              assumption
+            case _ => -- true branch: l₁ = l₃
+              subst eq'
+              assumption
+          case _ => -- true branch: l₁ < l₃
+            exfalso
+            simp only [min] at h₂
+            rw [if_pos] at h₂
+            simp at h₂
+            omega
+            apply LevelLT.finite₁
+            assumption
+    case _ =>
+      exfalso
+      simp only [min] at h₁
+      rw [if_pos] at h₁
+      simp at h₁
+      omega
+      apply LevelLT.finite₁
+      assumption
 mutual
+
 theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
   (ty₁ ⊔ ty₂) = some ty₂ →
   (ty₂ ⊔ ty₃) = some ty₃ →
@@ -295,7 +789,26 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
     rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
     have h₅ := lub_trans h₃ h₄
     simp [h₅]
-  case h_3 rty₁ rty₃ =>
+  case h_3 ety₁ l₁ ety₂ l₂ =>
+    unfold lub? at h₁ h₂
+    cases ty₂ <;> simp at h₁ h₂
+    rename_i ty' l'
+    have ⟨heq_ety₁, heq_l₁⟩ := h₁
+    have ⟨heq_ety₂, heq_l₂⟩ := h₂
+    cases heq : (decide (ety₁ = ety₂)) <;> simp at heq
+    case false =>
+      simp
+      exfalso
+      apply heq
+      rw [← heq_ety₁] at heq_ety₂
+      apply heq_ety₂
+    case true =>
+      rw [heq]
+      simp
+      apply Level.min_trans
+      apply heq_l₁
+      apply heq_l₂
+  case h_4 rty₁ rty₃ =>
     unfold lub? at h₁ h₂
     cases ty₂ <;> simp at h₁ h₂
     rename_i mty₂ ; cases mty₂ ; rename_i rty₂
@@ -305,14 +818,14 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
     rw [eq_comm] at h₁ h₂ ; subst h₁ h₂
     have h₅ := lubRecordType_trans h₃ h₄
     simp [h₅]
-  case h_4 =>
+  case h_5 =>
+
     split
     case isTrue h₃ => simp [h₃]
-    case isFalse h₃ h₄ h₅ h₆ =>
-      exfalso
+    case isFalse h₃ h₄ h₅ h₆ h₇ =>
       unfold lub? at h₁ h₂
       cases ty₁ <;> cases ty₂ <;> simp at h₁ <;>
-      cases ty₃ <;> simp at h₂ <;> simp at h₆
+      cases ty₃ <;> simp at h₂ <;> simp at h₆ <;> exfalso
       case bool bty₁ _ bty₃ =>
         apply h₃ bty₁ bty₃ <;> rfl
       case set sty₁ _ sty₃ =>
@@ -320,10 +833,17 @@ theorem lub_trans {ty₁ ty₂ ty₃ : CedarType} :
       case record rty₁ _ rty₃ =>
         cases rty₁ ; cases rty₃
         rename_i rty₁' rty₃'
-        apply h₅ rty₁' rty₃' <;> rfl
+        apply h₆ rty₁' rty₃' <;> rfl
+      case entity =>
+        rename_i cty₁ cty₂ ety₁ l₁ ety₂ l₂ ety' l'
+        apply h₅ ety₁ l₁ <;> rfl
+      case ext =>
+        apply h₇
+        rw [← h₂]
+        rw [h₁]
       all_goals {
-        rename_i ety₁ ety₂ ety₃
-        rw [h₁] at h₆ ; contradiction
+        apply h₇
+        rfl
       }
 
 theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)} :
@@ -414,7 +934,45 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     have h₄ := lub_left_subty h₂ <;>
     simp [subty, h₃] at h₄
     assumption
-  case h_3 rty₁ rty₂ =>
+  case h_3 ety₁ l₁ ety₂ l₂ =>
+    cases heq₁ : decide (ety₁ = ety₂) <;> split <;> simp at heq₁
+    any_goals try {
+      rw [if_neg] at h₁
+      contradiction
+      simp
+      apply heq₁
+    }
+    case true.h_1 o t heq₂ =>
+      rw [if_pos] at h₁
+      injection h₁
+      rename_i heq₃
+      cases ty₃ <;> simp at heq₃
+      rename_i ety' l'
+      unfold lub? at heq₂
+      cases t <;> simp at heq₂
+      rename_i ety'' l''
+      have ⟨_, heq₄⟩ := heq₃
+      have ⟨heq₅, heq₆ ,heq₇⟩ := heq₂
+      simp
+      rw [← heq₆]
+      rw [heq₅]
+      apply And.intro
+      rfl
+      rw [eq_comm]
+      apply Level.min_left
+      apply heq₄
+      apply heq₇
+      rw [heq₁]
+      simp
+    case true.h_2 o t heq₂ =>
+      exfalso
+      rw [heq₁] at h₁
+      simp at h₁
+      cases ty₃ <;> simp at h₁
+      rename_i ety' l'
+      unfold lub? at heq₂
+      simp [*] at heq₂
+  case h_4 rty₁ rty₂ =>
     cases h₂ : lubRecordType rty₁ rty₂ <;> simp [h₂] at h₁
     rename_i rty₃
     subst h₁
@@ -424,7 +982,7 @@ theorem lub_left_subty {ty₁ ty₂ ty₃ : CedarType} :
     have h₄ := lubRecordType_left_subty h₂ <;>
     simp [h₃] at h₄
     assumption
-  case h_4 =>
+  case h_5 =>
     split at h₁ <;> try contradiction
     rename_i h₂
     subst h₂
@@ -494,9 +1052,9 @@ theorem lubBool_assoc_none_some {ty₁ ty₂ : CedarType} {bty₁ bty₂ : BoolT
   simp at h₂
   unfold lub? at h₁
   split at h₁ <;> try contradiction
-  rename_i ty₁' ty₂' ty₃' h₃ h₄ h₅
+  rename_i ty₁' ty₂' ty₃' h₃ h₄ h₅ h₆
   subst h₂
-  cases ty₁' <;> simp [lub?]
+  cases ty₁' <;> try simp [lub?]
   rename_i bty₃
   split at h₁ <;> try contradiction
   apply h₃ bty₃ bty₁ <;> rfl
@@ -522,7 +1080,29 @@ theorem lub_assoc_none_some {ty₁ ty₂ ty₃ ty₄ : CedarType}
     cases h₄ : ty₁' ⊔ sty₂ <;> simp [h₄] at h₁
     have h₅ := lub_assoc_none_some h₄ h₃
     simp [h₅]
-  case h_3 rty₂ rty₃ =>
+  case h_3 ety₁ l₁ ety₂ l₂ =>
+    cases heq : decide (ety₁ = ety₂) <;> simp at heq
+    case false =>
+      rw [if_neg] at h₂
+      contradiction
+      cases heq₂ : (ety₁ == ety₂)
+      simp
+      simp at heq₂
+      rw [heq₂] at heq
+      contradiction
+    case true =>
+      rw [heq] at h₂
+      rw [if_pos] at h₂
+      simp at h₂
+      cases ty₄ <;> simp at h₂
+      rename_i ety' l'
+      have ⟨h₂, _⟩ := h₂
+      rw [← h₂]
+      rw [← heq]
+      apply Level.lub_none_assoc
+      apply h₁
+      simp
+  case h_4 rty₂ rty₃ =>
     cases h₃ : lubRecordType rty₂ rty₃ <;> simp [h₃] at h₂
     subst h₂
     unfold lub? at h₁ ; unfold lub?
@@ -532,7 +1112,7 @@ theorem lub_assoc_none_some {ty₁ ty₂ ty₃ ty₄ : CedarType}
     cases h₄ : lubRecordType rty₁ rty₂ <;> simp [h₄] at h₁
     have h₅ := lubRecordType_assoc_none_some h₄ h₃
     simp [h₅]
-  case h_4 =>
+  case h_5 =>
     split at h₂ <;> try contradiction
     rename_i h₃ ; simp at h₂
     subst h₂ h₃
@@ -623,7 +1203,40 @@ theorem lub_assoc_some_some {ty₁ ty₂ ty₃ ty₄ ty₅ : CedarType}
   case int | string =>
     subst h₁ h₂
     simp [lub?]
-  case entity | ext =>
+  case entity ety₁ l₁ ety₂ l₂ ety₃ l₃ =>
+    have ⟨h₁, h₃⟩ := h₁
+    have ⟨h₄, h₅⟩ := h₂
+    cases ty₄ <;> cases ty₅ <;> simp [lub?] <;> simp at h₃ <;> simp at h₅
+    rename_i h₆ ety₄ l₄ ety₅ l₅
+    have ⟨h₇, h₈⟩ := h₃
+    have ⟨h₉, h₁₀⟩ := h₅
+    cases heq₁ : decide (ety₄ = ety₃) <;> cases heq₂ : decide (ety₁ = ety₅) <;> simp at heq₁ <;> simp at heq₂
+    case entity.entity.false.false =>
+      rw [if_neg]
+      rw [if_neg]
+      apply heq₂
+      apply heq₁
+    case entity.entity.false.true =>
+      exfalso
+      apply heq₁
+      subst h₇ h₆ h₄
+      rfl
+    case entity.entity.true.false =>
+      exfalso
+      apply heq₂
+      subst h₆ h₉
+      rfl
+    case entity.entity.true.true =>
+      rw [heq₁]
+      rw [heq₂]
+      simp
+      apply And.intro
+      rw [← h₉]
+      rw [h₄]
+      apply Level.min_lemma
+      apply h₈
+      apply h₁₀
+  case ext =>
     have ⟨hl₁, hr₁⟩ := h₁
     have ⟨hl₂, hr₂⟩ := h₂
     subst hl₁ hr₁ hl₂ hr₂
@@ -734,5 +1347,172 @@ theorem lub_assoc (ty₁ ty₂ ty₃ : CedarType) :
     apply lub_assoc_none_some h₂ h₁
   case some.some ty₄ ty₅ =>
     exact lub_assoc_some_some h₁ h₂
+
+theorem record_lub_inversion₁ (rty₁ rty₂ : Map Attr QualifiedType) :
+  (.record rty₁ ⊔ .record rty₂) = none →
+  lubRecordType rty₁.1 rty₂.1 = none
+  := by
+  intros h
+  unfold lub? at h
+  cases h' : lubRecordType rty₁.1 rty₂.1
+  case _ =>
+    rfl
+  case _ =>
+    exfalso
+    rw [h'] at h
+    simp at h
+
+theorem record_lub_inversion₂ (rty₁ rty₂ : Map Attr QualifiedType) (ty : CedarType) :
+  (.record rty₁ ⊔ .record rty₂) = some ty →
+  ∃ rty₃, ty = .record rty₃
+  := by
+  intros h
+  unfold lub? at h
+  cases h' : lubRecordType rty₁.1 rty₂.1
+  case _ =>
+    exfalso
+    simp [h'] at h
+  case _ kvs =>
+    have ⟨kvs₁⟩ := rty₁
+    have ⟨kvs₂⟩ := rty₂
+    rw [h'] at h
+    simp at h
+    exists (Map.mk kvs)
+    rw [h]
+
+
+
+theorem lubs_to_entity (ty₁ ty₂ : CedarType) (ety : EntityType) (l₁ : Level)
+  (lub : (ty₁ ⊔ ty₂) = .some (.entity ety l₁)) :
+  ∃ l₂, ty₂ = .entity ety l₂
+  := by
+  cases ty₁ <;> cases ty₂
+    <;> try (solve | simp [lub?] at lub)
+  case _ =>
+    simp [lub?] at lub
+    rename_i ety' l' ety'' l''
+    exists l''
+    have ⟨h₁, h₂, _⟩ := lub
+    subst h₁
+    subst h₂
+    simp [lub]
+  case _ =>
+    simp [lub?] at lub
+    rename_i ty₁ ty₂
+    cases inner_lub : ty₁ ⊔ ty₂
+      <;> simp [inner_lub] at lub
+  case _ =>
+    rename_i rty₁ rty₂
+    exfalso
+    have ⟨rty₃, contra⟩ : ∃ rty₃, CedarType.entity ety l₁ = .record rty₃ := by
+      apply record_lub_inversion₂
+      apply lub
+    simp at contra
+
+theorem lub_to_entity_level_bound (ty₁ : CedarType) (ety : EntityType) (l₁ l₂ : Level)
+  (lub : (ty₁ ⊔ (.entity ety l₁)) = some (.entity ety l₂)) :
+  l₂ ≤ l₁
+  := by
+  cases ty₁
+  <;> try simp [lub?] at lub
+  rename_i ety' l'
+  have h := lub.right
+  simp [min] at h
+  cases l' <;> cases l₁
+  case _ =>
+    simp at h
+    subst h
+    simp [LE.le]
+  case _ =>
+    rw [if_neg] at h
+    subst h
+    simp [LE.le]
+    unfold Not
+    intros contra
+    cases contra
+  case _ =>
+    rw [if_pos] at h
+    subst h
+    simp [LE.le]
+    apply LevelLT.finite₂
+    apply LevelLT.finite₂
+  case _ =>
+    rename_i n₁ n₂
+    cases lt : decide (n₁ < n₂) <;> simp at lt
+    case _ =>
+      rw [if_neg] at h
+      subst h
+      simp [LE.le]
+      unfold Not
+      intros contra
+      cases contra
+      omega
+    case _ =>
+      rw [if_pos] at h
+      subst h
+      simp [LE.le]
+      apply Or.inr
+      apply LevelLT.finite₁
+      omega
+      apply LevelLT.finite₁
+      omega
+
+theorem lub_upper_bounds (ety : EntityType) (l₁ l₂ l : Level)
+  (h : ((.entity ety l₁) ⊔ (.entity ety l₂)) = some (.entity ety l)) :
+  l ≤ l₁ ∧ l ≤ l₂
+  := by
+  constructor
+  case _ =>
+    apply lub_to_entity_level_bound
+    rw [lub_comm]
+    apply h
+  case _ =>
+    apply lub_to_entity_level_bound
+    apply h
+
+theorem lub_record_inversion₁ (ty₁ ty₂ : CedarType) (rty : Map Attr QualifiedType)
+  (h : (ty₁ ⊔ ty₂) = some (.record rty)) :
+  ∃ rty', ty₂ = .record rty'
+  := by
+  cases ty₁ <;> cases ty₂ <;> try simp [lub?] at h
+  case set ty₁ ty₂ =>
+    exfalso
+    cases sublub : (ty₁ ⊔ ty₂) <;> simp [sublub] at h
+  case record rty₁ rty₂ =>
+    exists rty₂
+
+theorem lub_record_inversion₂ (ty₁ : CedarType) (rty rty₂ : Map Attr QualifiedType) (k : Cedar.Spec.Attr) (qty : QualifiedType) (ety : EntityType) (l : Level)
+  (lub_eq : (ty₁ ⊔ (.record rty₂)) = some (.record rty))
+  (in_rty : rty.find? k = some qty)
+  (is_entity : qty.getType = .entity ety l)  :
+  ∃ (l' : Level) (qty' : QualifiedType),
+    rty₂.find? k = some qty' ∧ qty'.getType = .entity ety l' ∧ l ≤ l'
+  := by
+  cases ty₁ <;> try (solve | simp [lub?] at lub_eq)
+  rename_i rty₁
+  unfold lub? at lub_eq
+  cases inner : lubRecordType rty₁.1 rty₂.1
+  <;> simp [inner] at lub_eq
+  rename_i kvs
+  have rel : IsLubOfRecordTypes kvs rty₁.1 rty₂.1 := by
+    refine lubRecordType_is_lub_of_record_types inner
+  rw [← lub_eq] at in_rty
+  have ⟨qty₁, qty₂, _, find₂, lubbed⟩ := lubRecord_find_implies_find rel in_rty
+  have lub_getType : (qty₁.getType ⊔ qty₂.getType) = qty.getType := by
+    exact lubQualified_is_lub_of_getType lubbed
+  rw [is_entity] at lub_getType
+  have ⟨l₂, step₁⟩ : ∃ l, qty₂.getType = .entity ety l := by
+    apply lubs_to_entity
+    apply lub_getType
+  exists l₂
+  exists qty₂
+  cases rty₂
+  rename_i kvs₂
+  simp at find₂
+  simp [find₂, step₁]
+  apply lub_to_entity_level_bound
+  rw [step₁] at lub_getType
+  apply lub_getType
+
 
 end Cedar.Thm
