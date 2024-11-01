@@ -1,3 +1,4 @@
+
 # Cedar Specification
 
 This repository contains the formalization of Cedar and infrastructure for performing differential randomized testing (DRT) between the formalization and Rust production implementation available in [`cedar`](https://github.com/cedar-policy/cedar).
