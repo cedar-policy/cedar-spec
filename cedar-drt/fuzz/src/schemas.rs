@@ -196,7 +196,14 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
             &rhs.member_of_types.iter().collect::<BTreeSet<_>>(),
         )
         .map_err(|e| format!("memberOfTypes are not equal: {e}"))?;
-        Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))
+        Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))?;
+        match (&lhs.tags, &rhs.tags) {
+            (Some(ts1), Some(ts2)) => {
+                Equiv::equiv(ts1, ts2).map_err(|msg| format!("mismatched entity tags: {msg}"))
+            }
+            (None, None) => Ok(()),
+            (Some(ts), None) | (None, Some(ts)) => Err(format!("only one side has tags: {ts}")),
+        }
     }
 }
 
