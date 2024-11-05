@@ -5,7 +5,8 @@ version = "4.0.0"
 publish = false
 
 [dependencies]
-arbitrary = "1.3"
+arbitrary = "=1.3.2"
+derive_arbitrary = "=1.3.2"
 cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary"] }
 clap = { version = "4.3.16", features = ["derive"] }
