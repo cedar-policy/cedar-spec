@@ -71,7 +71,9 @@ impl<'a> Arbitrary<'a> for Input {
         })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+    fn try_size_hint(
+        depth: usize,
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Schema::arbitrary_size_hint(depth)
     }
 }

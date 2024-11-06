@@ -27,7 +27,7 @@ use crate::schema::{
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
-use arbitrary::{Arbitrary, Unstructured};
+use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, UnreservedId};
 use cedar_policy_validator::json_schema;
 use smol_str::SmolStr;
@@ -1916,9 +1916,11 @@ impl<'a> ExprGenerator<'a> {
 
     /// size hint for arbitrary_attr_value_for_type()
     #[allow(dead_code)]
-    pub fn generate_attr_value_for_type_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::recursion_guard(depth, |depth| {
-            arbitrary::size_hint::and(
+    pub fn generate_attr_value_for_type_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        arbitrary::size_hint::try_recursion_guard(depth, |depth| {
+            Ok(arbitrary::size_hint::and(
                 size_hint_for_range(0, 7),
                 arbitrary::size_hint::or_all(&[
                     <bool as Arbitrary>::size_hint(depth),
@@ -1931,13 +1933,13 @@ impl<'a> ExprGenerator<'a> {
                         ),
                         size_hint_for_ratio(9, 10),
                         size_hint_for_range(0, 4),
-                        Self::generate_attr_value_for_type_size_hint(depth),
+                        Self::generate_attr_value_for_type_size_hint(depth)?,
                     ]),
                     (1, None), // not sure how to hint for arbitrary_loop()
                     (1, None), // not sure how to hint for arbitrary_loop()
                     (1, None), // not sure how to hint for arbitrary_loop()
                 ]),
-            )
+            ))
         })
     }
 
@@ -2088,14 +2090,16 @@ impl<'a> ExprGenerator<'a> {
 
     /// size hint for generate_attr_value_for_schematype()
     #[allow(dead_code)]
-    pub fn generate_attr_value_for_schematype_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::recursion_guard(depth, |depth| {
-            arbitrary::size_hint::or_all(&[
-                Self::generate_attr_value_for_type_size_hint(depth),
+    pub fn generate_attr_value_for_schematype_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        arbitrary::size_hint::try_recursion_guard(depth, |depth| {
+            Ok(arbitrary::size_hint::or_all(&[
+                Self::generate_attr_value_for_type_size_hint(depth)?,
                 (1, None), // not sure how to hint for arbitrary_loop()
                 Self::arbitrary_uid_with_type_size_hint(depth),
-                Self::generate_attr_value_for_type_size_hint(depth),
-            ])
+                Self::generate_attr_value_for_type_size_hint(depth)?,
+            ]))
         })
     }
 
