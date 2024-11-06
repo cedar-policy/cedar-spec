@@ -288,9 +288,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth),
+    fn try_size_hint(
+        depth: usize,
+    ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
@@ -301,7 +303,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
-        ])
+        ]))
     }
 }
 
