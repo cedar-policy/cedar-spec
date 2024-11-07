@@ -37,7 +37,7 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 def duration? (i : Int) : Option Duration :=
   Int64.mk? i
 
-def duration_in? (i: Int) (suffix: String) : Option Duration :=
+def durationUnits? (i: Int) (suffix: String) : Option Duration :=
   match suffix with
   | "ms" => duration? i
   | "s" => duration? (i * MILLISECONDS_PER_SECOND)
@@ -46,7 +46,7 @@ def duration_in? (i: Int) (suffix: String) : Option Duration :=
   | "d" => duration? (i * MILLISECONDS_PER_DAY)
   | _ => none
 
-def is_negative (str: String) : Bool × String :=
+def isNegativeDuration (str: String) : Bool × String :=
   match str.front with
   | '-' => (true, str.drop 1)
   | _   => (false, str)
@@ -60,22 +60,22 @@ def addOptionDurations (a b : Option Duration) : Option Duration :=
   | none, none => none
 
 def parseUnit? (str : String) (suffix: String) : Option Duration × String :=
-  let chars := str.toList
-  let (char_digits, rest) := chars.span Char.isDigit
-  if char_digits.isEmpty
-  then (none, str)
-  else
-    let rest_str := String.mk rest
-    if rest_str.startsWith suffix
-    then (duration_in? (String.mk char_digits).toInt! suffix, rest_str.drop suffix.length)
-    else (none, str)
+  if str.endsWith suffix
+  then
+    let new_str := str.dropRight suffix.length
+    let new_str_list := new_str.toList
+    let digits := ((new_str_list.reverse).takeWhile Char.isDigit).reverse
+    if digits.isEmpty
+    then (none, str)
+    else (durationUnits? (String.mk digits).toInt! suffix, new_str.dropRight digits.length)
+  else (none, str)
 
-def parseDur? (str : String) : Option Duration :=
-  let (days, rest) := parseUnit? str "d"
-  let (hours, rest) := parseUnit? rest "h"
-  let (minutes, rest) := parseUnit? rest "m"
+def parseUnsignedDuration? (str : String) : Option Duration :=
+  let (milliseconds, rest) := parseUnit? str "ms"
   let (seconds, rest) := parseUnit? rest "s"
-  let (milliseconds, rest) := parseUnit? rest "ms"
+  let (minutes, rest) := parseUnit? rest "m"
+  let (hours, rest) := parseUnit? rest "h"
+  let (days, rest) := parseUnit? rest "d"
   if rest.isEmpty
   then
     [days, hours, minutes, seconds, milliseconds].foldl (addOptionDurations · ·) none
@@ -83,10 +83,10 @@ def parseDur? (str : String) : Option Duration :=
 
 
 def parse (str : String) : Option Duration :=
-  let (is_neg, new_str) := is_negative str
-  match parseDur? new_str with
+  let (isNegative, rest) := isNegativeDuration str
+  match parseUnsignedDuration? rest with
   | some duration =>
-    if is_neg then
+    if isNegative then
       Int64.neg? duration
     else
       some duration
@@ -94,7 +94,7 @@ def parse (str : String) : Option Duration :=
 
 deriving instance Repr for Duration
 
-#eval parse "1d1ms"
+#eval parse "-1d1s"
 #eval Int64.mk? 500
 #eval parseUnit? "12m" "m"
 #eval parseUnit? "12s" "s"
