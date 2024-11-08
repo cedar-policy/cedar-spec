@@ -23,7 +23,20 @@ namespace Cedar.Spec.Ext
 open Cedar.Data
 
 /--
-  DESCRIBE DATETIME AND DURATION HERE
+  A duration value is measured in milliseconds and constructed from a duration string.
+  A duration string is a concatenated sequence of quantity-unit pairs where the quantity
+  is a positive integer and unit is one of the following:
+    - `d` (for days)
+    - `h` (for hours)
+    - `m` (for minutes)
+    - `s` (for seconds)
+    - `ms` (for milliseconds)
+
+  Duration strings are required to be ordered from largest unit to smallest
+  unit, and contain one quantity per unit. Units with zero quantity may be
+  omitted.
+
+  A duration may be negative. Negative duration strings must begin with `-`.
 -/
 abbrev Duration := Int64
 
@@ -33,6 +46,8 @@ def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
 def MILLISECONDS_PER_HOUR: Int := 360000
 def MILLISECONDS_PER_DAY: Int := 86400000
+
+----- Definitions -----
 
 def duration? (i : Int) : Option Duration :=
   Int64.mk? i
@@ -46,11 +61,17 @@ def durationUnits? (i: Int) (suffix: String) : Option Duration :=
   | "d" => duration? (i * MILLISECONDS_PER_DAY)
   | _ => none
 
+def unitsToMilliseconds (days hours minutes second milliseconds: Int) : Int :=
+  days * MILLISECONDS_PER_DAY +
+  hours * MILLISECONDS_PER_HOUR +
+  minutes * MILLISECONDS_PER_MINUTE +
+  second * MILLISECONDS_PER_SECOND +
+  milliseconds
+
 def isNegativeDuration (str: String) : Bool × String :=
   match str.front with
   | '-' => (true, str.drop 1)
   | _   => (false, str)
-
 
 def addOptionDurations (a b : Option Duration) : Option Duration :=
   match a, b with
@@ -81,7 +102,6 @@ def parseUnsignedDuration? (str : String) : Option Duration :=
     [days, hours, minutes, seconds, milliseconds].foldl (addOptionDurations · ·) none
   else none
 
-
 def parse (str : String) : Option Duration :=
   let (isNegative, rest) := isNegativeDuration str
   match parseUnsignedDuration? rest with
@@ -94,12 +114,6 @@ def parse (str : String) : Option Duration :=
 
 deriving instance Repr for Duration
 
-#eval parse "-1d1s"
-#eval Int64.mk? 500
-#eval parseUnit? "12m" "m"
-#eval parseUnit? "12s" "s"
-#eval parseUnit? "12ms" "ms"
-
--- abbrev duration := parse
+abbrev duration := parse
 
 end Datetime
