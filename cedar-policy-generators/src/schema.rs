@@ -1179,6 +1179,12 @@ impl Schema {
             Type::Decimal => Some(json_schema::TypeVariant::Extension {
                 name: "decimal".parse().unwrap(),
             }),
+            Type::DateTime => Some(json_schema::TypeVariant::Extension {
+                name: "datetime".parse().unwrap(),
+            }),
+            Type::Duration => Some(json_schema::TypeVariant::Extension {
+                name: "duration".parse().unwrap(),
+            }),
         }
         .map(json_schema::Type::Type))
     }
