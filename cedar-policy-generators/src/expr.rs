@@ -1192,7 +1192,7 @@ impl<'a> ExprGenerator<'a> {
                         let type_name: UnreservedId = match target_type {
                             Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
                             Type::Decimal => "decimal".parse().unwrap(),
-                            Type::DateTime => "datetime".parse::<UnreservedId>().unwrap(),
+                            Type::DateTime => "datetime".parse().unwrap(),
                             Type::Duration => "duration".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
                         };
@@ -1790,6 +1790,12 @@ impl<'a> ExprGenerator<'a> {
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
                     }
+                    "datetime" => {
+                        self.generate_ext_func_call_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" => {
+                        self.generate_ext_func_call_for_type(&Type::duration(), max_depth, u)
+                    }
                     _ => panic!("unrecognized extension type: {name:?}"),
                 },
                 // no existing extension functions return set type
@@ -2096,6 +2102,12 @@ impl<'a> ExprGenerator<'a> {
                 match name.as_ref() {
                     "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                    "datetime" => {
+                        self.generate_attr_value_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" => {
+                        self.generate_attr_value_for_type(&Type::duration(), max_depth, u)
+                    }
                     _ => unimplemented!("extension type {name:?}"),
                 }
             }

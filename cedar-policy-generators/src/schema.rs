@@ -248,6 +248,12 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
         },
         json_schema::TypeVariant::Extension {
             name: "decimal".parse().unwrap(),
+        },
+        json_schema::TypeVariant::Extension {
+            name: "datetime".parse().unwrap(),
+        },
+        json_schema::TypeVariant::Extension {
+            name: "duration".parse().unwrap(),
         }
     )))
 }
@@ -331,6 +337,8 @@ fn schematype_to_type(
             json_schema::TypeVariant::Extension { name } => match name.as_ref() {
                 "ipaddr" => Type::ipaddr(),
                 "decimal" => Type::decimal(),
+                "datetime" => Type::decimal(),
+                "duration" => Type::decimal(),
                 _ => panic!("unrecognized extension type: {name:?}"),
             },
         },
