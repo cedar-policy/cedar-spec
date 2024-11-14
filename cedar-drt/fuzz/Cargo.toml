@@ -28,7 +28,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
-thiserror = "1.0.61"
+thiserror = "2.0"
 logos = "0.14.0"
 itertools = "0.13.0"
 
@@ -76,7 +76,7 @@ doc = false
 [[bin]]
 name = "partial-auth"
 path = "fuzz_targets/partial-auth.rs"
-test = false 
+test = false
 doc = false
 
 [[bin]]
