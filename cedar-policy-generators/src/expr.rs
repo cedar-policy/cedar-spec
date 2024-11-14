@@ -1657,6 +1657,8 @@ impl<'a> ExprGenerator<'a> {
                 match name.as_ref() {
                     "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                    "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
+                    "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
                     _ => panic!("unrecognized extension type: {name:?}"),
                 }
             }
