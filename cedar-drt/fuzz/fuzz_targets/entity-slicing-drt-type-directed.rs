@@ -134,13 +134,15 @@ fuzz_target!(|input: FuzzTargetInput| {
                 for abac_request in input.requests.into_iter() {
                     let request = ast::Request::from(abac_request);
                     debug!("Request: {request}");
-                    let entity_slice = manifest.slice_entities(&entities, &request).expect("failed to slice entities");
+                    let entity_slice = manifest
+                        .slice_entities(&entities, &request)
+                        .expect("failed to slice entities");
                     debug!("Entity slice: {entity_slice}");
-                    let ans_original = authorizer.is_authorized(request.clone(), &policyset, &entities);
+                    let ans_original =
+                        authorizer.is_authorized(request.clone(), &policyset, &entities);
                     let ans_slice = authorizer.is_authorized(request, &policyset, &entity_slice);
                     assert_eq!(
-                        ans_original.decision,
-                        ans_slice.decision,
+                        ans_original.decision, ans_slice.decision,
                         "Authorization decision differed with and without entity slicing!"
                     );
                 }
