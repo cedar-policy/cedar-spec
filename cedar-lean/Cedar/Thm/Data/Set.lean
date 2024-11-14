@@ -372,7 +372,7 @@ theorem inter_empty_right {α} [LT α] [StrictLT α] [DecidableLT α] [Decidable
 := by
   cases s ; rename_i xs
   simp only [Inter.inter, intersect, List.inter, elts, empty, List.elem_eq_mem, List.not_mem_nil,
-    decide_False, mk.injEq, List.filter_eq_nil, not_false_eq_true, implies_true]
+    decide_False, mk.injEq, List.filter_eq_nil, not_false_eq_true, implies_true, reduceCtorEq]
 
 theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
  s ∩ s = s
@@ -410,7 +410,7 @@ theorem intersects_def {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq 
   case mpr =>
     intro h
     replace h : ¬ isEmpty (s₁ ∩ s₂) = true := by
-      simp only [h, not_false_eq_true]
+      simp only [h, not_false_eq_true, reduceCtorEq]
     rw [non_empty_iff_exists] at h
     replace ⟨x, h⟩ := h
     rw [mem_inter_iff] at h

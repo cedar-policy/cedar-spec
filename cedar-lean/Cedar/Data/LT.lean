@@ -200,9 +200,11 @@ instance Bool.strictLT : StrictLT Bool where
     split <;> simp
   connected  a b   := by
     simp [LT.lt, Bool.lt]
-    split <;> simp only [not_false_eq_true, _root_.or_false, imp_self]
-    split <;> simp only [not_false_eq_true, _root_.or_true, imp_self]
-    cases a <;> cases b <;> simp at *
+    split <;> simp only [false_eq_true, not_false_eq_true, _root_.or_false, _root_.false_or, imp_self]
+    split
+    · simp only [true_eq_false, not_false_eq_true, imp_self]
+    · simp only [false_eq_true, imp_false, Decidable.not_not]
+      cases a <;> cases b <;> simp at *
 
 instance Nat.strictLT : StrictLT Nat where
   asymmetric a b   := Nat.lt_asymm

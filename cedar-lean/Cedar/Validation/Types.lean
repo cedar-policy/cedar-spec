@@ -64,6 +64,7 @@ abbrev RecordType := Map Attr QualifiedType
 structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
+  tags : Option CedarType
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
@@ -72,6 +73,9 @@ def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
 
 def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
   (ets.find? ety).map EntitySchemaEntry.attrs
+
+def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
+  (ets.find? ety).map EntitySchemaEntry.tags
 
 def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂

@@ -28,6 +28,7 @@ open Cedar.Data
 inductive Error where
   | entityDoesNotExist
   | attrDoesNotExist
+  | tagDoesNotExist
   | typeError
   | arithBoundsError
   | extensionError
@@ -234,12 +235,14 @@ def Value.lt : Value → Value → Bool
   | .ext _, .prim _ => false
   | .ext _, .set _ => false
   | .ext _, .record _ => false
+termination_by v₁ _ => sizeOf v₁
 
 def Values.lt : List Value → List Value → Bool
   | [], [] => false
   | [], _ => true
   | _, [] => false
   | v₁ :: vs₁, v₂ :: vs₂ => Value.lt v₁ v₂ || (v₁ = v₂ && Values.lt vs₁ vs₂)
+termination_by vs₁ _ => sizeOf vs₁
 
 def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
   | [], [] => false
@@ -248,6 +251,7 @@ def ValueAttrs.lt : List (Attr × Value) → List (Attr × Value) → Bool
   | (a₁, v₁) :: avs₁, (a₂, v₂) :: avs₂ =>
     a₁ < a₂ || (a₁ = a₂ && Value.lt v₁ v₂) ||
     (a₁ = a₂ && v₁ = v₂ && ValueAttrs.lt avs₁ avs₂)
+termination_by avs₁ _ => sizeOf avs₁
 end
 
 instance : LT Value where

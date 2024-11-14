@@ -79,18 +79,25 @@ def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
   InstanceOfEntityType request.resource reqty.resource ∧
   InstanceOfType request.context (.record reqty.context)
 
+def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
+  match entry.tags with
+  | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty
+  | .none     => data.tags = Map.empty
+
 /--
 For every entity in the store,
 1. The entity's type is defined in the type store.
 2. The entity's attributes match the attribute types indicated in the type store.
 3. The entity's ancestors' types are consistent with the ancestor information
    in the type store.
+4. The entity's tags' types are consistent with the tags information in the type store.
 -/
 def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, ets.find? uid.ty = some entry ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
-      ∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors
+      (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
+      InstanceOfEntityTags data entry
 
 /--
 For every action in the entity store, the action's ancestors are consistent
@@ -300,8 +307,9 @@ theorem bool_type_is_inhabited (bty : BoolType) :
 := by
   simp [InstanceOfBoolType]
   cases bty
-  case tt => exists true
-  all_goals { exists false }
+  case tt => simp only [or_true]
+  case ff => simp only [or_false]
+  case anyBool => simp only [or_self]
 
 theorem entity_type_is_inhabited (ety : EntityType) :
   ∃ euid, InstanceOfEntityType euid ety
@@ -416,7 +424,6 @@ theorem type_is_inhabited (ty : CedarType) :
           apply sizeOf_attribute_lt_sizeOf_qualified
         case a =>
           simp [Nat.add_assoc]
-          simp [←Nat.succ_eq_one_add]
       have ⟨rhd, h₂⟩ := type_is_inhabited hd.snd.getType
       have ⟨vtl, h₃⟩ := type_is_inhabited (.record (Map.mk tl))
       have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃

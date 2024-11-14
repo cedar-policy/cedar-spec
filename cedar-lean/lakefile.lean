@@ -18,9 +18,9 @@ import Lake
 open Lake DSL
 
 meta if get_config? env = some "dev" then -- dev is so not everyone has to build it
-require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "c7f4ac84b973b6efd8f24ba2b006cad1b32c9c53"
+require "leanprover" / "doc-gen4" @ git "v4.12.0"
 
-require "leanprover-community" / "batteries"
+require "leanprover-community" / "batteries" @ git "v4.12.0"
 
 package Cedar
 
@@ -39,3 +39,23 @@ lean_exe CedarUnitTests where
 
 lean_exe Cli where
   root := `Cli.Main
+
+/--
+Check that Cedar.Thm imports all top level proofs.
+
+USAGE:
+  lake run checkThm
+  lake lint
+-/
+@[lint_driver]
+script checkThm do
+  let thm ← IO.FS.readFile ⟨"Cedar/Thm.lean"⟩
+  let dir ← System.FilePath.readDir ⟨"Cedar/Thm/"⟩
+  for entry in dir.toList do
+    let fn := entry.fileName
+    if fn.endsWith ".lean" then
+      let ln := s!"import Cedar.Thm.{fn.dropRight 5}"
+      if thm.replace ln "" == thm then
+        IO.println s!"Cedar.Thm does not import Cedar/Thm/{fn}"
+        return 1
+  return 0

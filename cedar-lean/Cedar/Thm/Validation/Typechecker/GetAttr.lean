@@ -51,10 +51,10 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
     simp [typeOfGetAttr] at h₁
     split at h₁ <;> try contradiction
     · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, false_and, exists_const,
-        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true]
+        CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true, reduceCtorEq]
       apply getAttrInRecord_has_empty_capabilities h₁
     · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq,
-        exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true]
+        exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true, reduceCtorEq]
       split at h₁ <;> try simp [err] at h₁
       apply getAttrInRecord_has_empty_capabilities h₁
 
@@ -74,10 +74,10 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   have ⟨r, h₆⟩ := instance_of_record_type_is_record h₅
   subst h₆
   simp [getAttr, attrsOf, Map.findOrErr]
+  simp only [typeOf, h₃, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok] at h₂
   cases h₈ : Map.find? r a
   case none =>
-    simp only [or_self, false_and, exists_const]
-    simp [typeOf, h₃, typeOfGetAttr, getAttrInRecord] at h₂
+    simp only [Except.error.injEq, reduceCtorEq, or_self, false_and, exists_const]
     split at h₂ <;> simp [ok, err] at h₂
     case h_1 _ _ h₉ =>
       subst h₂
@@ -89,8 +89,7 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
       have ⟨_, h₁₁⟩ := capability_implies_record_attribute h₁ h₄ h₁₀
       simp [h₈] at h₁₁
   case some vₐ =>
-    simp only [Except.ok.injEq, false_or, exists_eq_left']
-    simp [typeOf, h₃, typeOfGetAttr, getAttrInRecord] at h₂
+    simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
     split at h₂ <;> simp [ok, err] at h₂
     case h_1 _ _ h₉ =>
       subst h₂
@@ -119,7 +118,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   simp [getAttr, attrsOf, Entities.attrs, Map.findOrErr]
   cases h₈ : Map.find? entities uid
   case none =>
-    simp only [Except.bind_err, Except.error.injEq, or_self, or_false, true_and]
+    simp only [Except.bind_err, Except.error.injEq, or_self, or_false, true_and, reduceCtorEq]
     exact type_is_inhabited ty
   case some d =>
     subst h₇
@@ -141,7 +140,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
         have ⟨_, h₁₄⟩ := capability_implies_entity_attribute h₁ h₅ h₈ h₁₃
         simp [h₉] at h₁₄
     case some vₐ =>
-      simp only [Except.ok.injEq, false_or, exists_eq_left']
+      simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
       simp [typeOf, h₄, typeOfGetAttr, getAttrInRecord] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       split at h₃ <;> try simp at h₃

@@ -138,10 +138,10 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   case head xtl =>
     simp only [List.mapM₁, List.attach_def, List.pmap, List.mapM_cons] at h₂
     rcases h₅ : justType (typeOf x c env) <;>
-    simp only [h₅, Except.bind_err] at h₂
+    simp only [h₅, Except.bind_err, reduceCtorEq] at h₂
     simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), Except.bind_ok] at h₂
     rcases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl <;>
-    simp only [h₆, pure, Except.pure, Except.bind_err, Except.bind_ok, Except.ok.injEq, List.cons.injEq] at h₂
+    simp only [h₆, pure, Except.pure, Except.bind_err, Except.bind_ok, Except.ok.injEq, List.cons.injEq, reduceCtorEq] at h₂
     have ⟨hl₂, hr₂⟩ := h₂ ; subst hl₂ hr₂
     rename_i hdty tlty
     simp only [justType, Except.map] at h₅
