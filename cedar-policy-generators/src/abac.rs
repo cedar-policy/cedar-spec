@@ -940,3 +940,86 @@ impl From<ABACRequest> for ast::Request {
         abac.0.into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, sync::Arc};
+
+    use arbitrary::{Arbitrary, Unstructured};
+    use cedar_policy_core::{
+        ast::{Expr, Name, Request, Value},
+        entities::Entities,
+        evaluator::Evaluator,
+        extensions::Extensions,
+    };
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use smol_str::SmolStr;
+
+    use super::ConstantPool;
+
+    // get validate string count
+    #[track_caller]
+    fn evaluate_batch(strs: &[SmolStr], constructor: Name) -> usize {
+        let dummy_euid: Arc<cedar_policy_core::ast::EntityUID> =
+            Arc::new(r#"A::"""#.parse().unwrap());
+        let dummy_request = Request::new_unchecked(
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            None,
+        );
+        let entities = Entities::new();
+        let evaluator = Evaluator::new(dummy_request, &entities, Extensions::all_available());
+        let valid_strs: Vec<_> = strs
+            .into_iter()
+            .filter(|s| {
+                evaluator
+                    .interpret(
+                        &Expr::call_extension_fn(
+                            constructor.clone(),
+                            vec![Value::from(s.to_owned().to_owned()).into()],
+                        ),
+                        &HashMap::new(),
+                    )
+                    .is_ok()
+            })
+            .collect();
+        valid_strs.len()
+    }
+
+    #[test]
+    fn test_valid_extension_value_ratio() {
+        let mut rng = StdRng::seed_from_u64(666);
+        let mut bytes = [0; 4096];
+        rng.fill_bytes(&mut bytes);
+        let mut u = Unstructured::new(&bytes);
+        let pool = ConstantPool::arbitrary(&mut u).expect("should not fail");
+
+        let datetime_strs: Vec<_> = (0..100)
+            .map(|_| {
+                pool.arbitrary_datetime_str(&mut u)
+                    .expect("should not fail")
+            })
+            .collect();
+        let valid_datetime_count = evaluate_batch(&datetime_strs, "datetime".parse().unwrap());
+        println!("{}", valid_datetime_count);
+
+        let duration_strs: Vec<_> = (0..100)
+            .map(|_| {
+                pool.arbitrary_duration_str(&mut u)
+                    .expect("should not fail")
+            })
+            .collect();
+        let valid_duration_count = evaluate_batch(&duration_strs, "duration".parse().unwrap());
+        println!("{}", valid_duration_count);
+    }
+}
