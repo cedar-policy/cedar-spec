@@ -88,4 +88,45 @@ end
 
 instance : DecidableEq TypedExpr := decTypedExpr
 
+def TypedExpr.typeOf : TypedExpr → CedarType
+  | lit _ ty
+  | var _ ty
+  | ite _ _ _ ty
+  | and _ _ ty
+  | or _ _ ty
+  | unaryApp _ _ ty
+  | binaryApp _ _ _ ty
+  | getAttr _ _ ty
+  | hasAttr _ _ ty
+  | set _ ty
+  | record _ ty
+  | call _ _ ty => ty
+
+def TypedExpr.toExpr : TypedExpr → Expr
+  | lit p _ => Expr.lit p
+  | var v _ => Expr.var v
+  | ite cond thenExpr elseExpr _ => Expr.ite cond.toExpr thenExpr.toExpr elseExpr.toExpr
+  | and a b _ => Expr.and a.toExpr b.toExpr
+  | or a b _ => Expr.or a.toExpr b.toExpr
+  | unaryApp op expr _ => Expr.unaryApp op expr.toExpr
+  | binaryApp op a b _ => Expr.binaryApp op a.toExpr b.toExpr
+  | getAttr expr attr _ => Expr.getAttr expr.toExpr attr
+  | hasAttr expr attr _ => Expr.hasAttr expr.toExpr attr
+  | set ls ty => Expr.set $ ls.map₁ (λ ⟨e, h₁⟩  =>
+    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
+      have := List.sizeOf_lt_of_mem h₁
+      omega
+    e.toExpr)
+  | record ls ty => Expr.record $ ls.map₁ (λ ⟨(a, e), h₁⟩  =>
+    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
+      have := Map.sizeOf_lt_of_value h₁
+      simp only [Map.mk.sizeOf_spec] at this
+      omega
+    (a, e.toExpr))
+  | call xfn args ty => Expr.call xfn $ args.map₁ (λ ⟨e, h₁⟩ =>
+    have _ : sizeOf e < 1 + sizeOf args + sizeOf ty := by
+      have := List.sizeOf_lt_of_mem h₁
+      omega
+    e.toExpr)
+
 end Cedar.Validation
