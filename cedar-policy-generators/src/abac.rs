@@ -300,7 +300,7 @@ impl ConstantPool {
     fn arbitrary_datetime_str_inner(&self, u: &mut Unstructured<'_>) -> Result<String> {
         let mut result = String::new();
         // Generate YYYY-MM-DD
-        let y = u.int_in_range(0..=999)?;
+        let y = u.int_in_range(0..=9999)?;
         let m = u.int_in_range(1..=12)?;
         let d = u.int_in_range(1..=31)?;
         result.push_str(&format!("{:04}-{:02}-{:02}", y, m, d));
