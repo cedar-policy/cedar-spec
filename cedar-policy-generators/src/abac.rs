@@ -296,6 +296,84 @@ impl ConstantPool {
         .map(SmolStr::new)
     }
 
+    // Generate a roughly valid datetime string
+    fn arbitrary_datetime_str_inner(&self, u: &mut Unstructured<'_>) -> Result<String> {
+        let mut result = String::new();
+        // Generate YYYY-MM-DD
+        let y = u.int_in_range(0..=9999)?;
+        let m = u.int_in_range(1..=12)?;
+        let d = u.int_in_range(1..=31)?;
+        result.push_str(&format!("{:04}-{:02}-{:02}", y, m, d));
+        // There's a 25% chance where just a date is generated
+        if u.ratio(1, 4)? {
+            return Ok(result);
+        }
+        // Generate hh:mm:ss
+        result.push('T');
+        let h = u.int_in_range(0..=23)?;
+        let m = u.int_in_range(0..=59)?;
+        let s = u.int_in_range(0..=59)?;
+        result.push_str(&format!("{:02}:{:02}:{:02}", h, m, s));
+        match u.int_in_range(0..=3)? {
+            0 => {
+                // end the string with `Z`
+                result.push('Z');
+            }
+            1 => {
+                // Generate a millisecond and end the string
+                let ms = u.int_in_range(0..=999)?;
+                result.push_str(&format!(".{:03}Z", ms));
+            }
+            2 => {
+                // Generate an offset
+                let sign = if u.arbitrary()? { '+' } else { '-' };
+                let hh = u.int_in_range(0..=14)?;
+                let mm = u.int_in_range(0..=59)?;
+                result.push_str(&format!("{sign}{:02}{:02}", hh, mm));
+            }
+            3 => {
+                // Generate a millisecond and an offset
+                let ms = u.int_in_range(0..=999)?;
+                let sign = if u.arbitrary()? { '+' } else { '-' };
+                let hh = u.int_in_range(0..=14)?;
+                let mm = u.int_in_range(0..=59)?;
+                result.push_str(&format!(".{:03}{sign}{:02}{:02}", ms, hh, mm));
+            }
+            _ => {
+                unreachable!("the number is from 0 to 3")
+            }
+        }
+        Ok(result)
+    }
+
+    /// Generate a roughly valid datetime string and mutate it
+    pub fn arbitrary_datetime_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
+        let result = self.arbitrary_datetime_str_inner(u)?;
+        mutate_str(u, &result).map(Into::into)
+    }
+
+    /// Generate a roughly valid duration string and mutate it
+    pub fn arbitrary_duration_str(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
+        let mut result = String::new();
+        // flip a coin and add `-`
+        if u.arbitrary()? {
+            result.push('-');
+        }
+        for suffix in ["d", "h", "m", "s", "ms"] {
+            // Generate a number with certain suffix
+            if u.arbitrary()? {
+                let i = self.arbitrary_int_constant(u)?;
+                result.push_str(&format!("{}{suffix}", (i as i128).abs()));
+            }
+        }
+        // If none of the units is generated, generate a random milliseconds
+        if result.is_empty() || result == "-" {
+            let i = self.arbitrary_int_constant(u)?;
+            result.push_str(&format!("{}ms", (i as i128).abs()));
+        }
+        mutate_str(u, &result).map(Into::into)
+    }
+
     /// size hint for arbitrary_string_constant()
     pub fn arbitrary_string_constant_size_hint(_depth: usize) -> (usize, Option<usize>) {
         size_hint_for_choose(None)
@@ -429,6 +507,83 @@ impl AvailableExtensionFunctions {
                     is_constructor: false,
                     parameter_types: vec![Type::decimal(), Type::decimal()],
                     return_ty: Type::bool(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("datetime")
+                        .expect("should be a valid identifier"),
+                    is_constructor: true,
+                    parameter_types: vec![Type::string()],
+                    return_ty: Type::datetime(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("offset")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::datetime(), Type::duration()],
+                    return_ty: Type::datetime(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("durationSince")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::datetime(), Type::datetime()],
+                    return_ty: Type::duration(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toDate")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::datetime()],
+                    return_ty: Type::datetime(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toTime")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::datetime()],
+                    return_ty: Type::duration(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("duration")
+                        .expect("should be a valid identifier"),
+                    is_constructor: true,
+                    parameter_types: vec![Type::string()],
+                    return_ty: Type::duration(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toMilliseconds")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::duration()],
+                    return_ty: Type::long(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toSeconds")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::duration()],
+                    return_ty: Type::long(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toMinutes")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::duration()],
+                    return_ty: Type::long(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toHours")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::duration()],
+                    return_ty: Type::long(),
+                },
+                AvailableExtensionFunction {
+                    name: Name::parse_unqualified_name("toDays")
+                        .expect("should be a valid identifier"),
+                    is_constructor: false,
+                    parameter_types: vec![Type::duration()],
+                    return_ty: Type::long(),
                 },
             ]
         } else {
@@ -566,6 +721,10 @@ pub enum Type {
     IPAddr,
     /// Decimal numbers
     Decimal,
+    /// datetime
+    DateTime,
+    /// duration
+    Duration,
 }
 
 impl Type {
@@ -606,6 +765,14 @@ impl Type {
     pub fn decimal() -> Self {
         Type::Decimal
     }
+    /// datetime type
+    pub fn datetime() -> Self {
+        Type::DateTime
+    }
+    /// duration type
+    pub fn duration() -> Self {
+        Type::Duration
+    }
 
     /// `Type` has `Arbitrary` auto-derived for it, but for the case where you
     /// want "any nonextension Type", you have this
@@ -638,6 +805,12 @@ impl TryFrom<Type> for ast::Type {
             }),
             Type::Decimal => Ok(ast::Type::Extension {
                 name: extensions::decimal::extension().name().clone(),
+            }),
+            Type::DateTime => Ok(ast::Type::Extension {
+                name: extensions::datetime::extension().name().clone(),
+            }),
+            Type::Duration => Ok(ast::Type::Extension {
+                name: "duration".parse().unwrap(),
             }),
         }
     }
@@ -765,5 +938,88 @@ impl DerefMut for ABACRequest {
 impl From<ABACRequest> for ast::Request {
     fn from(abac: ABACRequest) -> ast::Request {
         abac.0.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, sync::Arc};
+
+    use arbitrary::{Arbitrary, Unstructured};
+    use cedar_policy_core::{
+        ast::{Expr, Name, Request, Value},
+        entities::Entities,
+        evaluator::Evaluator,
+        extensions::Extensions,
+    };
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use smol_str::SmolStr;
+
+    use super::ConstantPool;
+
+    // get validate string count
+    #[track_caller]
+    fn evaluate_batch(strs: &[SmolStr], constructor: Name) -> usize {
+        let dummy_euid: Arc<cedar_policy_core::ast::EntityUID> =
+            Arc::new(r#"A::"""#.parse().unwrap());
+        let dummy_request = Request::new_unchecked(
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            cedar_policy_core::ast::EntityUIDEntry::Known {
+                euid: dummy_euid.clone(),
+                loc: None,
+            },
+            None,
+        );
+        let entities = Entities::new();
+        let evaluator = Evaluator::new(dummy_request, &entities, Extensions::all_available());
+        let valid_strs: Vec<_> = strs
+            .into_iter()
+            .filter(|s| {
+                evaluator
+                    .interpret(
+                        &Expr::call_extension_fn(
+                            constructor.clone(),
+                            vec![Value::from(s.to_owned().to_owned()).into()],
+                        ),
+                        &HashMap::new(),
+                    )
+                    .is_ok()
+            })
+            .collect();
+        valid_strs.len()
+    }
+
+    #[test]
+    fn test_valid_extension_value_ratio() {
+        let mut rng = StdRng::seed_from_u64(666);
+        let mut bytes = [0; 4096];
+        rng.fill_bytes(&mut bytes);
+        let mut u = Unstructured::new(&bytes);
+        let pool = ConstantPool::arbitrary(&mut u).expect("should not fail");
+
+        let datetime_strs: Vec<_> = (0..100)
+            .map(|_| {
+                pool.arbitrary_datetime_str(&mut u)
+                    .expect("should not fail")
+            })
+            .collect();
+        let valid_datetime_count = evaluate_batch(&datetime_strs, "datetime".parse().unwrap());
+        println!("{}", valid_datetime_count);
+
+        let duration_strs: Vec<_> = (0..100)
+            .map(|_| {
+                pool.arbitrary_duration_str(&mut u)
+                    .expect("should not fail")
+            })
+            .collect();
+        let valid_duration_count = evaluate_batch(&duration_strs, "duration".parse().unwrap());
+        println!("{}", valid_duration_count);
     }
 }

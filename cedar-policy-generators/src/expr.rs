@@ -1170,7 +1170,7 @@ impl<'a> ExprGenerator<'a> {
                         })
                     }
                 }
-                Type::IPAddr | Type::Decimal => {
+                Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
                     if !self.settings.enable_extensions {
                         return Err(Error::ExtensionsDisabled);
                     };
@@ -1183,6 +1183,8 @@ impl<'a> ExprGenerator<'a> {
                         let args = vec![ast::Expr::val(match target_type {
                             Type::IPAddr => self.constant_pool.arbitrary_ip_str(u)?,
                             Type::Decimal => self.constant_pool.arbitrary_decimal_str(u)?,
+                            Type::DateTime => self.constant_pool.arbitrary_datetime_str(u)?,
+                            Type::Duration => self.constant_pool.arbitrary_duration_str(u)?,
                             _ => unreachable!("ty is deemed to be an extension type"),
                         })];
                         Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
@@ -1190,6 +1192,8 @@ impl<'a> ExprGenerator<'a> {
                         let type_name: UnreservedId = match target_type {
                             Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
                             Type::Decimal => "decimal".parse().unwrap(),
+                            Type::DateTime => "datetime".parse().unwrap(),
+                            Type::Duration => "duration".parse().unwrap(),
                             _ => unreachable!("target type is deemed to be an extension type!"),
                         };
                         gen!(u,
@@ -1653,6 +1657,8 @@ impl<'a> ExprGenerator<'a> {
                 match name.as_ref() {
                     "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                    "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
+                    "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
                     _ => panic!("unrecognized extension type: {name:?}"),
                 }
             }
@@ -1705,7 +1711,7 @@ impl<'a> ExprGenerator<'a> {
                     arbitrary_specified_uid(u)?,
                 )))
             }
-            Type::IPAddr | Type::Decimal => {
+            Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
                 unimplemented!("constant expression of type ipaddr or decimal")
             }
         }
@@ -1784,6 +1790,12 @@ impl<'a> ExprGenerator<'a> {
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
                     }
+                    "datetime" => {
+                        self.generate_ext_func_call_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" => {
+                        self.generate_ext_func_call_for_type(&Type::duration(), max_depth, u)
+                    }
                     _ => panic!("unrecognized extension type: {name:?}"),
                 },
                 // no existing extension functions return set type
@@ -1837,7 +1849,7 @@ impl<'a> ExprGenerator<'a> {
                 // the only valid entity-typed attribute value is a UID literal
                 Ok(AttrValue::UIDLit(self.generate_uid(u)?))
             }
-            Type::IPAddr | Type::Decimal => {
+            Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
                 if max_depth == 0 {
                     return Err(Error::TooDeep);
@@ -1857,6 +1869,14 @@ impl<'a> ExprGenerator<'a> {
                         Type::Decimal => self
                             .constant_pool
                             .arbitrary_decimal_str(u)
+                            .map(AttrValue::StringLit),
+                        Type::DateTime => self
+                            .constant_pool
+                            .arbitrary_datetime_str(u)
+                            .map(AttrValue::StringLit),
+                        Type::Duration => self
+                            .constant_pool
+                            .arbitrary_duration_str(u)
                             .map(AttrValue::StringLit),
                         _ => unreachable!("target_type should only be one of these two"),
                     })
@@ -2082,6 +2102,12 @@ impl<'a> ExprGenerator<'a> {
                 match name.as_ref() {
                     "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                     "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                    "datetime" => {
+                        self.generate_attr_value_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" => {
+                        self.generate_attr_value_for_type(&Type::duration(), max_depth, u)
+                    }
                     _ => unimplemented!("extension type {name:?}"),
                 }
             }
