@@ -15,10 +15,16 @@
  */
 
 use std::env;
+use std::path::Path;
 fn main() {
     let lean_dir = env::var("LEAN_LIB_DIR").expect(
         "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
     );
+    // We'll need to link against some files found here later, and it's nicer to
+    // fail quickly with a helpful error message.
+    if !Path::new("../cedar-lean/.lake/build/lib").exists() {
+        panic!("Lean build directory does not exist! Try running `( cd ../cedar-lean && ../cedar-drt/build_lean_lib.sh )`")
+    }
     println!("cargo:rustc-link-search=native=../cedar-lean/.lake/build/lib");
     println!("cargo:rustc-link-search=native={lean_dir}");
     println!(
