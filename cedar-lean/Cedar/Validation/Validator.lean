@@ -55,8 +55,8 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
 is not a valid tuple in this schema -/
 def Schema.getEnvironment (schema : Schema) (principalTy resourceTy : EntityType) (action : EntityUID) : Option Environment := do
   let ase ← schema.acts.find? action
-  match (ase.appliesToPrincipal.contains principalTy, ase.appliesToResource.contains resourceTy) with
-  | (true, true) => some {
+  match ase.appliesToPrincipal.contains principalTy, ase.appliesToResource.contains resourceTy with
+  | true, true => some {
     ets := schema.ets,
     acts := schema.acts,
     reqty := {
@@ -66,7 +66,7 @@ def Schema.getEnvironment (schema : Schema) (principalTy resourceTy : EntityType
       context := ase.context,
     }
   }
-  | _ => none -- principal and/or resource type are invalid for that action
+  | _, _ => none -- principal and/or resource type are invalid for that action
 
 inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
