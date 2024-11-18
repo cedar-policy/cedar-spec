@@ -61,6 +61,8 @@ abbrev Templates := Map TemplateID Template
 
 abbrev SlotEnv := Map SlotID EntityUID
 
+def SlotEnv.empty : SlotEnv := Map.empty
+
 structure TemplateLinkedPolicy where
   id : PolicyID
   templateId : TemplateID
