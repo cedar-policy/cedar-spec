@@ -51,6 +51,23 @@ def Schema.toEnvironments (schema : Schema) : List Environment :=
     reqty := ·
   })
 
+/-- Return the environment for the particular (p,a,r) tuple, or `none` if this
+is not a valid tuple in this schema -/
+def Schema.getEnvironment (schema : Schema) (principalTy resourceTy : EntityType) (action : EntityUID) : Option Environment := do
+  let ase ← schema.acts.find? action
+  match (ase.appliesToPrincipal.contains principalTy, ase.appliesToResource.contains resourceTy) with
+  | (true, true) => some {
+    ets := schema.ets,
+    acts := schema.acts,
+    reqty := {
+      principal := principalTy,
+      action := action,
+      resource := resourceTy,
+      context := ase.context,
+    }
+  }
+  | _ => none -- principal and/or resource type are invalid for that action
+
 inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
   | impossiblePolicy (pid : PolicyID)

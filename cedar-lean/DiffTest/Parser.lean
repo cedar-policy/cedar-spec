@@ -367,6 +367,12 @@ def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
     condition := condition
   }
 
+def jsonToPolicy (json : Lean.Json) : ParseResult Policy := do
+  let template ← jsonToTemplate json
+  match template.link? "static policy" SlotEnv.empty with
+  | some policy => .ok policy
+  | none => .error s!"jsonToPolicy: found a template, not a static policy"
+
 def jsonToTemplateLinkedPolicy (id : PolicyID) (json : Lean.Json) : ParseResult TemplateLinkedPolicy := do
   let templateId ← getJsonField json "template_id" >>= jsonToString
   let slotEnvKVs ← getJsonField json "values" >>= jsonObjToKVList
