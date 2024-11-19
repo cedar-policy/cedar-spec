@@ -16,7 +16,7 @@
 
 use std::env;
 use std::path::Path;
-const LEAN_BUILD_DIR : &'static str ="../cedar-lean/.lake/build/lib";
+const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
 fn main() {
     let lean_dir = env::var("LEAN_LIB_DIR").expect(
         "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
