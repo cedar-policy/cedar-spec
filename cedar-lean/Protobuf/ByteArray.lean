@@ -22,6 +22,9 @@ namespace ByteArray
 
 deriving instance Repr, DecidableEq, Inhabited for ByteArray
 
+-- note that ByteArray.Iterator and ByteArray.iter are provided by Lean,
+-- but the interfaces are more limited than those we provide in this file.
+
 structure ByteIterator where
   data : ByteArray
   /-- The current position.--/
