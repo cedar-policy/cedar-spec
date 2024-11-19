@@ -30,21 +30,20 @@ namespace ByteArray.ByteIterator
 attribute [simp] remaining
 
 theorem next_le_remaining (i : ByteIterator) : i.next.remaining ≤ i.remaining := by
-  simp only [remaining.eq_1, next_size_eq, next_pos_eq]
+  simp only [remaining, next_size_eq, next_pos_eq]
   omega
 
 @[simp] theorem hasNext_iff (i : ByteIterator) : i.hasNext ↔ i.remaining != 0 := by
-  simp only [hasNext, remaining.eq_1, gt_iff_lt, decide_eq_true_eq, imp_self]
+  simp only [hasNext, remaining, bne_iff_ne, ne_eq]
 
 @[simp] theorem not_hasNext_iff (i : ByteIterator) : ¬i.hasNext ↔ i.remaining = 0 := by
-  simp only [hasNext, remaining.eq_1, bne_iff_ne, ne_eq, Decidable.not_not, imp_self]
+  simp only [hasNext, remaining, bne_iff_ne, ne_eq, Decidable.not_not]
 
 @[simp] theorem empty_iff (i : ByteIterator) : i.empty ↔ ¬i.hasNext := by
-  simp only [empty, hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt,
-   Nat.le_zero_eq, decide_eq_true_eq, imp_self]
+  simp only [empty, hasNext_iff, remaining, bne_iff_ne, ne_eq, Decidable.not_not, decide_eq_true_eq]
 
 @[simp] theorem not_empty_iff (i : ByteIterator) : ¬i.empty ↔ i.hasNext := by
-  simp only [empty_iff, hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt, Nat.le_zero_eq, Decidable.not_not]
+  simp only [empty_iff, hasNext_iff, remaining, bne_iff_ne, ne_eq, Decidable.not_not]
 
 end ByteArray.ByteIterator
 
