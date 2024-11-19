@@ -15,12 +15,12 @@
  */
 
 mod definitional_request_types;
-#[cfg(not(feature = "no-lean-impl"))]
+#[cfg(feature = "lean-impl")]
 mod lean_impl;
 mod logger;
 pub mod utils;
 
 pub use definitional_request_types::*;
-#[cfg(not(feature = "no-lean-impl"))]
+#[cfg(feature = "lean-impl")]
 pub use lean_impl::*;
 pub use logger::*;

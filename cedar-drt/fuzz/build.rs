@@ -15,7 +15,7 @@
  */
 
 fn main() {
-    #[cfg(not(feature = "no-lean-impl"))]
+    #[cfg(feature = "lean-impl")]
     {
         let lean_dir = std::env::var("LEAN_LIB_DIR").expect(
             "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
