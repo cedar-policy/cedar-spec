@@ -33,7 +33,7 @@ namespace Field
 
 namespace Merge
 
-/-- Models override semantics, replaces the former value with the later -/
+/-- Models override semantics, replaces the former value with the latter -/
 @[inline]
 def override (_ : α) (x : α) : α := x
 

@@ -21,6 +21,7 @@ import Protobuf.String
 /-!
 Theorems about protobuf parsing and its helper functions
 -/
+
 namespace ByteArray.ByteIterator
 
 @[simp] theorem next_pos_eq (i : ByteIterator) : i.next.pos = i.pos + 1 := rfl

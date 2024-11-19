@@ -102,7 +102,7 @@ def run! [Inhabited α] (p : BParsec α) (ba : ByteArray) : α :=
   | .success _ res => res
   | .error _ _  => panic!("Unexpected error")
 
--- Iterator wrapers
+-- Iterator wrappers
 
 @[inline]
 def hasNext : BParsec Bool :=
