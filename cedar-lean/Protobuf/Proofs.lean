@@ -60,52 +60,32 @@ namespace BParsec
 instance [DecidableEq α] : DecidableEq (ParseResult α) := by
   unfold DecidableEq
   intro a b
-  cases a <;> cases b <;>
-  -- Get rid of obvious cases where .ok != .err
-  try { apply isFalse ; intro h ; injection h }
-  case error.error c d e f=>
+  cases a <;> cases b <;> simp only [reduceCtorEq, ParseResult.success.injEq, ParseResult.error.injEq]
+  case error.success | success.error => exact isFalse (by simp only [not_false_eq_true])
+  case error.error c d e f | success.success c d e f =>
     match (decEq c e), (decEq d f) with
-      | isTrue h1, isTrue h2 => apply isTrue (by rw [h1, h2])
-      | isTrue _, isFalse h2 => apply isFalse (by intro h; injection h; contradiction)
-      | isFalse h1, isTrue _ => apply isFalse (by intro h; injection h; contradiction)
-      | isFalse h1, isFalse _ => apply isFalse (by intro h; injection h; contradiction)
-  case success.success c d e f =>
-    match (decEq c e), (decEq d f) with
-      | isTrue h1, isTrue h2 => apply isTrue (by rw [h1, h2])
-      | isTrue _, isFalse h2 => apply isFalse (by intro h; injection h; contradiction)
-      | isFalse h1, isTrue _ => apply isFalse (by intro h; injection h; contradiction)
-      | isFalse h1, isFalse _ => apply isFalse (by intro h; injection h; contradiction)
+      | isTrue h1, isTrue h2 => subst e f ; exact isTrue (by simp only [and_self])
+      | _, isFalse h2 => exact isFalse (by intro h; simp [h] at h2)
+      | isFalse h1, _ => exact isFalse (by intro h; simp [h] at h1)
 
 attribute [simp] map
 attribute [simp] mapConst
 
 theorem ext (x y : BParsec α) (H : ∀ it, x it = y it) : x = y := funext H
 
-@[simp] theorem id_map : ∀ {α : Type} (x : BParsec α), id <$> x = x := by
-  intro α
-  intro f
+@[simp] theorem id_map (x : BParsec α) : id <$> x = x := by
   apply ext
   intro it
-  unfold Functor.map
-  unfold instFunctor
-  simp
-  cases (f it)
-  all_goals rfl
+  simp [Functor.map, instFunctor]
+  split <;> simp only [*]
 
-theorem map_const : ∀ {α β : Type}, (@mapConst α β) = ((@map β α) ∘ (@Function.const α β)) := by
-  intros α β
-  rfl
+theorem map_const : (@mapConst α β) = ((@map β α) ∘ (@Function.const α β)) := rfl
 
-theorem comp_map {α β γ : Type} : ∀ (g : α → β) (h : β → γ) (x : BParsec α), (h ∘ g) <$> x = h <$> g <$> x := by
-  intro g; intro h
-  intro x
+theorem comp_map (g : α → β) (h : β → γ) (x : BParsec α) : (h ∘ g) <$> x = h <$> g <$> x := by
   apply ext
   intro it
-  unfold Functor.map
-  unfold instFunctor
-  simp
-  cases (x it)
-  all_goals rfl
+  simp [Functor.map, instFunctor]
+  split <;> simp only [*]
 
 instance : LawfulFunctor BParsec := {
   map_const := map_const,
@@ -119,125 +99,47 @@ attribute [simp] bind
 instance : LawfulMonad BParsec := {
   map_const, id_map,
   seqLeft_eq := by
-    intro α; intro β
-    intro f1; intro f2
-    apply ext; intro it
-    unfold Function.const
-    unfold Functor.map
-    unfold Applicative.toFunctor
-    unfold Monad.toApplicative
-    unfold instMonad
-    simp
-    unfold instFunctor
-    simp
-    cases (f1 it)
-    cases (f2 it)
-    next it2 B C D =>
-      simp
-    next A B C D =>
-      simp
-    next A B =>
-      simp
-
-  seqRight_eq := by
-    intro α; intro β
-    intro x; intro y
-    apply ext; intro it
-    unfold Function.const
-    unfold Seq.seq
-    unfold SeqRight.seqRight
-    unfold Applicative.toSeq
-    unfold Applicative.toSeqRight
-    unfold Monad.toApplicative
-    unfold instMonad
-    simp
-    unfold Functor.map
-    unfold instFunctor
-    simp
-    cases (x it)
-    cases (y it)
-    next A B C D =>
-      simp
-      cases (y A)
-      all_goals rfl
-    next A B C D =>
-      simp
-      cases (y A)
-      all_goals rfl
-    next A B =>
-      rfl
-  ,
-  pure_seq := by
-    intro α; intro β
-    intro g
-    intro x
-    apply ext; intro it1
-    unfold Seq.seq
-    unfold Pure.pure
-    unfold Applicative.toSeq
-    unfold Applicative.toPure
-    unfold Monad.toApplicative
-    unfold instMonad
-    rfl,
-  bind_pure_comp := by
-    intro α; intro β
-    intro f
-    intro x
-    unfold Bind.bind
-    unfold Pure.pure
-    unfold Functor.map
-    unfold Monad.toBind
-    unfold Applicative.toPure
-    unfold Applicative.toFunctor
-    unfold Monad.toApplicative
-    unfold instMonad
-    simp
-    unfold instFunctor
-    simp
-    unfold bind
-    unfold pure
-    unfold map
-    rfl,
-  bind_map := by
-    intro α; intro β
-    intro f; intro x
-    unfold Bind.bind
-    unfold Functor.map
-    unfold Seq.seq
-    unfold Monad.toBind
-    unfold Applicative.toFunctor
-    unfold Applicative.toSeq
-    unfold Monad.toApplicative
-    unfold instMonad
-    simp
-    unfold instFunctor
-    rfl,
-  pure_bind := by
-    intro α; intro β
-    intro x; intro f
-    unfold Bind.bind
-    unfold Pure.pure
-    unfold Monad.toBind
-    unfold Applicative.toPure
-    unfold Monad.toApplicative
-    unfold instMonad
-    simp
-    unfold pure
-    unfold bind
-    rfl,
-  bind_assoc := by
-    intro α; intro β; intro γ
-    intro x; intro f; intro g
-    unfold Bind.bind
-    unfold Monad.toBind
-    unfold instMonad
-    simp only
+    intro α β f1 f2
     apply ext
     intro it
-    unfold bind
-    simp only
-    cases (x it)
-    all_goals rfl
+    simp [Function.const, Functor.map, Applicative.toFunctor, Monad.toApplicative, instMonad, instFunctor]
+    split <;> simp only [Function.const_apply]
+
+  seqRight_eq := by
+    intro α β x y
+    apply ext
+    intro it
+    simp [Function.const, Seq.seq, SeqRight.seqRight, Applicative.toSeq, Applicative.toSeqRight, Monad.toApplicative, Functor.map, instMonad, instFunctor]
+    split <;> simp only [id_eq]
+    split <;> simp only [*]
+
+  pure_seq := by
+    intro α β g x
+    apply ext
+    intro it
+    simp [Seq.seq, Pure.pure, Applicative.toSeq, Applicative.toPure, Monad.toApplicative, instMonad]
+
+  bind_pure_comp := by
+    intro α β f x
+    simp [Bind.bind, Pure.pure, Functor.map, Monad.toBind, Applicative.toPure, Applicative.toFunctor, Monad.toApplicative, instMonad, instFunctor]
+    rfl
+
+  bind_map := by
+    intro α β f x
+    simp [Bind.bind, Functor.map, Seq.seq, Monad.toBind, Applicative.toFunctor, Applicative.toSeq, Monad.toApplicative, instMonad, instFunctor]
+
+  pure_bind := by
+    intro α β x f
+    simp [Bind.bind, Pure.pure, Monad.toBind, Applicative.toPure, Monad.toApplicative, instMonad]
+    rfl
+
+  bind_assoc := by
+    intro α β γ x f g
+    simp only [Bind.bind, Monad.toBind, instMonad]
+    apply ext
+    intro it
+    simp only [bind]
+    cases x it <;> simp only
 }
 
 attribute [simp] hasNext
@@ -248,7 +150,7 @@ attribute [simp] remaining
 attribute [simp] empty
 attribute [simp] pos
 
-theorem foldl_iterator_progress {α β : Type} {f : BParsec α} {g : β → α → β} {remaining : Nat} {init : β} {result : β} (H1 : remaining > 0) (H : (foldl f g remaining init) it1 = .success it2 result) : it2.pos > it1.pos := by
+theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaining : Nat} {init : β} {result : β} (H1 : remaining > 0) (H : (foldl f g remaining init) it1 = .success it2 result) : it2.pos > it1.pos := by
   unfold foldl at H
   revert (H1 : remaining > 0)
   induction remaining using Nat.strongRecOn generalizing f g init result it1 it2
@@ -257,44 +159,28 @@ theorem foldl_iterator_progress {α β : Type} {f : BParsec α} {g : β → α �
     unfold foldlHelper at H
     have H2 : ¬(ni = 0) := by omega
     rw [if_neg H2] at H
-    unfold Bind.bind at H
-    unfold Monad.toBind at H
-    unfold instMonad at H
-    simp only [bind, pos] at H
-    cases H3 : (f it1)
-    case error =>
-      rewrite [H3] at H
-      contradiction
+    simp only [Bind.bind, Monad.toBind, instMonad, bind, pos] at H
+    cases H3 : f it1 <;> simp only [H3, reduceCtorEq] at H
     case success itn resultn =>
-      rewrite [H3] at H
-      simp only at H
       by_cases H4 : (itn.pos - it1.pos = 0)
-      case pos =>
-        rw [if_pos H4] at H
-        contradiction
+      case pos => simp only [H4, reduceIte] at H ; contradiction
       case neg =>
-        rw [if_neg H4] at H
+        simp only [H4, reduceIte] at H
         let ni2 := ni - (itn.pos - it1.pos)
         have Hni2 : ni2 = ni - (itn.pos - it1.pos) := rfl
-        rewrite [<- Hni2] at H
-        have H5 : ni2 < ni := by omega
-
+        rw [← Hni2] at H
         by_cases H6 : (itn.pos - it1.pos ≥ ni)
         case neg =>
-          have Hn : ni2 > 0 := by omega
-          have X := (@IH ni2 H5 itn it2 f g (g init resultn) result) H Hn
-          have X2 : itn.pos > it1.pos := by omega
+          specialize @IH ni2 (by omega) itn it2 f g (g init resultn) result H (by omega)
           omega
         case pos =>
           have Hn : ni2 = 0 := by omega
-          rewrite [Hn] at H
+          simp only [Hn] at H
           unfold foldlHelper at H
-          rewrite [if_pos (by decide)] at H
-          unfold pure at H
-          have HH : itn = it2 := by
-            simp at H
-            apply And.left H
-          rewrite [HH] at H4
+          rw [if_pos (by decide)] at H
+          simp only [pure, ParseResult.success.injEq] at H
+          replace ⟨H, _⟩ := H
+          subst it2
           omega
 
 end BParsec
@@ -308,34 +194,34 @@ theorem utf8DecodeChar.sizeGt0 (it1 it2 : ByteArray.ByteIterator) (pos : Nat) (c
   simp only [beq_iff_eq, bne_iff_ne, ne_eq, gt_iff_lt, ite_not, Bool.and_eq_true, not_and,
     and_imp] at H
   split at H
-  simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
-  omega
-  split at H
-  split at H
-  split at H
-  contradiction
-  split at H
-  simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
-  omega
-  contradiction
-  contradiction
-  split at H
-  split at H
-  contradiction
-  split at H
-  contradiction
-  split at H
-  simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
-  omega
-  contradiction
-  split at H
-  split at H
-  contradiction
-  split at H
-  simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
-  omega
-  contradiction
-  contradiction
+  · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+    omega
+  · split at H
+    · split at H
+      · split at H
+        · simp only [reduceCtorEq] at H
+        · split at H
+          · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+            omega
+          · simp only [reduceCtorEq] at H
+      · simp only [reduceCtorEq] at H
+    · split at H
+      · split at H
+        · simp only [reduceCtorEq] at H
+        · split at H
+          · simp only [reduceCtorEq] at H
+          · split at H
+            · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+              omega
+            · simp only [reduceCtorEq] at H
+      · split at H
+        · split at H
+          · simp only [reduceCtorEq] at H
+          · split at H
+            · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+              omega
+            · simp only [reduceCtorEq] at H
+        · simp only [reduceCtorEq] at H
 
 private def parseStringHelper_unoptimized (remaining : Nat) (r : String) : BParsec String := do
   if remaining = 0 then pure r else
