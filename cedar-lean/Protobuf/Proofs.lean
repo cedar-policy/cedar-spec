@@ -34,24 +34,17 @@ theorem next_le_remaining (i : ByteIterator) : i.next.remaining ≤ i.remaining 
   omega
 
 @[simp] theorem hasNext_iff (i : ByteIterator) : i.hasNext ↔ i.remaining != 0 := by
-  apply Iff.intro
-  all_goals unfold hasNext
-  all_goals simp only [remaining.eq_1, gt_iff_lt, decide_eq_true_eq, imp_self]
+  simp only [hasNext, remaining.eq_1, gt_iff_lt, decide_eq_true_eq, imp_self]
 
 @[simp] theorem not_hasNext_iff (i : ByteIterator) : ¬i.hasNext ↔ i.remaining = 0 := by
-  apply Iff.intro
-  all_goals unfold hasNext
-  all_goals simp only [remaining.eq_1, bne_iff_ne, ne_eq, Decidable.not_not, imp_self]
+  simp only [hasNext, remaining.eq_1, bne_iff_ne, ne_eq, Decidable.not_not, imp_self]
 
 @[simp] theorem empty_iff (i : ByteIterator) : i.empty ↔ ¬i.hasNext := by
-  apply Iff.intro
-  all_goals unfold empty
-  all_goals simp only [hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt,
+  simp only [empty, hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt,
    Nat.le_zero_eq, decide_eq_true_eq, imp_self]
 
 @[simp] theorem not_empty_iff (i : ByteIterator) : ¬i.empty ↔ i.hasNext := by
-  simp only [empty_iff, hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt, Nat.le_zero_eq]
-  exact Decidable.not_not
+  simp only [empty_iff, hasNext_iff, remaining.eq_1, gt_iff_lt, Nat.not_lt, Nat.le_zero_eq, Decidable.not_not]
 
 end ByteArray.ByteIterator
 
