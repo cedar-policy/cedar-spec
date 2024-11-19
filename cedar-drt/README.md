@@ -54,7 +54,7 @@ You can adjust the script's behavior using the following environment variables:
 
 If you run into weird build issues,
 1. Make sure you have run `source set_env_vars.sh`, which sets all the environment variables needed to run the Lean definitional code.
-2. Make sure you have built the Lean library with `( cd ../cedar-lean && ../cedar-drt/build_lean_lib.sh )`. See the [cedar-lean README](./cedar-lean/README.md) if this command doesn't work.
+2. Make sure you have built the Lean library with `( cd ../cedar-lean && ../cedar-drt/build_lean_lib.sh )`. See the [cedar-lean README](../cedar-lean/README.md) if this command doesn't work.
 3. Try a `cargo clean` and rebuild.
 4. If the steps above don't help, then file [an issue](https://github.com/cedar-policy/cedar-spec/issues).
 
