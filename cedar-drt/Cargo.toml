@@ -21,6 +21,7 @@ lazy_static = "1.4"
 smol_str = { version = "0.3", features = ["serde"] }
 
 [features]
+no-lean-impl = []
 integration-testing = []
 
 [dev-dependencies]

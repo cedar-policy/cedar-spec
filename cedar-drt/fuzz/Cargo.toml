@@ -37,6 +37,7 @@ version = "1.3.1"
 features = ["v4", "fast-rng"]
 
 [features]
+no-lean-impl = ["cedar-drt/no-lean-impl"]
 prt = ["dep:rayon", "dep:clap", "dep:rand_chacha"]
 log = []
 
@@ -114,7 +115,6 @@ name = "entity-slicing-drt-type-directed"
 path = "fuzz_targets/entity-slicing-drt-type-directed.rs"
 test = false
 doc = false
-
 
 [[bin]]
 name = "validation-drt"
