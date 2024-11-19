@@ -83,12 +83,12 @@ def addOptionDurations (a b : Option Duration) : Option Duration :=
 def parseUnit? (str : String) (suffix: String) : Option Duration × String :=
   if str.endsWith suffix
   then
-    let new_str := str.dropRight suffix.length
-    let new_str_list := new_str.toList
-    let digits := ((new_str_list.reverse).takeWhile Char.isDigit).reverse
+    let newStr := str.dropRight suffix.length
+    let newStrList := newStr.toList
+    let digits := ((newStrList.reverse).takeWhile Char.isDigit).reverse
     if digits.isEmpty
     then (none, str)
-    else (durationUnits? (String.mk digits).toInt! suffix, new_str.dropRight digits.length)
+    else (durationUnits? (String.mk digits).toInt! suffix, newStr.dropRight digits.length)
   else (none, str)
 
 def parseUnsignedDuration? (str : String) : Option Duration :=
