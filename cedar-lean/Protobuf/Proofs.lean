@@ -68,7 +68,7 @@ theorem ext (x y : BParsec α) (H : ∀ it, x it = y it) : x = y := funext H
 @[simp] theorem id_map (x : BParsec α) : id <$> x = x := by
   apply ext
   intro it
-  simp [Functor.map, instFunctor]
+  simp only [Functor.map, map, id_eq]
   split <;> simp only [*]
 
 theorem map_const : (@mapConst α β) = ((@map β α) ∘ (@Function.const α β)) := rfl
@@ -76,7 +76,7 @@ theorem map_const : (@mapConst α β) = ((@map β α) ∘ (@Function.const α β
 theorem comp_map (g : α → β) (h : β → γ) (x : BParsec α) : (h ∘ g) <$> x = h <$> g <$> x := by
   apply ext
   intro it
-  simp [Functor.map, instFunctor]
+  simp only [Functor.map, map, Function.comp_apply]
   split <;> simp only [*]
 
 instance : LawfulFunctor BParsec := {
@@ -94,14 +94,14 @@ instance : LawfulMonad BParsec := {
     intro α β f1 f2
     apply ext
     intro it
-    simp [Function.const, Functor.map, Applicative.toFunctor, Monad.toApplicative, instMonad, instFunctor]
+    simp only [Monad.toApplicative, instMonad, instFunctor, Functor.map, bind, pure, map]
     split <;> simp only [Function.const_apply]
 
   seqRight_eq := by
     intro α β x y
     apply ext
     intro it
-    simp [Function.const, Seq.seq, SeqRight.seqRight, Applicative.toSeq, Applicative.toSeqRight, Monad.toApplicative, Functor.map, instMonad, instFunctor]
+    simp only [SeqRight.seqRight, bind, Seq.seq, Functor.map, map, Function.const]
     split <;> simp only [id_eq]
     split <;> simp only [*]
 
@@ -109,25 +109,25 @@ instance : LawfulMonad BParsec := {
     intro α β g x
     apply ext
     intro it
-    simp [Seq.seq, Pure.pure, Applicative.toSeq, Applicative.toPure, Monad.toApplicative, instMonad]
+    simp only [Seq.seq, bind, Pure.pure, pure, Monad.toApplicative, instMonad]
 
   bind_pure_comp := by
     intro α β f x
-    simp [Bind.bind, Pure.pure, Functor.map, Monad.toBind, Applicative.toPure, Applicative.toFunctor, Monad.toApplicative, instMonad, instFunctor]
+    simp only [Bind.bind, Pure.pure, Functor.map]
     rfl
 
   bind_map := by
     intro α β f x
-    simp [Bind.bind, Functor.map, Seq.seq, Monad.toBind, Applicative.toFunctor, Applicative.toSeq, Monad.toApplicative, instMonad, instFunctor]
+    simp only [Bind.bind, Functor.map, Seq.seq]
 
   pure_bind := by
     intro α β x f
-    simp [Bind.bind, Pure.pure, Monad.toBind, Applicative.toPure, Monad.toApplicative, instMonad]
+    simp only [Bind.bind, Pure.pure]
     rfl
 
   bind_assoc := by
     intro α β γ x f g
-    simp only [Bind.bind, Monad.toBind, instMonad]
+    simp only [Bind.bind]
     apply ext
     intro it
     simp only [bind]
@@ -151,7 +151,7 @@ theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaini
     unfold foldlHelper at H
     have H2 : ¬(ni = 0) := by omega
     rw [if_neg H2] at H
-    simp only [Bind.bind, Monad.toBind, instMonad, bind, pos] at H
+    simp only [Bind.bind, bind, pos] at H
     cases H3 : f it1 <;> simp only [H3, reduceCtorEq] at H
     case success itn resultn =>
       by_cases H4 : (itn.pos - it1.pos = 0)
