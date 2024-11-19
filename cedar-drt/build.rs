@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-use std::env;
-use std::path::Path;
-const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
 fn main() {
     #[cfg(feature = "lean-impl")]
     {
-        let lean_dir = env::var("LEAN_LIB_DIR").expect(
+        const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
+        let lean_dir = std::env::var("LEAN_LIB_DIR").expect(
             "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
         );
         // We'll need to link against some files found here later, and it's nicer to
         // fail quickly with a helpful error message.
-        if !Path::new(LEAN_BUILD_DIR).exists() {
+        if !std::path::Path::new(LEAN_BUILD_DIR).exists() {
             panic!("Lean build directory does not exist! Try running `( cd ../cedar-lean && ../cedar-drt/build_lean_lib.sh )`")
         }
         println!("cargo:rustc-link-search=native={LEAN_BUILD_DIR}");

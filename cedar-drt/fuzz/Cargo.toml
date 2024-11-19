@@ -155,6 +155,7 @@ name = "eval-type-directed"
 path = "fuzz_targets/eval-type-directed.rs"
 test = false
 doc = false
+required-features = ["lean-impl"]
 
 [[bin]]
 name = "schema-roundtrip"
