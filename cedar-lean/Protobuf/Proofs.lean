@@ -52,13 +52,17 @@ namespace BParsec
 instance [DecidableEq α] : DecidableEq (ParseResult α) := by
   unfold DecidableEq
   intro a b
-  cases a <;> cases b <;> simp only [reduceCtorEq, ParseResult.success.injEq, ParseResult.error.injEq]
-  case error.success | success.error => exact isFalse (by simp only [not_false_eq_true])
-  case error.error c d e f | success.success c d e f =>
-    match (decEq c e), (decEq d f) with
-      | isTrue h1, isTrue h2 => subst e f ; exact isTrue (by simp only [and_self])
-      | _, isFalse h2 => exact isFalse (by intro h; simp [h] at h2)
-      | isFalse h1, _ => exact isFalse (by intro h; simp [h] at h1)
+  let ⟨pos₁, res₁⟩ := a ; clear a
+  let ⟨pos₂, res₂⟩ := b ; clear b
+  cases res₁ <;> cases res₂ <;> simp only [ParseResult.mk.injEq, reduceCtorEq, Except.ok.injEq, Except.error.injEq, and_false]
+  case error.ok | ok.error => exact isFalse (by simp only [not_false_eq_true])
+  case ok.ok r₁ r₂ | error.error r₁ r₂ => match decEq pos₁ pos₂, decEq r₁ r₂ with
+    | isTrue h₁, isTrue h₂ => subst h₁ h₂ ; exact isTrue (by simp only [and_self])
+    | _, isFalse h₂ => exact isFalse (by intro h ; simp [h] at h₂)
+    | isFalse h₁, _ => exact isFalse (by intro h ; simp [h] at h₁)
+
+@[simp] theorem throw_eq_fail : (throw s : BParsec α) = BParsec.fail s := by
+  simp only [throw, throwThe, MonadExceptOf.throw]
 
 attribute [simp] map
 attribute [simp] mapConst
@@ -131,7 +135,8 @@ instance : LawfulMonad BParsec := {
     apply ext
     intro it
     simp only [bind]
-    cases x it <;> simp only
+    let ⟨pos, res⟩ := x it
+    cases res <;> simp only
 }
 
 attribute [simp] hasNext
@@ -141,38 +146,46 @@ attribute [simp] size
 attribute [simp] remaining
 attribute [simp] empty
 attribute [simp] pos
+attribute [simp] inspect
+attribute [simp] fail
 
-theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaining : Nat} {init : β} {result : β} (H1 : remaining > 0) (H : (foldl f g remaining init) it1 = .success it2 result) : it2.pos > it1.pos := by
+theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaining : Nat} {init : β} {res : β}
+  (H1 : remaining > 0)
+  (H : foldl f g remaining init pos₀ = { pos := pos₁, res := .ok res }) :
+  pos₁.pos > pos₀.pos
+:= by
   unfold foldl at H
   revert (H1 : remaining > 0)
-  induction remaining using Nat.strongRecOn generalizing f g init result it1 it2
+  induction remaining using Nat.strongRecOn generalizing f g init res pos₀ pos₁
   next ni IH =>
     intro (H1 : ni > 0)
     unfold foldlHelper at H
     have H2 : ¬(ni = 0) := by omega
     rw [if_neg H2] at H
-    simp only [Bind.bind, bind, pos] at H
-    cases H3 : f it1 <;> simp only [H3, reduceCtorEq] at H
-    case success itn resultn =>
-      by_cases H4 : (itn.pos - it1.pos = 0)
-      case pos => simp only [H4, reduceIte] at H ; contradiction
+    simp only [Bind.bind, bind, pos, inspect] at H
+    cases H3 : f pos₀ ; simp only [H3] at H ; rename_i pos₂ res₂
+    cases res₂ <;> simp only [ParseResult.mk.injEq, reduceCtorEq, and_false] at H
+    case ok res₂ =>
+      by_cases H4 : (pos₂.pos - pos₀.pos = 0)
+      case pos =>
+        simp only [H4, reduceIte, throw_eq_fail, fail, ParseResult.mk.injEq, reduceCtorEq, and_false] at H
       case neg =>
         simp only [H4, reduceIte] at H
-        let ni2 := ni - (itn.pos - it1.pos)
-        have Hni2 : ni2 = ni - (itn.pos - it1.pos) := rfl
+        let ni2 := ni - (pos₂.pos - pos₀.pos)
+        have Hni2 : ni2 = ni - (pos₂.pos - pos₀.pos) := rfl
         rw [← Hni2] at H
-        by_cases H6 : (itn.pos - it1.pos ≥ ni)
+        by_cases H6 : (pos₂.pos - pos₀.pos ≥ ni)
         case neg =>
-          specialize @IH ni2 (by omega) itn it2 f g (g init resultn) result H (by omega)
+          specialize @IH ni2 (by omega) pos₂ pos₁ f g (g init res₂) res H (by omega)
           omega
         case pos =>
           have Hn : ni2 = 0 := by omega
           simp only [Hn] at H
           unfold foldlHelper at H
           rw [if_pos (by decide)] at H
-          simp only [pure, ParseResult.success.injEq] at H
+          simp only [pure, ParseResult.mk.injEq, Except.ok.injEq] at H
           replace ⟨H, _⟩ := H
-          subst it2
+          subst pos₂
           omega
 
 end BParsec
@@ -181,58 +194,65 @@ namespace Proto
 
 instance : DecidableEq (BParsec.ParseResult (Char × Nat)) := by apply inferInstance
 
-theorem utf8DecodeChar.sizeGt0 (it1 it2 : ByteArray.ByteIterator) (pos : Nat) (c : Char) (H : utf8DecodeChar pos it1 = .success it2 ⟨c, n⟩) : n > 0 := by
+theorem utf8DecodeChar.sizeGt0 {pos₀ pos₁ : ByteArray.ByteIterator} {i n : Nat} {c : Char}
+  (H : utf8DecodeChar i pos₀ = { pos := pos₁, res := .ok ⟨c, n⟩ }) :
+  n > 0
+:= by
   unfold utf8DecodeChar at H
-  simp only [beq_iff_eq, bne_iff_ne, ne_eq, gt_iff_lt, ite_not, Bool.and_eq_true, not_and,
-    and_imp] at H
+  simp only [bind, BParsec.bind, BParsec.inspect, beq_iff_eq, pure, bne_iff_ne, ne_eq,
+    BParsec.throw_eq_fail, gt_iff_lt, ite_not, Bool.and_eq_true, not_and, and_imp] at H
   split at H
-  · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+  · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq, Prod.mk.injEq] at H
     omega
   · split at H
-    · split at H
+    · simp only [BParsec.bind, BParsec.inspect] at H
+      split at H
       · split at H
-        · simp only [reduceCtorEq] at H
+        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
         · split at H
-          · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+          · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
+            Prod.mk.injEq] at H
             omega
-          · simp only [reduceCtorEq] at H
-      · simp only [reduceCtorEq] at H
+          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
+      · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
     · split at H
-      · split at H
-        · simp only [reduceCtorEq] at H
+      · simp only [BParsec.bind, BParsec.inspect] at H
+        split at H
+        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
         · split at H
-          · simp only [reduceCtorEq] at H
+          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
           · split at H
-            · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+            · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
+                Prod.mk.injEq] at H
               omega
-            · simp only [reduceCtorEq] at H
+            · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
       · split at H
-        · split at H
-          · simp only [reduceCtorEq] at H
+        · simp only [BParsec.bind, BParsec.inspect] at H
+          split at H
+          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
           · split at H
-            · simp only [BParsec.ParseResult.success.injEq, Prod.mk.injEq, true_and] at H
+            · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
+                Prod.mk.injEq] at H
               omega
-            · simp only [reduceCtorEq] at H
-        · simp only [reduceCtorEq] at H
+            · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
+        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
 
+/-- Uglier version of `parseStringHelper` which is functionally equivalent to
+`parseStringHelper`, but has a termination proof, unlike `parseStringHelper`.
+-/
 private def parseStringHelper_unoptimized (remaining : Nat) (r : String) : BParsec String := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
   let pos ← BParsec.pos
-  fun it =>
-    let result := utf8DecodeChar pos it
-    match result with
-      | .success it2 ⟨c, elementSize⟩ =>
-        -- NOTE: I don't know how to get H_Redunant other than
-        -- doing this. Which is bad for runtime O(n) of ByteArray
-        if H_Redundant : result = .success it2 ⟨c, elementSize⟩ then
-          have _ : elementSize > 0 := utf8DecodeChar.sizeGt0 it it2 pos c H_Redundant
-          (do
-            BParsec.forward (elementSize)
-            parseStringHelper_unoptimized (remaining - elementSize) (r.push c)) it
-        else
-          .error it2 "Impossible case"
-      | .error it msg => .error it msg
+  λ pos₀ =>
+    let result := utf8DecodeChar pos pos₀
+    match H : result with
+      | { pos := pos₁, res := .ok ⟨c, elementSize⟩ } =>
+        have _ : elementSize > 0 := utf8DecodeChar.sizeGt0 H
+        (do
+          BParsec.forward (elementSize)
+          parseStringHelper_unoptimized (remaining - elementSize) (r.push c)) pos₀
+      | { pos := pos₁, res := .error msg } => { pos := pos₁, res := .error msg }
 
 end Proto

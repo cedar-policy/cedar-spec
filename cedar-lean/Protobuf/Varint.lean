@@ -39,19 +39,17 @@ namespace Proto
 -- Has panic! indexing, should work towards adding needed proof
 private def find_end_of_varint_helper  (n : Nat) : BParsec Nat := do
   let empty ← BParsec.empty
-  have H0 := empty
   if empty then throw "Expected more bytes"
 
   -- Due to the PTypes allowed, we can't have a varint with more than 10 bytes
   if H : n ≥ 10 then throw "Too many bytes in this varint" else
 
-  let msbSet ← fun it => BParsec.ParseResult.success it (msb_set8 it.data[it.pos + n]!)
+  let msbSet ← BParsec.inspect λ pos => msb_set8 pos.data[pos.pos + n]!
   if ¬msbSet then
     let pos ← BParsec.pos
     pure (pos + n + 1) -- Include current byte as part of varint
   else
-
-  find_end_of_varint_helper (n + 1)
+    find_end_of_varint_helper (n + 1)
 termination_by 10 - n
 
 @[inline]
@@ -72,7 +70,7 @@ private def parse_uint64_helper (remaining : Nat) (p : Nat) (r : UInt64) : BPars
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw "Expected more bytes" else
-  let byte ← fun it => BParsec.ParseResult.success it it.data[it.pos]!
+  let byte ← BParsec.inspect λ pos => pos.data[pos.pos]!
   BParsec.next -- Progress iterator
   have byte2 := clear_msb8 byte
   have byte3 := byte2.toUInt64 <<< (7 * p.toUInt64)
@@ -87,7 +85,7 @@ def parse_uint64 : BParsec UInt64 := do
 
 instance : Field UInt64 := {
   parse := parse_uint64
-  checkWireType := fun (w : WireType) => WireType.VARINT = w
+  checkWireType := (· = WireType.VARINT)
   merge := Field.Merge.override
 }
 
@@ -95,7 +93,7 @@ private def parse_uint32_helper (remaining : Nat) (p : Nat) (r : UInt32) : BPars
   if remaining = 0 then pure r else
   let empty ← BParsec.empty -- NOTE: Might be able to remove if we add a hypotheses in the definition
   if empty then throw "Expected more bytes" else
-  let byte ← fun it => .success it it.data[it.pos]!
+  let byte ← BParsec.inspect λ pos => pos.data[pos.pos]!
   BParsec.next -- Progress iterator
   have byte2 := clear_msb8 byte
   have byte3 := byte2.toUInt32 <<< (7 * p.toUInt32)
@@ -109,7 +107,7 @@ def parse_uint32 : BParsec UInt32 := do
 
 instance : Field UInt32 := {
   parse := parse_uint32
-  checkWireType := fun w => WireType.VARINT = w
+  checkWireType := (· = WireType.VARINT)
   merge := Field.Merge.override
 }
 
@@ -130,7 +128,7 @@ def parse_int32 : BParsec Int32 := do
 
 instance : Field Int32 := {
   parse := parse_int32
-  checkWireType := fun w => WireType.VARINT = w
+  checkWireType := (· = WireType.VARINT)
   merge := Field.Merge.override
 }
 
@@ -150,7 +148,7 @@ def parse_int64 : BParsec Int64 := do
 
 instance : Field Int64 := {
   parse := parse_int64
-  checkWireType := fun w => WireType.VARINT = w
+  checkWireType := (· = WireType.VARINT)
   merge := Field.Merge.override
 }
 
@@ -163,7 +161,7 @@ def parse_bool : BParsec Bool := do
 
 instance : Field Bool := {
   parse := Proto.parse_bool
-  checkWireType := fun w => WireType.VARINT = w
+  checkWireType := (· = WireType.VARINT)
   merge := Field.Merge.override
 }
 
