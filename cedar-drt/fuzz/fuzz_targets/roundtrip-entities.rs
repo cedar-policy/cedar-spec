@@ -108,7 +108,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     let roundtripped_entities = eparser
         .from_json_value(json.clone())
         .expect("Should be able to parse serialized entity JSON");
-    // Weaker assertion for schema based parsing because it adds action form the schema into entities.
+    // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
     for e in input.entities {
         let roundtripped_e = roundtripped_entities
             .entity(e.uid())
