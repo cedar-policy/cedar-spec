@@ -81,13 +81,13 @@ def parse (α : Type) [Field α] : BParsec (Array α) := do
   let len_size ← Len.parseSize
   BParsec.foldl
     Field.parse
-    (fun arr => fun element => arr.push element)
+    (λ arr element => arr.push element)
     len_size
     #[]
 
 instance [Field α] : Field (Packed α) := {
   parse := (parse α)
-  checkWireType := fun (w : WireType) => WireType.LEN = w
+  checkWireType := (· = WireType.LEN)
   merge := Field.Merge.concatenate
 }
 

@@ -21,9 +21,9 @@ Monadic Parser Combinator for ByteArrays
 -/
 
 namespace BParsec
-inductive ParseResult (α : Type) where
-  | success (pos : ByteArray.ByteIterator) (res : α)
-  | error (pos : ByteArray.ByteIterator) (err : String)
+structure ParseResult (α : Type) where
+  pos : ByteArray.ByteIterator
+  res : Except String α
   deriving Repr
 end BParsec
 
@@ -31,55 +31,55 @@ def BParsec (α : Type) : Type := ByteArray.ByteIterator → BParsec.ParseResult
 
 namespace BParsec
 
-instance (α : Type) : Inhabited (BParsec α) := ⟨λ it => .error it ""⟩
+@[inline]
+def pure (a : α) : BParsec α := λ pos => { pos, res := .ok a }
 
 @[inline]
-def map {α β : Type}  (g : α → β) (f : BParsec α) : BParsec β := λ it =>
-  match f it with
-  | .success it a => .success it (g a)
-  | .error it msg => .error it msg
+def fail (msg : String) : BParsec α := λ pos => { pos, res := .error msg }
+
+instance (α : Type) : Inhabited (BParsec α) := ⟨fail ""⟩
 
 @[inline]
-def mapConst {α β : Type} (x : α) (f : BParsec β) : BParsec α := λ it =>
-  match f it with
-  | .success it _ => .success it x
-  | .error it msg => .error it msg
+def map (g : α → β) (f : BParsec α) : BParsec β := λ pos₀ =>
+  match f pos₀ with
+  | { pos, res := .ok a } => { pos, res := .ok (g a) }
+  | { pos, res := .error msg } => { pos, res := .error msg }
+
+@[inline]
+def mapConst (x : α) (f : BParsec β) : BParsec α := λ pos₀ =>
+  match f pos₀ with
+  | { pos, res := .ok _ } => { pos, res := .ok x }
+  | { pos, res := .error msg } => { pos, res := .error msg }
 
 instance : Functor BParsec := { map, mapConst }
 
 @[inline]
-def pure (a : α) : BParsec α := λ it => .success it a
+def bind (f : BParsec α) (g : α → BParsec β) : BParsec β := λ pos₀ =>
+  match f pos₀ with
+  | { pos, res := .ok a } => g a pos
+  | { pos, res := .error msg } => { pos, res := .error msg }
+
+instance : Monad BParsec := { pure, bind }
 
 @[inline]
-def bind {α β : Type} (f : BParsec α) (g : α → BParsec β) : BParsec β := λ it =>
-  match f it with
-  | .success it a => g a it
-  | .error it msg => .error it msg
-
-instance : Monad BParsec := { pure := BParsec.pure, bind }
+def tryCatch (body : BParsec α) (handler : String → BParsec α) : BParsec α := λ pos₀ =>
+  match body pos₀ with
+  | { pos, res := .ok result } => { pos, res := .ok result }
+  | { pos, res := .error msg } => (handler msg) pos
 
 @[inline]
-def fail (msg : String) : BParsec α := fun it => .error it msg
-
-@[inline]
-def tryCatch (body : BParsec α) (handler : String → BParsec α) : BParsec α := fun it =>
-  match body it with
-    | .success it result => .success it result
-    | .error it err => (handler err) it
-
-@[inline]
-def orElse (p : BParsec α) (q : Unit → BParsec α) : BParsec α := fun it =>
-  match p it with
-    | .success it result => .success it result
-    | .error it _ => q () it
+def orElse (p : BParsec α) (q : Unit → BParsec α) : BParsec α := λ pos₀ =>
+  match p pos₀ with
+  | { pos, res := .ok result } => { pos, res := .ok result }
+  | { pos, res := .error _ } => q () pos
 
 /-- Attempt a parser combinator on a byte array, if it fails, reset
 the position-/
 @[inline]
-def attempt (p : BParsec α) : BParsec α := λ it =>
-  match p it with
-  | .success rem res => .success rem res
-  | .error _ err => .error it err
+def attempt (p : BParsec α) : BParsec α := λ pos₀ =>
+  match p pos₀ with
+  | { pos, res := .ok res } => { pos, res := .ok res }
+  | { pos := _, res := .error msg } => { pos := pos₀, res := .error msg }
 
 instance : Alternative BParsec := { failure := fail default, orElse }
 
@@ -92,47 +92,48 @@ returns an Except to capture both successes and failures -/
 @[inline]
 def run (p : BParsec α) (ba : ByteArray) : Except String α :=
   match p ba.byte_iter with
-  | .success _ res => .ok res
-  | .error it err  => .error s!"offset {it.pos}: {err}"
+  | { pos := _, res := .ok res } => .ok res
+  | { pos, res := .error msg } => .error s!"offset {pos.pos}: {msg}"
 
 /- Execute parser combinators on a byte array, panics on error -/
 @[inline]
 def run! [Inhabited α] (p : BParsec α) (ba : ByteArray) : α :=
-  match p ba.byte_iter with
-  | .success _ res => res
-  | .error _ _  => panic!("Unexpected error")
+  match run p ba with
+  | .ok res => res
+  | .error msg => panic!(s!"Unexpected error: {msg}")
 
 -- Iterator wrappers
 
+/-- Advance the iterator -/
 @[inline]
-def hasNext : BParsec Bool :=
-  fun it => .success it it.hasNext
+def next : BParsec Unit := λ pos =>
+  { pos := pos.next, res := .ok () }
 
 @[inline]
-def next : BParsec Unit :=
-  fun it => .success (it.next) ()
+def forward (n : Nat) : BParsec Unit := λ pos =>
+  { pos := pos.forward n, res := .ok () }
+
+/-- Return some computation on the current iterator state, without changing the state -/
+@[inline]
+def inspect (f : ByteArray.ByteIterator → α) : BParsec α := λ pos =>
+  { pos, res := .ok (f pos) }
 
 @[inline]
-def forward (n : Nat) : BParsec Unit :=
-  fun it => .success (it.forward n) ()
+def hasNext : BParsec Bool := inspect ByteArray.ByteIterator.hasNext
 
 @[inline]
-def size : BParsec Nat :=
-  fun it => .success it it.size
+def size : BParsec Nat := inspect ByteArray.ByteIterator.size
 
 @[inline]
-def remaining : BParsec Nat :=
-  fun it => .success it it.remaining
+def remaining : BParsec Nat := inspect ByteArray.ByteIterator.remaining
 
 @[inline]
-def empty : BParsec Bool :=
-  fun it => .success it it.empty
+def empty : BParsec Bool := inspect ByteArray.ByteIterator.empty
 
 @[inline]
-def pos : BParsec Nat :=
-  fun it => .success it it.pos
+def pos : BParsec Nat := inspect ByteArray.ByteIterator.pos
 
-@[specialize] def foldlHelper {α β : Type} (f : BParsec α) (g : β → α → β) (remaining : Nat) (result : β) : BParsec β := do
+@[specialize] def foldlHelper (f : BParsec α) (g : β → α → β) (remaining : Nat) (result : β) : BParsec β := do
   if remaining = 0 then
     pure result
   else
@@ -150,14 +151,16 @@ def pos : BParsec Nat :=
   foldlHelper f g (remaining - elementSize) newResult
 
 @[inline]
-def foldl {α β : Type} (f : BParsec α) (g : β → α → β) (remaining : Nat) (init : β) : BParsec β :=
+def foldl (f : BParsec α) (g : β → α → β) (remaining : Nat) (init : β) : BParsec β :=
   foldlHelper f g remaining init
 
 @[inline]
-def eof : BParsec Unit := fun it =>
-  if it.pos ≥ it.data.size then
-    .success it ()
+def eof : BParsec Unit := do
+  let pos ← pos
+  let size ← size
+  if pos ≥ size then
+    pure ()
   else
-    .error it "Expected end of file"
+    throw "Expected end of file"
 
 end BParsec

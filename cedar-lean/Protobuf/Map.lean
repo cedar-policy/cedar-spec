@@ -96,7 +96,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
 
 instance {α β : Type} [Inhabited α] [Inhabited β] [Field α] [Field β] : Field (Map α β) := {
   parse := parse
-  checkWireType := fun (w : WireType) => WireType.LEN = w
+  checkWireType := (· = WireType.LEN)
   merge := Field.Merge.concatenate
 }
 end Map
