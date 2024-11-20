@@ -15,6 +15,17 @@ You can learn more about our formalization efforts in the following blog posts:
 
 See the README in each directory for more information.
 
+## DRT Quick-Start
+
+A few of our test targets are property-based tests which don't make a comparison against the Lean formalization.
+You can get started with these immediately without installing Lean or compiling the formalization.
+To try it out, just run:
+
+```bash
+cd cedar-drt
+cargo fuzz run -s none --no-default-features validation-pbt-type-directed
+```
+
 ## Build
 
 ### Lean formalization and proofs
