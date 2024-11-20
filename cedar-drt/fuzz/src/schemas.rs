@@ -428,9 +428,15 @@ impl TypeName for InternalName {
 
 impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_schema::ActionType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
-        if &lhs.attributes != &rhs.attributes {
+        if &lhs.attributes != &rhs.attributes
+            && !(lhs.attributes.as_ref().is_none_or(HashMap::is_empty)
+                && rhs.attributes.as_ref().is_none_or(HashMap::is_empty))
+        {
             Err(format!("Attributes don't match"))
-        } else if &lhs.member_of != &rhs.member_of {
+        } else if &lhs.member_of != &rhs.member_of
+            && !(lhs.member_of.as_ref().is_none_or(Vec::is_empty)
+                && rhs.member_of.as_ref().is_none_or(Vec::is_empty))
+        {
             Err(format!("Member-of doesn't match"))
         } else {
             match (&lhs.applies_to, &rhs.applies_to) {
