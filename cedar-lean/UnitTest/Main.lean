@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import UnitTest.CedarProto
 import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Proto
@@ -25,7 +26,8 @@ def tests :=
   Decimal.tests ++
   IPAddr.tests ++
   Wildcard.tests ++
-  Proto.tests
+  Proto.tests ++
+  CedarProto.tests
 
 def main : IO UInt32 := do
   TestSuite.runAll tests

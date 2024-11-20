@@ -26,8 +26,6 @@ import UnitTest.Run
 
 /-! Test Cases for Protobuffer functions -/
 
-open Proto
-
 -- Show DecidableEq of Except for unit tests
 namespace Except
 instance [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
@@ -91,7 +89,6 @@ def get? (n: Int) : Except String A :=
 instance : ProtoEnum A where
   fromInt := get?
 end A
-
 
 def tests := [
   UnitTest.suite "General protobuf deserialization tests" ([
@@ -167,3 +164,8 @@ def tests := [
     ⟩,
   ] : List (UnitTest.TestCase IO))
 ]
+
+-- Uncomment for interactive debugging
+-- #eval TestSuite.runAll tests
+
+end Proto

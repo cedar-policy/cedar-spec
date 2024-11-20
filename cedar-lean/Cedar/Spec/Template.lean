@@ -34,6 +34,7 @@ abbrev SlotID := String
 inductive EntityUIDOrSlot where
   | entityUID (entity : EntityUID)
   | slot (id : SlotID)
+deriving Repr, DecidableEq
 
 inductive ScopeTemplate where
   | any
@@ -41,12 +42,15 @@ inductive ScopeTemplate where
   | mem (entityOrSlot : EntityUIDOrSlot)
   | is (ety : EntityType)
   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
+deriving Repr, DecidableEq
 
 inductive PrincipalScopeTemplate where
   | principalScope (scope : ScopeTemplate)
+deriving Repr, DecidableEq
 
 inductive ResourceScopeTemplate where
   | resourceScope (scope : ScopeTemplate)
+deriving Repr, DecidableEq
 
 abbrev TemplateID := String
 
@@ -56,6 +60,7 @@ structure Template where
   actionScope : ActionScope
   resourceScope : ResourceScopeTemplate
   condition : Conditions
+deriving Repr, DecidableEq
 
 abbrev Templates := Map TemplateID Template
 

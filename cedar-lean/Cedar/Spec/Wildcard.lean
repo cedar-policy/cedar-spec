@@ -25,6 +25,9 @@ inductive PatElem where
   | justChar (c : Char)
 deriving Repr, DecidableEq, Inhabited
 
+instance : Coe Char PatElem where
+  coe c := .justChar c
+
 def PatElem.lt : PatElem → PatElem → Bool
   | .justChar c₁, .justChar c₂ => c₁ < c₂
   | .star, .justChar _         => true
