@@ -62,6 +62,14 @@ initialize_corpus() {
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
 
+  roundtrip-entities-bytes)
+    for f in ../cedar/**/entity.json; do
+      cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
+    done
+    for f in ../cedar/**/entities.json; do
+      cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
+    done ;;
+
   *)
     echo "Nothing to do for fuzz target $1"
     return ;;

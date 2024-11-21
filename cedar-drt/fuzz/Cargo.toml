@@ -199,3 +199,15 @@ name = "request-validation"
 path = "fuzz_targets/request-validation.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "roundtrip-entities"
+path = "fuzz_targets/roundtrip-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "roundtrip-entities-bytes"
+path = "fuzz_targets/roundtrip-entities-bytes.rs"
+test = false
+doc = false
