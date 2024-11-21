@@ -28,8 +28,15 @@ def Map (KeyT ValueT : Type) [Field KeyT] [Field ValueT] := Array (KeyT × Value
 
 namespace Map
 
-instance {α β : Type} [Field α] [Field β] : Inhabited (Map α β) where
-     default := #[]
+instance [Field α] [Field β] [Repr α] [Repr β] : Repr (Map α β) where
+  reprPrec m n := let a : Array (α × β) := m ; reprPrec a n
+
+instance [Field α] [Field β] : Inhabited (Map α β) where
+  default := #[]
+
+instance [Field α] [Field β] [DecidableEq α] [DecidableEq β] : DecidableEq (Map α β) := by
+  unfold DecidableEq Map
+  exact decEq
 
 @[inline]
 def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BParsec (Map KeyT ValueT) := do

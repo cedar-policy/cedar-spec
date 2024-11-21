@@ -112,7 +112,7 @@ instance : Field UInt32 := {
 }
 
 def Int32 := Int
-deriving instance Inhabited, DecidableEq for Int32
+deriving instance Repr, Inhabited, DecidableEq for Int32
 instance : OfNat Int32 n := ⟨Int.ofNat n⟩
 instance : Neg Int32 := { neg := Int.neg }
 
@@ -133,7 +133,7 @@ instance : Field Int32 := {
 }
 
 def Int64 := Int
-deriving instance Inhabited, DecidableEq for Int64
+deriving instance Repr, Inhabited, DecidableEq for Int64
 instance : OfNat Int64 n := ⟨Int.ofNat n⟩
 instance : Neg Int64 := { neg := Int.neg }
 
