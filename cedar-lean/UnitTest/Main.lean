@@ -16,6 +16,7 @@
 
 import UnitTest.Decimal
 import UnitTest.IPAddr
+import UnitTest.Proto
 import UnitTest.Wildcard
 
 open UnitTest
@@ -23,7 +24,8 @@ open UnitTest
 def tests :=
   Decimal.tests ++
   IPAddr.tests ++
-  Wildcard.tests
+  Wildcard.tests ++
+  Proto.tests
 
 def main : IO UInt32 := do
   TestSuite.runAll tests
