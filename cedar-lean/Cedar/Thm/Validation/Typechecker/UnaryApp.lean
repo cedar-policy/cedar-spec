@@ -26,15 +26,15 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
   ∃ bty c₁',
     ty = .bool bty.not ∧
-    typeOf x₁ c₁ env = Except.ok (.bool bty, c₁')
+    typeOf x₁ c₁ env (l == .infinite) = Except.ok (.bool bty, c₁')
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  cases h₂ : typeOf x₁ c₁ env (l == .infinite) <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
@@ -46,10 +46,10 @@ theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
       · exists bty, c₁'
         simp only [and_true, h₁]
 
-theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.unaryApp .not x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty
@@ -83,14 +83,14 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
     exact type_is_inhabited (CedarType.bool (BoolType.not bty))
   }
 
-theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.unaryApp .neg x₁) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.unaryApp .neg x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
   ty = .int ∧
-  ∃ c₁', typeOf x₁ c₁ env = Except.ok (.int, c₁')
+  ∃ c₁', typeOf x₁ c₁ env (l == .infinite) = Except.ok (.int, c₁')
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  cases h₂ : typeOf x₁ c₁ env (l == .infinite) <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
@@ -98,10 +98,10 @@ theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
     simp [ok] at h₁
     simp [h₁]
 
-theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp .neg x₁) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.unaryApp .neg x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp .neg x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .neg x₁) request entities v ∧ InstanceOfType v ty
@@ -128,14 +128,14 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
     exact type_is_inhabited CedarType.int
   }
 
-theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
   ty = .bool .anyBool ∧
-  ∃ c₁', typeOf x₁ c₁ env = Except.ok (.string, c₁')
+  ∃ c₁', typeOf x₁ c₁ env (l == .infinite) = Except.ok (.string, c₁')
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  cases h₂ : typeOf x₁ c₁ env (l == .infinite) <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
@@ -143,10 +143,10 @@ theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabili
     simp [ok] at h₁
     simp [h₁]
 
-theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp (.like p) x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp (.like p) x₁) request entities v ∧ InstanceOfType v ty
@@ -167,37 +167,37 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
     exact type_is_inhabited (.bool .anyBool)
   }
 
-theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
-  ∃ ety' c₁',
+  ∃ ety' l' c₁',
     ty = (.bool (if ety = ety' then .tt else .ff)) ∧
-    typeOf x₁ c₁ env = Except.ok (.entity ety', c₁')
+    typeOf x₁ c₁ env (l == .infinite) = Except.ok (.entity ety' l', c₁')
 := by
   simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  cases h₂ : typeOf x₁ c₁ env (l == .infinite) <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfUnaryApp] at h₁
     split at h₁ <;> try contradiction
-    case h_4 _ _ ety' h₃ =>
+    case h_4 _ _ ety' l h₃ =>
       simp only [UnaryOp.is.injEq] at h₃
       subst h₃
       simp [ok] at h₁
-      apply And.intro
+      constructor
       · simp [h₁]
-      · exists ety', c₁'
+      · exists ety', l, c₁'
         simp only [h₁, and_self]
 
-theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp (.is ety) x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp (.is ety) x₁) request entities v ∧ InstanceOfType v ty
 := by
-  have ⟨h₅, ety', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
+  have ⟨h₅, ety', l', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
   subst h₅; subst h₆
   apply And.intro empty_guarded_capabilities_invariant
   have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
@@ -216,10 +216,10 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
     apply type_is_inhabited
   }
 
-theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.unaryApp op₁ x₁) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.unaryApp op₁ x₁) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp op₁ x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp op₁ x₁) request entities v ∧ InstanceOfType v ty

@@ -26,8 +26,8 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.call .decimal xs) c env = Except.ok (ty, c')) :
+theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.call .decimal xs) c env (l == .infinite) = Except.ok (ty, c')) :
   ty = .ext .decimal ∧
   c' = ∅ ∧
   ∃ (s : String),
@@ -35,7 +35,7 @@ theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {e
     (Cedar.Spec.Ext.Decimal.decimal s).isSome
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   rename_i tys
   simp [typeOfCall, typeOfConstructor] at h₁
@@ -46,8 +46,8 @@ theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {e
   rename_i h₃
   simp [h₃]
 
-theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₁ : typeOf (Expr.call .decimal xs) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
+  (h₁ : typeOf (Expr.call .decimal xs) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .decimal xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call .decimal xs) request entities v ∧ InstanceOfType v ty
 := by
@@ -62,8 +62,8 @@ theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities
   · apply InstanceOfType.instance_of_ext
     simp [InstanceOfExtType]
 
-theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.call .ip xs) c env = Except.ok (ty, c')) :
+theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.call .ip xs) c env (l == .infinite) = Except.ok (ty, c')) :
   ty = .ext .ipAddr ∧
   c' = ∅ ∧
   ∃ (s : String),
@@ -71,7 +71,7 @@ theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : 
     (Cedar.Spec.Ext.IPAddr.ip s).isSome
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   rename_i tys
   simp [typeOfCall, typeOfConstructor] at h₁
@@ -82,8 +82,8 @@ theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : 
   rename_i h₃
   simp [h₃]
 
-theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₁ : typeOf (Expr.call .ip xs) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
+  (h₁ : typeOf (Expr.call .ip xs) c₁ env (l == .infinite) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.call .ip xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call .ip xs) request entities v ∧ InstanceOfType v ty
 := by
@@ -98,12 +98,12 @@ theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {en
   · apply InstanceOfType.instance_of_ext
     simp [InstanceOfExtType]
 
-theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env : Environment} {ty₁ ty₂ : CedarType}
-  (h₁ : (xs.mapM₁ fun x => justType (typeOf x.val c env)) = Except.ok [ty₁, ty₂]) :
+theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env : Environment} {ty₁ ty₂ : CedarType} {l : Level}
+  (h₁ : (xs.mapM₁ fun x => justType (typeOf x.val c env (l == .infinite))) = Except.ok [ty₁, ty₂]) :
   ∃ x₁ x₂ c₁ c₂,
     xs = [x₁, x₂] ∧
-    typeOf x₁ c env = ok ty₁ c₁ ∧
-    typeOf x₂ c env = ok ty₂ c₂
+    typeOf x₁ c env (l == .infinite) = ok ty₁ c₁ ∧
+    typeOf x₂ c env (l == .infinite) = ok ty₂ c₂
 := by
   simp [List.mapM₁] at h₁
   cases xs
@@ -113,7 +113,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     cases tl₁
     case nil =>
       simp [List.mapM, List.mapM.loop] at h₁
-      cases h₂ : justType (typeOf hd₁ c env) <;>
+      cases h₂ : justType (typeOf hd₁ c env (l == .infinite)) <;>
       simp [h₂] at h₁
       simp [pure, Except.pure] at h₁
     case cons hd₂ tl₂ =>
@@ -133,7 +133,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         simp [h₂, h₃]
       case cons hd₃ tl₃ =>
         simp only [List.attach_def, List.pmap, List.mapM_cons,
-          List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
+          List.mapM_pmap_subtype (fun x => justType (typeOf x c env (l == .infinite))), bind_assoc, pure_bind] at h₁
         rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         rw [justType, Except.map.eq_def] at h₁
@@ -142,7 +142,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         split at h₁ <;> simp at h₁
         rename_i res₁ _ _ res₂ _ _ res₃ _
         simp only [pure, Except.pure] at h₁
-        cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₃ <;> simp [h₂] at h₁
+        cases h₂ : List.mapM (fun x => justType (typeOf x c env (l == .infinite))) tl₃ <;> simp [h₂] at h₁
 
 def IsDecimalComparator : ExtFun → Prop
   | .lessThan
@@ -151,18 +151,18 @@ def IsDecimalComparator : ExtFun → Prop
   | .greaterThanOrEqual => True
   | _                   => False
 
-theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₀ : IsDecimalComparator xfn)
-  (h₁ : typeOf (Expr.call xfn xs) c env = Except.ok (ty, c')) :
+  (h₁ : typeOf (Expr.call xfn xs) c env (l == .infinite) = Except.ok (ty, c')) :
   ty = .bool .anyBool ∧
   c' = ∅ ∧
   ∃ (x₁ x₂ : Expr) (c₁ c₂ : Capabilities),
     xs = [x₁, x₂] ∧
-    typeOf x₁ c env = ok (.ext .decimal) c₁ ∧
-    typeOf x₂ c env = ok (.ext .decimal) c₂
+    typeOf x₁ c env (l == .infinite) = ok (.ext .decimal) c₁ ∧
+    typeOf x₂ c env (l == .infinite) = ok (.ext .decimal) c₂
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   rename_i tys
   simp [typeOfCall] at h₁
@@ -177,11 +177,11 @@ theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr
     }
   }
 
-theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₀ : IsDecimalComparator xfn)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.call xfn xs) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty
@@ -214,17 +214,17 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   }
 
 
-theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : typeOf (Expr.call .isInRange xs) c env = Except.ok (ty, c')) :
+theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
+  (h₁ : typeOf (Expr.call .isInRange xs) c env (l == .infinite) = Except.ok (ty, c')) :
   ty = .bool .anyBool ∧
   c' = ∅ ∧
   ∃ (x₁ x₂ : Expr) (c₁ c₂ : Capabilities),
     xs = [x₁, x₂] ∧
-    typeOf x₁ c env = ok (.ext .ipAddr) c₁ ∧
-    typeOf x₂ c env = ok (.ext .ipAddr) c₂
+    typeOf x₁ c env (l == .infinite) = ok (.ext .ipAddr) c₁ ∧
+    typeOf x₂ c env (l == .infinite) = ok (.ext .ipAddr) c₂
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   rename_i tys
   simp [typeOfCall] at h₁
@@ -235,10 +235,10 @@ theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} 
     apply typeOf_of_binary_call_inversion h₂
   }
 
-theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.call .isInRange xs) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.call .isInRange xs) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call .isInRange xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call .isInRange xs) request entities v ∧ InstanceOfType v ty
@@ -274,11 +274,11 @@ def IsIpAddrRecognizer : ExtFun → Prop
   | _            => False
 
 
-theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env : Environment} {ty₁ : CedarType}
-  (h₁ : (xs.mapM₁ fun x => justType (typeOf x.val c env)) = Except.ok [ty₁]) :
+theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env : Environment} {ty₁ : CedarType} {l : Level}
+  (h₁ : (xs.mapM₁ fun x => justType (typeOf x.val c env (l == .infinite))) = Except.ok [ty₁]) :
   ∃ x₁ c₁,
     xs = [x₁] ∧
-    typeOf x₁ c env = ok ty₁ c₁
+    typeOf x₁ c env (l == .infinite) = ok ty₁ c₁
 := by
   simp [List.mapM₁] at h₁
   cases xs
@@ -288,7 +288,7 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
     cases tl₁
     case nil =>
       simp [List.mapM, List.mapM.loop] at h₁
-      cases h₂ : justType (typeOf hd₁ c env) <;>
+      cases h₂ : justType (typeOf hd₁ c env (l == .infinite)) <;>
       simp [h₂] at h₁
       simp [justType, Except.map] at h₂
       simp [pure, Except.pure] at h₁
@@ -299,26 +299,26 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       simp [ok, h₃, ←h₂]
     case cons hd₂ tl₂ =>
       simp only [List.attach_def, List.pmap, List.mapM_cons,
-        List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
+        List.mapM_pmap_subtype (fun x => justType (typeOf x c env (l == .infinite))), bind_assoc, pure_bind] at h₁
       rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
       rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
       rename_i res₁ _ _ res₂ _
       simp [pure, Except.pure] at h₁
-      cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₂ <;> simp [h₂] at h₁
+      cases h₂ : List.mapM (fun x => justType (typeOf x c env (l == .infinite))) tl₂ <;> simp [h₂] at h₁
 
-theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType}
+theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : CedarType} {l : Level}
   (h₀ : IsIpAddrRecognizer xfn)
-  (h₁ : typeOf (Expr.call xfn xs) c env = Except.ok (ty, c')) :
+  (h₁ : typeOf (Expr.call xfn xs) c env (l == .infinite) = Except.ok (ty, c')) :
   ty = .bool .anyBool ∧
   c' = ∅ ∧
   ∃ (x₁ : Expr) (c₁ : Capabilities),
     xs = [x₁] ∧
-    typeOf x₁ c env = ok (.ext .ipAddr) c₁
+    typeOf x₁ c env (l == .infinite) = ok (.ext .ipAddr) c₁
 := by
   simp [typeOf] at h₁
-  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env (l == .infinite)) <;>
   simp [h₂] at h₁
   rename_i tys
   simp [typeOfCall] at h₁
@@ -333,11 +333,11 @@ theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr}
     }
   }
 
-theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₀ : IsIpAddrRecognizer xfn)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.call xfn xs) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty
@@ -363,10 +363,10 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
     apply bool_is_instance_of_anyBool
   }
 
-theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} {l : Level}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.call xfn xs) c₁ env (l == .infinite) = Except.ok (ty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty
