@@ -15,10 +15,10 @@
 -/
 
 import Protobuf.Structures
-import Protobuf.HardCodeTest
 import Protobuf.String
 import Protobuf.Map
 import Protobuf.Field
+import Protobuf.Message
 import Protobuf.Enum
 import Protobuf.Varint
 import Protobuf.Packed
@@ -32,18 +32,49 @@ namespace Except
 instance [DecidableEq α] [DecidableEq β] : DecidableEq (Except α β) := by
   unfold DecidableEq
   intro a b
-  cases a <;> cases b <;>
-  -- Get rid of obvious cases where .ok != .err
-  try { apply isFalse ; intro h ; injection h }
-  case error.error c d =>
-    match decEq c d with
-      | isTrue h => apply isTrue (by rw [h])
-      | isFalse _ => apply isFalse (by intro h; injection h; contradiction)
-  case ok.ok c d =>
-    match decEq c d with
-      | isTrue h => apply isTrue (by rw [h])
-      | isFalse _ => apply isFalse (by intro h; injection h; contradiction)
+  cases a <;> cases b <;> simp only [reduceCtorEq, ok.injEq, error.injEq]
+  case ok.error | error.ok => exact instDecidableFalse
+  case error.error c d => exact decEq c d
+  case ok.ok c d => exact decEq c d
 end Except
+
+namespace Proto
+
+/-!
+Struct with array of UInt32 for testing purposes
+-/
+structure HardCodeStruct where
+  f6 : Array UInt32 -- Field 6
+deriving Inhabited, Repr, DecidableEq
+
+namespace HardCodeStruct
+
+def merge_6 (result : HardCodeStruct) (x : Array UInt32) : HardCodeStruct :=
+  {result with
+    f6 := (@Field.merge (Packed UInt32)) result.f6 x
+  }
+
+def merge (x : HardCodeStruct) (y : HardCodeStruct) : HardCodeStruct :=
+  {x with
+    f6 := (@Field.merge (Packed UInt32)) x.f6 y.f6
+  }
+
+def parseField (t : Tag) : BParsec (MergeFn HardCodeStruct) := do
+  match t.fieldNum with
+    | 6 =>
+      let x : Packed UInt32 ← Field.guardedParse t
+      pure (merge_6 · x)
+    | _ =>
+      t.wireType.skip
+      pure id
+
+instance : Message HardCodeStruct := {
+  parseField := parseField
+  merge := merge
+}
+
+end HardCodeStruct
+
 
 
 #guard (@Field.interpret? Bool) (ByteArray.mk #[0]) = Except.ok false

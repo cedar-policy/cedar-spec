@@ -100,4 +100,12 @@ def skip (wt : WireType) : BParsec Unit := do
 
 end WireType
 
+namespace Field
+
+def guardedParse (t : Proto.Tag) [Field α] : BParsec α := do
+  @guardWireType α _ t.wireType
+  Field.parse
+
+end Field
+
 end Proto
