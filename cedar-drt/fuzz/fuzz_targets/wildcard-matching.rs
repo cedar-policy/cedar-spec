@@ -148,7 +148,7 @@ fn wildcard_match_regex<'a>(
 fuzz_target!(|input: FuzzTargetInput| {
     // Ensure wildcard matching is equivalent to the regex version
     let regex_result = wildcard_match_regex(&input.string, &input.pattern);
-    let rust_result = Pattern::new(input.pattern).wildcard_match(&input.string);
+    let rust_result = Pattern::from(input.pattern).wildcard_match(&input.string);
     assert_eq!(
         regex_result, rust_result,
         "\nregex result: {};rust result:{}.\n",

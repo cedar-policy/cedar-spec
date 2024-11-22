@@ -214,10 +214,7 @@ impl ConstantPool {
 
     /// Produce a RHS of a like operation
     /// It's derived from a random string constant in the pool: We perform transformations over it such as adding a char, deleting a char and adding a wildcard star.
-    pub fn arbitrary_pattern_literal(
-        &self,
-        u: &mut Unstructured<'_>,
-    ) -> Result<Vec<ast::PatternElem>> {
+    pub fn arbitrary_pattern_literal(&self, u: &mut Unstructured<'_>) -> Result<ast::Pattern> {
         let matched_string = self.arbitrary_string_constant_bounded(u, MAX_PATTERN_LEN)?;
 
         let mut pattern = Vec::new();
@@ -246,7 +243,7 @@ impl ConstantPool {
                 {}
             )
         }
-        Ok(pattern)
+        Ok(ast::Pattern::from(pattern))
     }
 
     // Generate a valid IPv4 net representation
