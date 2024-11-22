@@ -87,7 +87,10 @@ def testsForInvalidDurationStrings :=
     testInvalid "1s1d" "invalid order",
     testInvalid "1s1s" "repeated units",
     testInvalid "1d2h3m4s5ms " "trailing space",
-    testInvalid " 1d2h3m4s5ms" "leading space"
+    testInvalid " 1d2h3m4s5ms" "leading space",
+    testInvalid "1d9223372036854775807ms" "overflow",
+    testInvalid "1d92233720368547758071ms" "overflow ms",
+    testInvalid "9223372036854776s1ms" "overflow s"
   ]
 
 def tests := [testsForValidDurationStrings, testsForInvalidDurationStrings]
