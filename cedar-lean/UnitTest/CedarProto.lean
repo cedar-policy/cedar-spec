@@ -413,6 +413,6 @@ def tests := [
 ]
 
 -- Uncomment for interactive debugging
-#eval TestSuite.runAll tests
+-- #eval TestSuite.runAll tests
 
 end UnitTest.CedarProto
