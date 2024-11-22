@@ -346,6 +346,8 @@ inductive Op where
   | contains
   | containsAll
   | containsAny
+  | getTag
+  | hasTag
 deriving Inhabited
 
 namespace Op
@@ -362,6 +364,8 @@ def fromInt (n : Int) : Except String Op :=
     | 7 => .ok .contains
     | 8 => .ok .containsAll
     | 9 => .ok .containsAny
+    | 10 => .ok .getTag
+    | 11 => .ok .hasTag
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : Inhabited Op where
@@ -386,6 +390,8 @@ def mergeOp (result : ExprKind.BinaryApp) (x : Op) : ExprKind.BinaryApp :=
       | .contains => .binaryApp .contains left right
       | .containsAll => .binaryApp .containsAll left right
       | .containsAny => .binaryApp .containsAny left right
+      | .getTag => .binaryApp .getTag left right
+      | .hasTag => .binaryApp .hasTag left right
     | _ => panic!("Expected ExprKind.BinaryApp to have constructor .binaryApp")
 
 @[inline]
