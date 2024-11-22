@@ -52,14 +52,18 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 def duration? (i : Int) : Option Duration :=
   Int64.mk? i
 
-def durationUnits? (i: Int) (suffix: String) : Option Duration :=
-  match suffix with
-  | "ms" => duration? i
-  | "s" => duration? (i * MILLISECONDS_PER_SECOND)
-  | "m" => duration? (i * MILLISECONDS_PER_MINUTE)
-  | "h" => duration? (i * MILLISECONDS_PER_HOUR)
-  | "d" => duration? (i * MILLISECONDS_PER_DAY)
-  | _ => none
+def durationUnits? (n: Nat) (suffix: String) : Option Duration :=
+  let num := Int64.mk? n
+  match num with
+  | none => none
+  | some i =>
+    match suffix with
+    | "ms" => duration? i
+    | "s" => duration? (i * MILLISECONDS_PER_SECOND)
+    | "m" => duration? (i * MILLISECONDS_PER_MINUTE)
+    | "h" => duration? (i * MILLISECONDS_PER_HOUR)
+    | "d" => duration? (i * MILLISECONDS_PER_DAY)
+    | _ => none
 
 def unitsToMilliseconds (days hours minutes second milliseconds: Int) : Int :=
   days * MILLISECONDS_PER_DAY +
@@ -73,43 +77,64 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def addOptionDurations (a b : Option Duration) : Option Duration :=
+def addOptionDurations? (a b : Option Duration) : Option Duration :=
   match a, b with
-  | some durationA, some durationB => some (Int64.add? durationA durationB).get!
-  | some duration, none => some duration
-  | none, some duration => some duration
+  | some durationA, some durationB =>
+    match Int64.add? durationA durationB with
+    | none => none
+    | some int => some int
+  | some _, none => none
+  | none, some _ => none
   | none, none => none
 
-def parseUnit? (str : String) (suffix: String) : Option Duration × String :=
+def parseUnit? (str : String) (suffix: String) : Option Duration :=
   if str.endsWith suffix
   then
     let newStr := str.dropRight suffix.length
     let newStrList := newStr.toList
     let digits := ((newStrList.reverse).takeWhile Char.isDigit).reverse
     if digits.isEmpty
-    then (none, str)
-    else (durationUnits? (String.mk digits).toInt! suffix, newStr.dropRight digits.length)
-  else (none, str)
+    then none
+    else
+      let unitNum := String.toNat? (String.mk digits)
+      match unitNum with
+      | none => none
+      | some num => durationUnits? num suffix
+  else duration? 0
 
-def parseUnsignedDuration? (str : String) : Option Duration :=
-  let (milliseconds, rest) := parseUnit? str "ms"
-  let (seconds, rest) := parseUnit? rest "s"
-  let (minutes, rest) := parseUnit? rest "m"
-  let (hours, rest) := parseUnit? rest "h"
-  let (days, rest) := parseUnit? rest "d"
-  if rest.isEmpty
+def dropUnit (str : String) (suffix: String) : String :=
+    if str.endsWith suffix
+    then
+      let newStr := str.dropRight suffix.length
+      let newStrList := newStr.toList
+      String.mk ((newStrList.reverse).dropWhile Char.isDigit).reverse
+    else str
+
+def parseUnsignedDuration? (str : String) : Option Duration := do
+  if str.isEmpty then failure
+  let milliseconds <- parseUnit? str "ms"
+  let restStr := dropUnit str "ms"
+  let seconds <- parseUnit? restStr "s"
+  let restStr := dropUnit restStr "s"
+  let minutes <- parseUnit? restStr "m"
+  let restStr := dropUnit restStr "m"
+  let hours <- parseUnit? restStr "h"
+  let restStr := dropUnit restStr "h"
+  let days <- parseUnit? restStr "d"
+  let restStr := dropUnit restStr "d"
+  if restStr.isEmpty
   then
-    [days, hours, minutes, seconds, milliseconds].foldl (addOptionDurations · ·) none
+    let durations := [days, hours, minutes, seconds, milliseconds].map some
+    durations.foldl (addOptionDurations? · ·) (duration? 0)
   else none
 
 def parse (str : String) : Option Duration :=
-  let (isNegative, rest) := isNegativeDuration str
-  match parseUnsignedDuration? rest with
+  let (isNegative, restStr) := isNegativeDuration str
+  match parseUnsignedDuration? restStr with
   | some duration =>
-    if isNegative then
-      Int64.neg? duration
-    else
-      some duration
+    if isNegative
+    then Int64.neg? duration
+    else some duration
   | none => none
 
 deriving instance Repr for Duration
