@@ -96,7 +96,7 @@ def interpret! [Inhabited α] [Message α] (b : ByteArray) : α :=
 
 instance [Inhabited α] [Message α] : Field α := {
   parse := parseWithLen
-  checkWireType := (· = WireType.LEN)
+  expectedWireType := WireType.LEN
   merge := merge
 }
 

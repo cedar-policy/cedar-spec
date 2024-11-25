@@ -25,7 +25,7 @@ namespace Proto
 
 class Field (α : Type) where
   parse : BParsec α
-  checkWireType : WireType → Bool
+  expectedWireType : WireType
   merge : α → α → α
 
 namespace Field
@@ -54,16 +54,16 @@ def interpret? {α : Type} [Field α] [Inhabited α] (b : ByteArray) : Except St
 
 @[inline]
 def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
-  let wtMatches := (@Field.checkWireType α) wt
-  if not wtMatches then
-    throw s!"WireType mismatch; expected {repr wt}"
+  let foundWt := Field.expectedWireType α
+  if foundWt ≠ wt then
+    throw s!"WireType mismatch: found {repr foundWt}, expected {repr wt}"
 
 @[inline]
 def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β) (merge : β → β → β) : Field β := {
   parse := do
     let intMessage : α ← Field.parse
     pure (convert intMessage)
-  checkWireType := Field.checkWireType α
+  expectedWireType := Field.expectedWireType α
   merge := merge
 }
 

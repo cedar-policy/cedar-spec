@@ -85,7 +85,7 @@ def parse_uint64 : BParsec UInt64 := do
 
 instance : Field UInt64 := {
   parse := parse_uint64
-  checkWireType := (· = WireType.VARINT)
+  expectedWireType := WireType.VARINT
   merge := Field.Merge.override
 }
 
@@ -107,7 +107,7 @@ def parse_uint32 : BParsec UInt32 := do
 
 instance : Field UInt32 := {
   parse := parse_uint32
-  checkWireType := (· = WireType.VARINT)
+  expectedWireType := WireType.VARINT
   merge := Field.Merge.override
 }
 
@@ -128,7 +128,7 @@ def parse_int32 : BParsec Int32 := do
 
 instance : Field Int32 := {
   parse := parse_int32
-  checkWireType := (· = WireType.VARINT)
+  expectedWireType := WireType.VARINT
   merge := Field.Merge.override
 }
 
@@ -148,7 +148,7 @@ def parse_int64 : BParsec Int64 := do
 
 instance : Field Int64 := {
   parse := parse_int64
-  checkWireType := (· = WireType.VARINT)
+  expectedWireType := WireType.VARINT
   merge := Field.Merge.override
 }
 
@@ -161,7 +161,7 @@ def parse_bool : BParsec Bool := do
 
 instance : Field Bool := {
   parse := Proto.parse_bool
-  checkWireType := (· = WireType.VARINT)
+  expectedWireType := WireType.VARINT
   merge := Field.Merge.override
 }
 
