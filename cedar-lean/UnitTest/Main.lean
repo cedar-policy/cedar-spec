@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import UnitTest.Datetime
 import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Proto
@@ -22,6 +23,7 @@ import UnitTest.Wildcard
 open UnitTest
 
 def tests :=
+  Datetime.tests ++
   Decimal.tests ++
   IPAddr.tests ++
   Wildcard.tests ++
