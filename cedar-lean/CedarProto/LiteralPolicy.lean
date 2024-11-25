@@ -47,13 +47,13 @@ def mergeTemplateId (result : TemplateLinkedPolicy) (x : String) : TemplateLinke
 @[inline]
 def mergePrincipalEuid (result : TemplateLinkedPolicy) (x : EntityUID) : TemplateLinkedPolicy :=
   {result with
-    slotEnv := Cedar.Data.Map.mk (("principal", x) :: result.slotEnv.kvs)
+    slotEnv := Cedar.Data.Map.mk (("?principal", x) :: result.slotEnv.kvs)
   }
 
 @[inline]
 def mergeResourceEuid (result : TemplateLinkedPolicy) (x : EntityUID) : TemplateLinkedPolicy :=
   {result with
-    slotEnv := Cedar.Data.Map.mk (("resource", x) :: result.slotEnv.kvs)
+    slotEnv := Cedar.Data.Map.mk (("?resource", x) :: result.slotEnv.kvs)
   }
 
 @[inline]

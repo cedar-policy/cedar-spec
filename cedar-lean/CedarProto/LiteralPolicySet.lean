@@ -77,8 +77,8 @@ def fromLiteralPolicySet (x : LiteralPolicySet) : Policies :=
   let templates := Cedar.Data.Map.make x.templates.toList
   let links := x.links.map (λ ⟨id, p⟩ => (p.mergeId id).mkWf)
   match link? templates links.toList with
-  | .some policies => policies
-  | .none => panic!("fromLiteralPolicySet: failed to link templates")
+  | .ok policies => policies
+  | .error e => panic!(s!"fromLiteralPolicySet: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}}")
 
 @[inline]
 private def merge (x y : Policies) : Policies :=
