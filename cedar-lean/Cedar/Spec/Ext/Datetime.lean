@@ -76,11 +76,7 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def addOptionDurations? : Option Duration → Option Duration → Option Duration
-  | .some durationA, .some durationB => Int64.add? durationA durationB
-  | _, _ => .none
-
-def parseUnit? (str : String) (suffix: String) : Option Duration :=
+def parseUnit? (str : String) (suffix : String) : Option (Duration × String) :=
   if str.endsWith suffix
   then
     let newStr := str.dropRight suffix.length
@@ -88,33 +84,21 @@ def parseUnit? (str : String) (suffix: String) : Option Duration :=
     let digits := ((newStrList.reverse).takeWhile Char.isDigit).reverse
     if digits.isEmpty
     then none
-    else do durationUnits? (← String.toNat? (String.mk digits)) suffix
-  else duration? 0
-
-def dropUnit (str : String) (suffix: String) : String :=
-    if str.endsWith suffix
-    then
-      let newStr := str.dropRight suffix.length
-      let newStrList := newStr.toList
-      String.mk ((newStrList.reverse).dropWhile Char.isDigit).reverse
-    else str
+    else do
+      let units ← durationUnits? (← String.toNat? (String.mk digits)) suffix
+      some (units, newStr.dropRight digits.length)
+  else
+    some (⟨0, (by decide)⟩, str)
 
 def parseUnsignedDuration? (str : String) : Option Duration := do
   if str.isEmpty then failure
-  let milliseconds <- parseUnit? str "ms"
-  let restStr := dropUnit str "ms"
-  let seconds <- parseUnit? restStr "s"
-  let restStr := dropUnit restStr "s"
-  let minutes <- parseUnit? restStr "m"
-  let restStr := dropUnit restStr "m"
-  let hours <- parseUnit? restStr "h"
-  let restStr := dropUnit restStr "h"
-  let days <- parseUnit? restStr "d"
-  let restStr := dropUnit restStr "d"
+  let (milliseconds, restStr) ← parseUnit? str "ms"
+  let (seconds, restStr) ← parseUnit? restStr "s"
+  let (minutes, restStr) ← parseUnit? restStr "m"
+  let (hours, restStr) ← parseUnit? restStr "h"
+  let (days, restStr) ← parseUnit? restStr "d"
   if restStr.isEmpty
-  then
-    let durations := [days, hours, minutes, seconds, milliseconds].map some
-    durations.foldl (addOptionDurations? · ·) (duration? 0)
+  then duration? (days + hours + minutes + seconds + milliseconds)
   else none
 
 def Duration.parse (str : String) : Option Duration :=
