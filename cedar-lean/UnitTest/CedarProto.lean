@@ -20,6 +20,31 @@ import UnitTest.Run
 
 /-! This file defines unit tests for CedarProto functions. -/
 
+namespace Cedar.Spec.Expr
+open Cedar.Data
+/-- Ensures that records are sorted by key, including recursively -/
+partial def mkWf : Cedar.Spec.Expr → Cedar.Spec.Expr
+  | .lit p => .lit p
+  | .var v => .var v
+  | .ite a b c => .ite a.mkWf b.mkWf c.mkWf
+  | .and a b => .and a.mkWf b.mkWf
+  | .or a b => .or a.mkWf b.mkWf
+  | .unaryApp op x => .unaryApp op x.mkWf
+  | .binaryApp op a b => .binaryApp op a.mkWf b.mkWf
+  | .getAttr x attr => .getAttr x.mkWf attr
+  | .hasAttr x attr => .hasAttr x.mkWf attr
+  | .set xs => .set (xs.map mkWf)
+  | .record pairs =>
+    let m := Map.make (pairs.map λ (k, v) => (k, v.mkWf))
+    .record m.kvs
+  | .call xfn xs => .call xfn (xs.map mkWf)
+end Cedar.Spec.Expr
+
+namespace Cedar.Spec.Policies
+def sortByPolicyId : Cedar.Spec.Policies → Cedar.Spec.Policies
+  | ps => ps.mergeSort λ a b => a.id < b.id
+end Cedar.Spec.Policies
+
 namespace UnitTest.CedarProto
 
 open CedarProto
@@ -52,11 +77,6 @@ def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.M
     | .ok req => checkEq (f req) expected
     | .error e => pure (.error e)
   ⟩
-
-/-- also removes duplicate keys -/
-def sortRecordByFieldName : Cedar.Spec.Expr → Cedar.Spec.Expr
-  | .record pairs => .record (Map.make pairs).kvs
-  | x => x
 
 def tests := [
   suite (m := IO) "Cedar Protobuf deserialization tests" [
@@ -92,14 +112,14 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/emptyrecord.protodata"
       (Cedar.Spec.Expr.record []),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/record.protodata"
-      sortRecordByFieldName
-      (Cedar.Spec.Expr.record [
+      Cedar.Spec.Expr.mkWf
+      (.record [
         ("eggs", .lit (.int (Int64.mk 7 (by decide)))),
         ("ham", .lit (.int (Int64.mk 3 (by decide)))),
       ]),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/nested_record.protodata"
-      sortRecordByFieldName
-      (Cedar.Spec.Expr.record [
+      Cedar.Spec.Expr.mkWf
+      (.record [
         ("eggs", .set [ .lit (.string "this is"), .lit (.string "a set") ]),
         ("ham", .record [
           ("a", .lit (.int (Int64.mk 0 (by decide)))),
@@ -205,8 +225,22 @@ def tests := [
         ]
       } : Cedar.Spec.Template),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset.protodata"
-      Cedar.Spec.Policies.fromLiteralPolicySet
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
       [
+        {
+          id := "linkedpolicy"
+          effect := .permit
+          principalScope := .principalScope (.eq { ty := { id := "User", path := [] }, eid := "alice" })
+          actionScope := .actionScope .any
+          resourceScope := .resourceScope .any
+          condition := [{
+            kind := .when
+            body := .unaryApp .not (.binaryApp .lessEq
+              (.getAttr (.var .resource) "eligibility")
+              (.lit (.int (Int64.mk 2 (by decide))))
+            )
+          }]
+        },
         {
           id := "policy0"
           effect := .permit
@@ -250,20 +284,6 @@ def tests := [
               (.getAttr (.var .resource) "type")
           }]
         },
-        {
-          id := "linkedpolicy"
-          effect := .permit
-          principalScope := .principalScope (.eq { ty := { id := "User", path := [] }, eid := "alice" })
-          actionScope := .actionScope .any
-          resourceScope := .resourceScope .any
-          condition := [{
-            kind := .when
-            body := .unaryApp .not (.binaryApp .lessEq
-              (.getAttr (.var .resource) "eligibility")
-              (.lit (.int (Int64.mk 2 (by decide))))
-            )
-          }]
-        }
       ],
     testDeserializeProtodata "UnitTest/CedarProto-test-data/request.protodata"
       ({
