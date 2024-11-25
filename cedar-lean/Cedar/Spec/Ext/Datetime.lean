@@ -25,7 +25,7 @@ open Cedar.Data
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
   A duration string is a concatenated sequence of quantity-unit pairs where the quantity
-  is a positive integer and unit is one of the following:
+  is a natural number and unit is one of the following:
     - `d` (for days)
     - `h` (for hours)
     - `m` (for minutes)
@@ -53,8 +53,7 @@ def duration? (i : Int) : Option Duration :=
   Int64.mk? i
 
 def durationUnits? (n: Nat) (suffix: String) : Option Duration :=
-  let num := Int64.mk? n
-  match num with
+  match Int64.mk? n with
   | none => none
   | some i =>
     match suffix with
@@ -77,15 +76,9 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def addOptionDurations? (a b : Option Duration) : Option Duration :=
-  match a, b with
-  | some durationA, some durationB =>
-    match Int64.add? durationA durationB with
-    | none => none
-    | some int => some int
-  | some _, none => none
-  | none, some _ => none
-  | none, none => none
+def addOptionDurations? : Option Duration → Option Duration → Option Duration
+  | .some durationA, .some durationB => Int64.add? durationA durationB
+  | _, _ => .none
 
 def parseUnit? (str : String) (suffix: String) : Option Duration :=
   if str.endsWith suffix
@@ -95,11 +88,7 @@ def parseUnit? (str : String) (suffix: String) : Option Duration :=
     let digits := ((newStrList.reverse).takeWhile Char.isDigit).reverse
     if digits.isEmpty
     then none
-    else
-      let unitNum := String.toNat? (String.mk digits)
-      match unitNum with
-      | none => none
-      | some num => durationUnits? num suffix
+    else do durationUnits? (← String.toNat? (String.mk digits)) suffix
   else duration? 0
 
 def dropUnit (str : String) (suffix: String) : String :=
@@ -128,7 +117,7 @@ def parseUnsignedDuration? (str : String) : Option Duration := do
     durations.foldl (addOptionDurations? · ·) (duration? 0)
   else none
 
-def parse (str : String) : Option Duration :=
+def Duration.parse (str : String) : Option Duration :=
   let (isNegative, restStr) := isNegativeDuration str
   match parseUnsignedDuration? restStr with
   | some duration =>
@@ -139,6 +128,6 @@ def parse (str : String) : Option Duration :=
 
 deriving instance Repr for Duration
 
-abbrev duration := parse
+abbrev duration := Duration.parse
 
 end Datetime

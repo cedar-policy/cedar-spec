@@ -23,25 +23,25 @@ namespace UnitTest.Datetime
 
 open Cedar.Spec.Ext.Datetime
 
-theorem test1 : toString ((parse "1ms").get!) = "1" := by native_decide
-theorem test2 : toString ((parse "1s").get!) = "1000" := by native_decide
-theorem test3 : toString ((parse "1m").get!) = "60000" := by native_decide
-theorem test4 : toString ((parse "1h").get!) = "360000" := by native_decide
-theorem test5 : toString ((parse "1d").get!) = "86400000" := by native_decide
-theorem test6 : toString ((parse "1d2h3m4s5ms").get!) = "87304005" := by native_decide
-theorem test7 : toString ((parse "2d12h").get!) = "177120000" := by native_decide
-theorem test8 : toString ((parse "3m30s").get!) = "210000" := by native_decide
-theorem test9 : toString ((parse "1h30m45s").get!) = "2205000" := by native_decide
-theorem test10 : toString ((parse "2d5h20m").get!) = "175800000" := by native_decide
-theorem test11 : toString ((parse "-1d12h").get!) = "-90720000" := by native_decide
-theorem test12 : toString ((parse "-3h45m").get!) = "-3780000" := by native_decide
-theorem test13 : toString ((parse "1d1ms").get!) = "86400001" := by native_decide
-theorem test14 : toString ((parse "59m59s999ms").get!) = "3599999" := by native_decide
-theorem test15 : toString ((parse "23h59m59s999ms").get!) = "11879999" := by native_decide
-theorem test16 : toString ((parse "0d0h0m0s0ms").get!) = "0" := by native_decide
+theorem test1 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
+theorem test2 : toString ((Duration.parse "1s").get!) = "1000" := by native_decide
+theorem test3 : toString ((Duration.parse "1m").get!) = "60000" := by native_decide
+theorem test4 : toString ((Duration.parse "1h").get!) = "360000" := by native_decide
+theorem test5 : toString ((Duration.parse "1d").get!) = "86400000" := by native_decide
+theorem test6 : toString ((Duration.parse "1d2h3m4s5ms").get!) = "87304005" := by native_decide
+theorem test7 : toString ((Duration.parse "2d12h").get!) = "177120000" := by native_decide
+theorem test8 : toString ((Duration.parse "3m30s").get!) = "210000" := by native_decide
+theorem test9 : toString ((Duration.parse "1h30m45s").get!) = "2205000" := by native_decide
+theorem test10 : toString ((Duration.parse "2d5h20m").get!) = "175800000" := by native_decide
+theorem test11 : toString ((Duration.parse "-1d12h").get!) = "-90720000" := by native_decide
+theorem test12 : toString ((Duration.parse "-3h45m").get!) = "-3780000" := by native_decide
+theorem test13 : toString ((Duration.parse "1d1ms").get!) = "86400001" := by native_decide
+theorem test14 : toString ((Duration.parse "59m59s999ms").get!) = "3599999" := by native_decide
+theorem test15 : toString ((Duration.parse "23h59m59s999ms").get!) = "11879999" := by native_decide
+theorem test16 : toString ((Duration.parse "0d0h0m0s0ms").get!) = "0" := by native_decide
 
 private def testValid (str : String) (rep : Int) : TestCase IO :=
-  test str ⟨λ _ => checkEq (parse str) (duration? rep)⟩
+  test str ⟨λ _ => checkEq (Duration.parse str) (duration? rep)⟩
 
 def testsForValidDurationStrings :=
   suite "Duration.parse for valid strings"
@@ -73,7 +73,7 @@ def testsForValidDurationStrings :=
   ]
 
 private def testInvalid (str : String) (msg : String) : TestCase IO :=
-  test s!"{str} [{msg}]" ⟨λ _ => checkEq (parse str) .none⟩
+  test s!"{str} [{msg}]" ⟨λ _ => checkEq (Duration.parse str) .none⟩
 
 def testsForInvalidDurationStrings :=
   suite "Duration.parse for invalid strings"
