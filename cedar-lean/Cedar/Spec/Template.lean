@@ -115,11 +115,11 @@ def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : E
     condition := template.condition
   }
 
-def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Option Policy := do
-  let template ← templates.find? link.templateId
+def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Except String Policy := do
+  let template ← templates.findOrErr link.templateId s!"templateId {link.templateId} not found"
   template.link? link.id link.slotEnv
 
-def link? (templates : Templates) (links : TemplateLinkedPolicies) : Option Policies :=
+def link? (templates : Templates) (links : TemplateLinkedPolicies) : Except String Policies :=
   links.mapM (linkPolicy? templates)
 
 end Cedar.Spec
