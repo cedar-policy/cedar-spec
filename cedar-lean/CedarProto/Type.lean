@@ -294,8 +294,8 @@ def mergeEr (result : CedarType) (x : Proto.EntityRecordKind) : CedarType :=
   | .record m1, .record m2 => match m1.kvs with
     | [] => .record m2
     | _ => .record (Data.Map.make (m2.kvs ++ m1.kvs))
-  | .entity _, .record _ => x
-  | .record _, .entity _ => x
+  | _, .record _ => x
+  | _, .entity _ => x
   | _, _ => panic!("Expected EntityRecordKind to be CedarType.record or CedarType.entity")
 
 @[inline]

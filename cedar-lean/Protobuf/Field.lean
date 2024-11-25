@@ -56,7 +56,7 @@ def interpret? {α : Type} [Field α] [Inhabited α] (b : ByteArray) : Except St
 def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
   let wtMatches := (@Field.checkWireType α) wt
   if not wtMatches then
-    throw s!"WireType mismatch"
+    throw s!"WireType mismatch; expected {repr wt}"
 
 @[inline]
 def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β) (merge : β → β → β) : Field β := {

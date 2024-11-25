@@ -48,7 +48,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
           | 1 =>
                let wt1Matches := (@Field.checkWireType KeyT) tag1.wireType
                if not wt1Matches then
-                    throw s!"WireType mismatch"
+                    throw s!"WireType mismatch; expected {repr tag1.wireType}"
                else
                let key : KeyT ← Field.parse
 
@@ -61,7 +61,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                let tag2 ← Tag.parse
                let wt2Matches := (@Field.checkWireType ValueT) tag2.wireType
                if not wt2Matches then
-                    throw s!"WireType mismatch"
+                    throw s!"WireType mismatch; expected {repr tag2.wireType}"
                else
                if tag2.fieldNum != 2 then
                     throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
@@ -71,7 +71,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
           | 2 =>
                let wt1Matches := (@Field.checkWireType ValueT) tag1.wireType
                if not wt1Matches then
-                    throw s!"WireType mismatch"
+                    throw s!"WireType mismatch; expected {repr tag1.wireType}"
                else
                let value : ValueT ← Field.parse
 
@@ -84,7 +84,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                let tag2 ← Tag.parse
                let wt2Matches := (@Field.checkWireType KeyT) tag2.wireType
                if not wt2Matches then
-                    throw s!"WireType mismatch"
+                    throw s!"WireType mismatch; expected {repr tag2.wireType}"
                else
                if tag2.fieldNum != 1 then
                     throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
