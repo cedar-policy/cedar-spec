@@ -35,6 +35,36 @@ structure ValidatorEntityType where
   tags : Option CedarType
 deriving Inhabited
 
+-- the Tag message in Validator.proto
+structure TagMessage where
+  optional_type: CedarType
+deriving Repr, Inhabited
+
+namespace TagMessage
+
+@[inline]
+def parseField (t : Tag) : BParsec (MergeFn TagMessage) := do
+  match t.fieldNum with
+    | 1 =>
+      let ty : CedarType ← Field.guardedParse t
+      pure λ { optional_type := old_ty } => { optional_type := Field.merge old_ty ty }
+    | _ =>
+      t.wireType.skip
+      pure id
+
+@[inline]
+def merge (x y : TagMessage) : TagMessage :=
+  {
+    optional_type := Message.merge x.optional_type y.optional_type
+  }
+
+instance : Message TagMessage where
+  name := "TagMessage"
+  parseField := parseField
+  merge := merge
+
+end TagMessage
+
 namespace ValidatorEntityType
 
 @[inline]
@@ -58,9 +88,9 @@ def mergeAttributes (result : ValidatorEntityType) (x : RecordType) : ValidatorE
   }
 
 @[inline]
-def mergeTags (result : ValidatorEntityType) (x : Option CedarType) : ValidatorEntityType :=
+def mergeTags (result : ValidatorEntityType) (x : TagMessage) : ValidatorEntityType :=
   {result with
-    tags := mergeOption result.tags x
+    tags := mergeOption result.tags (some x.optional_type)
   }
 
 @[inline]
@@ -80,8 +110,8 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
     | 3 =>
       let x : RecordType ← Field.guardedParse t
       pure (mergeAttributes · x)
-    | 4 =>
-      let x : CedarType ← Field.guardedParse t
+    | 5 =>
+      let x : TagMessage ← Field.guardedParse t
       pure (mergeTags · x)
     | _ =>
       t.wireType.skip

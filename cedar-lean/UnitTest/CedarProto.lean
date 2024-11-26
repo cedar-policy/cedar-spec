@@ -401,8 +401,8 @@ def tests := [
               ("e", .required (.set (.entity {id := "B", path := [] }))),
               ("f", .required (.ext .ipAddr)),
               ("g", .required (.record (Map.make [
-                ("ham", .required .string),
                 ("eggs", .optional .int),
+                ("ham", .required .string),
                 ("owner", .required (.entity { id := "C", path := [] })),
               ]))),
             ]
@@ -433,8 +433,8 @@ def tests := [
               ("c", .required (.set (.entity { id := "A", path := [] }))),
               ("d", .required (.ext .decimal)),
               ("e", .required (.record (Map.make [
-                ("ham", .optional (.bool .anyBool)),
                 ("eggs", .required .int),
+                ("ham", .optional (.bool .anyBool)),
                 ("manager", .required (.entity { id := "B", path := [] })),
               ])))
             ]

@@ -58,17 +58,6 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [Data.DecidableLT α
   Data.Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
--- Add special "unspecified" entity type with no attributes, ancestors, or tags
-@[inline]
-private def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
-  let unspecifiedEntry : EntitySchemaEntry :=
-  {
-    ancestors := Data.Set.empty
-    attrs := Data.Map.empty
-    tags := none
-  }
-  Data.Map.make (ets.toList ++ [({id := "<Unspecified>", path := []}, unspecifiedEntry)])
-
 end Cedar.Validation.Proto
 
 namespace Cedar.Validation.Proto.EntityTypeWithTypesMap
@@ -80,13 +69,13 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
     (k, descendants))
   ets)
   let ancestorMap := descendantsToAncestors descendantMap
-  addUnspecifiedEntityType (Data.Map.make (List.map
+  Data.Map.make (ets.map
     (λ (k,v) => (k,
       {
         ancestors := ancestorMap.find! k,
         attrs := Data.Map.make v.attrs.kvs,
         tags := v.tags,
-      })) ets))
+      })))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
 
 namespace Cedar.Validation.Proto.EntityUidWithActionsIdMap
@@ -97,7 +86,7 @@ deriving instance Inhabited for ActionSchemaEntry
 def toActionSchema (acts : EntityUidWithActionsIdMap) : ActionSchema :=
   let acts := acts.toList
   let descendantMap := Data.Map.make (List.map (λ (k,v) =>
-    have descendants := Data.Set.mk v.descendants.toList
+    have descendants := Data.Set.make v.descendants.toList
     (k, descendants))
   acts)
   let ancestorMap := descendantsToAncestors descendantMap
@@ -105,8 +94,8 @@ def toActionSchema (acts : EntityUidWithActionsIdMap) : ActionSchema :=
     match v.context with
       | .record rty =>
         (k, {
-          appliesToPrincipal := Data.Set.mk v.appliesTo.principalApplySpec.toList,
-          appliesToResource := Data.Set.mk v.appliesTo.resourceApplySpec.toList,
+          appliesToPrincipal := Data.Set.make v.appliesTo.principalApplySpec.toList,
+          appliesToResource := Data.Set.make v.appliesTo.resourceApplySpec.toList,
           ancestors := ancestorMap.find! k,
           context := rty
         })
