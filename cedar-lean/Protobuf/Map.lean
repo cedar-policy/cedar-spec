@@ -46,11 +46,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
      let tag1 ← Tag.parse
      let result ← match tag1.fieldNum with
           | 1 =>
-               let foundWt1 := Field.expectedWireType KeyT
-               if foundWt1 ≠ tag1.wireType then
-                    throw s!"WireType mismatch: found {repr foundWt1}, expected {repr tag1.wireType}"
-               else
-               let key : KeyT ← Field.parse
+               let key : KeyT ← Field.guardedParse tag1
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
@@ -59,21 +55,14 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                else
 
                let tag2 ← Tag.parse
-               let foundWt2 := Field.expectedWireType ValueT
-               if foundWt2 ≠ tag2.wireType then
-                    throw s!"WireType mismatch: found {repr foundWt2}, expected {repr tag2.wireType}"
-               else
                if tag2.fieldNum != 2 then
                     throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
                else
-               let value : ValueT ← Field.parse
+
+               let value : ValueT ← Field.guardedParse tag2
                pure #[(Prod.mk key value)]
           | 2 =>
-               let foundWt1 := Field.expectedWireType ValueT
-               if foundWt1 ≠ tag1.wireType then
-                    throw s!"WireType mismatch: found {repr foundWt1}, expected {repr tag1.wireType}"
-               else
-               let value : ValueT ← Field.parse
+               let value : ValueT ← Field.guardedParse tag1
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
@@ -82,14 +71,11 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                else
 
                let tag2 ← Tag.parse
-               let foundWt2 := Field.expectedWireType KeyT
-               if foundWt2 ≠ tag2.wireType then
-                    throw s!"WireType mismatch: found {repr foundWt2}, expected {repr tag2.wireType}"
-               else
                if tag2.fieldNum != 1 then
                     throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
                else
-               let key : KeyT ← Field.parse
+
+               let key : KeyT ← Field.guardedParse tag2
                pure #[(Prod.mk key value)]
 
           | _ => throw "Unexpected Field Number within Map Element"
