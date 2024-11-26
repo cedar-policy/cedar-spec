@@ -78,6 +78,9 @@ def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.M
     | .error e => pure (.error e)
   ⟩
 
+private def mkUid (path : List String) (ty : String) (eid : String) : Cedar.Spec.EntityUID :=
+  { ty := { path, id := ty }, eid }
+
 def tests := [
   suite (m := IO) "Cedar Protobuf deserialization tests" [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/false.protodata"
@@ -93,9 +96,9 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/action.protodata"
       (Cedar.Spec.Expr.var .action),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/user_alice.protodata"
-      (Cedar.Spec.Expr.lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" } )),
+      (Cedar.Spec.Expr.lit (.entityUID (mkUid [] "User" "alice"))),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/app_widget_123.protodata"
-      (Cedar.Spec.Expr.lit (.entityUID { ty := { id := "Widget", path := ["App"] }, eid := "123" } )),
+      (Cedar.Spec.Expr.lit (.entityUID (mkUid ["App"] "Widget" "123"))),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/emptyset.protodata"
       (Cedar.Spec.Expr.set []),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/set.protodata"
@@ -156,7 +159,7 @@ def tests := [
         (.set [
           (.lit (.int (Int64.mk 2 (by decide)))),
           (.lit (.int (Int64.mk 3 (by decide)))),
-          (.lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" })),
+          (.lit (.entityUID (mkUid [] "User" "alice"))),
         ])
         (.getAttr (.var .context) "foo")
       ),
@@ -167,7 +170,7 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/is.protodata"
       (Cedar.Spec.Expr.and
         (.unaryApp (.is { id := "Widget", path := ["App"] })
-          (.lit (.entityUID { ty := { id := "Widget", path := ["App"] }, eid := "123" }))
+          (.lit (.entityUID (mkUid ["App"] "Widget" "123")))
         )
         (.and
           (.unaryApp (.is { id := "Widget", path := ["App"] }) (.getAttr (.var .resource) "widget"))
@@ -202,7 +205,7 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/rbac.protodata"
       ({
         effect := .permit
-        principalScope := .principalScope (.eq (.entityUID { ty := { id := "User", path := [] }, eid := "a b c" }))
+        principalScope := .principalScope (.eq (.entityUID (mkUid [] "User" "a b c")))
         actionScope := .actionScope .any
         resourceScope := .resourceScope (.is { id := "Widget", path := ["App"] })
         condition := [{ kind := .when, body := .lit (.bool true) }]
@@ -230,7 +233,7 @@ def tests := [
         {
           id := "linkedpolicy"
           effect := .permit
-          principalScope := .principalScope (.eq { ty := { id := "User", path := [] }, eid := "alice" })
+          principalScope := .principalScope (.eq (mkUid [] "User" "alice"))
           actionScope := .actionScope .any
           resourceScope := .resourceScope .any
           condition := [{
@@ -245,8 +248,8 @@ def tests := [
           id := "policy0"
           effect := .permit
           principalScope := .principalScope .any
-          actionScope := .actionScope (.eq { ty := { id := "Action", path := [] }, eid := "do" })
-          resourceScope := .resourceScope (.eq { ty := { id := "Blob", path := [] }, eid := "thing" })
+          actionScope := .actionScope (.eq (mkUid [] "Action" "do"))
+          resourceScope := .resourceScope (.eq (mkUid [] "Blob" "thing"))
           condition := [{
             kind := .when
             body := .binaryApp .eq
@@ -273,8 +276,8 @@ def tests := [
           effect := .permit
           principalScope := .principalScope .any
           actionScope := .actionInAny [
-            { ty := { id := "Action", path := [] }, eid := "1" },
-            { ty := { id := "Action", path := [] }, eid := "2" },
+            (mkUid [] "Action" "1"),
+            (mkUid [] "Action" "2"),
           ]
           resourceScope := .resourceScope .any
           condition := [{
@@ -287,15 +290,15 @@ def tests := [
       ],
     testDeserializeProtodata "UnitTest/CedarProto-test-data/request.protodata"
       ({
-        principal := { ty := { id := "User", path := [] }, eid := "alice" }
-        action := { ty := { id := "Action", path := [] }, eid := "access" }
-        resource := { ty := { id := "Folder", path := [] }, eid := "data" }
+        principal := mkUid [] "User" "alice"
+        action := mkUid [] "Action" "access"
+        resource := mkUid [] "Folder" "data"
         context := Map.make [ ("foo", .prim (.bool true)) ]
       } : Cedar.Spec.Request),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entity.protodata"
       Cedar.Spec.EntityProto.mkWf
       ({
-        uid := { ty := { id := "B", path := ["A"] }, eid := "C" }
+        uid := mkUid ["A"] "B" "C"
         data := {
           attrs := Map.make [
             ("foo", .set (Set.make [
@@ -305,8 +308,8 @@ def tests := [
             ("bar", .prim (.bool false)),
           ]
           ancestors := Set.make [
-            { ty := { id := "Parent", path := [] }, eid := "1" },
-            { ty := { id := "Grandparent", path := [] }, eid := "A" },
+            (mkUid [] "Parent" "1"),
+            (mkUid [] "Grandparent" "A"),
           ]
           tags := Map.make [
             ("tag1", .prim (.string "val1")),
@@ -317,8 +320,8 @@ def tests := [
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entities.protodata"
       Cedar.Spec.EntitiesProto.toEntities
       ((Map.make [
-        ({ ty := { id := "ABC", path := [] }, eid := "123" }, { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
-        ({ ty := { id := "DEF", path := [] }, eid := "234" }, { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
+        (mkUid [] "ABC" "123", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
+        (mkUid [] "DEF" "234", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
       ]) : Cedar.Spec.Entities),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/type_true.protodata"
       (Cedar.Validation.CedarType.bool .tt),
@@ -339,7 +342,7 @@ def tests := [
         ("eggs", .optional .int),
         ("ham", .required .string),
       ])),
-    testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema.protodata"
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_basic.protodata"
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
@@ -351,6 +354,42 @@ def tests := [
           ({ id := "B", path := [] }, {
             attrs := Map.empty
             ancestors := Set.make [{ id := "A", path := [] }]
+            tags := none
+          }),
+        ]
+        acts := Map.make [
+          (mkUid [] "Action" "Read", {
+            appliesToPrincipal := Set.empty
+            appliesToResource := Set.empty
+            ancestors := Set.empty
+            context := Map.empty
+          }),
+          (mkUid [] "Action" "Write", {
+            appliesToPrincipal := Set.empty
+            appliesToResource := Set.empty
+            ancestors := Set.empty
+            context := Map.empty
+          }),
+          (mkUid [] "Action" "ReadX", {
+            appliesToPrincipal := Set.make [{ id := "A", path := [] }]
+            appliesToResource := Set.make [{ id := "A", path := [] }, { id := "B", path := [] }]
+            ancestors := Set.make [mkUid [] "Action" "Read"]
+            context := Map.empty
+          }),
+        ]
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_attrs.protodata"
+      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "A", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := none
+          }),
+          ({ id := "B", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
             tags := none
           }),
           ({ id := "C", path := [] }, {
@@ -370,15 +409,56 @@ def tests := [
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "D", path := [] }, {
+        ]
+        acts := Map.make [
+          (mkUid [] "Action" "Read", {
+            appliesToPrincipal := Set.empty
+            appliesToResource := Set.empty
+            ancestors := Set.empty
+            context := Map.empty
+          }),
+          (mkUid [] "Action" "Write", {
+            appliesToPrincipal := Set.empty
+            appliesToResource := Set.empty
+            ancestors := Set.empty
+            context := Map.empty
+          }),
+          (mkUid [] "Action" "ReadX", {
+            appliesToPrincipal := Set.make [{ id := "A", path := [] }, { id := "B", path := [] }]
+            appliesToResource := Set.make [{ id := "B", path := [] }, { id := "C", path := [] }]
+            ancestors := Set.make [mkUid [] "Action" "Read"]
+            context := Map.make [
+              ("a", .required .string),
+              ("b", .optional (.entity { id := "B", path := [] })),
+              ("c", .required (.set (.entity { id := "A", path := [] }))),
+              ("d", .required (.ext .decimal)),
+              ("e", .required (.record (Map.make [
+                ("ham", .optional (.bool .anyBool)),
+                ("eggs", .required .int),
+                ("manager", .required (.entity { id := "B", path := [] })),
+              ])))
+            ]
+          }),
+        ]
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_commontypes.protodata"
+      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "A", path := [] }, {
             attrs := Map.empty
             ancestors := Set.empty
-            tags := some .string
+            tags := none
           }),
-          ({ id := "E", path := [] }, {
+          ({ id := "B", path := [] }, {
             attrs := Map.empty
-            ancestors := Set.make [{ id := "C", path := [] }]
-            tags := some (.set .string)
+            ancestors := Set.empty
+            tags := none
+          }),
+          ({ id := "C", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := none
           }),
           ({ id := "F", path := [] }, {
             attrs := Map.make [
@@ -386,48 +466,64 @@ def tests := [
               ("y", .optional (.set (.set (.entity { id := "C", path := [] })))),
             ]
             ancestors := Set.make [{ id := "A", path := [] }, { id := "B", path := [] }]
-            tags := some .string
+            tags := none
           }),
         ]
         acts := Map.make [
-          ({ ty := { id := "Action", path := [] }, eid := "Read" }, {
-            appliesToPrincipal := Set.empty
-            appliesToResource := Set.empty
+          (mkUid [] "Action" "Read", {
+            appliesToPrincipal := Set.make [{ id := "A", path := [] }, { id := "B", path := [] }]
+            appliesToResource := Set.make [{ id := "C", path := [] }]
             ancestors := Set.empty
-            context := Map.empty
-          }),
-          ({ ty := { id := "Action", path := [] }, eid := "Write" }, {
-            appliesToPrincipal := Set.empty
-            appliesToResource := Set.empty
-            ancestors := Set.empty
-            context := Map.empty
-          }),
-          ({ ty := { id := "Action", path := [] }, eid := "ReadX" }, {
-            appliesToPrincipal := Set.make [{ id := "A", path := [] }]
-            appliesToResource := Set.make [{ id := "B", path := [] }]
-            ancestors := Set.make [{ ty := { id := "Action", path := [] }, eid := "Read" }]
-            context := Map.empty
-          }),
-          ({ ty := { id := "Action", path := [] }, eid := "ReadZ" }, {
-            appliesToPrincipal := Set.make [
-              { id := "A", path := [] },
-              { id := "B", path := [] },
-              { id := "D", path := [] },
-              { id := "E", path := [] },
-            ]
-            appliesToResource := Set.make [
-              { id := "B", path := [] },
-              { id := "C", path := [] },
-            ]
-            ancestors := Set.make [{ ty := { id := "Action", path := [] }, eid := "Read" }]
             context := Map.make [
-              ("a", .required (.entity { id := "A", path := [] })),
-              ("z", .required .string),
+              ("a", .optional (.record (Map.make [
+                ("z", .optional .string),
+                ("y", .required (.record (Map.make [
+                  ("foo", .required (.set (.entity { id := "C", path := [] }))),
+                ])))
+              ]))),
               ("y", .required (.set (.entity { id := "C", path := [] }))),
-              ("ip", .required (.ext .ipAddr)),
             ]
           })
         ]
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_tags.protodata"
+      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "A", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := none
+          }),
+          ({ id := "B", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := none
+          }),
+          ({ id := "C", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := some .string
+          }),
+          ({ id := "D", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.make [{ id := "B", path := [] }]
+            tags := some (.set .string)
+          }),
+          ({ id := "E", path := [] }, {
+            attrs := Map.empty
+            ancestors := Set.empty
+            tags := some (.set (.entity { id := "A", path := [] }))
+          }),
+          ({ id := "F", path := [] }, {
+            attrs := Map.make [
+              ("z", .required (.set .string)),
+            ]
+            ancestors := Set.make [{ id := "A", path := [] }, { id := "B", path := [] }]
+            tags := some .string
+          }),
+        ]
+        acts := Map.empty
       }
   ]
 ]

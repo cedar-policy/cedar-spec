@@ -286,10 +286,22 @@ fn main() {
     );
 
     encode_schema(
-        "schema.protodata",
+        "schema_basic.protodata",
         r#"
         entity A;
         entity B in A;
+        action Read, Write;
+        action ReadX in Read appliesTo {
+            principal: [A],
+            resource: [A, B],
+        };
+    "#,
+    );
+
+    encode_schema(
+        "schema_attrs.protodata",
+        r#"
+        entity A, B;
         entity C {
             a: Bool,
             b: Long,
@@ -299,29 +311,49 @@ fn main() {
             f: ipaddr,
             g: { ham: String, eggs?: Long, owner: C },
         };
-        entity D tags String;
-        entity E in C tags Set<String>;
-
-        type Z = String;
-        type Y = Set<C>;
-
-        entity F in [A, B] { z: Z, y?: Set<Y> } tags Z;
-
         action Read, Write;
         action ReadX in Read appliesTo {
-            principal: [A],
-            resource: [B],
-        };
-        action ReadZ in Read appliesTo {
-            principal: [A, B, D, E],
+            principal: [A, B],
             resource: [B, C],
             context: {
-                a: A,
-                z: Z,
-                y: Y,
-                ip: ipaddr,
+                a: String,
+                b?: B,
+                c: Set<A>,
+                d: decimal,
+                e: { ham?: Bool, eggs: Long, manager: B },
             },
         };
+        "#,
+    );
+
+    encode_schema(
+        "schema_commontypes.protodata",
+        r#"
+        entity A, B, C;
+        type Z = String;
+        type Y = Set<C>;
+        entity F in [A, B] { z: Z, y?: Set<Y> };
+        action Read appliesTo {
+            principal: [A, B],
+            resource: [C],
+            context: {
+                a?: { z?: Z, y: { foo: Y } },
+                y: Y,
+            },
+        };
+        "#,
+    );
+
+    encode_schema(
+        "schema_tags.protodata",
+        r#"
+        entity A, B;
+        entity C tags String;
+        entity D in B tags Set<String>;
+        entity E tags Set<A>;
+
+        type Z = String;
+        entity F in [A, B] { z: Set<Z> } tags Z;
     "#,
     );
 }
