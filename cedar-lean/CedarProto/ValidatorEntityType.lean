@@ -59,7 +59,6 @@ def merge (x y : TagMessage) : TagMessage :=
   }
 
 instance : Message TagMessage where
-  name := "TagMessage"
   parseField := parseField
   merge := merge
 
