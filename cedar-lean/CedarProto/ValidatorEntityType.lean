@@ -25,11 +25,10 @@ open Proto
 
 namespace Cedar.Validation.Proto
 
--- Note: EntitySchemaEntry takes ancestors,
--- so we'll create an intermediate representation
--- once we gather all the entries, we will perform
--- the transform
+-- Note: EntitySchemaEntry takes ancestors, so we'll create this intermediate
+-- representation. Once we gather all the entries, we will perform the transform.
 structure ValidatorEntityType where
+  /-- All (transitive) descendants. Assumes TC is computed before encoding into protobuf. -/
   descendants : Array Spec.EntityTypeProto
   attrs : RecordType
   tags : Option CedarType
