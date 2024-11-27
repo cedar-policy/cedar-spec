@@ -37,6 +37,11 @@ namespace Proto
 
 -- Does not progress iterator
 -- Has panic! indexing, should work towards adding needed proof
+-- Probably the way to remove the panic! indexing would be to reorganize this module.
+-- Instead of first searching to find the number of bytes we'll need to parse,
+-- without progressing the iterator (`find_varint_size`), and then actually
+-- parsing them and progressing the iterator (`parse_uint64` and friends), we
+-- should do everything in one pass that progresses the iterator as it goes.
 private def find_end_of_varint_helper  (n : Nat) : BParsec Nat := do
   let empty ← BParsec.empty
   if empty then throw "Expected more bytes"
@@ -65,16 +70,15 @@ def find_varint_size : BParsec Nat := do
   pure (end_idx - start_idx)
 
 
--- Note: Panic indexing used but may be able to remove with some work
 private def parse_uint64_helper (remaining : Nat) (p : Nat) (r : UInt64) : BParsec UInt64 := do
   if remaining = 0 then pure r else
-  let empty ← BParsec.empty
-  if empty then throw "Expected more bytes" else
-  let byte ← BParsec.inspect λ pos => pos.data[pos.pos]!
-  BParsec.next -- Progress iterator
-  have byte2 := clear_msb8 byte
-  have byte3 := byte2.toUInt64 <<< (7 * p.toUInt64)
-  parse_uint64_helper (remaining - 1) (p + 1) (r ||| byte3)
+  let byte ← BParsec.nextByte
+  match byte with
+  | none => throw "Expected more bytes"
+  | some byte =>
+    have byte2 := clear_msb8 byte
+    have byte3 := byte2.toUInt64 <<< (7 * p.toUInt64)
+    parse_uint64_helper (remaining - 1) (p + 1) (r ||| byte3)
 
 
 @[inline]
@@ -91,13 +95,13 @@ instance : Field UInt64 := {
 
 private def parse_uint32_helper (remaining : Nat) (p : Nat) (r : UInt32) : BParsec UInt32 := do
   if remaining = 0 then pure r else
-  let empty ← BParsec.empty -- NOTE: Might be able to remove if we add a hypotheses in the definition
-  if empty then throw "Expected more bytes" else
-  let byte ← BParsec.inspect λ pos => pos.data[pos.pos]!
-  BParsec.next -- Progress iterator
-  have byte2 := clear_msb8 byte
-  have byte3 := byte2.toUInt32 <<< (7 * p.toUInt32)
-  parse_uint32_helper (remaining - 1) (p + 1) (r ||| byte3)
+  let byte ← BParsec.nextByte
+  match byte with
+  | none => throw "Expected more bytes"
+  | some byte =>
+    have byte2 := clear_msb8 byte
+    have byte3 := byte2.toUInt32 <<< (7 * p.toUInt32)
+    parse_uint32_helper (remaining - 1) (p + 1) (r ||| byte3)
 
 
 @[inline]
