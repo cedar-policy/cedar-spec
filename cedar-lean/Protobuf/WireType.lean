@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 
-namespace Proto
-
 /-!
 Protobuf Wire Types
 -/
+
+namespace Proto
 
 inductive WireType where
   | VARINT : WireType

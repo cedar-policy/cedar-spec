@@ -51,7 +51,7 @@ def parse (α : Type) [Field α] : BParsec (Array α) := do
 
 instance [Field α] : Field (Repeated α) := {
   parse := (parse α)
-  checkWireType := Field.checkWireType α
+  expectedWireType := Field.expectedWireType α
   merge := Field.Merge.concatenate
 }
 
@@ -87,7 +87,7 @@ def parse (α : Type) [Field α] : BParsec (Array α) := do
 
 instance [Field α] : Field (Packed α) := {
   parse := (parse α)
-  checkWireType := (· = WireType.LEN)
+  expectedWireType := WireType.LEN
   merge := Field.Merge.concatenate
 }
 

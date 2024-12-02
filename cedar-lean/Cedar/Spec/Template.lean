@@ -34,6 +34,7 @@ abbrev SlotID := String
 inductive EntityUIDOrSlot where
   | entityUID (entity : EntityUID)
   | slot (id : SlotID)
+deriving Repr, DecidableEq
 
 inductive ScopeTemplate where
   | any
@@ -41,12 +42,15 @@ inductive ScopeTemplate where
   | mem (entityOrSlot : EntityUIDOrSlot)
   | is (ety : EntityType)
   | isMem (ety : EntityType) (entityOrSlot : EntityUIDOrSlot)
+deriving Repr, DecidableEq
 
 inductive PrincipalScopeTemplate where
   | principalScope (scope : ScopeTemplate)
+deriving Repr, DecidableEq
 
 inductive ResourceScopeTemplate where
   | resourceScope (scope : ScopeTemplate)
+deriving Repr, DecidableEq
 
 abbrev TemplateID := String
 
@@ -56,6 +60,7 @@ structure Template where
   actionScope : ActionScope
   resourceScope : ResourceScopeTemplate
   condition : Conditions
+deriving Repr, DecidableEq
 
 abbrev Templates := Map TemplateID Template
 
@@ -67,40 +72,41 @@ structure TemplateLinkedPolicy where
   id : PolicyID
   templateId : TemplateID
   slotEnv : SlotEnv
+deriving Repr
 
 abbrev TemplateLinkedPolicies := List TemplateLinkedPolicy
 
-def EntityUIDOrSlot.link? (slotEnv : SlotEnv) : EntityUIDOrSlot → Option EntityUID
-  | entityUID entity => .some entity
-  | slot id => slotEnv.find? id
+def EntityUIDOrSlot.link? (slotEnv : SlotEnv) : EntityUIDOrSlot → Except String EntityUID
+  | entityUID entity => .ok entity
+  | slot id => slotEnv.findOrErr id s!"missing binding for slot {id}"
 
-def ScopeTemplate.link? (slotEnv : SlotEnv) : ScopeTemplate → Option Scope
-  | .any => .some .any
+def ScopeTemplate.link? (slotEnv : SlotEnv) : ScopeTemplate → Except String Scope
+  | .any => .ok .any
   | .eq entityOrSlot => do
     let entity ← entityOrSlot.link? slotEnv
-    .some (.eq entity)
+    .ok (.eq entity)
   | .mem entityOrSlot => do
     let entity ← entityOrSlot.link? slotEnv
-    .some (.mem entity)
-  | .is ety => .some (.is ety)
+    .ok (.mem entity)
+  | .is ety => .ok (.is ety)
   | .isMem ety entityOrSlot => do
     let entity ← entityOrSlot.link? slotEnv
-    .some (.isMem ety entity)
+    .ok (.isMem ety entity)
 
-def PrincipalScopeTemplate.link? (slotEnv : SlotEnv) : PrincipalScopeTemplate → Option PrincipalScope
+def PrincipalScopeTemplate.link? (slotEnv : SlotEnv) : PrincipalScopeTemplate → Except String PrincipalScope
   | .principalScope s => do
     let s ← s.link? slotEnv
-    .some (.principalScope s)
+    .ok (.principalScope s)
 
-def ResourceScopeTemplate.link? (slotEnv : SlotEnv) : ResourceScopeTemplate → Option ResourceScope
+def ResourceScopeTemplate.link? (slotEnv : SlotEnv) : ResourceScopeTemplate → Except String ResourceScope
   | .resourceScope s => do
     let s ← s.link? slotEnv
-    .some (.resourceScope s)
+    .ok (.resourceScope s)
 
-def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : Option Policy := do
+def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : Except String Policy := do
   let principalScope ← template.principalScope.link? slotEnv
   let resourceScope ← template.resourceScope.link? slotEnv
-  .some {
+  .ok {
     id := id,
     effect := template.effect,
     principalScope := principalScope,
@@ -109,11 +115,11 @@ def Template.link? (template : Template) (id : PolicyID) (slotEnv : SlotEnv) : O
     condition := template.condition
   }
 
-def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Option Policy := do
-  let template ← templates.find? link.templateId
+def linkPolicy? (templates : Templates) (link : TemplateLinkedPolicy) : Except String Policy := do
+  let template ← templates.findOrErr link.templateId s!"templateId {link.templateId} not found"
   template.link? link.id link.slotEnv
 
-def link? (templates : Templates) (links : TemplateLinkedPolicies) : Option Policies :=
+def link? (templates : Templates) (links : TemplateLinkedPolicies) : Except String Policies :=
   links.mapM (linkPolicy? templates)
 
 end Cedar.Spec

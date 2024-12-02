@@ -46,11 +46,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
      let tag1 ← Tag.parse
      let result ← match tag1.fieldNum with
           | 1 =>
-               let wt1Matches := (@Field.checkWireType KeyT) tag1.wireType
-               if not wt1Matches then
-                    throw s!"WireType mismatch"
-               else
-               let key : KeyT ← Field.parse
+               let key : KeyT ← Field.guardedParse tag1
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
@@ -59,21 +55,14 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                else
 
                let tag2 ← Tag.parse
-               let wt2Matches := (@Field.checkWireType ValueT) tag2.wireType
-               if not wt2Matches then
-                    throw s!"WireType mismatch"
-               else
                if tag2.fieldNum != 2 then
                     throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
                else
-               let value : ValueT ← Field.parse
+
+               let value : ValueT ← Field.guardedParse tag2
                pure #[(Prod.mk key value)]
           | 2 =>
-               let wt1Matches := (@Field.checkWireType ValueT) tag1.wireType
-               if not wt1Matches then
-                    throw s!"WireType mismatch"
-               else
-               let value : ValueT ← Field.parse
+               let value : ValueT ← Field.guardedParse tag1
 
                -- Since the fields are optional, check to see if we're done parsing now
                let curPos ← BParsec.pos
@@ -82,14 +71,11 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
                else
 
                let tag2 ← Tag.parse
-               let wt2Matches := (@Field.checkWireType KeyT) tag2.wireType
-               if not wt2Matches then
-                    throw s!"WireType mismatch"
-               else
                if tag2.fieldNum != 1 then
                     throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
                else
-               let key : KeyT ← Field.parse
+
+               let key : KeyT ← Field.guardedParse tag2
                pure #[(Prod.mk key value)]
 
           | _ => throw "Unexpected Field Number within Map Element"
@@ -103,7 +89,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
 
 instance {α β : Type} [Inhabited α] [Inhabited β] [Field α] [Field β] : Field (Map α β) := {
   parse := parse
-  checkWireType := (· = WireType.LEN)
+  expectedWireType := WireType.LEN
   merge := Field.Merge.concatenate
 }
 end Map

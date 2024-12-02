@@ -37,6 +37,9 @@ lean_lib UnitTest where
 lean_lib Protobuf where
   defaultFacets := #[LeanLib.staticFacet]
 
+lean_lib CedarProto where
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
 

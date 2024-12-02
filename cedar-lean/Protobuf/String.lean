@@ -96,7 +96,7 @@ def parse_string : BParsec String := do
 
 instance : Field String := {
   parse := parse_string
-  checkWireType := (· = WireType.LEN)
+  expectedWireType := WireType.LEN
   merge := Field.Merge.override
 }
 

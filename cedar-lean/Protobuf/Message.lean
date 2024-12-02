@@ -28,6 +28,14 @@ namespace Proto
 def MergeFn (α : Type) : Type := (α → α)
 
 class Message (α : Type) [Inhabited α] where
+  /--
+    Parse a field, given the Tag and the data in the BParsec (updating the
+    BParsec iterator position appropriately).
+    Return a `MergeFn`, which when applied to the previous value α,
+    gives you the final value α which is the result of the parse.
+    Note in particular that returning `id` as the `MergeFn` results in
+    just taking the previous value as-is, ignoring the newly parsed data.
+  -/
   parseField : Tag → BParsec (MergeFn α)
   merge : α → α → α
 
@@ -60,8 +68,6 @@ private def parseMessageHelper [Inhabited α] [Message α] (remaining : Nat) (re
 
   (parseMessageHelper (remaining - elementSize) newResult)
 
-
-
 @[inline]
 def parse [Inhabited α] [Message α] : BParsec α := do
   let remaining ← BParsec.remaining
@@ -90,7 +96,7 @@ def interpret! [Inhabited α] [Message α] (b : ByteArray) : α :=
 
 instance [Inhabited α] [Message α] : Field α := {
   parse := parseWithLen
-  checkWireType := (· = WireType.LEN)
+  expectedWireType := WireType.LEN
   merge := merge
 }
 

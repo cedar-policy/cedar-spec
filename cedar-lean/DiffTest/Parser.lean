@@ -370,8 +370,8 @@ def jsonToTemplate (json : Lean.Json) : ParseResult Template := do
 def jsonToPolicy (json : Lean.Json) : ParseResult Policy := do
   let template ← jsonToTemplate json
   match template.link? "static policy" SlotEnv.empty with
-  | some policy => .ok policy
-  | none => .error s!"jsonToPolicy: found a template, not a static policy"
+  | .ok policy => .ok policy
+  | .error e => .error s!"jsonToPolicy: found a template, not a static policy: {e}"
 
 def jsonToTemplateLinkedPolicy (id : PolicyID) (json : Lean.Json) : ParseResult TemplateLinkedPolicy := do
   let templateId ← getJsonField json "template_id" >>= jsonToString
@@ -392,8 +392,8 @@ def jsonToPolicies (json : Lean.Json) : ParseResult Policies := do
   let templates ← mapMValues templatesKVs jsonToTemplate
   let links ← getJsonField json "links" >>= jsonToTemplateLinkedPolicies
   match link? (Map.make templates) links with
-  | .some policies => .ok policies
-  | .none => .error s!"jsonToPolicies: failed to link templates\n{json.pretty}"
+  | .ok policies => .ok policies
+  | .error e => .error s!"jsonToPolicies: failed to link templates: {e}\n\n{json.pretty}"
 
 def jsonToPrimType (json : Lean.Json) : ParseResult CedarType := do
   let tag ← jsonToString json
@@ -465,16 +465,6 @@ def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
         ancestors := ancestorMap.find! k,
         context := v.context
       })) acts)
-
--- Add special "unspecified" entity type with no attributes or ancestors or tags
-def addUnspecifiedEntityType (ets : EntitySchema) : EntitySchema :=
-  let unspecifiedEntry : EntitySchemaEntry :=
-  {
-    ancestors := Set.empty
-    attrs := Map.empty
-    tags := Option.none
-  }
-  Map.make (ets.toList ++ [({id := "<Unspecified>", path := []}, unspecifiedEntry)])
 
 mutual
 
@@ -556,7 +546,7 @@ partial def jsonToSchema (json : Lean.Json) : ParseResult Schema := do
   let actionsKVs ← getJsonField json "actionIds" >>= jsonArrayToKVList
   let actions ← mapMKeysAndValues actionsKVs jsonToEuid jsonToActionSchemaEntry
   .ok {
-    ets := addUnspecifiedEntityType (invertJsonEntitySchema (Map.make entityTypes))
+    ets := invertJsonEntitySchema (Map.make entityTypes)
     acts := invertJsonActionSchema (Map.make actions)
   }
 
