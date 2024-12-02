@@ -24,8 +24,7 @@ open Proto
 
 namespace Cedar.Spec
 
--- There are other fields, however the lean implementation ignores them
--- so we can save some time by not constructing the entire struct
+/-- for the purposes of the Lean implementation, EntityUIDEntry can just be EntityUID -/
 def EntityUIDEntry := EntityUID
 deriving instance Inhabited for EntityUIDEntry
 
