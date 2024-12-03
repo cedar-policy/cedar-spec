@@ -25,57 +25,67 @@ Decode UTF-8 encoded strings with ByteArray Parser Combinators
 
 namespace Proto
 
--- NOTE: Will panic if there's not enough bytes to determine the next character
--- NOTE: Does not progress iterator
--- Returns the size of the character as well
+/--
+  Decodes a UTF8 Char from the iterator, advancing it appropriately, and
+  throwing (not panicking) if the byte sequence at the iterator's current position
+  is invalid UTF8 or not long enough
+-/
 @[inline]
-def utf8DecodeChar (i : Nat) : BParsec (Char × Nat) := do
-  let c ← BParsec.inspect λ pos => pos.data[i]!
-  if c &&& 0x80 == 0 then
-    let char := ⟨c.toUInt32, .inl (Nat.lt_trans c.1.2 (by decide))⟩
-    pure ⟨char, 1⟩
-  else if c &&& 0xe0 == 0xc0 then
-    let c1 ← BParsec.inspect λ pos => pos.data[i+1]!
-    if c1 &&& 0xc0 != 0x80 then throw s!"Not a valid UTF8 Char: {c} {c1}" else
-    let r := ((c &&& 0x1f).toUInt32 <<< 6) ||| (c1 &&& 0x3f).toUInt32
-    if 0x80 > r then throw s!"Not a valid UTF8 Char: {c} {c1}" else
+def utf8DecodeChar : BParsec Char := do
+  let c₀ ← BParsec.nextByte
+  match c₀ with
+  | none => throw "Not enough bytes for UTF8 Char"
+  | some c₀ =>
+  if c₀ &&& 0x80 == 0 then
+    pure ⟨c₀.toUInt32, .inl (Nat.lt_trans c₀.1.2 (by decide))⟩
+  else if c₀ &&& 0xe0 == 0xc0 then
+    let c₁ ← BParsec.nextByte
+    match c₁ with
+    | none => throw "Not enough bytes for UTF8 Char"
+    | some c₁ =>
+    if c₁ &&& 0xc0 != 0x80 then throw s!"Not a valid UTF8 Char: {c₀} {c₁}" else
+    let r := ((c₀ &&& 0x1f).toUInt32 <<< 6) ||| (c₁ &&& 0x3f).toUInt32
+    if 0x80 > r then throw s!"Not a valid UTF8 Char: {c₀} {c₁}" else
     if h : r < 0xd800 then
-      let char := ⟨r, .inl h⟩
-      pure ⟨char, 2⟩
-    else throw s!"Not valid UTF8 Char: {c} {c1}"
-  else if c &&& 0xf0 == 0xe0 then
-    let c1 ← BParsec.inspect λ pos => pos.data[i+1]!
-    let c2 ← BParsec.inspect λ pos => pos.data[i+2]!
-    if ¬(c1 &&& 0xc0 == 0x80 && c2 &&& 0xc0 == 0x80) then
-      throw s!"Not a valid UTF8 Char: {c} {c1} {c2}"
+      pure ⟨r, .inl h⟩
+    else throw s!"Not valid UTF8 Char: {c₀} {c₁}"
+  else if c₀ &&& 0xf0 == 0xe0 then
+    let c₁ ← BParsec.nextByte
+    let c₂ ← BParsec.nextByte
+    match c₁, c₂ with
+    | none, _ | _, none => throw "Not enough bytes for UTF8 Char"
+    | some c₁, some c₂ =>
+    if ¬(c₁ &&& 0xc0 == 0x80 && c₂ &&& 0xc0 == 0x80) then
+      throw s!"Not a valid UTF8 Char: {c₀} {c₁} {c₂}"
     else
     let r :=
-      ((c &&& 0x0f).toUInt32 <<< 12) |||
-      ((c1 &&& 0x3f).toUInt32 <<< 6) |||
-      (c2 &&& 0x3f).toUInt32
-    if (0x800 > r) then throw s!"Not a valid UTF8 Char: {c} {c1} {c2}" else
+      ((c₀ &&& 0x0f).toUInt32 <<< 12) |||
+      ((c₁ &&& 0x3f).toUInt32 <<< 6) |||
+      (c₂ &&& 0x3f).toUInt32
+    if (0x800 > r) then throw s!"Not a valid UTF8 Char: {c₀} {c₁} {c₂}" else
     if h : r < 0xd800 ∨ 0xdfff < r ∧ r < 0x110000 then
-      let char := ⟨r, h⟩
-      pure ⟨char, 3⟩
-    else throw s!"Not valid UTF8 Char: {c} {c1} {c2}"
-  else if c &&& 0xf8 == 0xf0 then
-    let c1 ← BParsec.inspect λ pos => pos.data[i+1]!
-    let c2 ← BParsec.inspect λ pos => pos.data[i+2]!
-    let c3 ← BParsec.inspect λ pos => pos.data[i+3]!
-    if ¬(c1 &&& 0xc0 == 0x80 && c2 &&& 0xc0 == 0x80 && c3 &&& 0xc0 == 0x80) then
-      throw s!"Not a valid UTF8 Char: {c} {c1} {c2} {c3}"
+      pure ⟨r, h⟩
+    else throw s!"Not valid UTF8 Char: {c₀} {c₁} {c₂}"
+  else if c₀ &&& 0xf8 == 0xf0 then
+    let c₁ ← BParsec.nextByte
+    let c₂ ← BParsec.nextByte
+    let c₃ ← BParsec.nextByte
+    match c₁, c₂, c₃ with
+    | none, _, _ | _, none, _ | _, _, none => throw "Not enough bytes for UTF8 Char"
+    | some c₁, some c₂, some c₃ =>
+    if ¬(c₁ &&& 0xc0 == 0x80 && c₂ &&& 0xc0 == 0x80 && c₃ &&& 0xc0 == 0x80) then
+      throw s!"Not a valid UTF8 Char: {c₀} {c₁} {c₂} {c₃}"
     else
     let r :=
-      ((c &&& 0x07).toUInt32 <<< 18) |||
-      ((c1 &&& 0x3f).toUInt32 <<< 12) |||
-      ((c2 &&& 0x3f).toUInt32 <<< 6) |||
-      (c3 &&& 0x3f).toUInt32
+      ((c₀ &&& 0x07).toUInt32 <<< 18) |||
+      ((c₁ &&& 0x3f).toUInt32 <<< 12) |||
+      ((c₂ &&& 0x3f).toUInt32 <<< 6) |||
+      (c₃ &&& 0x3f).toUInt32
     if h : 0x10000 ≤ r ∧ r < 0x110000 then
-      let char :=  ⟨r, .inr ⟨Nat.lt_of_lt_of_le (by decide) h.1, h.2⟩⟩
-      pure ⟨char, 4⟩
-    else throw s!"Not valid UTF8 Char: {c} {c1} {c2} {c3}"
+      pure ⟨r, .inr ⟨Nat.lt_of_lt_of_le (by decide) h.1, h.2⟩⟩
+    else throw s!"Not valid UTF8 Char: {c₀} {c₁} {c₂} {c₃}"
   else
-    throw s!"Not valid UTF8 Char: {c}"
+    throw s!"Not valid UTF8 Char: {c₀}"
 
 
 -- Progresses ByteArray.Iterator
@@ -84,9 +94,10 @@ partial def parseStringHelper (remaining : Nat) (r : String) : BParsec String :=
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
-  let pos ← BParsec.pos
-  let ⟨c, elementSize⟩ ← utf8DecodeChar pos
-  BParsec.forward (elementSize)
+  let start_pos ← BParsec.pos
+  let c ← utf8DecodeChar
+  let end_pos ← BParsec.pos
+  let elementSize := end_pos - start_pos
   parseStringHelper (remaining - elementSize) (r.push c)
 
 @[inline]

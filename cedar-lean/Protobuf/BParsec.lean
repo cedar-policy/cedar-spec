@@ -104,14 +104,20 @@ def run! [Inhabited α] (p : BParsec α) (ba : ByteArray) : α :=
 
 -- Iterator wrappers
 
-/-- Advance the iterator -/
+/-- Advance the iterator one byte, discarding it -/
 @[inline]
 def next : BParsec Unit := λ pos =>
   { pos := pos.next, res := .ok () }
 
+/-- Advance the iterator `n` bytes, discarding them -/
 @[inline]
 def forward (n : Nat) : BParsec Unit := λ pos =>
   { pos := pos.forward n, res := .ok () }
+
+/-- Advance the iterator one byte, returning it, or `None` if the iterator was empty -/
+@[inline]
+def nextByte : BParsec (Option UInt8) := λ pos =>
+  { pos := pos.next, res := .ok pos.data[pos.pos]? }
 
 /-- Return some computation on the current iterator state, without changing the state -/
 @[inline]
@@ -130,6 +136,7 @@ def remaining : BParsec Nat := inspect ByteArray.ByteIterator.remaining
 @[inline]
 def empty : BParsec Bool := inspect ByteArray.ByteIterator.empty
 
+/-- Get the current iterator position, as a `Nat` -/
 @[inline]
 def pos : BParsec Nat := inspect ByteArray.ByteIterator.pos
 

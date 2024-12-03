@@ -162,13 +162,13 @@ theorem foldl_iterator_progress {f : BParsec α} {g : β → α → β} {remaini
     unfold foldlHelper at H
     have H2 : ¬(ni = 0) := by omega
     rw [if_neg H2] at H
-    simp only [Bind.bind, bind, pos, inspect] at H
+    simp only [Bind.bind, bind, pos, inspect, throw_eq_fail] at H
     cases H3 : f pos₀ ; simp only [H3] at H ; rename_i pos₂ res₂
     cases res₂ <;> simp only [ParseResult.mk.injEq, reduceCtorEq, and_false] at H
     case ok res₂ =>
       by_cases H4 : (pos₂.pos - pos₀.pos = 0)
       case pos =>
-        simp only [H4, reduceIte, throw_eq_fail, fail, ParseResult.mk.injEq, reduceCtorEq, and_false] at H
+        simp only [H4, reduceIte, fail, ParseResult.mk.injEq, reduceCtorEq, and_false] at H
       case neg =>
         simp only [H4, reduceIte] at H
         let ni2 := ni - (pos₂.pos - pos₀.pos)
@@ -194,65 +194,146 @@ namespace Proto
 
 instance : DecidableEq (BParsec.ParseResult (Char × Nat)) := by apply inferInstance
 
-theorem utf8DecodeChar.sizeGt0 {pos₀ pos₁ : ByteArray.ByteIterator} {i n : Nat} {c : Char}
-  (H : utf8DecodeChar i pos₀ = { pos := pos₁, res := .ok ⟨c, n⟩ }) :
-  n > 0
+/-- Proof that `BParsec.nextByte` always progresses the iterator exactly 1 byte if it succeeds -/
+theorem BParsec.nextByte.progress {pos₀ pos₁ : ByteArray.ByteIterator} {u : UInt8}
+  (h₀ : BParsec.nextByte pos₀ = { pos := pos₁, res := .ok (some u) }) :
+  pos₁.pos = pos₀.pos + 1
 := by
-  unfold utf8DecodeChar at H
-  simp only [bind, BParsec.bind, BParsec.inspect, beq_iff_eq, pure, bne_iff_ne, ne_eq,
-    BParsec.throw_eq_fail, gt_iff_lt, ite_not, Bool.and_eq_true, not_and, and_imp] at H
-  split at H
-  · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq, Prod.mk.injEq] at H
-    omega
-  · split at H
-    · simp only [BParsec.bind, BParsec.inspect] at H
-      split at H
-      · split at H
-        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-        · split at H
-          · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
-            Prod.mk.injEq] at H
-            omega
-          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-      · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-    · split at H
-      · simp only [BParsec.bind, BParsec.inspect] at H
-        split at H
-        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-        · split at H
-          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-          · split at H
-            · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
-                Prod.mk.injEq] at H
-              omega
-            · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-      · split at H
-        · simp only [BParsec.bind, BParsec.inspect] at H
-          split at H
-          · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-          · split at H
-            · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
-                Prod.mk.injEq] at H
-              omega
-            · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
-        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false] at H
+  simp only [BParsec.nextByte, ByteArray.ByteIterator.next, BParsec.ParseResult.mk.injEq,
+    Except.ok.injEq] at h₀
+  have ⟨h₀, _⟩ := h₀
+  subst pos₁
+  simp only
 
-/-- Uglier version of `parseStringHelper` which is functionally equivalent to
-`parseStringHelper`, but has a termination proof, unlike `parseStringHelper`.
--/
-private def parseStringHelper_unoptimized (remaining : Nat) (r : String) : BParsec String := do
+/-- Proof that `utf8DecodeChar` always progresses the iterator at least 1 byte if it succeeds -/
+theorem utf8DecodeChar.progress {pos₀ pos₁ : ByteArray.ByteIterator} {c : Char}
+  (h₀ : utf8DecodeChar pos₀ = { pos := pos₁, res := .ok c }) :
+  pos₁.pos > pos₀.pos
+:= by
+  revert h₀
+  unfold utf8DecodeChar
+  simp only [bind, BParsec.bind, BParsec.throw_eq_fail, beq_iff_eq, pure,
+    bne_iff_ne, ne_eq, gt_iff_lt, ite_not, Bool.and_eq_true, not_and, and_imp]
+  cases h₁ : BParsec.nextByte pos₀
+  case mk pos₂ res =>
+  cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false, false_implies]
+  case ok opt =>
+    cases opt <;> simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+      false_implies]
+    case some c₀ =>
+      replace h₁ := BParsec.nextByte.progress h₁
+      split
+      · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq, and_imp]
+        intro h₀ ; subst pos₂
+        simp only [h₁, Nat.lt_add_one, implies_true]
+      · split
+        · simp only [BParsec.bind]
+          cases h₂ : BParsec.nextByte pos₂
+          case mk pos₃ res =>
+          cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+            false_implies]
+          case ok opt =>
+            cases opt <;> simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+              and_false, false_implies]
+            case some c₁ =>
+              replace h₂ := BParsec.nextByte.progress h₂
+              split
+              · split
+                simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                  false_implies]
+                split
+                · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq, and_imp]
+                  intro h₀ ; subst pos₃
+                  simp only [h₁, h₂]
+                  omega
+                · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                    false_implies]
+              · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                  false_implies]
+        · split
+          · simp only [BParsec.bind]
+            cases h₂ : BParsec.nextByte pos₂
+            case mk pos₃ res =>
+            cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+              false_implies]
+            case ok opt₁ =>
+              cases h₃ : BParsec.nextByte pos₃
+              case mk pos₄ res =>
+              cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                false_implies]
+              case ok opt₂ =>
+                split
+                · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                    false_implies]
+                · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                    false_implies]
+                · split
+                  · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                      false_implies]
+                  · replace h₂ := BParsec.nextByte.progress h₂
+                    replace h₃ := BParsec.nextByte.progress h₃
+                    split
+                    · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                        and_false, false_implies]
+                    · split
+                      · simp only [BParsec.pure, BParsec.ParseResult.mk.injEq, Except.ok.injEq,
+                          and_imp]
+                        intro h₀ ; subst pos₄
+                        omega
+                      · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                          and_false, false_implies]
+          · split
+            · simp only [BParsec.bind]
+              cases h₂ : BParsec.nextByte pos₂
+              case mk pos₃ res =>
+              cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                false_implies]
+              case ok opt₁ =>
+                cases h₃ : BParsec.nextByte pos₃
+                case mk pos₄ res =>
+                cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                  false_implies]
+                case ok opt₃ =>
+                  cases h₄ : BParsec.nextByte pos₄
+                  case mk pos₅ res =>
+                  cases res <;> simp only [BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+                    false_implies]
+                  case ok opt₄ =>
+                    split
+                    · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                        and_false, false_implies]
+                    · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                        and_false, false_implies]
+                    · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                        and_false, false_implies]
+                    · split
+                      · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                          and_false, false_implies]
+                      · replace h₂ := BParsec.nextByte.progress h₂
+                        replace h₃ := BParsec.nextByte.progress h₃
+                        replace h₄ := BParsec.nextByte.progress h₄
+                        split
+                        · simp [h₂, h₃, h₄]
+                          intro h₀ ; subst pos₅
+                          omega
+                        · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq,
+                            and_false, false_implies]
+            · simp only [BParsec.fail, BParsec.ParseResult.mk.injEq, reduceCtorEq, and_false,
+              false_implies]
+
+/-- Restating the definition of `parseStringHelper`, but now thanks to the above
+theorem, we can prove termination for `parseStringHelper` -/
+def parseStringHelper' (remaining : Nat) (r : String) : BParsec String := do
   if remaining = 0 then pure r else
   let empty ← BParsec.empty
   if empty then throw s!"Expected more packed uints, Size Remaining: {remaining}" else
-  let pos ← BParsec.pos
   λ pos₀ =>
-    let result := utf8DecodeChar pos pos₀
-    match H : result with
-      | { pos := pos₁, res := .ok ⟨c, elementSize⟩ } =>
-        have _ : elementSize > 0 := utf8DecodeChar.sizeGt0 H
-        (do
-          BParsec.forward (elementSize)
-          parseStringHelper_unoptimized (remaining - elementSize) (r.push c)) pos₀
-      | { pos := pos₁, res := .error msg } => { pos := pos₁, res := .error msg }
+    match h₀ : utf8DecodeChar pos₀ with
+    | { pos := pos₁, res := .ok c } =>
+      have : pos₁.pos > pos₀.pos := utf8DecodeChar.progress h₀
+      let elementSize := pos₁.pos - pos₀.pos
+      parseStringHelper' (remaining - elementSize) (r.push c) pos₁
+    | { pos := pos₁, res := .error e } => { pos := pos₁, res := .error e }
+termination_by remaining
 
 end Proto
