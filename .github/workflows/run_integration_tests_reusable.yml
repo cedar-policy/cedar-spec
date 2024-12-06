@@ -60,12 +60,8 @@ jobs:
       - name: Build Lean libraries
         working-directory: ./cedar-spec/cedar-lean
         run: source ~/.profile && ../cedar-drt/build_lean_lib.sh
-      - name: Debug with upterm session
-        uses: lhotari/action-upterm@v1
-        with:
-          limit-access-to-users: cdisselkoen
-          wait-timeout-minutes: 4 ## If no one connects after 4 minutes, shut down the server
       - name: Run integration tests
         working-directory: ./cedar-spec/cedar-drt
         shell: bash
         run: source ~/.profile && source set_env_vars.sh && cargo test --features "integration-testing" -- --nocapture
+
