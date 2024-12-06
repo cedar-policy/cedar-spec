@@ -20,6 +20,46 @@ use cedar_testing::cedar_test_impl::ExprOrValue;
 pub use entities::Entities;
 use serde::Serialize;
 
+pub mod proto {
+    #![allow(missing_docs)]
+    include!(concat!(env!("OUT_DIR"), "/cedar_drt.rs"));
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AuthorizationRequestMsg<'a> {
+    pub request: &'a ast::Request,
+    pub policies: &'a ast::PolicySet,
+    pub entities: &'a Entities,
+}
+
+impl From<&AuthorizationRequestMsg<'_>> for proto::AuthorizationRequestMsg {
+    fn from(v: &AuthorizationRequestMsg<'_>) -> Self {
+        Self {
+            request: Some(ast::proto::Request::from(v.request)),
+            policies: Some(ast::proto::LiteralPolicySet::from(v.policies)),
+            entities: Some(ast::proto::Entities::from(v.entities)),
+        }
+    }
+}
+
+pub struct ValidationRequestMsg<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub policies: &'a ast::PolicySet,
+    pub mode: ValidationMode,
+}
+
+impl From<&ValidationRequestMsg> for proto::ValidationRequestMsg {
+    fn from(v: &ValidationRequestMsg) -> Self {
+        Self {
+            schema: Some(cedar_policy_validator::proto::ValidatorSchema::from(
+                v.schema,
+            )),
+            policies: Some(ast::proto::LiteralPolicySet::from(v.policies)),
+            mode: cedar_policy_validator::proto::ValidationMode::from(v.mode).into(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthorizationRequest<'a> {
     pub request: &'a ast::Request,
