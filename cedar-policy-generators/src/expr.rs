@@ -150,6 +150,9 @@ impl<'a> ExprGenerator<'a> {
                         self.generate_expr(max_depth - 1, u)?,
                         self.generate_expr(max_depth - 1, u)?,
                     )),
+                    1 => Ok(ast::Expr::is_empty(
+                        self.generate_expr(max_depth - 1, u)?,
+                    )),
                     2 => {
                         if self.settings.enable_like {
                             Ok(ast::Expr::like(
@@ -484,6 +487,14 @@ impl<'a> ExprGenerator<'a> {
                                 max_depth - 1,
                                 u,
                             )?,
+                            self.generate_expr_for_type(
+                                &Type::set_of(u.arbitrary()?),
+                                max_depth - 1,
+                                u,
+                            )?,
+                        )),
+                        // isEmpty()
+                        1 => Ok(ast::Expr::is_empty(
                             self.generate_expr_for_type(
                                 &Type::set_of(u.arbitrary()?),
                                 max_depth - 1,

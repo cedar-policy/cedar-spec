@@ -86,6 +86,7 @@ def jsonToUnaryOp (json : Lean.Json) : ParseResult UnaryOp := do
   match op with
   | "Not" => .ok .not
   | "Neg" => .ok .neg
+  | "IsEmpty" => .ok .isEmpty
   | op => .error s!"jsonToUnaryOp: unknown operator {op}"
 
 def jsonToPatElem (json : Lean.Json) : ParseResult PatElem := do
