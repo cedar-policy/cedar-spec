@@ -291,6 +291,7 @@ namespace Proto.ExprKind.UnaryApp
 inductive Op where
   | not
   | neg
+  | isEmpty
 deriving Inhabited
 
 namespace Op
@@ -299,6 +300,7 @@ def fromInt (n : Int) : Except String Op :=
   match n with
     | 0 => .ok .not
     | 1 => .ok .neg
+    | 2 => .ok .isEmpty
     | n => .error s!"Field {n} does not exist in enum"
 
 instance : Inhabited Op where
@@ -316,6 +318,7 @@ def mergeOp (result : ExprKind.UnaryApp) (x : Op) : ExprKind.UnaryApp :=
   | .unaryApp _ expr => match x with
     | .not => .unaryApp .not expr
     | .neg => .unaryApp .neg expr
+    | .isEmpty => .unaryApp .isEmpty expr
   | _ => panic!("Expected ExprKind.UnaryApp to be of constructor .unaryApp")
 
 @[inline]

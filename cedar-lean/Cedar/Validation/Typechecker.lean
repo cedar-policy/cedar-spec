@@ -112,6 +112,7 @@ def typeOfUnaryApp (op : UnaryOp) (ty : CedarType) : ResultType :=
   match op, ty with
   | .not, .bool x          => ok (.bool x.not)
   | .neg, .int             => ok .int
+  | .isEmpty, .set _       => ok (.bool .anyBool)
   | .like _, .string       => ok (.bool .anyBool)
   | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
   | _, _                   => err (.unexpectedType ty)
