@@ -15,4 +15,4 @@
 
 # Build command needed for linking Lean lib with Rust code
 lake update
-lake build Cedar:static DiffTest:static Batteries:static
+lake build Cedar:static Protobuf:static CedarProto:static DiffTest:static Batteries:static

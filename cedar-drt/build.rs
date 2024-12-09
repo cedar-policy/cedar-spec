@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-use std::env;
 use std::path::Path;
 const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
 fn main() {
-    let lean_dir = env::var("LEAN_LIB_DIR").expect(
+    let lean_dir = std::env::var("LEAN_LIB_DIR").expect(
         "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
     );
     // We'll need to link against some files found here later, and it's nicer to
@@ -32,4 +31,18 @@ fn main() {
         "cargo:rustc-link-search=native=../cedar-lean/.lake/packages/batteries/.lake/build/lib"
     );
     println!("cargo:rerun-if-changed={LEAN_BUILD_DIR}");
+
+    let mut config = prost_build::Config::new();
+    config.extern_path(".cedar_policy_core", "::cedar_policy_core::ast::proto");
+    config.extern_path(".cedar_policy_validator", "::cedar_policy_validator::proto");
+    config
+        .compile_protos(
+            &["./protobuf_schema/Messages.proto"],
+            &[
+                "./protobuf_schema",
+                "../cedar/cedar-policy-core/protobuf_schema",
+                "../cedar/cedar-policy-validator/protobuf_schema",
+            ],
+        )
+        .unwrap();
 }

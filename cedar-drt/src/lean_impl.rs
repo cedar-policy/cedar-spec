@@ -35,17 +35,21 @@ pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
 pub use lean_sys::string::lean_mk_string;
 use lean_sys::{
-    lean_dec, lean_dec_ref, lean_finalize_thread, lean_initialize_runtime_module_locked,
-    lean_initialize_thread, lean_io_mark_end_initialization, lean_io_mk_world,
-    lean_io_result_is_ok, lean_io_result_show_error, lean_string_cstr,
+    lean_alloc_sarray, lean_dec, lean_dec_ref, lean_finalize_thread,
+    lean_initialize_runtime_module_locked, lean_initialize_thread, lean_io_mark_end_initialization,
+    lean_io_mk_world, lean_io_result_is_ok, lean_io_result_show_error, lean_sarray_object,
+    lean_string_cstr,
 };
 use log::info;
 use miette::miette;
+use prost::Message;
 use serde::Deserialize;
 use std::ffi::{c_char, CStr};
 use std::str::FromStr;
 
 #[link(name = "Cedar", kind = "static")]
+#[link(name = "Protobuf", kind = "static")]
+#[link(name = "CedarProto", kind = "static")]
 #[link(name = "Batteries", kind = "static")]
 #[link(name = "DiffTest", kind = "static")]
 extern "C" {
@@ -120,6 +124,8 @@ type PartialAuthorizationResponse = ResultDef<TimedDef<FlatPartialResponse>>;
 #[derive(Default)]
 pub struct LeanDefinitionalEngine {}
 
+/// Takes ownership of its argument -- do not access `lean_str_obj` after
+/// calling this function
 fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
     let lean_obj_p = unsafe { lean_string_cstr(lean_str_obj) };
     let lean_obj_cstr = unsafe { CStr::from_ptr(lean_obj_p as *const c_char) };
@@ -131,6 +137,17 @@ fn lean_obj_p_to_rust_string(lean_str_obj: *mut lean_object) -> String {
         lean_dec(lean_str_obj);
     };
     rust_string
+}
+
+fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
+    unsafe {
+        let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
+        let y = (*x).m_data.as_mut_ptr();
+        for i in 0..buf.len() {
+            y.add(i).write(buf[i])
+        }
+        x.cast()
+    }
 }
 
 impl LeanDefinitionalEngine {
@@ -208,15 +225,15 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> TestResult<TestResponse> {
-        let request: String = serde_json::to_string(&AuthorizationRequest {
+        let auth_request = AuthorizationRequestMsg {
             request,
             policies,
             entities,
-        })
-        .expect("failed to serialize request, policies, or entities");
-        let cstring = CString::new(request).expect("`CString::new` failed");
+        };
+        let auth_request_proto = proto::AuthorizationRequestMsg::from(&auth_request);
+        let buf = auth_request_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { isAuthorizedDRT(req) };
         // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
@@ -361,15 +378,15 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> TestResult<TestValidationResult> {
-        let request: String = serde_json::to_string(&ValidationRequest {
+        let val_request = ValidationRequestMsg {
             schema,
             policies,
-            mode: cedar_policy_validator::ValidationMode::default(), // == Strict
-        })
-        .expect("failed to serialize schema or policies");
-        let cstring = CString::new(request).expect("`CString::new` failed");
+            mode: cedar_policy_validator::ValidationMode::default(),
+        };
+        let val_request_proto = proto::ValidationRequestMsg::from(&val_request);
+        let buf = val_request_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { validateDRT(req) };
         // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);

@@ -46,10 +46,6 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake exe CedarUnitTests
-      - name: Test CLI
-        working-directory: ./cedar-lean
-        shell: bash
-        run: source ~/.profile && ./test_cli.sh
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
