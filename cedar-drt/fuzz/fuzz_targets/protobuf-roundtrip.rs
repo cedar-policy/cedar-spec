@@ -135,21 +135,21 @@ fn roundtrip_authz_request_msg(auth_request: AuthorizationRequestMsg) {
     );
 
     // Checking policy set equality
-    assert_eq!(auth_request.policies, roundtripped.policies);
+    assert_eq!(auth_request.policies, &roundtripped.policies);
 
     // Checking entities equality
-    assert_eq!(auth_request.entities, roundtripped.entities);
+    assert_eq!(auth_request.entities, &roundtripped.entities);
 }
 
 fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
     // AST -> Protobuf bytes
-    let schema_proto = cedar_drt::proto::Schema::from(&schema);
+    let schema_proto = cedar_policy_validator::proto::ValidatorSchema::from(&schema);
 
     // Protobuf -> Bytes
     let buf = schema_proto.encode_to_vec();
 
     // Bytes -> Protobuf
-    let roundtripped_proto = cedar_policy_validator::proto::Schema::decode(&buf[..])
+    let roundtripped_proto = cedar_policy_validator::proto::ValidatorSchema::decode(&buf[..])
         .expect("Failed to deserialize Schema from proto");
 
     // Protobuf -> AST
