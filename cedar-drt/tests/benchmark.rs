@@ -169,7 +169,7 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
           // note that actual Lean functionality on the corpus tests is tested
           // by a test called `integration_tests_on_def_impl()`, in
           // integration_tests.rs.
-fn run_all_tests() {
+fn print_timing_results() {
     let rust_impl = RustEngine::new();
     let lean_impl = LeanDefinitionalEngine::new();
 
