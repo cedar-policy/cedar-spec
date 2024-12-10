@@ -14,9 +14,9 @@ libfuzzer-sys = "0.4"
 serde = { version = "1.0", feature = ["derive"] }
 serde_json = "1.0"
 cedar-drt = { version = "4.0.0", path = ".." }
-cedar-policy = { path = "../../cedar/cedar-policy", version = "4.*" }
-cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
-cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary", "entity-manifest"] }
+cedar-policy = { path = "../../cedar/cedar-policy", version = "4.*", features = ["protobufs"] }
+cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary", "protobufs"] }
+cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary", "entity-manifest", "protobufs"] }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "4.*" }
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.*" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.*" }
@@ -30,6 +30,7 @@ rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
 thiserror = "2.0"
 logos = "0.14.0"
+prost = "0.13"
 itertools = "0.13.0"
 
 [dependencies.uuid]
@@ -185,6 +186,12 @@ doc = false
 [[bin]]
 name = "convert-policy-json-to-cedar"
 path = "fuzz_targets/convert-policy-json-to-cedar.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "protobuf-roundtrip"
+path = "fuzz_targets/protobuf-roundtrip.rs"
 test = false
 doc = false
 
