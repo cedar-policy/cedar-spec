@@ -29,7 +29,7 @@ clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
 thiserror = "2.0"
-logos = "0.14.0"
+logos = "0.15.0"
 prost = "0.13"
 itertools = "0.13.0"
 
