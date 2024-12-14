@@ -189,6 +189,12 @@ impl<K: Eq + Ord + Display, V: Equiv> Equiv for BTreeMap<K, V> {
     }
 }
 
+impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_schema::CommonType<N> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.ty, &rhs.ty)
+    }
+}
+
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_schema::EntityType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(

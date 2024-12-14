@@ -29,6 +29,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, UnreservedId};
+use cedar_policy_core::est::Annotations;
 use cedar_policy_validator::json_schema;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
@@ -2510,6 +2511,7 @@ fn record_schematype_with_attr<N>(
             json_schema::TypeOfAttribute {
                 ty: attr_type.into(),
                 required: true,
+                annotations: Annotations::new(),
             },
         )]
         .into_iter()
