@@ -45,9 +45,8 @@ def Capabilities.singleton (e : Expr) (k : Key) : Capabilities := [(e, k)]
 
 abbrev ResultType := Except TypeError (TypedExpr × Capabilities)
 
-def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilities)
-  | .ok (ty, c) => .ok (ty.typeOf, c)
-  | .error e      => .error e
+def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilities) :=
+  Except.map (λ (ty, c) => (ty.typeOf, c))
 
 def ok (ty : TypedExpr) (c : Capabilities := ∅) : ResultType := .ok (ty, c)
 def err (e : TypeError) : ResultType := .error e
@@ -86,10 +85,9 @@ def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : Resul
   | ty₁ => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
-  let c₁ := r₁.snd
-  match r₁.fst.typeOf with
-  | .bool .ff  => ok r₁.fst
-  | .bool ty₁  => do
+  match (r₁.fst.typeOf, r₁.snd) with
+  | (.bool .ff, _)  => ok r₁.fst
+  | (.bool ty₁, c₁) => do
     let (ty₂, c₂) ← r₂
     let mkₑ := TypedExpr.and r₁.fst ty₂
     match ty₂.typeOf with
@@ -97,19 +95,18 @@ def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultTyp
     | .bool .tt     => ok (mkₑ (.bool ty₁)) (c₁ ∪ c₂)
     | .bool _       => ok (mkₑ (.bool .anyBool)) (c₁ ∪ c₂)
     | _             => err (.unexpectedType ty₂.typeOf)
-  | ty₁        => err (.unexpectedType ty₁)
+  | (ty₁, _)        => err (.unexpectedType ty₁)
 
 def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
-  let c₁ := r₁.snd
-  match r₁.fst.typeOf with
-  | .bool .tt  => ok r₁.fst
-  | .bool .ff  => do
+  match (r₁.fst.typeOf, r₁.snd) with
+  | (.bool .tt, _)  => ok r₁.fst
+  | (.bool .ff, _)  => do
     let (ty₂, c₂) ← r₂
     let mkₑ := TypedExpr.or r₁.fst ty₂
     match ty₂.typeOf with
     | .bool _       => ok (mkₑ ty₂.typeOf) c₂
     | _             => err (.unexpectedType ty₂.typeOf)
-  | .bool _    => do
+  | (.bool _, c₁)    => do
     let (ty₂, c₂) ← r₂
     let mkₑ := TypedExpr.or r₁.fst ty₂
     match ty₂.typeOf with
@@ -117,7 +114,7 @@ def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType
     | .bool .ff     => ok (mkₑ (.bool .anyBool)) c₁
     | .bool _       => ok (mkₑ (.bool .anyBool)) (c₁ ∩ c₂)
     | _             => err (.unexpectedType ty₂.typeOf)
-  | ty₁        => err (.unexpectedType ty₁)
+  | (ty₁, _)        => err (.unexpectedType ty₁)
 
 def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
   let mkₑ := TypedExpr.unaryApp op ty
@@ -256,33 +253,33 @@ def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env
       else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
-def getAttrInRecord (ty : TypedExpr) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : Except TypeError (CedarType × Capabilities)  :=
+def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : Except TypeError (CedarType × Capabilities)  :=
   match rty.find? a with
   | .some (.required aty) => .ok (aty, ∅)
-  | .some (.optional aty) => if (x, .attr a) ∈ c then .ok (aty, ∅) else .error (.attrNotFound ty.typeOf a)
-  | .none                 => .error (.attrNotFound ty.typeOf a)
+  | .some (.optional aty) => if (x, .attr a) ∈ c then .ok (aty, ∅) else .error (.attrNotFound ty a)
+  | .none                 => .error (.attrNotFound ty a)
 
 def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
   let mkₑ := TypedExpr.getAttr ty a
   match ty.typeOf with
   | .record rty => do
-    let (ty', c) ← getAttrInRecord ty rty x a c
+    let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
     ok (mkₑ ty') c
   | .entity ety =>
     match env.ets.attrs? ety with
     | .some rty => do
-      let (ty', c) ← getAttrInRecord ty rty x a c
+      let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
       ok (mkₑ ty') c
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
 def typeOfSet (tys : List TypedExpr) : ResultType :=
-  match tys.map (λ ty => ty.typeOf) with
+  match tys with
   | []       => err .emptySetErr
   | hd :: tl =>
-    match tl.foldlM lub? hd with
+    match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
     | .some ty => ok (.set tys (.set ty))
-    | .none    => err (.incompatibleSetTypes (hd :: tl))
+    | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
 
 def justType (r : ResultType) : Except TypeError TypedExpr :=
   r.map Prod.fst
