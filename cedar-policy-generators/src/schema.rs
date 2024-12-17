@@ -32,8 +32,8 @@ use arbitrary::{self, Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Id, Name, PolicyID};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
-    SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
+    is_builtin_type_name, ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError,
+    SchemaFragment, SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -456,8 +456,9 @@ impl Bindings {
     fn add_binding(&mut self, binding: (SchemaType, Id)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
-        let new_id = if self.ids.contains(id.as_ref()) {
+        let new_id = if is_builtin_type_name(id.as_ref()) || self.ids.contains(id.as_ref()) {
             let mut new_id = id.to_string();
+            new_id.push('_');
             while self.ids.contains(new_id.as_str()) {
                 new_id.push('_');
             }
