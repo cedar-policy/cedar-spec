@@ -288,6 +288,10 @@ def tests := [
           }]
         },
       ],
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_just_templates.protodata"
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
+      [],
     testDeserializeProtodata "UnitTest/CedarProto-test-data/request.protodata"
       ({
         principal := mkUid [] "User" "alice"

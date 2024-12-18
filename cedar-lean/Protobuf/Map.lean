@@ -38,9 +38,20 @@ instance [Field α] [Field β] [DecidableEq α] [DecidableEq β] : DecidableEq (
   unfold DecidableEq Map
   exact decEq
 
+instance [Field α] [Field β] : HAppend (Map α β) (Map α β) (Map α β) where
+  hAppend m₁ m₂ :=
+    let m₁ : Array (α × β) := m₁
+    let m₂ : Array (α × β) := m₂
+    m₁ ++ m₂
+
 @[inline]
 def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BParsec (Map KeyT ValueT) := do
      let len_size ← Len.parseSize
+     if len_size = 0 then
+          -- an empty map. Don't try to parse anything
+          pure default
+     else
+
      let startPos ← BParsec.pos
 
      let tag1 ← Tag.parse
@@ -56,7 +67,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
 
                let tag2 ← Tag.parse
                if tag2.fieldNum != 2 then
-                    throw s!"Expected Field Number 2 within map, not {tag2.fieldNum}"
+                    throw s!"Expected field number 2 within map, not {tag2.fieldNum}"
                else
 
                let value : ValueT ← Field.guardedParse tag2
@@ -72,13 +83,13 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
 
                let tag2 ← Tag.parse
                if tag2.fieldNum != 1 then
-                    throw s!"Expected Field Number 1 within map, not {tag2.fieldNum}"
+                    throw s!"Expected field number 1 within map, not {tag2.fieldNum}"
                else
 
                let key : KeyT ← Field.guardedParse tag2
                pure #[(Prod.mk key value)]
 
-          | _ => throw "Unexpected Field Number within Map Element"
+          | n => throw s!"Unexpected field number ({n}) within map"
 
      let endPos ← BParsec.pos
 
