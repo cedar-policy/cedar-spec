@@ -18,9 +18,10 @@
 use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::info;
 use serde::Serialize;
+use similar_asserts::SimpleDiff;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
@@ -67,7 +68,9 @@ impl<'a> Arbitrary<'a> for Input {
         })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
         Schema::arbitrary_size_hint(depth)
     }
 }
@@ -81,14 +84,21 @@ fuzz_target!(|i: Input| {
         (Ok(s1), Ok(s2)) => {
             assert!(
                 validator_schema_attr_types_equivalent(&s1, &s2),
-                "reduced to different validator schemas: {:?}\n{:?}\n",
-                s1,
-                s2
+                "{}",
+                SimpleDiff::from_str(
+                    &format!("{s1:?}"),
+                    &format!("{s2:?}"),
+                    "original",
+                    "with common types"
+                )
             );
         }
         (Err(_), Err(_)) => {}
-        (Ok(s), Err(_)) | (Err(_), Ok(s)) => {
-            panic!("reduction results differ, got validator schema: {:?}\n", s);
+        (Ok(s), Err(e)) => {
+            panic!("Constructed schema without common types but failed to build schema with common types.\nconstructed schema:\n{s:#?}\nerror: {e:?}")
+        }
+        (Err(e), Ok(s)) => {
+            panic!("Constructed schema with common types but failed to build schema without common types.\nconstructed schema:\n{s:#?}\nerror: {e:?}")
         }
     }
 });

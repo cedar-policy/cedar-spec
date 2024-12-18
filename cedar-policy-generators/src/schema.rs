@@ -28,12 +28,12 @@ use crate::request::Request;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
 use crate::{accum, gen, gen_inner, uniform};
-use arbitrary::{self, Arbitrary, Unstructured};
+use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, Id, Name, PolicyID};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::{
-    ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError, SchemaFragment,
-    SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
+    is_builtin_type_name, ActionType, ApplySpec, AttributesOrContext, EntityType, SchemaError,
+    SchemaFragment, SchemaType, SchemaTypeVariant, TypeOfAttribute, ValidatorSchema,
 };
 use smol_str::{SmolStr, ToSmolStr};
 use std::collections::BTreeMap;
@@ -118,13 +118,15 @@ fn arbitrary_attrspec(
     )))
 }
 /// size hint for arbitrary_attrspec
-fn arbitrary_attrspec_size_hint(depth: usize) -> (usize, Option<usize>) {
-    arbitrary::size_hint::recursion_guard(depth, |depth| {
-        arbitrary::size_hint::and_all(&[
+fn arbitrary_attrspec_size_hint(
+    depth: usize,
+) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+    arbitrary::size_hint::try_recursion_guard(depth, |depth| {
+        Ok(arbitrary::size_hint::and_all(&[
             <Vec<ast::Id> as Arbitrary>::size_hint(depth),
             arbitrary_typeofattribute_size_hint(depth),
             <bool as Arbitrary>::size_hint(depth),
-        ])
+        ]))
     })
 }
 
@@ -456,8 +458,9 @@ impl Bindings {
     fn add_binding(&mut self, binding: (SchemaType, Id)) {
         let (ty, id) = binding;
         // create a new id when the provided id has been used
-        let new_id = if self.ids.contains(id.as_ref()) {
+        let new_id = if is_builtin_type_name(id.as_ref()) || self.ids.contains(id.as_ref()) {
             let mut new_id = id.to_string();
+            new_id.push('_');
             while self.ids.contains(new_id.as_str()) {
                 new_id.push('_');
             }
@@ -964,19 +967,21 @@ impl Schema {
         })
     }
     /// size hint for arbitrary()
-    pub fn arbitrary_size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and_all(&[
+    pub fn arbitrary_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
             <HashSet<ast::Name> as Arbitrary>::size_hint(depth),
-            arbitrary_attrspec_size_hint(depth), // actually we do one of these per Name that was generated
-            size_hint_for_ratio(1, 2),           // actually many of these calls
+            arbitrary_attrspec_size_hint(depth)?, // actually we do one of these per Name that was generated
+            size_hint_for_ratio(1, 2),            // actually many of these calls
             <HashSet<String> as Arbitrary>::size_hint(depth),
             size_hint_for_ratio(1, 8), // actually many of these calls
             size_hint_for_ratio(1, 4), // zero to many of these calls
             size_hint_for_ratio(1, 2), // zero to many of these calls
-            arbitrary_attrspec_size_hint(depth),
+            arbitrary_attrspec_size_hint(depth)?,
             size_hint_for_ratio(1, 2), // actually many of these calls
             <ConstantPool as Arbitrary>::size_hint(depth),
-        ])
+        ]))
     }
 
     /// Get an arbitrary Hierarchy conforming to the schema.

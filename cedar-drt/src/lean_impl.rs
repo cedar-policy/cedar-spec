@@ -183,6 +183,7 @@ impl LeanDefinitionalEngine {
                     })
                     .collect();
                 TestResult::Success(TestResponse {
+                    #[allow(deprecated)]
                     response: InterfaceResponse::new(decision, reason, errors),
                     timing_info: HashMap::from([("authorize".into(), Micros(auth_time))]),
                 })
