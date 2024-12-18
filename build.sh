@@ -18,3 +18,4 @@ cd ..
 # Build DRT
 cd cedar-drt
 cargo fuzz build
+cargo test
