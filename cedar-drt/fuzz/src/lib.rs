@@ -21,6 +21,7 @@ pub use dump::*;
 pub use prt::*;
 pub mod schemas;
 
+#[allow(deprecated)]
 use cedar_policy::frontend::is_authorized::InterfaceResponse;
 use cedar_policy::PolicyId;
 use cedar_policy_core::ast;
@@ -123,6 +124,7 @@ pub fn run_auth_test(
             }
         }
         TestResult::Success(definitional_res) => {
+            #[allow(deprecated)]
             let rust_res_for_comparison: InterfaceResponse = {
                 let errors = match custom_impl.error_comparison_mode() {
                     ErrorComparisonMode::Ignore => HashSet::new(),
@@ -143,6 +145,7 @@ pub fn run_auth_test(
                         .map(ToString::to_string)
                         .collect(),
                 };
+                #[allow(deprecated)]
                 InterfaceResponse::new(
                     rust_res.decision,
                     rust_res

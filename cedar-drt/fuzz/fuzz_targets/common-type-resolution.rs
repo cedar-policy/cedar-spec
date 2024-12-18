@@ -18,7 +18,7 @@
 use cedar_drt_inner::{schemas::validator_schema_attr_types_equivalent, *};
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::info;
 use serde::Serialize;
 use similar_asserts::SimpleDiff;
@@ -68,7 +68,9 @@ impl<'a> Arbitrary<'a> for Input {
         })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
         Schema::arbitrary_size_hint(depth)
     }
 }

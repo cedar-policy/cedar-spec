@@ -24,7 +24,7 @@ use cedar_policy_generators::err::Error;
 use cedar_policy_generators::hierarchy::HierarchyGenerator;
 use cedar_policy_generators::schema::{arbitrary_schematype_with_bounded_depth, Schema};
 use cedar_policy_generators::settings::ABACSettings;
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use log::debug;
 use serde::Serialize;
 use std::convert::TryFrom;
@@ -88,9 +88,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        arbitrary::size_hint::and_all(&[
-            Schema::arbitrary_size_hint(depth),
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
+        Ok(arbitrary::size_hint::and_all(&[
+            Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
             Schema::arbitrary_request_size_hint(depth),
@@ -101,7 +103,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
             Schema::arbitrary_request_size_hint(depth),
-        ])
+        ]))
     }
 }
 

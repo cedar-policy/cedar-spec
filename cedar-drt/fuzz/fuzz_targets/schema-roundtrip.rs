@@ -19,7 +19,7 @@ use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
 use cedar_policy_generators::{schema::Schema, settings::ABACSettings};
 use cedar_policy_validator::SchemaFragment;
-use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use libfuzzer_sys::arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -57,7 +57,9 @@ impl<'a> Arbitrary<'a> for Input {
         Ok(Self { schema })
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+    fn try_size_hint(
+        depth: usize,
+    ) -> std::result::Result<(usize, Option<usize>), MaxRecursionReached> {
         Schema::arbitrary_size_hint(depth)
     }
 }
