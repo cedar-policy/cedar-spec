@@ -36,7 +36,7 @@ RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && elan default
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
-RUN source /root/.profile && source ./set_env_vars.sh && cargo build
+RUN source /root/.profile && source ./set_env_vars.sh && cargo fuzz build -s none
 
 # Initialize corpus for all targets. No-op for target that don't need initilization.
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
