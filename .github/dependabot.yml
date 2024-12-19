@@ -16,6 +16,13 @@ updates:
     # Update all explicitly defined dependencies
     allow:
       - dependency-type: "all"
+    ignore:
+      - dependency-name: "cedar-policy"
+      - dependency-name: "cedar-policy-core"
+      - dependency-name: "cedar-policy-validator"
+      - dependency-name: "cedar-policy-formatter"
+      - dependency-name: "cedar-testing"
+
     # Group all updates into one pull request
     groups:
       rust-dependencies:
