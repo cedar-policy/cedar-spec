@@ -20,12 +20,10 @@ use crate::hierarchy::Hierarchy;
 use crate::size_hint_utils::size_hint_for_ratio;
 use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{
-    Annotation, Annotations, AnyId, Effect, EntityUID, Expr, Policy, PolicyID, PolicySet,
-    StaticPolicy, Template,
+    Effect, EntityUID, Expr, Policy, PolicyID, PolicySet, StaticPolicy, Template,
 };
 use cedar_policy_core::{ast, est};
 use serde::Serialize;
-use smol_str::SmolStr;
 use std::fmt::Display;
 use std::sync::Arc;
 
@@ -39,7 +37,7 @@ use std::sync::Arc;
 #[serde(into = "est::Policy")]
 pub struct GeneratedPolicy {
     id: PolicyID,
-    annotations: HashMap<AnyId, SmolStr>,
+    annotations: cedar_policy_core::est::Annotations,
     effect: Effect,
     principal_constraint: PrincipalOrResourceConstraint,
     action_constraint: ActionConstraint,
@@ -59,7 +57,7 @@ impl GeneratedPolicy {
     /// Create a new `GeneratedPolicy` with these fields
     pub fn new(
         id: PolicyID,
-        annotations: impl IntoIterator<Item = (AnyId, SmolStr)>,
+        annotations: cedar_policy_core::est::Annotations,
         effect: Effect,
         principal_constraint: PrincipalOrResourceConstraint,
         action_constraint: ActionConstraint,
@@ -68,7 +66,7 @@ impl GeneratedPolicy {
     ) -> Self {
         Self {
             id,
-            annotations: annotations.into_iter().collect(),
+            annotations,
             effect,
             principal_constraint,
             action_constraint,
@@ -141,19 +139,12 @@ impl GeneratedPolicy {
     }
 }
 
-fn convert_annotations(annotations: HashMap<AnyId, SmolStr>) -> Annotations {
-    annotations
-        .into_iter()
-        .map(|(k, v)| (k, Annotation { val: v, loc: None }))
-        .collect()
-}
-
 impl From<GeneratedPolicy> for StaticPolicy {
     fn from(gen: GeneratedPolicy) -> StaticPolicy {
         StaticPolicy::new(
             gen.id,
             None,
-            convert_annotations(gen.annotations),
+            gen.annotations.into(),
             gen.effect,
             gen.principal_constraint.into(),
             gen.action_constraint.into(),
@@ -169,7 +160,7 @@ impl From<GeneratedPolicy> for Template {
         Template::new(
             gen.id,
             None,
-            convert_annotations(gen.annotations),
+            gen.annotations.into(),
             gen.effect,
             gen.principal_constraint.into(),
             gen.action_constraint.into(),
