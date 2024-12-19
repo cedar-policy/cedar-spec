@@ -76,7 +76,9 @@ jobs:
         run: cargo test --verbose
       - name: Build Lean libraries, and build & test cedar-drt/
         shell: bash
-        run: source ~/.profile && ./build.sh
+        run: |
+          cargo install cargo-fuzz
+          source ~/.profile && ./build.sh
 
   run-integration-tests:
     needs: get-branch-name

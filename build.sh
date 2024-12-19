@@ -17,8 +17,5 @@ cd ..
 
 # Build DRT
 cd cedar-drt
-cargo build
-
-# Build inner fuzz crate
-cd fuzz && RUSTFLAGS="--cfg=fuzzing" cargo build
+cargo fuzz build -s none
 cargo test
