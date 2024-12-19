@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-use std::path::Path;
-const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
 fn main() {
     #[cfg(feature = "lean-impl")]
     {
+        use std::path::Path;
+        const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
         let lean_dir = std::env::var("LEAN_LIB_DIR").expect(
             "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
         );

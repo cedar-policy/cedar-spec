@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#[cfg(feature = "lean-impl")]
 mod definitional_request_types;
 #[cfg(feature = "lean-impl")]
 mod lean_impl;
 mod logger;
 pub mod utils;
 
+#[cfg(feature = "lean-impl")]
 pub use definitional_request_types::*;
 #[cfg(feature = "lean-impl")]
 pub use lean_impl::*;
