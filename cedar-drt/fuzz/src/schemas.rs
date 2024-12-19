@@ -109,7 +109,7 @@ impl Equiv for Option<cedar_policy_core::ast::Annotation> {
             }
             (None, None) => return Ok(()),
         };
-        Err(format!("two annotations mismatch: {lhs:?} and {rhs:?}"))
+        Err(format!("{lhs:?} and {rhs:?} are not equivalent"))
     }
 }
 
