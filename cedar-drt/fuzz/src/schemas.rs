@@ -552,3 +552,70 @@ impl Equiv for cedar_policy_validator::ValidatorSchema {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use cedar_drt::est::Annotations;
+
+    use crate::schemas::Equiv;
+
+    #[test]
+    fn annotations() {
+        // positive cases
+        let pairs: [(Annotations, Annotations)] = [
+            // value being null is equivalent to an empty string
+            (
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": ""})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": ""})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+            ),
+            // both values being null is also equivalent
+            (
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+            ),
+            // otherwise compare non-null values
+            (
+                serde_json::from_value(serde_json::json!({"a": "🥨"})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": "🥨"})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": "🥨", "b": "🥯🍩"})).unwrap(),
+                serde_json::from_value(serde_json::json!({"b": "🥯🍩", "a": "🥨"})).unwrap(),
+            ),
+        ];
+        pairs
+            .iter()
+            .for_each(|(a, b)| assert!(Equiv::equiv(a, b).is_ok()));
+
+        // negative cases
+        let pairs: [(Annotations, Annotations)] = [
+            (
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": "🍪"})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": ""})).unwrap(),
+                serde_json::from_value(serde_json::json!({"b": null})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
+                serde_json::from_value(serde_json::json!({"b": null})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": "🥨"})).unwrap(),
+                serde_json::from_value(serde_json::json!({"a": "🍪"})).unwrap(),
+            ),
+            (
+                serde_json::from_value(serde_json::json!({"a": "🥨", "b": "🥯🍪"})).unwrap(),
+                serde_json::from_value(serde_json::json!({"b": "🥯🍩", "a": "🥨"})).unwrap(),
+            ),
+        ];
+        pairs
+            .iter()
+            .for_each(|(a, b)| assert!(Equiv::equiv(a, b).is_err()));
+    }
+}
