@@ -164,7 +164,12 @@ fn print_summary(auth_times: HashMap<&str, Vec<f64>>, val_times: HashMap<&str, V
 }
 
 #[test]
-fn run_all_tests() {
+#[ignore] // doesn't test anything, just prints timing results -- run this on
+          // demand but not in CI.
+          // note that actual Lean functionality on the corpus tests is tested
+          // by a test called `integration_tests_on_def_impl()`, in
+          // integration_tests.rs.
+fn print_timing_results() {
     let rust_impl = RustEngine::new();
     let lean_impl = LeanDefinitionalEngine::new();
 

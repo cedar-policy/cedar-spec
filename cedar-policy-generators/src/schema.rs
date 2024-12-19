@@ -31,7 +31,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::CommonTypeId;
+use cedar_policy_validator::json_schema::{CommonType, CommonTypeId};
 use cedar_policy_validator::{
     json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
     ValidatorSchema, ValidatorSchemaFragment,
@@ -152,14 +152,16 @@ fn arbitrary_typeofattribute_with_bounded_depth<N: From<ast::Name>>(
     Ok(json_schema::TypeOfAttribute {
         ty: arbitrary_schematype_with_bounded_depth::<N>(settings, entity_types, max_depth, u)?,
         required: u.arbitrary()?,
+        annotations: u.arbitrary()?,
     })
 }
 /// size hint for arbitrary_typeofattribute_with_bounded_depth
 fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
-    arbitrary::size_hint::and(
+    arbitrary::size_hint::and_all(&[
         arbitrary_schematype_size_hint(depth),
         <bool as Arbitrary>::size_hint(depth),
-    )
+        <cedar_policy_core::est::Annotations as Arbitrary>::size_hint(depth),
+    ])
 }
 
 /// internal helper function, an alternative to the `Arbitrary` impl for
@@ -304,7 +306,7 @@ pub fn lookup_common_type<'a>(
     // namespace and look it up in the current namespace's `common_types`
     let base_type_name =
         CommonTypeId::unchecked(common_type_name.basename().clone().try_into().unwrap());
-    schema.common_types.get(&base_type_name)
+    schema.common_types.get(&base_type_name).map(|ty| &ty.ty)
 }
 
 /// internal helper function, convert a [`json_schema::Type`] to a [`Type`]
@@ -548,6 +550,7 @@ impl Bindings {
                                     json_schema::TypeOfAttribute {
                                         ty: self.rewrite_type(u, &attr_ty.ty)?,
                                         required: attr_ty.required.to_owned(),
+                                        annotations: attr_ty.annotations.clone(),
                                     },
                                 ))
                             })
@@ -571,6 +574,7 @@ impl Bindings {
             member_of_types: et.member_of_types.clone(),
             shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
             tags: None,
+            annotations: et.annotations.clone(),
         })
     }
 
@@ -684,6 +688,7 @@ impl Schema {
                     Ok((
                         id.to_owned(),
                         json_schema::ActionType {
+                            annotations: ty.annotations.clone(),
                             attributes: ty.attributes.to_owned(),
                             member_of: ty.member_of.clone(),
                             applies_to: match &ty.applies_to {
@@ -702,9 +707,21 @@ impl Schema {
                 .collect::<Result<Vec<_>>>()?,
         );
         Ok(json_schema::NamespaceDefinition {
-            common_types: common_types.into(),
+            common_types: common_types
+                .into_iter()
+                .map(|(id, ty)| {
+                    Ok((
+                        id,
+                        CommonType {
+                            ty,
+                            annotations: u.arbitrary()?,
+                        },
+                    ))
+                })
+                .collect::<Result<BTreeMap<_, _>>>()?,
             entity_types: entity_types.into(),
             actions: actions.into(),
+            annotations: self.schema.annotations.clone(),
         })
     }
     /// Get a slice of all of the entity types in this schema
@@ -766,6 +783,8 @@ impl Schema {
         for schematype in nsdef
             .common_types
             .values()
+            .into_iter()
+            .map(|ty| &ty.ty)
             .chain(nsdef.entity_types.values().map(|etype| &etype.shape.0))
         {
             attributes.extend(attrs_in_schematype(&nsdef, schematype));
@@ -912,6 +931,7 @@ impl Schema {
                                     u
                                 )?)
                             ),
+                            annotations: u.arbitrary()?,
                         },
                     ))
                 })
@@ -1014,6 +1034,7 @@ impl Schema {
                         },
                         //TODO: Fuzz arbitrary attribute names and values.
                         attributes: None,
+                        annotations: u.arbitrary()?,
                     },
                 ))
             })
@@ -1043,6 +1064,7 @@ impl Schema {
             common_types: BTreeMap::new().into(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
+            annotations: u.arbitrary()?,
         };
         let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
@@ -1339,7 +1361,6 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
         let id = u.arbitrary()?;
-        let annotations: HashMap<ast::AnyId, SmolStr> = u.arbitrary()?;
         let effect = u.arbitrary()?;
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
@@ -1364,7 +1385,7 @@ impl Schema {
         }
         Ok(ABACPolicy(GeneratedPolicy::new(
             id,
-            annotations,
+            u.arbitrary()?,
             effect,
             principal_constraint,
             action_constraint,
@@ -1627,7 +1648,15 @@ fn downgrade_nsdef_to_raw(
         common_types: nsdef
             .common_types
             .into_iter()
-            .map(|(k, v)| (k, downgrade_schematype_to_raw(v)))
+            .map(|(k, v)| {
+                (
+                    k,
+                    CommonType {
+                        ty: downgrade_schematype_to_raw(v.ty),
+                        annotations: v.annotations,
+                    },
+                )
+            })
             .collect(),
         entity_types: nsdef
             .entity_types
@@ -1639,6 +1668,7 @@ fn downgrade_nsdef_to_raw(
             .into_iter()
             .map(|(k, v)| (k, downgrade_action_to_raw(v)))
             .collect(),
+        annotations: nsdef.annotations,
     }
 }
 
@@ -1701,6 +1731,7 @@ fn downgrade_toa_to_raw(
     json_schema::TypeOfAttribute {
         ty: downgrade_schematype_to_raw(toa.ty),
         required: toa.required,
+        annotations: toa.annotations,
     }
 }
 
@@ -1718,6 +1749,7 @@ fn downgrade_entitytype_to_raw(
             .collect(),
         shape: downgrade_aoc_to_raw(entitytype.shape),
         tags: entitytype.tags.map(downgrade_schematype_to_raw),
+        annotations: entitytype.annotations,
     }
 }
 
@@ -1741,6 +1773,7 @@ fn downgrade_action_to_raw(
         member_of: action
             .member_of
             .map(|v| v.into_iter().map(downgrade_aeuid_to_raw).collect()),
+        annotations: action.annotations,
     }
 }
 

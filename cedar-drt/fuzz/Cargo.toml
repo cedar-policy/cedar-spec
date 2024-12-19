@@ -29,7 +29,8 @@ clap = { version = "4.0", features = ["derive"], optional = true }
 rand_chacha = { version = "0.3", optional = true }
 similar-asserts = "1.5.0"
 thiserror = "2.0"
-logos = "0.14.0"
+logos = "0.15.0"
+prost = "0.13"
 itertools = "0.13.0"
 
 [dependencies.uuid]
@@ -200,6 +201,13 @@ test = false
 doc = false
 
 [[bin]]
+name = "protobuf-roundtrip"
+path = "fuzz_targets/protobuf-roundtrip.rs"
+test = false
+doc = false
+required-features = ["lean-impl"]
+
+[[bin]]
 name = "entity-validation"
 path = "fuzz_targets/entity-validation.rs"
 test = false
@@ -212,3 +220,15 @@ path = "fuzz_targets/request-validation.rs"
 test = false
 doc = false
 required-features = ["lean-impl"]
+
+[[bin]]
+name = "roundtrip-entities"
+path = "fuzz_targets/roundtrip-entities.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "roundtrip-entities-bytes"
+path = "fuzz_targets/roundtrip-entities-bytes.rs"
+test = false
+doc = false

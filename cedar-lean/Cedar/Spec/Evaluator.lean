@@ -33,6 +33,7 @@ def intOrErr : Option Int64 → Result Value
 def apply₁ : UnaryOp → Value → Result Value
   | .not,     .prim (.bool b)        => .ok !b
   | .neg,     .prim (.int i)         => intOrErr i.neg?
+  | .isEmpty, .set s                 => .ok s.isEmpty
   | .like p,  .prim (.string s)      => .ok (wildcardMatch s p)
   | .is ety,  .prim (.entityUID uid) => .ok (ety == uid.ty)
   | _, _                             => .error .typeError

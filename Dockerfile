@@ -18,6 +18,9 @@ RUN . ~/.profile; cargo install cargo-fuzz
 # Install Lean
 RUN wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh && sh elan-init.sh -y --default-toolchain none
 
+# Install protoc
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v29.0/protoc-29.0-linux-x86_64.zip && unzip protoc-29.0-linux-x86_64.zip && rm protoc-29.0-linux-x86_64.zip
+
 FROM prepare AS build
 
 ENV CEDAR_SPEC_ROOT=/opt/src/cedar-spec
@@ -33,7 +36,7 @@ RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && elan default
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
-RUN source /root/.profile && source ./set_env_vars.sh && cargo build
+RUN source /root/.profile && source ./set_env_vars.sh && cargo fuzz build -s none
 
 # Initialize corpus for all targets. No-op for target that don't need initilization.
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt

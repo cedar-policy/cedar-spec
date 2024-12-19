@@ -19,10 +19,14 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 lazy_static = "1.4"
 smol_str = { version = "0.3", features = ["serde"] }
+prost = "0.13"
+
+[build-dependencies]
+prost-build = "0.13"
 
 [features]
 default = ["lean-impl"]
-lean-impl = ["dep:lean-sys"]
+lean-impl = ["dep:lean-sys", "cedar-policy-core/protobufs", "cedar-policy-validator/protobufs"]
 integration-testing = []
 
 [dev-dependencies]

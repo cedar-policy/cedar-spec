@@ -34,6 +34,12 @@ lean_lib DiffTest where
 lean_lib UnitTest where
   defaultFacets := #[LeanLib.staticFacet]
 
+lean_lib Protobuf where
+  defaultFacets := #[LeanLib.staticFacet]
+
+lean_lib CedarProto where
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
 

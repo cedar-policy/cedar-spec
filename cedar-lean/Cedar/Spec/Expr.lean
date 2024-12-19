@@ -36,6 +36,7 @@ inductive Var where
 inductive UnaryOp where
   | not
   | neg
+  | isEmpty
   | like (p : Pattern)
   | is (ety : EntityType)
 

@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
+use std::path::Path;
+const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
 fn main() {
     #[cfg(feature = "lean-impl")]
     {
-        const LEAN_BUILD_DIR: &'static str = "../cedar-lean/.lake/build/lib";
         let lean_dir = std::env::var("LEAN_LIB_DIR").expect(
             "`LEAN_LIB_DIR` environment variable is not set! Try running `source set_env_vars.sh`",
         );
         // We'll need to link against some files found here later, and it's nicer to
         // fail quickly with a helpful error message.
-        if !std::path::Path::new(LEAN_BUILD_DIR).exists() {
+        if !Path::new(LEAN_BUILD_DIR).exists() {
             panic!("Lean build directory does not exist! Try running `( cd ../cedar-lean && ../cedar-drt/build_lean_lib.sh )`")
         }
         println!("cargo:rustc-link-search=native={LEAN_BUILD_DIR}");
@@ -32,5 +33,19 @@ fn main() {
             "cargo:rustc-link-search=native=../cedar-lean/.lake/packages/batteries/.lake/build/lib"
         );
         println!("cargo:rerun-if-changed={LEAN_BUILD_DIR}");
+
+        let mut config = prost_build::Config::new();
+        config.extern_path(".cedar_policy_core", "::cedar_policy_core::ast::proto");
+        config.extern_path(".cedar_policy_validator", "::cedar_policy_validator::proto");
+        config
+            .compile_protos(
+                &["./protobuf_schema/Messages.proto"],
+                &[
+                    "./protobuf_schema",
+                    "../cedar/cedar-policy-core/protobuf_schema",
+                    "../cedar/cedar-policy-validator/protobuf_schema",
+                ],
+            )
+            .unwrap();
     }
 }
