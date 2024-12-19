@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt::{
+use cedar_policy_core::{
     entities::{EntityJsonParser, NoEntitiesSchema, TCComputation},
     extensions::Extensions,
 };

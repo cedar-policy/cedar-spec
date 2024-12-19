@@ -16,11 +16,11 @@
 
 #![no_main]
 
-use cedar_drt::{
-    entities::{EntityJsonParser, NoEntitiesSchema, TCComputation},
+use cedar_policy_core::{
+    entities::{Entities, EntityJsonParser, NoEntitiesSchema, TCComputation},
     extensions::Extensions,
-    Entities, ValidatorSchema,
 };
+use cedar_policy_validator::ValidatorSchema;
 use cedar_policy::{entities_errors::EntitiesError, entities_json_errors::JsonSerializationError};
 use cedar_policy_generators::{
     hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
