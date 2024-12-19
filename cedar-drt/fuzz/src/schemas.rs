@@ -88,6 +88,31 @@ impl<'a, T: Equiv> Equiv for &'a T {
     }
 }
 
+impl Equiv for cedar_policy_core::est::Annotations {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.0, &rhs.0)
+    }
+}
+
+impl Equiv for Option<cedar_policy_core::ast::Annotation> {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        match (lhs, rhs) {
+            (Some(a), Some(b)) => {
+                if a == b {
+                    return Ok(());
+                }
+            }
+            (Some(a), None) | (None, Some(a)) => {
+                if a.val.is_empty() {
+                    return Ok(());
+                }
+            }
+            (None, None) => return Ok(()),
+        };
+        Err(format!("two annotations mismatch: {lhs:?} and {rhs:?}"))
+    }
+}
+
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
     for json_schema::NamespaceDefinition<N>
 {
@@ -95,6 +120,8 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
         lhs: &json_schema::NamespaceDefinition<N>,
         rhs: &json_schema::NamespaceDefinition<N>,
     ) -> Result<(), String> {
+        Equiv::equiv(&lhs.annotations, &rhs.annotations)
+            .map_err(|e| format!("mismatch in namespace annotations: {e}"))?;
         Equiv::equiv(&lhs.entity_types, &rhs.entity_types)
             .map_err(|e| format!("mismatch in entity type declarations: {e}"))?;
         Equiv::equiv(&lhs.common_types, &rhs.common_types)
@@ -191,12 +218,16 @@ impl<K: Eq + Ord + Display, V: Equiv> Equiv for BTreeMap<K, V> {
 
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_schema::CommonType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.annotations, &rhs.annotations)
+            .map_err(|e| format!("mismatch in common type annotations: {e}"))?;
         Equiv::equiv(&lhs.ty, &rhs.ty)
     }
 }
 
 impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_schema::EntityType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.annotations, &rhs.annotations)
+            .map_err(|e| format!("mismatch in entity annotations: {e}"))?;
         Equiv::equiv(
             &lhs.member_of_types.iter().collect::<BTreeSet<_>>(),
             &rhs.member_of_types.iter().collect::<BTreeSet<_>>(),
@@ -226,6 +257,8 @@ impl Equiv for cedar_policy_validator::ValidatorEntityType {
 
 impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::TypeOfAttribute<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.annotations, &rhs.annotations)
+            .map_err(|e| format!("mismatch in type of attribute annotations: {e}"))?;
         if lhs.required != rhs.required {
             return Err("attributes differ in required flag".into());
         }
@@ -434,6 +467,8 @@ impl TypeName for InternalName {
 
 impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_schema::ActionType<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(&lhs.annotations, &rhs.annotations)
+            .map_err(|e| format!("mismatch in action annotations: {e}"))?;
         if &lhs.attributes != &rhs.attributes
             && !(lhs.attributes.as_ref().is_none_or(HashMap::is_empty)
                 && rhs.attributes.as_ref().is_none_or(HashMap::is_empty))
