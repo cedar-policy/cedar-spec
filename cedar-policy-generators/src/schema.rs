@@ -30,7 +30,6 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
-use cedar_policy_core::est::Annotations;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::json_schema::{CommonType, CommonTypeId};
 use cedar_policy_validator::{
@@ -153,15 +152,16 @@ fn arbitrary_typeofattribute_with_bounded_depth<N: From<ast::Name>>(
     Ok(json_schema::TypeOfAttribute {
         ty: arbitrary_schematype_with_bounded_depth::<N>(settings, entity_types, max_depth, u)?,
         required: u.arbitrary()?,
-        annotations: Annotations::new(),
+        annotations: u.arbitrary()?,
     })
 }
 /// size hint for arbitrary_typeofattribute_with_bounded_depth
 fn arbitrary_typeofattribute_size_hint(depth: usize) -> (usize, Option<usize>) {
-    arbitrary::size_hint::and(
+    arbitrary::size_hint::and_all(&[
         arbitrary_schematype_size_hint(depth),
         <bool as Arbitrary>::size_hint(depth),
-    )
+        <cedar_policy_core::est::Annotations as Arbitrary>::size_hint(depth),
+    ])
 }
 
 /// internal helper function, an alternative to the `Arbitrary` impl for
@@ -710,15 +710,15 @@ impl Schema {
             common_types: common_types
                 .into_iter()
                 .map(|(id, ty)| {
-                    (
+                    Ok((
                         id,
                         CommonType {
                             ty,
-                            annotations: Annotations::new(),
+                            annotations: u.arbitrary()?,
                         },
-                    )
+                    ))
                 })
-                .collect(),
+                .collect::<Result<BTreeMap<_, _>>>()?,
             entity_types: entity_types.into(),
             actions: actions.into(),
             annotations: self.schema.annotations.clone(),
@@ -931,7 +931,7 @@ impl Schema {
                                     u
                                 )?)
                             ),
-                            annotations: Annotations::new(),
+                            annotations: u.arbitrary()?,
                         },
                     ))
                 })
@@ -1034,7 +1034,7 @@ impl Schema {
                         },
                         //TODO: Fuzz arbitrary attribute names and values.
                         attributes: None,
-                        annotations: Annotations::new(),
+                        annotations: u.arbitrary()?,
                     },
                 ))
             })
@@ -1064,7 +1064,7 @@ impl Schema {
             common_types: BTreeMap::new().into(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
-            annotations: Annotations::new(),
+            annotations: u.arbitrary()?,
         };
         let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
@@ -1361,7 +1361,6 @@ impl Schema {
         u: &mut Unstructured<'_>,
     ) -> Result<ABACPolicy> {
         let id = u.arbitrary()?;
-        let annotations: HashMap<ast::AnyId, SmolStr> = u.arbitrary()?;
         let effect = u.arbitrary()?;
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
@@ -1386,7 +1385,7 @@ impl Schema {
         }
         Ok(ABACPolicy(GeneratedPolicy::new(
             id,
-            annotations,
+            u.arbitrary()?,
             effect,
             principal_constraint,
             action_constraint,
