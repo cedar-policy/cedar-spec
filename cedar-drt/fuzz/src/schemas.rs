@@ -562,7 +562,7 @@ mod tests {
     #[test]
     fn annotations() {
         // positive cases
-        let pairs: [(Annotations, Annotations)] = [
+        let pairs: [(Annotations, Annotations); 5] = [
             // value being null is equivalent to an empty string
             (
                 serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
@@ -592,7 +592,7 @@ mod tests {
             .for_each(|(a, b)| assert!(Equiv::equiv(a, b).is_ok()));
 
         // negative cases
-        let pairs: [(Annotations, Annotations)] = [
+        let pairs: [(Annotations, Annotations); 5] = [
             (
                 serde_json::from_value(serde_json::json!({"a": null})).unwrap(),
                 serde_json::from_value(serde_json::json!({"a": "🍪"})).unwrap(),
