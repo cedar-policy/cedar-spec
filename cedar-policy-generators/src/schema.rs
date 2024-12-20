@@ -30,6 +30,7 @@ use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hin
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
+use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::json_schema::{CommonType, CommonTypeId};
 use cedar_policy_validator::{
@@ -1064,7 +1065,13 @@ impl Schema {
             common_types: BTreeMap::new().into(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
-            annotations: u.arbitrary()?,
+            // We cannot allow annotations on the empty namespace
+            // See GH PR: https://github.com/cedar-policy/cedar/pull/1386
+            annotations: if namespace.is_none() {
+                est::Annotations::new()
+            } else {
+                u.arbitrary()?
+            },
         };
         let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
             .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
