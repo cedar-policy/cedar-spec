@@ -55,7 +55,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   case h_2 h₄ =>
     split at h₁
     case h_1 h₅ =>
-      simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
+      simp only [Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
       simp only [imp_false, List.empty_eq, CedarType.bool.injEq, Except.ok.injEq,
         exists_and_left, exists_and_right, true_and]
@@ -72,7 +72,7 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
           · rw [h₅]
             simp [TypedExpr.typeOf]
     case h_2 h₅ =>
-      split at h₁ <;> simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
+      split at h₁ <;> simp only [Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
       simp only [List.empty_eq, CedarType.bool.injEq, reduceCtorEq, if_false_left, and_true,
         Except.ok.injEq, exists_and_left, exists_and_right, true_and]
@@ -976,14 +976,14 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [typeOfHasTag, List.empty_eq] at h₃
   have hempty := empty_capabilities_invariant request entities
   simp only [List.empty_eq] at hempty
-  split at h₃ -- <;> simp [ok, err] at h₃
+  split at h₃
   case h_1 heq =>
-    simp at h₃
+    simp [ok] at h₃
     have ⟨ hl₃, hr₃ ⟩ := h₃
     simp only [implies_true, reduceCtorEq, false_or, exists_eq_left', true_and, hr₃, ←hl₃, hempty]
     apply no_tags_type_implies_no_tags h₂.right.left heq
   case h_2 =>
-    split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
+    split at h₃ <;> simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h₃ <;>
     replace ⟨h₃, h₆⟩ := h₃ <;>
     rw [←h₆, ←h₃]
     case isTrue hin =>
@@ -994,7 +994,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       intro ht
       exact hasTag_true_implies_cap_inv ih₁ ih₂ ht
   case h_3 heq =>
-    split at h₃ <;> simp only [Except.ok.injEq, Prod.mk.injEq, reduceCtorEq] at h₃
+    split at h₃ <;> simp only [ok, err, Except.ok.injEq, Prod.mk.injEq, reduceCtorEq] at h₃
     rename_i hact
     simp only [←h₃, hempty, implies_true, reduceCtorEq, false_or, exists_eq_left', true_and]
     exact no_type_implies_no_tags h₂.right.left heq
@@ -1020,7 +1020,7 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   cases h₅ : ty₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅, ResultType.typeOf, Except.map] at h₁
   rename_i ety
   simp only [typeOfGetTag, List.empty_eq] at h₁
-  split at h₁ <;> simp only [ok, Except.bind_err, reduceCtorEq] at h₁
+  split at h₁ <;> simp only [ok, err, Except.bind_err, reduceCtorEq] at h₁
   split at h₁ <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
   rename_i h₆ h₇
   replace ⟨h₁, h₁'⟩ := h₁

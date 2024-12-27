@@ -47,18 +47,21 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
   split at h₁ <;> try { simp [ok, err] at h₁ } <;>
   rename_i c₁ hr₁
   case ok.h_1 =>
-    exists BoolType.tt, res₁.snd ; simp [←hr₁]
+    exists BoolType.tt, res₁.snd
+    simp at hr₁ ; simp [hr₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
     rename_i res₂ ; simp [ok] at h₁
     have ⟨ht₂, hc₂⟩ := h₁
     exists res₂.fst, res₂.snd
     subst ht₂ hc₂
-    simp only [and_self]
+    simp [h₃, ←hr₁]
   case ok.h_2 =>
-    exists BoolType.ff, res₁.snd ; simp [←hr₁]
+    exists BoolType.ff, res₁.snd
+    simp at hr₁ ; simp [hr₁]
     exact h₁
   case ok.h_3 =>
-    exists BoolType.anyBool, res₁.snd ; simp [←hr₁]
+    exists BoolType.anyBool, res₁.snd
+    simp at hr₁ ; simp [hr₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
     cases h₄ : typeOf x₃ c env <;> simp [h₄] at h₁
     split at h₁ <;> simp [ok, err] at h₁
@@ -66,7 +69,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     have ⟨ht, hc⟩ := h₁
     subst ht hc
     exists res₂.fst, res₂.snd
-    simp only [Except.ok.injEq, true_and]
+    simp only [←hr₁, h₃, Except.ok.injEq, true_and]
     exists res₃.fst, res₃.snd
 
 theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}

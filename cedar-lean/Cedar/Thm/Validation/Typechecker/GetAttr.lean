@@ -34,7 +34,7 @@ theorem getAttrInRecord_has_empty_capabilities {x₁ : Expr} {a : Attr} {c₁ c�
   simp [getAttrInRecord] at h₁
   split at h₁ <;>
   (try split at h₁) <;>
-  simp at h₁ <;>
+  simp [ok, err] at h₁ <;>
   simp [h₁]
 
 theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}

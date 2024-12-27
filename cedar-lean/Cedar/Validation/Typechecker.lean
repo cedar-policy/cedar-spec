@@ -48,52 +48,53 @@ abbrev ResultType := Except TypeError (TypedExpr × Capabilities)
 def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilities) :=
   Except.map (λ (ty, c) => (ty.typeOf, c))
 
-def ok (ty : TypedExpr) (c : Capabilities := ∅) : ResultType := .ok (ty, c)
-def err (e : TypeError) : ResultType := .error e
+def ok {α : Type} (ty : α) (c : Capabilities := ∅) : Except TypeError (α × Capabilities) := .ok (ty, c)
+def err {α : Type} (e : TypeError) : Except TypeError (α × Capabilities) := .error e
 
 def typeOfLit (p : Prim) (env : Environment) : ResultType :=
+  let ok := ok ∘ TypedExpr.lit p
   match p with
-  | .bool true     => ok (.lit p $ .bool .tt)
-  | .bool false    => ok (.lit p $ .bool .ff)
-  | .int _         => ok (.lit p .int)
-  | .string _      => ok (.lit p .string)
+  | .bool true     => ok (.bool .tt)
+  | .bool false    => ok (.bool .ff)
+  | .int _         => ok .int
+  | .string _      => ok .string
   | .entityUID uid =>
     if env.ets.contains uid.ty || env.acts.contains uid
-    then ok (.lit p (.entity uid.ty))
+    then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
 
 def typeOfVar (v : Var) (env : Environment) : ResultType :=
+  let ok := ok ∘ TypedExpr.var v
   match v with
-  | .principal => ok (.var v $ .entity env.reqty.principal)
-  | .action    => ok (.var v $ .entity env.reqty.action.ty)
-  | .resource  => ok (.var v $ .entity env.reqty.resource)
-  | .context   => ok (.var v $ .record env.reqty.context)
+  | .principal => ok (.entity env.reqty.principal)
+  | .action    => ok (.entity env.reqty.action.ty)
+  | .resource  => ok (.entity env.reqty.resource)
+  | .context   => ok (.record env.reqty.context)
 
 def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : ResultType :=
-  let c₁ := r₁.snd
-  match r₁.fst.typeOf with
-  | .bool .tt => do
+  match (r₁.fst.typeOf, r₁.snd) with
+  | (.bool .tt, c₁) => do
     let (ty₂, c₂) ← r₂
     ok ty₂ (c₁ ∪ c₂)
-  | .bool .ff => r₃
-  | .bool .anyBool => do
+  | (.bool .ff, _) => r₃
+  | (.bool .anyBool, c₁) => do
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
     match ty₂.typeOf ⊔ ty₃.typeOf with
     | .some ty => ok (.ite r₁.fst ty₂ ty₃ ty) ((c₁ ∪ c₂) ∩ c₃)
     | .none    => err (.lubErr ty₂.typeOf ty₃.typeOf)
-  | ty₁ => err (.unexpectedType ty₁)
+  | (ty₁, _) => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   match (r₁.fst.typeOf, r₁.snd) with
   | (.bool .ff, _)  => ok r₁.fst
   | (.bool ty₁, c₁) => do
     let (ty₂, c₂) ← r₂
-    let mkₑ := TypedExpr.and r₁.fst ty₂
+    let ok ty (c := ∅) := ok (TypedExpr.and r₁.fst ty₂ ty) c
     match ty₂.typeOf with
-    | .bool .ff     => ok (mkₑ (.bool .ff))
-    | .bool .tt     => ok (mkₑ (.bool ty₁)) (c₁ ∪ c₂)
-    | .bool _       => ok (mkₑ (.bool .anyBool)) (c₁ ∪ c₂)
+    | .bool .ff     => ok (.bool .ff)
+    | .bool .tt     => ok (.bool ty₁) (c₁ ∪ c₂)
+    | .bool _       => ok (.bool .anyBool) (c₁ ∪ c₂)
     | _             => err (.unexpectedType ty₂.typeOf)
   | (ty₁, _)        => err (.unexpectedType ty₁)
 
@@ -102,40 +103,40 @@ def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType
   | (.bool .tt, _)  => ok r₁.fst
   | (.bool .ff, _)  => do
     let (ty₂, c₂) ← r₂
-    let mkₑ := TypedExpr.or r₁.fst ty₂
+    let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
     match ty₂.typeOf with
-    | .bool _       => ok (mkₑ ty₂.typeOf) c₂
+    | .bool _       => ok ty₂.typeOf c₂
     | _             => err (.unexpectedType ty₂.typeOf)
   | (.bool _, c₁)    => do
     let (ty₂, c₂) ← r₂
-    let mkₑ := TypedExpr.or r₁.fst ty₂
+    let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
     match ty₂.typeOf with
-    | .bool .tt     => ok (mkₑ (.bool .tt))
-    | .bool .ff     => ok (mkₑ (.bool .anyBool)) c₁
-    | .bool _       => ok (mkₑ (.bool .anyBool)) (c₁ ∩ c₂)
+    | .bool .tt     => ok (.bool .tt)
+    | .bool .ff     => ok (.bool .anyBool) c₁
+    | .bool _       => ok (.bool .anyBool) (c₁ ∩ c₂)
     | _             => err (.unexpectedType ty₂.typeOf)
   | (ty₁, _)        => err (.unexpectedType ty₁)
 
 def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
-  let mkₑ := TypedExpr.unaryApp op ty
+  let ok := ok ∘ TypedExpr.unaryApp op ty
   match op, ty.typeOf with
-  | .not, .bool x          => ok (mkₑ (.bool x.not))
-  | .neg, .int             => ok (mkₑ .int)
-  | .isEmpty, .set _       => ok (mkₑ (.bool .anyBool))
-  | .like _, .string       => ok (mkₑ (.bool .anyBool))
-  | .is ety₁, .entity ety₂ => ok (mkₑ (.bool (if ety₁ = ety₂ then .tt else .ff)))
+  | .not, .bool x          => ok (.bool x.not)
+  | .neg, .int             => ok .int
+  | .isEmpty, .set _       => ok (.bool .anyBool)
+  | .like _, .string       => ok (.bool .anyBool)
+  | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
   | _, _                   => err (.unexpectedType ty.typeOf)
 
 def typeOfEq (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) : ResultType :=
-  let mkₑ := TypedExpr.binaryApp .eq ty₁ ty₂
+  let ok := ok ∘ TypedExpr.binaryApp .eq ty₁ ty₂
   match x₁, x₂ with
-  | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (mkₑ (.bool .tt)) else ok (mkₑ (.bool .ff))
+  | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
   | _, _ =>
     match ty₁.typeOf ⊔ ty₂.typeOf with
-    | .some _ => ok (mkₑ (.bool .anyBool))
+    | .some _ => ok (.bool .anyBool)
     | .none   =>
     match ty₁.typeOf, ty₂.typeOf with
-    | .entity _, .entity _ => ok (mkₑ (.bool .ff))
+    | .entity _, .entity _ => ok (.bool .ff)
     | _, _                 => err (.lubErr ty₁.typeOf ty₂.typeOf)
 
 def entityUID? : Expr → Option EntityUID
@@ -179,97 +180,97 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
 
 def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities)  :=
   match env.ets.tags? ety with
-  | .some .none     => .ok ((.bool .ff), ∅)
+  | .some .none     => ok (.bool .ff)
   | .some (.some _) =>
     if (x, .tag t) ∈ c
-    then .ok ((.bool .tt), ∅)
-    else .ok ((.bool .anyBool), (Capabilities.singleton x (.tag t)))
+    then ok (.bool .tt)
+    else ok (.bool .anyBool) (Capabilities.singleton x (.tag t))
   | .none           =>
     if actionType? ety env.acts
-    then .ok ((.bool .ff), ∅) -- action tags not allowed
-    else .error (.unknownEntity ety)
+    then ok (.bool .ff) -- action tags not allowed
+    else err (.unknownEntity ety)
 
 def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities) :=
   match env.ets.tags? ety with
-  | .some .none      => .error (.tagNotFound ety t)
-  | .some (.some ty) => if (x, .tag t) ∈ c then .ok (ty, ∅) else .error (.tagNotFound ety t)
-  | .none            => .error (.unknownEntity ety)
+  | .some .none      => err (.tagNotFound ety t)
+  | .some (.some ty) => if (x, .tag t) ∈ c then ok ty else err (.tagNotFound ety t)
+  | .none            => err (.unknownEntity ety)
 
 def ifLubThenBool (ty₁ ty₂ : CedarType) : Except TypeError (CedarType × Capabilities) :=
   match ty₁ ⊔ ty₂ with
-  | some _ => .ok ((.bool .anyBool), ∅)
-  | none   => .error (.lubErr ty₁ ty₂)
+  | some _ => ok (.bool .anyBool)
+  | none   => err (.lubErr ty₁ ty₂)
 
 def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
-  let mkₑ := TypedExpr.binaryApp op₂ ty₁ ty₂
+  let ok ty (c := ∅) := ok (TypedExpr.binaryApp op₂ ty₁ ty₂ ty) c
   match op₂, ty₁.typeOf, ty₂.typeOf with
   | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
-  | .mem, .entity ety₁, .entity ety₂        => ok (mkₑ (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env)))
-  | .mem, .entity ety₁, .set (.entity ety₂) => ok (mkₑ (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env)))
+  | .mem, .entity ety₁, .entity ety₂        => ok (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
+  | .mem, .entity ety₁, .set (.entity ety₂) => ok (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
   | .hasTag, .entity ety₁, .string          => do
     let (ty, c) ← typeOfHasTag ety₁ x₁ x₂ c env
-    ok (mkₑ ty) c
+    ok ty c
   | .getTag, .entity ety₁, .string          => do
     let (ty, c) ← typeOfGetTag ety₁ x₁ x₂ c env
-    ok (mkₑ ty) c
-  | .less,   .int, .int                     => ok (mkₑ (.bool .anyBool))
-  | .lessEq, .int, .int                     => ok (mkₑ (.bool .anyBool))
-  | .add,    .int, .int                     => ok (mkₑ .int)
-  | .sub,    .int, .int                     => ok (mkₑ .int)
-  | .mul,    .int, .int                     => ok (mkₑ .int)
+    ok ty c
+  | .less,   .int, .int                     => ok (.bool .anyBool)
+  | .lessEq, .int, .int                     => ok (.bool .anyBool)
+  | .add,    .int, .int                     => ok .int
+  | .sub,    .int, .int                     => ok .int
+  | .mul,    .int, .int                     => ok .int
   | .contains, .set ty₃, _                  => do
     let (ty, c) <- ifLubThenBool ty₂.typeOf ty₃
-    ok (mkₑ ty) c
+    ok ty c
   | .containsAll, .set ty₃, .set ty₄        => do
     let (ty, c) <- ifLubThenBool ty₃ ty₄
-    ok (mkₑ ty) c
+    ok ty c
   | .containsAny, .set ty₃, .set ty₄        => do
     let (ty, c) <- ifLubThenBool ty₃ ty₄
-    ok (mkₑ ty) c
+    ok ty c
   | _, _, _                                 => err (.unexpectedType ty₁.typeOf)
 
 def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) (knownToExist : Bool) : Except TypeError (CedarType × Capabilities) :=
   match rty.find? a with
   | .some qty =>
     if (x, .attr a) ∈ c || (qty.isRequired && knownToExist)
-    then .ok ((.bool .tt), ∅)
-    else .ok ((.bool .anyBool), (Capabilities.singleton x (.attr a)))
-  | .none     => .ok ((.bool .ff), ∅)
+    then ok (.bool .tt)
+    else ok (.bool .anyBool) (Capabilities.singleton x (.attr a))
+  | .none     => ok (.bool .ff)
 
 def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
-  let mkₑ := TypedExpr.hasAttr ty a
+  let ok ty₂ (c := ∅) := ok (TypedExpr.hasAttr  ty a ty₂) c
   match ty.typeOf with
   | .record rty => do
     let (ty', c) ← hasAttrInRecord rty x a c true
-    ok (mkₑ ty') c
+    ok ty' c
   | .entity ety =>
     match env.ets.attrs? ety with
     | .some rty => do
       let (ty', c) ← hasAttrInRecord rty x a c false
-      ok (mkₑ ty') c
+      ok ty' c
     | .none     =>
       if actionType? ety env.acts
-      then ok (mkₑ (.bool .ff)) -- action attributes not allowed
+      then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
 def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : Except TypeError (CedarType × Capabilities)  :=
   match rty.find? a with
-  | .some (.required aty) => .ok (aty, ∅)
-  | .some (.optional aty) => if (x, .attr a) ∈ c then .ok (aty, ∅) else .error (.attrNotFound ty a)
-  | .none                 => .error (.attrNotFound ty a)
+  | .some (.required aty) => ok aty
+  | .some (.optional aty) => if (x, .attr a) ∈ c then ok aty else err (.attrNotFound ty a)
+  | .none                 => err (.attrNotFound ty a)
 
 def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
-  let mkₑ := TypedExpr.getAttr ty a
+  let ok ty₂ (c := ∅) := ok (TypedExpr.getAttr ty a ty₂) c
   match ty.typeOf with
   | .record rty => do
     let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
-    ok (mkₑ ty') c
+    ok ty' c
   | .entity ety =>
     match env.ets.attrs? ety with
     | .some rty => do
       let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
-      ok (mkₑ ty') c
+      ok ty' c
     | .none     => err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)
 
@@ -288,28 +289,28 @@ def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarTy
   match xs with
   | [.lit (.string s)] =>
     match (mk s) with
-    | .some _ => .ok (ty, ∅)
-    | .none   => .error (.extensionErr xs)
-  | _ => .error (.extensionErr xs)
+    | .some _ => ok ty
+    | .none   => err (.extensionErr xs)
+  | _ => err (.extensionErr xs)
 
 def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultType :=
-  let mkₑ := TypedExpr.call xfn tys
+  let ok ty (c := ∅) := ok (TypedExpr.call xfn tys ty) c
   match xfn, tys.map TypedExpr.typeOf with
   | .decimal, _  => do
     let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Decimal.decimal xs (.ext .decimal)
-    ok (mkₑ ty) c
+    ok ty c
   | .ip, _       => do
     let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.IPAddr.ip xs (.ext .ipAddr)
-    ok (mkₑ ty) c
-  | .lessThan, [.ext .decimal, .ext .decimal]           => ok (mkₑ (.bool .anyBool))
-  | .lessThanOrEqual, [.ext .decimal, .ext .decimal]    => ok (mkₑ (.bool .anyBool))
-  | .greaterThan, [.ext .decimal, .ext .decimal]        => ok (mkₑ (.bool .anyBool))
-  | .greaterThanOrEqual, [.ext .decimal, .ext .decimal] => ok (mkₑ (.bool .anyBool))
-  | .isIpv4, [.ext .ipAddr]                             => ok (mkₑ (.bool .anyBool))
-  | .isIpv6, [.ext .ipAddr]                             => ok (mkₑ (.bool .anyBool))
-  | .isLoopback, [.ext .ipAddr]                         => ok (mkₑ (.bool .anyBool))
-  | .isMulticast, [.ext .ipAddr]                        => ok (mkₑ (.bool .anyBool))
-  | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (mkₑ (.bool .anyBool))
+    ok ty c
+  | .lessThan, [.ext .decimal, .ext .decimal]           => ok (.bool .anyBool)
+  | .lessThanOrEqual, [.ext .decimal, .ext .decimal]    => ok (.bool .anyBool)
+  | .greaterThan, [.ext .decimal, .ext .decimal]        => ok (.bool .anyBool)
+  | .greaterThanOrEqual, [.ext .decimal, .ext .decimal] => ok (.bool .anyBool)
+  | .isIpv4, [.ext .ipAddr]                             => ok (.bool .anyBool)
+  | .isIpv6, [.ext .ipAddr]                             => ok (.bool .anyBool)
+  | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
+  | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
+  | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
   | _, _         => err (.extensionErr xs)
 
 
