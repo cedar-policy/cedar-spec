@@ -172,6 +172,12 @@ fn main() {
         .unwrap();
     encode_policyset("policyset.protodata", &policyset);
 
+    // regression test for #500: a policyset with only templates, no static or linked policies
+    let policyset: ast::PolicySet = parse_policyset(r#"
+        permit(principal == ?principal, action, resource);
+    "#).unwrap();
+    encode_policyset("policyset_just_templates.protodata", &policyset);
+
     encode_request(
         "request.protodata",
         &ast::Request::new(

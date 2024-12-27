@@ -24,20 +24,20 @@ open Proto
 namespace Cedar.Spec
 
 structure LiteralPolicySet where
-  templates : Array (String × Template)
-  links : Array (String × TemplateLinkedPolicy)
+  templates : Proto.Map String Template
+  links : Proto.Map String TemplateLinkedPolicy
 deriving Inhabited
 
 namespace LiteralPolicySet
 
 @[inline]
-def mergeTemplates (result : LiteralPolicySet) (x : Array (String × Template)) : LiteralPolicySet :=
+def mergeTemplates (result : LiteralPolicySet) (x : Proto.Map String Template) : LiteralPolicySet :=
   {result with
     templates := result.templates ++ x
   }
 
 @[inline]
-def mergeLinks (result : LiteralPolicySet) (x : Array (String × TemplateLinkedPolicy)) : LiteralPolicySet :=
+def mergeLinks (result : LiteralPolicySet) (x : Proto.Map String TemplateLinkedPolicy) : LiteralPolicySet :=
   {result with
     links := result.links ++ x
   }
