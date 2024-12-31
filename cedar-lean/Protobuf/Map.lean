@@ -48,8 +48,10 @@ instance [Field α] [Field β] : HAppend (Map α β) (Map α β) (Map α β) whe
 def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BParsec (Map KeyT ValueT) := do
      let len_size ← Len.parseSize
      if len_size = 0 then
-          -- an empty map. Don't try to parse anything
-          pure default
+          -- CAREFUL! You might think this means "empty map".
+          -- It does not! It actually means "both the key and value are default".
+          -- For empty map, we wouldn't even call this function in the first place.
+          pure #[(Prod.mk (default : KeyT) (default : ValueT))]
      else
 
      let startPos ← BParsec.pos

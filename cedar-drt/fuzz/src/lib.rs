@@ -224,8 +224,7 @@ pub fn run_auth_test(
             };
             assert_eq!(
                 rust_res_for_comparison, definitional_res.response,
-                "Mismatch for {request}\nPolicies:\n{}\nEntities:\n{}",
-                &policies, &entities
+                "Mismatch for {request}\nPolicies:\n{policies}\nEntities:\n{entities}",
             );
             rust_res
         }

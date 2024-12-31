@@ -1,7 +1,7 @@
 use cedar_policy_core::{
     ast, entities,
     extensions::Extensions,
-    parser::{parse_policy_or_template, parse_policyset, Loc},
+    parser::{parse_policy, parse_policy_or_template, parse_policyset, Loc},
 };
 use cedar_policy_validator::types as validator_types;
 use prost::Message;
@@ -177,6 +177,14 @@ fn main() {
         permit(principal == ?principal, action, resource);
     "#).unwrap();
     encode_policyset("policyset_just_templates.protodata", &policyset);
+
+    // regression test for #505: a policyset with exactly one static policy, with id "" (empty string)
+    let policy: ast::StaticPolicy = parse_policy(Some(ast::PolicyID::from_string("")), r#"
+        permit(principal, action, resource) when { true };
+    "#).unwrap();
+    let mut policyset = ast::PolicySet::new();
+    policyset.add_static(policy).unwrap();
+    encode_policyset("policyset_one_static_policy.protodata", &policyset);
 
     encode_request(
         "request.protodata",
