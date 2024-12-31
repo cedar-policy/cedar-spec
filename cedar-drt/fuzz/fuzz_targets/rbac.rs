@@ -22,7 +22,7 @@ use cedar_policy_core::entities::Entities;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_generators::err::Result;
 use cedar_policy_generators::hierarchy::{
-    AttributesMode, EntityUIDGenMode, HierarchyGenerator, HierarchyGeneratorMode,
+    AttributesMode, HierarchyGenerator, HierarchyGeneratorMode,
 };
 use cedar_policy_generators::policy::GeneratedLinkedPolicy;
 use cedar_policy_generators::rbac::{RBACHierarchy, RBACPolicy, RBACRequest};
@@ -136,7 +136,6 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
                 mode: HierarchyGeneratorMode::Arbitrary {
                     attributes_mode: AttributesMode::NoAttributesOrTags,
                 },
-                uid_gen_mode: EntityUIDGenMode::default(),
                 num_entities: cedar_policy_generators::hierarchy::NumEntities::RangePerEntityType(
                     0..=4,
                 ),
