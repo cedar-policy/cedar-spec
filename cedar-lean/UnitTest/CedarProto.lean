@@ -292,6 +292,21 @@ def tests := [
       (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
       -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
       [],
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_one_static_policy.protodata"
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      [
+        {
+          id := ""
+          effect := .permit
+          principalScope := .principalScope .any
+          actionScope := .actionScope .any
+          resourceScope := .resourceScope .any
+          condition := [{
+            kind := .when
+            body := .lit (.bool true)
+          }]
+        }
+      ],
     testDeserializeProtodata "UnitTest/CedarProto-test-data/request.protodata"
       ({
         principal := mkUid [] "User" "alice"
