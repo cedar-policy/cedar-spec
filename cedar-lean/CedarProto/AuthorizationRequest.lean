@@ -71,7 +71,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn AuthorizationRequest) := do
       pure (mergeEntities · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message AuthorizationRequest := {
   parseField := parseField

@@ -61,7 +61,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUID) := do
       pure (mergeEid · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message EntityUID := {
   parseField := parseField

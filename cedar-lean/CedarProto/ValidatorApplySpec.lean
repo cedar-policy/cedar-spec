@@ -61,7 +61,7 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorApplySpec) := do
       pure (mergeRas · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ValidatorApplySpec := {
   parseField := parseField

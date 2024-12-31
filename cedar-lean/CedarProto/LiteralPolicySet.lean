@@ -60,7 +60,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn LiteralPolicySet) := do
       pure (mergeLinks · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message LiteralPolicySet := {
   parseField := parseField

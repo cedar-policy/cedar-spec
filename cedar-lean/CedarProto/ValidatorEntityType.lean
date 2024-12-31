@@ -49,7 +49,7 @@ def parseField (t : Tag) : BParsec (MergeFn TagMessage) := do
       pure λ { optional_type := old_ty } => { optional_type := Field.merge old_ty ty }
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 @[inline]
 def merge (x y : TagMessage) : TagMessage :=
@@ -113,7 +113,7 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
       pure (mergeTags · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ValidatorEntityType := {
   parseField := parseField

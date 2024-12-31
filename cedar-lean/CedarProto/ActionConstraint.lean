@@ -76,7 +76,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.In) := do
       pure (mergeEuids · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ActionScope.In := {
   parseField := parseField
@@ -108,7 +108,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.Eq) := do
       pure (mergeEuid · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ActionScope.Eq := {
   parseField := parseField
@@ -166,7 +166,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope) := do
       pure (mergeEq · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ActionScope := {
   parseField := parseField

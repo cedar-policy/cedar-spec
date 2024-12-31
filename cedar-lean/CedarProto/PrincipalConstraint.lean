@@ -44,7 +44,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PrincipalScopeTemplate) := do
       pure (mergeConstraint · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message PrincipalScopeTemplate := {
   parseField := parseField

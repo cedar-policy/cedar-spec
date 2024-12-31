@@ -80,7 +80,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn TemplateLinkedPolicy) := do
       pure (mergeResourceEuid · x)
     | _ =>
       t.wireType.skip
-      pure (λ s => s)
+      pure ignore
 
 instance : Message TemplateLinkedPolicy := {
   parseField := parseField

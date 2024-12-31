@@ -65,7 +65,7 @@ def parseField (t : Tag) : BParsec (MergeFn HardCodeStruct) := do
       pure (merge_6 · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message HardCodeStruct := {
   parseField := parseField

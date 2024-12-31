@@ -81,7 +81,7 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorActionId) := do
       pure (mergeContext · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ValidatorActionId := {
   parseField := parseField
