@@ -46,59 +46,23 @@ instance [Field α] [Field β] : HAppend (Map α β) (Map α β) (Map α β) whe
 
 @[inline]
 def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BParsec (Map KeyT ValueT) := do
-     let len_size ← Len.parseSize
-     if len_size = 0 then
-          -- CAREFUL! You might think this means "empty map".
-          -- It does not! It actually means "both the key and value are default".
-          -- For empty map, we wouldn't even call this function in the first place.
-          pure #[(Prod.mk (default : KeyT) (default : ValueT))]
-     else
+  let len_size ← Len.parseSize
+  let startPos ← BParsec.pos
 
-     let startPos ← BParsec.pos
+  let mut key := (default : KeyT)
+  let mut val := (default : ValueT)
+  while (← BParsec.pos) - startPos < len_size do
+    let tag ← Tag.parse
+    match tag.fieldNum with
+      | 1 => key := (← Field.guardedParse tag)
+      | 2 => val := (← Field.guardedParse tag)
+      | n => throw s!"Unexpected field number ({n}) within map"
 
-     let tag1 ← Tag.parse
-     let result ← match tag1.fieldNum with
-          | 1 =>
-               let key : KeyT ← Field.guardedParse tag1
-
-               -- Since the fields are optional, check to see if we're done parsing now
-               let curPos ← BParsec.pos
-               if curPos - startPos == len_size then
-                    pure #[(Prod.mk key (default : ValueT))]
-               else
-
-               let tag2 ← Tag.parse
-               if tag2.fieldNum != 2 then
-                    throw s!"Expected field number 2 within map, not {tag2.fieldNum}"
-               else
-
-               let value : ValueT ← Field.guardedParse tag2
-               pure #[(Prod.mk key value)]
-          | 2 =>
-               let value : ValueT ← Field.guardedParse tag1
-
-               -- Since the fields are optional, check to see if we're done parsing now
-               let curPos ← BParsec.pos
-               if curPos - startPos == len_size then
-                    pure #[(Prod.mk (default : KeyT) value)]
-               else
-
-               let tag2 ← Tag.parse
-               if tag2.fieldNum != 1 then
-                    throw s!"Expected field number 1 within map, not {tag2.fieldNum}"
-               else
-
-               let key : KeyT ← Field.guardedParse tag2
-               pure #[(Prod.mk key value)]
-
-          | n => throw s!"Unexpected field number ({n}) within map"
-
-     let endPos ← BParsec.pos
-
-     if endPos - startPos != len_size then
-          throw s!"[Map parse] LEN size invariant not maintained: expected {len_size}, parsed {endPos - startPos}"
-
-     pure result
+  let endPos ← BParsec.pos
+  if endPos - startPos = len_size then
+    pure #[(key, val)]
+  else
+    throw s!"[Map parse] LEN size invariant not maintained: expected {len_size}, parsed {endPos - startPos}"
 
 instance {α β : Type} [Inhabited α] [Inhabited β] [Field α] [Field β] : Field (Map α β) := {
   parse := parse
