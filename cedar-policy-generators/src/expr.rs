@@ -17,9 +17,7 @@
 use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool};
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
-use crate::hierarchy::{
-    arbitrary_specified_uid, generate_uid_with_type, EntityUIDGenMode, Hierarchy,
-};
+use crate::hierarchy::{arbitrary_specified_uid, generate_uid_with_type, Hierarchy};
 use crate::schema::{
     attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
     uid_for_action_name, Schema,
@@ -50,9 +48,6 @@ pub struct ExprGenerator<'a> {
     /// If this is present, any literal UIDs included in generated `Expr`s will
     /// (usually) exist in the hierarchy.
     pub hierarchy: Option<&'a Hierarchy>,
-    /// For any entity UIDs that are generated as part of the expression.
-    /// As of this writing, this is only used when `hierarchy` is `None`.
-    pub uid_gen_mode: EntityUIDGenMode,
 }
 
 impl<'a> ExprGenerator<'a> {
@@ -2473,7 +2468,7 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {
-            None => generate_uid_with_type(ty.clone(), &self.uid_gen_mode, u),
+            None => generate_uid_with_type(ty.clone(), u),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }

@@ -20,9 +20,7 @@ use crate::abac::{
 use crate::collections::{HashMap, HashSet};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
-use crate::hierarchy::{
-    EntityUIDGenMode, Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities,
-};
+use crate::hierarchy::{Hierarchy, HierarchyGenerator, HierarchyGeneratorMode, NumEntities};
 use crate::policy::{ActionConstraint, GeneratedPolicy, PrincipalOrResourceConstraint};
 use crate::request::Request;
 use crate::settings::ABACSettings;
@@ -827,6 +825,7 @@ impl Schema {
     ///
     /// The input is [`json_schema::Fragment<RawName>`], meaning that entity and common
     /// type names may not yet be fully qualified.
+    #[deprecated = "this function may not work after cedar-policy/cedar#1060; refer to cedar-policy/cedar-spec#496"]
     pub fn from_raw_schemafrag(
         schemafrag: json_schema::Fragment<RawName>,
         settings: ABACSettings,
@@ -878,7 +877,6 @@ impl Schema {
             unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
-            uid_gen_mode: EntityUIDGenMode::default(),
         }
     }
 
@@ -1137,23 +1135,6 @@ impl Schema {
     pub fn arbitrary_hierarchy(&self, u: &mut Unstructured<'_>) -> Result<Hierarchy> {
         HierarchyGenerator {
             mode: HierarchyGeneratorMode::SchemaBased { schema: self },
-            uid_gen_mode: EntityUIDGenMode::default(),
-            num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
-            u,
-            extensions: Extensions::all_available(),
-        }
-        .generate()
-    }
-
-    /// Get an arbitrary Hierarchy conforming to the schema but with nanoid uids.
-    pub fn arbitrary_hierarchy_with_nanoid_uids(
-        &self,
-        nanoid_len: usize,
-        u: &mut Unstructured<'_>,
-    ) -> Result<Hierarchy> {
-        HierarchyGenerator {
-            mode: HierarchyGeneratorMode::SchemaBased { schema: self },
-            uid_gen_mode: EntityUIDGenMode::Nanoid(nanoid_len),
             num_entities: NumEntities::RangePerEntityType(1..=self.settings.max_width),
             u,
             extensions: Extensions::all_available(),
@@ -1825,7 +1806,7 @@ impl TryFrom<Schema> for ValidatorSchema {
 #[cfg(test)]
 mod tests {
     use super::Schema;
-    use crate::{hierarchy::EntityUIDGenMode, settings::ABACSettings};
+    use crate::settings::ABACSettings;
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
@@ -2287,6 +2268,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
     fn generate_hierarchy_from_schema(
         rng: &mut ThreadRng,
         fragment: json_schema::Fragment<RawName>,
@@ -2297,7 +2279,7 @@ mod tests {
         let schema = Schema::from_raw_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
             .expect("failed to generate schema!");
         let h = schema
-            .arbitrary_hierarchy_with_nanoid_uids(EntityUIDGenMode::default_nanoid_len(), &mut u)
+            .arbitrary_hierarchy(&mut u)
             .expect("failed to generate hierarchy!");
         let vschema =
             ValidatorSchema::try_from(schema).expect("failed to convert to ValidatorSchema");
