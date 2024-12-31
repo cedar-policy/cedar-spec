@@ -72,7 +72,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.In) := do
       pure (mergeER · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ScopeTemplate.In := {
   parseField := parseField
@@ -105,7 +105,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Eq) := do
       pure (mergeER · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ScopeTemplate.Eq := {
   parseField := parseField
@@ -138,7 +138,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Is) := do
       pure (mergeET · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ScopeTemplate.Is := {
   parseField := parseField
@@ -182,7 +182,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.IsIn) := do
       pure (mergeET · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ScopeTemplate.IsIn := {
   parseField := parseField
@@ -278,7 +278,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate) := do
       pure (mergeIsIn · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ScopeTemplate := {
   parseField := parseField

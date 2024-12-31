@@ -80,7 +80,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUIDOrSlot) := do
       pure (mergeEuid · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message EntityUIDOrSlot := {
   parseField := parseField

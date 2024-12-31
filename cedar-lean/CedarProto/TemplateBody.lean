@@ -134,7 +134,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Template) := do
       pure (mergeConditions · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message Template := {
   parseField := parseField

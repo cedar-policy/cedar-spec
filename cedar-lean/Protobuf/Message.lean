@@ -27,14 +27,18 @@ namespace Proto
 
 def MergeFn (α : Type) : Type := (α → α)
 
+/--
+  a MergeFn which ignores the newly parsed data and just takes the previous
+  value as-is
+-/
+def ignore {α : Type} : MergeFn α := id
+
 class Message (α : Type) [Inhabited α] where
   /--
     Parse a field, given the Tag and the data in the BParsec (updating the
     BParsec iterator position appropriately).
     Return a `MergeFn`, which when applied to the previous value α,
     gives you the final value α which is the result of the parse.
-    Note in particular that returning `id` as the `MergeFn` results in
-    just taking the previous value as-is, ignoring the newly parsed data.
   -/
   parseField : Tag → BParsec (MergeFn α)
   merge : α → α → α
@@ -53,37 +57,31 @@ private def parseMessageHelper [Inhabited α] [Message α] (remaining : Nat) (re
   else
 
   let startPos ← BParsec.pos
-
   let tag ← Tag.parse
-
   let f : MergeFn α ← parseField tag
-
   let endPos ← BParsec.pos
-
   let newResult := f result
+
   let elementSize := (endPos - startPos)
   if elementSize = 0 then
-    throw "[parseMessageHelper] f did not progress ByteArray"
+    throw "[parseMessageHelper] did not make progress when parsing a {repr α}"
   else
-
-  (parseMessageHelper (remaining - elementSize) newResult)
+    parseMessageHelper (remaining - elementSize) newResult
 
 @[inline]
-def parse [Inhabited α] [Message α] : BParsec α := do
-  let remaining ← BParsec.remaining
-  let message : α ← parseMessageHelper remaining default
-  BParsec.eof
-  pure message
+def parseWithSize [Inhabited α] [Message α] (size : Nat) : BParsec α :=
+  parseMessageHelper size default
 
 @[inline]
 def parseWithLen [Inhabited α] [Message α] : BParsec α := do
   let len_size ← Len.parseSize
-  let message : α ← parseMessageHelper len_size default
-  pure message
+  parseWithSize len_size
 
 @[inline]
-def parseWithSize [Inhabited α] [Message α] (size : Nat) : BParsec α := do
-  let message : α ← parseMessageHelper size default
+def parse [Inhabited α] [Message α] : BParsec α := do
+  let remaining ← BParsec.remaining
+  let message : α ← parseWithSize remaining
+  BParsec.eof
   pure message
 
 @[inline]

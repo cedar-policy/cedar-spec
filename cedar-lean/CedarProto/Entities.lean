@@ -55,7 +55,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntitiesProto) := do
     -- Ignoring 3 | mode
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message EntitiesProto := {
   parseField := parseField

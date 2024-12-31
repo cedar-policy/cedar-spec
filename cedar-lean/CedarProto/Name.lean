@@ -57,7 +57,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Name) := do
       pure (mergePath · x)
     | _ =>
       t.wireType.skip
-      pure (λ s => s)
+      pure ignore
 
 instance : Message Name := {
   parseField := parseField

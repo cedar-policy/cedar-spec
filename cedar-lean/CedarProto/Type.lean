@@ -133,7 +133,7 @@ def parseField (t : Tag) : BParsec (MergeFn Entity) := do
       pure (mergeE · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message Entity := {
   parseField := parseField
@@ -165,7 +165,7 @@ def parseField (t : Tag) : BParsec (MergeFn ActionEntity) := do
       pure (mergeName · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message ActionEntity := {
   parseField := parseField
@@ -326,7 +326,7 @@ partial def RecordType.parseField (t : Tag) : BParsec (RecordType → RecordType
       pure (RecordType.mergeAttrs · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def QualifiedType.parseField (t : Tag) : BParsec (QualifiedType → QualifiedType) := do
   have : Message CedarType := { parseField := CedarType.parseField, merge := CedarType.merge}
@@ -339,7 +339,7 @@ partial def QualifiedType.parseField (t : Tag) : BParsec (QualifiedType → Qual
       pure (QualifiedType.mergeIsRequired · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.EntityRecordKind.parseField (t : Tag) : BParsec (Proto.EntityRecordKind → Proto.EntityRecordKind) := do
   have : Message Proto.EntityRecordKind.Record := { parseField := Proto.EntityRecordKind.Record.parseField, merge := Proto.EntityRecordKind.Record.merge }
@@ -355,7 +355,7 @@ partial def Proto.EntityRecordKind.parseField (t : Tag) : BParsec (Proto.EntityR
       pure (Proto.EntityRecordKind.mergeEntity · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.EntityRecordKind.Record.parseField (t : Tag) : BParsec (Proto.EntityRecordKind.Record → Proto.EntityRecordKind.Record) := do
   have : Message RecordType := { parseField := RecordType.parseField, merge := RecordType.merge }
@@ -365,7 +365,7 @@ partial def Proto.EntityRecordKind.Record.parseField (t : Tag) : BParsec (Proto.
       pure (Proto.EntityRecordKind.Record.mergeAttributes · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def CedarType.parseField (t : Tag) : BParsec (CedarType → CedarType) := do
   have : Message CedarType := {parseField := CedarType.parseField, merge := CedarType.merge }
@@ -385,7 +385,7 @@ partial def CedarType.parseField (t : Tag) : BParsec (CedarType → CedarType) :
       pure (CedarType.mergeName · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 end
 
 namespace RecordType

@@ -97,7 +97,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Prim) := do
       pure (merge_euid · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message Prim := {
   parseField := parseField
@@ -540,13 +540,13 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
   match t.fieldNum with
     | 1 =>
       let x : Ty ← Field.guardedParse t
-      pure (λ s => mergeTy s x)
+      pure (mergeTy · x)
     | 2 =>
       let x : String ← Field.guardedParse t
-      pure (λ s => mergeC s x)
+      pure (mergeC · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 instance : Message PatElem := {
   parseField := parseField
@@ -754,7 +754,7 @@ partial def Proto.ExprKind.If.parseField (t : Proto.Tag) : BParsec (Proto.ExprKi
       pure (Proto.ExprKind.If.mergeElseExpr · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.And.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.And → Proto.ExprKind.And) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -767,7 +767,7 @@ partial def Proto.ExprKind.And.parseField (t : Proto.Tag) : BParsec (Proto.ExprK
       pure (Proto.ExprKind.And.mergeRight · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.Or.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Or → Proto.ExprKind.Or) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -780,7 +780,7 @@ partial def Proto.ExprKind.Or.parseField (t : Proto.Tag) : BParsec (Proto.ExprKi
       pure (Proto.ExprKind.Or.mergeRight · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.UnaryApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.UnaryApp → Proto.ExprKind.UnaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -793,7 +793,7 @@ partial def Proto.ExprKind.UnaryApp.parseField (t : Proto.Tag) : BParsec (Proto.
       pure (Proto.ExprKind.UnaryApp.mergeArg · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.BinaryApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.BinaryApp → Proto.ExprKind.BinaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -809,7 +809,7 @@ partial def Proto.ExprKind.BinaryApp.parseField (t : Proto.Tag) : BParsec (Proto
       pure (λ s => Proto.ExprKind.BinaryApp.mergeRight s x)
     | _ =>
       t.wireType.skip
-      pure (λ s => s)
+      pure ignore
 
 partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.ExtensionFunctionApp → Proto.ExprKind.ExtensionFunctionApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -822,7 +822,7 @@ partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BPa
       pure (Proto.ExprKind.ExtensionFunctionApp.mergeArgs · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.GetAttr.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.GetAttr → Proto.ExprKind.GetAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -835,7 +835,7 @@ partial def Proto.ExprKind.GetAttr.parseField (t : Proto.Tag) : BParsec (Proto.E
       pure (Proto.ExprKind.GetAttr.mergeAttr · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.HasAttr.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.HasAttr → Proto.ExprKind.HasAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -848,7 +848,7 @@ partial def Proto.ExprKind.HasAttr.parseField (t : Proto.Tag) : BParsec (Proto.E
       pure (Proto.ExprKind.HasAttr.mergeAttr · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Like → Proto.ExprKind.Like) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -861,7 +861,7 @@ partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (Proto.Expr
       pure (Proto.ExprKind.Like.mergePattern · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Is → Proto.ExprKind.Is) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -874,7 +874,7 @@ partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (Proto.ExprKi
       pure (Proto.ExprKind.Is.mergeEt · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.Set.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Set → Proto.ExprKind.Set) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -884,7 +884,7 @@ partial def Proto.ExprKind.Set.parseField (t : Proto.Tag) : BParsec (Proto.ExprK
       pure (Proto.ExprKind.Set.mergeElems · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.Record.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Record → Proto.ExprKind.Record) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
@@ -894,7 +894,7 @@ partial def Proto.ExprKind.Record.parseField (t : Proto.Tag) : BParsec (Proto.Ex
       pure (Proto.ExprKind.Record.mergeItems · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind → Proto.ExprKind) := do
   have : Message Proto.ExprKind.If := { parseField := Proto.ExprKind.If.parseField, merge := Proto.ExprKind.If.merge }
@@ -956,7 +956,7 @@ partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind 
       pure (Proto.ExprKind.mergeRecord · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 partial def Expr.parseField (t : Proto.Tag) : BParsec (Expr → Expr) := do
   have : Message Proto.ExprKind := { parseField := Proto.ExprKind.parseField, merge := Proto.ExprKind.merge }
@@ -966,7 +966,7 @@ partial def Expr.parseField (t : Proto.Tag) : BParsec (Expr → Expr) := do
       pure (Expr.mergeExprKind · x)
     | _ =>
       t.wireType.skip
-      pure id
+      pure ignore
 
 end
 
