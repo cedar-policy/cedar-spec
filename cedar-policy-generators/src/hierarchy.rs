@@ -24,7 +24,6 @@ use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_validator::json_schema;
-use nanoid::nanoid;
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -312,8 +311,6 @@ impl From<Entities> for Hierarchy {
 pub struct HierarchyGenerator<'a, 'u> {
     /// Mode for hierarchy generation, e.g., whether to conform to a schema
     pub mode: HierarchyGeneratorMode<'a>,
-    /// Mode for generating entity uids
-    pub uid_gen_mode: EntityUIDGenMode,
     /// How many entities to generate for the hierarchy
     pub num_entities: NumEntities,
     /// `Unstructured` used for making random choices
@@ -328,32 +325,6 @@ impl<'a, 'u> std::fmt::Debug for HierarchyGenerator<'a, 'u> {
         <HierarchyGeneratorMode<'a> as std::fmt::Debug>::fmt(&self.mode, f)?;
         <NumEntities as std::fmt::Debug>::fmt(&self.num_entities, f)?;
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-/// Modes of entity uid generation
-pub enum EntityUIDGenMode {
-    /// By calling `arbitrary`
-    Arbitrary,
-    /// By calling `nanoid`
-    Nanoid(usize),
-}
-
-impl EntityUIDGenMode {
-    /// The default nanoid length is 8
-    pub fn default_nanoid_len() -> usize {
-        8
-    }
-    /// Use nanoid with the default length
-    pub fn default_nanoid_mode() -> Self {
-        Self::Nanoid(Self::default_nanoid_len())
-    }
-}
-
-impl Default for EntityUIDGenMode {
-    fn default() -> Self {
-        Self::Arbitrary
     }
 }
 
@@ -423,16 +394,9 @@ pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::E
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::EntityType,
-    mode: &EntityUIDGenMode,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
-    let eid: Eid = match mode {
-        EntityUIDGenMode::Arbitrary => u.arbitrary()?,
-        EntityUIDGenMode::Nanoid(n) => {
-            let n = *n;
-            Eid::new(nanoid!(n))
-        }
-    };
+    let eid = u.arbitrary()?;
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
 
@@ -465,11 +429,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.insert(generate_uid_with_type(
-                                    name.clone(),
-                                    &self.uid_gen_mode,
-                                    u,
-                                )?);
+                                uids.insert(generate_uid_with_type(name.clone(), u)?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -478,9 +438,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| {
-                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)
-                            })
+                            .map(|_| generate_uid_with_type(name.clone(), self.u))
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
@@ -493,8 +451,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             if self.u.is_empty() {
                                 return Err(Error::NotEnoughData);
                             }
-                            let uid =
-                                generate_uid_with_type(name.clone(), &self.uid_gen_mode, self.u)?;
+                            let uid = generate_uid_with_type(name.clone(), self.u)?;
                             uids.insert(uid);
                         }
                         uids
