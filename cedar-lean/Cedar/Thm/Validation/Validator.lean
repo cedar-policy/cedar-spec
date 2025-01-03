@@ -61,7 +61,7 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
   rename_i cp ht
   have hc := empty_capabilities_invariant request entities
   have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
-  have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst h₅ ht
+  have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst.typeOf h₅ ht
   subst h₆
   exists b
   simp only [EvaluatesTo] at *

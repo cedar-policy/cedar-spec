@@ -26,10 +26,10 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
-  (h₃ : typeOf (Expr.lit l) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
+  (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (e', c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v ty
+  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v e'.typeOf
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfLit] at h₃
@@ -39,7 +39,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   simp at h₃
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
-    subst c₂ ty
+    subst c₂ e'
     apply And.intro empty_guarded_capabilities_invariant
     first |
       exact true_is_instance_of_tt |
@@ -49,11 +49,11 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
   }
 
-theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities}
+theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (ty, c₂)) :
+  (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (e', c₂)) :
   GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType v ty
+  ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType v e'.typeOf
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfVar] at h₃
@@ -62,7 +62,7 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
   cases var
   <;> simp [ok] at h₃
   <;> have ⟨h₃, h₄⟩ := h₃
-  <;> subst c₂ ty
+  <;> subst c₂ e'
   <;> apply And.intro empty_guarded_capabilities_invariant
   case principal =>
     exists request.principal
@@ -86,6 +86,6 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
     exists request.context
     apply And.intro
     · simp [evaluate]
-    · simp only [h₂]
+    · simp only [h₂, TypedExpr.typeOf]
 
 end Cedar.Thm
