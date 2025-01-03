@@ -572,7 +572,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -598,11 +598,12 @@ impl<'a> ExprGenerator<'a> {
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(
-                                        json_schema::TypeVariant::Entity {
+                                    &json_schema::Type::Type {
+                                        ty: json_schema::TypeVariant::Entity {
                                             name: ast::Name::from(entity_name.clone()).into(),
-                                        }
-                                    ),
+                                        },
+                                        loc: None,
+                                    },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -768,7 +769,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -857,7 +858,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -961,7 +962,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1070,7 +1071,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1169,7 +1170,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1275,7 +1276,7 @@ impl<'a> ExprGenerator<'a> {
                                     u,
                                 )?,
                                 self.generate_expr_for_schematype(
-                                    &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                    &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                     max_depth - 1,
                                     u,
                                 )?,
@@ -1303,39 +1304,54 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         match target_type {
-            json_schema::Type::CommonTypeRef { type_name } => self.generate_expr_for_schematype(
-                lookup_common_type(&self.schema.schema, type_name)
-                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-                max_depth,
-                u,
-            ),
-            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+            json_schema::Type::CommonTypeRef { type_name, .. } => self
+                .generate_expr_for_schematype(
+                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
+                        panic!("reference to undefined common type: {type_name}")
+                    }),
+                    max_depth,
+                    u,
+                ),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
+                ..
+            } => {
                 match lookup_common_type(&self.schema.schema, type_name) {
                     Some(ty) => self.generate_expr_for_schematype(ty, max_depth, u),
                     None => {
                         // must be an entity reference, so treat it as we treat entity references
                         self.generate_expr_for_schematype(
-                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
-                                name: type_name.clone(),
-                            }),
+                            &json_schema::Type::Type {
+                                ty: json_schema::TypeVariant::Entity {
+                                    name: type_name.clone(),
+                                },
+                                loc: None,
+                            },
                             max_depth,
                             u,
                         )
                     }
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
-                self.generate_expr_for_type(&Type::bool(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
-                self.generate_expr_for_type(&Type::long(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::String) => {
-                self.generate_expr_for_type(&Type::string(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Set {
-                element: element_ty,
-            }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Boolean,
+                ..
+            } => self.generate_expr_for_type(&Type::bool(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Long,
+                ..
+            } => self.generate_expr_for_type(&Type::long(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::String,
+                ..
+            } => self.generate_expr_for_type(&Type::string(), max_depth, u),
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Set {
+                        element: element_ty,
+                    },
+                ..
+            } => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed, so, just do empty-set
                     Ok(ast::Expr::set(vec![]))
@@ -1425,12 +1441,14 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record(
-                json_schema::RecordType {
-                    attributes,
-                    additional_attributes,
-                },
-            )) => {
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes,
+                        additional_attributes,
+                    }),
+                ..
+            } => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed
                     Err(Error::TooDeep)
@@ -1561,7 +1579,10 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Entity { name },
+                ..
+            } => {
                 if max_depth == 0 || u.len() < 10 {
                     // no recursion allowed, so, just do `principal`, `action`, or `resource`
                     Ok(ast::Expr::var(*u.choose(&[
@@ -1660,15 +1681,16 @@ impl<'a> ExprGenerator<'a> {
                     })
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Extension { name }) => {
-                match name.as_ref() {
-                    "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
-                    "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
-                    "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
-                    "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
-                    _ => panic!("unrecognized extension type: {name:?}"),
-                }
-            }
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Extension { name },
+                ..
+            } => match name.as_ref() {
+                "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
+                "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
+                "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
+                _ => panic!("unrecognized extension type: {name:?}"),
+            },
         }
     }
 
@@ -1759,7 +1781,7 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
         match target_type {
-            json_schema::Type::CommonTypeRef { type_name } => self
+            json_schema::Type::CommonTypeRef { type_name, .. } => self
                 .generate_ext_func_call_for_schematype(
                     lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
                         panic!("reference to undefined common type: {type_name}")
@@ -1767,7 +1789,7 @@ impl<'a> ExprGenerator<'a> {
                     max_depth,
                     u,
                 ),
-            json_schema::Type::Type(ty) => match ty {
+            json_schema::Type::Type { ty, .. } => match ty {
                 json_schema::TypeVariant::EntityOrCommon { type_name } => {
                     match lookup_common_type(&self.schema.schema, type_name) {
                         Some(ty) => self.generate_ext_func_call_for_schematype(ty, max_depth, u),
@@ -1983,7 +2005,7 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<AttrValue> {
         match target_type {
-            json_schema::Type::CommonTypeRef { type_name } => self
+            json_schema::Type::CommonTypeRef { type_name, .. } => self
                 .generate_attr_value_for_schematype(
                     lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
                         panic!("reference to undefined common type: {type_name}")
@@ -2222,12 +2244,14 @@ impl<'a> ExprGenerator<'a> {
     ) -> Result<ast::Value> {
         use ast::Value;
         match target_type {
-            json_schema::Type::CommonTypeRef { type_name } => self.generate_value_for_schematype(
-                lookup_common_type(&self.schema.schema, type_name)
-                    .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
-                max_depth,
-                u,
-            ),
+            json_schema::Type::CommonTypeRef { type_name, .. } => self
+                .generate_value_for_schematype(
+                    lookup_common_type(&self.schema.schema, type_name).unwrap_or_else(|| {
+                        panic!("reference to undefined common type: {type_name}")
+                    }),
+                    max_depth,
+                    u,
+                ),
             json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
                 match lookup_common_type(&self.schema.schema, type_name) {
                     Some(ty) => self.generate_value_for_schematype(ty, max_depth, u),
