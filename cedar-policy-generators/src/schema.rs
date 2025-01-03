@@ -572,8 +572,9 @@ impl Bindings {
         Ok(json_schema::EntityType {
             member_of_types: et.member_of_types.clone(),
             shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
-            tags: None,
+            tags: et.tags.clone(),
             annotations: et.annotations.clone(),
+            loc: et.loc.clone(),
         })
     }
 
@@ -700,6 +701,7 @@ impl Schema {
                                 }),
                                 None => None,
                             },
+                            loc: ty.loc.clone(),
                         },
                     ))
                 })
@@ -714,6 +716,7 @@ impl Schema {
                         CommonType {
                             ty,
                             annotations: u.arbitrary()?,
+                            loc: None,
                         },
                     ))
                 })
@@ -931,6 +934,7 @@ impl Schema {
                                 )?)
                             ),
                             annotations: u.arbitrary()?,
+                            loc: None,
                         },
                     ))
                 })
@@ -1034,6 +1038,7 @@ impl Schema {
                         //TODO: Fuzz arbitrary attribute names and values.
                         attributes: None,
                         annotations: u.arbitrary()?,
+                        loc: None,
                     },
                 ))
             })
@@ -1642,6 +1647,7 @@ fn downgrade_nsdef_to_raw(
                     CommonType {
                         ty: downgrade_schematype_to_raw(v.ty),
                         annotations: v.annotations,
+                        loc: v.loc,
                     },
                 )
             })
@@ -1738,6 +1744,7 @@ fn downgrade_entitytype_to_raw(
         shape: downgrade_aoc_to_raw(entitytype.shape),
         tags: entitytype.tags.map(downgrade_schematype_to_raw),
         annotations: entitytype.annotations,
+        loc: entitytype.loc,
     }
 }
 
@@ -1762,6 +1769,7 @@ fn downgrade_action_to_raw(
             .member_of
             .map(|v| v.into_iter().map(downgrade_aeuid_to_raw).collect()),
         annotations: action.annotations,
+        loc: action.loc,
     }
 }
 
