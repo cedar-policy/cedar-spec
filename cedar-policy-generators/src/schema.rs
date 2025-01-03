@@ -84,8 +84,8 @@ fn arbitrary_attrspec<N: From<ast::Name>>(
     let attr_names: Vec<ast::Id> = u
         .arbitrary()
         .map_err(|e| while_doing("generating attribute names for an attrspec".into(), e))?;
-    Ok(json_schema::AttributesOrContext(json_schema::Type::Type(
-        json_schema::TypeVariant::Record(json_schema::RecordType {
+    Ok(json_schema::AttributesOrContext(json_schema::Type::Type {
+        ty: json_schema::TypeVariant::Record(json_schema::RecordType {
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
@@ -115,7 +115,8 @@ fn arbitrary_attrspec<N: From<ast::Name>>(
                 false
             },
         }),
-    )))
+        loc: None,
+    }))
 }
 /// size hint for arbitrary_attrspec
 fn arbitrary_attrspec_size_hint(
@@ -181,82 +182,88 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<json_schema::Type<N>> {
-    Ok(json_schema::Type::Type(uniform!(
-        u,
-        json_schema::TypeVariant::String,
-        json_schema::TypeVariant::Long,
-        json_schema::TypeVariant::Boolean,
-        {
-            if max_depth == 0 {
-                // can't recurse; we arbitrarily choose Set<Long> in this case
-                json_schema::TypeVariant::Set {
-                    element: Box::new(json_schema::Type::Type(json_schema::TypeVariant::Long)),
+    Ok(json_schema::Type::Type {
+        ty: uniform!(
+            u,
+            json_schema::TypeVariant::String,
+            json_schema::TypeVariant::Long,
+            json_schema::TypeVariant::Boolean,
+            {
+                if max_depth == 0 {
+                    // can't recurse; we arbitrarily choose Set<Long> in this case
+                    json_schema::TypeVariant::Set {
+                        element: Box::new(json_schema::Type::Type {
+                            ty: json_schema::TypeVariant::Long,
+                            loc: None,
+                        }),
+                    }
+                } else {
+                    json_schema::TypeVariant::Set {
+                        element: Box::new(arbitrary_schematype_with_bounded_depth(
+                            settings,
+                            entity_types,
+                            max_depth - 1,
+                            u,
+                        )?),
+                    }
                 }
-            } else {
-                json_schema::TypeVariant::Set {
-                    element: Box::new(arbitrary_schematype_with_bounded_depth(
-                        settings,
-                        entity_types,
-                        max_depth - 1,
-                        u,
-                    )?),
+            },
+            {
+                if max_depth == 0 {
+                    // can't recurse; use empty-record
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes: BTreeMap::new(),
+                        additional_attributes: if settings.enable_additional_attributes {
+                            u.arbitrary()?
+                        } else {
+                            false
+                        },
+                    })
+                } else {
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes: {
+                            let attr_names: HashSet<String> = u
+                                .arbitrary()
+                                .map_err(|e| while_doing("generating attribute names".into(), e))?;
+                            attr_names
+                                .into_iter()
+                                .map(|attr_name| {
+                                    Ok((
+                                        attr_name.into(),
+                                        arbitrary_typeofattribute_with_bounded_depth(
+                                            settings,
+                                            entity_types,
+                                            max_depth - 1,
+                                            u,
+                                        )?,
+                                    ))
+                                })
+                                .collect::<Result<BTreeMap<_, _>>>()?
+                        },
+                        additional_attributes: if settings.enable_additional_attributes {
+                            u.arbitrary()?
+                        } else {
+                            false
+                        },
+                    })
                 }
+            },
+            entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
+            json_schema::TypeVariant::Extension {
+                name: "ipaddr".parse().unwrap(),
+            },
+            json_schema::TypeVariant::Extension {
+                name: "decimal".parse().unwrap(),
+            },
+            json_schema::TypeVariant::Extension {
+                name: "datetime".parse().unwrap(),
+            },
+            json_schema::TypeVariant::Extension {
+                name: "duration".parse().unwrap(),
             }
-        },
-        {
-            if max_depth == 0 {
-                // can't recurse; use empty-record
-                json_schema::TypeVariant::Record(json_schema::RecordType {
-                    attributes: BTreeMap::new(),
-                    additional_attributes: if settings.enable_additional_attributes {
-                        u.arbitrary()?
-                    } else {
-                        false
-                    },
-                })
-            } else {
-                json_schema::TypeVariant::Record(json_schema::RecordType {
-                    attributes: {
-                        let attr_names: HashSet<String> = u
-                            .arbitrary()
-                            .map_err(|e| while_doing("generating attribute names".into(), e))?;
-                        attr_names
-                            .into_iter()
-                            .map(|attr_name| {
-                                Ok((
-                                    attr_name.into(),
-                                    arbitrary_typeofattribute_with_bounded_depth(
-                                        settings,
-                                        entity_types,
-                                        max_depth - 1,
-                                        u,
-                                    )?,
-                                ))
-                            })
-                            .collect::<Result<BTreeMap<_, _>>>()?
-                    },
-                    additional_attributes: if settings.enable_additional_attributes {
-                        u.arbitrary()?
-                    } else {
-                        false
-                    },
-                })
-            }
-        },
-        entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
-        json_schema::TypeVariant::Extension {
-            name: "ipaddr".parse().unwrap(),
-        },
-        json_schema::TypeVariant::Extension {
-            name: "decimal".parse().unwrap(),
-        },
-        json_schema::TypeVariant::Extension {
-            name: "datetime".parse().unwrap(),
-        },
-        json_schema::TypeVariant::Extension {
-            name: "duration".parse().unwrap(),
-        }
-    )))
+        ),
+        loc: None,
+    })
 }
 
 /// Convert an [`ast::EntityType`] into the corresponding
@@ -274,7 +281,10 @@ pub fn entity_type_name_to_schema_type_variant<N: From<ast::Name>>(
 pub fn entity_type_name_to_schema_type<N: From<ast::Name>>(
     name: &ast::EntityType,
 ) -> json_schema::Type<N> {
-    json_schema::Type::Type(entity_type_name_to_schema_type_variant(name))
+    json_schema::Type::Type {
+        ty: entity_type_name_to_schema_type_variant(name),
+        loc: name.loc().cloned(),
+    }
 }
 
 /// size hint for arbitrary_schematype_with_bounded_depth
@@ -315,12 +325,12 @@ fn schematype_to_type(
     schematy: &json_schema::Type<ast::InternalName>,
 ) -> Type {
     match schematy {
-        json_schema::Type::CommonTypeRef { type_name } => schematype_to_type(
+        json_schema::Type::CommonTypeRef { type_name, .. } => schematype_to_type(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
         ),
-        json_schema::Type::Type(ty) => match ty {
+        json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Type::bool(),
             json_schema::TypeVariant::Long => Type::long(),
             json_schema::TypeVariant::String => Type::string(),
@@ -367,13 +377,13 @@ pub(crate) fn attrs_from_attrs_or_context<'a>(
     attrsorctx: &'a json_schema::AttributesOrContext<ast::InternalName>,
 ) -> Attributes<'a> {
     match &attrsorctx.0 {
-        json_schema::Type::CommonTypeRef { type_name } => match lookup_common_type(schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
+        json_schema::Type::CommonTypeRef { type_name, .. } => match lookup_common_type(schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
             json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
-            json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
-        json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
+            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes }), .. } => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+            ty => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
-        json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes })) => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
-        json_schema::Type::Type(ty) => panic!("expected attributes or context to be a record, got {ty:?}"),
+        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, additional_attributes }), .. } => Attributes { attrs: attributes, additional_attrs: *additional_attributes },
+        ty => panic!("expected attributes or context to be a record, got {ty:?}"),
     }
 }
 
@@ -384,7 +394,7 @@ fn attrs_in_schematype(
     schematype: &json_schema::Type<ast::InternalName>,
 ) -> Box<dyn Iterator<Item = (SmolStr, json_schema::Type<ast::InternalName>)>> {
     match schematype {
-        json_schema::Type::Type(variant) => match variant {
+        json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Box::new(std::iter::empty()),
             json_schema::TypeVariant::Long => Box::new(std::iter::empty()),
             json_schema::TypeVariant::String => Box::new(std::iter::empty()),
@@ -396,9 +406,12 @@ fn attrs_in_schematype(
                         // it's an entity type, so treat it like we treat entity types
                         attrs_in_schematype(
                             schema,
-                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
-                                name: type_name.clone(),
-                            }),
+                            &json_schema::Type::Type {
+                                ty: json_schema::TypeVariant::Entity {
+                                    name: type_name.clone(),
+                                },
+                                loc: type_name.loc().cloned(),
+                            },
                         )
                     }
                 }
@@ -417,7 +430,7 @@ fn attrs_in_schematype(
                 Box::new(toplevel.into_iter().chain(recursed))
             }
         },
-        json_schema::Type::CommonTypeRef { type_name } => attrs_in_schematype(
+        json_schema::Type::CommonTypeRef { type_name, .. } => attrs_in_schematype(
             schema,
             lookup_common_type(schema, type_name)
                 .unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")),
@@ -462,12 +475,12 @@ fn build_attributes_by_type<'a>(
 // Common type bindings
 #[derive(Debug)]
 struct Bindings {
-    // Bindings from `json_schema::Type` to a list of `UnreservedId`.
-    // The `ids` field ensures that `UnreservedId`s are unique.
+    // Bindings from `json_schema::Type` to a list of `CommonTypeId`.
+    // The `ids` field ensures that `CommonTypeId`s are unique.
     // Note that the `json_schema::Type`s in the `bindings` map should not
     // contain any common type references.
     bindings: BTreeMap<json_schema::Type<ast::InternalName>, Vec<CommonTypeId>>,
-    // The set of `UnreservedId`s used in the bindings
+    // The set of `CommonTypeId`s used in the bindings
     ids: HashSet<SmolStr>,
 }
 impl Bindings {
@@ -521,25 +534,32 @@ impl Bindings {
             json_schema::Type::CommonTypeRef { .. } => {
                 unreachable!("common type references shouldn't be here")
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Set { element }) => {
-                Ok(json_schema::Type::Type(json_schema::TypeVariant::Set {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Set { element },
+                loc,
+            } => Ok(json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Set {
                     element: Box::new(if let Some(ids) = self.bindings.get(element) {
                         json_schema::Type::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into())
                                 .into(),
+                            loc: element.loc().cloned(),
                         }
                     } else {
                         self.rewrite_type(u, element)?
                     }),
-                }))
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Record(
-                json_schema::RecordType {
-                    attributes,
-                    additional_attributes,
                 },
-            )) => Ok(json_schema::Type::Type(json_schema::TypeVariant::Record(
-                json_schema::RecordType {
+                loc: loc.clone(),
+            }),
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes,
+                        additional_attributes,
+                    }),
+                loc,
+            } => Ok(json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Record(json_schema::RecordType {
                     attributes: BTreeMap::from_iter(
                         attributes
                             .iter()
@@ -556,8 +576,9 @@ impl Bindings {
                             .collect::<Result<Vec<_>>>()?,
                     ),
                     additional_attributes: additional_attributes.to_owned(),
-                },
-            ))),
+                }),
+                loc: loc.clone(),
+            }),
             _ => Ok(ty.clone()),
         }
     }
@@ -587,6 +608,7 @@ impl Bindings {
         let new_ty = if let Some(ids) = self.bindings.get(ty) {
             json_schema::Type::CommonTypeRef {
                 type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into()).into(),
+                loc: None,
             }
         } else {
             self.rewrite_type(u, ty)?
@@ -619,6 +641,7 @@ impl Bindings {
                         json_schema::Type::CommonTypeRef {
                             type_name: ast::Name::unqualified_name(ids[i + 1].clone().into())
                                 .into(),
+                            loc: None,
                         },
                     );
                     common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
@@ -640,13 +663,20 @@ fn bind_type(
         bindings.add_binding((ty.clone(), u.arbitrary()?));
     }
     match ty {
-        json_schema::Type::Type(json_schema::TypeVariant::Set { element }) => {
+        json_schema::Type::Type {
+            ty: json_schema::TypeVariant::Set { element },
+            ..
+        } => {
             bind_type(element, u, bindings)?;
         }
-        json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType {
-            attributes,
-            additional_attributes: _,
-        })) => {
+        json_schema::Type::Type {
+            ty:
+                json_schema::TypeVariant::Record(json_schema::RecordType {
+                    attributes,
+                    additional_attributes: _,
+                }),
+            ..
+        } => {
             attributes
                 .iter()
                 .map(|(_, attr_ty)| bind_type(&attr_ty.ty, u, bindings))
@@ -1209,7 +1239,7 @@ impl Schema {
                 name: "duration".parse().unwrap(),
             }),
         }
-        .map(json_schema::Type::Type))
+        .map(|ty| json_schema::Type::Type { ty, loc: None }))
     }
 
     /// get an attribute name and its `json_schema::Type`, from the schema
@@ -1672,12 +1702,14 @@ fn downgrade_schematype_to_raw(
     schematype: json_schema::Type<ast::InternalName>,
 ) -> json_schema::Type<RawName> {
     match schematype {
-        json_schema::Type::CommonTypeRef { type_name } => json_schema::Type::CommonTypeRef {
+        json_schema::Type::CommonTypeRef { type_name, loc } => json_schema::Type::CommonTypeRef {
             type_name: RawName::from_name(type_name),
+            loc,
         },
-        json_schema::Type::Type(stv) => {
-            json_schema::Type::Type(downgrade_schematypevariant_to_raw(stv))
-        }
+        json_schema::Type::Type { ty, loc } => json_schema::Type::Type {
+            ty: downgrade_schematypevariant_to_raw(ty),
+            loc,
+        },
     }
 }
 
