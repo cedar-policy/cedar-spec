@@ -1433,7 +1433,7 @@ impl<'a> ExprGenerator<'a> {
                                 u,
                             )?,
                             self.generate_expr_for_schematype(
-                                &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                 max_depth - 1,
                                 u,
                             )?,
@@ -1571,7 +1571,7 @@ impl<'a> ExprGenerator<'a> {
                                 u,
                             )?,
                             self.generate_expr_for_schematype(
-                                &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                 max_depth - 1,
                                 u,
                             )?,
@@ -1673,7 +1673,7 @@ impl<'a> ExprGenerator<'a> {
                                 u,
                             )?,
                             self.generate_expr_for_schematype(
-                                &json_schema::Type::Type(json_schema::TypeVariant::String),
+                                &json_schema::Type::Type { ty: json_schema::TypeVariant::String, loc: None },
                                 max_depth - 1,
                                 u,
                             )?,
@@ -1796,9 +1796,12 @@ impl<'a> ExprGenerator<'a> {
                         None => {
                             // must be an entity reference, so treat it how we treat entity references
                             self.generate_ext_func_call_for_schematype(
-                                &json_schema::Type::Type(json_schema::TypeVariant::Entity {
-                                    name: type_name.clone(),
-                                }),
+                                &json_schema::Type::Type {
+                                    ty: json_schema::TypeVariant::Entity {
+                                        name: type_name.clone(),
+                                    },
+                                    loc: None,
+                                },
                                 max_depth,
                                 u,
                             )
@@ -2013,33 +2016,46 @@ impl<'a> ExprGenerator<'a> {
                     max_depth,
                     u,
                 ),
-            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
+                ..
+            } => {
                 match lookup_common_type(&self.schema.schema, type_name) {
                     Some(ty) => self.generate_attr_value_for_schematype(ty, max_depth, u),
                     None => {
                         // must be an entity reference, so treat it how we treat entity references
                         self.generate_attr_value_for_schematype(
-                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
-                                name: type_name.clone(),
-                            }),
+                            &json_schema::Type::Type {
+                                ty: json_schema::TypeVariant::Entity {
+                                    name: type_name.clone(),
+                                },
+                                loc: type_name.loc().cloned(),
+                            },
                             max_depth,
                             u,
                         )
                     }
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
-                self.generate_attr_value_for_type(&Type::bool(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
-                self.generate_attr_value_for_type(&Type::long(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::String) => {
-                self.generate_attr_value_for_type(&Type::string(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Set {
-                element: element_ty,
-            }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Boolean,
+                ..
+            } => self.generate_attr_value_for_type(&Type::bool(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Long,
+                ..
+            } => self.generate_attr_value_for_type(&Type::long(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::String,
+                ..
+            } => self.generate_attr_value_for_type(&Type::string(), max_depth, u),
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Set {
+                        element: element_ty,
+                    },
+                ..
+            } => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -2057,12 +2073,14 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Set(l))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record(
-                json_schema::RecordType {
-                    attributes,
-                    additional_attributes,
-                },
-            )) => {
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes,
+                        additional_attributes,
+                    }),
+                ..
+            } => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -2112,7 +2130,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(AttrValue::Record(r))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Entity { name },
+                ..
+            } => {
                 // the only valid entity-typed attribute value is a UID literal
                 let entity_type_name =
                     ast::Name::try_from(name.qualify_with_name(self.schema.namespace()))
@@ -2122,24 +2143,22 @@ impl<'a> ExprGenerator<'a> {
                     self.arbitrary_uid_with_type(&entity_type_name, u)?,
                 ))
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Extension { .. })
-                if !self.settings.enable_extensions =>
-            {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Extension { .. },
+                ..
+            } if !self.settings.enable_extensions => {
                 panic!("shouldn't have TypeVariant::Extension with extensions disabled")
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Extension { name }) => {
-                match name.as_ref() {
-                    "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
-                    "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
-                    "datetime" => {
-                        self.generate_attr_value_for_type(&Type::datetime(), max_depth, u)
-                    }
-                    "duration" => {
-                        self.generate_attr_value_for_type(&Type::duration(), max_depth, u)
-                    }
-                    _ => unimplemented!("extension type {name:?}"),
-                }
-            }
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Extension { name },
+                ..
+            } => match name.as_ref() {
+                "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
+                "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                "datetime" => self.generate_attr_value_for_type(&Type::datetime(), max_depth, u),
+                "duration" => self.generate_attr_value_for_type(&Type::duration(), max_depth, u),
+                _ => unimplemented!("extension type {name:?}"),
+            },
         }
     }
 
@@ -2252,33 +2271,46 @@ impl<'a> ExprGenerator<'a> {
                     max_depth,
                     u,
                 ),
-            json_schema::Type::Type(json_schema::TypeVariant::EntityOrCommon { type_name }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::EntityOrCommon { type_name },
+                ..
+            } => {
                 match lookup_common_type(&self.schema.schema, type_name) {
                     Some(ty) => self.generate_value_for_schematype(ty, max_depth, u),
                     None => {
                         // must be an entity reference, so treat it how we treat entity references
                         self.generate_value_for_schematype(
-                            &json_schema::Type::Type(json_schema::TypeVariant::Entity {
-                                name: type_name.clone(),
-                            }),
+                            &json_schema::Type::Type {
+                                ty: json_schema::TypeVariant::Entity {
+                                    name: type_name.clone(),
+                                },
+                                loc: type_name.loc().cloned(),
+                            },
                             max_depth,
                             u,
                         )
                     }
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Boolean) => {
-                self.generate_value_for_type(&Type::bool(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Long) => {
-                self.generate_value_for_type(&Type::long(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::String) => {
-                self.generate_value_for_type(&Type::string(), max_depth, u)
-            }
-            json_schema::Type::Type(json_schema::TypeVariant::Set {
-                element: element_ty,
-            }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Boolean,
+                ..
+            } => self.generate_value_for_type(&Type::bool(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Long,
+                ..
+            } => self.generate_value_for_type(&Type::long(), max_depth, u),
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::String,
+                ..
+            } => self.generate_value_for_type(&Type::string(), max_depth, u),
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Set {
+                        element: element_ty,
+                    },
+                ..
+            } => {
                 // the only valid Set-typed attribute value is a set literal
                 if max_depth == 0 {
                     // no recursion allowed: just do the empty set
@@ -2292,12 +2324,14 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::set(l, None))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Record(
-                json_schema::RecordType {
-                    attributes,
-                    additional_attributes,
-                },
-            )) => {
+            json_schema::Type::Type {
+                ty:
+                    json_schema::TypeVariant::Record(json_schema::RecordType {
+                        attributes,
+                        additional_attributes,
+                    }),
+                ..
+            } => {
                 // the only valid Record-typed attribute value is a record literal
                 if max_depth == 0 {
                     // no recursion allowed: quit here
@@ -2341,7 +2375,10 @@ impl<'a> ExprGenerator<'a> {
                     Ok(Value::record(r, None))
                 }
             }
-            json_schema::Type::Type(json_schema::TypeVariant::Entity { name }) => {
+            json_schema::Type::Type {
+                ty: json_schema::TypeVariant::Entity { name },
+                ..
+            } => {
                 // the only valid entity-typed attribute value is a UID literal
 
                 // The namespace for the entity type is the namespace of the
@@ -2524,17 +2561,20 @@ fn record_schematype_with_attr<N>(
     attr_name: SmolStr,
     attr_type: impl Into<json_schema::Type<N>>,
 ) -> json_schema::Type<N> {
-    json_schema::Type::Type(json_schema::TypeVariant::Record(json_schema::RecordType {
-        attributes: [(
-            attr_name,
-            json_schema::TypeOfAttribute {
-                ty: attr_type.into(),
-                required: true,
-                annotations: Annotations::new(),
-            },
-        )]
-        .into_iter()
-        .collect(),
-        additional_attributes: true,
-    }))
+    json_schema::Type::Type {
+        ty: json_schema::TypeVariant::Record(json_schema::RecordType {
+            attributes: [(
+                attr_name,
+                json_schema::TypeOfAttribute {
+                    ty: attr_type.into(),
+                    required: true,
+                    annotations: Annotations::new(),
+                },
+            )]
+            .into_iter()
+            .collect(),
+            additional_attributes: true,
+        }),
+        loc: None,
+    }
 }
