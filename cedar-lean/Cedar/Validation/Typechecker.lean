@@ -219,13 +219,13 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Ex
   | .sub,    .int, .int                     => ok .int
   | .mul,    .int, .int                     => ok .int
   | .contains, .set ty₃, _                  => do
-    let (ty, c) <- ifLubThenBool ty₂.typeOf ty₃
+    let (ty, c) ← ifLubThenBool ty₂.typeOf ty₃
     ok ty c
   | .containsAll, .set ty₃, .set ty₄        => do
-    let (ty, c) <- ifLubThenBool ty₃ ty₄
+    let (ty, c) ← ifLubThenBool ty₃ ty₄
     ok ty c
   | .containsAny, .set ty₃, .set ty₄        => do
-    let (ty, c) <- ifLubThenBool ty₃ ty₄
+    let (ty, c) ← ifLubThenBool ty₃ ty₄
     ok ty c
   | _, _, _                                 => err (.unexpectedType ty₁.typeOf)
 
