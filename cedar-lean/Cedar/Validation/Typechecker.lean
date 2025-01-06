@@ -72,18 +72,19 @@ def typeOfVar (v : Var) (env : Environment) : ResultType :=
   | .context   => ok (.record env.reqty.context)
 
 def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : ResultType :=
-  match (r₁.fst.typeOf, r₁.snd) with
-  | (.bool .tt, c₁) => do
+  let c₁ := r₁.snd
+  match r₁.fst.typeOf with
+  | .bool .tt  => do
     let (ty₂, c₂) ← r₂
     ok ty₂ (c₁ ∪ c₂)
-  | (.bool .ff, _) => r₃
-  | (.bool .anyBool, c₁) => do
+  | .bool .ff => r₃
+  | .bool .anyBool => do
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
     match ty₂.typeOf ⊔ ty₃.typeOf with
     | .some ty => ok (.ite r₁.fst ty₂ ty₃ ty) ((c₁ ∪ c₂) ∩ c₃)
     | .none    => err (.lubErr ty₂.typeOf ty₃.typeOf)
-  | (ty₁, _) => err (.unexpectedType ty₁)
+  | ty₁ => err (.unexpectedType ty₁)
 
 def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   match (r₁.fst.typeOf, r₁.snd) with
