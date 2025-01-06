@@ -278,8 +278,11 @@ impl Equiv for cedar_policy_validator::types::AttributeType {
 impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::Type<N> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         match (lhs, rhs) {
-            (Self::Type(lhs), Self::Type(rhs)) => Equiv::equiv(lhs, rhs),
-            (Self::CommonTypeRef { type_name: lhs }, Self::CommonTypeRef { type_name: rhs }) => {
+            (Self::Type { ty: lhs, .. }, Self::Type { ty: rhs, .. }) => Equiv::equiv(lhs, rhs),
+            (
+                Self::CommonTypeRef { type_name: lhs, .. },
+                Self::CommonTypeRef { type_name: rhs, .. },
+            ) => {
                 if lhs == rhs {
                     Ok(())
                 } else {
@@ -288,9 +291,9 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
                     ))
                 }
             }
-            (Self::Type(tv), Self::CommonTypeRef { type_name })
-            | (Self::CommonTypeRef { type_name }, Self::Type(tv)) => {
-                match tv {
+            (Self::Type { ty, .. }, Self::CommonTypeRef { type_name, .. })
+            | (Self::CommonTypeRef { type_name, .. }, Self::Type { ty, .. }) => {
+                match ty {
                     json_schema::TypeVariant::EntityOrCommon {
                         type_name: tv_type_name,
                     } if type_name == tv_type_name => {
@@ -298,7 +301,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
                         Ok(())
                     }
                     _ => Err(format!(
-                        "Common-type `{type_name}` is not equivalent to non-common-type {tv:?}"
+                        "Common-type `{type_name}` is not equivalent to non-common-type {ty:?}"
                     )),
                 }
             }
