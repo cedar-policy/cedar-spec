@@ -47,12 +47,10 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   rename_i res₁
   simp [typeOfOr] at h₁
   split at h₁ <;> simp [ok, err] at h₁ <;>
-  rename_i hr₁ <;> simp at hr₁ <;>
-  have ⟨ht₁, hc₁⟩ := hr₁
+  rename_i hr₁
   case ok.h_1 c₁  =>
-    exists BoolType.tt, c₁
-    have ⟨ht, hc⟩ := h₁
-    simp [←ht₁, ←hc₁, hc, ←ht, ResultType.typeOf, Except.map]
+    exists BoolType.tt, res₁.snd
+    simp [←h₁, hr₁, ResultType.typeOf, Except.map]
   case ok.h_2 c₁ =>
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
     rename_i res₂
@@ -60,27 +58,25 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     rename_i bty₂ hr₂
     have ⟨ht, hc⟩ := h₁
     subst ht hc
-    exists BoolType.ff, c₁
-    simp [←ht₁, ←hc₁, ResultType.typeOf, Except.map]
-    exists bty₂
-  case ok.h_3 bty₁ c₁ hneq₁ hneq₂ =>
+    exists BoolType.ff, res₁.snd
+    simp [hr₁, hr₂, ResultType.typeOf, Except.map]
+    simp [TypedExpr.typeOf]
+  case ok.h_3 bty₁ hneq₁ hneq₂ =>
     cases bty₁ <;> simp at hneq₁ hneq₂
-    exists BoolType.anyBool, c₁
-    simp [←ht₁, ←hc₁]
+    exists BoolType.anyBool, res₁.snd
+    simp [hr₁]
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁ <;>
     rename_i hr₂ <;>
-    have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [ResultType.typeOf, Except.map]
+    have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [hr₁, ResultType.typeOf, Except.map]
     case anyBool.ok.h_1 =>
       exists BoolType.tt, res₂.snd
     case anyBool.ok.h_2 =>
       exists BoolType.ff, res₂.snd
-      simp [hr₂, ht₁, hc₁]
-      simp [TypedExpr.typeOf]
     case anyBool.ok.h_3 bty₂ hneq₁ hneq₂ =>
       exists bty₂, res₂.snd
-      simp [←hr₂, ←ht₁, ←hc₁, TypedExpr.typeOf]
+      simp [←hr₂, TypedExpr.typeOf]
       cases bty₂ <;> simp at *
 
 theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}

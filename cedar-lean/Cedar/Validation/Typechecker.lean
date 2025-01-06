@@ -101,15 +101,16 @@ def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultTyp
   | ty₁        => err (.unexpectedType ty₁)
 
 def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
-  match (r₁.fst.typeOf, r₁.snd) with
-  | (.bool .tt, _)  => ok r₁.fst
-  | (.bool .ff, _)  => do
+  let c₁ := r₁.snd
+  match r₁.fst.typeOf with
+  | .bool .tt  => ok r₁.fst
+  | .bool .ff  => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
     match ty₂.typeOf with
     | .bool _       => ok ty₂.typeOf c₂
     | _             => err (.unexpectedType ty₂.typeOf)
-  | (.bool _, c₁)    => do
+  | .bool _    => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
     match ty₂.typeOf with
@@ -117,7 +118,7 @@ def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType
     | .bool .ff     => ok (.bool .anyBool) c₁
     | .bool _       => ok (.bool .anyBool) (c₁ ∩ c₂)
     | _             => err (.unexpectedType ty₂.typeOf)
-  | (ty₁, _)        => err (.unexpectedType ty₁)
+  | ty₁        => err (.unexpectedType ty₁)
 
 def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
   let ok := ok ∘ TypedExpr.unaryApp op ty
