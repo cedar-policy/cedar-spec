@@ -47,13 +47,10 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     have ⟨ hl₁, hr₁ ⟩ := h₁
     subst hl₁ hr₁
     exists BoolType.ff, res₁.snd
-    simp only [Prod.mk.injEq] at h₃
     simp [ResultType.typeOf, Except.map, h₃]
-  case ok.h_2 bty₁ c₁ h₃ h₄ =>
-    exists bty₁, c₁
-    simp at h₄
-    have ⟨hty₁, hc₁⟩ := h₄
-    simp [←hty₁, ←hc₁, ResultType.typeOf, Except.map]
+  case ok.h_2 bty₁ h₃ h₄ =>
+    exists bty₁, res₁.snd
+    simp [h₄, ResultType.typeOf, Except.map]
     split ; contradiction
     cases h₄ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₄] at *
     rename_i res₂
@@ -62,12 +59,12 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     case isFalse.ok.h_1 hty₂ =>
       exists BoolType.ff, res₂.snd
     case isFalse.ok.h_2 hty₂ =>
-      exists BoolType.tt, res₂.snd ; simp [←hty₂, hc₁]
+      exists BoolType.tt, res₂.snd ; simp [←hty₂]
       cases bty₁ <;> simp at h₃ <;> simp [lubBool, TypedExpr.typeOf]
     case isFalse.ok.h_3 bty₂ h₄ h₅ hty₂ =>
       exists BoolType.anyBool, res₂.snd
       cases bty₂ <;> simp at *
-      simp [hty₂, hc₁, lubBool]
+      simp [hty₂, lubBool]
       split <;> rename_i h₆
       · simp [h₆, TypedExpr.typeOf]
       · rfl
