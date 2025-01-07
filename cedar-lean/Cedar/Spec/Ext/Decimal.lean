@@ -32,7 +32,7 @@ We restrict the number of the digits after the decimal point to 4.
 
 def DECIMAL_DIGITS : Nat := 4
 
-abbrev Decimal := Int64
+abbrev Decimal := Data.Int64
 
 namespace Decimal
 
