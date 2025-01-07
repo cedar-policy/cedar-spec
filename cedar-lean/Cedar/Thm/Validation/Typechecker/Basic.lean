@@ -76,12 +76,12 @@ def GuardedCapabilitiesInvariant (e: Expr) (c: Capabilities) (request : Request)
   CapabilitiesInvariant c request entities
 
 def TypeOfIsSound (x₁ : Expr) : Prop :=
-  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities},
+  ∀ {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities},
     CapabilitiesInvariant c₁ request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf x₁ c₁ env = Except.ok (ty, c₂) →
     GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
-    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty
+    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty.typeOf
 
 ----- Capability lemmas -----
 
@@ -150,5 +150,18 @@ theorem capability_intersection_invariant {c₁ c₂ : Capabilities} {request : 
     cases h₁ <;> rename_i h₁ <;> apply h₁.left x k <;> assumption
   case right =>
     cases h₁ <;> rename_i h₁ <;> apply h₁.right x k <;> assumption
+
+/--
+A utility which takes a hypothesis with the form `(typeOf x c env).typeOf = Except.ok (ty, c')`
+and splitting it into three new hypotheses `typeOf x c env = Except.ok v✝`, `v✝.fst.typeOf = ty`, and `v✝.snd = c'`.
+-/
+syntax "split_type_of" ident : tactic
+macro_rules
+| `(tactic| split_type_of $h:ident) =>
+  `(tactic|(
+    simp [ResultType.typeOf, Except.map] at $h:ident
+    split at $h:ident <;> simp at $h:ident
+    cases $h:ident
+  ))
 
 end Cedar.Thm

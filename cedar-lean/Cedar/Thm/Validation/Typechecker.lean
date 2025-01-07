@@ -43,12 +43,12 @@ produces a value of the returned type or (2) it returns an error of type
 `entityDoesNotExist`, `extensionError`, or `arithBoundsError`. Both options are
 encoded in the `EvaluatesTo` predicate.
 -/
-theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : CedarType} {request : Request} {entities : Entities} :
+theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (ty, c₂) →
   GuardedCapabilitiesInvariant e c₂ request entities ∧
-  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v ty
+  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v ty.typeOf
 := by
   intro h₁ h₂ h₃
   match e with

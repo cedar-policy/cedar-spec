@@ -126,9 +126,9 @@ def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationErr
   let expr := substituteAction env.reqty.action policy.toExpr
   match typeOf expr ∅ env with
   | .ok (ty, _) =>
-    if ty ⊑ .bool .anyBool
-    then .ok ty
-    else .error (.typeError policy.id (.unexpectedType ty))
+    if ty.typeOf ⊑ .bool .anyBool
+    then .ok ty.typeOf
+    else .error (.typeError policy.id (.unexpectedType ty.typeOf))
   | .error e => .error (.typeError policy.id e)
 
 def allFalse (tys : List CedarType) : Bool :=

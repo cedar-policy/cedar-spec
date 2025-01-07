@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Validation.Types
+import Cedar.Validation.TypedExpr
 import Cedar.Validation.Subtyping
 
 namespace Cedar.Validation
@@ -42,12 +43,16 @@ abbrev Capabilities := List (Expr × Key)
 
 def Capabilities.singleton (e : Expr) (k : Key) : Capabilities := [(e, k)]
 
-abbrev ResultType := Except TypeError (CedarType × Capabilities)
+abbrev ResultType := Except TypeError (TypedExpr × Capabilities)
 
-def ok (ty : CedarType) (c : Capabilities := ∅) : ResultType := .ok (ty, c)
-def err (e : TypeError) : ResultType := .error e
+def ResultType.typeOf : ResultType -> Except TypeError (CedarType × Capabilities) :=
+  Except.map (λ (ty, c) => (ty.typeOf, c))
+
+def ok {α : Type} (ty : α) (c : Capabilities := ∅) : Except TypeError (α × Capabilities) := .ok (ty, c)
+def err {α : Type} (e : TypeError) : Except TypeError (α × Capabilities) := .error e
 
 def typeOfLit (p : Prim) (env : Environment) : ResultType :=
+  let ok := ok ∘ TypedExpr.lit p
   match p with
   | .bool true     => ok (.bool .tt)
   | .bool false    => ok (.bool .ff)
@@ -59,74 +64,83 @@ def typeOfLit (p : Prim) (env : Environment) : ResultType :=
     else err (.unknownEntity uid.ty)
 
 def typeOfVar (v : Var) (env : Environment) : ResultType :=
+  let ok := ok ∘ TypedExpr.var v
   match v with
   | .principal => ok (.entity env.reqty.principal)
   | .action    => ok (.entity env.reqty.action.ty)
   | .resource  => ok (.entity env.reqty.resource)
   | .context   => ok (.record env.reqty.context)
 
-def typeOfIf (r₁ : CedarType × Capabilities) (r₂ r₃ : ResultType) : ResultType :=
-  match r₁ with
-  | (.bool .tt, c₁) => do
+def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : ResultType :=
+  let c₁ := r₁.snd
+  match r₁.fst.typeOf with
+  | .bool .tt  => do
     let (ty₂, c₂) ← r₂
     ok ty₂ (c₁ ∪ c₂)
-  | (.bool .ff, _) => r₃
-  | (.bool .anyBool, c₁) => do
+  | .bool .ff => r₃
+  | .bool .anyBool => do
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
-    match ty₂ ⊔ ty₃ with
-    | .some ty => ok ty ((c₁ ∪ c₂) ∩ c₃)
-    | .none    => err (.lubErr ty₂ ty₃)
-  | (ty₁, _) => err (.unexpectedType ty₁)
+    match ty₂.typeOf ⊔ ty₃.typeOf with
+    | .some ty => ok (.ite r₁.fst ty₂ ty₃ ty) ((c₁ ∪ c₂) ∩ c₃)
+    | .none    => err (.lubErr ty₂.typeOf ty₃.typeOf)
+  | ty₁ => err (.unexpectedType ty₁)
 
-def typeOfAnd (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=
-  match r₁ with
-  | (.bool .ff, _)  => ok (.bool .ff)
-  | (.bool ty₁, c₁) => do
+def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
+  let c₁ := r₁.snd
+  match r₁.fst.typeOf with
+  | .bool .ff  => ok r₁.fst
+  | .bool ty₁  => do
     let (ty₂, c₂) ← r₂
-    match ty₂ with
+    let ok ty (c := ∅) := ok (TypedExpr.and r₁.fst ty₂ ty) c
+    match ty₂.typeOf with
     | .bool .ff     => ok (.bool .ff)
     | .bool .tt     => ok (.bool ty₁) (c₁ ∪ c₂)
     | .bool _       => ok (.bool .anyBool) (c₁ ∪ c₂)
-    | _             => err (.unexpectedType ty₂)
-  | (ty₁, _)        => err (.unexpectedType ty₁)
+    | _             => err (.unexpectedType ty₂.typeOf)
+  | ty₁        => err (.unexpectedType ty₁)
 
-def typeOfOr (r₁ : CedarType × Capabilities) (r₂ : ResultType) : ResultType :=
-  match r₁ with
-  | (.bool .tt, _)  => ok (.bool .tt)
-  | (.bool .ff, _)  => do
+def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
+  let c₁ := r₁.snd
+  match r₁.fst.typeOf with
+  | .bool .tt  => ok r₁.fst
+  | .bool .ff  => do
     let (ty₂, c₂) ← r₂
-    match ty₂ with
-    | .bool _       => ok ty₂ c₂
-    | _             => err (.unexpectedType ty₂)
-  | (.bool _, c₁)   => do
+    let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
+    match ty₂.typeOf with
+    | .bool _       => ok ty₂.typeOf c₂
+    | _             => err (.unexpectedType ty₂.typeOf)
+  | .bool _    => do
     let (ty₂, c₂) ← r₂
-    match ty₂ with
+    let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
+    match ty₂.typeOf with
     | .bool .tt     => ok (.bool .tt)
     | .bool .ff     => ok (.bool .anyBool) c₁
     | .bool _       => ok (.bool .anyBool) (c₁ ∩ c₂)
-    | _             => err (.unexpectedType ty₂)
-  | (ty₁, _)        => err (.unexpectedType ty₁)
+    | _             => err (.unexpectedType ty₂.typeOf)
+  | ty₁        => err (.unexpectedType ty₁)
 
-def typeOfUnaryApp (op : UnaryOp) (ty : CedarType) : ResultType :=
-  match op, ty with
+def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
+  let ok := ok ∘ TypedExpr.unaryApp op ty
+  match op, ty.typeOf with
   | .not, .bool x          => ok (.bool x.not)
   | .neg, .int             => ok .int
   | .isEmpty, .set _       => ok (.bool .anyBool)
   | .like _, .string       => ok (.bool .anyBool)
   | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
-  | _, _                   => err (.unexpectedType ty)
+  | _, _                   => err (.unexpectedType ty.typeOf)
 
-def typeOfEq (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) : ResultType :=
+def typeOfEq (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) : ResultType :=
+  let ok := ok ∘ TypedExpr.binaryApp .eq ty₁ ty₂
   match x₁, x₂ with
   | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
   | _, _ =>
-    match ty₁ ⊔ ty₂ with
+    match ty₁.typeOf ⊔ ty₂.typeOf with
     | .some _ => ok (.bool .anyBool)
     | .none   =>
-    match ty₁, ty₂ with
+    match ty₁.typeOf, ty₂.typeOf with
     | .entity _, .entity _ => ok (.bool .ff)
-    | _, _                 => err (.lubErr ty₁ ty₂)
+    | _, _                 => err (.lubErr ty₁.typeOf ty₂.typeOf)
 
 def entityUID? : Expr → Option EntityUID
   | .lit (.entityUID uid) => .some uid
@@ -167,7 +181,7 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
     then .anyBool
     else .ff
 
-def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities)  :=
   match env.ets.tags? ety with
   | .some .none     => ok (.bool .ff)
   | .some (.some _) =>
@@ -179,35 +193,46 @@ def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (en
     then ok (.bool .ff) -- action tags not allowed
     else err (.unknownEntity ety)
 
-def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+def typeOfGetTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (env : Environment) : Except TypeError (CedarType × Capabilities) :=
   match env.ets.tags? ety with
   | .some .none      => err (.tagNotFound ety t)
   | .some (.some ty) => if (x, .tag t) ∈ c then ok ty else err (.tagNotFound ety t)
   | .none            => err (.unknownEntity ety)
 
-def ifLubThenBool (ty₁ ty₂ : CedarType) : ResultType :=
+def ifLubThenBool (ty₁ ty₂ : CedarType) : Except TypeError (CedarType × Capabilities) :=
   match ty₁ ⊔ ty₂ with
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
-def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : CedarType) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
-  match op₂, ty₁, ty₂ with
+def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
+  let ok ty (c := ∅) := ok (TypedExpr.binaryApp op₂ ty₁ ty₂ ty) c
+  match op₂, ty₁.typeOf, ty₂.typeOf with
   | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
   | .mem, .entity ety₁, .entity ety₂        => ok (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
   | .mem, .entity ety₁, .set (.entity ety₂) => ok (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
-  | .hasTag, .entity ety₁, .string          => typeOfHasTag ety₁ x₁ x₂ c env
-  | .getTag, .entity ety₁, .string          => typeOfGetTag ety₁ x₁ x₂ c env
+  | .hasTag, .entity ety₁, .string          => do
+    let (ty, c) ← typeOfHasTag ety₁ x₁ x₂ c env
+    ok ty c
+  | .getTag, .entity ety₁, .string          => do
+    let (ty, c) ← typeOfGetTag ety₁ x₁ x₂ c env
+    ok ty c
   | .less,   .int, .int                     => ok (.bool .anyBool)
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
   | .add,    .int, .int                     => ok .int
   | .sub,    .int, .int                     => ok .int
   | .mul,    .int, .int                     => ok .int
-  | .contains, .set ty₃, _                  => ifLubThenBool ty₂ ty₃
-  | .containsAll, .set ty₃, .set ty₄        => ifLubThenBool ty₃ ty₄
-  | .containsAny, .set ty₃, .set ty₄        => ifLubThenBool ty₃ ty₄
-  | _, _, _                                 => err (.unexpectedType ty₁)
+  | .contains, .set ty₃, _                  => do
+    let (ty, c) ← ifLubThenBool ty₂.typeOf ty₃
+    ok ty c
+  | .containsAll, .set ty₃, .set ty₄        => do
+    let (ty, c) ← ifLubThenBool ty₃ ty₄
+    ok ty c
+  | .containsAny, .set ty₃, .set ty₄        => do
+    let (ty, c) ← ifLubThenBool ty₃ ty₄
+    ok ty c
+  | _, _, _                                 => err (.unexpectedType ty₁.typeOf)
 
-def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) (knownToExist : Bool) : ResultType :=
+def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) (knownToExist : Bool) : Except TypeError (CedarType × Capabilities) :=
   match rty.find? a with
   | .some qty =>
     if (x, .attr a) ∈ c || (qty.isRequired && knownToExist)
@@ -215,48 +240,55 @@ def hasAttrInRecord (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) 
     else ok (.bool .anyBool) (Capabilities.singleton x (.attr a))
   | .none     => ok (.bool .ff)
 
-def typeOfHasAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
-  match ty with
-  | .record rty => hasAttrInRecord rty x a c true
+def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
+  let ok ty₂ (c := ∅) := ok (TypedExpr.hasAttr  ty a ty₂) c
+  match ty.typeOf with
+  | .record rty => do
+    let (ty', c) ← hasAttrInRecord rty x a c true
+    ok ty' c
   | .entity ety =>
     match env.ets.attrs? ety with
-    | .some rty => hasAttrInRecord rty x a c false
+    | .some rty => do
+      let (ty', c) ← hasAttrInRecord rty x a c false
+      ok ty' c
     | .none     =>
       if actionType? ety env.acts
       then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
-  | _           => err (.unexpectedType ty)
+  | _           => err (.unexpectedType ty.typeOf)
 
-def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : ResultType :=
+def getAttrInRecord (ty : CedarType) (rty : RecordType) (x : Expr) (a : Attr) (c : Capabilities) : Except TypeError (CedarType × Capabilities)  :=
   match rty.find? a with
   | .some (.required aty) => ok aty
   | .some (.optional aty) => if (x, .attr a) ∈ c then ok aty else err (.attrNotFound ty a)
   | .none                 => err (.attrNotFound ty a)
 
-def typeOfGetAttr (ty : CedarType) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
-  match ty with
-  | .record rty => getAttrInRecord ty rty x a c
+def typeOfGetAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env : Environment) : ResultType :=
+  let ok ty₂ (c := ∅) := ok (TypedExpr.getAttr ty a ty₂) c
+  match ty.typeOf with
+  | .record rty => do
+    let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
+    ok ty' c
   | .entity ety =>
     match env.ets.attrs? ety with
-    | .some rty => getAttrInRecord ty rty x a c
+    | .some rty => do
+      let (ty', c) ← getAttrInRecord ty.typeOf rty x a c
+      ok ty' c
     | .none     => err (.unknownEntity ety)
-  | _           => err (.unexpectedType ty)
+  | _           => err (.unexpectedType ty.typeOf)
 
-def typeOfSet (tys : List CedarType) : ResultType :=
+def typeOfSet (tys : List TypedExpr) : ResultType :=
   match tys with
   | []       => err .emptySetErr
   | hd :: tl =>
-    match tl.foldlM lub? hd with
-    | .some ty => ok (.set ty)
-    | .none    => err (.incompatibleSetTypes tys)
+    match (tl.map TypedExpr.typeOf).foldlM lub? hd.typeOf with
+    | .some ty => ok (.set tys (.set ty))
+    | .none    => err (.incompatibleSetTypes (hd.typeOf :: tl.map TypedExpr.typeOf))
 
-def justType (r : ResultType) : Except TypeError CedarType :=
+def justType (r : ResultType) : Except TypeError TypedExpr :=
   r.map Prod.fst
 
-def requiredAttr (a : Attr) (r : ResultType) : Except TypeError (Attr × QualifiedType) :=
-  r.map λ (ty, _) => (a, .required ty)
-
-def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarType) : ResultType :=
+def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarType) : Except TypeError (CedarType × Capabilities) :=
   match xs with
   | [.lit (.string s)] =>
     match (mk s) with
@@ -264,10 +296,15 @@ def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarTy
     | .none   => err (.extensionErr xs)
   | _ => err (.extensionErr xs)
 
-def typeOfCall (xfn : ExtFun) (tys : List CedarType) (xs : List Expr) : ResultType :=
-  match xfn, tys with
-  | .decimal, _  => typeOfConstructor Cedar.Spec.Ext.Decimal.decimal xs (.ext .decimal)
-  | .ip, _       => typeOfConstructor Cedar.Spec.Ext.IPAddr.ip xs (.ext .ipAddr)
+def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultType :=
+  let ok ty (c := ∅) := ok (TypedExpr.call xfn tys ty) c
+  match xfn, tys.map TypedExpr.typeOf with
+  | .decimal, _  => do
+    let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Decimal.decimal xs (.ext .decimal)
+    ok ty c
+  | .ip, _       => do
+    let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.IPAddr.ip xs (.ext .ipAddr)
+    ok ty c
   | .lessThan, [.ext .decimal, .ext .decimal]           => ok (.bool .anyBool)
   | .lessThanOrEqual, [.ext .decimal, .ext .decimal]    => ok (.bool .anyBool)
   | .greaterThan, [.ext .decimal, .ext .decimal]        => ok (.bool .anyBool)
@@ -313,8 +350,8 @@ def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
     let tys ← xs.mapM₁ (λ ⟨x₁, _⟩ => justType (typeOf x₁ c env))
     typeOfSet tys
   | .record axs => do
-    let atys ← axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => requiredAttr a₁ (typeOf x₁ c env))
-    ok (.record (Map.make atys))
+    let atys ← axs.mapM₂ (λ ⟨(a₁, x₁), _⟩ => (typeOf x₁ c env).map (λ (ty, _) => (a₁, ty)))
+    ok (.record atys (.record (Map.make (atys.map (λ (a, ty) => (a, .required ty.typeOf))))))
   | .call xfn xs => do
     let tys ← xs.mapM₁ (λ ⟨x₁, _⟩ => justType (typeOf x₁ c env))
     typeOfCall xfn tys xs
