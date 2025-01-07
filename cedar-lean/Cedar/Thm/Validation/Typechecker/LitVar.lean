@@ -26,10 +26,10 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
-  (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (e', c₂)) :
+theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v e'.typeOf
+  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v ty.typeOf
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfLit] at h₃
@@ -39,7 +39,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   simp at h₃
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
-    subst c₂ e'
+    subst c₂ ty
     apply And.intro empty_guarded_capabilities_invariant
     first |
       exact true_is_instance_of_tt |
