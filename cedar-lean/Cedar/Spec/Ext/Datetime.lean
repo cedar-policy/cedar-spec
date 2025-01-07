@@ -38,7 +38,7 @@ open Cedar.Data
 
   A duration may be negative. Negative duration strings must begin with `-`.
 -/
-abbrev Duration := Int64
+abbrev Duration := Data.Int64
 
 namespace Datetime
 
