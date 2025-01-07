@@ -18,7 +18,7 @@ import Cedar.Spec
 import Cedar.Spec.Authorizer
 import Cedar.Thm.Authorization.Slicing
 import Cedar.Thm.Authorization.Evaluator
-import Cedar.Thm.Data.LT
+import Cedar.Thm.Data
 import Cedar.Thm.Validation.Typechecker.BinaryApp -- mapM'_asEntityUID_eq_entities
 
 /-!
@@ -181,12 +181,12 @@ theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (reque
     intro pid p h₁ h₂
     exists p
     unfold errored hasError at h₂
-    split at h₂ <;> rename_i h₃
-    · unfold hasError
-      apply And.intro
-      · simp [h₃, h₁, List.mem_filter]
-      · simp at h₂; exact h₂
-    · contradiction
+    split at h₂ <;>
+    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq, Option.some.injEq] at h₂ <;>
+    rename_i h₃
+    unfold hasError
+    apply And.intro _ h₂
+    simp only [h₁, h₃, and_self]
   case right =>
     intro pid p h₁ h₂ h₃
     exists p
