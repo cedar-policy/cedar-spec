@@ -156,7 +156,7 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
   where
     makeEntitySchemaEntries ty :=
       let entriesWithType := actionSchemaEntities.filter (λ k _ => k.ty == ty)
-      let allAncestorsForType := List.join (entriesWithType.values.map (λ edt =>
+      let allAncestorsForType := List.flatten (entriesWithType.values.map (λ edt =>
         edt.ancestors.elts.map (·.ty) ))
       let ese : EntitySchemaEntry := {
         ancestors := Set.make allAncestorsForType,
