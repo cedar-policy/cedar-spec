@@ -1,12 +1,36 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
 
 import Cedar.Spec
 import Cedar.Validation.Types
+
+/-!
+This file defines a type annotated version of the Cedar AST
+-/
 
 namespace Cedar.Validation
 
 open Cedar.Data
 open Cedar.Spec
 
+/--
+A type annotated Cedar AST. This should have exactly the same variants as the
+unannotated `Expr` data type, but each variant carries an additional `ty` that
+stores the type of the expression.
+-/
 inductive TypedExpr where
   | lit (p : Prim) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
