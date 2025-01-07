@@ -175,7 +175,7 @@ theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr
     split at h₁ <;> try { contradiction }
     all_goals {
       simp [ok] at h₁
-      obtain ⟨ h₁ₗ, h₁ᵣ ⟩ := h₁
+      have ⟨ h₁ₗ, h₁ᵣ ⟩ := h₁
       subst h₁ₗ h₁ᵣ
       simp only [List.empty_eq, true_and, TypedExpr.typeOf]
       rename_i h₃
@@ -184,7 +184,7 @@ theorem type_of_call_decimal_comparator_inversion {xfn : ExtFun} {xs : List Expr
       cases tys <;> try simp at h₃
       rename_i tys
       cases tys <;> try simp at h₃
-      obtain ⟨ h₃ₗ, h₃ᵣ ⟩ := h₃
+      have ⟨ h₃ₗ, h₃ᵣ ⟩ := h₃
       rw (config := {occs := .pos [1]}) [←h₃ₗ]
       rw [←h₃ᵣ]
       apply typeOf_of_binary_call_inversion h₂
@@ -259,7 +259,7 @@ theorem type_of_call_isInRange_inversion {xs : List Expr} {c c' : Capabilities} 
     cases tys <;> try simp at h₃
     rename_i tys
     cases tys <;> try simp at h₃
-    obtain ⟨ h₃ₗ, h₃ᵣ ⟩ := h₃
+    have ⟨ h₃ₗ, h₃ᵣ ⟩ := h₃
     rw (config := {occs := .pos [1]}) [←h₃ₗ]
     rw [←h₃ᵣ]
     apply typeOf_of_binary_call_inversion h₂
