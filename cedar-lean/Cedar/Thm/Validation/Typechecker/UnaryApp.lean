@@ -60,9 +60,9 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
 := by
   have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
   subst h₅; rw [h₆]
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   apply And.intro empty_guarded_capabilities_invariant
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄ -- IH
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
   rw [hl₄] at h₇
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
@@ -117,8 +117,8 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_neg_inversion h₃
   subst h₅; rw [h₆]
   apply And.intro empty_guarded_capabilities_invariant
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄ -- IH
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
@@ -167,8 +167,8 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
   subst h₅; rw [h₆]
   apply And.intro empty_guarded_capabilities_invariant
   replace ⟨ty₀, h₄⟩ := h₄
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄
   simp [EvaluatesTo, evaluate] at *
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
   case inr.inr.inr =>
@@ -210,8 +210,8 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_like_inversion h₃
   subst h₅; rw [h₆]
   apply And.intro empty_guarded_capabilities_invariant
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄ -- IH
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
@@ -259,8 +259,8 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
   have ⟨h₅, ety', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
   subst h₅; rw [h₆]
   apply And.intro empty_guarded_capabilities_invariant
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄ -- IH
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]

@@ -81,16 +81,16 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   have ⟨r, h₆⟩ := instance_of_record_type_is_record h₅
   subst h₆
   simp [getAttr, attrsOf, Map.findOrErr]
-  split_type_of h₃ ; rename_i heq hl₃ hr₃
+  split_type_of h₃ ; rename_i h₃ hl₃ hr₃
   simp only [typeOf, hl₃, hr₃, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok, bind, Except.bind] at h₂
   cases h₈ : Map.find? r a
   case none =>
     simp only [Except.error.injEq, reduceCtorEq, or_self, false_and, exists_const]
     split at h₂ <;> simp [ok, err] at h₂
-    rename_i heq₁
-    rw [heq] at heq₁
-    simp at heq₁
-    subst heq₁
+    rename_i heq
+    rw [h₃] at heq
+    simp at heq
+    subst heq
     simp only [hl₃] at h₂
     split at h₂ <;> simp at h₂
     rename_i h₆
@@ -108,10 +108,10 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   case some vₐ =>
     simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
     split at h₂ <;> simp [ok, err] at h₂
-    rename_i h₃
-    rw [h₃] at heq
-    simp at heq
-    subst heq
+    rename_i h₆
+    rw [h₆] at h₃
+    simp at h₃
+    subst h₃
     simp only [hl₃] at h₂
     split at h₂ <;> simp at h₂
     rename_i h₃
@@ -145,9 +145,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   have ⟨uid, h₇, h₈⟩ := instance_of_entity_type_is_entity h₆
   subst h₈
   simp [getAttr, attrsOf, Entities.attrs, Map.findOrErr]
-  simp [ResultType.typeOf, Except.map] at h₄
-  split at h₄ <;> simp at h₄
-  rename_i h₄₁
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   cases h₈ : Map.find? entities uid
   case none =>
     simp only [Except.bind_err, Except.error.injEq, or_self, or_false, true_and, reduceCtorEq]
@@ -158,7 +156,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     cases h₉ : Map.find? d.attrs a
     case none =>
       simp only [Except.error.injEq, or_self, false_and, exists_const]
-      simp only [typeOf, h₄, h₄₁, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok, bind, Except.bind] at h₃
+      simp only [typeOf, h₄, hl₄, typeOfGetAttr, getAttrInRecord, List.empty_eq, Except.bind_ok, bind, Except.bind] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       rename_i h₃₁
       split at h₃ <;> try simp at h₃
@@ -176,7 +174,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
         simp [h₉] at h₁₄
     case some vₐ =>
       simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
-      simp [typeOf, h₄, h₄₁, typeOfGetAttr, getAttrInRecord, bind, Except.bind] at h₃
+      simp [typeOf, h₄, hl₄, typeOfGetAttr, getAttrInRecord, bind, Except.bind] at h₃
       split at h₃ <;> simp [ok, err] at h₃
       rename_i h₃₁
       split at h₃ <;> try simp at h₃
@@ -206,17 +204,16 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   subst h₅
   apply And.intro empty_guarded_capabilities_invariant
   rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
-  simp [ResultType.typeOf, Except.map] at h₄ <;>
-  split at h₄ <;> simp at h₄ <;>
-  have ⟨ hl₄, _ ⟩ := h₄ <;>
-  rename_i h'₄ _ <;>
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄  <;>
+  split_type_of h₄ <;> rename_i h₄ hl₄ hr₄ <;>
+  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄  <;>
   simp [EvaluatesTo] at h₆ <;>
   simp [EvaluatesTo, evaluate] <;>
   rw [hl₄] at h₇ <;>
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
   <;> try exact type_is_inhabited ty.typeOf
-  · exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ (by simp [h'₄, ResultType.typeOf, Except.map]; exact h₄) h₆ h₇
-  · exact type_of_getAttr_is_sound_for_records h₁ h₃ (by simp [h'₄, ResultType.typeOf, Except.map]; exact h₄) h₆ h₇
+  · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁')  := by simp [h₄, hl₄, ResultType.typeOf, Except.map]; exact hr₄
+    exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
+  · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁')  := by simp [h₄, hl₄, ResultType.typeOf, Except.map]; exact hr₄
+    exact type_of_getAttr_is_sound_for_records h₁ h₃ h₈ h₆ h₇
 
 end Cedar.Thm

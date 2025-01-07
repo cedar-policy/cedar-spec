@@ -51,8 +51,8 @@ theorem typecheck_is_sound (policy : Policy) (env : Environment) (t : CedarType)
   split at h₂ <;> simp at h₂
   rename_i ht
   have hc := empty_capabilities_invariant request entities
-  split_type_of h₃ ; rename_i h'₃
-  have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h'₃
+  split_type_of h₃ ; rename_i h₃
+  have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
   simp at h₂
   rw [h₂] at ht h₅
   have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v t h₅ ht

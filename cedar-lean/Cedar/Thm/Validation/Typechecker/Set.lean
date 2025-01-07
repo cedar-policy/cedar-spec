@@ -200,9 +200,9 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
     have h₄ := h₄ hd
     simp only [h₆, List.mem_cons, true_or, forall_const] at h₄
     have ⟨tyᵢ, cᵢ, h₇, _⟩ := h₄
-    split_type_of h₇ ; rename_i h'₇ hl₇ _
+    split_type_of h₇ ; rename_i h₇ hl₇ _
     have h₉ := ih hd ; simp [h₆, TypeOfIsSound] at h₉
-    specialize (h₉ h₁ h₂ h'₇) ; have ⟨_, v, h₉⟩ := h₉
+    specialize (h₉ h₁ h₂ h₇) ; have ⟨_, v, h₉⟩ := h₉
     simp [EvaluatesTo] at h₉
     have ⟨h₉, _⟩ := h₉
     rcases h₉ with h₉ | h₉ | h₉ | h₉ <;>
@@ -249,8 +249,8 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
       have ⟨tyᵢ, cᵢ, h₃, h₆⟩ := h₃
       specialize ih hd
       simp [TypeOfIsSound] at ih
-      split_type_of h₃ ; rename_i h'₃ hl₃ _
-      specialize ih h₁ h₂ h'₃
+      split_type_of h₃ ; rename_i h₃ hl₃ _
+      specialize ih h₁ h₂ h₃
       have ⟨_, v', ihl, ihr⟩ := ih
       simp [EvaluatesTo] at ihl
       rcases ihl with ihl | ihl | ihl | ihl <;>

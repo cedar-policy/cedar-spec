@@ -67,10 +67,8 @@ theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
   have ⟨r, h₅⟩ := instance_of_record_type_is_record h₅
   subst h₅
   simp [hasAttr, attrsOf]
-  simp [ResultType.typeOf, Except.map] at h₃
-  split at h₃ <;> simp at h₃
-  rename_i heq
-  simp [typeOf, heq, h₃, typeOfHasAttr, hasAttrInRecord] at h₂
+  split_type_of h₃ ; rename_i h₃ hl₃ _
+  simp [typeOf, hl₃, h₃, typeOfHasAttr, hasAttrInRecord] at h₂
   split at h₂
   case h_1 =>
     split at h₂ <;> simp [ok] at h₂ <;>
@@ -118,10 +116,8 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   have ⟨uid, h₆, h₇⟩ := instance_of_entity_type_is_entity h₆
   subst h₆ h₇
   simp [hasAttr, attrsOf]
-  simp only [ResultType.typeOf, Except.map] at h₄
-  split at h₄ <;> try simp at h₄
-  rename_i h_eq
-  simp [typeOf, h₄, typeOfHasAttr, h_eq] at h₃
+  split_type_of h₄ ; rename_i h₄ hl₄ _
+  simp [typeOf, h₄, hl₄, typeOfHasAttr] at h₃
   split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
   rename_i _ rty h₇
   split at h₃
@@ -189,18 +185,17 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo, h₆]
   case right =>
     rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
-    simp [ResultType.typeOf, Except.map] at h₄ <;>
-    split at h₄ <;> simp at h₄ <;>
-    have ⟨ hl₄, _ ⟩ := h₄ <;>
-    rename_i h'₄ _ <;>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h'₄  <;>
+    split_type_of h₄ <;> rename_i h₄ hl₄ hr₄ <;>
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄  <;>
     simp [EvaluatesTo] at h₆ <;>
     simp [EvaluatesTo, evaluate] <;>
     rw [hl₄] at h₇ <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
     <;> try exact type_is_inhabited ty.typeOf
-    · exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ (by simp [h'₄, ResultType.typeOf, Except.map]; exact h₄) h₆ h₇
-    · exact type_of_hasAttr_is_sound_for_records h₁ h₃ (by simp [h'₄, ResultType.typeOf, Except.map]; exact h₄) h₆ h₇
+    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hl₄, hr₄, ResultType.typeOf, Except.map]
+      exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
+    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hl₄, hr₄, ResultType.typeOf, Except.map]
+      exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₈ h₆ h₇
 
 
 end Cedar.Thm

@@ -83,11 +83,10 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
   ∃ v, EvaluatesTo (Expr.ite x₁ x₂ x₃) request entities v ∧ InstanceOfType v ty.typeOf
 := by
   have ⟨bty₁, rc₁, ty₂, rc₂, ty₃, rc₃, h₄, h₅⟩ := type_of_ite_inversion h₃
-  simp [ResultType.typeOf, Except.map] at h₄
-  split at h₄ <;> simp at h₄
-  specialize ih₁ h₁ h₂ (by rename_i h₆ ; rw [h₆])
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  specialize ih₁ h₁ h₂ h₄
   have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
-  simp [h₄] at ih₁₃
+  simp [hl₄] at ih₁₃
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃
   subst hb₁
   cases bty₁ <;> simp at h₅
@@ -117,7 +116,6 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
       try exact type_is_inhabited ty.typeOf
       simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
       have h₇ := capability_union_invariant h₁ ih₁₁
-      cases h₄
       subst rc₁
       specialize ih₂ h₇ h₂ h₅
       have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
@@ -143,7 +141,6 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     simp at hb₁ ; subst hb₁ ; simp only [ite_true]
     simp [GuardedCapabilitiesInvariant, ih₁₂] at ih₁₁
     have h₆ := capability_union_invariant h₁ ih₁₁
-    cases h₄
     subst rc₁
     specialize ih₂ h₆ h₂ h₅
     have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂

@@ -151,6 +151,10 @@ theorem capability_intersection_invariant {c₁ c₂ : Capabilities} {request : 
   case right =>
     cases h₁ <;> rename_i h₁ <;> apply h₁.right x k <;> assumption
 
+/--
+A utility which takes a hypothesis with the form `(typeOf x c env).typeOf = Except.ok (ty, c')`
+and splitting it into three new hypotheses `typeOf x c env = Except.ok v✝`, `v✝.fst.typeOf = ty`, and `v✝.snd = c'`.
+-/
 syntax "split_type_of" ident : tactic
 macro_rules
 | `(tactic| split_type_of $h:ident) =>

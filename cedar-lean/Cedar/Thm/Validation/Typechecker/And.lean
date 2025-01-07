@@ -79,8 +79,8 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   ∃ v, EvaluatesTo (Expr.and x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
 := by
   have ⟨bty₁, rc₁, h₄, h₅⟩ := type_of_and_inversion h₃
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  specialize ih₁ h₁ h₂ h'₄
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  specialize ih₁ h₁ h₂ h₄
   have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
   rw [hl₄] at ih₁₃
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃
@@ -115,9 +115,9 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         simp [GuardedCapabilitiesInvariant] at ih₁₁
         specialize ih₁₁ ih₁₂
         have h₇ := capability_union_invariant h₁ ih₁₁
-        split_type_of hₜ ; rename_i h'ₜ hlₜ hrₜ
+        split_type_of hₜ ; rename_i hₜ hlₜ hrₜ
         subst hr₄
-        specialize ih₂ h₇ h₂ h'ₜ
+        specialize ih₂ h₇ h₂ hₜ
         have ⟨_, v₂, ih₂₂, ih₂₃⟩ := ih₂
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
@@ -140,10 +140,10 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
         simp [GuardedCapabilitiesInvariant] at ih₁₁
         specialize ih₁₁ ih₁₂
-        split_type_of hₜ ; rename_i h'ₜ hlₜ hrₜ
+        split_type_of hₜ ; rename_i hₜ hlₜ hrₜ
         subst hr₄
         have h₇ := capability_union_invariant h₁ ih₁₁
-        specialize ih₂ h₇ h₂ h'ₜ
+        specialize ih₂ h₇ h₂ hₜ
         have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>

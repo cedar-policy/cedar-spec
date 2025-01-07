@@ -178,8 +178,8 @@ theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capa
 := by
   simp [TypeOfIsSound] at h₁
   have ⟨ty', c', h₄, h₆⟩ := h₄ ; subst h₄
-  split_type_of h₆ ; rename_i h'₆ hl₆ hr₆
-  specialize h₁ h₂ h₃ h'₆
+  split_type_of h₆ ; rename_i h₆ hl₆ hr₆
+  specialize h₁ h₂ h₃ h₆
   have ⟨_, v, h₁, h₇⟩ := h₁
   simp [bindAttr] at h₅
   cases h₈ : evaluate xhd.snd request entities <;> simp [h₈] at h₅
@@ -254,8 +254,8 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       specialize ih hd
       simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih
       have ⟨ty', c', _, hh₃⟩ := hh₃
-      split_type_of hh₃ ; rename_i hh'₃ hhl₃ hhr₃
-      specialize ih h₁ h₂ hh'₃
+      split_type_of hh₃ ; rename_i hh₃ hhl₃ hhr₃
+      specialize ih h₁ h₂ hh₃
       have ⟨_, v, ih, _⟩ := ih
       simp [EvaluatesTo, h₆] at ih
       exact ih

@@ -195,10 +195,10 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
   apply And.intro empty_guarded_capabilities_invariant
   replace ⟨c₁', ht₁⟩ := ht₁
   replace ⟨c₂', ht₂⟩ := ht₂
-  split_type_of ht₁ ; rename_i ht'₁ htl₁ htr₁
-  split_type_of ht₂ ; rename_i ht'₂ htl₂ htr₂
-  specialize ih₁ h₁ h₂ ht'₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-  specialize ih₂ h₁ h₂ ht'₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
+  split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
@@ -259,10 +259,10 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   apply And.intro empty_guarded_capabilities_invariant
   replace ⟨c₁', ht₁⟩ := ht₁
   replace ⟨c₂', ht₂⟩ := ht₂
-  split_type_of ht₁ ; rename_i ht'₁ htl₁ htr₁
-  split_type_of ht₂ ; rename_i ht'₂ htl₂ htr₂
-  specialize ih₁ h₁ h₂ ht'₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-  specialize ih₂ h₁ h₂ ht'₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
+  split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
@@ -328,10 +328,10 @@ theorem type_of_contains_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} 
   apply And.intro empty_guarded_capabilities_invariant
   replace ⟨c₁', ht₁⟩ := ht₁
   replace ⟨c₂', ht₂⟩ := ht₂
-  split_type_of ht₁ ; rename_i ht'₁ htl₁ htr₁
-  split_type_of ht₂ ; rename_i ht'₂ htl₂ htr₂
-  specialize ih₁ h₁ h₂ ht'₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-  specialize ih₂ h₁ h₂ ht'₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
+  split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
@@ -390,10 +390,10 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   apply And.intro empty_guarded_capabilities_invariant
   replace ⟨c₁', ht₁⟩ := ht₁
   replace ⟨c₂', ht₂⟩ := ht₂
-  split_type_of ht₁ ; rename_i ht'₁ htl₁ htr₁
-  split_type_of ht₂ ; rename_i ht'₂ htl₂ htr₂
-  specialize ih₁ h₁ h₂ ht'₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-  specialize ih₂ h₁ h₂ ht'₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+  split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
+  split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
+  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
@@ -534,10 +534,10 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
     InstanceOfType v (CedarType.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
 := by
-  split_type_of h₃ ; rename_i h'₃ hl₃ hr₃
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h'₃
-  have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h'₄
+  split_type_of h₃ ; rename_i h₃ hl₃ hr₃
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h₃
+  have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp [EvaluatesTo] at *
   simp [evaluate]
   cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
@@ -774,10 +774,10 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
     InstanceOfType v (CedarType.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
 := by
-  split_type_of h₃ ; rename_i h'₃ hl₃ hr₃
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h'₃
-  have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h'₄
+  split_type_of h₃ ; rename_i h₃ hl₃ hr₃
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨_, v₁, hev₁, hty₁⟩ := ih₁ h₁ h₂ h₃
+  have ⟨_, v₂, hev₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp only [EvaluatesTo] at *
   simp only [evaluate]
   cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
@@ -955,10 +955,10 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
 := by
   replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  split_type_of h₅ ; rename_i h'₅ hl₅ hr₅
-  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h'₄
-  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h'₅
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  split_type_of h₅ ; rename_i h₅ hl₅ hr₅
+  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₄
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₅
   simp only [EvaluatesTo] at *
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
@@ -1016,8 +1016,8 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   cases tyc₂
   rename_i ty₁ c₁' ty₂ c₂'
   simp only at h₁
-  cases h₄ : ty₁.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₄, ResultType.typeOf, Except.map] at h₁
-  cases h₅ : ty₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅, ResultType.typeOf, Except.map] at h₁
+  cases h₄ : ty₁.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₄] at h₁
+  cases h₅ : ty₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅] at h₁
   rename_i ety
   simp only [typeOfGetTag, List.empty_eq] at h₁
   split at h₁ <;> simp only [ok, err, Except.bind_err, reduceCtorEq] at h₁
@@ -1041,10 +1041,10 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
 := by
   replace ⟨hc, ety, c₁', c₂', h₃, h₄, h₅, h₆⟩ := type_of_getTag_inversion h₃
   subst hc
-  split_type_of h₃ ; rename_i h'₃ hl₃ hr₃
-  split_type_of h₄ ; rename_i h'₄ hl₄ hr₄
-  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h'₃
-  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h'₄
+  split_type_of h₃ ; rename_i h₃ hl₃ hr₃
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₄
   simp only [EvaluatesTo] at *
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
