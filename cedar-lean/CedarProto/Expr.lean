@@ -87,7 +87,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Prim) := do
       let x : Bool ← Field.guardedParse t
       pure (merge_bool · x)
     | 2 =>
-      let x : Int64 ← Field.guardedParse t
+      let x : Proto.Int64 ← Field.guardedParse t
       pure (merge_int · x)
     | 3 =>
       let x : String ← Field.guardedParse t

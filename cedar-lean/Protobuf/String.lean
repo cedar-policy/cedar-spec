@@ -18,6 +18,7 @@ import Protobuf.BParsec
 import Protobuf.Field
 import Protobuf.Structures
 import Protobuf.WireType
+import Batteries.Data.UInt
 
 /-!
 Decode UTF-8 encoded strings with ByteArray Parser Combinators
@@ -37,7 +38,7 @@ def utf8DecodeChar : BParsec Char := do
   | none => throw "Not enough bytes for UTF8 Char"
   | some c₀ =>
   if c₀ &&& 0x80 == 0 then
-    pure ⟨c₀.toUInt32, .inl (Nat.lt_trans c₀.1.2 (by decide))⟩
+    pure ⟨c₀.toUInt32, .inl (by simp only [UInt8.toNat_toUInt32]; have := UInt8.toNat_lt c₀; omega;)⟩
   else if c₀ &&& 0xe0 == 0xc0 then
     let c₁ ← BParsec.nextByte
     match c₁ with
