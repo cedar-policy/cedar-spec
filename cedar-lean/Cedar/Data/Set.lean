@@ -109,6 +109,13 @@ def size {α} (s : Set α) : Nat :=
 def singleton {α} (a : α) : Set α :=
   Set.mk [a]
 
+/-- If `s` is a singleton set, returns the single element -/
+def singleton? [Inhabited α] (s : Set α) : Option α :=
+  match s.elts with
+  | [] => none
+  | [x] => x
+  | _ => none
+
 def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
   s.elts.foldl f init
 
