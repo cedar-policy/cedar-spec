@@ -865,6 +865,21 @@ theorem foldl_pmap_subtype
   case nil => simp only [pmap, foldl_nil]
   case cons ih => apply ih
 
+theorem foldl_congr {f g : β → α → β} {init : β} {l : List α} :
+  (∀ b x, x ∈ l → f b x = g b x) → foldl f init l = foldl g init l
+:= by
+  intro h
+  induction l generalizing init
+  case nil =>
+    simp only [not_mem_nil, false_implies, implies_true, foldl_nil, imp_self]
+  case cons lhd ltl ih =>
+    simp only [mem_cons, forall_eq_or_imp, foldl_cons,
+      h init lhd (by simp only [mem_cons, true_or])]
+    apply ih
+    intro b x hin
+    apply h b x
+    simp only [mem_cons, hin, or_true]
+
 /-! ### foldlM -/
 
 theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ : α) (xs : List α)
