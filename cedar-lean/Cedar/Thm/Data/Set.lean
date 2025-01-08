@@ -372,7 +372,7 @@ theorem inter_empty_right {α} [LT α] [StrictLT α] [DecidableLT α] [Decidable
 := by
   cases s ; rename_i xs
   simp only [Inter.inter, intersect, List.inter, elts, empty, List.elem_eq_mem, List.not_mem_nil,
-    decide_False, mk.injEq, List.filter_eq_nil, not_false_eq_true, implies_true, reduceCtorEq]
+    decide_false, mk.injEq, List.filter_eq_nil_iff, not_false_eq_true, implies_true, reduceCtorEq]
 
 theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α] (s : Set α) :
  s ∩ s = s
@@ -382,9 +382,9 @@ theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
   simp only [mk.injEq]
   induction xs
   case nil =>
-    simp only [List.not_mem_nil, decide_False, List.filter_nil]
+    simp only [List.not_mem_nil, decide_false, List.filter_nil]
   case cons hd tl ih =>
-    simp only [List.mem_cons, true_or, decide_True, List.filter_cons_of_pos, List.cons.injEq, true_and]
+    simp only [List.mem_cons, true_or, decide_true, List.filter_cons_of_pos, List.cons.injEq, true_and]
     rw [eq_comm]
     rw (config := {occs := .pos [1]}) [← ih]
     rw [List.filter_congr]

@@ -111,14 +111,14 @@ theorem map₁_eq_map (f : α → β) (as : List α) :
   as.map₁ (λ x : {x // x ∈ as} => f x.val) =
   as.map f
 := by
-  simp [map₁, attach_def, map_pmap_subtype]
+  simp only [map₁, attach_def, map_pmap_subtype]
 
 
 theorem map_attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
   xs.attach₂.map (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
   xs.map f
 := by
-  simp [attach₂, map_pmap_subtype]
+  simp only [attach₂, map_pmap_subtype]
 
 /--
   Not actually a special case of `map_attach₂` -- you can use this in places you
@@ -268,7 +268,7 @@ theorem forall₂_iff_map_eq {α β γ} {f : α → γ} {g : β → γ} {xs : Li
     constructor <;> assumption
   case mpr =>
     induction ys generalizing xs <;>
-    simp only [map_nil, map_eq_nil, map_cons] at h
+    simp only [map_nil, map_eq_nil_iff, map_cons] at h
     case nil =>
       subst h
       simp only [Forall₂.nil]
@@ -1227,7 +1227,7 @@ theorem removeAll_singleton_cons_of_neq [DecidableEq α] (x y : α) (xs : List �
 theorem removeAll_singleton_cons_of_eq [DecidableEq α] (x : α) (xs : List α) :
   (x :: xs).removeAll [x] = xs.removeAll [x]
 := by
-  simp only [removeAll, elem_eq_mem, mem_singleton, decide_True, Bool.not_true, Bool.false_eq_true,
+  simp only [removeAll, elem_eq_mem, mem_singleton, decide_true, Bool.not_true, Bool.false_eq_true,
     not_false_eq_true, filter_cons_of_neg]
 
 theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
@@ -1235,7 +1235,7 @@ theorem mem_removeAll_singleton_of_eq [DecidableEq α] (x : α) (xs : List α) :
 := by
   simp only [removeAll, elem_eq_mem, mem_singleton]
   by_contra h
-  simp only [mem_filter, decide_True, Bool.not_true, Bool.false_eq_true, and_false] at h
+  simp only [mem_filter, decide_true, Bool.not_true, Bool.false_eq_true, and_false] at h
 
 theorem removeAll_singleton_equiv [DecidableEq α] (x : α) (xs : List α) :
   x :: xs ≡ x :: (xs.removeAll [x])

@@ -54,18 +54,21 @@ theorem and_true_implies_right_true {e₁ e₂ : Expr} {request : Request} {enti
 := by
   intro h₁
   have h₂ := and_true_implies_left_true h₁
-  simp [evaluate, h₂, Result.as, Coe.coe, Value.asBool] at h₁
+  simp only [evaluate, Result.as, h₂, Coe.coe, Value.asBool, Bool.not_eq_eq_eq_not, Bool.not_true,
+    bind_pure_comp, Except.bind_ok, Bool.true_eq_false, ↓reduceIte] at h₁
   generalize h₃ : (evaluate e₂ request entities) = r₂
-  simp [h₃] at h₁
-  cases r₂ <;> simp only [Except.bind_err, reduceCtorEq] at h₁
+  simp only [h₃] at h₁
+  cases r₂
+  case error => simp only [Except.map_error, reduceCtorEq] at h₁
   case ok v₂ =>
-    cases v₂ <;> try simp only [Except.bind_err, reduceCtorEq] at h₁
+    cases v₂ <;> try simp only [Except.map_error, reduceCtorEq] at h₁
     case _ p₂ =>
-      cases p₂ <;> simp only [Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
-      case _ b =>
+      cases p₂ <;> simp only [Except.map_error, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
+      case bool b =>
         cases b
         case false =>
-          simp only [pure, Except.pure, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, reduceCtorEq] at h₁
+          simp only [Except.map_ok, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq,
+            Bool.false_eq_true] at h₁
         case true => rfl
 
 /- some shorthand to make things easier to read and write -/
@@ -124,8 +127,8 @@ theorem ways_and_can_error {e₁ e₂ : Expr} {request : Request} {entities : En
               simp [h_e₂] at h₁ <;>
               simp [h₁]
           | error e =>
-            simp only [h_e₂, ↓reduceIte, Except.bind_err, Except.error.injEq] at h₁
-            simp [h₁]
+            simp only [↓reduceIte, h_e₂, Except.map_error, Except.error.injEq] at h₁
+            simp only [h₁, and_false, or_false]
         | false => simp [h_e₁] at h₁
   case error e =>
     simp [h_e₁, evaluate, Result.as, Coe.coe, Value.asBool] at h₁

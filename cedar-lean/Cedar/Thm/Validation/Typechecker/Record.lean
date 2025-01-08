@@ -48,14 +48,12 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
       simp [←List.mapM'_eq_mapM] at h₁
       cases h₂ : Except.map (fun x => (hd.fst, x.fst)) (typeOf hd.snd c env) <;> simp [h₂] at h₁
       cases h₃ : List.mapM' (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c env)) tl <;> simp [h₃] at h₁
-      simp [pure, Except.pure] at h₁
     case cons hd' tl' =>
       apply List.Forall₂.cons
       {
         simp [←List.mapM'_eq_mapM] at h₁
         cases h₂ : Except.map (fun x => (hd.fst, x.fst)) (typeOf hd.snd c env) <;> simp [h₂] at h₁
         cases h₃ : List.mapM' (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c env)) tl <;> simp [h₃] at h₁
-        simp [pure, Except.pure] at h₁
         have ⟨hl₁, hr₁⟩ := h₁
         rw [eq_comm] at hl₁ hr₁ ; subst hl₁ hr₁
         simp [Except.map] at h₂
@@ -72,8 +70,7 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         simp [←List.mapM'_eq_mapM] at *
         cases h₂ : Except.map (fun x => (hd.fst, x.fst)) (typeOf hd.snd c env) <;> simp [h₂] at h₁
         cases h₃ : List.mapM' (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c env)) tl <;> simp [h₃] at h₁
-        simp [pure, Except.pure] at h₁
-        simp [h₁]
+        simp only [h₁]
       }
 
 theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}

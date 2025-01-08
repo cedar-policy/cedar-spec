@@ -71,7 +71,7 @@ def jsonToNum (json : Json) : ParseResult JsonNumber :=
   | .ok n => .ok n
   | .error e => .error s!"jsonToNum: {e}\n{json.pretty}"
 
-def jsonToInt64 (json : Json) : ParseResult Int64 := do
+def jsonToInt64 (json : Json) : ParseResult Cedar.Data.Int64 := do
   let num ← jsonToNum json
   match num.exponent with
   | 0 =>

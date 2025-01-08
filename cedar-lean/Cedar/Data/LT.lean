@@ -77,7 +77,7 @@ theorem List.cons_lt_cons [LT α] [StrictLT α] (x : α) (xs ys : List α) :
   intro h₁
   apply List.lt.tail (StrictLT.irreflexive x) (StrictLT.irreflexive x) h₁
 
-theorem List.lt_irrefl [LT α] [StrictLT α] (xs : List α) :
+theorem List.slt_irrefl [LT α] [StrictLT α] (xs : List α) :
   ¬ xs < xs
 := by
   induction xs
@@ -95,7 +95,7 @@ theorem List.lt_irrefl [LT α] [StrictLT α] (xs : List α) :
       simp [h₂] at h₃
       contradiction
 
-theorem List.lt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
+theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
   xs < ys → ys < zs → xs < zs
 := by
   intro h₁ h₂
@@ -122,7 +122,7 @@ theorem List.lt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
       have h₉ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄
       subst h₉
       apply List.lt.tail h₆ h₇
-      apply List.lt_trans h₅ h₈
+      apply List.slt_trans h₅ h₈
 
 theorem List.lt_asymm [LT α] [StrictLT α] {xs ys : List α} :
   xs < ys → ¬ ys < xs
@@ -137,8 +137,8 @@ theorem List.lt_asymm [LT α] [StrictLT α] {xs ys : List α} :
     case nil => contradiction
     case cons _ _ hd' tl' =>
       by_contra h₂
-      have h₃ := List.lt_trans h₁ h₂
-      have h₄ := List.lt_irrefl (hd :: tl)
+      have h₃ := List.slt_trans h₁ h₂
+      have h₄ := List.slt_irrefl (hd :: tl)
       contradiction
 
 theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
@@ -178,7 +178,7 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
 
 instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where
   asymmetric _ _   := List.lt_asymm
-  transitive _ _ _ := List.lt_trans
+  transitive _ _ _ := List.slt_trans
   connected  _ _   := List.lt_conn
 
 def Bool.lt (a b : Bool) : Bool := match a,b with
@@ -217,13 +217,18 @@ instance Int.strictLT : StrictLT Int where
   connected  a b   := by omega
 
 theorem UInt32.lt_iff {x y : UInt32} : x < y ↔ x.1.1 < y.1.1 := by
-  cases x; cases y; simp only [LT.lt]
+  cases x
+  cases y
+  simp only [LT.lt, Nat.lt, Nat.succ_eq_add_one, Nat.le_eq,
+    Nat.reducePow, BitVec.val_toFin]
+
 
 instance UInt32.strictLT : StrictLT UInt32 where
   asymmetric a b   := by apply Nat.strictLT.asymmetric
   transitive a b c := by apply Nat.strictLT.transitive
   connected  a b   := by
-    simp [UInt32.lt_iff, UInt32.ext_iff]
+    simp only [ne_eq, UInt32.ext_iff, LT.lt, Nat.lt,
+      toNat_toBitVec_eq_toNat, Nat.succ_eq_add_one, Nat.le_eq]
     omega
 
 instance Char.strictLT : StrictLT Char where

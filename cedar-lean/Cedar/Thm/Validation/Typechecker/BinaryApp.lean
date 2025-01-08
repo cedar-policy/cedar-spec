@@ -659,12 +659,12 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
     subst h₁
     simp only [List.map_nil]
   case cons hd tl =>
-    simp [List.mapM'] at h₁
+    simp only [List.mapM', bind_pure_comp] at h₁
     cases h₂ : evaluate (Expr.lit hd) request entities <;> simp [h₂] at h₁
     cases h₃ : List.mapM' (fun x => evaluate x request entities) (List.map Expr.lit tl) <;> simp [h₃] at h₁
     rename_i vhd vtl
-    simp [pure, Except.pure] at h₁ ; subst h₁
-    simp [List.map]
+    subst h₁
+    simp only [List.map, List.cons.injEq]
     constructor
     · simp [evaluate] at h₂ ; simp [h₂]
     · exact mapM'_eval_lits_eq_prims h₃
@@ -675,18 +675,18 @@ theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
 := by
   cases vs
   case nil =>
-    simp [List.mapM', pure, Except.pure] at h₁
+    simp only [List.mapM', pure, Except.pure, Except.ok.injEq, List.nil_eq] at h₁
     subst h₁
     simp only [List.map_nil]
   case cons hd tl =>
-    simp [List.mapM'] at h₁
+    simp only [List.mapM', bind_pure_comp] at h₁
     cases h₂ : Value.asEntityUID hd <;> simp [h₂] at h₁
     cases h₃ : List.mapM' Value.asEntityUID tl <;> simp [h₃] at h₁
     rename_i vhd vtl
-    simp [pure, Except.pure] at h₁ ; subst h₁
-    simp [List.map]
+    subst h₁
+    simp only [List.map, Function.comp_apply, List.cons.injEq]
     constructor
-    · simp [Value.asEntityUID] at h₂
+    · simp only [Value.asEntityUID] at h₂
       split at h₂ <;> simp at h₂
       rw [eq_comm] at h₂ ; subst h₂
       rfl

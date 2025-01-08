@@ -41,14 +41,14 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;>
-    simp only [Nat.lt_irrefl, decide_False, not_false_eq_true,
+    simp only [Nat.lt_irrefl, decide_false, not_false_eq_true,
       false_implies, decide_eq_true_eq, Nat.not_lt, reduceCtorEq]
     all_goals { omega }
   transitive a b c := by
     simp only [LT.lt]
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;> cases c <;>
-    simp only [Nat.lt_irrefl, decide_False, imp_self,
+    simp only [Nat.lt_irrefl, decide_false, imp_self,
       decide_eq_true_eq, false_implies, implies_true]
     all_goals { omega }
   connected  a b   := by
@@ -56,7 +56,7 @@ instance IPNetPrefix.strictLT {w} : StrictLT (Ext.IPAddr.IPNetPrefix w) where
     unfold Ext.IPAddr.IPNetPrefix.lt Ext.IPAddr.IPNetPrefix.toNat Ext.IPAddr.ADDR_SIZE
     cases a <;> cases b <;>
     simp only [ne_eq, not_true_eq_false, Nat.lt_irrefl, decide_eq_true_eq,
-      decide_False, or_self, imp_self, not_false_eq_true, forall_const, Option.some.injEq, reduceCtorEq]
+      decide_false, or_self, imp_self, not_false_eq_true, forall_const, Option.some.injEq, reduceCtorEq]
     · apply Or.inr ; omega
     · apply Or.inl ; omega
     · bv_omega
@@ -133,9 +133,9 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Int64.strictLT.asymmetric x₁ x₂
+      have h₂ := Data.Int64.strictLT.asymmetric x₁ x₂
       simp [LT.lt] at h₂
-      cases h₃ : Int64.lt x₁ x₂ <;>
+      cases h₃ : Data.Int64.lt x₁ x₂ <;>
       simp [h₃] at h₁ h₂ ; simp [h₂]
     case ipaddr =>
       have h₂ := IPNet.strictLT.asymmetric x₁ x₂
@@ -146,10 +146,10 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
     case decimal =>
-      have h₃ := Int64.strictLT.transitive x₁ x₂ x₃
+      have h₃ := Data.Int64.strictLT.transitive x₁ x₂ x₃
       simp [LT.lt] at h₃
-      cases h₄ : Int64.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Int64.lt x₂ x₃ <;> simp [h₅] at *
+      cases h₄ : Data.Int64.lt x₁ x₂ <;> simp [h₄] at *
+      cases h₅ : Data.Int64.lt x₂ x₃ <;> simp [h₅] at *
       simp [h₃]
     case ipaddr =>
       have h₃ := IPNet.strictLT.transitive x₁ x₂ x₃
@@ -161,7 +161,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Int64.strictLT.connected x₁ x₂
+      have h₂ := Data.Int64.strictLT.connected x₁ x₂
       simp [LT.lt, h₁] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case ipaddr =>
@@ -177,7 +177,7 @@ instance Name.strictLT : StrictLT Name where
     apply List.lt_asymm
   transitive a b c := by
     simp [LT.lt, Name.lt]
-    apply List.lt_trans
+    apply List.slt_trans
   connected  a b   := by
     simp [LT.lt, Name.lt]
     intro h₁
@@ -261,7 +261,7 @@ theorem Prim.lt_asymm {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
-  case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
+  case int i₁ i₂           => exact (Data.Int64.strictLT.asymmetric i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.asymmetric uid₁ uid₂)
 
@@ -271,7 +271,7 @@ theorem Prim.lt_trans {a b c : Prim} :
   cases a <;> cases b <;> cases c <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂ b₃            => exact (Bool.strictLT.transitive b₁ b₂ b₃)
-  case int i₁ i₂ i₃             => exact (Int64.strictLT.transitive i₁ i₂ i₃)
+  case int i₁ i₂ i₃             => exact (Data.Int64.strictLT.transitive i₁ i₂ i₃)
   case string s₁ s₂ s₃          => exact (String.strictLT.transitive s₁ s₂ s₃)
   case entityUID uid₁ uid₂ uid₃ => exact (EntityUID.strictLT.transitive uid₁ uid₂ uid₃)
 
@@ -281,7 +281,7 @@ theorem Prim.lt_conn {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact (Bool.strictLT.connected b₁ b₂)
-  case int i₁ i₂           => exact (Int64.strictLT.connected i₁ i₂)
+  case int i₁ i₂           => exact (Data.Int64.strictLT.connected i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.connected s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.connected uid₁ uid₂)
 
@@ -316,7 +316,7 @@ theorem Values.lt_irrefl (vs : List Value) :
   cases vs
   case nil => simp only [Values.lt, Bool.false_eq_true, not_false_eq_true]
   case cons hd tl =>
-    simp only [Values.lt, decide_True, Bool.true_and, Bool.or_eq_true, not_or, Bool.not_eq_true]
+    simp only [Values.lt, decide_true, Bool.true_and, Bool.or_eq_true, not_or, Bool.not_eq_true]
     simp only [Value.lt_irrefl hd, Values.lt_irrefl tl, and_self]
 termination_by sizeOf vs
 decreasing_by
@@ -329,7 +329,7 @@ theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   case nil => simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true]
   case cons hd tl =>
     replace (a, v) := hd
-    simp only [ValueAttrs.lt, String.lt_irrefl, decide_False, decide_True, Bool.true_and,
+    simp only [ValueAttrs.lt, String.lt_irrefl, decide_false, decide_true, Bool.true_and,
       Bool.false_or, Bool.and_self, Bool.or_eq_true, not_or, Bool.not_eq_true]
     simp only [Value.lt_irrefl v, ValueAttrs.lt_irrefl tl, and_self]
 termination_by sizeOf vs
@@ -400,7 +400,7 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
     case inr =>
       have ⟨hl₁, h₂⟩ := h₁
       subst hl₁
-      simp only [decide_True, Bool.true_and]
+      simp only [decide_true, Bool.true_and]
       have h₃ := Value.lt_asymm h₂
       simp [LT.lt] at h₃ ; simp [h₃]
       have h₄ := StrictLT.irreflexive a₁
@@ -411,7 +411,7 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
     have ⟨h₂, h₃⟩ := h₁
     have ⟨hl₂, hr₂⟩ := h₂
     subst hl₂ hr₂
-    simp only [decide_True, Bool.true_and, Bool.and_self]
+    simp only [decide_true, Bool.true_and, Bool.and_self]
     have h₃ := ValueAttrs.lt_asym h₃
     have h₄ := StrictLT.irreflexive a₁
     have h₅ := Value.lt_irrefl v₁

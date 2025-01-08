@@ -354,7 +354,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
     case cons.cons xhd xtl yhd ytl =>
       replace ⟨h₁, h₃⟩ := h₁
       have ih := map_eq_implies_sortedBy h₃
-      cases ytl <;> simp only [map_nil, map_cons, map_eq_nil] at *
+      cases ytl <;> simp only [map_nil, map_cons, map_eq_nil_iff] at *
       case nil => exact SortedBy.cons_nil
       case cons yhd' ytl =>
         simp only [tail_sortedBy h₂, true_iff] at ih
@@ -372,7 +372,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
     case cons.cons xhd xtl yhd ytl =>
       replace ⟨h₁, h₃⟩ := h₁
       have ih := map_eq_implies_sortedBy h₃
-      cases xtl <;> simp only [map_nil, map_cons, map_eq_nil] at *
+      cases xtl <;> simp only [map_nil, map_cons, map_eq_nil_iff] at *
       case nil => exact SortedBy.cons_nil
       case cons xhd' xtl =>
         simp only [tail_sortedBy h₂, iff_true] at ih

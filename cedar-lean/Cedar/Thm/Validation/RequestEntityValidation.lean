@@ -270,8 +270,9 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
 := by
   intro h₀ h₁
   simp only [RequestAndEntitiesMatchSchema]
-  simp only [validateRequest, List.any_eq_true, ite_eq_then, not_exists, not_and, Bool.not_eq_true,
-    reduceCtorEq, imp_false, Classical.not_forall, not_imp, Bool.not_eq_false] at h₀
+  simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
+    Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
+    Bool.not_eq_false] at h₀
   simp only [validateEntities] at h₁
   obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
   exists env
