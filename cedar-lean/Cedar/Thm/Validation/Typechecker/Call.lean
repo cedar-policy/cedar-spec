@@ -117,8 +117,9 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     case nil =>
       simp [List.mapM, List.mapM.loop] at h₁
       cases h₂ : justType (typeOf hd₁ c env) <;>
-      simp [h₂] at h₁
-      simp [pure, Except.pure] at h₁
+      simp only [h₂,
+        Except.map_error, reduceCtorEq,
+        Except.map_ok, Except.ok.injEq, List.cons.injEq, List.ne_cons_self, and_false] at h₁
     case cons hd₂ tl₂ =>
       cases tl₂
       case nil =>
@@ -144,7 +145,6 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         rename_i res₁ _ _ res₂ _ _ res₃ _
-        simp only [pure, Except.pure] at h₁
         cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₃ <;> simp [h₂] at h₁
 
 def IsDecimalComparator : ExtFun → Prop
@@ -315,23 +315,25 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
     xs = [x₁] ∧
     (typeOf x₁ c env).typeOf = .ok (ty₁.typeOf, c₁)
 := by
-  simp [List.mapM₁] at h₁
+  simp only [List.mapM₁] at h₁
   cases xs
   case nil =>
-    simp [List.mapM, List.mapM.loop, pure, Except.pure] at h₁
+    simp only [List.mapM, List.mapM.loop, pure, Except.pure, List.reverse_nil, Except.ok.injEq,
+      List.ne_cons_self] at h₁
   case cons hd₁ tl₁ =>
     cases tl₁
     case nil =>
-      simp [List.mapM, List.mapM.loop] at h₁
+      simp only [List.mapM, List.mapM.loop, List.reverse_cons, List.reverse_nil, List.nil_append,
+        bind_pure_comp] at h₁
       cases h₂ : justType (typeOf hd₁ c env) <;>
-      simp [h₂] at h₁
-      simp [justType, Except.map] at h₂
-      simp [pure, Except.pure] at h₁
+      simp only [h₂, Except.map_error, reduceCtorEq,
+        Except.map_ok, Except.ok.injEq, List.cons.injEq, and_true] at h₁
+      simp only [justType, Except.map] at h₂
       subst h₁
       split at h₂ <;> simp at h₂
       rename_i res₁ h₃
       exists hd₁, res₁.snd
-      simp [ResultType.typeOf, Except.map, h₃, ←h₂]
+      simp only [ResultType.typeOf, Except.map, h₃, ← h₂, and_self]
     case cons hd₂ tl₂ =>
       simp only [List.attach_def, List.pmap, List.mapM_cons,
         List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁
@@ -340,7 +342,6 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
       rename_i res₁ _ _ res₂ _
-      simp [pure, Except.pure] at h₁
       cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₂ <;> simp [h₂] at h₁
 
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}

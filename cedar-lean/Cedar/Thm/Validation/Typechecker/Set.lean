@@ -88,7 +88,6 @@ theorem type_of_set_tail
       cases h₄ : justType (typeOf xhd c env) <;> simp [h₄] at h₁
       cases h₅ : justType (typeOf xhd' c env) <;> simp [h₅] at h₁
       cases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl' <;> simp [h₆] at h₁
-      simp [pure, Except.pure] at h₁
     case cons hd' tl' =>
       simp only [List.mapM₁, List.attach_def] at h₁
       rw [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at h₁

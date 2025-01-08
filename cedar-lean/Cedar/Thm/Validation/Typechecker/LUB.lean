@@ -30,7 +30,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-inductive IsLubOfRecordTypes : List (Attr × Qualified CedarType) → List (Attr × Qualified CedarType) → List (Attr × Qualified CedarType) → Prop :=
+inductive IsLubOfRecordTypes : List (Attr × Qualified CedarType) → List (Attr × Qualified CedarType) → List (Attr × Qualified CedarType) → Prop where
   | nil : IsLubOfRecordTypes [] [] []
   | cons {a : Attr} {qty qty₁ qty₂ : Qualified CedarType} {rty rty₁ rty₂ : List (Attr × Qualified CedarType)}
     (h₁ : lubQualifiedType qty₁ qty₂ = .some qty)
@@ -43,16 +43,22 @@ theorem lubRecordType_is_lub_of_record_types {rty rty₁ rty₂ : List (Attr × 
 := by
   intro h₁
   unfold lubRecordType at h₁
-  split at h₁ <;> try simp at h₁
-  case h_1 => subst h₁ ; exact IsLubOfRecordTypes.nil
+  split at h₁
+  case h_1 =>
+    simp only [Option.some.injEq, List.nil_eq] at h₁
+    subst h₁
+    exact IsLubOfRecordTypes.nil
   case h_2 a hd₁ tl₁ a' hd₂ tl₂ =>
     split at h₁ <;> try contradiction
-    rename_i h₂ ; subst h₂
+    rename_i h₂
+    simp only [bne_iff_ne, ne_eq, Decidable.not_not] at h₂
+    subst h₂
     cases h₂ : lubQualifiedType hd₁ hd₂ <;> simp [h₂] at h₁
     cases h₃ : lubRecordType tl₁ tl₂ <;> simp [h₃] at h₁
     rename_i hd tl ; subst h₁
     apply IsLubOfRecordTypes.cons h₂
     apply lubRecordType_is_lub_of_record_types h₃
+  case h_3 => simp only [reduceCtorEq] at h₁
 
 theorem lubRecord_find_implies_find {a : Attr} {qty : QualifiedType} {rty rty₁ rty₂ : List (Attr × Qualified CedarType)}
   (h₁ : IsLubOfRecordTypes rty rty₁ rty₂)
@@ -336,7 +342,8 @@ theorem lubRecordType_trans {rty₁ rty₂ rty₃ : List (Attr × QualifiedType)
   cases rty₁ <;> cases rty₃ <;>
   simp only
   case cons.cons hd₁ tl₁ hd₃ tl₃ =>
-    cases rty₂ <;> simp at h₁ h₂
+    cases rty₂ <;>
+    simp only [reduceCtorEq, bne_iff_ne, ne_eq, Option.bind_eq_bind, ite_not] at h₁ h₂
     rename_i hd₂ tl₂
     split at h₁ <;> try contradiction
     split at h₂ <;> try contradiction
@@ -438,7 +445,8 @@ theorem lubRecordType_left_subty {rty₁ rty₂ rty₃ : List (Attr × Qualified
 := by
   unfold lubRecordType
   intro h₁
-  split at h₁ <;> try simp at h₁
+  split at h₁ <;>
+  try simp only [reduceCtorEq, Option.some.injEq, List.nil_eq,bne_iff_ne, ne_eq, Option.bind_eq_bind, ite_not] at h₁
   case h_1 =>
     subst h₁ ; simp
   case h_2 a₁ qty₁ rty₁' a₂ qty₂ rty₂' =>
@@ -545,11 +553,10 @@ theorem lubRecordType_assoc_none_some {rty₁ rty₂ rty₃ rty₄ : List (Attr 
 := by
   unfold lubRecordType at h₂
   split at h₂ <;> try contradiction
-  case h_1 => simp at h₂ ; subst h₂ ; exact h₁
+  case h_1 => simp only [Option.some.injEq, List.nil_eq] at h₂ ; subst h₂ ; exact h₁
   case h_2 a₂ qty₂ rty₂' a₃ qty₃ rty₃'  =>
-    simp at h₂
-    split at h₂ <;> try contradiction
-    rename_i h₃
+    simp only [bne_iff_ne, ne_eq, Option.bind_eq_bind, ite_not, Option.ite_none_right_eq_some] at h₂
+    replace ⟨h₃, h₂⟩ := h₂
     cases h₄ : lubQualifiedType qty₂ qty₃ <;> simp [h₄] at h₂
     cases h₅ : lubRecordType rty₂' rty₃' <;> simp [h₅] at h₂
     subst h₂ h₃

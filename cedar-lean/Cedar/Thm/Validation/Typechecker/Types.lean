@@ -46,7 +46,7 @@ def InstanceOfExtType : Ext → ExtType → Prop
   | .ipaddr _,  .ipAddr  => True
   | _, _                 => False
 
-inductive InstanceOfType : Value → CedarType → Prop :=
+inductive InstanceOfType : Value → CedarType → Prop where
   | instance_of_bool (b : Bool) (bty : BoolType)
       (h₁ : InstanceOfBoolType b bty) :
       InstanceOfType (.prim (.bool b)) (.bool bty)
