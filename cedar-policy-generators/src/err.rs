@@ -46,6 +46,12 @@ pub enum Error {
         "tried to generate something with an extension type, but extension types were disabled"
     )]
     ExtensionsDisabled,
+    /// Tried to generate something related to the `datetime` extension, but it
+    /// was disabled in settings
+    #[error(
+        "tried to generate something related to the `datetime` extension, but it was disabled"
+    )]
+    DatetimeExtensionsDisabled,
     /// Tried to generate something using the `like` operator, but the `like`
     /// operator was disabled in settings
     #[error("tried to generate something using the `like` operator, but the `like` operator was disabled")]
@@ -89,6 +95,7 @@ impl From<Error> for arbitrary::Error {
             Error::TooDeep => arbitrary::Error::IncorrectFormat,
             Error::NoValidPrincipalOrResourceTypes => arbitrary::Error::IncorrectFormat,
             Error::ExtensionsDisabled => arbitrary::Error::IncorrectFormat,
+            Error::DatetimeExtensionsDisabled => arbitrary::Error::IncorrectFormat,
             Error::LikeDisabled => arbitrary::Error::IncorrectFormat,
             Error::EntitiesError(_) => arbitrary::Error::IncorrectFormat,
             Error::IncorrectFormat { .. } => arbitrary::Error::IncorrectFormat,

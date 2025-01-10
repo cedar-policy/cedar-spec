@@ -63,6 +63,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
+    // It's Ok to enable this flag because the diff tester ignores unknown extension function errors thrown by Lean
+    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
