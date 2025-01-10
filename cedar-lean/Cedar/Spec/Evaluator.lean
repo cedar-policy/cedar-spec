@@ -26,7 +26,7 @@ namespace Cedar.Spec
 open Cedar.Data
 open Error
 
-def intOrErr : Option Data.Int64 → Result Value
+def intOrErr : Option Int64 → Result Value
   | .some i => .ok (.prim (.int i))
   | .none   => .error .arithBoundsError
 
