@@ -17,71 +17,54 @@
 import Cedar.Data.LT
 
 /-!
-This file defines a signed 64-bit integer datatype similar to Rust's `i64`.
+This file defines a signed 64-bit integer datatype similar to Rust's `i64`
+by adding checked arithmetic operations to Lean's Int64 datatype.
 -/
-
-namespace Cedar.Data
-
-def INT64_MIN : Int := -9223372036854775808
-def INT64_MAX : Int :=  9223372036854775807
-
-abbrev Int64 := { i : Int // INT64_MIN ≤ i ∧ i ≤ INT64_MAX }
-
-instance : Inhabited Int64 where
-  default := Subtype.mk 0 (by decide)
-
 
 namespace Int64
 
+def MIN : Int := -9223372036854775808
+def MAX : Int :=  9223372036854775807
+
 ----- Definitions -----
 
-def mk (i : Int) (h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX) : Int64 :=
-  Subtype.mk i h
+def ofIntChecked (i : Int) (_ : MIN ≤ i ∧ i ≤ MAX) : Int64 :=
+  Int64.ofInt i
 
-def mk? (i : Int) : Option Int64 :=
-  if h : INT64_MIN ≤ i ∧ i ≤ INT64_MAX
-  then .some (mk i h)
+def ofInt? (i : Int) : Option Int64 :=
+  if h : MIN ≤ i ∧ i ≤ MAX
+  then .some (ofIntChecked i h)
   else .none
 
-def lt (i₁ i₂ : Int64) : Bool := i₁.1 < i₂.1
+def add? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt + i₂.toInt)
 
-def le (i₁ i₂ : Int64) : Bool := i₁.1 ≤ i₂.1
+def sub? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt - i₂.toInt)
 
-def add? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 + i₂.1)
+def mul? (i₁ i₂ : Int64) : Option Int64 := ofInt? (i₁.toInt * i₂.toInt)
 
-def sub? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 - i₂.1)
+def neg? (i₁ : Int64) : Option Int64 := ofInt? (- i₁.toInt)
 
-def mul? (i₁ i₂ : Int64) : Option Int64 := mk? (i₁.1 * i₂.1)
-
-def neg? (i₁ : Int64) : Option Int64 := mk? (- i₁.1)
-
-def natAbs (i₁ : Int64) : Nat := i₁.1.natAbs
+def natAbs (i₁ : Int64) : Nat := i₁.toInt.natAbs
 
 ----- Derivations -----
-instance : LT Int64 where
-  lt := fun i₁ i₂ => Int64.lt i₁ i₂
 
-instance : LE Int64 where
-  le := fun i₁ i₂ => Int64.le i₁ i₂
+theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt := by
+  constructor <;> intro h₁
+  · simp only [h₁]
+  · cases i₁ ; cases i₂ ; rename_i i₁ i₂
+    simp only [mk.injEq]
+    simp only [toInt, BitVec.toInt_inj, Int64.toBitVec, UInt64.toBitVec_inj] at h₁
+    exact h₁
 
-instance int64Lt (i₁ i₂ : Int64) : Decidable (i₁ < i₂) :=
-if h : Int64.lt i₁ i₂ then isTrue h else isFalse h
+theorem lt_def {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
+  simp [LT.lt, Int64.lt, BitVec.slt, Int64.toInt]
 
-instance int64Le (i₁ i₂ : Int64) : Decidable (i₁ ≤ i₂) :=
-if h : Int64.le i₁ i₂ then isTrue h else isFalse h
+theorem le_def {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
+  simp [LE.le, Int64.le, BitVec.sle, Int64.toInt]
 
-theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.1 = i₂.1 := by
-  cases i₁; cases i₂; simp
+deriving instance Repr for Int64
 
-theorem lt_def {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.1 < i₂.1 := by
-  simp [LT.lt, Int64.lt]
-
-theorem le_def {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.1 ≤ i₂.1 := by
-  simp [LE.le, Int64.le]
-
-deriving instance Repr, DecidableEq for Int64
-
-instance strictLT : StrictLT Int64 where
+instance strictLT : Cedar.Data.StrictLT Int64 where
   asymmetric a b   := by
     simp [Int64.lt_def]
     omega
@@ -92,7 +75,7 @@ instance strictLT : StrictLT Int64 where
     simp [Int64.lt_def, Int64.ext_iff]
     omega
 
+instance : Coe Int64 Int where
+  coe i := i.toInt
+
 end Int64
-
-
-end Cedar.Data

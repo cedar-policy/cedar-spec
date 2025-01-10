@@ -133,10 +133,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Data.Int64.strictLT.asymmetric x₁ x₂
-      simp [LT.lt] at h₂
-      cases h₃ : Data.Int64.lt x₁ x₂ <;>
-      simp [h₃] at h₁ h₂ ; simp [h₂]
+      exact Int64.strictLT.asymmetric x₁ x₂ h₁
     case ipaddr =>
       have h₂ := IPNet.strictLT.asymmetric x₁ x₂
       simp [LT.lt] at h₂
@@ -146,11 +143,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
     case decimal =>
-      have h₃ := Data.Int64.strictLT.transitive x₁ x₂ x₃
-      simp [LT.lt] at h₃
-      cases h₄ : Data.Int64.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Data.Int64.lt x₂ x₃ <;> simp [h₅] at *
-      simp [h₃]
+      exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
     case ipaddr =>
       have h₃ := IPNet.strictLT.transitive x₁ x₂ x₃
       simp [LT.lt] at h₃
@@ -161,9 +154,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Data.Int64.strictLT.connected x₁ x₂
-      simp [LT.lt, h₁] at h₂
-      rcases h₂ with h₂ | h₂ <;> simp [h₂]
+      exact Int64.strictLT.connected x₁ x₂ h₁
     case ipaddr =>
       have h₂ := IPNet.strictLT.connected x₁ x₂
       simp [LT.lt, h₁] at h₂
@@ -261,7 +252,7 @@ theorem Prim.lt_asymm {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
-  case int i₁ i₂           => exact (Data.Int64.strictLT.asymmetric i₁ i₂)
+  case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.asymmetric uid₁ uid₂)
 
@@ -271,7 +262,7 @@ theorem Prim.lt_trans {a b c : Prim} :
   cases a <;> cases b <;> cases c <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂ b₃            => exact (Bool.strictLT.transitive b₁ b₂ b₃)
-  case int i₁ i₂ i₃             => exact (Data.Int64.strictLT.transitive i₁ i₂ i₃)
+  case int i₁ i₂ i₃             => exact (Int64.strictLT.transitive i₁ i₂ i₃)
   case string s₁ s₂ s₃          => exact (String.strictLT.transitive s₁ s₂ s₃)
   case entityUID uid₁ uid₂ uid₃ => exact (EntityUID.strictLT.transitive uid₁ uid₂ uid₃)
 
@@ -281,7 +272,7 @@ theorem Prim.lt_conn {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact (Bool.strictLT.connected b₁ b₂)
-  case int i₁ i₂           => exact (Data.Int64.strictLT.connected i₁ i₂)
+  case int i₁ i₂           => exact (Int64.strictLT.connected i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.connected s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.connected uid₁ uid₂)
 

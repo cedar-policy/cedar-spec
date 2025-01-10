@@ -14,7 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar
+import Cedar.Spec
+import Cedar.Data.Int64
 import Protobuf.Message
 import Protobuf.Enum
 import Protobuf.Map
@@ -45,17 +46,17 @@ def merge_bool (p : Prim) (b2 : Bool) : Prim :=
 @[inline]
 def merge_int (_ : Prim) (pi : Proto.Int64) : Prim :=
   have i : Int := pi
-  if H1 : i < Cedar.Data.INT64_MIN then
+  if H1 : i < Int64.MIN then
     panic!("Integer less than INT64_MIN")
-  else if H2 : i > Cedar.Data.INT64_MAX then
+  else if H2 : i > Int64.MAX then
     panic!("Integer greater than INT64_MAX")
   else
-    have h1 : Cedar.Data.INT64_MIN ≤ i ∧ i ≤ Cedar.Data.INT64_MAX := by
+    have h1 : Int64.MIN ≤ i ∧ i ≤ Int64.MAX := by
       unfold Proto.Int64 at *
       omega
 
     -- Override semantics
-    Prim.int (Cedar.Data.Int64.mk i h1)
+    Prim.int (Int64.ofIntChecked i h1)
 
 @[inline]
 def merge_string (p : Prim) (s2 : String) : Prim :=
@@ -74,7 +75,7 @@ def merge (p1 : Prim) (p2 : Prim) : Prim :=
   match p2 with
     | .bool b2 => merge_bool p1 b2
     | .int i2 =>
-      let i2₁ : Int := i2
+      let i2₁ : Int := i2.toInt
       let i2₂ : Proto.Int64 := i2₁
       merge_int p1 i2₂
     | .string s2 => merge_string p1 s2

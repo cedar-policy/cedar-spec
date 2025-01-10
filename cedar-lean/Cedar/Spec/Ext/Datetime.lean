@@ -38,7 +38,7 @@ open Cedar.Data
 
   A duration may be negative. Negative duration strings must begin with `-`.
 -/
-abbrev Duration := Data.Int64
+abbrev Duration := Int64
 
 namespace Datetime
 
@@ -49,11 +49,10 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
 
-def duration? (i : Int) : Option Duration :=
-  Int64.mk? i
+abbrev duration? := Int64.ofInt?
 
 def durationUnits? (n: Nat) (suffix: String) : Option Duration :=
-  match Int64.mk? n with
+  match Int64.ofInt? n with
   | none => none
   | some i =>
     match suffix with
