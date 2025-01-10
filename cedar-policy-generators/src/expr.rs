@@ -1182,6 +1182,13 @@ impl<'a> ExprGenerator<'a> {
                     if !self.settings.enable_extensions {
                         return Err(Error::ExtensionsDisabled);
                     };
+
+                    if !self.settings.enable_datetime_extension
+                        && matches!(target_type, Type::DateTime | Type::Duration)
+                    {
+                        return Err(Error::DatetimeExtensionsDisabled);
+                    }
+
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed, so, just call the constructor
                         // Invariant (MethodStyleArgs), Function Style, no worries
@@ -1687,7 +1694,13 @@ impl<'a> ExprGenerator<'a> {
             } => match name.as_ref() {
                 "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                "datetime" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
+                "duration" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
                 _ => panic!("unrecognized extension type: {name:?}"),
             },
@@ -1822,8 +1835,14 @@ impl<'a> ExprGenerator<'a> {
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
                     }
+                    "datetime" if !self.settings.enable_datetime_extension => {
+                        return Err(Error::DatetimeExtensionsDisabled);
+                    }
                     "datetime" => {
                         self.generate_ext_func_call_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" if !self.settings.enable_datetime_extension => {
+                        return Err(Error::DatetimeExtensionsDisabled);
                     }
                     "duration" => {
                         self.generate_ext_func_call_for_type(&Type::duration(), max_depth, u)
@@ -1885,6 +1904,11 @@ impl<'a> ExprGenerator<'a> {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
                 if max_depth == 0 {
                     return Err(Error::TooDeep);
+                }
+                if !self.settings.enable_datetime_extension
+                    && matches!(target_type, Type::DateTime | Type::Duration)
+                {
+                    return Err(Error::DatetimeExtensionsDisabled);
                 }
                 let func = self
                     .ext_funcs
@@ -2155,7 +2179,13 @@ impl<'a> ExprGenerator<'a> {
             } => match name.as_ref() {
                 "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                "datetime" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "datetime" => self.generate_attr_value_for_type(&Type::datetime(), max_depth, u),
+                "duration" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "duration" => self.generate_attr_value_for_type(&Type::duration(), max_depth, u),
                 _ => unimplemented!("extension type {name:?}"),
             },
