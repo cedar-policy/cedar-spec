@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 arbitrary = "1.4"
-cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
-cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary"] }
+cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary", "datetime"] }
+cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary", "datetime"] }
 clap = { version = "4.3.16", features = ["derive"] }
 highway = "0.8.1"
 serde = { version = "1.0", features = ["derive"] }
