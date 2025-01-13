@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
+import Cedar.Thm.Validation.Levels
 import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.RequestEntityValidation
 
