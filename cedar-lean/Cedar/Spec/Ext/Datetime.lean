@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Data.Int64
+import Std.Time
 
 /-! This file defines Cedar datetime values and functions. -/
 
@@ -112,5 +113,52 @@ def Duration.parse (str : String) : Option Duration :=
 deriving instance Repr for Duration
 
 abbrev duration := Duration.parse
+
+abbrev Datetime := Std.Time.Timestamp
+
+-- /-
+--   * `YYYY-MM-DD` (date only)
+--   * `YYYY-MM-DDThh:mm:ssZ"` (UTC)
+--   * `"YYYY-MM-DDThh:mm:ss.SSSZ"` (UTC with millisecond precision)
+--   * `"YYYY-MM-DDThh:mm:ss(+|-)hhmm"` (With timezone offset in hours and minutes)
+--   * `"YYYY-MM-DDThh:mm:ss.SSS(+|-)hhmm"` (With timezone offset in hours and minutes and millisecond precision)
+-- -/
+def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
+def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
+def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
+def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxxx")
+def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxxx")
+
+def parse (str: String) : Option Datetime :=
+  let parseFun := match str.length with
+  | 10 => DateOnly.parse
+  | 20 => DateUTC.parse
+  | 24 => DateUTCWithMillis.parse
+  | 25 => DateWithOffset.parse
+  | 29 => DateWithOffsetAndMillis.parse
+  | _ => (fun _ => Except.error "invalid string length")
+
+  let datetime := parseFun str
+  match datetime with
+  | Except.ok val => some val.toTimestamp
+  | _ => none
+
+#eval DateOnly.parse "2022-10-10"
+#eval DateUTC.parse "2022-10-10T00:00:00Z"
+#eval DateUTCWithMillis.parse "2022-10-10T03:35:00.001Z"
+#eval DateWithOffset.parse "2022-10-10T03:35:00+05:00"
+#eval DateWithOffsetAndMillis.parse "2022-10-10T03:35:00.000+05:00"
+
+#eval parse "2022-10-10"
+#eval parse "2022-10-10T00:00:00Z"
+#eval parse "2022-10-10T03:35:00.001Z"
+#eval parse "2022-10-10T03:35:00+05:00"
+#eval parse "2022-10-10T03:35:00.000+05:00"
+
+#eval "2022-10-10".length
+#eval "2022-10-10T00:00:00Z".length
+#eval "2022-10-10T03:35:00.001Z".length
+#eval "2022-10-10T03:35:00+05:00".length
+#eval "2022-10-10T03:35:00.000+05:00".length
 
 end Datetime
