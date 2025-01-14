@@ -429,5 +429,18 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   | .isIpv6
   | .isLoopback
   | .isMulticast        => exact type_of_call_ipAddr_recognizer_is_sound (by simp [IsIpAddrRecognizer]) h₁ h₂ h₃ ih
+  | .toDays
+  | .toHours
+  | .toMinutes
+  | .toSeconds
+  | .toMilliseconds
+  | .toTime
+  | .toDate
+  | .durationSince
+  | .offset
+  | .duration
+  | .datetime =>
+    simp only [typeOf, typeOfCall, err, bind, Except.bind] at h₃
+    split at h₃ <;> simp at h₃
 
 end Cedar.Thm

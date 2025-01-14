@@ -37,6 +37,17 @@ inductive ExtFun where
   | isLoopback
   | isMulticast
   | isInRange
+  | datetime
+  | duration
+  | offset
+  | durationSince
+  | toDate
+  | toTime
+  | toMilliseconds
+  | toSeconds
+  | toMinutes
+  | toHours
+  | toDays
 
 def res {α} [Coe α Ext] : Option α → Result Value
   | some v => .ok v

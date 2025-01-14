@@ -436,6 +436,17 @@ def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Name) : ExprKind.E
     | "isLoopback" => .call .isLoopback es
     | "isMulticast" => .call .isMulticast es
     | "isInRange" => .call .isInRange es
+    | "datetime" => .call .datetime es
+    | "duration" => .call .duration es
+    | "offset" => .call .offset es
+    | "durationSince" => .call .durationSince es
+    | "toDate" => .call .toDate es
+    | "toTime" => .call .toTime es
+    | "toMilliseconds" => .call .toMilliseconds es
+    | "toSeconds" => .call .toSeconds es
+    | "toMinutes" => .call .toMinutes es
+    | "toHours" => .call .toHours es
+    | "toDays" => .call .toDays es
     | xfn => panic! s!"mergeName: unknown extension function {xfn}"
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
