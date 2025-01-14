@@ -61,7 +61,7 @@ theorem check_level_inversion_if {i t e : TypedExpr} {ty : CedarType} {n : Nat} 
 --  simp [h₃, bind, Except.bind] at h₁
 --  split at h₁ <;> try contradiction
 
-theorem typed_at_level_then_type_and_level {e : Expr} {c₀: Capabilities} {env : Environment} {n : Nat} :
+theorem typed_at_level_inversion {e : Expr} {c₀: Capabilities} {env : Environment} {n : Nat} :
   typedAtLevel e c₀ env n ->
   ∃ tx c₁, typeOf e c₀ env = .ok (tx, c₁) ∧ checkLevel tx n
 := by
@@ -72,7 +72,7 @@ theorem typed_at_level_then_type_and_level {e : Expr} {c₀: Capabilities} {env 
     simp
   · simp
 
-theorem type_and_level_then_typed_at_level {e : Expr} {tx : TypedExpr} {c₀ c₁: Capabilities} {env : Environment} {n : Nat} :
+theorem typed_at_level_def {e : Expr} {tx : TypedExpr} {c₀ c₁: Capabilities} {env : Environment} {n : Nat} :
   typeOf e c₀ env = .ok (tx, c₁) → checkLevel tx n →
   typedAtLevel e c₀ env n
 := by
@@ -110,7 +110,18 @@ theorem type_and_level_then_typed_at_level {e : Expr} {tx : TypedExpr} {c₀ c�
     -- simp [*] at *
     -- ·
 
-theorem level_based_slicing_is_sound_zero {e : Expr} {c : Capabilities} {env : Environment} {request : Request} {entities : Entities} :
+theorem as_bool_eval_bool {e : Expr} {b : Bool} {request : Request} {entities : Entities}:
+  Result.as Bool (evaluate e request entities) = Except.ok b →
+  evaluate e request entities = .ok (Value.prim (Prim.bool b))
+:= by
+  intros h
+  simp only [Result.as, Coe.coe, Value.asBool] at h
+  split at h <;> try simp only [reduceCtorEq] at h
+  split at h <;> try simp only [reduceCtorEq, Except.ok.injEq] at h
+  subst b
+  assumption
+
+theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Environment} {request : Request} {entities : Entities} :
   -- slice = entities.sliceAtLevel request 0 →
   CapabilitiesInvariant c request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
@@ -118,7 +129,7 @@ theorem level_based_slicing_is_sound_zero {e : Expr} {c : Capabilities} {env : E
   evaluate e request entities = evaluate e request Map.empty
 := by
   intros hc h₂ h₁
-  have ⟨tx, c', h₃, h₄⟩ := typed_at_level_then_type_and_level h₁
+  have ⟨tx, c', h₃, h₄⟩ := typed_at_level_inversion h₁
   cases e
   case lit => simp [evaluate]
   case var v => cases v <;> simp [evaluate]
@@ -133,14 +144,14 @@ theorem level_based_slicing_is_sound_zero {e : Expr} {c : Capabilities} {env : E
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨hl₄, hr₄⟩ := h₄
-      have ih₁ := level_based_slicing_is_sound_zero hc h₂ (type_and_level_then_typed_at_level h₇ hr₄)
-      have ih₂ := level_based_slicing_is_sound_zero hc h₂ (type_and_level_then_typed_at_level h₅ hl₄)
+      have ih₁ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₇ hr₄)
+      have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
       simp only [evaluate]
       rw [ih₁, ih₂]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₅
       unfold EvaluatesTo at h₁₃
@@ -154,37 +165,32 @@ theorem level_based_slicing_is_sound_zero {e : Expr} {c : Capabilities} {env : E
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨hl₄, hr₄⟩ := h₄ ; clear h₄
-      have ih₂ := level_based_slicing_is_sound_zero hc h₂ (type_and_level_then_typed_at_level h₅ hl₄)
+      have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
       simp only [evaluate]
       rw [ih₂]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₅
       unfold EvaluatesTo at h₁₃
       rw [ih₂, h₁₅] at h₁₃
       simp only [reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
-      simp [GuardedCapabilitiesInvariant] at hgc
-      rw [ih₂, h₁₅] at hgc
-      simp at hgc
-      have ih₁ := level_based_slicing_is_sound_zero (capability_union_invariant hc hgc) h₂ (type_and_level_then_typed_at_level h₇ hr₄)
-      rw [ih₁]
-      simp
+      simp only [GuardedCapabilitiesInvariant, ih₂, h₁₅, forall_const] at hgc
+      simp [level_based_slicing_is_sound₀ (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hr₄)]
     · replace ⟨h₇, h₈, h₉, h₁₀, _⟩ := h₇
       rw [h₉] at h₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨⟨ ha₄, hb₄ ⟩, hc₄ ⟩ := h₄
-      have ih₁ := level_based_slicing_is_sound_zero hc h₂ (type_and_level_then_typed_at_level h₅ ha₄)
-      have ih₃ := level_based_slicing_is_sound_zero hc h₂ (type_and_level_then_typed_at_level h₈ hc₄)
-      simp only [evaluate]
-      rw [ih₁, ih₃]
+      have ih₁ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ ha₄)
+      have ih₃ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₈ hc₄)
+      simp only [ih₁, ih₃, evaluate]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
-      split at h₁₂ <;> try simp at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
+      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₄
       unfold EvaluatesTo at h₁₃
@@ -195,8 +201,7 @@ theorem level_based_slicing_is_sound_zero {e : Expr} {c : Capabilities} {env : E
       case false => simp
       case true =>
         simp only [GuardedCapabilitiesInvariant, ih₁, h₁₄, forall_const] at hgc
-        have ih₂ := level_based_slicing_is_sound_zero (capability_union_invariant hc hgc) h₂ (type_and_level_then_typed_at_level h₇ hb₄)
-        simp [ih₂]
+        simp [level_based_slicing_is_sound₀ (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hb₄)]
 
   case and => sorry
   case or => sorry
