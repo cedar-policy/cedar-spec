@@ -114,7 +114,7 @@ deriving instance Repr for Duration
 
 abbrev duration := Duration.parse
 
-abbrev Datetime := Std.Time.Timestamp
+abbrev Datetime := Int64
 
 -- /-
 --   * `YYYY-MM-DD` (date only)
@@ -140,7 +140,7 @@ def parse (str: String) : Option Datetime :=
 
   let datetime := parseFun str
   match datetime with
-  | Except.ok val => some val.toTimestamp
+  | Except.ok val => Int64.ofInt? val.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   | _ => none
 
 #eval DateOnly.parse "2022-10-10"
@@ -150,6 +150,7 @@ def parse (str: String) : Option Datetime :=
 #eval DateWithOffsetAndMillis.parse "2022-10-10T03:35:00.000+05:00"
 
 #eval parse "2022-10-10"
+#eval (parse "1969-12-31") == (Int64.ofInt (-86400000 :Int))
 #eval parse "2022-10-10T00:00:00Z"
 #eval parse "2022-10-10T03:35:00.001Z"
 #eval parse "2022-10-10T03:35:00+05:00"
