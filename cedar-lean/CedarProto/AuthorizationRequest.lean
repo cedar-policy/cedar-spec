@@ -62,13 +62,13 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn AuthorizationRequest) := do
   match t.fieldNum with
     | 1 =>
       let x : Request ← Field.guardedParse t
-      pure (mergeRequest · x)
+      pure (pure $ mergeRequest · x)
     | 2 =>
       let x : Policies ← Field.guardedParse t
-      pure (mergePolicies · x)
+      pure (pure $ mergePolicies · x)
     | 3 =>
       let x : Entities ← Field.guardedParse t
-      pure (mergeEntities · x)
+      pure (pure $ mergeEntities · x)
     | _ =>
       t.wireType.skip
       pure ignore

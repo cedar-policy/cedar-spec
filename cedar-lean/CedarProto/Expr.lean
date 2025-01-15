@@ -86,16 +86,16 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Prim) := do
   match t.fieldNum with
     | 1 =>
       let x : Bool ← Field.guardedParse t
-      pure (merge_bool · x)
+      pure (pure $ merge_bool · x)
     | 2 =>
       let x : Proto.Int64 ← Field.guardedParse t
-      pure (merge_int · x)
+      pure (pure $ merge_int · x)
     | 3 =>
       let x : String ← Field.guardedParse t
-      pure (merge_string · x)
+      pure (pure $ merge_string · x)
     | 4 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (merge_euid · x)
+      pure (pure $ merge_euid · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -422,21 +422,21 @@ end Proto.ExprKind.BinaryApp
 
 namespace Proto.ExprKind.ExtensionFunctionApp
 @[inline]
-def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Name) : ExprKind.ExtensionFunctionApp :=
+def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Name) : BParsec ExprKind.ExtensionFunctionApp :=
   match result with
   | .call _ es => match xfn.id with
-    | "decimal" => .call .decimal es
-    | "lessThan" => .call .lessThan es
-    | "lessThanOrEqual" => .call .lessThanOrEqual es
-    | "greaterThan" => .call .greaterThan es
-    | "greaterThanOrEqual" => .call .greaterThanOrEqual es
-    | "ip" => .call .ip es
-    | "isIpv4" => .call .isIpv4 es
-    | "isIpv6" => .call .isIpv6 es
-    | "isLoopback" => .call .isLoopback es
-    | "isMulticast" => .call .isMulticast es
-    | "isInRange" => .call .isInRange es
-    | xfn => panic! s!"mergeName: unknown extension function {xfn}"
+    | "decimal" => pure $ .call .decimal es
+    | "lessThan" => pure $ .call .lessThan es
+    | "lessThanOrEqual" => pure $ .call .lessThanOrEqual es
+    | "greaterThan" => pure $ .call .greaterThan es
+    | "greaterThanOrEqual" => pure $ .call .greaterThanOrEqual es
+    | "ip" => pure $ .call .ip es
+    | "isIpv4" => pure $ .call .isIpv4 es
+    | "isIpv6" => pure $ .call .isIpv6 es
+    | "isLoopback" => pure $ .call .isLoopback es
+    | "isMulticast" => pure $ .call .isMulticast es
+    | "isInRange" => pure $ .call .isInRange es
+    | xfn => throw s!"mergeName: unknown extension function {xfn}"
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
 @[inline]
@@ -541,10 +541,10 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
   match t.fieldNum with
     | 1 =>
       let x : Ty ← Field.guardedParse t
-      pure (mergeTy · x)
+      pure (pure $ mergeTy · x)
     | 2 =>
       let x : String ← Field.guardedParse t
-      pure (mergeC · x)
+      pure (pure $ mergeC · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -741,78 +741,78 @@ end Expr
 -- where many of the constructors depend on Expr
 mutual
 
-partial def Proto.ExprKind.If.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.If → Proto.ExprKind.If) := do
+partial def Proto.ExprKind.If.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.If) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.If.mergeTestExpr · x)
+      pure (pure $ Proto.ExprKind.If.mergeTestExpr · x)
     | 2 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.If.mergeThenExpr · x)
+      pure (pure $ Proto.ExprKind.If.mergeThenExpr · x)
     | 3 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.If.mergeElseExpr · x)
+      pure (pure $ Proto.ExprKind.If.mergeElseExpr · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.And.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.And → Proto.ExprKind.And) := do
+partial def Proto.ExprKind.And.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.And) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.And.mergeLeft · x)
+      pure (pure $ Proto.ExprKind.And.mergeLeft · x)
     | 2 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.And.mergeRight · x)
+      pure (pure $ Proto.ExprKind.And.mergeRight · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.Or.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Or → Proto.ExprKind.Or) := do
+partial def Proto.ExprKind.Or.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Or) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Or.mergeLeft · x)
+      pure (pure $ Proto.ExprKind.Or.mergeLeft · x)
     | 2 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Or.mergeRight · x)
+      pure (pure $ Proto.ExprKind.Or.mergeRight · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.UnaryApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.UnaryApp → Proto.ExprKind.UnaryApp) := do
+partial def Proto.ExprKind.UnaryApp.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.UnaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.ExprKind.UnaryApp.Op ← Field.guardedParse t
-      pure (Proto.ExprKind.UnaryApp.mergeOp · x)
+      pure (pure $ Proto.ExprKind.UnaryApp.mergeOp · x)
     | 2 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.UnaryApp.mergeArg · x)
+      pure (pure $ Proto.ExprKind.UnaryApp.mergeArg · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.BinaryApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.BinaryApp → Proto.ExprKind.BinaryApp) := do
+partial def Proto.ExprKind.BinaryApp.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.BinaryApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.ExprKind.BinaryApp.Op ← Field.guardedParse t
-      pure (λ s => Proto.ExprKind.BinaryApp.mergeOp s x)
+      pure (pure $ Proto.ExprKind.BinaryApp.mergeOp · x)
     | 2 =>
       let x : Expr ← Field.guardedParse t
-      pure (λ s => Proto.ExprKind.BinaryApp.mergeLeft s x)
+      pure (pure $ Proto.ExprKind.BinaryApp.mergeLeft · x)
     | 3 =>
       let x : Expr ← Field.guardedParse t
-      pure (λ s => Proto.ExprKind.BinaryApp.mergeRight s x)
+      pure (pure $ Proto.ExprKind.BinaryApp.mergeRight · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.ExtensionFunctionApp → Proto.ExprKind.ExtensionFunctionApp) := do
+partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.ExtensionFunctionApp) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
@@ -820,84 +820,84 @@ partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BPa
       pure (Proto.ExprKind.ExtensionFunctionApp.mergeName · x)
     | 2 =>
       let x : Repeated Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.ExtensionFunctionApp.mergeArgs · x)
+      pure (pure $ Proto.ExprKind.ExtensionFunctionApp.mergeArgs · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.GetAttr.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.GetAttr → Proto.ExprKind.GetAttr) := do
+partial def Proto.ExprKind.GetAttr.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.GetAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.GetAttr.mergeExpr · x)
+      pure (pure $ Proto.ExprKind.GetAttr.mergeExpr · x)
     | 2 =>
       let x : String ← Field.guardedParse t
-      pure (Proto.ExprKind.GetAttr.mergeAttr · x)
+      pure (pure $ Proto.ExprKind.GetAttr.mergeAttr · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.HasAttr.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.HasAttr → Proto.ExprKind.HasAttr) := do
+partial def Proto.ExprKind.HasAttr.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.HasAttr) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.HasAttr.mergeExpr · x)
+      pure (pure $ Proto.ExprKind.HasAttr.mergeExpr · x)
     | 2 =>
       let x : String ← Field.guardedParse t
-      pure (Proto.ExprKind.HasAttr.mergeAttr · x)
+      pure (pure $ Proto.ExprKind.HasAttr.mergeAttr · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Like → Proto.ExprKind.Like) := do
+partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Like) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Like.mergeExpr · x)
+      pure (pure $ Proto.ExprKind.Like.mergeExpr · x)
     | 2 =>
       let x : Repeated PatElem ← Field.guardedParse t
-      pure (Proto.ExprKind.Like.mergePattern · x)
+      pure (pure $ Proto.ExprKind.Like.mergePattern · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Is → Proto.ExprKind.Is) := do
+partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Is) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Is.mergeExpr · x)
+      pure (pure $ Proto.ExprKind.Is.mergeExpr · x)
     | 2 =>
       let x : EntityTypeProto ← Field.guardedParse t
-      pure (Proto.ExprKind.Is.mergeEt · x)
+      pure (pure $ Proto.ExprKind.Is.mergeEt · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.Set.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Set → Proto.ExprKind.Set) := do
+partial def Proto.ExprKind.Set.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Set) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Repeated Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Set.mergeElems · x)
+      pure (pure $ Proto.ExprKind.Set.mergeElems · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.Record.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind.Record → Proto.ExprKind.Record) := do
+partial def Proto.ExprKind.Record.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.Record) := do
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.Map String Expr ← Field.guardedParse t
-      pure (Proto.ExprKind.Record.mergeItems · x)
+      pure (pure $ Proto.ExprKind.Record.mergeItems · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind → Proto.ExprKind) := do
+partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind) := do
   have : Message Proto.ExprKind.If := { parseField := Proto.ExprKind.If.parseField, merge := Proto.ExprKind.If.merge }
   have : Message Proto.ExprKind.And := { parseField := Proto.ExprKind.And.parseField, merge := Proto.ExprKind.And.merge }
   have : Message Proto.ExprKind.Or := { parseField := Proto.ExprKind.Or.parseField, merge := Proto.ExprKind.Or.merge }
@@ -915,56 +915,56 @@ partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (Proto.ExprKind 
   match t.fieldNum with
     | 1 =>
       let x : Prim ← Field.guardedParse t
-      pure (Proto.ExprKind.mergePrim · x)
+      pure (pure $ Proto.ExprKind.mergePrim · x)
     | 2 =>
       let x : Var ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeVar · x)
+      pure (pure $ Proto.ExprKind.mergeVar · x)
     | 4 =>
       let x : Proto.ExprKind.If ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeIf · x)
+      pure (pure $ Proto.ExprKind.mergeIf · x)
     | 5 =>
       let x : Proto.ExprKind.And ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeAnd · x)
+      pure (pure $ Proto.ExprKind.mergeAnd · x)
     | 6 =>
       let x : Proto.ExprKind.Or ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeOr · x)
+      pure (pure $ Proto.ExprKind.mergeOr · x)
     | 7 =>
       let x : Proto.ExprKind.UnaryApp ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeUApp · x)
+      pure (pure $ Proto.ExprKind.mergeUApp · x)
     | 8 =>
       let x : Proto.ExprKind.BinaryApp ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeBApp · x)
+      pure (pure $ Proto.ExprKind.mergeBApp · x)
     | 9 =>
       let x : Proto.ExprKind.ExtensionFunctionApp ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeExtApp · x)
+      pure (pure $ Proto.ExprKind.mergeExtApp · x)
     | 10 =>
       let x : Proto.ExprKind.GetAttr ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeGetAttr · x)
+      pure (pure $ Proto.ExprKind.mergeGetAttr · x)
     | 11 =>
       let x : Proto.ExprKind.HasAttr ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeHasAttr · x)
+      pure (pure $ Proto.ExprKind.mergeHasAttr · x)
     | 12 =>
       let x : Proto.ExprKind.Like ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeLike · x)
+      pure (pure $ Proto.ExprKind.mergeLike · x)
     | 13 =>
       let x : Proto.ExprKind.Is ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeIs · x)
+      pure (pure $ Proto.ExprKind.mergeIs · x)
     | 14 =>
       let x : Proto.ExprKind.Set ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeSet · x)
+      pure (pure $ Proto.ExprKind.mergeSet · x)
     | 15 =>
       let x : Proto.ExprKind.Record ← Field.guardedParse t
-      pure (Proto.ExprKind.mergeRecord · x)
+      pure (pure $ Proto.ExprKind.mergeRecord · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Expr.parseField (t : Proto.Tag) : BParsec (Expr → Expr) := do
+partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   have : Message Proto.ExprKind := { parseField := Proto.ExprKind.parseField, merge := Proto.ExprKind.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.ExprKind ← Field.guardedParse t
-      pure (Expr.mergeExprKind · x)
+      pure (pure $ Expr.mergeExprKind · x)
     | _ =>
       t.wireType.skip
       pure ignore

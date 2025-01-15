@@ -38,7 +38,7 @@ use lean_sys::{
     lean_alloc_sarray, lean_dec, lean_dec_ref, lean_finalize_thread,
     lean_initialize_runtime_module_locked, lean_initialize_thread, lean_io_mark_end_initialization,
     lean_io_mk_world, lean_io_result_is_ok, lean_io_result_show_error, lean_sarray_object,
-    lean_string_cstr,
+    lean_set_exit_on_panic, lean_string_cstr,
 };
 use log::info;
 use miette::miette;
@@ -167,6 +167,8 @@ impl LeanDefinitionalEngine {
                     panic!("Failed to initialize Lean");
                 }
                 lean_io_mark_end_initialization();
+                // If we don't explicitly set this, Lean does not abort after hitting a panic
+                lean_set_exit_on_panic(true);
             };
         });
         unsafe { lean_initialize_thread() };

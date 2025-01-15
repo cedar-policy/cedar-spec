@@ -131,7 +131,7 @@ def parseField (t : Tag) : BParsec (MergeFn Entity) := do
   match t.fieldNum with
     | 1 =>
       let x : Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeE · x)
+      pure (pure $ mergeE · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -163,7 +163,7 @@ def parseField (t : Tag) : BParsec (MergeFn ActionEntity) := do
   match t.fieldNum with
     | 1 =>
       let x : Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeName · x)
+      pure (pure $ mergeName · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -300,11 +300,11 @@ def mergeEr (result : CedarType) (x : Proto.EntityRecordKind) : CedarType :=
   | _, _ => panic!("Expected EntityRecordKind to be CedarType.record or CedarType.entity")
 
 @[inline]
-def mergeName (_ : CedarType) (xty : Cedar.Spec.Name) : CedarType :=
+def mergeName (_ : CedarType) (xty : Cedar.Spec.Name) : BParsec CedarType :=
   match xty.id with
-  | "ipaddr" => .ext .ipAddr
-  | "decimal" => .ext .decimal
-  | xty => panic! s!"mergeName: unknown extension type {xty}"
+  | "ipaddr" => pure $ .ext .ipAddr
+  | "decimal" => pure $ .ext .decimal
+  | xty => throw s!"mergeName: unknown extension type {xty}"
 
 
 end CedarType
@@ -319,68 +319,68 @@ def QualifiedType.merge (x1 x2 : QualifiedType) : QualifiedType :=
 
 
 mutual
-partial def RecordType.parseField (t : Tag) : BParsec (RecordType → RecordType) := do
+partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
   have : Message QualifiedType := { parseField := QualifiedType.parseField, merge := QualifiedType.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.Map String QualifiedType ← Field.guardedParse t
-      pure (RecordType.mergeAttrs · x)
+      pure (pure $ RecordType.mergeAttrs · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def QualifiedType.parseField (t : Tag) : BParsec (QualifiedType → QualifiedType) := do
+partial def QualifiedType.parseField (t : Tag) : BParsec (MergeFn QualifiedType) := do
   have : Message CedarType := { parseField := CedarType.parseField, merge := CedarType.merge}
   match t.fieldNum with
     | 1 =>
       let x : CedarType ← Field.guardedParse t
-      pure (QualifiedType.mergeType · x)
+      pure (pure $ QualifiedType.mergeType · x)
     | 2 =>
       let x : Bool ← Field.guardedParse t
-      pure (QualifiedType.mergeIsRequired · x)
+      pure (pure $ QualifiedType.mergeIsRequired · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.EntityRecordKind.parseField (t : Tag) : BParsec (Proto.EntityRecordKind → Proto.EntityRecordKind) := do
+partial def Proto.EntityRecordKind.parseField (t : Tag) : BParsec (MergeFn Proto.EntityRecordKind) := do
   have : Message Proto.EntityRecordKind.Record := { parseField := Proto.EntityRecordKind.Record.parseField, merge := Proto.EntityRecordKind.Record.merge }
   match t.fieldNum with
     | 1 =>
       let x : Proto.EntityRecordKind.Ty ← Field.guardedParse t
-      pure (Proto.EntityRecordKind.mergeTy · x)
+      pure (pure $ Proto.EntityRecordKind.mergeTy · x)
     | 2 =>
       let x : Proto.EntityRecordKind.Record ← Field.guardedParse t
-      pure (Proto.EntityRecordKind.mergeRecord · x)
+      pure (pure $ Proto.EntityRecordKind.mergeRecord · x)
     | 3 =>
       let x : Proto.EntityRecordKind.Entity ← Field.guardedParse t
-      pure (Proto.EntityRecordKind.mergeEntity · x)
+      pure (pure $ Proto.EntityRecordKind.mergeEntity · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def Proto.EntityRecordKind.Record.parseField (t : Tag) : BParsec (Proto.EntityRecordKind.Record → Proto.EntityRecordKind.Record) := do
+partial def Proto.EntityRecordKind.Record.parseField (t : Tag) : BParsec (MergeFn Proto.EntityRecordKind.Record) := do
   have : Message RecordType := { parseField := RecordType.parseField, merge := RecordType.merge }
   match t.fieldNum with
     | 1 =>
       let x : RecordType ← Field.guardedParse t
-      pure (Proto.EntityRecordKind.Record.mergeAttributes · x)
+      pure (pure $ Proto.EntityRecordKind.Record.mergeAttributes · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-partial def CedarType.parseField (t : Tag) : BParsec (CedarType → CedarType) := do
+partial def CedarType.parseField (t : Tag) : BParsec (MergeFn CedarType) := do
   have : Message CedarType := {parseField := CedarType.parseField, merge := CedarType.merge }
   have : Message Proto.EntityRecordKind := {parseField := Proto.EntityRecordKind.parseField, merge := Proto.EntityRecordKind.merge }
   match t.fieldNum with
     | 1 =>
       let x : CedarType.Ty ← Field.guardedParse t
-      pure (CedarType.mergeTy · x)
+      pure (pure $ CedarType.mergeTy · x)
     | 2 =>
       let x : CedarType ← Field.guardedParse t
-      pure (CedarType.mergeType · x)
+      pure (pure $ CedarType.mergeType · x)
     | 3 =>
       let x : Proto.EntityRecordKind ← Field.guardedParse t
-      pure (CedarType.mergeEr · x)
+      pure (pure $ CedarType.mergeEr · x)
     | 4 =>
       let x : Cedar.Spec.Name ← Field.guardedParse t
       pure (CedarType.mergeName · x)

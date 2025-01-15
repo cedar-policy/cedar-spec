@@ -51,13 +51,14 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Name) := do
   match t.fieldNum with
     | 1 =>
       let x : String ← Field.guardedParse t
-      pure (mergeId · x)
+      pure (pure $ mergeId · x)
     | 2 =>
       let x : Repeated String ← Field.guardedParse t
-      pure (mergePath · x)
+      pure (pure $ mergePath · x)
     | _ =>
       t.wireType.skip
       pure ignore
+
 
 instance : Message Name := {
   parseField := parseField
