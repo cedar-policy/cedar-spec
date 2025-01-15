@@ -46,7 +46,7 @@ def parseField (t : Tag) : BParsec (MergeFn TagMessage) := do
   match t.fieldNum with
     | 1 =>
       let ty : CedarType ← Field.guardedParse t
-      pure λ { optional_type := old_ty } => { optional_type := Field.merge old_ty ty }
+      pure λ { optional_type := old_ty } => pure { optional_type := Field.merge old_ty ty }
     | _ =>
       t.wireType.skip
       pure ignore
@@ -104,13 +104,13 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
   match t.fieldNum with
     | 2 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeDescendants · x)
+      pure (pure $ mergeDescendants · x)
     | 3 =>
       let x : RecordType ← Field.guardedParse t
-      pure (mergeAttributes · x)
+      pure (pure $ mergeAttributes · x)
     | 5 =>
       let x : TagMessage ← Field.guardedParse t
-      pure (mergeTags · x)
+      pure (pure $ mergeTags · x)
     | _ =>
       t.wireType.skip
       pure ignore

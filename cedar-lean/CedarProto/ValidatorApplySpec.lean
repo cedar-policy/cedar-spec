@@ -55,10 +55,10 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorApplySpec) := do
   match t.fieldNum with
     | 1 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergePas · x)
+      pure (pure $ mergePas · x)
     | 2 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeRas · x)
+      pure (pure $ mergeRas · x)
     | _ =>
       t.wireType.skip
       pure ignore

@@ -41,7 +41,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PrincipalScopeTemplate) := do
   match t.fieldNum with
     | 1 =>
       let x : ScopeTemplate ← Field.guardedParse t
-      pure (mergeConstraint · x)
+      pure (pure $ mergeConstraint · x)
     | _ =>
       t.wireType.skip
       pure ignore

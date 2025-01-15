@@ -25,13 +25,13 @@ Protobuf Message class
 
 namespace Proto
 
-def MergeFn (α : Type) : Type := (α → α)
+def MergeFn (α : Type) : Type := (α → BParsec α)
 
 /--
   a MergeFn which ignores the newly parsed data and just takes the previous
   value as-is
 -/
-def ignore {α : Type} : MergeFn α := id
+def ignore {α : Type} : MergeFn α := pure
 
 class Message (α : Type) [Inhabited α] where
   /--
@@ -58,9 +58,9 @@ private def parseMessageHelper [Inhabited α] [Message α] (remaining : Nat) (re
 
   let startPos ← BParsec.pos
   let tag ← Tag.parse
-  let f : MergeFn α ← parseField tag
+  let f : (α → BParsec α) ← parseField tag
   let endPos ← BParsec.pos
-  let newResult := f result
+  let newResult ← f result
 
   let elementSize := (endPos - startPos)
   if elementSize = 0 then

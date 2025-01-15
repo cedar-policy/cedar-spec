@@ -51,7 +51,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntitiesProto) := do
   match t.fieldNum with
     | 1 =>
       let x : Repeated EntityProto ← Field.guardedParse t
-      pure (mergeEntities · x)
+      pure (pure $ mergeEntities · x)
     -- Ignoring 3 | mode
     | _ =>
       t.wireType.skip
