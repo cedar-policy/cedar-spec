@@ -162,6 +162,6 @@ def tests := [testsForValidDatetimeStrings, testsForInvalidDatetimeStrings,
               testsForValidDurationStrings, testsForInvalidDurationStrings]
 
 -- Uncomment for interactive debugging
-#eval TestSuite.runAll tests
+-- #eval TestSuite.runAll tests
 
 end UnitTest.Datetime
