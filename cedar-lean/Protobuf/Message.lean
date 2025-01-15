@@ -58,7 +58,7 @@ private def parseMessageHelper [Inhabited α] [Message α] (remaining : Nat) (re
 
   let startPos ← BParsec.pos
   let tag ← Tag.parse
-  let f : (α → BParsec α) ← parseField tag
+  let f : MergeFn α ← parseField tag
   let endPos ← BParsec.pos
   let newResult ← f result
 
