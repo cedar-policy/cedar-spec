@@ -249,7 +249,9 @@ pub fn run_val_test(
         TestResult::Failure(err) => {
             // TODO(#175): For now, ignore cases where the Lean code returned an error due to
             // an unknown extension function.
-            if !err.contains("unknown extension function") && !err.contains("unknown extension type") {
+            if !err.contains("unknown extension function")
+                && !err.contains("unknown extension type")
+            {
                 panic!(
                     "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
                     &policies, schema
