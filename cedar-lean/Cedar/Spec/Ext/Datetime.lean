@@ -28,11 +28,16 @@ namespace Datetime
 /--
   A datetime value is measured in milliseconds and constructed from a datetime string.
   A datetime string must be of one of the forms:
-  - `YYYY-MM-DD` (date only)
-  - `YYYY-MM-DDThh:mm:ssZ` (UTC)
-  - `YYYY-MM-DDThh:mm:ss.SSSZ` (UTC with millisecond precision)
-  - `YYYY-MM-DDThh:mm:ss(+|-)hhmm` (With timezone offset in hours and minutes)
-  - `YYYY-MM-DDThh:mm:ss.SSS(+|-)hhmm` (With timezone offset in hours and minutes and millisecond precision)
+    - `YYYY-MM-DD` (date only)
+    - `YYYY-MM-DDThh:mm:ssZ` (UTC)
+    - `YYYY-MM-DDThh:mm:ss.SSSZ` (UTC with millisecond precision)
+    - `YYYY-MM-DDThh:mm:ss(+|-)hhmm` (With timezone offset in hours and minutes)
+    - `YYYY-MM-DDThh:mm:ss.SSS(+|-)hhmm` (With timezone offset in hours and minutes and millisecond precision)
+
+  Regardless of the timezone, offset is always normalized to UTC.
+
+  The datetime type does not provide a way to create a datetime from a Unix timestamp.
+  One of the readable formats listed above must be used instead.
 -/
 abbrev Datetime := Int64
 
@@ -59,24 +64,6 @@ def parse (str: String) : Option Datetime :=
   | Except.ok val => datetime? val.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   | _ => none
 
-#eval DateOnly.parse "2022-10-10"
-#eval DateUTC.parse "2022-10-10T00:00:00Z"
-#eval DateUTCWithMillis.parse "2022-10-10T03:35:00.001Z"
-#eval DateWithOffset.parse "2022-10-10T03:35:00+0500"
-#eval DateWithOffsetAndMillis.parse "2022-10-10T03:35:00.000+0500"
-
-#eval parse "2022-10-10"
-#eval parse "2022-10-10T00:00:00Z"
-#eval parse "2022-10-10T03:35:00.001Z"
-#eval parse "2022-10-10T03:35:00+0500"
-#eval parse "2022-10-10T03:35:00.000+0500"
-
-#eval "2022-10-10".length
-#eval "2022-10-10T00:00:00Z".length
-#eval "2022-10-10T03:35:00.001Z".length
-#eval "2022-10-10T03:35:00+05:00".length
-#eval "2022-10-10T03:35:00.000+05:00".length
--- #eval (parse "1969-12-31") == (Int64.ofInt (-86400000 :Int))
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
   A duration string is a concatenated sequence of quantity-unit pairs where the quantity

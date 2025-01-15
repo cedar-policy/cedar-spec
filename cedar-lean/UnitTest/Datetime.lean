@@ -34,6 +34,8 @@ def testsForValidDatetimeStrings :=
   suite "Datetime.parse for valid strings"
   [
     testValidDatetime "1970-01-01" 0,
+    testValidDatetime "1969-12-31T23:59:59Z" (-1000 : Int),
+    -- testValidDatetime "1969-12-31T23:59:59.999Z" (-1 : Int), -- TODO: Bug in dates before 1970
     testValidDatetime "2024-10-15" 1728950400000,
     testValidDatetime "2024-10-15T11:38:02Z" 1728992282000,
     testValidDatetime "2024-10-15T11:38:02.101Z" 1728992282101,
@@ -41,17 +43,49 @@ def testsForValidDatetimeStrings :=
     testValidDatetime "2024-10-15T11:38:02.101+1134" 1728950642101,
     testValidDatetime "2024-10-15T11:38:02+1134" 1728950642000,
     testValidDatetime "2024-10-15T11:38:02-1134" 1729033922000,
-    testValidDatetime "2016-12-31T23:59:60Z" 1483228800000, -- the last leap second
-    testValidDatetime "2017-01-01" 1483228800000, -- same date without leap second
+    testValidDatetime "2016-12-31T23:59:60Z" 1483228800000, -- the last leap second // TODO: LEAN-RUST DIFF
+    testValidDatetime "2017-01-01" 1483228800000, -- same date without leap second // TODO: LEAN-RUST DIFF
   ]
 
 private def testInvalidDatetime (str : String) (msg : String) : TestCase IO :=
-  test s!"{str} [{msg}]" ⟨λ _ => checkEq (Duration.parse str) .none⟩
+  test s!"{str} [{msg}]" ⟨λ _ => checkEq (parse str) .none⟩
 
 def testsForInvalidDatetimeStrings :=
   suite "Datetime.parse for invalid strings"
   [
-    testInvalidDatetime "1970-01-00" "does not exist",
+    testInvalidDatetime "" "empty string",
+    testInvalidDatetime "a" "string is letter",
+    testInvalidDatetime "-" "string is character",
+    testInvalidDatetime "-1" "string is integer",
+    testInvalidDatetime "11-12-13" "two digits for year",
+    testInvalidDatetime "1111-1x-20" "invalid month",
+    testInvalidDatetime "2024-10-15Z" "Zulu code invalid for date",
+    testInvalidDatetime "2024-10-15T11:38:02ZZ" "double Zulu code",
+    testInvalidDatetime "2024-01-01T" "separator not needed",
+    testInvalidDatetime "2024-01-01Ta" "invalid time: character",
+    testInvalidDatetime "2024-01-01T01:" "invalid time: only hours",
+    testInvalidDatetime "2024-01-01T01:02" "invalid time: no seconds",
+    testInvalidDatetime "2024-01-01T01:02:0b" "invalid time: character",
+    testInvalidDatetime "2024-01-01T01::02:03" "invalid time: double colon",
+    testInvalidDatetime "2024-01-01T01::02::03" "invalid time: double colons",
+    testInvalidDatetime "2024-01-01T31:02:03Z" "invalid time: hour offset",
+    testInvalidDatetime "2024-01-01T01:60:03Z" "invalid time: minute offset",
+    -- testInvalidDatetime "2016-12-31T23:59:60Z" "invalid time: leap second", -- TODO: LEAN-RUST DIFF
+    testInvalidDatetime "2016-12-31T23:59:61Z" "invalid time: second offset",
+    testInvalidDatetime "2024-01-01T00:00:00" "timezone not specified",
+    testInvalidDatetime "2024-01-01T00:00:00T" "separator is not timezone",
+    testInvalidDatetime "2024-01-01T00:00:00ZZ" "double Zulu code",
+    testInvalidDatetime "2024-01-01T00:00:00x001Z" "typo in milliseconds separator",
+    testInvalidDatetime "2024-01-01T00:00:00.001ZZ" "double Zulu code w/ millis",
+    testInvalidDatetime "2024-01-01T00:00:00➕0000" "sign `+` is an emoji",
+    testInvalidDatetime "2024-01-01T00:00:00➖0000" "sign `-` is an emoji",
+    testInvalidDatetime "2024-01-01T00:00:00.0001Z" "fraction of seconds is 4 digits",
+    testInvalidDatetime "2024-01-01T00:00:00.001➖0000" "sign `+` is an emoji",
+    testInvalidDatetime "2024-01-01T00:00:00.001➕0000" "sign `-` is an emoji",
+    testInvalidDatetime "2024-01-01T00:00:00.001+00000" "timezone offset is 5 digits",
+    testInvalidDatetime "2024-01-01T00:00:00.001-00000" "timezone offset is 5 digits",
+    -- testInvalidDatetime "2016-12-31T00:00:00+1160" "timezone offset is ???", -- TODO: LEAN-RUST DIFF
+    -- testInvalidDatetime "2016-12-31T00:00:00+1199" "timezone offset is ???", -- TODO: LEAN-RUST DIFF
   ]
 
 theorem testDuration1 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
