@@ -184,9 +184,9 @@ fn check_test(
     let rust_impl = RustEngine::new();
 
     perform_integration_test(
-        parsed_policies,
-        parsed_entities,
-        parsed_schema,
+        &parsed_policies,
+        &parsed_entities,
+        &parsed_schema,
         should_validate,
         requests,
         test_name,
