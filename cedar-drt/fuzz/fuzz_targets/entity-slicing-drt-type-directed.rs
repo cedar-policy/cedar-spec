@@ -26,7 +26,7 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::entity_manifest::compute_entity_manifest;
+use cedar_policy_validator::entity_manifest::{compute_entity_manifest, EntityManifestError};
 use cedar_policy_validator::{ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -129,8 +129,13 @@ fuzz_target!(|input: FuzzTargetInput| {
             policyset.add_static(policy.clone()).unwrap();
             if passes_validation(&validator, &policyset) {
                 // policy successfully validated, do entity slicing
-                let manifest = compute_entity_manifest(&schema, &policyset)
-                    .expect("failed to produce entity manifest");
+                let manifest = match compute_entity_manifest(&schema, &policyset) {
+                    Ok(manifest) => manifest,
+                    Err(EntityManifestError::UnsupportedCedarFeature(_)) => {
+                        return;
+                    }
+                    Err(e) => panic!("failed to produce an entity manifest: {e}"),
+                };
 
                 let authorizer = Authorizer::new();
                 debug!("Policies: {policyset}");
