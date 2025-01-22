@@ -32,10 +32,11 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     ty₁.typeOf = .bool bty₁ ∧
     match bty₁ with
     | .ff      =>
-      typeOf x₃ c env = .ok (ty₃, c₃) ∧ ty = TypedExpr.and (TypedExpr.unaryApp .not ty₁ (.bool .tt)) ty₃ ty₃.typeOf ∧ c' = c₃
+      typeOf x₃ c env = .ok (ty₃, c₃) ∧
+      ty = TypedExpr.ite ty₁ ty₃ ty₃ ty₃.typeOf ∧ c' = c₃
     | .tt      =>
       typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
-      ty = TypedExpr.and ty₁ ty₂ ty₂.typeOf ∧ c' = c₁ ∪ c₂
+      ty = TypedExpr.ite ty₁ ty₂ ty₂ ty₂.typeOf ∧ c' = c₁ ∪ c₂
     | .anyBool =>
       typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
       typeOf x₃ c env = .ok (ty₃, c₃) ∧
@@ -164,7 +165,7 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
     simp at hb₁ ; simp [hb₁]
     specialize ih₃ h₁ h₂ h₅
     have ⟨ih₃₁, v₃, ih₃₂, ih₃₃⟩ := ih₃
-    subst ht hc
+    subst hc ht
     apply And.intro
     · simp [GuardedCapabilitiesInvariant] at ih₃₁
       exact ih₃₁

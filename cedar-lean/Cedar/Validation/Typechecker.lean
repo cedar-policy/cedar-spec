@@ -77,10 +77,10 @@ def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : Resul
   | .bool .tt  => do
     let (ty₂, c₂) ← r₂
     -- Changed during proof of slicing soundness. Previously returned ty₂ directly
-    ok (.and r₁.fst ty₂ ty₂.typeOf) (c₁ ∪ c₂)
+    ok (.ite r₁.fst ty₂ ty₂ ty₂.typeOf) (c₁ ∪ c₂)
   | .bool .ff => do
     let (ty₃, c₃) ← r₃
-    ok (.and (.unaryApp .not r₁.fst (.bool .tt)) ty₃ ty₃.typeOf) c₃
+    ok (.ite r₁.fst ty₃ ty₃ ty₃.typeOf) c₃
   | .bool .anyBool => do
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃

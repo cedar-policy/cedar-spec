@@ -143,7 +143,7 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       replace h₁₄ := instance_of_ff_is_false h₁₄
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
-      have ⟨hl₄, hr₄⟩ := h₄
+      have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := h₄
       have ih₁ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₇ hr₄)
       have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
       simp only [evaluate]
@@ -164,7 +164,7 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       replace h₁₄ := instance_of_tt_is_true h₁₄
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
-      have ⟨hl₄, hr₄⟩ := h₄ ; clear h₄
+      have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := h₄
       have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
       simp only [evaluate]
       rw [ih₂]
