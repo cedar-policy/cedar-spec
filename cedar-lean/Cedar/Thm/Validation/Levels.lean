@@ -27,40 +27,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-/-
-theorem lit_level_based_slicing_is_sound {p : Prim} {env : Environment} {request : Request} {entities slice : Entities} {n : Nat} :
-  typedAtLevel (.lit p) env n →
-  slice = entities.sliceAtLevel request n →
-  evaluate (.lit p) request entities = evaluate (.lit p) request slice
-:= by simp [evaluate]
--/
-
-/-
-theorem check_level_inversion_if {i t e : TypedExpr} {ty : CedarType} {n : Nat} :
-  checkLevel (.ite i t e ty) n →
-  checkLevel i n ∧ checkLevel t n ∧ checkLevel e n
-:= by
-  intros h₁
-  simp [checkLevel] at h₁
-  simp [h₁]
-  -/
-
---theorem typed_at_level_inversion_if_true {i t e : Expr} {env : Environment} {n : Nat} {c : Capabilities} :
---  typedAtLevel (.ite i t e) env n →
---  (typeOf i ∅ env).typeOf = .ok (.bool .tt, c) →
---  typedAtLevel i env n ∧
---  typedAtLevel t env n ∧
---  typedAtLevel e env n
---:= by
---  intros h₁ h₂
---  simp [ResultType.typeOf, Except.map] at h₂
---  cases h₃ : typeOf i [] env <;> simp [h₃] at h₂
---  replace ⟨ h₂, h₄ ⟩ := h₂
---  subst h₄
---  simp [typedAtLevel, typeOf] at h₁
---  simp [h₃, bind, Except.bind] at h₁
---  split at h₁ <;> try contradiction
-
 theorem typed_at_level_inversion {e : Expr} {c₀: Capabilities} {env : Environment} {n : Nat} :
   typedAtLevel e c₀ env n ->
   ∃ tx c₁, typeOf e c₀ env = .ok (tx, c₁) ∧ checkLevel tx n
@@ -81,59 +47,23 @@ theorem typed_at_level_def {e : Expr} {tx : TypedExpr} {c₀ c₁: Capabilities}
   rw [h₁]
   simp
 
--- theorem evaluates_to_then_evaluates {e : Expr} {request : Request} {entities slice : Entities} {v : Value} :
---   slice = entities.sliceAtLevel request n →
---   EvaluatesTo e request entities v → EvaluatesTo e request slice v →
---   evaluate e request entities = evaluate e request slice
--- := by
---   intros h₁ h₂ h₃
---   cases e
---   case lit => simp [evaluate]
---   case var v => cases v <;> simp [evaluate]
---   case ite c t e =>
---     simp [evaluate]
---     simp [EvaluatesTo, evaluate] at h₂ h₃
-
-
-    -- rcases h₄ : Result.as Bool (evaluate c request entities) with (_ | _) | (_ | _ ) <;>
-    -- rcases h₅ : Result.as Bool (evaluate c request slice) with (_ | _) | (_ | _ ) <;>
-    -- simp [*] at *
-
-
-
-
-
-
-    -- rcases h₅ : Result.as Bool (evaluate c request slice) with _ | _ | _ <;>
-    -- rw [h₄] at h₂ <;>
-    -- rw [h₅] at h₃ <;>
-    -- simp [*] at *
-    -- ·
-
-theorem as_bool_eval_bool {e : Expr} {b : Bool} {request : Request} {entities : Entities}:
-  Result.as Bool (evaluate e request entities) = Except.ok b →
-  evaluate e request entities = .ok (Value.prim (Prim.bool b))
-:= by
-  intros h
-  simp only [Result.as, Coe.coe, Value.asBool] at h
-  split at h <;> try simp only [reduceCtorEq] at h
-  split at h <;> try simp only [reduceCtorEq, Except.ok.injEq] at h
-  subst b
-  assumption
-
-theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Environment} {request : Request} {entities : Entities} :
+def TypedAtLevelIsSound₀ (e : Expr) : Prop := ∀ {c : Capabilities} {env :Environment} {request : Request} {entities : Entities},
   -- slice = entities.sliceAtLevel request 0 →
   CapabilitiesInvariant c request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typedAtLevel e c env 0 →
   evaluate e request entities = evaluate e request Map.empty
+
+theorem level_based_slicing_is_sound_if₀ {c t e : Expr} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities : Entities}
+  (hc : CapabilitiesInvariant c₀ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
+  (h₄ : checkLevel tx 0 = true)
+  (ihc : TypedAtLevelIsSound₀ c)
+  (iht : TypedAtLevelIsSound₀ t)
+  (ihe : TypedAtLevelIsSound₀ e)
+  : evaluate (.ite c t e) request entities = evaluate (.ite c t e) request Map.empty
 := by
-  intros hc h₂ h₁
-  have ⟨tx, c', h₃, h₄⟩ := typed_at_level_inversion h₁
-  cases e
-  case lit => simp [evaluate]
-  case var v => cases v <;> simp [evaluate]
-  case ite c t e =>
     have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₅, h₆, h₇ ⟩ := type_of_ite_inversion h₃
     have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc h₂ h₅
     rw [h₆] at h₁₄
@@ -144,10 +74,10 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := h₄
-      have ih₁ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₇ hr₄)
-      have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
+      specialize ihc hc h₂ (typed_at_level_def h₅ hl₄)
+      specialize ihe hc h₂ (typed_at_level_def h₇ hr₄)
       simp only [evaluate]
-      rw [ih₁, ih₂]
+      rw [ihc, ihe]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
       split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
@@ -155,19 +85,19 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       subst h₁₂
       rename_i h₁₅
       unfold EvaluatesTo at h₁₃
-      rw [ih₂, h₁₅] at h₁₃
+      rw [ihc, h₁₅] at h₁₃
       simp only [reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
       simp
     · replace ⟨h₇, h₈, _⟩ := h₇
-      subst h₈ c'
+      subst h₈
       replace h₁₄ := instance_of_tt_is_true h₁₄
       subst h₁₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := h₄
-      have ih₂ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ hl₄)
+      specialize ihc hc h₂ (typed_at_level_def h₅ hl₄)
       simp only [evaluate]
-      rw [ih₂]
+      rw [ihc]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
       split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
@@ -175,18 +105,19 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       subst h₁₂
       rename_i h₁₅
       unfold EvaluatesTo at h₁₃
-      rw [ih₂, h₁₅] at h₁₃
+      rw [ihc, h₁₅] at h₁₃
       simp only [reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
-      simp only [GuardedCapabilitiesInvariant, ih₂, h₁₅, forall_const] at hgc
-      simp [level_based_slicing_is_sound₀ (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hr₄)]
+      simp only [GuardedCapabilitiesInvariant, ihc, h₁₅, forall_const] at hgc
+      specialize iht (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hr₄)
+      simp [iht]
     · replace ⟨h₇, h₈, h₉, h₁₀, _⟩ := h₇
       rw [h₉] at h₄
       simp only [checkLevel, Bool.and_eq_true] at h₄
       have ⟨⟨ ha₄, hb₄ ⟩, hc₄ ⟩ := h₄
-      have ih₁ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₅ ha₄)
-      have ih₃ := level_based_slicing_is_sound₀ hc h₂ (typed_at_level_def h₈ hc₄)
-      simp only [ih₁, ih₃, evaluate]
+      specialize ihc hc h₂ (typed_at_level_def h₅ ha₄)
+      specialize ihe hc h₂ (typed_at_level_def h₈ hc₄)
+      simp only [ihc, ihe, evaluate]
       cases h₁₂ : Result.as Bool (evaluate c request Map.empty) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
       split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
@@ -194,15 +125,32 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
       subst h₁₂
       rename_i h₁₄
       unfold EvaluatesTo at h₁₃
-      rw [ih₁, h₁₄] at h₁₃
+      rw [ihc, h₁₄] at h₁₃
       simp only [reduceCtorEq, Except.ok.injEq, false_or] at h₁₃
       rename_i b
       cases b
       case false => simp
       case true =>
-        simp only [GuardedCapabilitiesInvariant, ih₁, h₁₄, forall_const] at hgc
-        simp [level_based_slicing_is_sound₀ (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hb₄)]
+        simp only [GuardedCapabilitiesInvariant, ihc, h₁₄, forall_const] at hgc
+        specialize iht (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hb₄)
+        simp [iht]
 
+theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Environment} {request : Request} {entities : Entities}
+  -- slice = entities.sliceAtLevel request 0 →
+  (hc : CapabilitiesInvariant c request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₁ : typedAtLevel e c env 0) :
+  evaluate e request entities = evaluate e request Map.empty
+:= by
+  have ⟨_, _, h₃, h₄⟩ := typed_at_level_inversion h₁
+  cases e
+  case lit => simp [evaluate]
+  case var v => cases v <;> simp [evaluate]
+  case ite c t e =>
+    have ihc := @level_based_slicing_is_sound₀ c
+    have iht := @level_based_slicing_is_sound₀ t
+    have ihe := @level_based_slicing_is_sound₀ e
+    apply level_based_slicing_is_sound_if₀ hc h₂ h₃ h₄ ihc iht ihe
   case and => sorry
   case or => sorry
   case unaryApp => sorry
@@ -212,9 +160,6 @@ theorem level_based_slicing_is_sound₀ {e : Expr} {c : Capabilities} {env : Env
   case set => sorry
   case record => sorry
   case call => sorry
-
-
-
 
 -- theorem level_based_slicing_is_sound' {e : Expr} {env : Environment} {request : Request} {entities slice : Entities} {n : Nat} :
 --   slice = entities.sliceAtLevel request n →
