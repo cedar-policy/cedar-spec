@@ -84,9 +84,7 @@ theorem level_based_slicing_is_sound_if₀ {c t e : Expr} {c₀ c₁: Capabiliti
       split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₅
-      unfold EvaluatesTo at h₁₃
-      rw [ihc, h₁₅] at h₁₃
-      simp only [reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
+      simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
       simp
     · replace ⟨h₇, h₈, _⟩ := h₇
@@ -104,9 +102,7 @@ theorem level_based_slicing_is_sound_if₀ {c t e : Expr} {c₀ c₁: Capabiliti
       split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₅
-      unfold EvaluatesTo at h₁₃
-      rw [ihc, h₁₅] at h₁₃
-      simp only [reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
+      simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
       simp only [GuardedCapabilitiesInvariant, ihc, h₁₅, forall_const] at hgc
       specialize iht (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hr₄)
@@ -124,11 +120,7 @@ theorem level_based_slicing_is_sound_if₀ {c t e : Expr} {c₀ c₁: Capabiliti
       split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
       subst h₁₂
       rename_i h₁₄
-      unfold EvaluatesTo at h₁₃
-      rw [ihc, h₁₄] at h₁₃
-      simp only [reduceCtorEq, Except.ok.injEq, false_or] at h₁₃
-      rename_i b
-      cases b
+      rename_i b ; cases b
       case false => simp
       case true =>
         simp only [GuardedCapabilitiesInvariant, ihc, h₁₄, forall_const] at hgc
