@@ -49,20 +49,14 @@ def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-d
 
 abbrev datetime? := Int64.ofInt?
 
-def parse (str: String) : Option Datetime :=
-  let parseFun := match str.length with
-  | 10 => DateOnly.parse
-  | 20 => DateUTC.parse
-  | 24 => if str.get? ⟨23⟩ == some 'Z'
-          then DateUTCWithMillis.parse
-          else DateWithOffset.parse
-  | 28 => DateWithOffsetAndMillis.parse
-  | _ => (fun _ => Except.error "invalid string length")
-
-  let datetime := parseFun str
-  match datetime with
-  | Except.ok val => datetime? val.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
-  | _ => none
+def parse (str: String) : Option Datetime := do
+  let val :=
+    DateOnly.parse str <|>
+    DateUTC.parse str <|>
+    DateUTCWithMillis.parse str <|>
+    DateWithOffset.parse str <|>
+    DateWithOffsetAndMillis.parse str
+  datetime? (← val.toOption).toTimestamp.toMillisecondsSinceUnixEpoch.toInt
 
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
