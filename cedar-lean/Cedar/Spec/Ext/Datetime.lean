@@ -16,6 +16,8 @@
 
 import Cedar.Data.Int64
 import Std.Time
+import Std.Time.Format
+import Init.Data.Int.Basic
 
 /-! This file defines Cedar datetime values and functions. -/
 
@@ -41,6 +43,8 @@ namespace Datetime
 -/
 abbrev Datetime := Int64
 
+def MAX_OFFSET_SECONDS: Nat := 86400
+
 def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
 def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
 def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
@@ -49,14 +53,27 @@ def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-d
 
 abbrev datetime? := Int64.ofInt?
 
+def date_contains_leap_seconds (str: String) : Bool :=
+  str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
+
 def parse (str: String) : Option Datetime := do
+  if date_contains_leap_seconds str then failure
   let val :=
     DateOnly.parse str <|>
     DateUTC.parse str <|>
     DateUTCWithMillis.parse str <|>
     DateWithOffset.parse str <|>
     DateWithOffsetAndMillis.parse str
-  datetime? (← val.toOption).toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+
+  let zoned_time ← val.toOption
+  if zoned_time.timezone.offset.second.val.natAbs > MAX_OFFSET_SECONDS
+  then none
+  else datetime? zoned_time.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+
+#eval parse "2016-12-31T00:00:00+2400"
+#eval parse "2016-12-31T00:00:00+2401"
+#eval parse "2016-12-31T00:00:00-2400"
+#eval parse "2016-12-31T00:00:60-2400"
 
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
