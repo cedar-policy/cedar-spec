@@ -66,9 +66,9 @@ def parse (str: String) : Option Datetime := do
     DateWithOffsetAndMillis.parse str
 
   let zoned_time ← val.toOption
-  if zoned_time.timezone.offset.second.val.natAbs > MAX_OFFSET_SECONDS
-  then none
-  else datetime? zoned_time.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+  if zoned_time.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
+  then datetime? zoned_time.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+  else none
 
 #eval parse "2016-12-31T00:00:00+2400"
 #eval parse "2016-12-31T00:00:00+2401"

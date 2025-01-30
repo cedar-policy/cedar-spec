@@ -23,9 +23,14 @@ namespace UnitTest.Datetime
 
 open Cedar.Spec.Ext.Datetime
 
-
 theorem testDatetime1 : toString ((parse "2022-10-10").get!) = "1665360000000" := by native_decide
 theorem testDatetime2 : toString ((parse "1969-12-31").get!) = "-86400000" := by native_decide
+theorem testDatetime3 : toString ((parse "2024-10-15T11:38:02Z").get!) = "1728992282000" := by native_decide
+theorem testDatetime4 : toString ((parse "2024-10-15T11:38:02.101Z").get!) = "1728992282101" := by native_decide
+theorem testDatetime5 : toString ((parse "2024-10-15T11:38:02.101-1134").get!) = "1729033922101" := by native_decide
+theorem testDatetime6 : toString ((parse "2024-10-15T11:38:02.101+1134").get!) = "1728950642101" := by native_decide
+theorem testDatetime7 : toString ((parse "2024-10-15T11:38:02+1134").get!) = "1728950642000" := by native_decide
+theorem testDatetime8 : toString ((parse "2024-10-15T11:38:02-1134").get!) = "1729033922000" := by native_decide
 
 private def testValidDatetime (str : String) (rep : Int) : TestCase IO :=
   test str ⟨λ _ => checkEq (parse str) (datetime? rep)⟩
@@ -35,7 +40,11 @@ def testsForValidDatetimeStrings :=
   [
     testValidDatetime "1970-01-01" 0,
     testValidDatetime "1969-12-31T23:59:59Z" (-1000 : Int),
-    -- testValidDatetime "1969-12-31T23:59:59.999Z" (-1 : Int), -- TODO: Bug in dates before 1970
+    -- Commented out tests following this comment are impacted by a bug we
+    -- encountered in Lean. Enable them when the bug has been fixed. More
+    -- details in https://github.com/cedar-policy/cedar-spec/issues/525
+    -- testValidDatetime "1969-12-31T23:59:59.001Z" (-999 : Int),
+    -- testValidDatetime "1969-12-31T23:59:59.999Z" (-1 : Int),
     testValidDatetime "2024-10-15" 1728950400000,
     testValidDatetime "2024-10-15T11:38:02Z" 1728992282000,
     testValidDatetime "2024-10-15T11:38:02.101Z" 1728992282101,
@@ -43,8 +52,6 @@ def testsForValidDatetimeStrings :=
     testValidDatetime "2024-10-15T11:38:02.101+1134" 1728950642101,
     testValidDatetime "2024-10-15T11:38:02+1134" 1728950642000,
     testValidDatetime "2024-10-15T11:38:02-1134" 1729033922000,
-    testValidDatetime "2016-12-31T23:59:60Z" 1483228800000, -- the last leap second // TODO: LEAN-RUST DIFF
-    testValidDatetime "2017-01-01" 1483228800000, -- same date without leap second // TODO: LEAN-RUST DIFF
   ]
 
 private def testInvalidDatetime (str : String) (msg : String) : TestCase IO :=
@@ -62,30 +69,32 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "2024-10-15Z" "Zulu code invalid for date",
     testInvalidDatetime "2024-10-15T11:38:02ZZ" "double Zulu code",
     testInvalidDatetime "2024-01-01T" "separator not needed",
-    testInvalidDatetime "2024-01-01Ta" "invalid time: character",
-    testInvalidDatetime "2024-01-01T01:" "invalid time: only hours",
-    testInvalidDatetime "2024-01-01T01:02" "invalid time: no seconds",
-    testInvalidDatetime "2024-01-01T01:02:0b" "invalid time: character",
-    testInvalidDatetime "2024-01-01T01::02:03" "invalid time: double colon",
-    testInvalidDatetime "2024-01-01T01::02::03" "invalid time: double colons",
-    testInvalidDatetime "2024-01-01T31:02:03Z" "invalid time: hour offset",
-    testInvalidDatetime "2024-01-01T01:60:03Z" "invalid time: minute offset",
-    -- testInvalidDatetime "2016-12-31T23:59:60Z" "invalid time: leap second", -- TODO: LEAN-RUST DIFF
-    testInvalidDatetime "2016-12-31T23:59:61Z" "invalid time: second offset",
+    testInvalidDatetime "2024-01-01Ta" "unexpected character 'a'",
+    testInvalidDatetime "2024-01-01T01:" "only hours",
+    testInvalidDatetime "2024-01-01T01:02" "no seconds",
+    testInvalidDatetime "2024-01-01T01:02:0b" "unexpected character 'b'",
+    testInvalidDatetime "2024-01-01T01::02:03" "double colon",
+    testInvalidDatetime "2024-01-01T01::02::03" "double colons",
+    testInvalidDatetime "2024-01-01T31:02:03Z" "invalid hour range",
+    testInvalidDatetime "2024-01-01T01:60:03Z" "invalid minute range",
+    testInvalidDatetime "2016-12-31T23:59:60Z" "leap second",
+    testInvalidDatetime "2016-12-31T23:59:61Z" "invalid second range",
     testInvalidDatetime "2024-01-01T00:00:00" "timezone not specified",
     testInvalidDatetime "2024-01-01T00:00:00T" "separator is not timezone",
     testInvalidDatetime "2024-01-01T00:00:00ZZ" "double Zulu code",
     testInvalidDatetime "2024-01-01T00:00:00x001Z" "typo in milliseconds separator",
     testInvalidDatetime "2024-01-01T00:00:00.001ZZ" "double Zulu code w/ millis",
+    testInvalidDatetime "2016-12-31T23:59:60.000Z" "leap second (millis/UTC)",
+    testInvalidDatetime "2016-12-31T23:59:60.000+0200" "leap second (millis/offset)",
     testInvalidDatetime "2024-01-01T00:00:00➕0000" "sign `+` is an emoji",
     testInvalidDatetime "2024-01-01T00:00:00➖0000" "sign `-` is an emoji",
     testInvalidDatetime "2024-01-01T00:00:00.0001Z" "fraction of seconds is 4 digits",
     testInvalidDatetime "2024-01-01T00:00:00.001➖0000" "sign `+` is an emoji",
     testInvalidDatetime "2024-01-01T00:00:00.001➕0000" "sign `-` is an emoji",
-    testInvalidDatetime "2024-01-01T00:00:00.001+00000" "timezone offset is 5 digits",
-    testInvalidDatetime "2024-01-01T00:00:00.001-00000" "timezone offset is 5 digits",
-    -- testInvalidDatetime "2016-12-31T00:00:00+1160" "timezone offset is ???", -- TODO: LEAN-RUST DIFF
-    -- testInvalidDatetime "2016-12-31T00:00:00+1199" "timezone offset is ???", -- TODO: LEAN-RUST DIFF
+    testInvalidDatetime "2024-01-01T00:00:00.001+00000" "offset is 5 digits",
+    testInvalidDatetime "2024-01-01T00:00:00.001-00000" "offset is 5 digits",
+    testInvalidDatetime "2016-12-31T00:00:00+2400" "invalid offset range",
+    testInvalidDatetime "2016-12-31T00:00:00+9999" "invalid offset range",
   ]
 
 theorem testDuration1 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
