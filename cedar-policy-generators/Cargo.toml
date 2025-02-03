@@ -17,6 +17,7 @@ rand = "0.8.5"
 anyhow = "1.0.72"
 serde_with = "3.4.0"
 thiserror = "2.0"
+nonempty = { version = "0.10", features = ["arbitrary"] }
 
 [dev.dependencies]
 rand = "0.8.5"

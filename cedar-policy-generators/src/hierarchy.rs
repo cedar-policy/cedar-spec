@@ -23,7 +23,7 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema;
+use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.
@@ -494,10 +494,13 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        for allowed_parent_typename in &entitytypes_by_type
+                        for allowed_parent_typename in match &entitytypes_by_type
                             .get(name)
-                            .expect("typename should have an EntityType")
-                            .member_of_types
+                            .expect("typename should have an EntityType").kind
+                            {
+                                json_schema::EntityTypeKind::Standard(StandardEntityType { member_of_types, ..} ) => member_of_types.clone(),
+                                json_schema::EntityTypeKind::Enum { .. } => vec![]
+                            }
                         {
                             let allowed_parent_typename = ast::Name::try_from(
                                 allowed_parent_typename
@@ -550,64 +553,67 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        let attributes = attrs_from_attrs_or_context(
-                            &schema.schema,
-                            &entitytypes_by_type
-                                .get(name)
-                                .expect("typename should have an EntityType")
-                                .shape,
-                        );
-                        if attributes.additional_attrs {
-                            // maybe add some additional attributes with arbitrary types
-                            self.u.arbitrary_loop(
-                                None,
-                                Some(schema.settings.max_width as u32),
-                                |u| {
-                                    let attr_type = if schema.settings.enable_extensions {
-                                        u.arbitrary()?
-                                    } else {
-                                        Type::arbitrary_nonextension(u)?
-                                    };
-                                    let attr_name: String = u.arbitrary()?;
-                                    attrs.insert(
-                                        attr_name.into(),
-                                        schema
-                                            .exprgenerator(Some(&hierarchy_no_attrs))
-                                            .generate_attr_value_for_type(
-                                                &attr_type,
-                                                schema.settings.max_depth,
-                                                u,
-                                            )?
-                                            .into(),
-                                    );
-                                    Ok(std::ops::ControlFlow::Continue(()))
-                                },
-                            )?;
-                        }
-                        for (attr, ty) in attributes.attrs {
-                            // now add the actual optional and required attributes, with the
-                            // correct types.
-                            // Doing this second ensures that we overwrite any "additional"
-                            // attributes so that they definitely have the required type, in
-                            // case we got a name collision between an explicitly specified
-                            // attribute and one of the "additional" ones we added.
-                            if ty.required || self.u.ratio::<u8>(1, 2)? {
-                                let attr_val = schema
-                                    .exprgenerator(Some(&hierarchy_no_attrs))
-                                    .generate_attr_value_for_schematype(
-                                        &ty.ty,
-                                        schema.settings.max_depth,
-                                        self.u,
+                        let et = entitytypes_by_type
+                        .get(name)
+                        .expect("typename should have an EntityType");
+                        match &et.kind {
+                            EntityTypeKind::Enum { .. } => {}
+                            EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
+                                let attributes = attrs_from_attrs_or_context(
+                                    &schema.schema,shape);
+                                if attributes.additional_attrs {
+                                    // maybe add some additional attributes with arbitrary types
+                                    self.u.arbitrary_loop(
+                                        None,
+                                        Some(schema.settings.max_width as u32),
+                                        |u| {
+                                            let attr_type = if schema.settings.enable_extensions {
+                                                u.arbitrary()?
+                                            } else {
+                                                Type::arbitrary_nonextension(u)?
+                                            };
+                                            let attr_name: String = u.arbitrary()?;
+                                            attrs.insert(
+                                                attr_name.into(),
+                                                schema
+                                                    .exprgenerator(Some(&hierarchy_no_attrs))
+                                                    .generate_attr_value_for_type(
+                                                        &attr_type,
+                                                        schema.settings.max_depth,
+                                                        u,
+                                                    )?
+                                                    .into(),
+                                            );
+                                            Ok(std::ops::ControlFlow::Continue(()))
+                                        },
                                     )?;
-                                attrs.insert(
-                                attr.parse().expect(
-                                    "all attribute names in the schema should be valid identifiers",
-                                ),
-                                attr_val.into(),
-                            );
+                                }
+                                for (attr, ty) in attributes.attrs {
+                                    // now add the actual optional and required attributes, with the
+                                    // correct types.
+                                    // Doing this second ensures that we overwrite any "additional"
+                                    // attributes so that they definitely have the required type, in
+                                    // case we got a name collision between an explicitly specified
+                                    // attribute and one of the "additional" ones we added.
+                                    if ty.required || self.u.ratio::<u8>(1, 2)? {
+                                        let attr_val = schema
+                                            .exprgenerator(Some(&hierarchy_no_attrs))
+                                            .generate_attr_value_for_schematype(
+                                                &ty.ty,
+                                                schema.settings.max_depth,
+                                                self.u,
+                                            )?;
+                                        attrs.insert(
+                                        attr.parse().expect(
+                                            "all attribute names in the schema should be valid identifiers",
+                                        ),
+                                        attr_val.into(),
+                                    );
+                                    }
+                                }
+                            }
                             }
                         }
-                    }
                 }
                 // generate appropriate tags for the entity
                 let mut tags = HashMap::new();
@@ -622,12 +628,11 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let Some(entitytypes_by_type) = &entitytypes_by_type else {
                             unreachable!("in schema-based mode, this should always be Some")
                         };
-                        match &entitytypes_by_type
-                            .get(name)
-                            .expect("typename should have an EntityType")
-                            .tags
-                        {
-                            Some(tag_type) => {
+                        let et = entitytypes_by_type
+                        .get(name)
+                        .expect("typename should have an EntityType");
+                        match &et.kind {
+                            EntityTypeKind::Standard(StandardEntityType { tags: Some(tag_type), .. }) => {
                                 // add tags with the type `tag_type`
                                 self.u.arbitrary_loop(
                                     None,
@@ -649,9 +654,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                                     },
                                 )?;
                             }
-                            None => {
-                                // entity type doesn't have tags, so don't add any
-                            }
+                            _ => {}
                         }
                     }
                 }

@@ -30,7 +30,9 @@ use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::{CommonType, CommonTypeId};
+use cedar_policy_validator::json_schema::{
+    CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
+};
 use cedar_policy_validator::{
     json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
     ValidatorSchema, ValidatorSchemaFragment,
@@ -459,11 +461,12 @@ fn build_attributes_by_type<'a>(
 ) -> HashMap<Type, Vec<(ast::EntityType, SmolStr)>> {
     let triples = entity_types
         .into_iter()
-        .map(|(name, et)| {
-            (
+        .filter_map(|(name, et)| match &et.kind {
+            EntityTypeKind::Enum { .. } => None,
+            EntityTypeKind::Standard(StandardEntityType { shape, .. }) => Some((
                 ast::EntityType::from(ast::Name::from(name.clone())).qualify_with(namespace),
-                attrs_from_attrs_or_context(schema, &et.shape),
-            )
+                attrs_from_attrs_or_context(schema, shape),
+            )),
         })
         .flat_map(|(tyname, attributes)| {
             attributes.attrs.iter().map(move |(attr_name, ty)| {
@@ -597,14 +600,22 @@ impl Bindings {
         u: &mut Unstructured<'_>,
         et: &json_schema::EntityType<ast::InternalName>,
     ) -> Result<json_schema::EntityType<ast::InternalName>> {
-        let ty = &et.shape.0;
-        Ok(json_schema::EntityType {
-            member_of_types: et.member_of_types.clone(),
-            shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, ty)?),
-            tags: et.tags.clone(),
-            annotations: et.annotations.clone(),
-            loc: et.loc.clone(),
-        })
+        match &et.kind {
+            EntityTypeKind::Enum { .. } => Ok(et.clone()),
+            EntityTypeKind::Standard(StandardEntityType {
+                member_of_types,
+                shape,
+                tags,
+            }) => Ok(json_schema::EntityType {
+                kind: EntityTypeKind::Standard(StandardEntityType {
+                    member_of_types: member_of_types.clone(),
+                    shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, &shape.0)?),
+                    tags: tags.clone(),
+                }),
+                annotations: et.annotations.clone(),
+                loc: et.loc.clone(),
+            }),
+        }
     }
 
     /// Replace attribute types in a record type with common types
@@ -825,7 +836,17 @@ impl Schema {
             .values()
             .into_iter()
             .map(|ty| &ty.ty)
-            .chain(nsdef.entity_types.values().map(|etype| &etype.shape.0))
+            .chain(
+                nsdef
+                    .entity_types
+                    .values()
+                    .filter_map(|etype| match &etype.kind {
+                        EntityTypeKind::Enum { .. } => None,
+                        EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
+                            Some(&shape.0)
+                        }
+                    }),
+            )
         {
             attributes.extend(attrs_in_schematype(&nsdef, schematype));
         }
@@ -959,8 +980,12 @@ impl Schema {
                     Ok((
                         id.clone(),
                         json_schema::EntityType {
-                            member_of_types: vec![],
-                            shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
+                            // A 1/4 ratio to generate enumerated vs. standard entity types
+                            kind: gen!(u,
+                             1 => EntityTypeKind::Enum { choices: u.arbitrary()? },
+                             4 => EntityTypeKind::Standard(StandardEntityType {
+                                member_of_types: vec![],
+                                shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
                             tags: uniform!(
                                 u,
                                 None,
@@ -970,6 +995,8 @@ impl Schema {
                                     settings.max_depth,
                                     u
                                 )?)
+                                )
+                             })
                             ),
                             annotations: u.arbitrary()?,
                             loc: None,
@@ -981,11 +1008,21 @@ impl Schema {
         // earlier in the entity_types list to entities later in the list; this
         // ensures we get a DAG
         for i in 0..entity_types.len() {
-            for name in &entity_type_ids[(i + 1)..] {
-                if u.ratio::<u8>(1, 2)? {
-                    let etype = ast::InternalName::from(ast::Name::from(name.clone()));
-                    entity_types[i].1.member_of_types.push(etype);
+            let (_, ref mut entity_type) = entity_types[i];
+            match entity_type.kind.clone() {
+                EntityTypeKind::Standard(StandardEntityType {
+                    ref mut member_of_types,
+                    ..
+                }) => {
+                    for name in &entity_type_ids[(i + 1)..] {
+                        if u.ratio::<u8>(1, 2)? {
+                            let etype = ast::InternalName::from(ast::Name::from(name.clone()));
+                            member_of_types.push(etype);
+                        }
+                    }
                 }
+                // Enumerated entity types do not have any parents
+                EntityTypeKind::Enum { .. } => {}
             }
         }
 
@@ -1114,8 +1151,22 @@ impl Schema {
                 u.arbitrary()?
             },
         };
-        let attrsorcontexts /* : impl Iterator<Item = &AttributesOrContext> */ = nsdef.entity_types.values().map(|et| attrs_from_attrs_or_context(&nsdef, &et.shape))
-            .chain(nsdef.actions.iter().filter_map(|(_, action)| action.applies_to.as_ref()).map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)));
+        let attrsorcontexts = nsdef
+            .entity_types
+            .values()
+            .filter_map(|et| match &et.kind {
+                EntityTypeKind::Enum { .. } => None,
+                EntityTypeKind::Standard(StandardEntityType { shape, .. }) => {
+                    Some(attrs_from_attrs_or_context(&nsdef, shape))
+                }
+            })
+            .chain(
+                nsdef
+                    .actions
+                    .iter()
+                    .filter_map(|(_, action)| action.applies_to.as_ref())
+                    .map(|a| attrs_from_attrs_or_context(&nsdef, &a.context)),
+            );
         let attributes: Vec<(SmolStr, json_schema::Type<_>)> = attrsorcontexts
             .flat_map(|attributes| {
                 attributes.attrs.iter().map(|(s, ty)| {
@@ -1293,12 +1344,13 @@ impl Schema {
             .schema
             .entity_types
             .iter()
-            .map(|(name, et)| {
-                (
+            .filter_map(|(name, et)| match &et.kind {
+                EntityTypeKind::Enum { .. } => None,
+                EntityTypeKind::Standard(StandardEntityType { shape, .. }) => Some((
                     ast::EntityType::from(ast::Name::from(name.clone()))
                         .qualify_with(self.namespace()),
-                    attrs_from_attrs_or_context(&self.schema, &et.shape),
-                )
+                    attrs_from_attrs_or_context(&self.schema, shape),
+                )),
             })
             .flat_map(|(tyname, attributes)| {
                 attributes
@@ -1328,7 +1380,14 @@ impl Schema {
             .entity_types
             .iter()
             .filter_map(|(name, et)| {
-                if let Some(tag_ty) = &et.tags {
+                if let json_schema::EntityType {
+                    kind:
+                        EntityTypeKind::Standard(StandardEntityType {
+                            tags: Some(tag_ty), ..
+                        }),
+                    ..
+                } = et
+                {
                     if &schematype_to_type(&self.schema, tag_ty) == target_type {
                         Some(
                             ast::EntityType::from(ast::Name::from(name.clone()))
@@ -1363,7 +1422,14 @@ impl Schema {
             .entity_types
             .iter()
             .filter_map(|(name, et)| {
-                if let Some(tag_ty) = &et.tags {
+                if let json_schema::EntityType {
+                    kind:
+                        EntityTypeKind::Standard(StandardEntityType {
+                            tags: Some(tag_ty), ..
+                        }),
+                    ..
+                } = et
+                {
                     if json_schema::Type::from(tag_ty.clone()) == target_type {
                         Some(
                             ast::EntityType::from(ast::Name::from(name.clone()))
@@ -1776,13 +1842,21 @@ fn downgrade_entitytype_to_raw(
     entitytype: json_schema::EntityType<ast::InternalName>,
 ) -> json_schema::EntityType<RawName> {
     json_schema::EntityType {
-        member_of_types: entitytype
-            .member_of_types
-            .into_iter()
-            .map(RawName::from_name)
-            .collect(),
-        shape: downgrade_aoc_to_raw(entitytype.shape),
-        tags: entitytype.tags.map(downgrade_schematype_to_raw),
+        kind: match entitytype.kind {
+            EntityTypeKind::Enum { choices } => EntityTypeKind::Enum { choices },
+            EntityTypeKind::Standard(StandardEntityType {
+                member_of_types,
+                shape,
+                tags,
+            }) => EntityTypeKind::Standard(StandardEntityType {
+                member_of_types: member_of_types
+                    .into_iter()
+                    .map(RawName::from_name)
+                    .collect(),
+                shape: downgrade_aoc_to_raw(shape),
+                tags: tags.map(downgrade_schematype_to_raw),
+            }),
+        },
         annotations: entitytype.annotations,
         loc: entitytype.loc,
     }

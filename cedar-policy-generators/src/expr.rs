@@ -28,7 +28,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, UnreservedId};
 use cedar_policy_core::est::Annotations;
-use cedar_policy_validator::json_schema;
+use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -590,11 +590,14 @@ impl<'a> ExprGenerator<'a> {
                                         .expect("Failed to select entity index."),
                                 )
                                 .expect("Failed to select entity from map.");
-                            let attr_names: Vec<&SmolStr> =
-                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
-                                    .attrs
-                                    .keys()
-                                    .collect::<Vec<_>>();
+                            let attr_names: Vec<&SmolStr> = match &entity_type.kind {
+                                // Generate an empty vec here so that we fail fast
+                                EntityTypeKind::Enum { .. } => vec![],
+                                EntityTypeKind::Standard(StandardEntityType { shape, ..}) => attrs_from_attrs_or_context(&self.schema.schema, shape)
+                                .attrs
+                                .keys()
+                                .collect::<Vec<_>>()
+                            };
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
