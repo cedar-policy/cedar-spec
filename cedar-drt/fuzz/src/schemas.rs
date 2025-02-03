@@ -251,6 +251,13 @@ impl Equiv for cedar_policy_validator::ValidatorEntityType {
             &lhs.attributes().collect::<HashMap<_, _>>(),
             &rhs.attributes().collect::<HashMap<_, _>>(),
         )?;
+        if lhs.tag_type() != rhs.tag_type() {
+            return Err(format!(
+                "encountered different tags types: {:?} and {:?}",
+                lhs.tag_type(),
+                rhs.tag_type()
+            ));
+        }
         Ok(())
     }
 }
