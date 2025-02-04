@@ -400,7 +400,10 @@ pub(crate) fn generate_uid_with_type(
     let eid = if choices.is_empty() {
         u.arbitrary()?
     } else {
-        Eid::new(u.choose(choices)?.to_owned())
+        gen!(u,
+         4 => Eid::new(u.choose(choices)?.to_owned()),
+         1 => u.arbitrary()?
+        )
     };
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
