@@ -89,21 +89,6 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "2016-12-31T00:00:00+9999" "invalid offset range",
   ]
 
-theorem testDuration01 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
-theorem testDuration02 : toString ((Duration.parse "1s").get!) = "1000" := by native_decide
-theorem testDuration03 : toString ((Duration.parse "1m").get!) = "60000" := by native_decide
-theorem testDuration04 : toString ((Duration.parse "1h").get!) = "360000" := by native_decide
-theorem testDuration05 : toString ((Duration.parse "1d").get!) = "86400000" := by native_decide
-theorem testDuration06 : toString ((Duration.parse "1d2h3m4s5ms").get!) = "87304005" := by native_decide
-theorem testDuration07 : toString ((Duration.parse "2d12h").get!) = "177120000" := by native_decide
-theorem testDuration08 : toString ((Duration.parse "3m30s").get!) = "210000" := by native_decide
-theorem testDuration09 : toString ((Duration.parse "1h30m45s").get!) = "2205000" := by native_decide
-theorem testDuration10 : toString ((Duration.parse "2d5h20m").get!) = "175800000" := by native_decide
-theorem testDuration11 : toString ((Duration.parse "-1d12h").get!) = "-90720000" := by native_decide
-theorem testDuration12 : toString ((Duration.parse "-3h45m").get!) = "-3780000" := by native_decide
-theorem testDuration13 : toString ((Duration.parse "1d1ms").get!) = "86400001" := by native_decide
-theorem testDuration14 : toString ((Duration.parse "59m59s999ms").get!) = "3599999" := by native_decide
-theorem testDuration15 : toString ((Duration.parse "23h59m59s999ms").get!) = "11879999" := by native_decide
 theorem testDuration16 : toString ((Duration.parse "0d0h0m0s0ms").get!) = "0" := by native_decide
 
 private def testValidDuration (str : String) (rep : Int) : TestCase IO :=
@@ -135,7 +120,8 @@ def testsForValidDurationStrings :=
     testValidDuration "-3h45m" (-3780000),
     testValidDuration "1d1ms" 86400001,
     testValidDuration "59m59s999ms" 3599999,
-    testValidDuration "23h59m59s999ms" 11879999
+    testValidDuration "23h59m59s999ms" 11879999,
+    testValidDuration "0d0h0m0s0ms" 0
   ]
 
 private def testInvalidDuration (str : String) (msg : String) : TestCase IO :=
