@@ -52,11 +52,11 @@ def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-d
 
 abbrev datetime? := Int64.ofInt?
 
-def date_contains_leap_seconds (str: String) : Bool :=
+def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
 
 def parse (str: String) : Option Datetime := do
-  if date_contains_leap_seconds str then failure
+  if dateContainsLeapSeconds str then failure
   let val :=
     DateOnly.parse str <|>
     DateUTC.parse str <|>
@@ -64,9 +64,9 @@ def parse (str: String) : Option Datetime := do
     DateWithOffset.parse str <|>
     DateWithOffsetAndMillis.parse str
 
-  let zoned_time ← val.toOption
-  if zoned_time.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
-  then datetime? zoned_time.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+  let zonedTime ← val.toOption
+  if zonedTime.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
+  then datetime? zonedTime.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   else none
 
 /--
