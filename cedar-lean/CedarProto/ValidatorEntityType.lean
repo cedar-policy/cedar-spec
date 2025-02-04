@@ -32,6 +32,7 @@ structure ValidatorEntityType where
   descendants : Array Spec.EntityTypeProto
   attrs : RecordType
   tags : Option CedarType
+  enums: Array String
 deriving Inhabited
 
 -- the Tag message in Validator.proto
@@ -92,11 +93,18 @@ def mergeTags (result : ValidatorEntityType) (x : TagMessage) : ValidatorEntityT
   }
 
 @[inline]
+def mergeEnums (result : ValidatorEntityType) (x : Array String) : ValidatorEntityType :=
+  {result with
+    enums := result.enums ++ x
+  }
+
+@[inline]
 def merge (x y : ValidatorEntityType) : ValidatorEntityType :=
   {
     descendants := y.descendants ++ x.descendants
     attrs := Field.merge x.attrs y.attrs
     tags := mergeOption x.tags y.tags
+    enums := x.enums ++ y.enums
   }
 
 @[inline]
@@ -111,6 +119,9 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
     | 5 =>
       let x : TagMessage ← Field.guardedParse t
       pure (pure $ mergeTags · x)
+    | 6 =>
+      let x : Repeated String ← Field.guardedParse t
+      pure (pure $ mergeEnums · x)
     | _ =>
       t.wireType.skip
       pure ignore
