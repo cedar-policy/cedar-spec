@@ -68,6 +68,36 @@ inductive Expr where
   | record (map : List (Attr × Expr))
   | call (xfn : ExtFun) (args : List Expr)
 
+def Expr.getUIDs : Expr → List EntityUID
+  | lit (.entityUID uid) => [uid]
+  | lit _ | var _ => []
+  | ite cond t e => cond.getUIDs ++ t.getUIDs ++ e.getUIDs
+  | and a b => a.getUIDs ++ b.getUIDs
+  | or a b => a.getUIDs ++ b.getUIDs
+  | unaryApp _ e => e.getUIDs
+  | binaryApp _ a b => a.getUIDs ++ b.getUIDs
+  | getAttr e _ => e.getUIDs
+  | hasAttr e _ => e.getUIDs
+  | set s => List.flatten $ s.map Expr.getUIDs
+  | record m => List.flatten $ m.map $ λ (_, e) => e.getUIDs
+  | call _ args => List.flatten $ args.map Expr.getUIDs
+decreasing_by
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+  sorry
+
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, Inhabited for Var

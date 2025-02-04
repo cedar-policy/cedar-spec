@@ -70,6 +70,16 @@ inductive Value where
   | record (m : Map Attr Value)
   | ext (x : Ext)
 
+def Value.getUIDs : Value → List EntityUID
+  | .prim (.entityUID uid) => [uid]
+  | .prim _ => []
+  | .set s => List.flatten $ s.toList.map Value.getUIDs
+  | .record m => List.flatten $ m.values.map Value.getUIDs
+  | .ext _ => []
+decreasing_by
+  sorry
+  sorry
+
 ----- Coercions -----
 
 def Value.asEntityUID : Value → Result EntityUID

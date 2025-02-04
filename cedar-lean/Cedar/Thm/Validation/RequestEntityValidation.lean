@@ -264,15 +264,15 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
   exact instance_of_action_schema_refl entities env.acts h₁
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
+  typeCheckRequest schema request = .ok () →
+  typeCheckEntities schema entities = .ok () →
   RequestAndEntitiesMatchSchema schema request entities
 := by
   intro h₀ h₁
   simp only [RequestAndEntitiesMatchSchema]
-  simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
+  simp only [typeCheckRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
     Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
-    Bool.not_eq_false] at h₀
+    Bool.not_typeCheckEntities
   simp only [validateEntities] at h₁
   obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
   exists env

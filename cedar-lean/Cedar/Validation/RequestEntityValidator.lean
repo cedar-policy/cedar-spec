@@ -24,11 +24,13 @@ open Cedar.Data
 
 inductive RequestValidationError where
 | typeError (msg : String)
+| invalidEnumEid (msg: String)
 
 abbrev RequestValidationResult := Except RequestValidationError Unit
 
 inductive EntityValidationError where
 | typeError (msg : String)
+| invalidEnumEid (msg: String)
 
 abbrev EntityValidationResult := Except EntityValidationError Unit
 
@@ -127,10 +129,40 @@ where
 
 def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env.reqty
 
-def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
+def validateEntityUIDsInRequest (schema: InputSchema) (request: Request) : RequestValidationResult :=
+   (do
+     schema.validateEnumUID request.principal
+     schema.validateEnumUID request.resource
+     schema.validateEnumUIDs $ List.flatten $ request.context.values.map Value.getUIDs).mapError RequestValidationError.invalidEnumEid
+
+def validateEntity (schema: InputSchema) (uid: EntityUID) (data: EntityData) : EntityValidationResult :=
+  (if schema.isDeclaredEnumeratedEntityType uid.ty
+    then do
+      schema.validateEnumUID uid
+      schema.validateEnumUIDs data.ancestors.toList
+      schema.validateEnumUIDs $ List.flatten $ data.attrs.values.map Value.getUIDs
+      if data.tags.toList.isEmpty
+        then
+        pure ()
+        else
+        .error s!"invalid entity {uid} of enumerated entity type: tags are non empty"
+      if data.attrs.size == 0
+        then
+        pure ()
+        else
+        .error s!"invalid entity {uid} of enumerated entity type: attributes are non empty"
+  else pure ()
+  ).mapError EntityValidationError.invalidEnumEid
+
+def typeCheckRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.toEnvironments.any (requestMatchesEnvironment · request)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
+
+def validateRequest (schema: InputSchema) (request: Request) : RequestValidationResult :=
+  do
+    validateEntityUIDsInRequest schema request
+    typeCheckRequest schema.toSchema request
 
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
   instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
@@ -165,19 +197,25 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
       }
       (ty, ese)
 
-def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
+def typeCheckEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
   schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
+
+def validateEntities (schema: InputSchema) (entities: Entities) : EntityValidationResult :=
+  do
+    entities.kvs.forM (λ (uid, data) => (validateEntity schema uid data))
+    typeCheckEntities schema.toSchema entities
 
 -- json
 
 def entityValidationErrorToJson : EntityValidationError → Lean.Json
-  | .typeError x => x
+  | .typeError x | .invalidEnumEid x => x
 
 instance : Lean.ToJson EntityValidationError where
   toJson := entityValidationErrorToJson
 
 def requestValidationErrorToJson : RequestValidationError → Lean.Json
   | .typeError x => x
+  | .invalidEnumEid x => x
 
 instance : Lean.ToJson RequestValidationError where
   toJson := requestValidationErrorToJson

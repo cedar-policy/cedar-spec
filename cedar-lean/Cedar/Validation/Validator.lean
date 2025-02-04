@@ -70,6 +70,7 @@ def Schema.getEnvironment (schema : Schema) (principalTy resourceTy : EntityType
 
 inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
+  | invalidEnumEid (msg: String)
   | impossiblePolicy (pid : PolicyID)
 
 abbrev ValidationResult := Except ValidationError Unit
@@ -143,9 +144,17 @@ def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) 
 Analyze a set of policies to checks that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
-def validate (policies : Policies) (schema : Schema) : ValidationResult :=
+def typeCheck (policies : Policies) (schema : Schema) : ValidationResult :=
   let envs := schema.toEnvironments
   policies.forM (typecheckPolicyWithEnvironments · envs)
+
+-- Idea for RFC 53: write a new `validate` function that does enumerated entity validation first
+-- Then change the new `Schema` type to the existing one
+
+def validate (policies : Policies) (schema : InputSchema) : ValidationResult :=
+  do
+    policies.forM $ λ p => (schema.validateEnumUIDs p.getUIDs).mapError ValidationError.invalidEnumEid
+    typeCheck policies schema.toSchema
 
 ----- Derivations -----
 
@@ -164,6 +173,7 @@ def validationErrorToJson : ValidationError → Lean.Json
   | .typeError _ (.extensionErr _) => "extensionErr"
   | .typeError _ .emptySetErr => "emptySetErr"
   | .typeError _ (.incompatibleSetTypes _) => "incompatibleSetTypes"
+  | .invalidEnumEid _ => "invalidEnumEid"
   | .impossiblePolicy _ => "impossiblePolicy"
 
 instance : Lean.ToJson ValidationError where

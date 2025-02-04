@@ -42,14 +42,14 @@ information.
 -/
 
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
-  validate policies schema = .ok () →
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
+  typeCheck policies schema = .ok () →
+  typeCheckRequest schema request = .ok () →
+  typeCheckEntities schema entities = .ok () →
   AllEvaluateToBool policies request entities
 := by
   intro h₀ h₁ h₂
   have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
-  unfold validate at h₀
+  unfold typeCheck at h₀
   simp only [AllEvaluateToBool]
   cases h₃ : policies with
   | nil => simp only [List.not_mem_nil, false_implies, implies_true]

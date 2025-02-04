@@ -33,6 +33,10 @@ inductive Scope where
   | is (ety : EntityType)
   | isMem (ety : EntityType) (entity : EntityUID)
 
+def Scope.getEntityUID : Scope → Option EntityUID
+  | any | is _ => .none
+  | eq uid | mem uid | isMem _ uid => .some uid
+
 inductive PrincipalScope where
   | principalScope (scope : Scope)
 
@@ -72,7 +76,6 @@ structure Policy where
   resourceScope : ResourceScope
   condition : Conditions
 
-
 abbrev Policies := List Policy
 
 def PrincipalScope.scope : PrincipalScope → Scope
@@ -80,6 +83,9 @@ def PrincipalScope.scope : PrincipalScope → Scope
 
 def ResourceScope.scope : ResourceScope → Scope
   | .resourceScope s => s
+
+def Policy.getUIDs (p: Policy) : List EntityUID :=
+  p.principalScope.scope.getEntityUID.toList ++ p.resourceScope.scope.getEntityUID.toList ++ (List.flatten $ p.condition.map $ λ c => c.body.getUIDs)
 
 def Var.eqEntityUID (v : Var) (uid : EntityUID) : Expr :=
   .binaryApp .eq (.var v) (.lit (.entityUID uid))
