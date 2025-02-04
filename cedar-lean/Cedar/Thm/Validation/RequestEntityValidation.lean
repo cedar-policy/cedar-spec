@@ -272,8 +272,8 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
   simp only [RequestAndEntitiesMatchSchema]
   simp only [typeCheckRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
     Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
-    Bool.not_typeCheckEntities
-  simp only [validateEntities] at h₁
+    Bool.not_eq_false] at h₀
+  simp only [typeCheckEntities] at h₁
   obtain ⟨env, ⟨h₀, h₂⟩⟩ := h₀
   exists env
   constructor
@@ -282,3 +282,15 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
   exact h₂
   have h₃ := List.forM_ok_implies_all_ok schema.toEnvironments (fun x => entitiesMatchEnvironment x entities) h₁ env h₀
   simp only [h₃]
+
+theorem request_validate_implies_type_check (schema : InputSchema) (request : Request) :
+  validateRequest schema request = .ok () →
+  typeCheckRequest schema.toSchema request = .ok () := by
+  intro h
+  sorry
+
+theorem entities_validate_implies_type_check (schema : InputSchema) (entities : Entities) :
+  validateEntities schema entities = .ok () →
+  typeCheckEntities schema.toSchema entities = .ok () := by
+  intro h
+  sorry
