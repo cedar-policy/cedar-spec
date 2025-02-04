@@ -23,22 +23,6 @@ namespace UnitTest.Datetime
 
 open Cedar.Spec.Ext.Datetime
 
-theorem testDatetime01 : toString ((parse "2022-10-10").get!) = "1665360000000" := by native_decide
-theorem testDatetime02 : toString ((parse "1969-12-31").get!) = "-86400000" := by native_decide
--- Commented out tests following this comment are impacted by a bug we
--- encountered in Lean. Enable them when the bug has been fixed. More
--- details in https://github.com/cedar-policy/cedar-spec/issues/525
--- theorem testDatetime03 : toString ((parse "1969-12-31T23:59:59.001Z").get!) = "-999" := by native_decide
--- theorem testDatetime04 : toString ((parse "1969-12-31T23:59:59.999Z").get!) = "-1" := by native_decide
-theorem testDatetime05 : toString ((parse "1969-12-31T23:59:59Z").get!) = "-1000" := by native_decide
-theorem testDatetime06 : toString ((parse "2024-10-15").get!) = "1728950400000" := by native_decide
-theorem testDatetime07 : toString ((parse "2024-10-15T11:38:02Z").get!) = "1728992282000" := by native_decide
-theorem testDatetime08 : toString ((parse "2024-10-15T11:38:02.101Z").get!) = "1728992282101" := by native_decide
-theorem testDatetime09 : toString ((parse "2024-10-15T11:38:02.101-1134").get!) = "1729033922101" := by native_decide
-theorem testDatetime10 : toString ((parse "2024-10-15T11:38:02.101+1134").get!) = "1728950642101" := by native_decide
-theorem testDatetime11 : toString ((parse "2024-10-15T11:38:02+1134").get!) = "1728950642000" := by native_decide
-theorem testDatetime12 : toString ((parse "2024-10-15T11:38:02-1134").get!) = "1729033922000" := by native_decide
-
 private def testValidDatetime (str : String) (rep : Int) : TestCase IO :=
   test str ⟨λ _ => checkEq (parse str) (datetime? rep)⟩
 
