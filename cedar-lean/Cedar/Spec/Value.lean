@@ -16,6 +16,7 @@
 
 import Cedar.Data
 import Cedar.Spec.Ext
+import Cedar.Data.SizeOf
 
 /-! This file defines Cedar values and results. -/
 
@@ -73,12 +74,18 @@ inductive Value where
 def Value.getUIDs : Value → List EntityUID
   | .prim (.entityUID uid) => [uid]
   | .prim _ => []
-  | .set s => List.flatten $ s.toList.map Value.getUIDs
-  | .record m => List.flatten $ m.values.map Value.getUIDs
+  | .set s => List.flatten $ s.elts.map₁ λ ⟨v, _⟩ => v.getUIDs
+  | .record m => List.flatten $ m.kvs.attach₂.map λ ⟨(_, v), _⟩ => v.getUIDs
   | .ext _ => []
 decreasing_by
-  sorry
-  sorry
+  all_goals simp_wf
+  case _ h₁ => -- set
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    simp only at h₁
+    have := Map.sizeOf_lt_of_kvs m
+    omega
 
 ----- Coercions -----
 

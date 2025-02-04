@@ -78,25 +78,25 @@ def Expr.getUIDs : Expr → List EntityUID
   | binaryApp _ a b => a.getUIDs ++ b.getUIDs
   | getAttr e _ => e.getUIDs
   | hasAttr e _ => e.getUIDs
-  | set s => List.flatten $ s.map Expr.getUIDs
-  | record m => List.flatten $ m.map $ λ (_, e) => e.getUIDs
-  | call _ args => List.flatten $ args.map Expr.getUIDs
+  | set s => List.flatten $ s.map₁ λ ⟨e, _⟩ => e.getUIDs
+  | record m => List.flatten $ m.map₁ $ λ ⟨(_, e), _⟩ => e.getUIDs
+  | call _ args => List.flatten $ args.map₁ λ ⟨e, _⟩ => e.getUIDs
 decreasing_by
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
-  sorry
+  all_goals simp_wf
+  any_goals omega
+  case _ h₁ =>
+    have := List.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ =>
+    have x : sizeOf e < 1 + sizeOf m := by
+      have := Map.sizeOf_lt_of_value h₁
+      simp only [Map.mk.sizeOf_spec] at this
+      omega
+    exact x
+  case _ h₁ =>
+    have := List.sizeOf_lt_of_mem h₁
+    omega
+
 
 ----- Derivations -----
 
