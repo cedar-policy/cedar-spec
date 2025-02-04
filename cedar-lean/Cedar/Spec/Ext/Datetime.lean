@@ -17,7 +17,6 @@
 import Cedar.Data.Int64
 import Std.Time
 import Std.Time.Format
-import Init.Data.Int.Basic
 
 /-! This file defines Cedar datetime values and functions. -/
 
@@ -69,11 +68,6 @@ def parse (str: String) : Option Datetime := do
   if zoned_time.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
   then datetime? zoned_time.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   else none
-
-#eval parse "2016-12-31T00:00:00+2400"
-#eval parse "2016-12-31T00:00:00+2401"
-#eval parse "2016-12-31T00:00:00-2400"
-#eval parse "2016-12-31T00:00:60-2400"
 
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
