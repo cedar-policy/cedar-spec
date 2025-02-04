@@ -30,48 +30,90 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
+structure LevelCheckResult where
+  -- The primary output of the level checking procedure. `false` if any access
+  -- exceeds the specified level.
+  checked: Bool
+  -- Was the checked expression an entity root? Returns `false` for entity
+  -- literals, which are not roots used by the slicing algorithm. Used
+  -- internally by the level checking procedure to forbid access on entity
+  -- literals.
+  root: Bool
+
+def LevelCheckResult.and (r₀ r₁ : LevelCheckResult) : LevelCheckResult := LevelCheckResult.mk (r₀.checked && r₁.checked) (r₀.root && r₁.root)
+
+def checkLevel (tx : TypedExpr) (n : Nat) : LevelCheckResult :=
   match tx with
-  | .lit _ _
-  | .var _ _ => true
+  | .lit _ _ => LevelCheckResult.mk true false
+  | .var _ _ => LevelCheckResult.mk true true
   | .ite x₁ x₂ x₃ _ =>
-    (checkLevel x₁ n) &&
-    (checkLevel x₂ n) &&
-    (checkLevel x₃ n)
+    let c₁ := checkLevel x₁ n
+    let c₂ := checkLevel x₂ n
+    let c₃ := checkLevel x₃ n
+    LevelCheckResult.mk
+      (c₁.checked && c₂.checked && c₃.checked)
+      (c₂.root && c₃.root)
   | .unaryApp _ x₁ _ =>
     checkLevel x₁ n
   | .binaryApp .mem x₁ x₂ _
   | .binaryApp .getTag x₁ x₂ _
   | .binaryApp .hasTag x₁ x₂ _ =>
-    (n > 0) &&
-    (checkLevel x₁ (n - 1)) &&
-    (checkLevel x₂ n)
-  | .and x₁ x₂ _ -- TODO: Should `and` and `or` take advantage of short-circuiting or is that fully handled in typechecking?
+    let c₁ := checkLevel x₁ (n - 1)
+    let c₂ := checkLevel x₂ n
+    LevelCheckResult.mk
+      (c₁.root && n > 0 && c₁.checked && c₂.checked)
+      c₁.root
+  | .and x₁ x₂ _
   | .or x₁ x₂ _
   | .binaryApp _ x₁ x₂ _ =>
-    (checkLevel x₁ n) &&
-    (checkLevel x₂ n)
+    let c₁ := checkLevel x₁ n
+    let c₂ := checkLevel x₂ n
+    LevelCheckResult.mk
+      (c₁.checked && c₂.checked)
+      true
   | .hasAttr x₁ _ _
   | .getAttr x₁ _ _ =>
     match x₁.typeOf with
     | .entity _ =>
-      (n > 0) &&
-      (checkLevel x₁ (n - 1))
+      let c₁ := checkLevel x₁ (n - 1)
+      LevelCheckResult.mk
+        (c₁.root && n > 0 && c₁.checked)
+        c₁.root
     | _ => (checkLevel x₁ n)
   | .call _ xs _
   | .set xs _ =>
-    xs.attach.all λ ex =>
-      have := List.sizeOf_lt_of_mem ex.property
-      checkLevel ex n
+    xs.attach.foldl
+      (λ c ex =>
+        have := List.sizeOf_lt_of_mem ex.property
+        let c₁ := checkLevel ex.val n
+        LevelCheckResult.mk
+          (c.checked && c₁.checked)
+          (c.root && c₁.root))
+      (LevelCheckResult.mk true true)
   | .record axs _ =>
-    axs.attach.all λ a =>
-      have : sizeOf a.val.snd < sizeOf axs := by
-        have h₁ := List.sizeOf_lt_of_mem a.property
-        rw [Prod.mk.sizeOf_spec a.val.fst a.val.snd] at h₁
-        omega
-      checkLevel a.val.snd n
+    axs.attach.foldl
+      (λ c a =>
+        let t := a.val.snd
+        --have : sizeOf t < 1 + sizeOf axs := by
+        --  have : t = a.val.snd := by simp [t]
+        --  rw [this]
+        --  have h₁ := List.sizeOf_lt_of_mem a.property
+        --  rw [Prod.mk.sizeOf_spec a.val.fst a.val.snd] at h₁
+        --  omega
+        let c₁ := checkLevel a.val.snd n
+        LevelCheckResult.mk
+          (c.checked && c₁.checked)
+          (c.root && c₁.root))
+      (LevelCheckResult.mk true true)
+  termination_by tx
+  decreasing_by
+    all_goals {
+      try { simp ; omega }
+      -- TODO: Record case doesn't go through after changing from `all` to `foldl`
+      try sorry
+    }
 
 def typedAtLevel (e : Expr) (c : Capabilities) (env : Environment) (n : Nat) : Bool :=
   match typeOf e c env with
-  | .ok (te, _) => checkLevel te n
+  | .ok (te, _) => (checkLevel te n).checked
   | _           => false

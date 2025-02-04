@@ -54,17 +54,20 @@ def Request.sliceEUIDs (r : Request) : Set EntityUID :=
   (Value.record r.context).sliceEUIDs
 
 def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Option Entities := do
-  Map.make $ ← sliceAtLevel es r.sliceEUIDs r level
+  let slice ← sliceAtLevel r.sliceEUIDs level
+  let slice ← slice.elts.mapM λ e => do some (e, ←(es.find? e))
+  some (Map.make slice)
 where
-  sliceAtLevel (es : Entities) (work : Set EntityUID) (r : Request) (level : Nat) : Option (List (EntityUID × EntityData)) :=
+  sliceAtLevel (work : Set EntityUID) (level : Nat) : Option (Set EntityUID) :=
     if level == 0 then
-      .some []
+      some ∅
     else do
-      let eds ← work.elts.mapM λ uid => do .some (uid, ←(es.find? uid))
-      let work := flatten_union $ eds.map λ (_, ed) => ed.sliceEUIDs
-      eds ++ (← sliceAtLevel es work r (level - 1))
+      let eds ← work.elts.mapM es.find?
+      let slice ← flatten_union <$> eds.mapM (sliceAtLevel ·.sliceEUIDs (level - 1))
+      some (work ∪ slice)
+      -- let slice ← sliceAtLevel work' (level - 1)
     termination_by level
     decreasing_by
-      rename_i h₁
+      rename_i h₁ _
       simp only [beq_iff_eq] at h₁
       omega

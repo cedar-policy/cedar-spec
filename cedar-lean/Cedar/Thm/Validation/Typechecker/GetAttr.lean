@@ -40,22 +40,24 @@ theorem getAttrInRecord_has_empty_capabilities {x₁ : Expr} {a : Attr} {c₁ c�
 theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
-  ∃ c₁',
-    (∃ ety, (typeOf x₁ c₁ env).typeOf = Except.ok (.entity ety, c₁')) ∨
-    (∃ rty, (typeOf x₁ c₁ env).typeOf = Except.ok (.record rty, c₁'))
+  ∃ ty₁ c₁',
+    typeOf x₁ c₁ env = .ok (ty₁, c₁') ∧
+    ty = .getAttr ty₁ a ty.typeOf ∧
+      ((∃ ety, ty₁.typeOf = .entity ety) ∨
+       (∃ rty, ty₁.typeOf = .record rty))
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
     simp [typeOfGetAttr, bind, Except.bind] at h₁
-    simp only [ResultType.typeOf, Except.map]
     split at h₁ <;> try contradiction
     · simp [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, false_and, exists_const,
         CedarType.record.injEq, exists_and_right, exists_eq', true_and, false_or, and_true, reduceCtorEq]
       split at h₁ <;> simp [ok] at h₁
       rename_i heq₁ _ _ heq₂
       simp [heq₁, ←h₁]
+      simp [TypedExpr.typeOf]
       apply getAttrInRecord_has_empty_capabilities heq₂
     · simp only [List.empty_eq, Except.ok.injEq, Prod.mk.injEq, CedarType.entity.injEq,
         exists_and_right, exists_eq', true_and, false_and, exists_const, or_false, and_true, reduceCtorEq]
@@ -63,6 +65,7 @@ theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabili
       split at h₁ <;> simp [ok] at h₁
       rename_i heq₁ _ _ _ _ _ heq₃
       simp [heq₁, ←h₁]
+      simp [TypedExpr.typeOf]
       apply getAttrInRecord_has_empty_capabilities heq₃
 
 theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
@@ -200,20 +203,20 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   GuardedCapabilitiesInvariant (Expr.getAttr x₁ a) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.getAttr x₁ a) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₅, c₁', h₄⟩ := type_of_getAttr_inversion h₃
+  have ⟨h₅, tx, c₁', h₄, h₆, h₇⟩ := type_of_getAttr_inversion h₃
   subst h₅
   apply And.intro empty_guarded_capabilities_invariant
-  rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
-  split_type_of h₄ <;> rename_i h₄ hl₄ hr₄ <;>
-  have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄  <;>
+  rcases h₇ with ⟨ety, h₇⟩ | ⟨rty, h₇⟩ <;>
+  have ⟨_, v₁, h₆, h₈⟩ := ih h₁ h₂ h₄  <;>
   simp [EvaluatesTo] at h₆ <;>
   simp [EvaluatesTo, evaluate] <;>
-  rw [hl₄] at h₇ <;>
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
   <;> try exact type_is_inhabited ty.typeOf
-  · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁')  := by simp [h₄, hl₄, ResultType.typeOf, Except.map]; exact hr₄
-    exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
-  · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁')  := by simp [h₄, hl₄, ResultType.typeOf, Except.map]; exact hr₄
-    exact type_of_getAttr_is_sound_for_records h₁ h₃ h₈ h₆ h₇
+  · have h₉ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, ResultType.typeOf, Except.map]; exact h₇
+    rw [h₇] at h₈
+    exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₉ h₆ h₈
+  · have h₉ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, ResultType.typeOf, Except.map]; exact h₇
+    rw [h₇] at h₈
+    exact type_of_getAttr_is_sound_for_records h₁ h₃ h₉ h₆ h₈
 
 end Cedar.Thm
