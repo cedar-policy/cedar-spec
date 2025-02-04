@@ -23,14 +23,21 @@ namespace UnitTest.Datetime
 
 open Cedar.Spec.Ext.Datetime
 
-theorem testDatetime1 : toString ((parse "2022-10-10").get!) = "1665360000000" := by native_decide
-theorem testDatetime2 : toString ((parse "1969-12-31").get!) = "-86400000" := by native_decide
-theorem testDatetime3 : toString ((parse "2024-10-15T11:38:02Z").get!) = "1728992282000" := by native_decide
-theorem testDatetime4 : toString ((parse "2024-10-15T11:38:02.101Z").get!) = "1728992282101" := by native_decide
-theorem testDatetime5 : toString ((parse "2024-10-15T11:38:02.101-1134").get!) = "1729033922101" := by native_decide
-theorem testDatetime6 : toString ((parse "2024-10-15T11:38:02.101+1134").get!) = "1728950642101" := by native_decide
-theorem testDatetime7 : toString ((parse "2024-10-15T11:38:02+1134").get!) = "1728950642000" := by native_decide
-theorem testDatetime8 : toString ((parse "2024-10-15T11:38:02-1134").get!) = "1729033922000" := by native_decide
+theorem testDatetime01 : toString ((parse "2022-10-10").get!) = "1665360000000" := by native_decide
+theorem testDatetime02 : toString ((parse "1969-12-31").get!) = "-86400000" := by native_decide
+-- Commented out tests following this comment are impacted by a bug we
+-- encountered in Lean. Enable them when the bug has been fixed. More
+-- details in https://github.com/cedar-policy/cedar-spec/issues/525
+-- theorem testDatetime03 : toString ((parse "1969-12-31T23:59:59.001Z").get!) = "-999" := by native_decide
+-- theorem testDatetime04 : toString ((parse "1969-12-31T23:59:59.999Z").get!) = "-1" := by native_decide
+theorem testDatetime05 : toString ((parse "1969-12-31T23:59:59Z").get!) = "-1000" := by native_decide
+theorem testDatetime06 : toString ((parse "2024-10-15").get!) = "1728950400000" := by native_decide
+theorem testDatetime07 : toString ((parse "2024-10-15T11:38:02Z").get!) = "1728992282000" := by native_decide
+theorem testDatetime08 : toString ((parse "2024-10-15T11:38:02.101Z").get!) = "1728992282101" := by native_decide
+theorem testDatetime09 : toString ((parse "2024-10-15T11:38:02.101-1134").get!) = "1729033922101" := by native_decide
+theorem testDatetime10 : toString ((parse "2024-10-15T11:38:02.101+1134").get!) = "1728950642101" := by native_decide
+theorem testDatetime11 : toString ((parse "2024-10-15T11:38:02+1134").get!) = "1728950642000" := by native_decide
+theorem testDatetime12 : toString ((parse "2024-10-15T11:38:02-1134").get!) = "1729033922000" := by native_decide
 
 private def testValidDatetime (str : String) (rep : Int) : TestCase IO :=
   test str ⟨λ _ => checkEq (parse str) (datetime? rep)⟩
@@ -38,7 +45,8 @@ private def testValidDatetime (str : String) (rep : Int) : TestCase IO :=
 def testsForValidDatetimeStrings :=
   suite "Datetime.parse for valid strings"
   [
-    testValidDatetime "1970-01-01" 0,
+    testValidDatetime "2022-10-10" 1665360000000,
+    testValidDatetime "1969-12-31" (-86400000 : Int),
     testValidDatetime "1969-12-31T23:59:59Z" (-1000 : Int),
     -- Commented out tests following this comment are impacted by a bug we
     -- encountered in Lean. Enable them when the bug has been fixed. More
@@ -97,15 +105,15 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "2016-12-31T00:00:00+9999" "invalid offset range",
   ]
 
-theorem testDuration1 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
-theorem testDuration2 : toString ((Duration.parse "1s").get!) = "1000" := by native_decide
-theorem testDuration3 : toString ((Duration.parse "1m").get!) = "60000" := by native_decide
-theorem testDuration4 : toString ((Duration.parse "1h").get!) = "360000" := by native_decide
-theorem testDuration5 : toString ((Duration.parse "1d").get!) = "86400000" := by native_decide
-theorem testDuration6 : toString ((Duration.parse "1d2h3m4s5ms").get!) = "87304005" := by native_decide
-theorem testDuration7 : toString ((Duration.parse "2d12h").get!) = "177120000" := by native_decide
-theorem testDuration8 : toString ((Duration.parse "3m30s").get!) = "210000" := by native_decide
-theorem testDuration9 : toString ((Duration.parse "1h30m45s").get!) = "2205000" := by native_decide
+theorem testDuration01 : toString ((Duration.parse "1ms").get!) = "1" := by native_decide
+theorem testDuration02 : toString ((Duration.parse "1s").get!) = "1000" := by native_decide
+theorem testDuration03 : toString ((Duration.parse "1m").get!) = "60000" := by native_decide
+theorem testDuration04 : toString ((Duration.parse "1h").get!) = "360000" := by native_decide
+theorem testDuration05 : toString ((Duration.parse "1d").get!) = "86400000" := by native_decide
+theorem testDuration06 : toString ((Duration.parse "1d2h3m4s5ms").get!) = "87304005" := by native_decide
+theorem testDuration07 : toString ((Duration.parse "2d12h").get!) = "177120000" := by native_decide
+theorem testDuration08 : toString ((Duration.parse "3m30s").get!) = "210000" := by native_decide
+theorem testDuration09 : toString ((Duration.parse "1h30m45s").get!) = "2205000" := by native_decide
 theorem testDuration10 : toString ((Duration.parse "2d5h20m").get!) = "175800000" := by native_decide
 theorem testDuration11 : toString ((Duration.parse "-1d12h").get!) = "-90720000" := by native_decide
 theorem testDuration12 : toString ((Duration.parse "-3h45m").get!) = "-3780000" := by native_decide
