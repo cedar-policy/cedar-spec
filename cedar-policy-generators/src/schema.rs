@@ -710,6 +710,19 @@ fn bind_type(
 }
 
 impl Schema {
+    /// Get valid UID choices if `ty` is an enumerated entity type otherwise return an empty vector
+    pub fn get_uid_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
+        if let Some(json_schema::EntityType {
+            kind: json_schema::EntityTypeKind::Enum { choices },
+            ..
+        }) = self.schema.entity_types.get(&ty.name().basename())
+        {
+            choices.clone().into()
+        } else {
+            vec![]
+        }
+    }
+
     /// Add common types to the existing schema and return a new schema
     pub fn add_common_types(
         &self,

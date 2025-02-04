@@ -394,9 +394,14 @@ pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::E
 /// actually exists (yet) in any given hierarchy.
 pub(crate) fn generate_uid_with_type(
     ty: ast::EntityType,
+    choices: &[SmolStr],
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
-    let eid = u.arbitrary()?;
+    let eid = if choices.is_empty() {
+        u.arbitrary()?
+    } else {
+        Eid::new(u.choose(choices)?.to_owned())
+    };
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
 
@@ -416,11 +421,12 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
         let uids_by_type: HashMap<ast::EntityType, HashSet<EntityUID>> = entity_types
             .iter()
             .map(|name| {
-                let name = match &self.mode {
-                    HierarchyGeneratorMode::SchemaBased { schema } => {
-                        name.qualify_with(schema.namespace())
-                    }
-                    HierarchyGeneratorMode::Arbitrary { .. } => name.clone(),
+                let (name, uid_choices) = match &self.mode {
+                    HierarchyGeneratorMode::SchemaBased { schema } => (
+                        name.qualify_with(schema.namespace()),
+                        schema.get_uid_choices(name),
+                    ),
+                    HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), vec![]),
                 };
                 let uids = match &self.num_entities {
                     NumEntities::RangePerEntityType(r) => {
@@ -429,7 +435,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.insert(generate_uid_with_type(name.clone(), u)?);
+                                uids.insert(generate_uid_with_type(name.clone(), &uid_choices, u)?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -438,7 +444,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), self.u))
+                            .map(|_| generate_uid_with_type(name.clone(), &uid_choices, self.u))
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
@@ -451,7 +457,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                             if self.u.is_empty() {
                                 return Err(Error::NotEnoughData);
                             }
-                            let uid = generate_uid_with_type(name.clone(), self.u)?;
+                            let uid = generate_uid_with_type(name.clone(), &uid_choices, self.u)?;
                             uids.insert(uid);
                         }
                         uids
