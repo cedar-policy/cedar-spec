@@ -41,15 +41,15 @@ either produces a boolean value, or throws an error of type `entityDoesNotExist`
 information.
 -/
 
-theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
-  validate policies schema = .ok () →
-  validateRequest schema request = .ok () →
-  validateEntities schema entities = .ok () →
+theorem typecheck_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
+  typeCheck policies schema = .ok () →
+  typeCheckRequest schema request = .ok () →
+  typeCheckEntities schema entities = .ok () →
   AllEvaluateToBool policies request entities
 := by
   intro h₀ h₁ h₂
   have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
-  unfold validate at h₀
+  unfold typeCheck at h₀
   simp only [AllEvaluateToBool]
   cases h₃ : policies with
   | nil => simp only [List.not_mem_nil, false_implies, implies_true]
@@ -71,4 +71,19 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
       apply List.forM_ok_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
       repeat assumption
 
+theorem validate_implies_type_check (schema : InputSchema) (policies : Policies) :
+  validate policies schema = .ok () →
+  typeCheck policies schema.toSchema = .ok () := by
+  sorry
+
+theorem validation_is_sound (policies : Policies) (schema : InputSchema) (request : Request) (entities : Entities) :
+  validate policies schema = .ok () →
+  validateRequest schema request = .ok () →
+  validateEntities schema entities = .ok () →
+  AllEvaluateToBool policies request entities := by
+  intro h₀ h₁ h₂
+  have a₁ := validate_implies_type_check schema policies h₀
+  have b₁ := request_validate_implies_type_check schema request h₁
+  have c₁ := entities_validate_implies_type_check schema entities h₂
+  apply typecheck_is_sound policies schema.toSchema request entities a₁ b₁ c₁
 end Cedar.Thm

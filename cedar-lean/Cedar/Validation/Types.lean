@@ -61,12 +61,29 @@ abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
 
+inductive InputEntitySchemaEntityKind where
+  | Standard (info: RecordType × (Option CedarType))
+  | Enum (choices: List String)
+
+structure InputEntitySchemaEntry where
+  ancestors: Cedar.Data.Set EntityType
+  kind: InputEntitySchemaEntityKind
+
 structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
   tags : Option CedarType
 
+def InputEntitySchemaEntry.toEntitySchemaEntry (as: InputEntitySchemaEntry) : EntitySchemaEntry :=
+  match as.kind with
+  | .Standard (attrs, tags) => ⟨ as.ancestors, attrs, tags ⟩
+  | .Enum _ => ⟨ as.ancestors, Map.empty, none ⟩
+
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
+abbrev InputEntitySchema := Map EntityType InputEntitySchemaEntry
+
+def InputEntitySchema.toEntitySchema (as: InputEntitySchema) : EntitySchema :=
+  as.mapOnValues InputEntitySchemaEntry.toEntitySchemaEntry
 
 def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
@@ -105,6 +122,30 @@ def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : EntityUID) :
 structure Schema where
   ets : EntitySchema
   acts : ActionSchema
+
+structure InputSchema where
+  ets: InputEntitySchema
+  acts: ActionSchema
+
+def InputSchema.toSchema (as: InputSchema) : Schema :=
+  ⟨ as.ets.toEntitySchema, as.acts ⟩
+
+abbrev ValidateEnumUIDResult := Except String Unit
+
+-- Only return error when `uid`'s entity type is specified by `self` and it's an enumerated type and `uid`'s `eid` is not in the specified list
+def InputSchema.validateEnumUID (schema: InputSchema) (uid: EntityUID) : ValidateEnumUIDResult :=
+  match schema.ets.find? uid.ty with
+  | .some { kind := InputEntitySchemaEntityKind.Enum choices, ancestors := _ }   => if choices.contains uid.eid then pure () else .error s!"invalid enumerated eid {uid.eid}"
+  | .some _ | .none => pure ()
+
+def InputSchema.validateEnumUIDs (schema: InputSchema) (uids: List EntityUID): ValidateEnumUIDResult :=
+  uids.forM $ λ uid => schema.validateEnumUID uid
+
+def InputSchema.isDeclaredEnumeratedEntityType (schema: InputSchema) (t: EntityType) : Bool :=
+  match schema.ets.find? t with
+    | .some { kind := InputEntitySchemaEntityKind.Enum _, ancestors := _ } => true
+    | _ => false
+
 
 structure RequestType where
   principal : EntityType
