@@ -461,7 +461,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : checkLevel tx n = LevelCheckResult.mk true true)
   (he : evaluate e request entities = .ok v)
-  (ha : ∃ attrs, EuidInValue v attrs euid )
+  (ha : ∃ path, EuidInValue v path euid )
   (hf : entities.contains euid) :
   ReachableIn entities request.sliceEUIDs euid (1 + n)
 := by
@@ -634,7 +634,95 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
         replace ⟨ _, ha ⟩ := ha
         split at ha <;> simp at ha
 
-  all_goals { sorry }
+  case ite e₁ e₂ e₃ =>
+    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₅, h₆, h₇, h₈ ⟩ := type_of_ite_inversion ht
+    sorry
+
+  case and e₁ e₂ | or e₁ e₂ =>
+    simp [evaluate] at he
+    cases h₁ :  Result.as Bool (evaluate e₁ request entities) <;> simp [h₁] at he
+    split at he
+    · simp at he
+      subst v
+      unfold EuidInValue at ha
+      simp at ha
+      replace ⟨ path, ha ⟩ := ha
+      split at ha <;> contradiction
+    · cases h₂ : Result.as Bool (evaluate e₂ request entities) <;> simp [h₂] at he
+      subst v
+      unfold EuidInValue at ha
+      simp at ha
+      replace ⟨ path, ha ⟩ := ha
+      split at ha <;> contradiction
+
+  case unaryApp op e =>
+    simp [evaluate] at he
+    cases he₁ : evaluate e request entities <;> simp [he₁] at he
+
+    simp [typeOf] at ht
+    cases op <;>
+    simp [apply₁] at he <;>
+    split at he <;>
+    try simp [intOrErr] at he <;>
+    try split at he <;>
+    try simp at he <;>
+    try split at he <;>
+    try simp at he
+    all_goals {
+      subst he
+      unfold EuidInValue at ha
+      simp at ha
+      replace ⟨ path, ha ⟩ := ha
+      split at ha <;> simp at ha
+    }
+
+  case binaryApp op e₁ e₂ => sorry
+    -- simp [evaluate] at he
+    -- cases he₁ : evaluate e₁ request entities <;> simp [he₁] at he
+    -- cases he₂ : evaluate e₂ request entities <;> simp [he₂] at he
+    -- rename_i v₁ v₂
+
+  case set es =>
+    simp [evaluate] at he
+    cases he₁ : (es.mapM₁ (λ x => evaluate x.val request entities)) <;> simp [he₁] at he
+    subst v
+    replace ⟨ path, ha ⟩ := ha
+    unfold EuidInValue at ha
+    simp at ha
+    split at ha <;> contradiction
+
+  case record attrs =>
+    simp [evaluate] at he
+    cases he₁ : attrs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
+    subst v
+    replace ⟨ path, ha ⟩ := ha
+    unfold EuidInValue at ha
+    simp at ha
+    split at ha <;> try contradiction
+    split at ha <;> try contradiction
+    -- TODO: annoying
+    sorry
+
+  case call xfn args =>
+    simp [evaluate] at he
+    cases he₁ : args.mapM₁ fun x => evaluate x.val request entities <;> simp [he₁] at he
+
+    cases xfn <;> (
+      simp [call, res] at he
+      split at he <;> (
+        try simp at he
+        try split at he <;>
+        simp at he
+      )
+    )
+
+    all_goals {
+      subst v
+      replace ⟨ path, ha ⟩ := ha
+      unfold EuidInValue at ha
+      simp at ha
+      split at ha <;> try contradiction
+    }
 
 -- Because e typechecked and was annotated as ty₁ which then level checked
 -- at level (n - 1), we know that `euid` is the result of at most `n - 1`
@@ -655,8 +743,17 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
   rename_i eids
   cases h₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts)  <;> simp [h₂] at hs
   subst hs
-  cases e
+  have hv : ∃ path, EuidInValue (Value.prim (Prim.entityUID euid)) path euid := by exists []
+  have hf' : Map.contains entities euid := by simp [Map.contains, hf]
+  have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) := slice_at_succ_n_reachable hc hr ht hl he hv hf'
+  symm at h₁
+  have hi := slice_contains_reachable hw h₁ (by simp [hf, Map.contains_iff_some_find?])
+  rw [←hf]
+  symm at h₂
+  exact map_find_mapm_value h₂ hi
 
+/-
+  cases e
   case lit =>
     simp [evaluate] at he
     subst he
@@ -689,7 +786,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
       exact map_find_mapm_value h₂ hi
     }
 
-  case hasAttr e a | getAttr e a =>
+  case unaryApp _ e | hasAttr e _ | getAttr e _ =>
     have hv : ∃ path, EuidInValue (Value.prim (Prim.entityUID euid)) path euid := by exists []
     have hf' : Map.contains entities euid := by simp [Map.contains, hf]
     have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) :=
@@ -699,8 +796,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
     rw [←hf]
     symm at h₂
     exact map_find_mapm_value h₂ hi
-
-  all_goals { sorry }
+-/
 
 --- Don't need this lemma atm.
 /--
