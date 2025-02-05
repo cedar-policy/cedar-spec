@@ -41,7 +41,7 @@ either produces a boolean value, or throws an error of type `entityDoesNotExist`
 information.
 -/
 
-theorem typecheck_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
+theorem typecheck_all_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
   typeCheck policies schema = .ok () →
   typeCheckRequest schema request = .ok () →
   typeCheckEntities schema entities = .ok () →
@@ -91,5 +91,5 @@ theorem validation_is_sound (policies : Policies) (schema : InputSchema) (reques
   have a₁ := validate_implies_type_check schema policies h₀
   have b₁ := request_validate_implies_type_check schema request h₁
   have c₁ := entities_validate_implies_type_check schema entities h₂
-  apply typecheck_is_sound policies schema.toSchema request entities a₁ b₁ c₁
+  apply typecheck_all_is_sound policies schema.toSchema request entities a₁ b₁ c₁
 end Cedar.Thm
