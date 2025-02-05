@@ -27,6 +27,10 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
+theorem set_mem_flatten_union_iff_mem_any {α : Type} [LT α] [DecidableLT α] {ll : List (Set α)} {e : α}
+  : e ∈ flatten_union ll ↔ ∃ l ∈ ll, e ∈ l
+:= by sorry
+
 theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} {uid : EntityUID}
   (he : entities.attrs uid = .ok attrs)
   : ∃ ed, entities.find? uid = some ed ∧ ed.attrs = attrs
@@ -37,9 +41,66 @@ theorem entities_find?_then_attrs {entities: Entities} {ed : EntityData} {uid : 
   : .ok ed.attrs = entities.attrs uid
 := by sorry
 
--- theorem entities_attrs_iff_find? {entities: Entities} {attrs : Map Attr Value} {uid : EntityUID}
---   : (entities.attrs uid = .ok attrs) ↔ (∃ ed, entities.find? uid = some ed ∧ ed.attrs = attrs)
--- := by sorry
+theorem map_find_then_value {α β : Type} [BEq α] {m : Map α β} {k : α} {v : β}
+  (hf : m.find? k = some v)
+  : v ∈ m.values
+:= by sorry
+
+theorem map_find_mapm_value {α β : Type} [LT α] [DecidableLT α] [BEq α] {ks : Set α} {k : α} {kvs : List (α × β)} {fn : α → Option β}
+  (h₁ : some kvs = List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks.elts)
+  (h₂ : k ∈ ks)
+  : (Map.make kvs).find? k = fn k
+:= by
+  cases h₃ : ks.elts
+  case nil =>
+    have hcontra : List.Mem k [] := by
+      simp only [Membership.mem, h₃] at h₂
+      exact h₂
+    contradiction
+  case cons h t =>
+    simp [h₃] at h₁
+    cases h₄ : ((fn h).bind λ v => some (h, v)) <;> simp [h₄] at h₁
+    cases h₅ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) t) <;> simp [h₅] at h₁
+    subst h₁
+    simp only [Membership.mem, h₃] at h₂
+    cases h₂
+    case head =>
+      cases h₆ : (fn k) <;> simp [h₆] at h₄
+      subst h₄
+      sorry
+    case tail h₂ =>
+      symm at h₅
+      sorry
+theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {l' : List (α × γ)} {f : α → Option (α × γ)} {e: α}
+  (h₁ : List.mapM f l = some l')
+  (h₂ : e ∈ l)
+  (hf : ∀ e, match f e with
+    | some e' => e'.fst = e
+    | none => True)
+  : ∃ e', f e = some e' ∧  l'.lookup e'.fst = some e'.snd
+:= by
+  cases l
+  case nil => contradiction
+  case cons h t =>
+    cases h₃ : f h <;>
+    cases h₄ : List.mapM f t <;>
+    simp only [h₃, h₄, List.mapM_cons, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq, reduceCtorEq] at h₁
+    subst h₁
+    simp only [List.mem_cons] at h₂
+    cases h₂
+    case _ h₂ =>
+      simp [h₂, h₃, List.lookup]
+    case _ h₂ =>
+      have ⟨ e'', ih₁, ih₂ ⟩ := mapm_pair_lookup h₄ h₂ hf
+      have fh₁ := hf h ; rw [h₃] at fh₁ ; subst fh₁
+      have fh₂ := hf e ; rw [ih₁] at fh₂ ; subst fh₂
+      simp only [ih₁,ih₂, Option.some.injEq, List.lookup, exists_eq_left']
+      split
+      · rename_i h₅
+        simp only [beq_iff_eq] at h₅
+        simp only [←h₅, ih₁, Option.some.injEq] at h₃
+        rw [h₃]
+      · simp
 
 theorem check_level_root_invariant (n n' : Nat) (e : TypedExpr)
   : (checkLevel e n).root = (checkLevel e n').root
@@ -97,6 +158,8 @@ theorem check_level_succ {e : TypedExpr} {n : Nat}
   case set | call => sorry
   case record => sorry
 
+--- Don't need this lemma atm.
+/--
 theorem slice_at_level_inner_succ {n: Nat} {work : Set EntityUID} {uid : EntityUID} {entities : Entities} {slice₀ slice₁ : Set EntityUID}
   (hs₀ : slice₀ = Entities.sliceAtLevel.sliceAtLevel entities work n)
   (hs₁ : slice₁ = Entities.sliceAtLevel.sliceAtLevel entities work (1 + n))
@@ -138,6 +201,33 @@ theorem slice_at_level_succ {n: Nat} {request : Request} {uid : EntityUID} {data
   (he₀ : slice₀.find? uid = some data)
   : slice₁.find? uid = some data
 := by sorry
+--/
+
+theorem not_entities_then_not_slice_attrs_inner {n: Nat}  {uid : EntityUID} {e : Error} {entities : Entities} {work slice : Set EntityUID}
+  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n)
+  (hne : uid ∉ entities)
+  (hnw : uid ∉ work)
+  : uid ∉ slice
+:= by
+  unfold Entities.sliceAtLevel.sliceAtLevel at hs
+  split at hs
+  · injections hs
+    subst hs
+    intro
+    contradiction
+  · cases h₁ : (List.mapM (Map.find? entities) work.elts) <;> simp [h₁] at hs
+    rename_i eds
+    cases h₂ : (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n - 1)) eds) <;> simp [h₂] at hs
+    subst hs
+    rw [Set.mem_union_iff_mem_or]
+    intros hm
+    cases hm
+    case inl hl => contradiction
+    case inr hr =>
+      rw [set_mem_flatten_union_iff_mem_any] at hr
+      have ⟨ e, hrl, hrr ⟩ := hr ; clear hr
+      rename_i slice'
+      sorry
 
 theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
   (hs : slice = Entities.sliceAtLevel entities request n)
@@ -248,45 +338,6 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
         specialize iht hs (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hb₄)
         simp [iht]
 
-theorem mapm_elem {α β: Type} {l : List α} {l' : List β} {f : α → Option β} {e: α}
-  (h₁ : List.mapM f l = l')
-  (h₂ : e ∈ l)
-  : ∃ e', f e = some e' ∧ e' ∈ l'
-:= by
-  have ⟨ y, h₃, h₄ ⟩ := List.mapM_some_implies_all_some h₁ e h₂
-  exists y
-
-theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {l' : List (α × γ)} {f : α → Option (α × γ)} {e: α}
-  (h₁ : List.mapM f l = some l')
-  (h₂ : e ∈ l)
-  (hf : ∀ e, match f e with
-    | some e' => e'.fst = e
-    | none => True)
-  : ∃ e', f e = some e' ∧  l'.lookup e'.fst = some e'.snd
-:= by
-  cases l
-  case nil => contradiction
-  case cons h t =>
-    cases h₃ : f h <;>
-    cases h₄ : List.mapM f t <;>
-    simp only [h₃, h₄, List.mapM_cons, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq, reduceCtorEq] at h₁
-    subst h₁
-    simp only [List.mem_cons] at h₂
-    cases h₂
-    case _ h₂ =>
-      simp [h₂, h₃, List.lookup]
-    case _ h₂ =>
-      have ⟨ e'', ih₁, ih₂ ⟩ := mapm_pair_lookup h₄ h₂ hf
-      have fh₁ := hf h ; rw [h₃] at fh₁ ; subst fh₁
-      have fh₂ := hf e ; rw [ih₁] at fh₂ ; subst fh₂
-      simp only [ih₁,ih₂, Option.some.injEq, List.lookup, exists_eq_left']
-      split
-      · rename_i h₅
-        simp only [beq_iff_eq] at h₅
-        simp only [←h₅, ih₁, Option.some.injEq] at h₃
-        rw [h₃]
-      · simp
-
 theorem euid_in_work_then_in_slice
   (hw : euid ∈ work)
   (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n)
@@ -305,7 +356,7 @@ theorem euid_in_work_then_in_slice
     <;> simp [h₁] at hs
     rename_i eds
     cases h₂ :
-      List.mapM (fun x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n - 1)) eds
+      List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n - 1)) eds
     <;> simp [h₂] at hs
     rename_i slice'
     subst hs
@@ -313,112 +364,23 @@ theorem euid_in_work_then_in_slice
     apply hc
     simp [hw]
 
-/-
 theorem slice_at_zero_empty_inner
-  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work 0)
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work 0 = some slice)
   : slice = ∅
 := by
   simp only [Entities.sliceAtLevel.sliceAtLevel, beq_self_eq_true, ↓reduceIte, Option.some.injEq] at hs
+  symm at hs
   exact hs
 
 theorem slice_at_zero_empty {request : Request} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request 0)
   : slice = Map.empty
 := by
-  simp [Entities.sliceAtLevel] at hs
+  unfold Entities.sliceAtLevel at hs
   cases h₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs 0 <;> simp [h₁] at hs
-  symm at h₁
-  simp [hs, slice_at_zero_empty_inner h₁, Map.empty, Map.make, List.canonicalize]
--/
-
-/--
-theorem slice_at_1_has_entity_inner
-  {e: Expr} {tx : TypedExpr} {c c' : Capabilities} {env : Environment} {request : Request} {work : Set EntityUID} {euid : EntityUID} {data : EntityData} {entities : Entities} {slice : List (EntityUID × EntityData)}
-  (hs : slice = Entities.sliceAtLevel.sliceAtLevel entities work 1)
-  (hc : CapabilitiesInvariant c request entities)
-  (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (ht : typeOf e c env = .ok (tx, c'))
-  (hl : checkLevel tx 0 = LevelCheckResult.mk true true)
-  (he : evaluate e request entities = Except.ok (Value.prim (Prim.entityUID euid)))
-  (hf : entities.find? euid = .some data) :
-  slice.lookup euid = .some data
-:= by
-  cases e
-  case lit =>
-    simp [evaluate] at he
-    subst he
-    simp [typeOf] at ht
-    unfold typeOfLit at ht
-    simp only at ht
-    cases h₁ : (env.ets.contains euid.ty || env.acts.contains euid)
-    · simp [h₁, err] at ht
-    · simp [h₁, ok] at ht
-      simp [checkLevel, ←ht] at hl
-  case var v => sorry
-  /-
-    cases v <;> simp [evaluate] at he <;> subst he
-    all_goals {
-      simp [Entities.sliceAtLevel.sliceAtLevel] at hs
-      have ⟨ e'', h₂, h₃⟩ := mapm_pair_lookup hs hw
-      simp [hf] at h₂
-      subst h₂
-      simp at h₃
-      exact h₃
-    }
-  -/
-  case ite i t e =>
-    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₂, h₃, h₄, h₅ ⟩ := type_of_ite_inversion ht
-    have hmk : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-    have hl₂ : checkLevel ty₂ 0 = { checked := true, root := true } := by
-      rw [hmk (checkLevel ty₂ 0)]
-      rw [h₂] at hl
-      simp only [checkLevel, LevelCheckResult.mk.injEq,Bool.and_eq_true] at hl
-      simp [hl]
-    have hl₃ : checkLevel ty₃ 0 = { checked := true, root := true } := by
-      rw [hmk (checkLevel ty₃ 0)]
-      rw [h₂] at hl
-      simp only [checkLevel, LevelCheckResult.mk.injEq,Bool.and_eq_true] at hl
-      simp [hl]
-    simp [evaluate] at he
-    cases h₁ : Result.as Bool (evaluate i request entities) <;> simp [h₁] at he
-    split at he
-    case isTrue =>
-      split at h₅
-      · sorry
-      · replace ⟨ h₅, _, _ ⟩ := h₅
-        have huc : CapabilitiesInvariant (c ∪ c₁) request entities := by sorry
-        exact slice_at_1_has_entity_inner hs huc hr h₅ hl₂ he hf
-      · replace ⟨ h₅, _, _, _ ⟩ := h₅
-        have huc : CapabilitiesInvariant (c ∪ c₁) request entities := by sorry
-        exact slice_at_1_has_entity_inner hs huc hr h₅ hl₂ he hf
-    case isFalse =>
-      split at h₅
-      · replace ⟨ h₅, _, _ ⟩ := h₅
-        exact slice_at_1_has_entity_inner hs hc hr h₅ hl₃ he hf
-      · sorry
-      · replace ⟨ _, h₅, _, _ ⟩ := h₅
-        exact slice_at_1_has_entity_inner hs hc hr h₅ hl₃ he hf
-  case and => sorry
-  case or => sorry
-  case unaryApp o e =>
-    simp [evaluate, apply₁] at he
-    cases h₁ : evaluate e request entities <;> simp [h₁] at he
-    split at he <;> try simp at he
-    simp [intOrErr] at he
-    split at he <;> simp at he
-  case binaryApp => sorry
-  case getAttr e a =>
-    have ⟨ _, _, _, _, h₁, h₂ ⟩ := type_of_getAttr_inversion ht
-    cases h₂
-    · rename_i h₂ ; replace ⟨ _, h₂⟩ := h₂
-      rw [h₁] at hl
-      simp [checkLevel, h₂] at hl
-    · sorry
-  case hasAttr => sorry
-  case set => sorry
-  case record => sorry
-  case call => sorry
---/
+  replace h₁ := slice_at_zero_empty_inner h₁
+  simp only [h₁, Set.elts, Set.instEmptyCollection, Set.empty, List.mapM_nil, Option.pure_def, Option.some_bind, Option.some.injEq] at hs
+  exact hs
 
 def ReachableIn (es : Entities) (start : Set EntityUID) (finish : EntityUID) (level : Nat) : Prop :=
     if level == 0 then False else
@@ -445,16 +407,6 @@ def EuidInValue (v : Value) (path : List Attr) (euid : EntityUID) : Prop :=
       | .some v' => EuidInValue v' path' euid
       | .none => False
     | _ => False
-
-theorem mapm_mem
-  (h₁ : some l' = List.mapM f l)
-  (h₂ : e ∈ l)
-  :  ∃ e', some e' = f e ∧ e' ∈ l'
-:= by sorry
-
-theorem mem_flatten_union_iff_mem_any {α : Type} [LT α] [DecidableLT α] {ll : List (Set α)} {e : α}
-  : e ∈ flatten_union ll ↔ ∃ l ∈ ll, e ∈ l
-:= by sorry
 
 theorem slice_contains_reachable
   {n: Nat}
@@ -483,65 +435,28 @@ theorem slice_contains_reachable
       simp at hs
       cases h₇ : (List.mapM (Map.find? entities) work.elts) <;> simp [h₇] at hs
       rename_i eds
-      cases h₈ : Option.map flatten_union (List.mapM (fun x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds) <;> simp [h₈] at hs
+      cases h₈ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds) <;> simp [h₈] at hs
       subst hs
       rename_i slice'
-      cases h₉ : List.mapM (fun x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds <;> simp [h₉] at h₈
+      cases h₉ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds <;> simp [h₉] at h₈
       subst h₈
       rw [Set.mem_union_iff_mem_or]
       right
-      symm at h₇
-      have ⟨ e', h₁₀, h₁₁⟩ := mapm_mem h₇ hi
-      rw [←h₁₀] at hf
-      injections hf
-      subst hf
+      have ⟨ e', h₁₀, h₁₁⟩ := List.mapM_some_implies_all_some h₇ _ hi
+      rw [h₆] at h₉
+      have ⟨ slice, _, hs ⟩ := List.mapM_some_implies_all_some h₉ _ h₁₀
+      rw [h₁₁] at hf ; injections hf ; subst hf
       cases h₁₂ : (Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs (1 + n'))
-      case none =>
-        -- `ed ∈ eds` by `h11` and we know mapm of this over all elements `eds`
-        -- is `some`, so this element must be `some`
-        sorry
+      case none => simp [h₁₂] at hs
       case some =>
         symm at h₁₂
         have ih := slice_contains_reachable hw h₁₂ h₅
-        rw [h₆] at h₉
         rename_i ed_slice
-        symm at h₉
-        have ⟨ e'', h₁₃, h₁₄⟩ := mapm_mem h₉ h₁₁
-        rw [←h₁₃] at h₁₂
+        rw [hs] at h₁₂
         injections h₁₂
         subst h₁₂
-        rw [mem_flatten_union_iff_mem_any]
+        rw [set_mem_flatten_union_iff_mem_any]
         exists ed_slice
-
-theorem map_find_mapm_value {α β : Type} [LT α] [DecidableLT α] [BEq α] {ks : Set α} {k : α} {kvs : List (α × β)} {fn : α → Option β}
-  (h₁ : some kvs = List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks.elts)
-  (h₂ : k ∈ ks)
-  : (Map.make kvs).find? k = fn k
-:= by
-  cases h₃ : ks.elts
-  case nil =>
-    have hcontra : List.Mem k [] := by
-      simp only [Membership.mem, h₃] at h₂
-      exact h₂
-    contradiction
-  case cons h t =>
-    simp [h₃] at h₁
-    cases h₄ : ((fn h).bind fun v => some (h, v)) <;> simp [h₄] at h₁
-    cases h₅ : (List.mapM (fun k => (fn k).bind fun v => some (k, v)) t) <;> simp [h₅] at h₁
-    subst h₁
-    simp only [Membership.mem, h₃] at h₂
-    cases h₂
-    case head =>
-      cases h₆ : (fn k) <;> simp [h₆] at h₄
-      subst h₄
-      sorry
-    case tail h₂ =>
-      symm at h₅
-      sorry
-
-theorem attrs_then_find {entities : Entities} {euid : EntityUID} :
-  (entities.attrs euid).isOk → entities.contains euid
-:= by sorry
 
 theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}
   (hr : ReachableIn entities start euid n)
@@ -583,12 +498,40 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   ReachableIn entities start euid' (1 + n)
 := by sorry
 
-theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {a : Attr}
+theorem in_val_then_val_slice
+  (hv : EuidInValue v path euid)
+  : euid ∈ v.sliceEUIDs
+:= by
+  cases v
+  case prim p =>
+    unfold EuidInValue at hv
+    cases p
+    case entityUID =>
+      split at hv <;> simp only at hv
+      simp [hv, Value.sliceEUIDs, Set.mem_singleton]
+    all_goals { split at hv <;> contradiction }
+  case record attrs =>
+    unfold EuidInValue at hv
+    split at hv <;> simp at hv
+    rename_i path a path'
+    split at hv <;> try contradiction
+    rename_i v ha
+    have ih := in_val_then_val_slice hv
+    simp [Value.sliceEUIDs]
+    rw [set_mem_flatten_union_iff_mem_any]
+    exists v.sliceEUIDs
+    simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
+    exists a, v
+    simp [Map.find?_mem_toList, ha]
+  case set | ext =>
+    unfold EuidInValue at hv
+    split at hv <;> split at hv <;>
+    ( rename_i hv' ; simp at hv hv' )
+
+theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData}
   (hr : ReachableIn entities start euid n)
   (he₁: .some ed = entities.find? euid)
-  (he₂ : .some v = ed.attrs.find? a)
-  (he₃ : ∃ path, EuidInValue v path euid' ) :
-  -- (he' : .some (.prim (.entityUID euid')) = ed.attrs.find? a) :
+  (he₂ : ∃ path, EuidInValue (.record ed.attrs) path euid' ) :
   ReachableIn entities start euid' (1 + n)
 := by
   unfold ReachableIn at hr ⊢
@@ -612,17 +555,18 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
       unfold EntityData.sliceEUIDs
       rw [Set.mem_union_iff_mem_or]
       left
-      rw [mem_flatten_union_iff_mem_any]
-      exists (Value.prim (Prim.entityUID euid')).sliceEUIDs
+      rw [set_mem_flatten_union_iff_mem_any]
+      replace ⟨ path, he₂ ⟩ := he₂
+      unfold EuidInValue at he₂
+      simp at he₂
+      split at he₂ <;> try contradiction
+      split at he₂ <;> try contradiction
+      rename_i path a path' _ v hv
+      exists v.sliceEUIDs
       constructor
-      case left =>
-        simp
-        exists Value.prim (Prim.entityUID euid')
-        simp only [and_true]
-        -- If exists `a` where `ed.attrs.find? a` is `some v` (`he'`) then `v` in `ed.attrs.values`
-        sorry
-      case right =>
-        simp [Value.sliceEUIDs, Set.mem_singleton]
+      ·
+        exact List.mem_map_of_mem _ (map_find_then_value hv)
+      · exact in_val_then_val_slice he₂
     case inr hr =>
       have ⟨ euid'', hs, ed'', hrl, hrr ⟩ := hr ; clear hr
       right
@@ -632,37 +576,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
       simp only [hrl, true_and]
       have hn' : (1 + n - 1) = (1 + (n - 1)) := by simp at hn; omega
       rw [hn']
-      exact reachable_attr_step hrr he₁ he₂ he₃
-
-theorem in_val_then_val_slice
-  (hv : EuidInValue v path euid)
-  : euid ∈ v.sliceEUIDs
-:= by
-  cases v
-  case prim p =>
-    unfold EuidInValue at hv
-    cases p
-    case entityUID =>
-      split at hv <;> simp only at hv
-      simp [hv, Value.sliceEUIDs, Set.mem_singleton]
-    all_goals { split at hv <;> contradiction }
-  case record attrs =>
-    unfold EuidInValue at hv
-    split at hv <;> simp at hv
-    rename_i path a path'
-    split at hv <;> try contradiction
-    rename_i v ha
-    have ih := in_val_then_val_slice hv
-    simp [Value.sliceEUIDs]
-    rw [mem_flatten_union_iff_mem_any]
-    exists v.sliceEUIDs
-    simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
-    exists a, v
-    simp [Map.find?_mem_toList, ha]
-  case set | ext =>
-    unfold EuidInValue at hv
-    split at hv <;> split at hv <;>
-    ( rename_i hv' ; simp at hv hv' )
+      exact reachable_attr_step hrr he₁ he₂
 
 theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
@@ -713,7 +627,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       rename_i hctx
       have ha' := in_val_then_val_slice ha
       rename_i a _ _ v
-      rw [mem_flatten_union_iff_mem_any]
+      rw [set_mem_flatten_union_iff_mem_any]
       exists v.sliceEUIDs
       simp [ha']
       exists a, v
@@ -769,7 +683,11 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       rw [h₆] at ih ; clear h₆
 
       symm at hv hed
-      apply reachable_attr_step ih hed hv ha
+      have ha' : ∃ path, EuidInValue (Value.record ed.attrs) path euid := by
+        replace ⟨ path,  ha ⟩ := ha
+        exists a :: path
+        simp [EuidInValue, ←hv, ha]
+      apply reachable_attr_step ih hed ha'
 
     · rename_i hty
       cases h₂ <;> rename_i h₂
@@ -813,7 +731,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
   simp [Entities.sliceAtLevel] at hs
   cases h₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (1 + n)  <;> simp [h₁] at hs
   rename_i eids
-  cases h₂ : (List.mapM (fun e => (Map.find? entities e).bind fun __do_lift => some (e, __do_lift)) eids.elts)  <;> simp [h₂] at hs
+  cases h₂ : (List.mapM (λ e => (Map.find? entities e).bind λ __do_lift => some (e, __do_lift)) eids.elts)  <;> simp [h₂] at hs
   subst hs
   cases e
   case lit =>
@@ -880,7 +798,7 @@ theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {en
   case binaryApp => sorry -- includes tags cases which should follow the attr cases and `in` case which might be tricky
   case getAttr e a =>
     have ⟨ h₇, ty₁, c₁', h₄, h₅, h₆ ⟩ := type_of_getAttr_inversion h₃
-    subst h₇
+    subst h₇ ; rw [h₅] at h₁
     cases h₆
     case _ h₇ =>
       replace ⟨ ety, h₇⟩ := h₇
@@ -888,7 +806,6 @@ theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {en
       rw [h₇] at h₁₄
       replace ⟨ euid, h₁₄, h₁₅⟩ := instance_of_entity_type_is_entity h₁₄
       subst h₁₄ h₁₅
-      rw [h₅] at h₁
       simp [checkLevel, h₇] at h₁
       have ⟨ ⟨ hll₁, hl₁⟩, hr₁ ⟩ := h₁ ; clear h₁
       have h₈ := check_level_succ hr₁
@@ -915,7 +832,22 @@ theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {en
         have h₇ := slice_at_succ_n_has_entity hs hc h₂ h₄ h₆ h₁₃ hee'
         replace h₇ := entities_find?_then_attrs h₇
         simp [h₇]
-    case _ h₇  => sorry -- record case for `getAttr`
+    case _ h₇  =>
+      replace ⟨ ety, h₇⟩ := h₇
+      have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc h₂ h₄
+      rw [h₇] at h₁₄
+      replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
+      subst h₁₄
+      simp [checkLevel, h₇] at h₁
+      have ih := level_based_slicing_is_sound hs hc h₂ (typed_at_level_def h₄ h₁)
+      simp [evaluate, ←ih]
+      cases he : evaluate e request entities <;> simp [he]
+      simp [getAttr]
+      rename_i v
+      unfold EvaluatesTo at h₁₃
+      simp [he] at h₁₃
+      subst h₁₃
+      simp [attrsOf]
   case hasAttr => sorry -- should follow `getAttr`
   case set => sorry -- trivial recursive case maybe a little tricky
   case record => sorry -- likely to be tricky. Record cases are always hard, and here there might be an odd interaction with attribute access
