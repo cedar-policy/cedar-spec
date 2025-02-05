@@ -190,9 +190,9 @@ theorem check_level_succ {e : TypedExpr} {n : Nat}
   case set | call => sorry
   case record => sorry
 
-theorem not_entities_then_not_slice_attrs_inner {n: Nat}  {uid : EntityUID} {e : Error} {entities : Entities} {work slice : Set EntityUID}
+theorem not_entities_then_not_slice_inner {n: Nat}  {uid : EntityUID} {e : Error} {entities : Entities} {work slice : Set EntityUID}
   (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n)
-  (hne : uid ∉ entities)
+  (hne : entities.find? uid = none)
   (hnw : uid ∉ work)
   : uid ∉ slice
 := by
@@ -216,11 +216,22 @@ theorem not_entities_then_not_slice_attrs_inner {n: Nat}  {uid : EntityUID} {e :
       rename_i slice'
       sorry
 
+theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
+  (hs : some slice = Entities.sliceAtLevel entities request n)
+  (hse : entities.find? uid = none)
+  : slice.find? uid = none
+:= by sorry
+
 theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
   (hs : slice = Entities.sliceAtLevel entities request n)
   (hse : entities.attrs uid = .error e)
   : slice.attrs uid = .error e
-:= by sorry
+:= by
+  simp [Entities.attrs, Map.findOrErr] at hse ⊢
+  split at hse <;> simp at hse
+  rename_i h₁
+  cases h₂ : entities.find? uid <;> simp [h₂] at h₁
+  simp [hse, not_entities_then_not_slice hs h₂]
 
 def ReachableIn (es : Entities) (start : Set EntityUID) (finish : EntityUID) (level : Nat) : Prop :=
     if level == 0 then False else
@@ -475,6 +486,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       simp [checkLevel] at hl
     case isFalse =>
       simp [err] at ht
+
   case var v =>
     cases v <;> simp [evaluate] at he
     case context =>
@@ -508,11 +520,11 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       split at ha <;> try contradiction
       simp [ha]
     }
+
   case getAttr e a =>
     simp [evaluate] at he
     cases h₁ : evaluate e request entities <;> simp [h₁] at he
     have ⟨ hc', tx', c₁', ht', htx, h₂ ⟩ := type_of_getAttr_inversion ht
-    subst hc'
     rw [htx] at hl
     simp only [checkLevel, gt_iff_lt] at hl
     have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
@@ -578,6 +590,50 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
           exists a :: path
           simp [EuidInValue, hv, ha]
         exact slice_at_succ_n_reachable hc hr ht' hl h₁ ha' hf
+
+  case hasAttr e a =>
+    simp [evaluate] at he
+    cases h₁ : evaluate e request entities <;> simp [h₁] at he
+    have ⟨ hc', tx', c₁', ht', htx, hty ⟩ := type_of_hasAttr_inversion ht
+    rw [htx] at hl
+    simp only [checkLevel, gt_iff_lt] at hl
+    have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
+    split at hl
+    · rename_i hety
+      rw [hety] at hi
+      have ⟨ _, _, hv⟩ := instance_of_entity_type_is_entity hi
+      subst hv
+      unfold EvaluatesTo at he'
+      rw [h₁] at he'
+      cases he' <;> rename_i he' <;> simp at he'
+      subst he'
+      simp [hasAttr, Entities.attrsOrEmpty, attrsOf] at he
+      subst he
+      replace ⟨ attrs, ha ⟩ := ha
+      unfold EuidInValue at ha
+      simp at ha
+      split at ha <;> simp at ha
+
+    · rename_i hety
+      cases hty <;> rename_i hty
+      · replace ⟨ ety, hty ⟩ := hty
+        specialize hety ety hty
+        contradiction
+      · replace ⟨ rty, hty ⟩ := hty
+        rw [hty] at hi
+        have ⟨ attrs, hv⟩ := instance_of_record_type_is_record hi ; clear hi
+        subst hv
+        unfold EvaluatesTo at he'
+        rw [h₁] at he'
+        cases he' <;> rename_i he' <;> simp at he'
+        subst he'
+        simp [hasAttr, attrsOf] at he
+        subst he
+        unfold EuidInValue at ha
+        simp at ha
+        replace ⟨ _, ha ⟩ := ha
+        split at ha <;> simp at ha
+
   all_goals { sorry }
 
 -- Because e typechecked and was annotated as ty₁ which then level checked
@@ -600,6 +656,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
   cases h₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts)  <;> simp [h₂] at hs
   subst hs
   cases e
+
   case lit =>
     simp [evaluate] at he
     subst he
@@ -612,6 +669,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
       simp [checkLevel] at hl
     case isFalse =>
       simp [err] at ht
+
   case var v =>
     cases v <;> simp [evaluate] at he
     all_goals {
@@ -630,7 +688,8 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
       symm at h₂
       exact map_find_mapm_value h₂ hi
     }
-  case getAttr e a =>
+
+  case hasAttr e a | getAttr e a =>
     have hv : ∃ path, EuidInValue (Value.prim (Prim.entityUID euid)) path euid := by exists []
     have hf' : Map.contains entities euid := by simp [Map.contains, hf]
     have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) :=
@@ -640,6 +699,7 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
     rw [←hf]
     symm at h₂
     exact map_find_mapm_value h₂ hi
+
   all_goals { sorry }
 
 --- Don't need this lemma atm.

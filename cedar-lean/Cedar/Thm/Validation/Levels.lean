@@ -23,6 +23,7 @@ import Cedar.Thm.Validation.Levels.Basic
 
 import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
+import Cedar.Thm.Validation.Levels.HasAttr
 
 namespace Cedar.Thm
 
@@ -50,10 +51,12 @@ theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {en
   case or => sorry -- inductive case, similar ast rewriting concerns as `if`
   case unaryApp => sorry -- trivial inductive cases
   case binaryApp => sorry -- includes tags cases which should follow the attr cases and `in` case which might be tricky
-  case getAttr e a =>
+  case getAttr e _ =>
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_get_attr hs hc hr ht hl ihe
-  case hasAttr => sorry -- should follow `getAttr`
+  case hasAttr e _ =>
+    have ihe := @level_based_slicing_is_sound e
+    exact level_based_slicing_is_sound_has_attr hs hc hr ht hl ihe
   case set => sorry -- trivial recursive case maybe a little tricky
   case record => sorry -- likely to be tricky. Record cases are always hard, and here there might be an odd interaction with attribute access
   case call => sorry -- should be the same as set
