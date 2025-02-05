@@ -36,27 +36,27 @@ open Cedar.Validation
 theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
-  (h₄ : (checkLevel tx n).checked = true)
+  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (ht : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
+  (hl : (checkLevel tx n).checked = true)
   (ihc : TypedAtLevelIsSound c)
   (iht : TypedAtLevelIsSound t)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.ite c t e) request entities = evaluate (.ite c t e) request slice
 := by
-    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₅, h₆, h₇, h₈ ⟩ := type_of_ite_inversion h₃
-    have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc h₂ h₆
+    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₅, h₆, h₇, h₈ ⟩ := type_of_ite_inversion ht
+    have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc hr h₆
     rw [h₇] at h₁₄
     split at h₈
     · replace ⟨h₇, h₈, h₉⟩ := h₈
       subst h₉
       replace h₁₄ := instance_of_ff_is_false h₁₄
       subst h₁₄
-      rw [h₅] at h₄
-      simp only [checkLevel, Bool.and_eq_true] at h₄
-      have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := h₄
-      specialize ihc hs hc h₂ (typed_at_level_def h₆ hl₄)
-      specialize ihe hs hc h₂ (typed_at_level_def h₇ hr₄)
+      rw [h₅] at hl
+      simp only [checkLevel, Bool.and_eq_true] at hl
+      have ⟨ ⟨ hl₄, _ ⟩,  hr₄⟩ := hl
+      specialize ihc hs hc hr (typed_at_level_def h₆ hl₄)
+      specialize ihe hs hc hr (typed_at_level_def h₇ hr₄)
       simp only [evaluate]
       rw [ihc, ihe]
       cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
@@ -72,10 +72,10 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
       subst h₉
       replace h₁₄ := instance_of_tt_is_true h₁₄
       subst h₁₄
-      rw [h₅] at h₄
-      simp only [checkLevel, Bool.and_eq_true] at h₄
-      have ⟨ ⟨ hl₄, hr₄ ⟩,  _⟩ := h₄
-      specialize ihc hs hc h₂ (typed_at_level_def h₆ hl₄)
+      rw [h₅] at hl
+      simp only [checkLevel, Bool.and_eq_true] at hl
+      have ⟨ ⟨ hl₄, hr₄ ⟩,  _⟩ := hl
+      specialize ihc hs hc hr (typed_at_level_def h₆ hl₄)
       simp only [evaluate]
       rw [ihc]
       cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
@@ -87,14 +87,14 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
       simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
       simp only [GuardedCapabilitiesInvariant, ihc, h₁₅, forall_const] at hgc
-      specialize iht hs (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hr₄)
+      specialize iht hs (capability_union_invariant hc hgc) hr (typed_at_level_def h₇ hr₄)
       simp [iht]
     · replace ⟨h₇, h₈, h₉, h₁₀⟩ := h₈
-      rw [h₅] at h₄
-      simp only [checkLevel, Bool.and_eq_true] at h₄
-      have ⟨⟨ ha₄, hb₄ ⟩, hc₄ ⟩ := h₄
-      specialize ihc hs hc h₂ (typed_at_level_def h₆ ha₄)
-      specialize ihe hs hc h₂ (typed_at_level_def h₈ hc₄)
+      rw [h₅] at hl
+      simp only [checkLevel, Bool.and_eq_true] at hl
+      have ⟨⟨ ha₄, hb₄ ⟩, hc₄ ⟩ := hl
+      specialize ihc hs hc hr (typed_at_level_def h₆ ha₄)
+      specialize ihe hs hc hr (typed_at_level_def h₈ hc₄)
       simp only [ihc, ihe, evaluate]
       cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
@@ -106,5 +106,5 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
       case false => simp
       case true =>
         simp only [GuardedCapabilitiesInvariant, ihc, h₁₄, forall_const] at hgc
-        specialize iht hs (capability_union_invariant hc hgc) h₂ (typed_at_level_def h₇ hb₄)
+        specialize iht hs (capability_union_invariant hc hgc) hr (typed_at_level_def h₇ hb₄)
         simp [iht]
