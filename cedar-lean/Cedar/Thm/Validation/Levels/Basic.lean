@@ -591,6 +591,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
           simp [EuidInValue, hv, ha]
         exact slice_at_succ_n_reachable hc hr ht' hl h₁ ha' hf
 
+  -- TODO: This a a copy-paste from `getAttr`, but I should be able to easily
+  -- derive a contradiction from `ha`
   case hasAttr e a =>
     simp [evaluate] at he
     cases h₁ : evaluate e request entities <;> simp [h₁] at he
@@ -634,9 +636,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
         replace ⟨ _, ha ⟩ := ha
         split at ha <;> simp at ha
 
-  case ite e₁ e₂ e₃ =>
-    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, h₅, h₆, h₇, h₈ ⟩ := type_of_ite_inversion ht
-    sorry
+  -- TODO: Should be straight forward from IH.
+  case ite e₁ e₂ e₃ => sorry
 
   case and e₁ e₂ | or e₁ e₂ =>
     simp [evaluate] at he
@@ -676,11 +677,11 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       split at ha <;> simp at ha
     }
 
+  -- TODO: Most cases will be a trivial contradiction from `ha`. Contains `in`,
+  -- `hasTag`, and `getTag`. `in` and `hasTAg` should be easy by deriving a
+  -- contradiction from `ha`. `getTag` hopefully is the same as `getAttr`.
+  -- Probably need lemma `reachable_tag_step` and `reachable_ancestor_step`.
   case binaryApp op e₁ e₂ => sorry
-    -- simp [evaluate] at he
-    -- cases he₁ : evaluate e₁ request entities <;> simp [he₁] at he
-    -- cases he₂ : evaluate e₂ request entities <;> simp [he₂] at he
-    -- rename_i v₁ v₂
 
   case set es =>
     simp [evaluate] at he
@@ -700,7 +701,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
     simp at ha
     split at ha <;> try contradiction
     split at ha <;> try contradiction
-    -- TODO: annoying
+    -- TODO: `attrs` might contain some entities which we need to account for.
+    -- Might be tricky, don't think it's trivial from IH
     sorry
 
   case call xfn args =>
@@ -751,97 +753,6 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
   rw [←hf]
   symm at h₂
   exact map_find_mapm_value h₂ hi
-
-/-
-  cases e
-  case lit =>
-    simp [evaluate] at he
-    subst he
-    simp [typeOf, typeOfLit] at ht
-    split at ht
-    case isTrue =>
-      simp [ok] at ht
-      replace ⟨ ht, hc' ⟩ := ht
-      subst ht hc'
-      simp [checkLevel] at hl
-    case isFalse =>
-      simp [err] at ht
-
-  case var v =>
-    cases v <;> simp [evaluate] at he
-    all_goals {
-      have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) := by
-        unfold ReachableIn ; simp
-        left
-        simp [←he, Request.sliceEUIDs]
-        rw [Set.mem_union_iff_mem_or]
-        left
-        rw [←Set.make_mem]
-        simp
-      subst he
-      symm at h₁
-      have hi := slice_contains_reachable hw h₁ (by simp [hf, Map.contains_iff_some_find?])
-      rw [←hf]
-      symm at h₂
-      exact map_find_mapm_value h₂ hi
-    }
-
-  case unaryApp _ e | hasAttr e _ | getAttr e _ =>
-    have hv : ∃ path, EuidInValue (Value.prim (Prim.entityUID euid)) path euid := by exists []
-    have hf' : Map.contains entities euid := by simp [Map.contains, hf]
-    have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) :=
-      slice_at_succ_n_reachable hc hr ht hl he hv hf'
-    symm at h₁
-    have hi := slice_contains_reachable hw h₁ (by simp [hf, Map.contains_iff_some_find?])
-    rw [←hf]
-    symm at h₂
-    exact map_find_mapm_value h₂ hi
--/
-
---- Don't need this lemma atm.
-/--
-theorem slice_at_level_inner_succ {n: Nat} {work : Set EntityUID} {uid : EntityUID} {entities : Entities} {slice₀ slice₁ : Set EntityUID}
-  (hs₀ : slice₀ = Entities.sliceAtLevel.sliceAtLevel entities work n)
-  (hs₁ : slice₁ = Entities.sliceAtLevel.sliceAtLevel entities work (1 + n))
-  (he₀ : uid ∈ slice₀ )
-  : uid ∈ slice₁
-:= by
-  cases n
-  case zero =>
-    replace hs₀ : some slice₀ = some ∅ := by
-      simp [hs₀, Entities.sliceAtLevel, Entities.sliceAtLevel.sliceAtLevel]
-    injections hs₀
-    rw [hs₀] at he₀
-    contradiction
-  case succ n =>
-    unfold Entities.sliceAtLevel.sliceAtLevel at hs₀ hs₁
-    simp at hs₀ hs₁
-    have h₁ : (1 + (n + 1) - 1) = (1 + n) := by omega
-    rw [h₁] at hs₁
-    cases hm : List.mapM (Map.find? entities) work.elts <;> simp [hm] at hs₀ hs₁
-    rename_i sliceₙ
-    cases hrs₀ : (Entities.sliceAtLevel.sliceAtLevel entities (flatten_union (List.map EntityData.sliceEUIDs sliceₙ)) n) <;> simp [hrs₀] at hs₀
-    cases hrs₁ : (Entities.sliceAtLevel.sliceAtLevel entities (flatten_union (List.map EntityData.sliceEUIDs sliceₙ)) (1 + n)) <;> simp [hrs₁] at hs₁
-    rename_i slice₀' slice₁'
-    subst slice₀ slice₁
-    have ⟨ hi₀, _ ⟩ := Set.mem_union_iff_mem_or work slice₀' uid
-    specialize hi₀ he₀
-    cases hi₀
-    case inl hi₀ =>
-      have ⟨ _, hi₁ ⟩ := Set.mem_union_iff_mem_or work slice₁' uid
-      simp [hi₁, hi₀]
-    case inr hi₀ =>
-      have ⟨ _, hi₁ ⟩ := Set.mem_union_iff_mem_or work slice₁' uid
-      symm at hrs₀ hrs₁
-      simp [hi₁, slice_at_level_inner_succ hrs₀ hrs₁ hi₀]
-
-theorem slice_at_level_succ {n: Nat} {request : Request} {uid : EntityUID} {data : EntityData} {entities : Entities} {slice₀ slice₁ : Entities}
-  (hs₀ : slice₀ = Entities.sliceAtLevel entities request n)
-  (hs₁ : slice₁ = Entities.sliceAtLevel entities request (1 + n))
-  (he₀ : slice₀.find? uid = some data)
-  : slice₁.find? uid = some data
-:= by sorry
---/
 
 theorem slice_at_zero_empty_inner
   (hs : Entities.sliceAtLevel.sliceAtLevel entities work 0 = some slice)

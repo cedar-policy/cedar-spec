@@ -47,8 +47,8 @@ theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {en
     have iht := @level_based_slicing_is_sound t
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_if hs hc hr ht hl ihc iht ihe
-  case and => sorry -- inductive case, similar ast rewriting concerns as `if`
-  case or => sorry -- inductive case, similar ast rewriting concerns as `if`
+  case and => sorry -- inductive case, similar ast rewriting concerns as `if`, type annotation could be buggy
+  case or => sorry -- inductive case, similar ast rewriting concerns as `if`, type annotation could be buggy
   case unaryApp => sorry -- trivial inductive cases
   case binaryApp => sorry -- includes tags cases which should follow the attr cases and `in` case which might be tricky
   case getAttr e _ =>
