@@ -74,7 +74,13 @@ theorem typecheck_is_sound (policies : Policies) (schema : Schema) (request : Re
 theorem validate_implies_type_check (schema : InputSchema) (policies : Policies) :
   validate policies schema = .ok () →
   typeCheck policies schema.toSchema = .ok () := by
-  sorry
+  simp [validate, bind]
+  intro h
+  cases h₁: policies.forM $ λ p => (schema.validateEnumUIDs p.getUIDs).mapError ValidationError.invalidEnumEid
+  rw [h₁] at h
+  contradiction
+  rw [h₁] at h
+  exact h
 
 theorem validation_is_sound (policies : Policies) (schema : InputSchema) (request : Request) (entities : Entities) :
   validate policies schema = .ok () →

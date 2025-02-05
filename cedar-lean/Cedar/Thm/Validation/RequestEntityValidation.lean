@@ -286,11 +286,21 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
 theorem request_validate_implies_type_check (schema : InputSchema) (request : Request) :
   validateRequest schema request = .ok () →
   typeCheckRequest schema.toSchema request = .ok () := by
+  simp only [validateRequest, bind]
   intro h
-  sorry
+  cases h₁: validateEntityUIDsInRequest schema request
+  rw [h₁] at h
+  contradiction
+  rw [h₁] at h
+  exact h
 
 theorem entities_validate_implies_type_check (schema : InputSchema) (entities : Entities) :
   validateEntities schema entities = .ok () →
   typeCheckEntities schema.toSchema entities = .ok () := by
+  simp only [validateEntities, bind]
   intro h
-  sorry
+  cases h₁: entities.kvs.forM (λ (uid, data) => (validateEntity schema uid data))
+  rw [h₁] at h
+  contradiction
+  rw [h₁] at h
+  exact h
