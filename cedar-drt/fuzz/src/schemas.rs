@@ -16,7 +16,9 @@
 
 use cedar_policy_core::ast::{Id, InternalName, Name};
 use cedar_policy_validator::json_schema;
+use cedar_policy_validator::json_schema::EntityTypeKind;
 use cedar_policy_validator::RawName;
+use cedar_policy_validator::ValidatorEntityTypeKind;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -228,29 +230,67 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(&lhs.annotations, &rhs.annotations)
             .map_err(|e| format!("mismatch in entity annotations: {e}"))?;
-        Equiv::equiv(
-            &lhs.member_of_types.iter().collect::<BTreeSet<_>>(),
-            &rhs.member_of_types.iter().collect::<BTreeSet<_>>(),
-        )
-        .map_err(|e| format!("memberOfTypes are not equal: {e}"))?;
-        Equiv::equiv(&lhs.shape, &rhs.shape).map_err(|e| format!("mismatched types: {e}"))?;
-        match (&lhs.tags, &rhs.tags) {
-            (Some(ts1), Some(ts2)) => {
-                Equiv::equiv(ts1, ts2).map_err(|msg| format!("mismatched entity tags: {msg}"))
+        match (&lhs.kind, &rhs.kind) {
+            (EntityTypeKind::Enum { choices: c1 }, EntityTypeKind::Enum { choices: c2 }) => {
+                if c1 != c2 {
+                    Err(format!(
+                        "enumerated entity types have different eid choices: {c1:?} and {c2:?}"
+                    ))
+                } else {
+                    Ok(())
+                }
             }
-            (None, None) => Ok(()),
-            (Some(ts), None) | (None, Some(ts)) => Err(format!("only one side has tags: {ts}")),
+            (EntityTypeKind::Standard(lhs), EntityTypeKind::Standard(rhs)) => {
+                Equiv::equiv(
+                    &lhs.member_of_types.iter().collect::<BTreeSet<_>>(),
+                    &rhs.member_of_types.iter().collect::<BTreeSet<_>>(),
+                )
+                .map_err(|e| format!("memberOfTypes are not equal: {e}"))?;
+                Equiv::equiv(&lhs.shape, &rhs.shape)
+                    .map_err(|e| format!("mismatched types: {e}"))?;
+                match (&lhs.tags, &rhs.tags) {
+                    (Some(ts1), Some(ts2)) => Equiv::equiv(ts1, ts2)
+                        .map_err(|msg| format!("mismatched entity tags: {msg}")),
+                    (None, None) => Ok(()),
+                    (Some(ts), None) | (None, Some(ts)) => {
+                        Err(format!("only one side has tags: {ts}"))
+                    }
+                }
+            }
+            (k1, k2) => Err(format!("different entity type kind: {:?} and {:?}", k1, k2)),
         }
     }
 }
 
 impl Equiv for cedar_policy_validator::ValidatorEntityType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
-        Equiv::equiv(&lhs.descendants, &rhs.descendants)?;
-        Equiv::equiv(
-            &lhs.attributes().collect::<HashMap<_, _>>(),
-            &rhs.attributes().collect::<HashMap<_, _>>(),
-        )?;
+        match (&lhs.kind, &rhs.kind) {
+            (ValidatorEntityTypeKind::Enum(c1), ValidatorEntityTypeKind::Enum(c2)) => {
+                if c1 != c2 {
+                    return Err(format!(
+                        "enumerated entity types have different eid choices: {c1:?} and {c2:?}"
+                    ));
+                }
+            }
+            (ValidatorEntityTypeKind::Standard(_), ValidatorEntityTypeKind::Standard(_)) => {
+                Equiv::equiv(&lhs.descendants, &rhs.descendants)?;
+                Equiv::equiv(
+                    &lhs.attributes().iter().collect::<HashMap<_, _>>(),
+                    &rhs.attributes().iter().collect::<HashMap<_, _>>(),
+                )?;
+                if lhs.tag_type() != rhs.tag_type() {
+                    return Err(format!(
+                        "encountered different tags types: {:?} and {:?}",
+                        lhs.tag_type(),
+                        rhs.tag_type()
+                    ));
+                }
+            }
+            (k1, k2) => {
+                return Err(format!("different entity type kind: {:?} and {:?}", k1, k2));
+            }
+        };
+
         Ok(())
     }
 }
