@@ -62,7 +62,7 @@ end Cedar.Validation.Proto
 
 namespace Cedar.Validation.Proto.EntityTypeWithTypesMap
 @[inline]
-def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
+def toEntitySchema (ets : EntityTypeWithTypesMap) : InputEntitySchema :=
   let ets := ets.toList
   let descendantMap := Data.Map.make (List.map (λ (k,v) =>
     have descendants := Data.Set.mk v.descendants.toList
@@ -74,14 +74,12 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
       if v.enums.isEmpty then
       {
         ancestors := ancestorMap.find! k,
-        attrs := Data.Map.make v.attrs.kvs,
-        tags := v.tags,
+        kind := .Standard ⟨ Data.Map.make v.attrs.kvs, v.tags ⟩,
       }
       else
       {
         ancestors := ancestorMap.find! k,
-        attrs := Data.Map.empty,
-        tags := none,
+        kind := .Enum v.enums.toList
       }
       )))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
@@ -151,7 +149,7 @@ instance : Message ValidatorSchema := {
 }
 
 @[inline]
-def toSchema (v : ValidatorSchema) : Schema :=
+def toSchema (v : ValidatorSchema) : InputSchema :=
   .mk v.ets.toEntitySchema v.acts.toActionSchema
 
 end Cedar.Validation.Proto.ValidatorSchema
@@ -165,9 +163,9 @@ namespace Cedar.Validation.Schema
 --   acts : ActionSchema
 
 @[inline]
-private def ES.merge (x1 x2 : EntitySchema) : EntitySchema :=
-  have x1 : Data.Map Spec.EntityType EntitySchemaEntry := x1
-  have x2 : Data.Map Spec.EntityType EntitySchemaEntry := x2
+private def ES.merge (x1 x2 : InputEntitySchema) : InputEntitySchema :=
+  have x1 : Data.Map Spec.EntityType InputEntitySchemaEntry := x1
+  have x2 : Data.Map Spec.EntityType InputEntitySchemaEntry := x2
   match x1.kvs with
     | [] => x2
     | _ => Data.Map.make (x2.kvs ++ x1.kvs)
@@ -181,13 +179,13 @@ private def AS.merge (x1 x2 : ActionSchema) : ActionSchema :=
     | _ => Data.Map.make (x2.kvs ++ x1.kvs)
 
 @[inline]
-def merge (x1 x2 : Schema) : Schema :=
+def merge (x1 x2 : InputSchema) : InputSchema :=
   {
     ets := ES.merge x1.ets x2.ets
     acts := AS.merge x1.acts x2.acts
   }
 
-deriving instance Inhabited for Schema
-instance : Field Schema := Field.fromInterField Proto.ValidatorSchema.toSchema merge
+deriving instance Inhabited for InputSchema
+instance : Field InputSchema := Field.fromInterField Proto.ValidatorSchema.toSchema merge
 
 end Cedar.Validation.Schema

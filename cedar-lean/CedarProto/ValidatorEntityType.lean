@@ -33,7 +33,7 @@ structure ValidatorEntityType where
   attrs : RecordType
   tags : Option CedarType
   enums: Array String
-deriving Inhabited
+deriving Inhabited, Repr
 
 -- the Tag message in Validator.proto
 structure TagMessage where

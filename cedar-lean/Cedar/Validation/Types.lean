@@ -61,13 +61,17 @@ abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
 
-inductive InputEntitySchemaEntityKind where
-  | Standard (info: RecordType × (Option CedarType))
+structure EntityInfo where
+  attrs : RecordType
+  tags : Option CedarType
+
+inductive InputEntitySchemaKind where
+  | Standard (info: EntityInfo)
   | Enum (choices: List String)
 
 structure InputEntitySchemaEntry where
   ancestors: Cedar.Data.Set EntityType
-  kind: InputEntitySchemaEntityKind
+  kind: InputEntitySchemaKind
 
 structure EntitySchemaEntry where
   ancestors : Cedar.Data.Set EntityType
@@ -76,7 +80,7 @@ structure EntitySchemaEntry where
 
 def InputEntitySchemaEntry.toEntitySchemaEntry (as: InputEntitySchemaEntry) : EntitySchemaEntry :=
   match as.kind with
-  | .Standard (attrs, tags) => ⟨ as.ancestors, attrs, tags ⟩
+  | .Standard ⟨ attrs, tags ⟩ => ⟨ as.ancestors, attrs, tags ⟩
   | .Enum _ => ⟨ as.ancestors, Map.empty, none ⟩
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
@@ -135,7 +139,7 @@ abbrev ValidateEnumUIDResult := Except String Unit
 -- Only return error when `uid`'s entity type is specified by `self` and it's an enumerated type and `uid`'s `eid` is not in the specified list
 def InputSchema.validateEnumUID (schema: InputSchema) (uid: EntityUID) : ValidateEnumUIDResult :=
   match schema.ets.find? uid.ty with
-  | .some { kind := InputEntitySchemaEntityKind.Enum choices, ancestors := _ }   => if choices.contains uid.eid then pure () else .error s!"invalid enumerated eid {uid.eid}"
+  | .some { kind := InputEntitySchemaKind.Enum choices, ancestors := _ }   => if choices.contains uid.eid then pure () else .error s!"invalid enumerated eid {uid.eid}"
   | .some _ | .none => pure ()
 
 def InputSchema.validateEnumUIDs (schema: InputSchema) (uids: List EntityUID): ValidateEnumUIDResult :=
@@ -143,7 +147,7 @@ def InputSchema.validateEnumUIDs (schema: InputSchema) (uids: List EntityUID): V
 
 def InputSchema.isDeclaredEnumeratedEntityType (schema: InputSchema) (t: EntityType) : Bool :=
   match schema.ets.find? t with
-    | .some { kind := InputEntitySchemaEntityKind.Enum _, ancestors := _ } => true
+    | .some { kind := InputEntitySchemaKind.Enum _, ancestors := _ } => true
     | _ => false
 
 
@@ -237,6 +241,14 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 
 end
 
+def decInputEntitySchemaKind (k₁ k₂: InputEntitySchemaKind) : Decidable ( k₁ = k₂) := by
+  match k₁, k₂ with
+  | .Standard t₁, .Standard t₂ => sorry
+  | .Standard _, .Enum _ => sorry
+  | .Enum _, .Standard _ => sorry
+  | .Enum _, .Enum _ => sorry
+
 instance : DecidableEq CedarType := decCedarType
+instance : DecidableEq InputEntitySchemaKind := decInputEntitySchemaKind
 
 end Cedar.Validation

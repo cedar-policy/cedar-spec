@@ -28,19 +28,19 @@ namespace Cedar.Validation.Proto
 
 deriving instance DecidableEq for ActionSchemaEntry
 deriving instance DecidableEq for ActionSchema
-deriving instance DecidableEq for EntitySchemaEntry
-deriving instance DecidableEq for EntitySchema
-deriving instance DecidableEq for Schema
+deriving instance DecidableEq for InputEntitySchemaEntry
+deriving instance DecidableEq for InputEntitySchema
+deriving instance DecidableEq for InputSchema
 
 structure ValidationRequest where
-  schema : Schema
+  schema : InputSchema
   policies : Spec.Policies
-deriving Inhabited, DecidableEq, Repr
+deriving Inhabited, DecidableEq
 
 namespace ValidationRequest
 
 @[inline]
-def mergeSchema (result : ValidationRequest) (x : Schema) : ValidationRequest :=
+def mergeSchema (result : ValidationRequest) (x : InputSchema) : ValidationRequest :=
   {result with
     schema := Field.merge result.schema x
   }
@@ -62,7 +62,7 @@ def merge (x y : ValidationRequest) : ValidationRequest :=
 def parseField (t : Tag) : BParsec (MergeFn ValidationRequest) := do
   match t.fieldNum with
     | 1 =>
-      let x : Schema ← Field.guardedParse t
+      let x : InputSchema ← Field.guardedParse t
       pure (pure $ mergeSchema · x)
     | 2 =>
       let x : Spec.Policies ← Field.guardedParse t
