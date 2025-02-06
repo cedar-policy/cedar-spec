@@ -158,4 +158,27 @@ deriving instance Repr for Duration
 
 abbrev duration := Duration.parse
 
+def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
+  datetime.add? duration
+
+def durationSince (datetime other: Datetime) : Option Duration :=
+  datetime.sub? other
+
+def toDate (datetime: Datetime) : Option Datetime :=
+  let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
+  if datetime >= 0
+  then millisPerDayI64 * (datetime.div millisPerDayI64)
+  else if datetime.mod millisPerDayI64 == 0
+       then datetime
+       else ((datetime.div millisPerDayI64) - 1) * millisPerDayI64
+
+def toTime (datetime: Datetime) : Duration :=
+  let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
+  if datetime >= 0
+  then datetime.mod millisPerDayI64
+  else let rem := datetime.mod millisPerDayI64
+       if rem == 0
+       then rem
+       else rem + millisPerDayI64
+
 end Datetime

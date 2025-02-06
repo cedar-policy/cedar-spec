@@ -145,8 +145,65 @@ def testsForInvalidDurationStrings :=
     testInvalidDuration "9223372036854776s1ms" "overflow s"
   ]
 
+private def testOffset (date₁ date₂ : String) (dur : Duration) : TestCase IO :=
+  test s!"{date₁} + {dur} -> {date₂}" ⟨λ _ => checkEq (offset (parse date₁).get! dur) (parse date₂)⟩
+
+def testsForOffset :=
+  suite "offset tests"
+  [
+    testOffset "2024-10-15" "2024-10-15" 0,
+    testOffset "2024-10-15" "2024-10-15T00:00:00.001Z" 1,
+    testOffset "2024-10-15" "2024-10-15T00:00:01Z" 1000,
+    testOffset "2024-10-15" "2024-10-14T23:59:59Z" (-1000 : Duration),
+    testOffset "2024-10-15" "2024-10-15T00:00:00-0001" 60000,
+  ]
+
+private def testDurationSince (date₁ date₂ : String) (dur : Duration) : TestCase IO :=
+  test s!"durationSince {date₁} {date₂} = {dur}" ⟨λ _ => checkEq (durationSince (parse date₁).get! (parse date₂).get!) dur⟩
+
+def testsForDurationSince :=
+  suite "durationSince tests"
+  [
+    testDurationSince "2024-10-15" "2024-10-15" 0,
+    testDurationSince "2024-10-15T00:00:00.001Z" "2024-10-15" 1,
+    testDurationSince "2024-10-15T00:00:01Z" "2024-10-15" 1000,
+    testDurationSince "2024-10-14T23:59:59Z" "2024-10-15" (-1000 : Duration),
+    testDurationSince "2024-10-15T00:00:00-0001" "2024-10-15" 60000,
+  ]
+
+private def testToDate (date₁ date₂ : String) : TestCase IO :=
+  test s!"toDate {date₁} = {date₂}" ⟨λ _ => checkEq (toDate (parse date₁).get!) (parse date₂).get!⟩
+
+def testsForToDate :=
+  suite "toDate tests"
+  [
+    testToDate "2024-10-15" "2024-10-15",
+    testToDate "2024-10-15T00:00:01Z" "2024-10-15",
+    testToDate "2024-10-15T23:59:59Z" "2024-10-15",
+    testToDate "2024-10-15T23:59:00-0001" "2024-10-16",
+    testToDate "1969-12-31" "1969-12-31",
+    testToDate "1969-12-31T23:59:59Z" "1969-12-31",
+  ]
+
+private def testToTime (date₁ : String) (dur : Duration) : TestCase IO :=
+  test s!"toTime {date₁} = {dur}" ⟨λ _ => checkEq (toTime (parse date₁).get!) dur⟩
+
+def testsForToTime :=
+  suite "toTime tests"
+  [
+    testToTime "2024-10-15" 0,
+    testToTime "2024-10-15T00:00:00.001Z" 1,
+    testToTime "2024-10-15T00:00:01Z" 1000,
+    testToTime "2024-10-15T23:59:59Z" 86399000,
+    testToTime "2024-10-15T23:59:00-0001" 0,
+    testToTime "1969-12-31" 0,
+    testToTime "1969-12-31T23:59:59Z" 86399000,
+    testToTime "1969-12-31T12:00:00Z" 43200000
+  ]
+
 def tests := [testsForValidDatetimeStrings, testsForInvalidDatetimeStrings,
-              testsForValidDurationStrings, testsForInvalidDurationStrings]
+              testsForValidDurationStrings, testsForInvalidDurationStrings,
+              testsForOffset, testsForDurationSince, testsForToDate, testsForToTime]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests
