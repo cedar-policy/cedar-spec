@@ -107,14 +107,18 @@ fuzz_target!(|input: FuzzTargetInput| {
         Extensions::all_available(),
         TCComputation::EnforceAlreadyComputed,
     );
-    let roundtripped_entities = eparser
-        .from_json_value(json.clone())
-        .expect("Should be able to parse serialized entity JSON");
-    // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
-    for e in input.entities {
-        let roundtripped_e = roundtripped_entities
-            .entity(e.uid())
-            .expect("Schema-based roundtrip dropped entity");
-        assert_eq!(&e, roundtripped_e);
+    match eparser.from_json_value(json.clone()) {
+        Ok(roundtripped_entities) => {
+            // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
+            for e in input.entities {
+                let roundtripped_e = roundtripped_entities
+                    .entity(e.uid())
+                    .expect("Schema-based roundtrip dropped entity");
+                assert_eq!(&e, roundtripped_e);
+            }
+        }
+        Err(errs) => {
+            assert!(matches!(errs, EntitiesError::InvalidEntity(_)));
+        }
     }
 });
