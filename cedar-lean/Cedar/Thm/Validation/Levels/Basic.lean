@@ -405,6 +405,26 @@ theorem in_val_then_val_slice
     split at hv <;> split at hv <;>
     ( rename_i hv' ; simp at hv hv' )
 
+theorem euid_not_in_not_entity_or_record (v : Value)
+  (hv : match v with
+    | .record _ => False
+    | .prim (.entityUID _) => False
+    | _ => True)
+  : ∀ path euid, ¬ EuidInValue v path euid
+:= by
+  intro path euid hv'
+  unfold EuidInValue at hv'
+  (split at hv <;>
+  split at hv' <;>
+  split at hv' <;>
+  try split at hv') <;>
+  try contradiction
+  · subst hv'
+    rename_i e _ he
+    exact he e (by rfl)
+  · rename_i m hr _ _ _ _
+    exact hr m (by rfl)
+
 theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData}
   (hr : ReachableIn entities start euid n)
   (he₁: .some ed = entities.find? euid)
@@ -466,26 +486,18 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
   ReachableIn entities request.sliceEUIDs euid (1 + n)
 := by
   cases e
-  case lit =>
+  case lit p =>
     simp [evaluate] at he
-    subst he
-    unfold EuidInValue at ha
-    replace ⟨ attrs, ha ⟩ := ha
-    split at ha <;> try simp at ha
-    split at ha <;> try simp at ha
-    subst ha
-    rename_i hp
-    injections hp
-    subst hp
-    simp [typeOf, typeOfLit] at ht
-    split at ht
-    case isTrue =>
-      simp [ok] at ht
-      replace ⟨ ht, hc' ⟩ := ht
-      subst ht hc'
-      simp [checkLevel] at hl
-    case isFalse =>
-      simp [err] at ht
+    cases p
+    case entityUID =>
+      simp [typeOf, typeOfLit] at ht
+      split at ht <;> simp [ok, err] at ht
+      simp [←ht, checkLevel] at hl
+
+    all_goals {
+      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+      simp [ha'] at ha
+    }
 
   case var v =>
     cases v <;> simp [evaluate] at he
@@ -591,50 +603,14 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
           simp [EuidInValue, hv, ha]
         exact slice_at_succ_n_reachable hc hr ht' hl h₁ ha' hf
 
-  -- TODO: This a a copy-paste from `getAttr`, but I should be able to easily
-  -- derive a contradiction from `ha`
   case hasAttr e a =>
     simp [evaluate] at he
     cases h₁ : evaluate e request entities <;> simp [h₁] at he
-    have ⟨ hc', tx', c₁', ht', htx, hty ⟩ := type_of_hasAttr_inversion ht
-    rw [htx] at hl
-    simp only [checkLevel, gt_iff_lt] at hl
-    have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
-    split at hl
-    · rename_i hety
-      rw [hety] at hi
-      have ⟨ _, _, hv⟩ := instance_of_entity_type_is_entity hi
-      subst hv
-      unfold EvaluatesTo at he'
-      rw [h₁] at he'
-      cases he' <;> rename_i he' <;> simp at he'
-      subst he'
-      simp [hasAttr, Entities.attrsOrEmpty, attrsOf] at he
-      subst he
-      replace ⟨ attrs, ha ⟩ := ha
-      unfold EuidInValue at ha
-      simp at ha
-      split at ha <;> simp at ha
-
-    · rename_i hety
-      cases hty <;> rename_i hty
-      · replace ⟨ ety, hty ⟩ := hty
-        specialize hety ety hty
-        contradiction
-      · replace ⟨ rty, hty ⟩ := hty
-        rw [hty] at hi
-        have ⟨ attrs, hv⟩ := instance_of_record_type_is_record hi ; clear hi
-        subst hv
-        unfold EvaluatesTo at he'
-        rw [h₁] at he'
-        cases he' <;> rename_i he' <;> simp at he'
-        subst he'
-        simp [hasAttr, attrsOf] at he
-        subst he
-        unfold EuidInValue at ha
-        simp at ha
-        replace ⟨ _, ha ⟩ := ha
-        split at ha <;> simp at ha
+    simp [hasAttr] at he
+    rename_i v₁
+    cases h₂ : attrsOf v₁ λ uid => Except.ok (entities.attrsOrEmpty uid) <;> simp [h₂] at he
+    have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+    simp [ha'] at ha
 
   -- TODO: Should be straight forward from IH.
   case ite e₁ e₂ e₃ => sorry
@@ -644,17 +620,11 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
     cases h₁ :  Result.as Bool (evaluate e₁ request entities) <;> simp [h₁] at he
     split at he
     · simp at he
-      subst v
-      unfold EuidInValue at ha
-      simp at ha
-      replace ⟨ path, ha ⟩ := ha
-      split at ha <;> contradiction
+      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+      simp [ha'] at ha
     · cases h₂ : Result.as Bool (evaluate e₂ request entities) <;> simp [h₂] at he
-      subst v
-      unfold EuidInValue at ha
-      simp at ha
-      replace ⟨ path, ha ⟩ := ha
-      split at ha <;> contradiction
+      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+      simp [ha'] at ha
 
   case unaryApp op e =>
     simp [evaluate] at he
@@ -670,11 +640,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
     try split at he <;>
     try simp at he
     all_goals {
-      subst he
-      unfold EuidInValue at ha
-      simp at ha
-      replace ⟨ path, ha ⟩ := ha
-      split at ha <;> simp at ha
+      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+      simp [ha'] at ha
     }
 
   -- TODO: Most cases will be a trivial contradiction from `ha`. Contains `in`,
@@ -686,11 +653,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
   case set es =>
     simp [evaluate] at he
     cases he₁ : (es.mapM₁ (λ x => evaluate x.val request entities)) <;> simp [he₁] at he
-    subst v
-    replace ⟨ path, ha ⟩ := ha
-    unfold EuidInValue at ha
-    simp at ha
-    split at ha <;> contradiction
+    have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+    simp [ha'] at ha
 
   case record attrs =>
     simp [evaluate] at he
@@ -719,11 +683,8 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
     )
 
     all_goals {
-      subst v
-      replace ⟨ path, ha ⟩ := ha
-      unfold EuidInValue at ha
-      simp at ha
-      split at ha <;> try contradiction
+      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
+      simp [ha'] at ha
     }
 
 -- Because e typechecked and was annotated as ty₁ which then level checked
