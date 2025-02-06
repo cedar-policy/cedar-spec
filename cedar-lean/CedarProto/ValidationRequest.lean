@@ -32,10 +32,24 @@ deriving instance DecidableEq for InputEntitySchemaEntry
 deriving instance DecidableEq for InputEntitySchema
 deriving instance DecidableEq for InputSchema
 
+deriving instance Repr for EntityInfo
+
+instance : Repr InputEntitySchemaKind where
+  reprPrec k _ :=
+    match k with
+    | InputEntitySchemaKind.Standard info =>
+      repr info
+    | InputEntitySchemaKind.Enum choices =>
+      "choices: " ++ repr choices
+
+deriving instance Repr for InputEntitySchemaEntry
+deriving instance Repr for InputEntitySchema
+deriving instance Repr for InputSchema
+
 structure ValidationRequest where
   schema : InputSchema
   policies : Spec.Policies
-deriving Inhabited, DecidableEq
+deriving Inhabited, DecidableEq, Repr
 
 namespace ValidationRequest
 

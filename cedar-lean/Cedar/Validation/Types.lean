@@ -241,14 +241,25 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 
 end
 
-def decInputEntitySchemaKind (k₁ k₂: InputEntitySchemaKind) : Decidable ( k₁ = k₂) := by
-  match k₁, k₂ with
-  | .Standard t₁, .Standard t₂ => sorry
-  | .Standard _, .Enum _ => sorry
-  | .Enum _, .Standard _ => sorry
-  | .Enum _, .Enum _ => sorry
-
 instance : DecidableEq CedarType := decCedarType
+deriving instance DecidableEq for EntityInfo
+
+def decInputEntitySchemaKind (k₁ k₂: InputEntitySchemaKind) : Decidable ( k₁ = k₂) := by
+  cases k₁ <;> cases k₂
+  case Standard.Standard i₁ i₂ =>
+    exact match decEq i₁ i₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case Enum.Enum c₁ c₂ =>
+    exact match decEq c₁ c₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  all_goals {
+     apply isFalse
+     intro h
+     injection h
+  }
+
 instance : DecidableEq InputEntitySchemaKind := decInputEntitySchemaKind
 
 end Cedar.Validation
