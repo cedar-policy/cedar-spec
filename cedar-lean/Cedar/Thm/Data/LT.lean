@@ -139,6 +139,10 @@ instance Ext.strictLT : StrictLT Ext where
       simp [LT.lt] at h₂
       cases h₃ : Ext.IPAddr.IPNet.lt x₁ x₂ <;>
       simp [h₃] at h₁ h₂ ; simp [h₂]
+    case datetime =>
+      exact Int64.strictLT.asymmetric x₁ x₂ h₁
+    case duration =>
+      exact Int64.strictLT.asymmetric x₁ x₂ h₁
   transitive a b c := by
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
@@ -150,6 +154,10 @@ instance Ext.strictLT : StrictLT Ext where
       cases h₄ : Ext.IPAddr.IPNet.lt x₁ x₂ <;> simp [h₄] at *
       cases h₅ : Ext.IPAddr.IPNet.lt x₂ x₃ <;> simp [h₅] at *
       simp [h₃]
+    case datetime =>
+      exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
+    case duration =>
+      exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
   connected  a b   := by
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
@@ -159,6 +167,10 @@ instance Ext.strictLT : StrictLT Ext where
       have h₂ := IPNet.strictLT.connected x₁ x₂
       simp [LT.lt, h₁] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
+    case datetime =>
+      sorry
+    case duration =>
+      sorry
 
 ----- `<` is strict on `Name` -----
 

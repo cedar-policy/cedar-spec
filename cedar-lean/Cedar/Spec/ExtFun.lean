@@ -37,6 +37,12 @@ inductive ExtFun where
   | isLoopback
   | isMulticast
   | isInRange
+  | datetime            ----- Datetime functions -----
+  | duration
+  | offset
+  | durationSince
+  | toDate
+  | toTime
 
 def res {α} [Coe α Ext] : Option α → Result Value
   | some v => .ok v
@@ -59,6 +65,10 @@ def call : ExtFun → List Value → Result Value
   | .isMulticast, [.ext (.ipaddr a)]         => .ok a.isMulticast
   | .isInRange,
     [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]   => .ok (a₁.inRange a₂)
+  | .datetime, [.prim (.string s)]           => res (Datetime.parse s)
+  | .duration, [.prim (.string s)]           => res (Datetime.Duration.parse s)
+  | .offset,
+    [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
   | _, _                                     => .error .typeError
 
 ----- Derivations -----

@@ -55,6 +55,8 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   match op₂, v₁, v₂ with
   | .eq, _, _                                              => .ok (v₁ == v₂)
   | .less,   .prim (.int i), .prim (.int j)                => .ok ((i < j): Bool)
+  | .less,   .ext (.datetime d₁), .ext (.datetime d₂)      => .ok ((d₁ < d₂): Bool)
+  | .less,   .ext _, .ext _                        => .error .typeError
   | .lessEq, .prim (.int i), .prim (.int j)                => .ok ((i ≤ j): Bool)
   | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j)
   | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j)

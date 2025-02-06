@@ -148,6 +148,9 @@ def Value.asExpr : Value → Expr
   | .record attrs => .record (attrs.kvs.attach₂.map λ ⟨(k, v), _⟩ => (k, v.asExpr))
   | .ext (.decimal d) => .call ExtFun.decimal [.lit (.string (toString d))]
   | .ext (.ipaddr ip) => .call ExtFun.ip [.lit (.string (toString ip))]
+  | .ext (.datetime dt) => .call ExtFun.datetime [.lit (.string (toString dt))]
+  | .ext (.duration dur) => .call ExtFun.duration [.lit (.string (toString dur))]
+
 decreasing_by
   all_goals simp_wf
   case _ h₁ => -- set

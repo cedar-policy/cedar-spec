@@ -24,8 +24,6 @@ namespace Cedar.Spec.Ext
 
 open Cedar.Data
 
-namespace Datetime
-
 /--
   A datetime value is measured in milliseconds and constructed from a datetime string.
   A datetime string must be of one of the forms:
@@ -41,6 +39,8 @@ namespace Datetime
   One of the readable formats listed above must be used instead.
 -/
 abbrev Datetime := Int64
+
+namespace Datetime
 
 def MAX_OFFSET_SECONDS: Nat := 86400
 

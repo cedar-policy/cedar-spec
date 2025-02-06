@@ -63,6 +63,35 @@ theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities
   · apply InstanceOfType.instance_of_ext
     simp [InstanceOfExtType]
 
+theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₁ : typeOf (Expr.call .datetime xs) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.call .datetime xs) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.call .datetime xs) request entities v ∧ InstanceOfType v ty.typeOf
+:= by
+  sorry
+
+def IsDatetimeMethod : ExtFun → Prop
+  | .offset
+  | .durationSince
+  | .toDate
+  | .toTime        => True
+  | _              => False
+
+theorem type_of_call_datetime_method_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₀ : IsDatetimeMethod xfn)
+  (h₁ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
+:= by
+  sorry
+
+theorem type_of_call_duration_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₁ : typeOf (Expr.call .duration xs) c₁ env = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.call .duration xs) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.call .duration xs) request entities v ∧ InstanceOfType v ty.typeOf
+:= by
+  sorry
+
 theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .ip xs) c env = Except.ok (ty, c')) :
   ty.typeOf = .ext .ipAddr ∧
@@ -429,5 +458,11 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   | .isIpv6
   | .isLoopback
   | .isMulticast        => exact type_of_call_ipAddr_recognizer_is_sound (by simp [IsIpAddrRecognizer]) h₁ h₂ h₃ ih
+  | .datetime           => exact type_of_call_datetime_is_sound h₃
+  | .duration           => exact type_of_call_duration_is_sound h₃
+  | .offset
+  | .durationSince
+  | .toDate
+  | .toTime             => exact type_of_call_datetime_method_is_sound (by simp only [IsDatetimeMethod]) h₃
 
 end Cedar.Thm
