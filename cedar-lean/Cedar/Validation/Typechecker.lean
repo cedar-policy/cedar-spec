@@ -359,6 +359,6 @@ def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
 ---- Derivations -----
 
 deriving instance Repr for RequestType
-deriving instance Repr for Environment
+--deriving instance Repr for Environment
 
 end Cedar.Validation
