@@ -32,7 +32,7 @@ RUN git clone --depth 1 https://github.com/cedar-policy/cedar
 
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
-RUN source /root/.profile && elan default "$(cat lean-toolchain)" && source ../cedar-drt/set_env_vars.sh && lake clean && source ../cedar-drt/set_env_vars.sh && ../cedar-drt/build_lean_lib.sh
+RUN source /root/.profile && elan default "$(cat lean-toolchain)" && source ../cedar-drt/set_env_vars.sh && echo "LD_PRELOAD is $LD_PRELOAD" && lean --print-prefix && source ../cedar-drt/set_env_vars.sh && ../cedar-drt/build_lean_lib.sh
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt
