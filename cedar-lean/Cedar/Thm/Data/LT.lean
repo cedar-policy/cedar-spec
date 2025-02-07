@@ -167,6 +167,7 @@ instance Ext.strictLT : StrictLT Ext where
       have h₂ := IPNet.strictLT.connected x₁ x₂
       simp [LT.lt, h₁] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
+    -- Note: This breaks the `intro` and I'm still trying to understand why
     case datetime =>
       sorry
     case duration =>

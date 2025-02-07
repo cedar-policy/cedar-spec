@@ -40,6 +40,7 @@ def Ext.lt : Ext → Ext → Bool
   | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
   | .datetime d₁, .datetime d₂ => d₁ < d₂
   | .duration d₁, .duration d₂ => d₁ < d₂
+  -- Note: This behaves like before but there are more cases...
   | .decimal  _, _   => true
   | .ipaddr   _, .decimal _  => false
   | .ipaddr   _, .datetime _  => true

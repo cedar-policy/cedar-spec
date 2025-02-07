@@ -69,6 +69,7 @@ def call : ExtFun → List Value → Result Value
   | .duration, [.prim (.string s)]           => res (Datetime.Duration.parse s)
   | .offset,
     [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
+  -- Note: Add other datetime methods
   | _, _                                     => .error .typeError
 
 ----- Derivations -----
