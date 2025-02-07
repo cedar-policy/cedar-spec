@@ -20,9 +20,13 @@ theorem instance_of_entity_type_refl (e : EntityUID) (ety : EntityType) (eids: O
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
-  sorry
-  -- simp only [beq_iff_eq] at h₀
-  -- assumption
+  have h₁ : (ety == e.ty) := by
+    simp at h₀
+    have ⟨ e₁, _ ⟩ := h₀
+    simp
+    exact e₁
+  simp only [beq_iff_eq] at h₁
+  assumption
 
 theorem instance_of_ext_type_refl (ext : Ext) (extty : ExtType) :
   instanceOfExtType ext extty = true → InstanceOfExtType ext extty
