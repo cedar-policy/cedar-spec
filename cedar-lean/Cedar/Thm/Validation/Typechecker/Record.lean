@@ -242,10 +242,11 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
     simp [List.mapM₂, List.attach₂, pure, Except.pure] at h₄
   case cons hd tl =>
     cases h₃ ; rename_i hd' tl' hh₃ ht₃
-    simp [List.mapM₂, List.attach₂] at h₄
-    cases h₅ : bindAttr hd.fst (evaluate hd.snd request entities) <;> simp [h₅] at h₄
+    simp only [List.mapM_cons, List.mapM₂, List.attach₂] at h₄
+    cases h₅ : bindAttr hd.fst (evaluate hd.snd request entities) <;> simp only [h₅] at h₄
     case error e =>
-      simp [bindAttr] at h₅
+      simp only [bindAttr] at h₅
+      simp only [bind_pure_comp, Except.bind_err, Except.error.injEq] at h₄
       cases h₆ : evaluate hd.snd request entities <;> simp [h₆] at h₅
       subst h₄ h₅
       specialize ih hd
@@ -257,14 +258,13 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       simp [EvaluatesTo, h₆] at ih
       exact ih
     case ok vhd =>
-      let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
-      cases h₅ : tl.mapM f <;> simp [h₅, pure, Except.pure] at h₄
+      cases h₅ : tl.mapM λ x => bindAttr x.fst (evaluate x.snd request entities) <;> simp [h₅, pure, Except.pure] at h₄
       rw [eq_comm] at h₄ ; subst h₄
-      apply @type_of_record_is_sound_err
+      exact @type_of_record_is_sound_err
         tl c₁ env request entities tl' err
         (by intro axᵢ h ; apply ih ; simp [h])
         h₁ h₂ ht₃
-        (by simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype f, h₅])
+        (by simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype, h₅])
 
 
 theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
@@ -278,11 +278,12 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   have ⟨h₆, rty, h₅, h₄⟩ := type_of_record_inversion h₃
   subst h₆ ; rw [h₅]
   apply And.intro empty_guarded_capabilities_invariant
-  simp [EvaluatesTo, evaluate, List.mapM₂, List.attach₂]
+  simp only [EvaluatesTo, evaluate]
+  simp only [do_ok, do_error]
+  simp only [List.mapM₂, List.attach₂]
   let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
-  simp [List.mapM_pmap_subtype f]
-  cases h₅ : (axs.mapM f) <;>
-  simp [h₅]
+  rw [List.mapM_pmap_subtype f]
+  cases h₅ : (axs.mapM f) <;> simp [h₅]
   case error err =>
     simp [type_is_inhabited]
     exact type_of_record_is_sound_err ih h₁ h₂ h₄ h₅

@@ -164,13 +164,16 @@ instance Ext.strictLT : StrictLT Ext where
 
 instance Name.strictLT : StrictLT Name where
   asymmetric a b   := by
-    simp [LT.lt, Name.lt]
-    apply List.lt_asymm
+    simp only [LT.lt, Bool.not_eq_true]
+    simp only [Name.lt, decide_eq_true_eq, decide_eq_false_iff_not, List.not_lt]
+    apply List.lt_asymm'
   transitive a b c := by
-    simp [LT.lt, Name.lt]
+    simp only [LT.lt]
+    simp only [Name.lt, decide_eq_true_eq]
     apply List.slt_trans
   connected  a b   := by
-    simp [LT.lt, Name.lt]
+    simp only [ne_eq, LT.lt]
+    simp only [Name.lt, decide_eq_true_eq]
     intro h₁
     apply List.lt_conn
     by_contra h₂
@@ -203,24 +206,22 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
 theorem EntityUID.lt_trans {a b c : EntityUID} :
   a < b → b < c → a < c
 := by
-  simp [LT.lt, EntityUID.lt]
+  simp only [LT.lt]
+  simp only [EntityUID.lt, Bool.decide_or, Bool.decide_and, Bool.or_eq_true, decide_eq_true_eq,
+    Bool.and_eq_true]
   intro h₁ h₂
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  · have h₃ := Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂
-    simp only [LT.lt] at h₃
-    simp [h₃]
-  · have ⟨h₂, _⟩ := h₂
+  · simp [Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂]
+  · replace ⟨h₂, _⟩ := h₂
     simp [h₂] at h₁
     simp [h₁]
-  · have ⟨h₁, _⟩ := h₁
+  · replace ⟨h₁, _⟩ := h₁
     simp [←h₁] at h₂
     simp [h₂]
-  · have ⟨hl₁, hr₁⟩ := h₁
-    have ⟨hl₂, hr₂⟩ := h₂
+  · replace ⟨hl₁, hr₁⟩ := h₁ ; clear h₁
+    replace ⟨hl₂, hr₂⟩ := h₂ ; clear h₂
     simp [hl₁] at * ; simp [hl₂] at *
-    have h₃ := String.strictLT.transitive a.eid b.eid c.eid hr₁ hr₂
-    simp only [LT.lt] at h₃
-    simp [h₃]
+    simp [String.strictLT.transitive a.eid b.eid c.eid hr₁ hr₂]
 
 theorem EntityUID.lt_conn {a b : EntityUID} :
   a ≠ b → (a < b ∨ b < a)
@@ -387,7 +388,8 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
       have h₂ := String.strictLT.asymmetric a₁ a₂ h₁
       have h₃ := StrictLT.not_eq a₁ a₂ h₁
       rw [eq_comm] at h₃
-      simp [h₂, h₃]
+      simp only [h₃, false_implies, and_true, ge_iff_le]
+      simp_all only [String.not_lt]
     case inr =>
       have ⟨hl₁, h₂⟩ := h₁
       subst hl₁

@@ -30,11 +30,11 @@ open Cedar.Data
 
 /-! ### insertCanonical -/
 
-theorem insertCanonical_singleton [LT β] [DecidableLT β] (f : α → β)  (x : α) :
+theorem insertCanonical_singleton [LT β] [Cedar.Data.DecidableLT β] (f : α → β)  (x : α) :
   insertCanonical f x [] = [x]
 := by unfold insertCanonical; rfl
 
-theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) :
+theorem insertCanonical_not_nil [DecidableEq β] [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (x : α) (xs : List α) :
   insertCanonical f x xs ≠ []
 := by
   unfold insertCanonical
@@ -46,7 +46,7 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
     split at h <;> try trivial
     split at h <;> trivial
 
-theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {xs : List α} (x : α) :
+theorem insertCanonical_sortedBy [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] {f : α → β} {xs : List α} (x : α) :
   SortedBy f xs →
   SortedBy f (insertCanonical f x xs)
 := by
@@ -85,7 +85,7 @@ theorem insertCanonical_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α 
         case cons_nil => exact SortedBy.cons_nil
         case cons_cons h₅ h₆ => exact SortedBy.cons_cons (by simp only [h₄, h₆]) h₅
 
-theorem insertCanonical_cases [LT β] [DecidableLT β] (f : α → β) (x y : α) (ys : List α) :
+theorem insertCanonical_cases [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (x y : α) (ys : List α) :
   (f x < f y ∧ insertCanonical f x (y :: ys) = x :: y :: ys) ∨
   (¬ f x < f y ∧ f x > f y ∧ insertCanonical f x (y :: ys) = y :: insertCanonical f x ys) ∨
   (¬ f x < f y ∧ ¬ f x > f y ∧ insertCanonical f x (y :: ys) = x :: ys)
@@ -102,7 +102,7 @@ theorem insertCanonical_cases [LT β] [DecidableLT β] (f : α → β) (x y : α
     case pos _ _ h₃ => simp [h₃, h₁]
     case neg _ _ h₃ => simp [h₃]
 
-theorem insertCanonical_subset [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) :
+theorem insertCanonical_subset [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (x : α) (xs : List α) :
   insertCanonical f x xs ⊆ x :: xs
 := by
   induction xs
@@ -117,7 +117,7 @@ theorem insertCanonical_subset [LT β] [DecidableLT β] (f : α → β) (x : α)
     · simp only [h₁, cons_subset, mem_cons, true_or, true_and]
       exact Subset.trans (List.subset_cons_self hd tl) (List.subset_cons_self x (hd :: tl))
 
-theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (xs : List α) :
+theorem insertCanonical_equiv [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (x : α) (xs : List α) :
   x :: xs ≡ insertCanonical id x xs
 := by
   unfold insertCanonical
@@ -173,7 +173,7 @@ theorem insertCanonical_equiv [LT α] [StrictLT α] [DecidableLT α] (x : α) (x
               apply cons_equiv_cons
               exact ih
 
-theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [DecidableLT α] {p : β → γ → Prop}
+theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] {p : β → γ → Prop}
   {kv₁ : α × β} {kv₂ : α × γ} {kvs₁ : List (α × β)} {kvs₂ : List (α × γ)}
   (h₁ : kv₁.fst = kv₂.fst ∧ p kv₁.snd kv₂.snd)
   (h₂ : Forallᵥ p kvs₁ kvs₂) :
@@ -202,7 +202,7 @@ theorem insertCanonical_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [De
       · contradiction
       · exact Forall₂.cons (by exact h₁) (by exact h₄)
 
-theorem insertCanonical_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) (f : β → γ) (x : α × β) :
+theorem insertCanonical_map_fst {α β γ} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List (α × β)) (f : β → γ) (x : α × β) :
   insertCanonical Prod.fst (Prod.map id f x) (map (Prod.map id f) xs) =
   map (Prod.map id f) (insertCanonical Prod.fst x xs)
 := by
@@ -218,23 +218,23 @@ theorem insertCanonical_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α
         simp [ih, Prod.map]
       · simp [Prod.map]
 
-theorem insertCanonical_map_fst_canonicalize {α β γ} [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) (f : β → γ) (x : α × β) :
+theorem insertCanonical_map_fst_canonicalize {α β γ} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List (α × β)) (f : β → γ) (x : α × β) :
   insertCanonical Prod.fst (Prod.map id f x) (canonicalize Prod.fst (map (Prod.map id f) xs)) =
   map (Prod.map id f) (insertCanonical Prod.fst x (canonicalize Prod.fst xs))
 := by
   induction xs generalizing x
   case nil => simp [insertCanonical, canonicalize, Prod.map]
   case cons hd tl ih =>
-    simp only [canonicalize, ih hd]
+    simp only [map_cons, canonicalize, ih hd]
     apply insertCanonical_map_fst (insertCanonical Prod.fst hd (canonicalize Prod.fst tl))
 
 /-! ## canonicalize -/
 
-theorem canonicalize_nil [LT β] [DecidableLT β] (f : α → β) :
+theorem canonicalize_nil [LT β] [Cedar.Data.DecidableLT β] (f : α → β) :
   canonicalize f [] = []
 := by unfold canonicalize; rfl
 
-theorem canonicalize_nil' [DecidableEq β] [LT β] [DecidableLT β] (f : α → β) (xs : List α) :
+theorem canonicalize_nil' [DecidableEq β] [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) :
   xs = [] ↔ (canonicalize f xs) = []
 := by
   constructor
@@ -251,7 +251,7 @@ theorem canonicalize_nil' [DecidableEq β] [LT β] [DecidableLT β] (f : α → 
       apply insertCanonical_not_nil f x (canonicalize f xs)
       exact h₁
 
-theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α → β) (xs : List α) :
+theorem canonicalize_not_nil [DecidableEq β] [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) :
   xs ≠ [] ↔ (canonicalize f xs) ≠ []
 := by
   constructor
@@ -267,14 +267,14 @@ theorem canonicalize_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : α �
     intro h₀
     cases xs <;> simp only [ne_eq, reduceCtorEq, not_false_eq_true, not_true_eq_false] at *
 
-theorem canonicalize_cons [LT β] [DecidableLT β] (f : α → β) (xs : List α) (a : α) :
+theorem canonicalize_cons [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) (a : α) :
   canonicalize f xs = canonicalize f ys → canonicalize f (a :: xs) = canonicalize f (a :: ys)
 := by
   intro h₁
   unfold canonicalize
   simp [h₁]
 
-theorem canonicalize_sortedBy [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
+theorem canonicalize_sortedBy [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) :
   SortedBy f (canonicalize f xs)
 := by
   induction xs
@@ -284,7 +284,7 @@ theorem canonicalize_sortedBy [LT β] [StrictLT β] [DecidableLT β] (f : α →
     apply insertCanonical_sortedBy
     exact ih
 
-theorem sortedBy_implies_canonicalize_eq [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {xs : List α} :
+theorem sortedBy_implies_canonicalize_eq [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] {f : α → β} {xs : List α} :
   SortedBy f xs → (canonicalize f xs) = xs
 := by
   intro h₁
@@ -296,7 +296,7 @@ theorem sortedBy_implies_canonicalize_eq [LT β] [StrictLT β] [DecidableLT β] 
       specialize ih h₁
       simp [ih, insertCanonical, h₂]
 
-theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
+theorem canonicalize_subseteq [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) :
   xs.canonicalize f ⊆ xs
 := by
   induction xs <;> simp only [canonicalize, Subset.refl]
@@ -308,7 +308,7 @@ theorem canonicalize_subseteq [LT β] [StrictLT β] [DecidableLT β] (f : α →
     simp only [subset_cons_self]
 
 /-- Corollary of `canonicalize_subseteq` -/
-theorem in_canonicalize_in_list [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {x : α} {xs : List α} :
+theorem in_canonicalize_in_list [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] {f : α → β} {x : α} {xs : List α} :
   x ∈ xs.canonicalize f → x ∈ xs
 := by
   intro h₁
@@ -321,7 +321,7 @@ Note that `canonicalize_equiv` does not hold for all functions `f`.
 To see why, consider xs = [(1, false), (1, true)], f = Prod.fst.
 Then `canonicalize f xs = [(1, false)] !≡ xs`.
 -/
-theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
+theorem canonicalize_equiv [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List α) :
   xs ≡ canonicalize id xs
 := by
   induction xs
@@ -339,7 +339,7 @@ theorem canonicalize_equiv [LT α] [StrictLT α] [DecidableLT α] (xs : List α)
 Note that `equiv_implies_canonical_eq` does not hold for all functions `f`.
 To see why, consider the `example` immediately below this.
 -/
-theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [DecidableLT α] (xs ys : List α) :
+theorem equiv_implies_canonical_eq [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs ys : List α) :
   xs ≡ ys → (canonicalize id xs) = (canonicalize id ys)
 := by
   intro h₁
@@ -371,7 +371,7 @@ example :
   simp [List.Equiv]
   decide
 
-theorem canonicalize_idempotent {α β} [LT β] [StrictLT β] [DecidableLT β] (f : α → β) (xs : List α) :
+theorem canonicalize_idempotent {α β} [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] (f : α → β) (xs : List α) :
   canonicalize f (canonicalize f xs) = canonicalize f xs
 := sortedBy_implies_canonicalize_eq (canonicalize_sortedBy f xs)
 
@@ -384,7 +384,7 @@ Then `(canonicalize f xs).filter p = []` but `(xs.filter p).canonicalize f = [(1
 #eval (canonicalize Prod.fst [(1, false), (1, true)]).filter Prod.snd
 #eval ([(1, false), (1, true)].filter Prod.snd).canonicalize Prod.fst
 -/
-theorem canonicalize_id_filter {α} [LT α] [StrictLT α] [DecidableLT α] (p : α → Bool) (xs : List α) :
+theorem canonicalize_id_filter {α} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (p : α → Bool) (xs : List α) :
   (canonicalize id xs).filter p = (xs.filter p).canonicalize id
 := by
   have h₁ : (canonicalize id xs).filter p ≡ xs.filter p := by
@@ -397,7 +397,7 @@ theorem canonicalize_id_filter {α} [LT α] [StrictLT α] [DecidableLT α] (p : 
     (canonicalize_sortedBy id (filter p xs))
     (Equiv.trans h₁ h₂)
 
-theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [DecidableLT α] (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) :
+theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (p : β → γ → Prop) (kvs₁ : List (α × β)) (kvs₂ : List (α × γ)) :
   List.Forallᵥ p kvs₁ kvs₂ →
   List.Forallᵥ p (List.canonicalize Prod.fst kvs₁) (List.canonicalize Prod.fst kvs₂)
 := by
@@ -410,7 +410,7 @@ theorem canonicalize_preserves_forallᵥ {α β γ} [LT α] [StrictLT α] [Decid
     have h₄ := canonicalize_preserves_forallᵥ p tl₁ tl₂ h₃
     apply insertCanonical_preserves_forallᵥ h₂ h₄
 
-theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [DecidableLT α] (xs : List (α × β)) (f : β → γ) :
+theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List (α × β)) (f : β → γ) :
   List.canonicalize Prod.fst (List.map (Prod.map id f) xs) =
   List.map (Prod.map id f) (List.canonicalize Prod.fst xs)
 := by

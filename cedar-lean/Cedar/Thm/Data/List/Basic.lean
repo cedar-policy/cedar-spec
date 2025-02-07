@@ -294,7 +294,7 @@ theorem sortedBy_cons [LT β] [StrictLT β] {f : α → β} {x : α} {ys : List 
     apply h₂
     simp only [mem_cons, true_or]
 
-theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] [DecidableEq β]
   {f : α → β} {x y : α} {xs : List α} :
   xs.SortedBy f → x ∈ xs → y ∈ xs → f x = f y →
   x = y
@@ -317,7 +317,7 @@ theorem mem_of_sortedBy_unique {α β} [LT β] [StrictLT β] [DecidableLT β] [D
       simp only [hf, StrictLT.irreflexive] at hlt
     · exact ih hx hy
 
-theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [DecidableLT β] [DecidableEq β]
+theorem mem_of_sortedBy_implies_find? {α β} [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] [DecidableEq β]
   {f : α → β} {x : α} {xs : List α} :
   x ∈ xs → xs.SortedBy f →
   xs.find? (fun y => f y == f x) = x
@@ -384,7 +384,7 @@ theorem map_eq_implies_sortedBy [LT β] [StrictLT β] {f : α → β} {g : γ �
           apply sortedBy_implies_head_lt_tail h₂
           simp only [mem_cons, true_or]
 
-theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
+theorem filter_sortedBy [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] {f : α → β} (p : α → Bool) {xs : List α} :
   SortedBy f xs → SortedBy f (xs.filter p)
 := by
   intro h₁
@@ -401,7 +401,7 @@ theorem filter_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} (
       exact h₂.left
     · exact ih
 
-theorem filterMap_sortedBy [LT β] [StrictLT β] [DecidableLT β] {f : α → β} {g : α → Option γ} {f' : γ → β} {xs : List α} :
+theorem filterMap_sortedBy [LT β] [StrictLT β] [Cedar.Data.DecidableLT β] {f : α → β} {g : α → Option γ} {f' : γ → β} {xs : List α} :
   (∀ x y, g x = some y → f x = f' y) →
   SortedBy f xs →
   SortedBy f' (xs.filterMap g)
