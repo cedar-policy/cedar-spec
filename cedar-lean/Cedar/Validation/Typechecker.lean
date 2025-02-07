@@ -59,7 +59,7 @@ def typeOfLit (p : Prim) (env : Environment) : ResultType :=
   | .int _         => ok .int
   | .string _      => ok .string
   | .entityUID uid =>
-    if env.ets.contains uid.ty || env.acts.contains uid
+    if env.ets.isValidEntityUID uid || env.acts.contains uid
     then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
 

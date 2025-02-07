@@ -92,6 +92,17 @@ def EntitySchemaEntry.ancestors (entry: EntitySchemaEntry): Set EntityType :=
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
+def EntitySchema.getEIDRange (ets: EntitySchema) (et: EntityType) : Option (List String) :=
+  match ets.find? et with
+  | .some (.enum eids) => .some eids
+  | .some (.standard _) | .none => .none
+
+def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
+  match ets.find? uid.ty with
+  | .some (.enum eids) => eids.contains uid.eid
+  | .some (.standard _) => true
+  | .none   => false
+
 def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
