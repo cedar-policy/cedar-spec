@@ -365,12 +365,12 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.make [{ id := "A", path := [] }]
             tags := none
@@ -401,17 +401,17 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.make [
               ("a", .required (.bool .anyBool)),
               ("b", .required .int),
@@ -464,22 +464,22 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "F", path := [] }, {
+          ({ id := "F", path := [] }, .standard {
             attrs := Map.make [
               ("z", .required .string),
               ("y", .optional (.set (.set (.entity { id := "C", path := [] })))),
@@ -509,32 +509,32 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := some .string
           }),
-          ({ id := "D", path := [] }, {
+          ({ id := "D", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.make [{ id := "B", path := [] }]
             tags := some (.set .string)
           }),
-          ({ id := "E", path := [] }, {
+          ({ id := "E", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := some (.set (.entity { id := "A", path := [] }))
           }),
-          ({ id := "F", path := [] }, {
+          ({ id := "F", path := [] }, .standard {
             attrs := Map.make [
               ("z", .required (.set .string)),
             ]
