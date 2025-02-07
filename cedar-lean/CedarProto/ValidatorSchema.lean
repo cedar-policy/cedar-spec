@@ -36,7 +36,7 @@ structure ValidatorSchema where
   acts : EntityUidWithActionsIdMap
 deriving Inhabited
 
-instance : Data.DecidableLT Spec.EntityTypeProto := by
+instance : DecidableLT Spec.EntityTypeProto := by
   unfold Spec.EntityTypeProto
   apply inferInstance
 
@@ -49,12 +49,12 @@ The definitions and utility functions below are used to convert the descendant
 representation to the ancestor representation.
 -/
 @[inline]
-private def findInMapValues [LT α] [DecidableEq α] [Data.DecidableLT α] (m : Data.Map α (Data.Set α)) (k₁ : α) : Data.Set α :=
+private def findInMapValues [LT α] [DecidableEq α] [DecidableLT α] (m : Data.Map α (Data.Set α)) (k₁ : α) : Data.Set α :=
   let setOfSets := List.map (λ (k₂,v) => if v.contains k₁ then Data.Set.singleton k₂ else Data.Set.empty) m.toList
   setOfSets.foldl (λ acc v => acc.union v) Data.Set.empty
 
 @[inline]
-private def descendantsToAncestors [LT α] [DecidableEq α] [Data.DecidableLT α] (descendants : Data.Map α (Data.Set α)) : Data.Map α (Data.Set α) :=
+private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (descendants : Data.Map α (Data.Set α)) : Data.Map α (Data.Set α) :=
   Data.Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
