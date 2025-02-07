@@ -999,13 +999,16 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     simp only [←h₃, hempty, implies_true, reduceCtorEq, false_or, exists_eq_left', true_and]
     exact no_type_implies_no_tags h₂.right.left heq
 
-theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
-  (h₁ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = .ok (ty, c₂)) :
+theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = .ok (tx, c₂)) :
   c₂ = [] ∧
-  ∃ ety c₁' c₂',
-    (typeOf x₁ c₁ env).typeOf = .ok (.entity ety, c₁') ∧
-    (typeOf x₂ c₁ env).typeOf = .ok (.string, c₂') ∧
-    env.ets.tags? ety = some (some ty.typeOf) ∧
+  ∃ ety ty tx₁ tx₂ c₁' c₂',
+    typeOf x₁ c₁ env = .ok (tx₁, c₁') ∧
+    tx₁.typeOf = .entity ety ∧
+    typeOf x₂ c₁ env = .ok (tx₂, c₂') ∧
+    tx₂.typeOf = .string ∧
+    env.ets.tags? ety = some (some ty) ∧
+    tx = .binaryApp .getTag tx₁ tx₂ ty ∧
     (x₁, .tag x₂) ∈ c₁
 := by
   simp only [typeOf] at h₁
@@ -1014,37 +1017,36 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   rename_i tyc₁ tyc₂
   cases tyc₁
   cases tyc₂
-  rename_i ty₁ c₁' ty₂ c₂'
+  rename_i tx₁ c₁' tx₂ c₂'
   simp only at h₁
-  cases h₄ : ty₁.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₄] at h₁
-  cases h₅ : ty₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅] at h₁
+  cases h₄ : tx₁.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₄] at h₁
+  cases h₅ : tx₂.typeOf <;> simp [typeOfBinaryApp, err, reduceCtorEq, h₅] at h₁
   rename_i ety
   simp only [typeOfGetTag, List.empty_eq] at h₁
   split at h₁ <;> simp only [ok, err, Except.bind_err, reduceCtorEq] at h₁
   split at h₁ <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
+  rename_i ty _ _
   rename_i h₆ h₇
   replace ⟨h₁, h₁'⟩ := h₁
   subst h₁ h₁'
   simp only [true_and]
-  exists ety
+  exists ety, ty, tx₁, tx₂
   simp only [ResultType.typeOf, Except.map, h₄, h₅, h₆, h₇]
   simp [TypedExpr.typeOf]
 
-theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = Except.ok (ty, c₂))
+  (h₃ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = Except.ok (tx, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v tx.typeOf
 := by
-  replace ⟨hc, ety, c₁', c₂', h₃, h₄, h₅, h₆⟩ := type_of_getTag_inversion h₃
+  replace ⟨hc, ety, ty, tx₁, tx₂, c₁', c₂', h₃, h₄, h₅, h₆, ht, htx, hc₁⟩ := type_of_getTag_inversion h₃
   subst hc
-  split_type_of h₃ ; rename_i h₃ hl₃ hr₃
-  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
-  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₄
+  replace ⟨_, v₂, ih₂, hty₂⟩ := ih₂ h₁ h₂ h₅
   simp only [EvaluatesTo] at *
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
@@ -1053,9 +1055,9 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
   simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
   any_goals (apply type_is_inhabited)
-  rw [hl₃] at hty₁
+  rw [h₄] at hty₁
   replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
-  rw [hl₄] at hty₂
+  rw [h₆] at hty₂
   replace ⟨s, hv₂⟩ := instance_of_string_is_string hty₂
   subst hv₁ hv₂ hty₁
   simp only [apply₂, hasTag, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or, exists_eq_left']
@@ -1067,11 +1069,12 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
   replace ⟨entry, hf₂, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂
-  simp only [EntitySchema.tags?, Option.map_eq_some'] at h₅
-  replace ⟨_, h₅, h₇⟩ := h₅
-  simp only [hf₂, Option.some.injEq] at h₅
-  subst h₅
-  simp only [h₇] at h₂
+  simp only [EntitySchema.tags?, Option.map_eq_some'] at ht
+  replace ⟨_, he, ht⟩ := ht
+  simp only [hf₂, Option.some.injEq] at he
+  subst he
+  simp only [ht] at h₂
+  rw [htx] ; simp only [TypedExpr.typeOf]
   have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
   rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
   simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
@@ -1079,7 +1082,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   · simp only [← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
     apply h₂
     exact Map.findOrErr_ok_implies_in_values hf₃
-  · replace h₁ := h₁.right x₁ x₂ h₆
+  · replace h₁ := h₁.right x₁ x₂ hc₁
     simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
       Value.prim.injEq, Prim.bool.injEq, false_or, reduceCtorEq] at h₁
     simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
