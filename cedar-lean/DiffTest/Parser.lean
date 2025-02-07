@@ -419,11 +419,11 @@ formalization standardizes on ancestor information.
 The definitions and utility functions below are used to convert the descendant
 representation to the ancestor representation.
 -/
-def findInMapValues [LT α] [DecidableEq α] [Cedar.Data.DecidableLT α] (m : Map α (Set α)) (k₁ : α) : Set α :=
+def findInMapValues [LT α] [DecidableEq α] [DecidableLT α] (m : Map α (Set α)) (k₁ : α) : Set α :=
   let setOfSets := List.map (λ (k₂,v) => if v.contains k₁ then Set.singleton k₂ else Set.empty) m.toList
   setOfSets.foldl (λ acc v => acc.union v) Set.empty
 
-def descendantsToAncestors [LT α] [DecidableEq α] [Cedar.Data.DecidableLT α] (descendants : Map α (Set α)) : Map α (Set α) :=
+def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (descendants : Map α (Set α)) : Map α (Set α) :=
   Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 

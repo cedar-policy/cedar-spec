@@ -306,7 +306,7 @@ theorem Except.isOk_iff_exists {x : Except ε α} :
 := by
   cases x <;> simp [Except.isOk, Except.toBool]
 
-theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [Cedar.Data.DecidableLT α] [StrictLT α] {f : α → Except ε β} {as : List α} :
+theorem if_mapM_doesn't_fail_on_list_then_doesn't_fail_on_set [LT α] [DecidableLT α] [StrictLT α] {f : α → Except ε β} {as : List α} :
   Except.isOk (as.mapM f) →
   Except.isOk ((Set.elts (Set.make as)).mapM f)
 := by

@@ -62,15 +62,13 @@ theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
   have h₃ := StrictLT.irreflexive x
   contradiction
 
-abbrev DecidableLT (α) [LT α] := DecidableRel (α := α) (· < ·)
-
 end Cedar.Data
 
 ----- Theorems and instances -----
 
 open Cedar.Data
 
-theorem List.lt_cons_cases [LT α] [Cedar.Data.DecidableLT α] {x y : α} {xs ys : List α} :
+theorem List.lt_cons_cases [LT α] [DecidableLT α] {x y : α} {xs ys : List α} :
   x :: xs < y :: ys →
   (x < y ∨ (¬ x < y ∧ ¬ y < x ∧ xs < ys))
 := by
@@ -84,7 +82,7 @@ theorem List.cons_lt_cons [LT α] [StrictLT α] (x : α) (xs ys : List α) :
   apply List.Lex.cons
   simp only [lex_lt, h₁]
 
-theorem List.slt_irrefl [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List α) :
+theorem List.slt_irrefl [LT α] [StrictLT α] [DecidableLT α] (xs : List α) :
   ¬ xs < xs
 := by
   induction xs
@@ -114,7 +112,7 @@ theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
       apply List.Lex.cons
       exact List.slt_trans h₃ h₆
 
-theorem List.slt_asymm [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] {xs ys : List α} :
+theorem List.slt_asymm [LT α] [StrictLT α] [DecidableLT α] {xs ys : List α} :
   xs < ys → ¬ ys < xs
 := by
   intro h₁
@@ -170,7 +168,7 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
         apply List.Lex.rel
         exact StrictLT.if_not_lt_eq_then_gt xhd yhd h₄ h₅
 
-instance List.strictLT (α) [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] : StrictLT (List α) where
+instance List.strictLT (α) [LT α] [StrictLT α] [DecidableLT α] : StrictLT (List α) where
   asymmetric _ _   := List.slt_asymm
   transitive _ _ _ := List.slt_trans
   connected  _ _   := List.lt_conn
