@@ -5,7 +5,9 @@ import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Basic
 import Cedar.Thm.Validation.Typechecker.IfThenElse
 import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.Levels.Slice
 import Cedar.Thm.Validation.Levels.Basic
+import Cedar.Thm.Validation.Levels.CheckLevel
 
 /-!
 This file proves that level checking for `.hasAttr` expressions is sound.
@@ -33,11 +35,11 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   subst h₁₄ h₁₅
   simp [checkLevel, hety] at hl
   have ⟨ ⟨ hl₁, _⟩, hl₂ ⟩ := hl ; clear hl
-  have h₈ := check_level_succ hl₂
+  have h₈ := check_level_checked_succ hl₂
   have h₉ : (1 + (n - 1)) = n := by omega
   rw [h₉] at h₈ ; clear h₉
   simp [evaluate]
-  rw [←ihe hs hc hr (typed_at_level_def ht h₈)]
+  rw [←ihe hs hc hr ht h₈]
   clear h₈
   simp [hasAttr, attrsOf, Entities.attrsOrEmpty]
   unfold EvaluatesTo at h₁₃
@@ -52,7 +54,7 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
       simp [hl₁, hl₂]
     have h₈ : n = (n - 1).succ := by omega
     rw [h₈] at hs
-    have h₇ := slice_at_succ_n_has_entity hs hc hr ht h₆ h₁₃ hee
+    have h₇ := checked_eval_entity_in_slice hc hr ht h₆ h₁₃ hee hs
     simp [h₇]
 
 theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
@@ -70,7 +72,7 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
   replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
   subst h₁₄
   simp [checkLevel, hrty] at hl
-  have ih := ihe hs hc hr (typed_at_level_def ht hl)
+  have ih := ihe hs hc hr ht hl
   simp [evaluate, ←ih]
   cases he : evaluate e request entities <;> simp [he]
   simp [hasAttr]

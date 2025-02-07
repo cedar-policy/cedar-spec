@@ -19,8 +19,8 @@ import Cedar.Data
 import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Levels.Basic
 
+import Cedar.Thm.Validation.Levels.CheckLevel
 import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
 import Cedar.Thm.Validation.Levels.HasAttr
@@ -31,14 +31,14 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {c : Capabilities} {env : Environment} {request : Request} {slice entities : Entities}
+theorem level_based_slicing_is_sound {e : Expr} {tx : TypedExpr} {n : Nat} {c c₁ : Capabilities} {env : Environment} {request : Request} {slice entities : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (htl : typedAtLevel e c env n) :
+  (ht : typeOf e c env = Except.ok (tx, c₁))
+  (hl : (checkLevel tx n).checked) :
   evaluate e request entities = evaluate e request slice
 := by
-  replace ⟨_, _, ht, hl⟩ := typed_at_level_inversion htl ; clear htl
   cases e
   case lit => simp [evaluate]
   case var v => cases v <;> simp [evaluate]
