@@ -21,7 +21,10 @@ use cedar_drt::{
     extensions::Extensions,
     Entities, ValidatorSchema,
 };
-use cedar_policy::{entities_errors::EntitiesError, entities_json_errors::JsonSerializationError};
+use cedar_policy::{
+    conformance_errors::EntitySchemaConformanceError, entities_errors::EntitiesError,
+    entities_json_errors::JsonSerializationError,
+};
 use cedar_policy_generators::{
     hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
@@ -107,6 +110,8 @@ fuzz_target!(|input: FuzzTargetInput| {
         Extensions::all_available(),
         TCComputation::EnforceAlreadyComputed,
     );
+    // The entity store generator currently produces entities of enumerated entity types but with invalid EIDs,
+    // which are rejected by entity validation
     match eparser.from_json_value(json.clone()) {
         Ok(roundtripped_entities) => {
             // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
@@ -117,8 +122,12 @@ fuzz_target!(|input: FuzzTargetInput| {
                 assert_eq!(&e, roundtripped_e);
             }
         }
-        Err(errs) => {
-            assert!(matches!(errs, EntitiesError::InvalidEntity(_)));
+        Err(err) => {
+            // The error should only be `InvalidEnumEntity`
+            assert!(matches!(
+                err,
+                EntitiesError::InvalidEntity(EntitySchemaConformanceError::InvalidEnumEntity(_))
+            ));
         }
     }
 });
