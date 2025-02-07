@@ -50,7 +50,7 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
       have h₇ : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
       rw [h₇ (checkLevel tx₁ (n - 1))]
       simp [hl₁, hl₂]
-    have h₈ : n = 1 + (n - 1) := by omega
+    have h₈ : n = (n - 1).succ := by omega
     rw [h₈] at hs
     have h₇ := slice_at_succ_n_has_entity hs hc hr ht h₆ h₁₃ hee
     simp [h₇]

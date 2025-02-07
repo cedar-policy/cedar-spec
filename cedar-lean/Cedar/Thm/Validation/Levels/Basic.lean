@@ -246,13 +246,13 @@ theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {ui
 inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Prop where
   | in_start {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat}
     (hs : finish ∈ start) :
-    ReachableIn es start finish (Nat.succ level)
+    ReachableIn es start finish level.succ
   | step {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat} {ed : EntityData}
     (i : EntityUID)
     (hi : i ∈ start)
     (he : some ed = es.find? i)
     (hr : ReachableIn es ed.sliceEUIDs finish level) :
-    ReachableIn es start finish (Nat.succ level)
+    ReachableIn es start finish level.succ
 
 inductive EuidInValue : Value → List Attr → EntityUID → Prop where
   | euid (euid : EntityUID) :
@@ -262,25 +262,22 @@ inductive EuidInValue : Value → List Attr → EntityUID → Prop where
     (hv : EuidInValue v path euid) :
     EuidInValue (.record attrs)  (a :: path) euid
 
-theorem euid_in_work_then_in_slice
+theorem euid_in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
   (hw : euid ∈ work)
-  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n)
-  (hn : n > 0)
+  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n.succ)
   : euid ∈ slice
 := by
   unfold Entities.sliceAtLevel.sliceAtLevel at hs
   split at hs
   case isTrue hn' =>
-    replace hn : (n == 0) = false :=
-      by simp only [beq_eq_false_iff_ne, ne_eq]; omega
-    simp [hn] at hn'
+    contradiction
   case isFalse =>
     cases h₁ :
       List.mapM (Map.find? entities) work.elts
     <;> simp [h₁] at hs
     rename_i eds
     cases h₂ :
-      List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n - 1)) eds
+      List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
     <;> simp [h₂] at hs
     rename_i slice'
     subst hs
@@ -291,8 +288,8 @@ theorem euid_in_work_then_in_slice
 theorem slice_contains_reachable
   {n: Nat}
   {work : Set EntityUID} {euid : EntityUID} {entities : Entities} {slice : Set EntityUID}
-  (hw : ReachableIn entities work euid (1 + n))
-  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work (1 + n))
+  (hw : ReachableIn entities work euid n.succ)
+  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n.succ)
   (h₅ : entities.contains euid) :
   euid ∈ slice
 := by
@@ -301,29 +298,27 @@ theorem slice_contains_reachable
     cases hw
     case step hw => cases hw
     case in_start hw =>
-      exact euid_in_work_then_in_slice hw hs (by simp)
+      exact euid_in_work_then_in_slice hw hs
   case succ =>
     cases hw
     case in_start hw =>
-      exact euid_in_work_then_in_slice hw hs (by omega)
+      exact euid_in_work_then_in_slice hw hs
     case step n' ed euid' hf hi hw =>
       unfold Entities.sliceAtLevel.sliceAtLevel at hs
       simp at hs
       cases h₇ : (List.mapM (Map.find? entities) work.elts) <;> simp [h₇] at hs
       rename_i eds
-      cases h₈ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds) <;> simp [h₈] at hs
+      cases h₈ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n' + 1)) eds) <;> simp [h₈] at hs
       subst hs
       rename_i slice'
-      cases h₉ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (1 + (n' + 1) - 1)) eds <;> simp [h₉] at h₈
+      cases h₉ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs (n' + 1)) eds <;> simp [h₉] at h₈
       subst h₈
       rw [Set.mem_union_iff_mem_or]
       right
       have ⟨ e', h₁₀, h₁₁⟩ := List.mapM_some_implies_all_some h₇ _ hi
-      have h₆ : (1 + (n' + 1) - 1) = 1 + n' := by omega
-      rw [h₆] at h₉
       have ⟨ slice, _, hs ⟩ := List.mapM_some_implies_all_some h₉ _ h₁₀
       rw [h₁₁] at hf ; injections hf ; subst hf
-      cases h₁₂ : (Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs (1 + n'))
+      cases h₁₂ : (Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs (n' + 1))
       case none => simp [h₁₂] at hs
       case some =>
         symm at h₁₂
@@ -385,7 +380,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   (he₁ : .some ed = entities.find? euid)
   (he₂ : .some tv = ed.tags.find? tag)
   (he₃ : EuidInValue tv path euid') :
-  ReachableIn entities start euid' (1 + n)
+  ReachableIn entities start euid' n.succ
 := by
   cases hr
   case in_start n' hi =>
@@ -401,10 +396,8 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
         exact List.mem_map_of_mem _ (map_find_then_value he₂)
       case right =>
         exact in_val_then_val_slice he₃
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' (1 + n') := by
-      have hn : 1 + n' = Nat.succ n' := by omega
-      rw [hn]
-      exact ReachableIn.in_start he₄
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' n'.succ :=
+      ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
   case step n' ed' euid'' he₁' hi hr' =>
     have ih := reachable_tag_step hr' he₁ he₂ he₃
@@ -414,7 +407,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   (hr : ReachableIn entities start euid n)
   (he₁: .some ed = entities.find? euid)
   (he₂ : EuidInValue (.record ed.attrs) path euid' ) :
-  ReachableIn entities start euid' (1 + n)
+  ReachableIn entities start euid' n.succ
 := by
   cases hr
   case in_start n' hi =>
@@ -431,10 +424,8 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
         exact List.mem_map_of_mem _ (map_find_then_value ha)
       case right =>
         exact in_val_then_val_slice hv
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' (1 + n') := by
-      have hn : 1 + n' = Nat.succ n' := by omega
-      rw [hn]
-      exact ReachableIn.in_start he₄
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' n'.succ :=
+      ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
   case step n' ed' euid'' he₁' hi hr' =>
     have ih := reachable_attr_step hr' he₁ he₂
@@ -448,7 +439,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
   (he : evaluate e request entities = .ok v)
   (ha : EuidInValue v path euid )
   (hf : entities.contains euid) :
-  ReachableIn entities request.sliceEUIDs euid (1 + n)
+  ReachableIn entities request.sliceEUIDs euid n.succ
 := by
   cases e
   case lit p =>
@@ -481,8 +472,6 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
         exists a, v
         simp
         exact Map.find?_mem_toList hf'
-      have hn : (1 + n) = Nat.succ n := by omega
-      rw [hn]
       exact ReachableIn.in_start hi
 
     all_goals {
@@ -491,8 +480,6 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
         rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
         cases ha
         simp [hf]
-      have hn : (1 + n) = Nat.succ n := by omega
-      rw [hn]
       exact ReachableIn.in_start hi
     }
 
@@ -532,7 +519,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
       have ih := slice_at_succ_n_reachable hc hr ht' hl' h₁ (EuidInValue.euid euid') hf'
-      have h₆ : (1 + (n - 1)) = n := by omega
+      have h₆ : (n - 1).succ = n := by omega
       rw [h₆] at ih ; clear h₆
 
       have ha' : EuidInValue (Value.record ed.attrs) (a :: path) euid := EuidInValue.record hv ha
@@ -685,7 +672,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
       have ih := slice_at_succ_n_reachable hc hr htx₁ hl₀ he₁ (EuidInValue.euid euid') hf'
-      have h₆ : (1 + (n - 1)) = n := by omega
+      have h₆ : (n - 1).succ = n := by omega
       rw [h₆] at ih ; clear h₆
 
       symm at hv hed
@@ -774,7 +761,7 @@ theorem slice_at_succ_n_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx
 -- dereferences. `slice` was taken from `entities` at level `n`, so we can
 -- do at least one more dereference without error.
 theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities} {ed : EntityData}
-  (hs : slice = Entities.sliceAtLevel entities request (1 + n))
+  (hs : slice = Entities.sliceAtLevel entities request n.succ)
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
@@ -784,12 +771,12 @@ theorem slice_at_succ_n_has_entity  {n : Nat} {c c' : Capabilities} {tx : TypedE
   slice.find? euid = some ed
 := by
   simp [Entities.sliceAtLevel] at hs
-  cases h₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (1 + n)  <;> simp [h₁] at hs
+  cases h₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n.succ  <;> simp [h₁] at hs
   rename_i eids
   cases h₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts)  <;> simp [h₂] at hs
   subst hs
   have hf' : Map.contains entities euid := by simp [Map.contains, hf]
-  have hw : ReachableIn entities request.sliceEUIDs euid (1 + n) := slice_at_succ_n_reachable hc hr ht hl he (EuidInValue.euid euid) hf'
+  have hw : ReachableIn entities request.sliceEUIDs euid n.succ := slice_at_succ_n_reachable hc hr ht hl he (EuidInValue.euid euid) hf'
   symm at h₁
   have hi := slice_contains_reachable hw h₁ (by simp [hf, Map.contains_iff_some_find?])
   rw [←hf]

@@ -65,7 +65,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
       have h₇ : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
       rw [h₇ (checkLevel tx₁ (n - 1))]
       simp [hl₁, hl₂]
-    have h₈ : n = 1 + (n - 1) := by omega
+    have h₈ : n = (n - 1).succ := by omega
     rw [h₈] at hs
     have ⟨ ed, hee', hee''⟩ := entities_attrs_then_find? hee
     subst hee''
