@@ -114,7 +114,7 @@ theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
       apply List.Lex.cons
       exact List.slt_trans h₃ h₆
 
-theorem List.lt_asymm' [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] {xs ys : List α} :
+theorem List.slt_asymm [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] {xs ys : List α} :
   xs < ys → ¬ ys < xs
 := by
   intro h₁
@@ -171,7 +171,7 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
         exact StrictLT.if_not_lt_eq_then_gt xhd yhd h₄ h₅
 
 instance List.strictLT (α) [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] : StrictLT (List α) where
-  asymmetric _ _   := List.lt_asymm'
+  asymmetric _ _   := List.slt_asymm
   transitive _ _ _ := List.slt_trans
   connected  _ _   := List.lt_conn
 

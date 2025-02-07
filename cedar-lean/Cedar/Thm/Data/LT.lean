@@ -166,7 +166,7 @@ instance Name.strictLT : StrictLT Name where
   asymmetric a b   := by
     simp only [LT.lt, Bool.not_eq_true]
     simp only [Name.lt, decide_eq_true_eq, decide_eq_false_iff_not, List.not_lt]
-    apply List.lt_asymm'
+    apply List.slt_asymm
   transitive a b c := by
     simp only [LT.lt]
     simp only [Name.lt, decide_eq_true_eq]
