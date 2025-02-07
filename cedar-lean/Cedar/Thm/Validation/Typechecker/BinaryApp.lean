@@ -659,7 +659,6 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
     subst h₁
     simp only [List.map_nil]
   case cons hd tl =>
-    simp only [List.mapM', bind_pure_comp] at h₁
     cases h₂ : evaluate (Expr.lit hd) request entities <;> simp [h₂] at h₁
     cases h₃ : List.mapM' (fun x => evaluate x request entities) (List.map Expr.lit tl) <;> simp [h₃] at h₁
     rename_i vhd vtl

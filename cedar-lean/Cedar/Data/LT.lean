@@ -45,6 +45,14 @@ theorem StrictLT.if_not_lt_gt_then_eq [LT α] [StrictLT α] (x y : α) :
   have h₄ := StrictLT.connected x y h₃
   simp [h₁, h₂] at h₄
 
+theorem StrictLT.if_not_lt_eq_then_gt [LT α] [StrictLT α] (x y : α) :
+  ¬ x < y → ¬ x = y → x > y
+:= by
+  intro h₁ h₂
+  by_contra h₃
+  have h₄ := StrictLT.connected x y h₂
+  simp [h₁, h₃] at h₄
+
 theorem StrictLT.not_eq [LT α] [StrictLT α] (x y : α) :
   x < y → ¬ x = y
 := by
@@ -62,69 +70,51 @@ end Cedar.Data
 
 open Cedar.Data
 
-theorem List.lt_cons_cases [LT α] {x y : α} {xs ys : List α} :
+theorem List.lt_cons_cases [LT α] [Cedar.Data.DecidableLT α] {x y : α} {xs ys : List α} :
   x :: xs < y :: ys →
   (x < y ∨ (¬ x < y ∧ ¬ y < x ∧ xs < ys))
 := by
   intro h₁
-  cases h₁
-  case head _ h₁ => simp [h₁]
-  case tail _ h₁ h₂ h₃ => simp [h₁, h₂]; assumption
+  cases h₁ <;> simp_all [lex_lt, Decidable.em]
 
 theorem List.cons_lt_cons [LT α] [StrictLT α] (x : α) (xs ys : List α) :
   xs < ys → x :: xs < x :: ys
 := by
   intro h₁
-  apply List.lt.tail (StrictLT.irreflexive x) (StrictLT.irreflexive x) h₁
+  apply List.Lex.cons
+  simp only [lex_lt, h₁]
 
-theorem List.slt_irrefl [LT α] [StrictLT α] (xs : List α) :
+theorem List.slt_irrefl [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] (xs : List α) :
   ¬ xs < xs
 := by
   induction xs
   case nil => by_contra; contradiction
   case cons _ _ hd tl ih =>
     by_contra h₁
-    have h₂ := StrictLT.irreflexive hd
-    cases tl
-    case nil =>
-      have h₃ := List.lt_cons_cases h₁
-      simp [h₂] at h₃
-      contradiction
-    case cons _ _ hd' tl' =>
-      have h₃ := List.lt_cons_cases h₁
-      simp [h₂] at h₃
-      contradiction
+    replace h₁ := List.lt_cons_cases h₁
+    simp [StrictLT.irreflexive hd] at h₁
+    contradiction
 
 theorem List.slt_trans [LT α] [StrictLT α] {xs ys zs : List α} :
   xs < ys → ys < zs → xs < zs
 := by
   intro h₁ h₂
   cases h₁
-  case nil => cases h₂ <;> apply List.lt.nil
-  case head _ _ xhd xtl yhd ytl h₃ =>
+  case nil => cases h₂ <;> apply List.Lex.nil
+  case rel _ _ xhd xtl yhd ytl h₃ =>
+    cases h₂ <;> apply List.Lex.rel
+    case rel _ _ zhd ztl h₄ => exact StrictLT.transitive _ _ _ h₃ h₄
+    case cons _ _ ztl h₄ => exact h₃
+  case cons _ _ xhd xtl ytl h₃ =>
     cases h₂
-    case head _ _ zhd ztl h₄ =>
-      apply List.lt.head
-      apply StrictLT.transitive _ _ _ h₃ h₄
-    case tail _ _ zhd ztl h₄ h₅ h₆ =>
-      have h₇ := StrictLT.if_not_lt_gt_then_eq yhd zhd h₄ h₅
-      subst h₇
-      apply List.lt.head
-      exact h₃
-  case tail _ _ xhd xtl yhd ytl h₃ h₄ h₅ =>
-    cases h₂
-    case head _ _ zhd ztl h₆ =>
-      have h₇ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄
-      subst h₇
-      apply List.lt.head
+    case rel _ _ zhd ztl h₆ =>
+      apply List.Lex.rel
       exact h₆
-    case tail _ _ zhd ztl h₆ h₇ h₈ =>
-      have h₉ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₃ h₄
-      subst h₉
-      apply List.lt.tail h₆ h₇
-      apply List.slt_trans h₅ h₈
+    case cons _ _ ztl h₆ =>
+      apply List.Lex.cons
+      exact List.slt_trans h₃ h₆
 
-theorem List.lt_asymm [LT α] [StrictLT α] {xs ys : List α} :
+theorem List.slt_asymm [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] {xs ys : List α} :
   xs < ys → ¬ ys < xs
 := by
   intro h₁
@@ -146,38 +136,42 @@ theorem List.lt_conn [LT α] [StrictLT α] {xs ys : List α} :
 := by
   intro h₁
   by_contra h₂
-  simp [not_or] at h₂
-  have ⟨h₂, h₃⟩ := h₂
+  simp only [not_or] at h₂
+  replace ⟨h₂, h₃⟩ := h₂
   cases xs <;> cases ys
   case nil.nil => contradiction
-  case nil.cons _ _ xhd xtl _ =>
-    have h₄ := List.lt.nil xhd xtl
-    contradiction
-  case cons.nil _ _ yhd ytl _ =>
-    have h₄ := List.lt.nil yhd ytl
-    contradiction
-  case cons.cons _ _ xhd xtl yhd ytl _ =>
+  case nil.cons xhd xtl =>
+    simp_all only [ne_eq, nil_eq, not_false_eq_true, and_self, nil_lt_cons, not_true_eq_false]
+  case cons.nil yhd ytl =>
+    simp_all only [ne_eq, not_false_eq_true, and_self, not_lt_nil, nil_lt_cons, not_true_eq_false]
+  case cons.cons xhd xtl yhd ytl =>
     by_cases (xhd < yhd)
     case pos h₄ =>
-      have h₅ := List.lt.head xtl ytl h₄
+      have h₅ : xhd :: xtl < yhd :: ytl := List.Lex.rel h₄
       contradiction
     case neg h₄ =>
-      by_cases (yhd < xhd)
+      by_cases (xhd = yhd)
       case pos h₅ =>
-        have h₆ := List.lt.head ytl xtl h₅
+        subst yhd
+        suffices xtl < ytl ∨ ytl < xtl by
+          cases this <;> rename_i h₅
+          · apply h₂ ; clear h₂
+            apply List.Lex.cons ; simp only [lex_lt]
+            exact h₅
+          · apply h₃ ; clear h₃
+            apply List.Lex.cons ; simp only [lex_lt]
+            exact h₅
+        apply List.lt_conn (xs := xtl) (ys := ytl)
+        intro h₅
+        subst ytl
         contradiction
       case neg h₅ =>
-        have h₆ := StrictLT.if_not_lt_gt_then_eq xhd yhd h₄ h₅
-        subst h₆
-        simp at h₁
-        cases (List.lt_conn h₁) <;> rename_i h₆
-        · have h₇ := List.cons_lt_cons xhd xtl ytl h₆
-          contradiction
-        · have h₇ := List.cons_lt_cons xhd ytl xtl h₆
-          contradiction
+        apply h₃ ; clear h₃
+        apply List.Lex.rel
+        exact StrictLT.if_not_lt_eq_then_gt xhd yhd h₄ h₅
 
-instance List.strictLT (α) [LT α] [StrictLT α] : StrictLT (List α) where
-  asymmetric _ _   := List.lt_asymm
+instance List.strictLT (α) [LT α] [StrictLT α] [Cedar.Data.DecidableLT α] : StrictLT (List α) where
+  asymmetric _ _   := List.slt_asymm
   transitive _ _ _ := List.slt_trans
   connected  _ _   := List.lt_conn
 
