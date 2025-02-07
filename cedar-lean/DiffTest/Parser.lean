@@ -431,6 +431,7 @@ structure JsonEntitySchemaEntry where
   descendants : Cedar.Data.Set EntityType
   attrs : RecordType
   tags : Option CedarType
+  enums: List String
 
 abbrev JsonEntitySchema := Map EntityType JsonEntitySchemaEntry
 
@@ -448,11 +449,13 @@ def invertJsonEntitySchema (ets : JsonEntitySchema) : EntitySchema :=
   let ancestorMap := descendantsToAncestors descendantMap
   Map.make (List.map
     (λ (k,v) => (k,
+      if v.enums.isEmpty then
+      .standard
       {
         ancestors := ancestorMap.find! k,
         attrs := v.attrs,
         tags := v.tags
-      })) ets)
+      } else .enum v.enums)) ets)
 
 def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
   let acts := acts.toList
@@ -508,26 +511,31 @@ partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
       .ok (.ext name)
     | tag => .error s!"jsonToCedarType: unknown tag {tag}"
 
-partial def jsonToEntityTypeKind (json: Lean.Json) : ParseResult (RecordType × Option CedarType) := do
+partial def jsonToEntityTypeKind (json: Lean.Json) : ParseResult ((List String) × RecordType × Option CedarType) := do
   let (tag, value) ← unpackJsonSum json
   match tag with
-    | "Enum" => .ok (Map.empty, none)
+    | "Enum" =>
+      do
+        let vals ← jsonToArray value
+        let eids ← vals.toList.mapM jsonToString
+        pure (eids, Map.empty, none)
     | "Standard" =>
       let attrs ← getJsonField value "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
       let tags ← -- the "tags" field may be absent
       match getJsonField value "tags" with
-        | .ok jty  => (jsonToCedarType jty).map λ ty => (attrs, some ty)
-        | .error _ => .ok (attrs, none)
+        | .ok jty  => (jsonToCedarType jty).map λ ty => ([], attrs, some ty)
+        | .error _ => .ok ([], attrs, none)
     | tag => .error s!"jsonToEntityTypeKind: unknown tag {tag}"
 
 partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySchemaEntry := do
   let descendants_json ← getJsonField json "descendants" >>= jsonToArray
   let descendants ← List.mapM jsonToName descendants_json.toList
-  let (attrs, tags) ← getJsonField json "kind" >>= jsonToEntityTypeKind
+  let (eids, attrs, tags) ← getJsonField json "kind" >>= jsonToEntityTypeKind
   .ok {
     descendants := Set.make descendants,
     attrs := attrs,
-    tags := tags
+    tags := tags,
+    enums := eids
   }
 
 partial def jsonToActionSchemaEntry (json : Lean.Json) : ParseResult JsonActionSchemaEntry := do

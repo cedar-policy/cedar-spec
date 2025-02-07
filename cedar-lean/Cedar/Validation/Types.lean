@@ -239,4 +239,24 @@ end
 
 instance : DecidableEq CedarType := decCedarType
 
+deriving instance DecidableEq for StandardSchemaEntry
+
+def decEntitySchemaEntry (e₁ e₂: EntitySchemaEntry) : Decidable (e₁ = e₂) := by
+  cases e₁ <;> cases e₂
+  case standard.standard t₁ t₂ =>
+    exact match decEq t₁ t₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case enum.enum l₁ l₂ =>
+    exact match decEq l₁ l₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  all_goals {
+    apply isFalse
+    intro h
+    injection h
+  }
+
+instance : DecidableEq EntitySchemaEntry := decEntitySchemaEntry
+
 end Cedar.Validation
