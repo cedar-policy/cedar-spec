@@ -38,8 +38,8 @@ def InstanceOfBoolType : Bool → BoolType → Prop
   | _,     .anyBool => True
   | _, _            => False
 
-def InstanceOfEntityType (e : EntityUID) (ety: EntityType) : Prop :=
-  ety = e.ty
+def InstanceOfEntityType (e : EntityUID) (ety: EntityType) (env : Environment) : Prop :=
+  e.ty = ety && (env.ets.contains e.ty  ∨ env.acts.contains e)
 
 def InstanceOfExtType : Ext → ExtType → Prop
   | .decimal _, .decimal => True
@@ -54,8 +54,8 @@ inductive InstanceOfType : Value → CedarType → Prop where
       InstanceOfType (.prim (.int _)) .int
   | instance_of_string :
       InstanceOfType (.prim (.string _)) .string
-  | instance_of_entity (e : EntityUID) (ety: EntityType)
-      (h₁ : InstanceOfEntityType e ety) :
+  | instance_of_entity (e : EntityUID) (ety: EntityType) (env: Environment)
+      (h₁ : InstanceOfEntityType e ety env) :
       InstanceOfType (.prim (.entityUID e)) (.entity ety)
   | instance_of_set (s : Set Value) (ty : CedarType)
       (h₁ : forall v, v ∈ s → InstanceOfType v ty) :
@@ -73,11 +73,12 @@ inductive InstanceOfType : Value → CedarType → Prop where
       (h₁ : InstanceOfExtType x xty) :
       InstanceOfType (.ext x) (.ext xty)
 
-def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
-  InstanceOfEntityType request.principal reqty.principal ∧
-  request.action = reqty.action ∧
-  InstanceOfEntityType request.resource reqty.resource ∧
-  InstanceOfType request.context (.record reqty.context)
+def InstanceOfRequestType (request : Request) (env : Environment) : Prop :=
+  InstanceOfEntityType request.principal env.reqty.principal env ∧
+  request.action = env.reqty.action ∧
+  InstanceOfEntityType request.resource env.reqty.resource env ∧
+  InstanceOfType request.context (.record env.reqty.context) ∧
+  InstanceOfEntityType request.action env.reqty.action.ty env
 
 def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
   match entry.tags with
@@ -111,7 +112,7 @@ def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
     data.ancestors = entry.ancestors
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
-  InstanceOfRequestType request env.reqty ∧
+  InstanceOfRequestType request env ∧
   InstanceOfEntitySchema entities env.ets ∧
   InstanceOfActionSchema entities env.acts
 
@@ -194,7 +195,7 @@ theorem instance_of_entity_type_is_entity {ety : EntityType} :
 := by
   intro h₁
   cases h₁
-  rename_i euid h₁
+  rename_i euid env h₁
   simp [InstanceOfEntityType] at h₁
   exists euid
   simp [h₁]
@@ -312,10 +313,15 @@ theorem bool_type_is_inhabited (bty : BoolType) :
   case anyBool => simp only [or_self]
 
 theorem entity_type_is_inhabited (ety : EntityType) :
-  ∃ euid, InstanceOfEntityType euid ety
+  ∃ euid env, InstanceOfEntityType euid ety env
 := by
   simp [InstanceOfEntityType]
   exists (EntityUID.mk ety default)
+  simp
+  exists (Environment.mk (Map.mk [(ety, EntitySchemaEntry.mk default default default)]) default $ RequestType.mk default default default default)
+  simp only [EntitySchema.contains]
+  simp [Map.find?]
+  simp [List.find?]
 
 theorem ext_type_is_inhabited (xty : ExtType) :
   ∃ x, InstanceOfExtType x xty
@@ -394,9 +400,10 @@ theorem type_is_inhabited (ty : CedarType) :
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
   | .entity ety =>
-    have ⟨euid, h₁⟩ := entity_type_is_inhabited ety
+    have ⟨euid, env, h₁⟩ := entity_type_is_inhabited ety
     exists (.prim (.entityUID euid))
-    apply InstanceOfType.instance_of_entity _ _ h₁
+    apply InstanceOfType.instance_of_entity _ _ env
+    exact h₁
   | .set ty₁ =>
     exists (.set Set.empty)
     apply InstanceOfType.instance_of_set

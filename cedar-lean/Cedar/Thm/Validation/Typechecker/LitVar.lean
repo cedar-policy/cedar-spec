@@ -46,7 +46,9 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       exact false_is_instance_of_ff |
       apply InstanceOfType.instance_of_int |
       apply InstanceOfType.instance_of_string |
-      apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
+      apply InstanceOfType.instance_of_entity _ _ env; simp [InstanceOfEntityType]
+      rename_i hₑ
+      exact hₑ
   }
 
 theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
@@ -68,19 +70,21 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
     exists request.principal
     apply And.intro
     · simp [evaluate]
-    · apply InstanceOfType.instance_of_entity
+    · apply InstanceOfType.instance_of_entity _ _ env
       simp only [h₂]
   case action =>
     exists request.action
     apply And.intro
     · simp [evaluate]
-    · apply InstanceOfType.instance_of_entity
-      simp only [h₂, InstanceOfEntityType]
+    · apply InstanceOfType.instance_of_entity _ _ env
+      have ⟨_, _, _, _, hₐ ⟩ := h₂
+      exact hₐ
+
   case resource =>
     exists request.resource
     apply And.intro
     · simp [evaluate]
-    · apply InstanceOfType.instance_of_entity
+    · apply InstanceOfType.instance_of_entity _ _ env
       simp only [h₂]
   case context =>
     exists request.context

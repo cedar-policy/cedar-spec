@@ -39,7 +39,7 @@ def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType ) : Bool := ety == e.ty
+def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (env : Environment) : Bool := e.ty == ety && (env.ets.contains e.ty || env.acts.contains e)
 
 def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
@@ -52,17 +52,17 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-def instanceOfType (v : Value) (ty : CedarType) : Bool :=
+def instanceOfType (v : Value) (ty : CedarType) (env : Environment) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety
-  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty)
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
+  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty env)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
-        | .some qty => instanceOfType v qty.getType
+        | .some qty => instanceOfType v qty.getType env
         | _ => true))) &&
     rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
@@ -79,11 +79,12 @@ def instanceOfType (v : Value) (ty : CedarType) : Bool :=
         simp only [Map.mk.sizeOf_spec]
         omega
 
-def instanceOfRequestType (request : Request) (reqty : RequestType) : Bool :=
-  instanceOfEntityType request.principal reqty.principal &&
-  request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource &&
-  instanceOfType request.context (.record reqty.context)
+def instanceOfRequestType (request : Request) (env : Environment) : Bool :=
+  instanceOfEntityType request.principal env.reqty.principal env &&
+  request.action == env.reqty.action &&
+  instanceOfEntityType request.resource env.reqty.resource env &&
+  instanceOfType request.context (.record env.reqty.context) env &&
+  instanceOfEntityType request.action env.reqty.action.ty env
 
 /--
 For every entity in the store,
@@ -93,17 +94,17 @@ For every entity in the store,
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityValidationResult :=
+def instanceOfEntitySchema (entities : Entities) (env : Environment) : EntityValidationResult :=
   entities.toList.forM λ (uid, data) => instanceOfEntityData uid data
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
     match entry.tags with
-    | .some tty => data.tags.values.all (instanceOfType · tty)
+    | .some tty => data.tags.values.all (instanceOfType · tty env)
     | .none     => data.tags == Map.empty
   instanceOfEntityData uid data :=
-    match ets.find? uid.ty with
+    match env.ets.find? uid.ty with
     |  .some entry =>
-      if instanceOfType data.attrs (.record entry.attrs) then
+      if instanceOfType data.attrs (.record entry.attrs) env then
         if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then
           if instanceOfEntityTags data entry then .ok ()
           else .error (.typeError s!"entity tags inconsistent with type store")
@@ -125,7 +126,7 @@ where
                        else .error (.typeError "action ancestors inconsistent with type store information")
       | _ => .error (.typeError s!"action type {uid.eid} not defined in type store")
 
-def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env.reqty
+def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.toEnvironments.any (requestMatchesEnvironment · request)))
@@ -133,7 +134,7 @@ def validateRequest (schema : Schema) (request : Request) : RequestValidationRes
   else .error (.typeError "request could not be validated in any environment")
 
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
-  instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
+  instanceOfEntitySchema entities env >>= λ _ => instanceOfActionSchema entities env.acts
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,

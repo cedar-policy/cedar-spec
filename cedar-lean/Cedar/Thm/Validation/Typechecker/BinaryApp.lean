@@ -101,8 +101,10 @@ theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : E
   simp [lub?] at h₃
   apply h₃
   cases h₁ ; cases h₂
-  rename_i h₄ h₅
+  rename_i  _ _ h₄ _ h₅
   simp [InstanceOfEntityType] at h₄ h₅
+  have ⟨ h₄, _ ⟩ := h₄
+  have ⟨ h₅, _ ⟩ := h₅
   subst h₄ h₅
   contradiction
 
