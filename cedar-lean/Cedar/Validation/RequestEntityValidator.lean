@@ -39,9 +39,9 @@ def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (eids: Option (Set String)) : Bool :=
+def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (eids: EntityType → Option (Set String)) : Bool :=
   ety == e.ty &&
-  match eids with
+  match eids ety with
   | .some eids => eids.contains e.eid
   | _ => true
 
@@ -61,7 +61,7 @@ def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety $ schema.getEIDRange ety
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety schema.getEIDRange
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty schema)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
@@ -84,9 +84,9 @@ def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
         omega
 
 def instanceOfRequestType (request : Request) (reqty : RequestType) (schema: EntitySchema) : Bool :=
-  instanceOfEntityType request.principal reqty.principal (schema.getEIDRange reqty.principal) &&
+  instanceOfEntityType request.principal reqty.principal schema.getEIDRange &&
   request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource (schema.getEIDRange reqty.resource) &&
+  instanceOfEntityType request.resource reqty.resource schema.getEIDRange &&
   instanceOfType request.context (.record reqty.context) schema
 
 /--
