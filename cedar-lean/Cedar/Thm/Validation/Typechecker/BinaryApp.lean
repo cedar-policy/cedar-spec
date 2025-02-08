@@ -903,7 +903,7 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
     replace ⟨e', h₂, h₃⟩ := h₂
     simp only [hf', Option.some.injEq] at h₂
     subst h₂
-    simp only [EntitySchemaEntry.tags] at h₁
+    simp only [EntitySchemaEntry.tags?] at h₁ h₃
     split at h₃
     · simp only [h₃] at h₁
       simp only [h₁, map_empty_contains_instance_of_ff]
@@ -1074,7 +1074,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   replace ⟨_, h₅, h₇⟩ := h₅
   simp only [hf₂, Option.some.injEq] at h₅
   subst h₅
-  simp only [EntitySchemaEntry.tags] at h₂
+  simp only [EntitySchemaEntry.tags?] at h₂ h₇
   split at h₇
   simp only [h₇] at h₂
   have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist

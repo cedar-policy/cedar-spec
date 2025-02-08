@@ -101,7 +101,7 @@ def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityVa
   entities.toList.forM λ (uid, data) => instanceOfEntityData uid data
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
-    match entry.tags with
+    match entry.tags? with
     | .some tty => data.tags.values.all (instanceOfType · tty ets)
     | .none     => data.tags == Map.empty
   instanceOfEntityData uid data :=

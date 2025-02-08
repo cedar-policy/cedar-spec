@@ -80,7 +80,7 @@ def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
   InstanceOfType request.context (.record reqty.context)
 
 def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
-  match entry.tags with
+  match entry.tags? with
   | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty
   | .none     => data.tags = Map.empty
 

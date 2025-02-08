@@ -70,32 +70,30 @@ inductive EntitySchemaEntry where
   | standard (ty: StandardSchemaEntry)
   | enum (eids: Set String)
 
-def EntitySchemaEntry.validEid? (entry: EntitySchemaEntry) (eid: String): Bool :=
+def EntitySchemaEntry.isValidEntityUID (entry: EntitySchemaEntry) (eid: String): Bool :=
   match entry with
   | .standard _ => true
   | .enum eids => eids.contains eid
 
-def EntitySchemaEntry.tags (entry: EntitySchemaEntry): Option CedarType :=
-  match entry with
+def EntitySchemaEntry.tags? : EntitySchemaEntry → Option CedarType
   | .standard ty => ty.tags
   | .enum _ => none
 
-def EntitySchemaEntry.attrs (entry: EntitySchemaEntry): RecordType :=
-  match entry with
+def EntitySchemaEntry.attrs : EntitySchemaEntry → RecordType
   | .standard ty => ty.attrs
   | .enum _ => Map.empty
 
-def EntitySchemaEntry.ancestors (entry: EntitySchemaEntry): Set EntityType :=
-  match entry with
+def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
   | .standard ty => ty.ancestors
   | .enum _ => Set.empty
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
+-- Get the possible range of EIDs specified by an enumerated entity type
 def EntitySchema.getEIDRange (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
   match ets.find? et with
   | .some (.enum eids) => .some eids
-  | .some (.standard _) | .none => .none
+  | _ => .none
 
 def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
   match ets.find? uid.ty with
@@ -107,16 +105,10 @@ def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
 
 def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordType :=
-  (ets.find? ety).map λ e =>
-  match e with
-  | .standard ty => ty.attrs
-  | .enum _ => Map.empty
+  (ets.find? ety).map EntitySchemaEntry.attrs
 
 def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
-  (ets.find? ety).map λ e =>
-  match e with
-  | .standard ty => ty.tags
-  | .enum _ => none
+  (ets.find? ety).map EntitySchemaEntry.tags?
 
 def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
