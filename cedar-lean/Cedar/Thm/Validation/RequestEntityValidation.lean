@@ -216,7 +216,10 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
       · intro anc ancin
         simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
         rw [← Set.in_list_iff_in_set] at ancin
-        exact h₄ anc ancin
+        have h₅ := h₄ anc ancin
+        simp at h₅
+        have ⟨ h₆, _ ⟩  := h₅
+        exact h₆
       · split at h₀ <;> try simp only [reduceCtorEq] at h₀
         unfold InstanceOfEntityTags
         rename_i h₅

@@ -108,7 +108,9 @@ where
     match ets.find? uid.ty with
     |  .some entry =>
       if instanceOfType data.attrs (.record entry.attrs) ets then
-        if data.ancestors.all (λ ancestor => entry.ancestors.contains ancestor.ty) then
+        if data.ancestors.all (λ ancestor =>
+          entry.ancestors.contains ancestor.ty &&
+          instanceOfEntityType ancestor ancestor.ty ets.entityTypeMembers?) then
           if instanceOfEntityTags data entry then .ok ()
           else .error (.typeError s!"entity tags inconsistent with type store")
         else .error (.typeError s!"entity ancestors inconsistent with type store")
