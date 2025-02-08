@@ -68,7 +68,7 @@ structure StandardSchemaEntry where
 
 inductive EntitySchemaEntry where
   | standard (ty: StandardSchemaEntry)
-  | enum (eids: List String)
+  | enum (eids: Set String)
 
 def EntitySchemaEntry.validEid? (entry: EntitySchemaEntry) (eid: String): Bool :=
   match entry with
@@ -92,7 +92,7 @@ def EntitySchemaEntry.ancestors (entry: EntitySchemaEntry): Set EntityType :=
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
-def EntitySchema.getEIDRange (ets: EntitySchema) (et: EntityType) : Option (List String) :=
+def EntitySchema.getEIDRange (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
   match ets.find? et with
   | .some (.enum eids) => .some eids
   | .some (.standard _) | .none => .none

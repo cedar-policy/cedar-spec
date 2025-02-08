@@ -78,7 +78,7 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
         tags := v.tags,
       }
       else
-      .enum v.enums.toList
+      .enum $ Cedar.Data.Set.mk v.enums.toList
       )))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
 

@@ -39,7 +39,7 @@ def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (eids: Option (List String)) : Bool :=
+def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (eids: Option (Set String)) : Bool :=
   ety == e.ty &&
   match eids with
   | .some eids => eids.contains e.eid

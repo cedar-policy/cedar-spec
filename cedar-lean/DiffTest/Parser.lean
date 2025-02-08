@@ -455,7 +455,7 @@ def invertJsonEntitySchema (ets : JsonEntitySchema) : EntitySchema :=
         ancestors := ancestorMap.find! k,
         attrs := v.attrs,
         tags := v.tags
-      } else .enum v.enums)) ets)
+      } else .enum $ Set.mk v.enums)) ets)
 
 def invertJsonActionSchema (acts : JsonActionSchema) : ActionSchema :=
   let acts := acts.toList
