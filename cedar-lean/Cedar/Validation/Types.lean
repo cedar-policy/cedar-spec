@@ -89,8 +89,7 @@ def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
 
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
--- Get the possible range of EIDs specified by an enumerated entity type
-def EntitySchema.getEIDRange (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
+def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
   match ets.find? et with
   | .some (.enum eids) => .some eids
   | _ => .none

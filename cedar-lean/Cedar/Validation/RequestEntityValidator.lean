@@ -61,7 +61,7 @@ def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety schema.getEIDRange
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety schema.entityTypeMembers?
   | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty schema)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
@@ -84,9 +84,9 @@ def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
         omega
 
 def instanceOfRequestType (request : Request) (reqty : RequestType) (schema: EntitySchema) : Bool :=
-  instanceOfEntityType request.principal reqty.principal schema.getEIDRange &&
+  instanceOfEntityType request.principal reqty.principal schema.entityTypeMembers? &&
   request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource schema.getEIDRange &&
+  instanceOfEntityType request.resource reqty.resource schema.entityTypeMembers? &&
   instanceOfType request.context (.record reqty.context) schema
 
 /--
