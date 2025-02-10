@@ -906,7 +906,7 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
     split at h₃
     · simp only [h₃] at h₁
       simp only [h₁, map_empty_contains_instance_of_ff]
-    simp only [h₁, map_empty_contains_instance_of_ff]
+    · simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}

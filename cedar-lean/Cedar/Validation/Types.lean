@@ -96,8 +96,7 @@ def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Optio
 
 def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
   match ets.find? uid.ty with
-  | .some (.enum eids) => eids.contains uid.eid
-  | .some (.standard _) => true
+  | .some entry => entry.isValidEntityUID uid.eid
   | .none   => false
 
 def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
@@ -156,8 +155,9 @@ deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
 deriving instance Repr for ActionSchemaEntry
--- deriving instance Repr for EntitySchemaEntry
---deriving instance Repr for Schema
+deriving instance Repr for StandardSchemaEntry
+deriving instance Repr for EntitySchemaEntry
+deriving instance Repr for Schema
 
 mutual
 

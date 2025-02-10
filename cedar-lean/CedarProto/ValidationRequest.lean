@@ -31,10 +31,6 @@ deriving instance DecidableEq for ActionSchema
 deriving instance DecidableEq for EntitySchema
 deriving instance DecidableEq for Schema
 
-deriving instance Repr for StandardSchemaEntry
-deriving instance Repr for EntitySchemaEntry
-deriving instance Repr for Schema
-
 structure ValidationRequest where
   schema : Schema
   policies : Spec.Policies
