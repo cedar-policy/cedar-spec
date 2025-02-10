@@ -66,9 +66,9 @@ theorem not_entities_then_not_slice_inner {n: Nat}  {uid : EntityUID} {e : Error
     intro
     contradiction
   · rename_i level
-    cases h₁ : (List.mapM (Map.find? entities) work.elts) <;> simp [h₁] at hs
+    cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;> simp [hs₁] at hs
     rename_i eds
-    cases h₂ : (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs level) eds) <;> simp [h₂] at hs
+    cases hs₂ : (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs level) eds) <;> simp [hs₂] at hs
     subst hs
     rw [Set.mem_union_iff_mem_or]
     intros hm
@@ -88,14 +88,14 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
 
 theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
   (hs : slice = Entities.sliceAtLevel entities request n)
-  (hse : entities.attrs uid = .error e)
+  (he : entities.attrs uid = .error e)
   : slice.attrs uid = .error e
 := by
-  simp [Entities.attrs, Map.findOrErr] at hse ⊢
-  split at hse <;> simp at hse
-  rename_i h₁
-  cases h₂ : entities.find? uid <;> simp [h₂] at h₁
-  simp [hse, not_entities_then_not_slice hs h₂]
+  simp only [Entities.attrs, Map.findOrErr] at he
+  split at he <;> simp at he
+  rename_i hf
+  cases hf₁ : entities.find? uid <;> simp only [hf₁, Option.some.injEq, forall_eq'] at hf
+  simp [he, not_entities_then_not_slice hs hf₁, Entities.attrs, Map.findOrErr]
 
 inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Prop where
   | in_start {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat}
@@ -115,25 +115,6 @@ inductive EuidInValue : Value → List Attr → EntityUID → Prop where
     (ha : attrs.find? a = some v)
     (hv : EuidInValue v path euid) :
     EuidInValue (.record attrs)  (a :: path) euid
-
-theorem euid_in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
-  (hw : euid ∈ work)
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice)
-  : euid ∈ slice
-:= by
-  unfold Entities.sliceAtLevel.sliceAtLevel at hs
-  cases h₁ :
-    List.mapM (Map.find? entities) work.elts
-  <;> simp [h₁] at hs
-  rename_i eds
-  cases h₂ :
-    List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
-  <;> simp [h₂] at hs
-  rename_i slice'
-  subst hs
-  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (flatten_union slice') euid
-  apply hc
-  simp [hw]
 
 theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}
   (hr : ReachableIn entities start euid n)
@@ -157,7 +138,7 @@ theorem in_val_then_val_slice
     cases hv
     rename_i v a path' ha hv
     have ih := in_val_then_val_slice hv
-    simp [Value.sliceEUIDs]
+    simp only [Value.sliceEUIDs]
     rw [set_mem_flatten_union_iff_mem_any]
     exists v.sliceEUIDs
     simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
@@ -190,7 +171,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
-      simp [EntityData.sliceEUIDs]
+      simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       right
       rw [set_mem_flatten_union_iff_mem_any]
@@ -216,7 +197,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
-      simp [EntityData.sliceEUIDs]
+      simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       left
       rw [set_mem_flatten_union_iff_mem_any]
@@ -251,16 +232,19 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 := by
   cases e
   case lit p =>
-    simp [evaluate] at he
+    simp only [evaluate, Except.ok.injEq] at he
     cases p
     case entityUID =>
-      simp [typeOf, typeOfLit] at ht
-      split at ht <;> simp [ok, err] at ht
-      simp [←ht, checkLevel] at hl
+      subst v ; cases ha
+      replace ht : tx = TypedExpr.lit (Prim.entityUID euid) (CedarType.entity euid.ty) := by
+        simp only [typeOf, typeOfLit, Function.comp_apply] at ht
+        split at ht <;> simp only [ok, err, reduceCtorEq, Except.ok.injEq, Prod.mk.injEq] at ht
+        simp [ht]
+      simp [ht, checkLevel] at hl
     all_goals { subst he ; cases ha }
 
   case var v =>
-    cases v <;> simp [evaluate] at he
+    cases v <;> simp only [evaluate, Except.ok.injEq] at he
     case context =>
       subst he
       have hi : euid ∈ request.sliceEUIDs := by
@@ -289,42 +273,45 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
   case getAttr e a =>
     simp [evaluate] at he
-    cases h₁ : evaluate e request entities <;> simp [h₁] at he
+    cases he₁ : evaluate e request entities <;> simp [he₁] at he
     have ⟨ hc', tx', c₁', ht', htx, h₂ ⟩ := type_of_getAttr_inversion ht
     rw [htx] at hl
     simp only [checkLevel, gt_iff_lt] at hl
     have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
     split at hl
     · rename_i hety
-      simp at hl
-      have ⟨⟨⟨hl₀, hl₁⟩, hl₂⟩, hl₃⟩ := hl ; clear hl
-      have hl' : checkLevel tx' (n - 1) = LevelCheckResult.mk true true := by
-        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-        rw [h (checkLevel tx' (n - 1))]
-        simp [hl₂, hl₃]
       rw [hety] at hi
       have ⟨ euid', hety, hv⟩  := instance_of_entity_type_is_entity hi
       subst hety hv
       unfold EvaluatesTo at he'
-      rw [h₁] at he'
+      rw [he₁] at he'
       cases he' <;> rename_i he' <;> simp at he'
       subst he'
 
       simp [getAttr, attrsOf] at he
-      cases h₅ : entities.attrs euid' <;> simp [h₅] at he
+      cases he₂ : entities.attrs euid' <;> simp [he₂] at he
       rename_i attrs
       simp [Map.findOrErr] at he
       split at he <;> simp at he
       subst he
       rename_i v hv
 
-      have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? h₅
+      simp only [LevelCheckResult.mk.injEq, Bool.and_eq_true, decide_eq_true_eq] at hl
+      have hl' : checkLevel tx' (n - 1) = LevelCheckResult.mk true true := by
+        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
+        rw [h (checkLevel tx' (n - 1))]
+        simp [hl]
+
+      have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
       subst attrs
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-      have ih := checked_eval_entity_reachable hc hr ht' hl' h₁ (EuidInValue.euid euid') hf'
-      have h₆ : (n - 1).succ = n := by omega
-      rw [h₆] at ih ; clear h₆
+      have ih := checked_eval_entity_reachable hc hr ht' hl' he₁ (EuidInValue.euid euid') hf'
+
+      have hn : (n - 1).succ = n := by
+        have _ : 0 < n := by simp [hl]
+        omega
+      rw [hn] at ih ; clear hn
 
       have ha' : EuidInValue (Value.record ed.attrs) (a :: path) euid := EuidInValue.record hv ha
       apply reachable_attr_step ih hed ha'
@@ -340,7 +327,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         have ⟨ attrs, hv⟩ := instance_of_record_type_is_record hi ; clear hi
         subst hv
         unfold EvaluatesTo at he'
-        rw [h₁] at he'
+        rw [he₁] at he'
         cases he' <;> rename_i he' <;> simp at he'
         subst he'
         simp [getAttr, attrsOf, Map.findOrErr] at he
@@ -348,14 +335,14 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         rename_i v hv
         subst he
         have ha' : EuidInValue (Value.record attrs) (a :: path) euid := EuidInValue.record hv ha
-        exact checked_eval_entity_reachable hc hr ht' hl h₁ ha' hf
+        exact checked_eval_entity_reachable hc hr ht' hl he₁ ha' hf
 
   case hasAttr e a =>
     simp [evaluate] at he
-    cases h₁ : evaluate e request entities <;> simp [h₁] at he
+    cases he₁ : evaluate e request entities <;> simp [he₁] at he
     simp [hasAttr] at he
     rename_i v₁
-    cases h₂ : attrsOf v₁ λ uid => Except.ok (entities.attrsOrEmpty uid) <;> simp [h₂] at he
+    cases he₂ : attrsOf v₁ λ uid => Except.ok (entities.attrsOrEmpty uid) <;> simp [he₂] at he
     subst he ; cases ha
 
   case ite e₁ e₂ e₃ =>
@@ -366,10 +353,10 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp only [checkLevel, LevelCheckResult.mk.injEq, Bool.and_eq_true] at hl
 
     simp [evaluate] at he
-    cases he₂ : Result.as Bool (evaluate e₁ request entities) <;> simp [he₂] at he
-    simp [Result.as, Coe.coe, Value.asBool] at he₂
-    split at he₂ <;> try contradiction
-    split at he₂ <;> try contradiction
+    cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp [he₁] at he
+    simp [Result.as, Coe.coe, Value.asBool] at he₁
+    split at he₁ <;> try contradiction
+    split at he₁ <;> try contradiction
     injections he₂
     subst he₂
     rename_i v₁ b he₂
@@ -410,11 +397,11 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
   case and e₁ e₂ | or e₁ e₂ =>
     simp [evaluate] at he
-    cases h₁ :  Result.as Bool (evaluate e₁ request entities) <;> simp [h₁] at he
+    cases he₁ :  Result.as Bool (evaluate e₁ request entities) <;> simp [he₁] at he
     split at he
     · simp at he
       subst he ; cases ha
-    · cases h₂ : Result.as Bool (evaluate e₂ request entities) <;> simp [h₂] at he
+    · cases he₂ : Result.as Bool (evaluate e₂ request entities) <;> simp [he₂] at he
       subst he ; cases ha
 
   case unaryApp op e =>
@@ -535,7 +522,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   case call xfn args =>
     simp only [evaluate] at he
     cases he₁ : args.mapM₁ fun x => evaluate x.val request entities <;>
-    simp only [he₁, Except.bind_err, reduceCtorEq] at he
+      simp only [he₁, Except.bind_err, reduceCtorEq] at he
 
     simp only [call, res, Except.bind_ok] at he
     (split at he <;> try split at he) <;>
@@ -543,42 +530,61 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
     all_goals { subst he ; cases ha }
 
+theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
+  (hw : euid ∈ work)
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice)
+  : euid ∈ slice
+:= by
+  unfold Entities.sliceAtLevel.sliceAtLevel at hs
+  cases hs₁ :
+    List.mapM (Map.find? entities) work.elts
+  <;> simp [hs₁] at hs
+  rename_i eds
+  cases hs₂ :
+    List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
+  <;> simp [hs₂] at hs
+  rename_i slice'
+  subst hs
+  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (flatten_union slice') euid
+  apply hc
+  simp [hw]
+
 /--
 If an entity is reachable in `n` steps, then it must be included in slice at
-`n`, assuming it's in the original entities.
+`n`. This lemma talks about the inner slicing function, so it's possible that
+the entity isn't in the original entities if it's in `work`.
 -/
 theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities} {slice : Set EntityUID}
   (hw : ReachableIn entities work euid n.succ)
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice)
-  (h₅ : entities.contains euid) :
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice) :
   euid ∈ slice
 := by
   cases hw
   case in_start hw =>
-    exact euid_in_work_then_in_slice hw hs
+    exact in_work_then_in_slice hw hs
   case step ed euid' hf hi hw =>
     unfold Entities.sliceAtLevel.sliceAtLevel at hs
-    cases h₇ : (List.mapM (Map.find? entities) work.elts) <;>
-      simp only [h₇, Option.bind_none_fun, reduceCtorEq] at hs
+    cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;>
+      simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
     rename_i eds
-    cases h₈ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
-      simp only [h₈, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+    cases hs₂ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
+      simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
     subst hs
     rename_i slice'
-    cases h₉ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds <;>
-      simp only [h₉, Option.map_some', Option.some.injEq, Option.map_none', reduceCtorEq] at h₈
-    subst h₈
+    cases hs₃ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds <;>
+      simp only [hs₃, Option.map_some', Option.some.injEq, Option.map_none', reduceCtorEq] at hs₂
+    subst hs₂
     rw [Set.mem_union_iff_mem_or]
     right
-    have ⟨ ed, h₁₀, h₁₁⟩ := List.mapM_some_implies_all_some h₇ _ hi
-    have ⟨ slice, _, hs ⟩ := List.mapM_some_implies_all_some h₉ _ h₁₀
-    rw [h₁₁] at hf ; injections hf ; subst hf
-    cases h₁₂ : Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n <;>
-      simp only [h₁₂, reduceCtorEq, Option.some.injEq] at hs
+    have ⟨ ed, hi₁, hf₁ ⟩ := List.mapM_some_implies_all_some hs₁ _ hi
+    have ⟨ slice, _, hs ⟩ := List.mapM_some_implies_all_some hs₃ _ hi₁
+    rw [hf₁] at hf ; injections hf ; subst hf
+    cases hs₄ : Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n <;>
+      simp only [hs₄, reduceCtorEq, Option.some.injEq] at hs
     cases n
     case zero => cases hw
     case succ n =>
-      have ih := slice_contains_reachable hw h₁₂ h₅
+      have ih := slice_contains_reachable hw hs₄
       rw [set_mem_flatten_union_iff_mem_any]
       subst hs
       rename_i ed_slice _
@@ -599,16 +605,15 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   slice.find? euid = some ed
 := by
   simp only [Entities.sliceAtLevel] at hs
-  cases h₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n.succ  <;>
-    simp only [h₁, Option.bind_none_fun, reduceCtorEq] at hs
+  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n.succ  <;>
+    simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
   rename_i eids
-  cases h₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
-    simp only [h₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+  cases hs₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
+    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
   subst hs
-  have hf' : Map.contains entities euid := by
-    simp [Map.contains, hf]
+  have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   have hw : ReachableIn entities request.sliceEUIDs euid n.succ :=
-    checked_eval_entity_reachable hc hr ht hl he (EuidInValue.euid euid) hf'
-  have hi := slice_contains_reachable hw h₁ (by simp [hf, Map.contains_iff_some_find?])
+    checked_eval_entity_reachable hc hr ht hl he (EuidInValue.euid euid) hf₁
+  have hi := slice_contains_reachable hw hs₁
   rw [←hf]
-  exact map_find_mapm_value h₂ hi
+  exact map_find_mapm_value hs₂ hi
