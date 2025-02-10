@@ -1,8 +1,8 @@
-FROM amazonlinux:2 AS prepare
+FROM amazonlinux:2023 AS prepare
 
 RUN yum update -y \
   && yum install -y \
-  curl clang tar zip unzip python3 git xz \
+  curl-minimal clang tar zip unzip python3 git xz \
   make wget \
   && yum clean all
 
@@ -32,7 +32,10 @@ RUN git clone --depth 1 https://github.com/cedar-policy/cedar
 
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
-RUN source /root/.profile && source ../cedar-drt/set_env_vars.sh && elan default "$(cat lean-toolchain)" && ../cedar-drt/build_lean_lib.sh
+RUN source /root/.profile \
+  && elan default "$(cat lean-toolchain)" \
+  && source ../cedar-drt/set_env_vars.sh \
+  && ../cedar-drt/build_lean_lib.sh
 
 # Build DRT
 WORKDIR $CEDAR_SPEC_ROOT/cedar-drt

@@ -225,7 +225,7 @@ theorem insertCanonical_map_fst_canonicalize {α β γ} [LT α] [StrictLT α] [D
   induction xs generalizing x
   case nil => simp [insertCanonical, canonicalize, Prod.map]
   case cons hd tl ih =>
-    simp only [canonicalize, ih hd]
+    simp only [map_cons, canonicalize, ih hd]
     apply insertCanonical_map_fst (insertCanonical Prod.fst hd (canonicalize Prod.fst tl))
 
 /-! ## canonicalize -/
