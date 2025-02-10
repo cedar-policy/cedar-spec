@@ -57,6 +57,17 @@ inductive CedarType where
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
 
+def CedarType.containsEntityType (ty : CedarType) (ety : EntityType) : Bool :=
+  match ty with
+  | .bool _ | .int | .string | .ext _ => false
+  | .entity ety₁ => ety = ety₁
+  | .set ty => ty.containsEntityType ety
+  | .record rty => rty.values.any λ qty => qty.getType.containsEntityType ety
+termination_by ty
+  decreasing_by
+    all_goals simp_wf
+    sorry
+
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
