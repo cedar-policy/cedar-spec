@@ -257,11 +257,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       simp [typeOf, typeOfLit] at ht
       split at ht <;> simp [ok, err] at ht
       simp [←ht, checkLevel] at hl
-
-    all_goals {
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
-    }
+    all_goals { subst he ; cases ha }
 
   case var v =>
     cases v <;> simp [evaluate] at he
@@ -360,8 +356,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp [hasAttr] at he
     rename_i v₁
     cases h₂ : attrsOf v₁ λ uid => Except.ok (entities.attrsOrEmpty uid) <;> simp [h₂] at he
-    have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-    simp [ha'] at ha
+    subst he ; cases ha
 
   case ite e₁ e₂ e₃ =>
     have ⟨tx₁, bty₁, c₁, tx₂, c₂, tx₃, c₃, htx, htx₁, hty₁, hif ⟩ := type_of_ite_inversion ht
@@ -418,11 +413,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     cases h₁ :  Result.as Bool (evaluate e₁ request entities) <;> simp [h₁] at he
     split at he
     · simp at he
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
+      subst he ; cases ha
     · cases h₂ : Result.as Bool (evaluate e₂ request entities) <;> simp [h₂] at he
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
+      subst he ; cases ha
 
   case unaryApp op e =>
     simp [evaluate] at he
@@ -430,10 +423,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp [apply₁, intOrErr] at he
     (split at he <;> try split at he) <;>
     try simp at he
-    all_goals {
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
-    }
+    all_goals { subst he ; cases ha }
 
   case binaryApp op e₁ e₂ =>
     simp [evaluate] at he
@@ -485,18 +475,13 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
     case h_11 vs =>
       cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [he₃] at he
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
-    all_goals {
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
-    }
+      subst he ; cases ha
+    all_goals { subst he ; cases ha }
 
   case set es =>
     simp [evaluate] at he
     cases he₁ : (es.mapM₁ (λ x => evaluate x.val request entities)) <;> simp [he₁] at he
-    have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-    simp [ha'] at ha
+    subst he ; cases ha
 
   case record attrs =>
     replace ⟨ hc', rty, htx, hfat ⟩  := type_of_record_inversion ht
@@ -556,10 +541,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     (split at he <;> try split at he) <;>
     simp only [Except.ok.injEq, reduceCtorEq] at he
 
-    all_goals {
-      have ha' := euid_not_in_not_entity_or_record v (by simp [←he])
-      simp [ha'] at ha
-    }
+    all_goals { subst he ; cases ha }
 
 /--
 If an entity is reachable in `n` steps, then it must be included in slice at
