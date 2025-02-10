@@ -26,29 +26,48 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
-  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_unary_inversion {op : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.unaryApp op x₁) c₁ env = Except.ok (tx, c₂)) :
   c₂ = ∅ ∧
-  ∃ bty c₁',
-    ty.typeOf = .bool bty.not ∧
-    (typeOf x₁ c₁ env).typeOf = Except.ok (.bool bty, c₁')
+  ∃ tx₁ ty c₁',
+    tx = .unaryApp op tx₁ ty ∧
+    typeOf x₁ c₁ env = Except.ok (tx₁, c₁') ∧
+    match op with
+    | .not => ∃ bty, ty = .bool bty.not ∧ tx₁.typeOf = .bool bty
+    | .neg => tx₁.typeOf = .int ∧ ty = .int
+    | .isEmpty => ty = .bool .anyBool ∧ ∃ ty₀, tx₁.typeOf = .set ty₀
+    | .like _ => ty = .bool .anyBool ∧ tx₁.typeOf = .string
+    | .is ety₀  => ∃ ety₁, ty = .bool (if ety₀ = ety₁ then .tt else .ff) ∧ tx₁.typeOf = .entity ety₁
 := by
-  simp [typeOf] at h₁
-  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
-  case ok res =>
-    have ⟨ty₁, c₁'⟩ := res
-    simp [typeOfUnaryApp] at h₁
-    split at h₁ <;> try contradiction
-    case h_1 _ ty₁ bty _ h'₁ =>
-      simp [ok] at h₁
-      apply And.intro
-      · simp [h₁]
-      · exists bty, c₁'
-        have ⟨ hl₁, _ ⟩ := h₁
-        rw [←hl₁]
-        simp only [TypedExpr.typeOf]
-        simp [ResultType.typeOf, Except.map, h'₁]
+  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, typeOf, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  rename_i res ; have ⟨ty₁, c₁'⟩ := res
+  simp only [typeOfUnaryApp, Function.comp_apply] at h₁
+  split at h₁ <;> try contradiction
+  all_goals {
+    simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h₁
+    replace ⟨ h₁, hc ⟩ := h₁
+    simp only [hc, List.empty_eq, true_and]
+    exists ty₁
+    rename_i hty₁ _
+    simp [h₁, hty₁]
+  }
 
+theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment}
+  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (tx, c₂)) :
+  c₂ = ∅ ∧
+  ∃ tx₁ bty c₁',
+    tx = .unaryApp .not tx₁ (.bool (.not bty)) ∧
+    typeOf x₁ c₁ env = Except.ok (tx₁, c₁') ∧
+    tx₁.typeOf = .bool bty
+:= by
+  have ⟨ hc, tx₁, _, c₁', h₂, ⟨ _, bty, h₄, htx₁⟩  ⟩ := type_of_unary_inversion h₁
+  subst h₂ h₄ hc
+  simp only [true_and, exists_and_left, exists_and_right]
+  exists tx₁, bty
+  simp only [and_self, true_and]
+  constructor
+  · exists c₁'
+  · exact htx₁
 
 theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -58,12 +77,11 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
+  have ⟨h₅, tx₁, bty, c₁', h₆, ⟨ h₄, h₈ ⟩⟩ := type_of_not_inversion h₃
   subst h₅; rw [h₆]
-  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   apply And.intro empty_guarded_capabilities_invariant
   have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-  rw [hl₄] at h₇
+  rw [h₈] at h₇
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
