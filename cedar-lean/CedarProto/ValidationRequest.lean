@@ -28,7 +28,6 @@ namespace Cedar.Validation.Proto
 
 deriving instance DecidableEq for ActionSchemaEntry
 deriving instance DecidableEq for ActionSchema
-deriving instance DecidableEq for EntitySchemaEntry
 deriving instance DecidableEq for EntitySchema
 deriving instance DecidableEq for Schema
 

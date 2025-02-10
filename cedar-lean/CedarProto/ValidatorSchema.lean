@@ -72,17 +72,13 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
   Data.Map.make (ets.map
     (λ (k,v) => (k,
       if v.enums.isEmpty then
-      {
+      .standard {
         ancestors := ancestorMap.find! k,
         attrs := Data.Map.make v.attrs.kvs,
         tags := v.tags,
       }
       else
-      {
-        ancestors := ancestorMap.find! k,
-        attrs := Data.Map.empty,
-        tags := none,
-      }
+      .enum $ Cedar.Data.Set.mk v.enums.toList
       )))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
 

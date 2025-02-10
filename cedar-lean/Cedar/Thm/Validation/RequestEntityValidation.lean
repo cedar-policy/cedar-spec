@@ -15,12 +15,17 @@ theorem instance_of_bool_type_refl (b : Bool) (bty : BoolType) :
   intro h₀
   cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_entity_type_refl (e : EntityUID) (ety : EntityType) :
-  instanceOfEntityType e ety = true → InstanceOfEntityType e ety
+theorem instance_of_entity_type_refl (e : EntityUID) (ety : EntityType) (eids: EntityType → Option (Set String)) :
+  instanceOfEntityType e ety eids = true → InstanceOfEntityType e ety
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
-  simp only [beq_iff_eq] at h₀
+  have h₁ : (ety == e.ty) := by
+    simp at h₀
+    have ⟨ e₁, _ ⟩ := h₀
+    simp
+    exact e₁
+  simp only [beq_iff_eq] at h₁
   assumption
 
 theorem instance_of_ext_type_refl (ext : Ext) (extty : ExtType) :
@@ -30,8 +35,8 @@ theorem instance_of_ext_type_refl (ext : Ext) (extty : ExtType) :
   intro h₀
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_type_refl (v : Value) (ty : CedarType) :
-  instanceOfType v ty = true → InstanceOfType v ty
+theorem instance_of_type_refl (v : Value) (ty : CedarType) (schema: EntitySchema) :
+  instanceOfType v ty schema = true → InstanceOfType v ty
 := by
   intro h₀
   unfold instanceOfType at h₀
@@ -75,7 +80,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
       simp only [← Set.in_list_iff_in_set] at hv
       specialize h₀ ⟨v, hv⟩
       simp only [List.attach_def, List.mem_pmap_subtype, hv, true_implies] at h₀
-      exact instance_of_type_refl v sty h₀
+      exact instance_of_type_refl v sty schema h₀
     all_goals
       contradiction
     all_goals
@@ -114,7 +119,7 @@ theorem instance_of_type_refl (v : Value) (ty : CedarType) :
         simp only [h₈] at h₇
         simp only [h₈, Option.some.injEq] at h₂
         subst h₂
-        exact instance_of_type_refl v vl.getType h₇
+        exact instance_of_type_refl v vl.getType schema h₇
       intro k qty h₁ h₂
       have ⟨⟨_, h₄⟩, h₅⟩ := h₀
       clear h₀
@@ -158,8 +163,8 @@ decreasing_by
     have := Map.sizeOf_lt_of_value h₁
     omega
 
-theorem instance_of_request_type_refl (request : Request) (reqty : RequestType) :
-  instanceOfRequestType request reqty = true → InstanceOfRequestType request reqty
+theorem instance_of_request_type_refl (request : Request) (reqty : RequestType) (schema: EntitySchema):
+  instanceOfRequestType request reqty schema = true → InstanceOfRequestType request reqty
 := by
   intro h₀
   simp only [InstanceOfRequestType]
@@ -203,7 +208,7 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     rename_i h₃
     constructor
-    · exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) h₃
+    · exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) ets h₃
     · split at h₀ <;> try simp only [reduceCtorEq] at h₀
       rename_i h₄
       simp only [Set.all, List.all_eq_true] at h₄
@@ -211,7 +216,10 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
       · intro anc ancin
         simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
         rw [← Set.in_list_iff_in_set] at ancin
-        exact h₄ anc ancin
+        have h₅ := h₄ anc ancin
+        simp at h₅
+        have ⟨ h₆, _ ⟩  := h₅
+        exact h₆
       · split at h₀ <;> try simp only [reduceCtorEq] at h₀
         unfold InstanceOfEntityTags
         rename_i h₅
@@ -247,8 +255,8 @@ theorem instance_of_action_schema_refl (entities : Entities) (acts : ActionSchem
 
 
 
-theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) :
-  requestMatchesEnvironment env request →
+theorem request_and_entities_match_env (env : Environment) (request : Request) (entities : Entities) (schema: EntitySchema) :
+  requestMatchesEnvironment env request schema →
   entitiesMatchEnvironment env entities = .ok () →
   RequestAndEntitiesMatchEnvironment env request entities
 := by
@@ -257,7 +265,7 @@ theorem request_and_entities_match_env (env : Environment) (request : Request) (
   simp only [requestMatchesEnvironment] at h₀
   simp only [entitiesMatchEnvironment] at h₁
   constructor
-  exact instance_of_request_type_refl request env.reqty h₀
+  exact instance_of_request_type_refl request env.reqty schema h₀
   cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   constructor
   exact instance_of_entity_schema_refl entities env.ets h₂
