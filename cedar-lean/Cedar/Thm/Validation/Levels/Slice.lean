@@ -53,38 +53,19 @@ theorem entities_find?_then_tags {entities: Entities} {ed : EntityData} {uid : E
   : .ok ed.tags = entities.tags uid
 := by sorry
 
-theorem not_entities_then_not_slice_inner {n: Nat}  {uid : EntityUID} {e : Error} {entities : Entities} {work slice : Set EntityUID}
-  (hs : some slice = Entities.sliceAtLevel.sliceAtLevel entities work n)
-  (hne : entities.find? uid = none)
-  (hnw : uid ∉ work)
-  : uid ∉ slice
-:= by
-  unfold Entities.sliceAtLevel.sliceAtLevel at hs
-  split at hs
-  · injections hs
-    subst hs
-    intro
-    contradiction
-  · rename_i level
-    cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;> simp [hs₁] at hs
-    rename_i eds
-    cases hs₂ : (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs level) eds) <;> simp [hs₂] at hs
-    subst hs
-    rw [Set.mem_union_iff_mem_or]
-    intros hm
-    cases hm
-    case inl hl => contradiction
-    case inr hr =>
-      rw [set_mem_flatten_union_iff_mem_any] at hr
-      have ⟨ e, hrl, hrr ⟩ := hr ; clear hr
-      rename_i slice'
-      sorry
-
 theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request n)
   (hse : entities.find? uid = none)
   : slice.find? uid = none
-:= by sorry
+:= by
+  simp only [Entities.sliceAtLevel] at hs
+  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n <;>
+    simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
+  rename_i eids
+  cases hs₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
+    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+  subst hs
+  exact mapm_none_find_none hs₂ hse
 
 theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
   (hs : slice = Entities.sliceAtLevel entities request n)

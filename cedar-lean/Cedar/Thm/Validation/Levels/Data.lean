@@ -94,3 +94,33 @@ theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {
         simp only [←h₅, ih₁, Option.some.injEq] at h₃
         rw [h₃]
       · simp
+
+theorem map_cons_find_none {α β : Type} [BEq α] [LT α] [DecidableLT α] {e₁ e₂ : α} {v : β} {t : List (α × β)}
+  (h₁ : e₁ ≠ e₂)
+  (h₂ : (Map.make t).find? e₁ = none) :
+  (Map.make ((e₂, v) :: t)).find? e₁ = none
+:= by sorry
+
+theorem mapm_none_find_none {α γ : Type} [BEq α] [LT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
+  (h₂ : l.mapM (λ e => (f e).bind (λ e' => (e, e'))) = some l')
+  (h₁ : f e = none) :
+  (Map.make l').find? e = none
+:= by
+  cases l
+  case nil =>
+    simp at h₂
+    subst h₂
+    rw [Map.make_nil_is_empty]
+    simp [Map.find?, Map.empty, Map.kvs]
+  case cons h t =>
+    simp at h₂
+    cases h₃ : (f h) <;> simp [h₃] at h₂
+    cases h₄ : ((List.mapM (fun e => (f e).bind fun e' => some (e, e')) t)) <;> simp [h₄] at h₂
+    subst h₂
+    have ih := mapm_none_find_none h₄ h₁
+    have hne : e ≠ h := by
+      intros heq
+      subst heq
+      rw [h₁] at h₃
+      contradiction
+    apply map_cons_find_none hne ih
