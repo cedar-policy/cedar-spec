@@ -14,11 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
 import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Typechecker.Basic
 
 namespace Cedar.Thm

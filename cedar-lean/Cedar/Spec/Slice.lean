@@ -20,7 +20,7 @@ import Cedar.Spec.Request
 import Cedar.Data.SizeOf
 
 /-!
-This file defines Cedar entities.
+This file defines entity slicing at a level
 -/
 
 namespace Cedar.Spec
@@ -59,15 +59,9 @@ def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Option E
   some (Map.make slice)
 where
   sliceAtLevel (work : Set EntityUID) (level : Nat) : Option (Set EntityUID) :=
-    if level == 0 then
-      some ∅
-    else do
+    match level with
+    | 0 => some ∅
+    | Nat.succ level => do
       let eds ← work.elts.mapM es.find?
-      let slice ← flatten_union <$> eds.mapM (sliceAtLevel ·.sliceEUIDs (level - 1))
+      let slice ← flatten_union <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
       some (work ∪ slice)
-      -- let slice ← sliceAtLevel work' (level - 1)
-    termination_by level
-    decreasing_by
-      rename_i h₁ _
-      simp only [beq_iff_eq] at h₁
-      omega

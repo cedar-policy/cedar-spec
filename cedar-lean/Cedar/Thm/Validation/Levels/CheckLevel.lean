@@ -14,12 +14,7 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
 import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Typechecker.Basic
 
 namespace Cedar.Thm
 
@@ -28,8 +23,6 @@ This file contains some simple lemmas about the `checkLevel` and `typedAtLevel`
 functions that do not need reason about the slicing functions.
 -/
 
-open Cedar.Data
-open Cedar.Spec
 open Cedar.Validation
 
 theorem check_level_root_invariant (n n' : Nat) (e : TypedExpr)
