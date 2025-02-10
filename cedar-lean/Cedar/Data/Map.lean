@@ -104,7 +104,7 @@ def mapMOnKeys {α β γ} [LT γ] [DecidableLT γ] [Monad m] (f : α → m γ) (
 instance [LT (Prod α β)] : LT (Map α β) where
   lt a b := a.kvs < b.kvs
 
-instance decLt [LT (Prod α β)] [DecidableEq (Prod α β)] [Cedar.Data.DecidableLT (Prod α β)] : (n m : Map α β) → Decidable (n < m)
+instance decLt [LT (Prod α β)] [DecidableEq (Prod α β)] [DecidableLT (Prod α β)] : (n m : Map α β) → Decidable (n < m)
   | .mk nkvs, .mk mkvs => List.decidableLT nkvs mkvs
 
 -- enables ∈ notation for map keys

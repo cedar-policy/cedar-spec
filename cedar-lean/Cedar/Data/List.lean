@@ -29,7 +29,7 @@ open Cedar.Data
 
 ----- Definitions -----
 
-def insertCanonical [LT β] [Cedar.Data.DecidableLT β] (f : α → β) (x : α) (xs : List α) : List α :=
+def insertCanonical [LT β] [DecidableLT β] (f : α → β) (x : α) (xs : List α) : List α :=
   match xs with
   | [] => [x]
   | hd :: tl =>
@@ -46,7 +46,7 @@ If the ordering relation < on β is strict, then `canonicalize` returns a
 canonical representation of the input list, which is sorted and free of
 duplicates.
 -/
-def canonicalize [LT β] [Cedar.Data.DecidableLT β] (f : α → β) : List α → List α
+def canonicalize [LT β] [DecidableLT β] (f : α → β) : List α → List α
   | [] => []
   | hd :: tl => insertCanonical f hd (canonicalize f tl)
 

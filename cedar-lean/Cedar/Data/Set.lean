@@ -124,7 +124,7 @@ def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
 instance [LT α] : LT (Set α) where
   lt a b := a.elts < b.elts
 
-instance decLt [LT α] [DecidableEq α] [Cedar.Data.DecidableLT α] : (n m : Set α) → Decidable (n < m)
+instance decLt [LT α] [DecidableEq α] [DecidableLT α] : (n m : Set α) → Decidable (n < m)
   | .mk nelts, .mk melts => List.decidableLT nelts melts
 
 -- enables ∅
