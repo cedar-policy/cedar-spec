@@ -30,18 +30,6 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-structure LevelCheckResult where
-  -- The primary output of the level checking procedure. `false` if any access
-  -- exceeds the specified level.
-  checked: Bool
-  -- Was the checked expression an entity root? Returns `false` for entity
-  -- literals, which are not roots used by the slicing algorithm. Used
-  -- internally by the level checking procedure to forbid access on entity
-  -- literals.
-  root: Bool
-
-def LevelCheckResult.and (r₀ r₁ : LevelCheckResult) : LevelCheckResult := LevelCheckResult.mk (r₀.checked && r₁.checked) (r₀.root && r₁.root)
-
 def checkRoot : TypedExpr → Bool
   | .lit _ _ => false
   | .ite _ x₂ x₃ _ =>

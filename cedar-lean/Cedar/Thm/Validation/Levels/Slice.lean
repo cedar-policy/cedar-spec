@@ -251,7 +251,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       subst he
       rename_i v hv
 
-      simp only [LevelCheckResult.mk.injEq, Bool.and_eq_true, decide_eq_true_eq] at hl
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hl
       have ⟨⟨hl₁, _⟩, hl₂ ⟩ := hl
 
       have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
@@ -306,7 +306,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     have ⟨ hgc, v, he₁, hi₁⟩ := type_of_is_sound hc hr htx₁
 
     rw [htx] at hl
-    simp only [checkLevel, LevelCheckResult.mk.injEq, Bool.and_eq_true] at hl
+    simp only [checkLevel, Bool.and_eq_true] at hl
     have ⟨⟨ hl₁, hl₂⟩, hl₃⟩ := hl
 
     rw [htx] at hrt
