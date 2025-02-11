@@ -22,6 +22,7 @@ import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Typechecker.Basic
 
 import Cedar.Thm.Validation.Levels.Data
+import Cedar.Thm.Validation.Levels.CheckLevel
 
 namespace Cedar.Thm
 
@@ -127,21 +128,6 @@ theorem in_val_then_val_slice
     simp [Map.find?_mem_toList, ha]
   case set | ext => cases hv
 
-theorem euid_not_in_not_entity_or_record (v : Value)
-  (hv : match v with
-    | .record _ => False
-    | .prim (.entityUID _) => False
-    | _ => True)
-  : ∀ path euid, ¬ EuidInValue v path euid
-:= by
-  intro _ euid hv'
-  split at hv <;> try contradiction
-  rename_i hr he
-  cases hv'
-  · simp [he euid]
-  · rename_i attrs _ _
-    simp [hr attrs]
-
 theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {tag : Tag} {path : List Attr}
   (hr : ReachableIn entities start euid n)
   (he₁ : entities.find? euid = some ed)
@@ -213,16 +199,12 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 := by
   cases e
   case lit p =>
-    simp only [evaluate, Except.ok.injEq] at he
-    cases p
-    case entityUID =>
-      subst v ; cases ha
-      replace ht : tx = TypedExpr.lit (Prim.entityUID euid) (CedarType.entity euid.ty) := by
-        simp only [typeOf, typeOfLit, Function.comp_apply] at ht
-        split at ht <;> simp only [ok, err, reduceCtorEq, Except.ok.injEq, Prod.mk.injEq] at ht
-        simp [ht]
-      simp [ht, checkLevel] at hl
-    all_goals { subst he ; cases ha }
+    replace ⟨ _, _, ht ⟩ : ∃ p ty, TypedExpr.lit p ty = tx := by
+      simp only [typeOf, typeOfLit] at ht
+      (split at ht <;> try split at ht) <;>
+      simp only [ok, err, reduceCtorEq, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq] at ht <;>
+      simp [←ht]
+    simp [←ht, check_level_lit_inversion] at hl
 
   case var v =>
     cases v <;> simp only [evaluate, Except.ok.injEq] at he

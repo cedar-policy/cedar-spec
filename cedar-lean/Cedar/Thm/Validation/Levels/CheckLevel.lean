@@ -25,6 +25,10 @@ functions that do not need reason about the slicing functions.
 
 open Cedar.Validation
 
+theorem check_level_lit_inversion {p : Spec.Prim} {ty : CedarType} {n : Nat}
+  : (checkLevel (.lit p ty) n) = LevelCheckResult.mk true false
+:= by simp [checkLevel]
+
 theorem check_level_root_invariant (n n' : Nat) (e : TypedExpr)
   : (checkLevel e n).root = (checkLevel e n').root
 := by
