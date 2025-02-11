@@ -49,28 +49,31 @@ def res {α} [Coe α Ext] : Option α → Result Value
   | none   => .error .extensionError
 
 def call : ExtFun → List Value → Result Value
-  | .decimal, [.prim (.string s)]            => res (Decimal.decimal s)
+  | .decimal, [.prim (.string s)]               => res (Decimal.decimal s)
   | .lessThan,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ < d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)]    => .ok (d₁ < d₂ : Bool)
   | .lessThanOrEqual,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ ≤ d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)]    => .ok (d₁ ≤ d₂ : Bool)
   | .greaterThan,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ > d₂ : Bool)
+    [.ext (.decimal d₁), .ext (.decimal d₂)]    => .ok (d₁ > d₂ : Bool)
   | .greaterThanOrEqual,
-    [.ext (.decimal d₁), .ext (.decimal d₂)] => .ok (d₁ ≥ d₂ : Bool)
-  | .ip, [.prim (.string s)]                 => res (IPAddr.ip s)
-  | .isIpv4, [.ext (.ipaddr a)]              => .ok a.isV4
-  | .isIpv6, [.ext (.ipaddr a)]              => .ok a.isV6
-  | .isLoopback, [.ext (.ipaddr a)]          => .ok a.isLoopback
-  | .isMulticast, [.ext (.ipaddr a)]         => .ok a.isMulticast
+    [.ext (.decimal d₁), .ext (.decimal d₂)]    => .ok (d₁ ≥ d₂ : Bool)
+  | .ip, [.prim (.string s)]                    => res (IPAddr.ip s)
+  | .isIpv4, [.ext (.ipaddr a)]                 => .ok a.isV4
+  | .isIpv6, [.ext (.ipaddr a)]                 => .ok a.isV6
+  | .isLoopback, [.ext (.ipaddr a)]             => .ok a.isLoopback
+  | .isMulticast, [.ext (.ipaddr a)]            => .ok a.isMulticast
   | .isInRange,
-    [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]   => .ok (a₁.inRange a₂)
-  | .datetime, [.prim (.string s)]           => res (Datetime.parse s)
-  | .duration, [.prim (.string s)]           => res (Datetime.Duration.parse s)
+    [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]      => .ok (a₁.inRange a₂)
+  | .datetime, [.prim (.string s)]              => res (Datetime.parse s)
+  | .duration, [.prim (.string s)]              => res (Datetime.Duration.parse s)
   | .offset,
     [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
-  -- Note: Add other datetime methods
-  | _, _                                     => .error .typeError
+  | .durationSince,
+    [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
+  | .toDate, [.ext (.datetime dt)]              => res (dt.toDate)
+  | .toTime, [.ext (.datetime dt)]              => .ok dt.toTime
+  | _, _                                        => .error .typeError
 
 ----- Derivations -----
 
