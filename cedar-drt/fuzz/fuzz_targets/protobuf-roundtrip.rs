@@ -24,6 +24,7 @@ use crate::arbitrary::Arbitrary;
 use crate::arbitrary::Unstructured;
 use cedar_drt::{AuthorizationRequestMsg, OwnedAuthorizationRequestMsg};
 use cedar_drt_inner::{fuzz_target, schemas::Equiv};
+use cedar_policy::proto;
 use cedar_policy_core::{
     ast, entities::Entities, entities::NoEntitiesSchema, entities::TCComputation,
     extensions::Extensions,
