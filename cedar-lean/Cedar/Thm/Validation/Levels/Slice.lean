@@ -219,11 +219,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 := by
   cases e
   case lit p =>
-    replace ⟨ _, _, ht ⟩ : ∃ p ty, TypedExpr.lit p ty = tx := by
-      simp only [typeOf, typeOfLit] at ht
-      (split at ht <;> try split at ht) <;>
-      simp only [ok, err, reduceCtorEq, Function.comp_apply, Except.ok.injEq, Prod.mk.injEq] at ht <;>
-      simp [←ht]
+    replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
     simp [←ht, check_level_lit_inversion] at hl
 
   case var v =>
