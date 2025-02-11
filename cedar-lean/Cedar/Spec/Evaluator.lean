@@ -58,7 +58,8 @@ def apply₂ (op₂ : BinaryOp) (v₁ v₂ : Value) (es : Entities) : Result Val
   | .less,   .ext (.datetime d₁), .ext (.datetime d₂)      => .ok ((d₁ < d₂): Bool)
   | .less,   .ext (.duration d₁), .ext (.duration d₂)      => .ok ((d₁ < d₂): Bool)
   | .lessEq, .prim (.int i), .prim (.int j)                => .ok ((i ≤ j): Bool)
-  -- Note: Other operations should also have cases with datetime/duration
+  | .lessEq, .ext (.datetime d₁), .ext (.datetime d₂)      => .ok ((d₁ ≤ d₂): Bool)
+  | .lessEq, .ext (.duration d₁), .ext (.duration d₂)      => .ok ((d₁ ≤ d₂): Bool)
   | .add,    .prim (.int i), .prim (.int j)                => intOrErr (i.add? j)
   | .sub,    .prim (.int i), .prim (.int j)                => intOrErr (i.sub? j)
   | .mul,    .prim (.int i), .prim (.int j)                => intOrErr (i.mul? j)
