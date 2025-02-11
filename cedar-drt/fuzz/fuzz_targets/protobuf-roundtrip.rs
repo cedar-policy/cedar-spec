@@ -147,13 +147,13 @@ fn roundtrip_authz_request_msg(auth_request: AuthorizationRequestMsg) {
 
 fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
     // AST -> Protobuf bytes
-    let schema_proto = cedar_policy_validator::proto::ValidatorSchema::from(&schema);
+    let schema_proto = proto::models::ValidatorSchema::from(&schema);
 
     // Protobuf -> Bytes
     let buf = schema_proto.encode_to_vec();
 
     // Bytes -> Protobuf
-    let roundtripped_proto = cedar_policy_validator::proto::ValidatorSchema::decode(&buf[..])
+    let roundtripped_proto = proto::models::ValidatorSchema::decode(&buf[..])
         .expect("Failed to deserialize Schema from proto");
 
     // Protobuf -> AST
