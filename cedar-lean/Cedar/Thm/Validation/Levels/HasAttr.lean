@@ -23,7 +23,7 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : (checkLevel (tx₁.hasAttr a ty) n).checked = true)
+  (hl : checkLevel (tx₁.hasAttr a ty) n = true)
   (ht : typeOf e c₀ env = Except.ok (tx₁, c₁))
   (hety : tx₁.typeOf = CedarType.entity ety)
   (ihe : TypedAtLevelIsSound e)
@@ -48,20 +48,16 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   case none =>
     simp [not_entities_then_not_slice hs hee]
   case some =>
-    have h₆ : (checkLevel tx₁ (n - 1) = LevelCheckResult.mk true true) := by
-      have h₇ : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-      rw [h₇ (checkLevel tx₁ (n - 1))]
-      simp [hl₁, hl₂]
     have h₈ : n = (n - 1).succ := by omega
     rw [h₈] at hs
-    have h₇ := checked_eval_entity_in_slice hc hr ht h₆ h₁₃ hee hs
+    have h₇ := checked_eval_entity_in_slice hc hr ht hl₂ hl₁ h₁₃ hee hs
     simp [h₇]
 
 theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : (checkLevel (ty₁.hasAttr a tx.typeOf) n).checked = true)
+  (hl : checkLevel (ty₁.hasAttr a tx.typeOf) n = true)
   (ht : typeOf e c₀ env = Except.ok (ty₁, c₁'))
   (hrty : ty₁.typeOf = CedarType.record rty)
   (ihe : TypedAtLevelIsSound e)
@@ -87,7 +83,7 @@ theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : A
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.hasAttr a) c₀ env = Except.ok (tx, c₁))
-  (hl : (checkLevel tx n).checked = true)
+  (hl : checkLevel tx n = true)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.hasAttr e a) request entities = evaluate (.hasAttr e a) request slice
 := by

@@ -211,7 +211,8 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : checkLevel tx n = LevelCheckResult.mk true true)
+  (hl : checkLevel tx n)
+  (hrt : checkRoot tx)
   (he : evaluate e request entities = .ok v)
   (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
@@ -220,7 +221,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   cases e
   case lit p =>
     replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
-    simp [←ht, check_level_lit_inversion] at hl
+    simp [←ht, checkRoot] at hrt
 
   case var v =>
     exact var_entity_reachable he ha hf
@@ -251,16 +252,13 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       rename_i v hv
 
       simp only [LevelCheckResult.mk.injEq, Bool.and_eq_true, decide_eq_true_eq] at hl
-      have hl' : checkLevel tx' (n - 1) = LevelCheckResult.mk true true := by
-        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-        rw [h (checkLevel tx' (n - 1))]
-        simp [hl]
+      have ⟨⟨hl₁, _⟩, hl₂ ⟩ := hl
 
       have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
       subst attrs
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-      have ih := checked_eval_entity_reachable hc hr ht' hl' he₁ (EuidInValue.euid euid') hf'
+      have ih := checked_eval_entity_reachable hc hr ht' hl₂ hl₁ he₁ (EuidInValue.euid euid') hf'
 
       have hn : (n - 1).succ = n := by
         have _ : 0 < n := by simp [hl]
@@ -289,7 +287,11 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         rename_i v hv
         subst he
         have ha' : EuidInValue (Value.record attrs) (a :: path) euid := EuidInValue.record hv ha
-        exact checked_eval_entity_reachable hc hr ht' hl he₁ ha' hf
+        have hrt' : checkRoot tx' = true := by
+          rw [htx] at hrt
+          simp only [checkRoot] at hrt
+          exact hrt
+        exact checked_eval_entity_reachable hc hr ht' hl hrt' he₁ ha' hf
 
   case hasAttr e a =>
     simp [evaluate] at he
@@ -305,6 +307,11 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
     rw [htx] at hl
     simp only [checkLevel, LevelCheckResult.mk.injEq, Bool.and_eq_true] at hl
+    have ⟨⟨ hl₁, hl₂⟩, hl₃⟩ := hl
+
+    rw [htx] at hrt
+    simp [checkRoot] at hrt
+    have ⟨hrt₂, hrt₃⟩ := hrt
 
     simp [evaluate] at he
     cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp [he₁] at he
@@ -318,10 +325,6 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     split at he
     case isTrue hb =>
       subst hb
-      have hl₂ : checkLevel tx₂ n = LevelCheckResult.mk true true := by
-        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-        rw [h (checkLevel tx₂ n)]
-        simp [hl]
       have htx₂ : typeOf e₂ (c ∪ c₁) env = .ok (tx₂, c₂) := by
         split at hif <;> try simp [hif]
         rw [hty₁] at hi₁
@@ -333,13 +336,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       replace hgc : CapabilitiesInvariant c₁ request entities := by
         simp only [he₂, GuardedCapabilitiesInvariant, forall_const] at hgc
         exact hgc
-      exact checked_eval_entity_reachable (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha hf
+      exact checked_eval_entity_reachable (capability_union_invariant hc hgc) hr htx₂ hl₂ hrt₂ he ha hf
     case isFalse hb =>
       cases b <;> simp only [Bool.false_eq_true, not_false_eq_true, not_true_eq_false] at hb ; clear hb
-      have hl₃ : checkLevel tx₃ n = LevelCheckResult.mk true true := by
-        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-        rw [h (checkLevel tx₃ n)]
-        simp [hl]
       have htx₃ : typeOf e₃ c env = .ok (tx₃, c₃) := by
         split at hif <;> try simp [hif]
         rw [hty₁] at hi₁
@@ -347,7 +346,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         subst v
         unfold EvaluatesTo at he₁
         simp [he₂] at he₁
-      exact checked_eval_entity_reachable hc hr htx₃ hl₃ he ha hf
+      exact checked_eval_entity_reachable hc hr htx₃ hl₃ hrt₃ he ha hf
 
   case and e₁ e₂ | or e₁ e₂ =>
     simp [evaluate] at he
@@ -382,13 +381,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       have ⟨ hgc₂, v₂, he₂', hi₂ ⟩ := type_of_is_sound hc hr htx₂
       rename_i hety
       simp [checkLevel] at hl
-      have ⟨⟨⟨⟨hl₀, hn⟩, hl₁⟩, hl₂⟩, hl₃⟩ := hl ; clear hl
-
-      replace hl₀ : checkLevel tx₁ (n - 1) = LevelCheckResult.mk true true := by
-        have h : ∀ r, r = LevelCheckResult.mk r.checked r.root := by simp
-        rw [h (checkLevel tx₁ (n - 1))]
-        simp [hl₀, hl₁]
-
+      have ⟨⟨⟨hrt₁, hn⟩, hl₁⟩, hl₂⟩ := hl ; clear hl
       rw [hty₁] at hi₁
 
       have ⟨ euid', hety, hv⟩ := instance_of_entity_type_is_entity hi₁
@@ -409,7 +402,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       subst tags
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-      have ih := checked_eval_entity_reachable hc hr htx₁ hl₀ he₁ (EuidInValue.euid euid') hf'
+      have ih := checked_eval_entity_reachable hc hr htx₁ hl₁ hrt₁ he₁ (EuidInValue.euid euid') hf'
       have h₆ : (n - 1).succ = n := by omega
       rw [h₆] at ih ; clear h₆
       apply reachable_tag_step ih hed hv ha
@@ -463,14 +456,20 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- `typeOf e c env` must also be `ok`.
       sorry
 
-    have hl' : checkLevel tx' n = LevelCheckResult.mk true true :=
+    have hl' : checkLevel tx' n = true :=
       -- `tx'` is the result of annotating `e` (by `htx'`), `e` is an attribute
       -- of `attrs` (by `he`), `attrs` annotates to `tx` by `ht`, and `tx` level
       -- checks at `n` by `hl`, so `tx'` must also level check at `n`.
       by sorry
 
+    have hl' : checkRoot tx' = true :=
+      -- `tx'` is the result of annotating `e` (by `htx'`), `e` is an attribute
+      -- of `attrs` (by `he`), `attrs` annotates to `tx` by `ht`, and `tx` is a
+      -- root by `hrt`, so `tx'` must also be a root.
+      by sorry
+
     -- TODO: This proves the goal, but the termination checker isn't happy
-    -- exact checked_eval_entity_reachable hc hr htx' hl' he' (by exists path') hf
+    -- exact checked_eval_entity_reachable hc hr htx' hl' hrt' he' (by exists path') hf
     sorry
 
   case call xfn args =>
@@ -552,7 +551,8 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : checkLevel tx n = LevelCheckResult.mk true true)
+  (hl : checkLevel tx n)
+  (hrt : checkRoot tx)
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
   (hs : slice = Entities.sliceAtLevel entities request n.succ) :
@@ -567,7 +567,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   have hw : ReachableIn entities request.sliceEUIDs euid n.succ :=
-    checked_eval_entity_reachable hc hr ht hl he (EuidInValue.euid euid) hf₁
+    checked_eval_entity_reachable hc hr ht hl hrt he (EuidInValue.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
   exact map_find_mapm_value hs₂ hi

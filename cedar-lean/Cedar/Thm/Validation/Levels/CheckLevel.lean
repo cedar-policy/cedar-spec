@@ -25,58 +25,33 @@ functions that do not need reason about the slicing functions.
 
 open Cedar.Validation
 
-theorem check_level_lit_inversion {p : Spec.Prim} {ty : CedarType} {n : Nat}
-  : (checkLevel (.lit p ty) n) = LevelCheckResult.mk true false
-:= by simp [checkLevel]
-
-theorem check_level_root_invariant (n n' : Nat) (e : TypedExpr)
-  : (checkLevel e n).root = (checkLevel e n').root
-:= by
-  unfold checkLevel
-  cases e <;> simp
-  case ite | unaryApp =>
-    simp [check_level_root_invariant n n']
-  case binaryApp op _ _ _ =>
-    cases op
-    case mem | getTag | hasTag =>
-      simp [check_level_root_invariant (n - 1) (n' - 1)]
-    all_goals { simp [check_level_root_invariant n n'] }
-  case getAttr e _ _ | hasAttr e _ _ =>
-    cases e.typeOf
-    case entity =>
-      simp [check_level_root_invariant (n - 1) (n' - 1)]
-    all_goals { simp [check_level_root_invariant n n'] }
-  -- Hopefully should be trivial
-  case set es _ | call es _ => sorry
-  case record a => sorry
-
 theorem check_level_checked_succ {e : TypedExpr} {n : Nat}
-  (h₁ : (checkLevel e n).checked)
-  : (checkLevel e (1 + n)).checked
+  (h₁ : checkLevel e n)
+  : checkLevel e (1 + n)
 := by
   cases e <;> try (simp [checkLevel] at h₁ ; simp [checkLevel])
   case ite | and | or | unaryApp =>
     simp [h₁, check_level_checked_succ]
   case binaryApp op e₀ _ _ =>
-    cases op <;> (
-      simp [checkLevel] at h₁
-      simp [checkLevel]
-      simp [h₁, check_level_checked_succ]
-    )
+    cases op
     case mem | hasTag | getTag =>
-      repeat constructor
-      · have h₂ := check_level_root_invariant (1 + n - 1) (n - 1)
-        simp [h₂, h₁]
+      simp only [checkLevel, Bool.and_eq_true, decide_eq_true_eq] at h₁
+      unfold checkLevel
+      simp only [h₁, check_level_checked_succ, Bool.true_and, Bool.and_eq_true, decide_eq_true_eq, and_true]
+      constructor
       · omega
       · have h₂ : (1 + n - 1) = (1 + (n - 1)) := by omega
         simp [h₁, h₂, check_level_checked_succ]
+    all_goals {
+      simp only [checkLevel, Bool.and_eq_true] at h₁
+      unfold checkLevel
+      simp [h₁, check_level_checked_succ]
+    }
   case hasAttr e _ _ | getAttr e _ _ =>
     split at h₁
-    · simp [checkLevel] at h₁
-      simp [checkLevel]
-      repeat constructor
-      · have h₂ := check_level_root_invariant (1 + n - 1) (n - 1)
-        simp [h₂, h₁]
+    · simp only [Bool.and_eq_true, decide_eq_true_eq] at h₁ ⊢
+      constructor <;> try constructor
+      · simp [h₁]
       · omega
       · have h₂ : (1 + n - 1) = (1 + (n - 1)) := by omega
         simp [h₁, h₂, check_level_checked_succ]
