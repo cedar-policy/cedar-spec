@@ -183,6 +183,26 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
     have ih := reachable_attr_step hr' he₁ he₂
     exact ReachableIn.step euid'' hi he₁' ih
 
+theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Request} {entities : Entities} {euid : EntityUID} {path : List Attr}
+  (he : evaluate (.var var) request entities = .ok v)
+  (ha : EuidInValue v path euid)
+  (hf : entities.contains euid) :
+  ReachableIn entities request.sliceEUIDs euid n.succ
+:= by
+  have hi : euid ∈ request.sliceEUIDs := by
+    rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
+    cases var <;> simp [evaluate] at he <;> subst he <;> cases ha
+    case principal | action | resource => simp [hf]
+    case context v a path hf' hv =>
+      right
+      simp only [Value.sliceEUIDs, set_mem_flatten_union_iff_mem_any, List.mem_map, Subtype.exists, Prod.exists]
+      exists v.sliceEUIDs
+      replace hv := in_val_then_val_slice hv
+      simp only [hv, and_true]
+      exists a, v
+      simp [Map.find?_mem_toList hf']
+  exact ReachableIn.in_start hi
+
 /--
 If an expression checks at level `n` and then evaluates an entity (or a record
 containing an entity), then that entity must reachable in `n + 1` steps.
@@ -193,7 +213,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : checkLevel tx n = LevelCheckResult.mk true true)
   (he : evaluate e request entities = .ok v)
-  (ha : EuidInValue v path euid )
+  (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
   ReachableIn entities request.sliceEUIDs euid n.succ
 := by
@@ -207,32 +227,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp [←ht, check_level_lit_inversion] at hl
 
   case var v =>
-    cases v <;> simp only [evaluate, Except.ok.injEq] at he
-    case context =>
-      subst he
-      have hi : euid ∈ request.sliceEUIDs := by
-        rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
-        right
-        simp [Value.sliceEUIDs]
-        cases ha
-        rename_i v a path hf' hv
-        have ha' := in_val_then_val_slice hv
-        rw [set_mem_flatten_union_iff_mem_any]
-        exists v.sliceEUIDs
-        simp [ha']
-        exists a, v
-        simp
-        exact Map.find?_mem_toList hf'
-      exact ReachableIn.in_start hi
-
-    all_goals {
-      subst he
-      have hi : euid ∈ request.sliceEUIDs := by
-        rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
-        cases ha
-        simp [hf]
-      exact ReachableIn.in_start hi
-    }
+    exact var_entity_reachable he ha hf
 
   case getAttr e a =>
     simp [evaluate] at he
