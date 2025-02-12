@@ -212,7 +212,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : checkLevel tx n)
-  (hrt : checkRoot tx)
+  (hrt : notEntityLit tx)
   (he : evaluate e request entities = .ok v)
   (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
@@ -220,9 +220,15 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 := by
   cases e
   case lit p =>
-    replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
-    simp [←ht, checkRoot] at hrt
-
+    cases p
+    case entityUID =>
+      replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
+      simp [←ht, notEntityLit] at hrt
+    all_goals {
+      simp [evaluate] at he
+      subst he
+      cases ha
+     }
   case var v =>
     exact var_entity_reachable he ha hf
 
@@ -287,9 +293,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         rename_i v hv
         subst he
         have ha' : EuidInValue (Value.record attrs) (a :: path) euid := EuidInValue.record hv ha
-        have hrt' : checkRoot tx' = true := by
+        have hrt' : notEntityLit tx' = true := by
           rw [htx] at hrt
-          simp only [checkRoot] at hrt
+          simp only [notEntityLit] at hrt
           exact hrt
         exact checked_eval_entity_reachable hc hr ht' hl hrt' he₁ ha' hf
 
@@ -310,7 +316,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     have ⟨⟨ hl₁, hl₂⟩, hl₃⟩ := hl
 
     rw [htx] at hrt
-    simp [checkRoot] at hrt
+    simp [notEntityLit] at hrt
     have ⟨hrt₂, hrt₃⟩ := hrt
 
     simp [evaluate] at he
@@ -462,7 +468,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- checks at `n` by `hl`, so `tx'` must also level check at `n`.
       by sorry
 
-    have hl' : checkRoot tx' = true :=
+    have hl' : notEntityLit tx' = true :=
       -- `tx'` is the result of annotating `e` (by `htx'`), `e` is an attribute
       -- of `attrs` (by `he`), `attrs` annotates to `tx` by `ht`, and `tx` is a
       -- root by `hrt`, so `tx'` must also be a root.
@@ -552,7 +558,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : checkLevel tx n)
-  (hrt : checkRoot tx)
+  (hrt : notEntityLit tx)
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
   (hs : slice = Entities.sliceAtLevel entities request n.succ) :

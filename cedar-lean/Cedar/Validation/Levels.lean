@@ -30,24 +30,20 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-def checkRoot : TypedExpr → Bool
-  | .lit _ _ => false
+def notEntityLit : TypedExpr → Bool
+  | .lit (.entityUID _) _ => false
   | .ite _ x₂ x₃ _ =>
-    checkRoot x₂ && checkRoot x₃
+    notEntityLit x₂ && notEntityLit x₃
   | .getAttr x₁ _ _
   | .binaryApp .getTag x₁ _ _ =>
-    checkRoot x₁
-  | .set xs _ =>
-    xs.attach.all λ x =>
-      have := List.sizeOf_lt_of_mem x.property
-      checkRoot x
+    notEntityLit x₁
   | .record axs _ =>
     axs.attach.all λ e =>
       have : sizeOf e.val.snd < 1 + sizeOf axs := by
         have h₁ := List.sizeOf_lt_of_mem e.property
         rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
         omega
-      checkRoot e.val.snd
+      notEntityLit e.val.snd
   | _ => true
 
 def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
@@ -63,7 +59,7 @@ def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   | .binaryApp .mem x₁ x₂ _
   | .binaryApp .getTag x₁ x₂ _
   | .binaryApp .hasTag x₁ x₂ _ =>
-    checkRoot x₁ &&
+    notEntityLit x₁ &&
     n > 0 &&
     checkLevel x₁ (n - 1) &&
     checkLevel x₂ n
@@ -76,7 +72,7 @@ def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   | .getAttr x₁ _ _ =>
     match x₁.typeOf with
     | .entity _ =>
-      checkRoot x₁ &&
+      notEntityLit x₁ &&
       n > 0 &&
       checkLevel x₁ (n - 1)
     | _ => checkLevel x₁ n
