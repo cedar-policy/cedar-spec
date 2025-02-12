@@ -445,13 +445,15 @@ fn test_run_auth_test() {
     .unwrap();
     let entity_view = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
-        std::collections::HashMap::new(),
+        [],
         std::collections::HashSet::new(),
+        [],
     );
     let entity_vacation = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
-        std::collections::HashMap::new(),
+        [],
         std::collections::HashSet::new(),
+        [],
     );
     let entities = Entities::from_entities(
         vec![entity_alice, entity_view, entity_vacation],

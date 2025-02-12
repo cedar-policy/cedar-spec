@@ -575,8 +575,12 @@ fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
 impl Equiv for cedar_policy_validator::ValidatorSchema {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(
-            &lhs.entity_types().collect::<HashMap<_, _>>(),
-            &rhs.entity_types().collect::<HashMap<_, _>>(),
+            &lhs.entity_types()
+                .map(|et| (et.name(), et))
+                .collect::<HashMap<_, _>>(),
+            &rhs.entity_types()
+                .map(|et| (et.name(), et))
+                .collect::<HashMap<_, _>>(),
         )
         .map_err(|e| format!("entity attributes are not equivalent: {e}"))?;
         Equiv::equiv(
