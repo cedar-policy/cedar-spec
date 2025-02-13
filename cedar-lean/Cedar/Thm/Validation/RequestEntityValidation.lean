@@ -208,6 +208,10 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     constructor
     rename_i hv
+    simp only [EntitySchemaEntry.isValidEntityUID] at hv
+    simp only [IsValidEntityUID]
+    split at hv
+    · simp
     exact hv
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     constructor

@@ -84,6 +84,11 @@ def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop 
   | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty
   | .none     => data.tags = Map.empty
 
+def IsValidEntityUID (entry: EntitySchemaEntry) (eid: String) : Prop :=
+  match entry with
+  | .standard _ => True
+  | .enum eids => eids.contains eid
+
 /--
 For every entity in the store,
 1. The entity's type is defined in the type store.
@@ -95,7 +100,7 @@ For every entity in the store,
 def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, ets.find? uid.ty = some entry ∧
-      entry.isValidEntityUID uid.eid ∧
+      IsValidEntityUID entry uid.eid ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
       (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
       InstanceOfEntityTags data entry
