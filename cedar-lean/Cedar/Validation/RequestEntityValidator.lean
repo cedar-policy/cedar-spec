@@ -107,7 +107,7 @@ where
   instanceOfEntityData uid data :=
     match ets.find? uid.ty with
     |  .some entry =>
-      if entry.isValidEntityUID uid.eid then
+      if entry.isValidEntityEID uid.eid then
         if instanceOfType data.attrs (.record entry.attrs) ets then
           if data.ancestors.all (λ ancestor =>
             entry.ancestors.contains ancestor.ty &&
