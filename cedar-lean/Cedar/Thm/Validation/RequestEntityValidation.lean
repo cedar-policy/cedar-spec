@@ -206,6 +206,9 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
     exists entry
     simp only [true_and]
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
+    constructor
+    rename_i hv
+    exact hv
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     constructor
     rename_i h₃

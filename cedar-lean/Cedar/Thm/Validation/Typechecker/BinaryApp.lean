@@ -504,7 +504,7 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   split at h₃
   case h_1 data h₄ =>
     rw [Set.contains_prop_bool_equiv] at h₃
-    have ⟨entry, h₂₁, _, h₂₂, _⟩ := h₁ euid₁ data h₄
+    have ⟨entry, h₂₁, _, _, h₂₂, _⟩ := h₁ euid₁ data h₄
     specialize h₂₂ euid₂ h₃
     rw [←Set.contains_prop_bool_equiv] at h₂₂
     simp [h₂₁, h₂₂] at h₂
@@ -636,7 +636,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     cases h₆ : Map.find? entities euid <;>
     simp only [h₆, List.not_mem_nil] at h₅
     rename_i data
-    replace ⟨entry, h₁, _, h₇, _⟩ := h₁ euid data h₆
+    replace ⟨entry, h₁, _, _, h₇, _⟩ := h₁ euid data h₆
     specialize h₇ euid' h₅
     split at h₂ <;> try contradiction
     rename_i h₈
@@ -1067,7 +1067,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
     type_is_inhabited, and_self, reduceCtorEq]
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
-  replace ⟨entry, hf₂, _, _, h₂⟩  := h₂.right.left uid d hf₁
+  replace ⟨entry, hf₂, _, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂
   simp only [EntitySchema.tags?, Option.map_eq_some'] at h₅
   replace ⟨_, h₅, h₇⟩ := h₅
