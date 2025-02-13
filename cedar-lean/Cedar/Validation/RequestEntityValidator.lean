@@ -107,14 +107,16 @@ where
   instanceOfEntityData uid data :=
     match ets.find? uid.ty with
     |  .some entry =>
-      if instanceOfType data.attrs (.record entry.attrs) ets then
-        if data.ancestors.all (λ ancestor =>
-          entry.ancestors.contains ancestor.ty &&
-          instanceOfEntityType ancestor ancestor.ty ets.entityTypeMembers?) then
-          if instanceOfEntityTags data entry then .ok ()
-          else .error (.typeError s!"entity tags inconsistent with type store")
-        else .error (.typeError s!"entity ancestors inconsistent with type store")
-      else .error (.typeError "entity attributes do not match type store")
+      if entry.isValidEntityUID uid.eid then
+        if instanceOfType data.attrs (.record entry.attrs) ets then
+          if data.ancestors.all (λ ancestor =>
+            entry.ancestors.contains ancestor.ty &&
+            instanceOfEntityType ancestor ancestor.ty ets.entityTypeMembers?) then
+            if instanceOfEntityTags data entry then .ok ()
+            else .error (.typeError s!"entity tags inconsistent with type store")
+          else .error (.typeError s!"entity ancestors inconsistent with type store")
+        else .error (.typeError "entity attributes do not match type store")
+      else .error (.typeError s!"invalid entity uid: {uid}")
     | _ => .error (.typeError "entity type not defined in type store")
 
 /--
