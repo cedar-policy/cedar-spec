@@ -671,6 +671,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 let entity = ast::Entity::new(
                     uid.clone(),
                     attrs,
+                    std::collections::HashSet::new(),
                     parents.into_iter().collect(),
                     tags,
                     &self.extensions,

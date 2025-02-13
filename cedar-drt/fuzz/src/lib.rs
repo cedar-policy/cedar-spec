@@ -439,6 +439,7 @@ fn test_run_auth_test() {
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
         alice_attributes,
         std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
         std::iter::empty(),
         &Extensions::all_available(),
     )
@@ -447,11 +448,13 @@ fn test_run_auth_test() {
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
         [],
         std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
         [],
     );
     let entity_vacation = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
         [],
+        std::collections::HashSet::new(),
         std::collections::HashSet::new(),
         [],
     );
