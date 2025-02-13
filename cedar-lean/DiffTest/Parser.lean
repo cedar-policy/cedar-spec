@@ -511,26 +511,26 @@ partial def jsonToCedarType (json : Lean.Json) : ParseResult CedarType := do
       .ok (.ext name)
     | tag => .error s!"jsonToCedarType: unknown tag {tag}"
 
-partial def jsonToEntityTypeKind (json: Lean.Json) : ParseResult ((List String) × RecordType × Option CedarType) := do
+partial def jsonToEntityTypeKind (json: Lean.Json) : ParseResult ((List String) × Option CedarType) := do
   let (tag, value) ← unpackJsonSum json
   match tag with
     | "Enum" =>
       do
         let vals ← jsonToArray value
         let eids ← vals.toList.mapM jsonToString
-        pure (eids, Map.empty, none)
+        pure (eids, none)
     | "Standard" =>
-      let attrs ← getJsonField value "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
       let tags ← -- the "tags" field may be absent
       match getJsonField value "tags" with
-        | .ok jty  => (jsonToCedarType jty).map λ ty => ([], attrs, some ty)
-        | .error _ => .ok ([], attrs, none)
+        | .ok jty  => (jsonToCedarType jty).map λ ty => ([], some ty)
+        | .error _ => .ok ([], none)
     | tag => .error s!"jsonToEntityTypeKind: unknown tag {tag}"
 
 partial def jsonToEntityTypeEntry (json : Lean.Json) : ParseResult JsonEntitySchemaEntry := do
   let descendants_json ← getJsonField json "descendants" >>= jsonToArray
   let descendants ← List.mapM jsonToName descendants_json.toList
-  let (eids, attrs, tags) ← getJsonField json "kind" >>= jsonToEntityTypeKind
+  let attrs ← getJsonField json "attributes" >>= (getJsonField · "attrs") >>= jsonToRecordType
+  let (eids, tags) ← getJsonField json "kind" >>= jsonToEntityTypeKind
   .ok {
     descendants := Set.make descendants,
     attrs := attrs,
