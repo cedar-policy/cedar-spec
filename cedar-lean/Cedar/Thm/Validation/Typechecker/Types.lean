@@ -84,6 +84,11 @@ def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop 
   | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty
   | .none     => data.tags = Map.empty
 
+def IsValidEntityEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
+  match entry with
+  | .standard _ => True
+  | .enum eids => eid ∈ eids
+
 /--
 For every entity in the store,
 1. The entity's type is defined in the type store.
@@ -95,6 +100,7 @@ For every entity in the store,
 def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, ets.find? uid.ty = some entry ∧
+      IsValidEntityEID entry uid.eid ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
       (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
       InstanceOfEntityTags data entry
@@ -285,7 +291,7 @@ theorem well_typed_entity_attributes {env : Environment} {request : Request} {en
   have ⟨_, h₁, _⟩ := h₁
   simp [InstanceOfEntitySchema] at h₁
   specialize h₁ uid d h₂
-  have ⟨entry, h₁₂, h₁, _⟩ := h₁
+  have ⟨entry, h₁₂, _, h₁, _⟩ := h₁
   unfold EntitySchema.attrs? at h₃
   simp [h₁₂] at h₃
   subst h₃

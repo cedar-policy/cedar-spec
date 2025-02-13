@@ -70,7 +70,7 @@ inductive EntitySchemaEntry where
   | standard (ty: StandardSchemaEntry)
   | enum (eids: Set String)
 
-def EntitySchemaEntry.isValidEntityUID (entry: EntitySchemaEntry) (eid: String): Bool :=
+def EntitySchemaEntry.isValidEntityEID (entry: EntitySchemaEntry) (eid: String): Bool :=
   match entry with
   | .standard _ => true
   | .enum eids => eids.contains eid
@@ -96,7 +96,7 @@ def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Optio
 
 def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
   match ets.find? uid.ty with
-  | .some entry => entry.isValidEntityUID uid.eid
+  | .some entry => entry.isValidEntityEID uid.eid
   | .none   => false
 
 def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=

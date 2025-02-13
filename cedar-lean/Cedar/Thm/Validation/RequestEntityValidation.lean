@@ -206,8 +206,18 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
     exists entry
     simp only [true_and]
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
-    rename_i h₃
     constructor
+    rename_i hv
+    simp only [EntitySchemaEntry.isValidEntityEID] at hv
+    simp only [IsValidEntityEID]
+    split at hv
+    · simp
+    · simp
+      rw [Set.contains_prop_bool_equiv] at hv
+      exact hv
+    split at h₀ <;> try simp only [reduceCtorEq] at h₀
+    constructor
+    rename_i h₃
     · exact instance_of_type_refl (Value.record data.attrs) (CedarType.record entry.attrs) ets h₃
     · split at h₀ <;> try simp only [reduceCtorEq] at h₀
       rename_i h₄
