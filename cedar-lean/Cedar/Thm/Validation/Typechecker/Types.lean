@@ -87,7 +87,7 @@ def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop 
 def IsValidEntityUID (entry: EntitySchemaEntry) (eid: String) : Prop :=
   match entry with
   | .standard _ => True
-  | .enum eids => eids.contains eid
+  | .enum eids => ∃ eid₁, eid₁ ∈ eids ∧ eid₁ = eid
 
 /--
 For every entity in the store,

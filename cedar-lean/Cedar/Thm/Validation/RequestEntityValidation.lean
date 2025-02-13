@@ -212,7 +212,9 @@ theorem instance_of_entity_schema_refl (entities : Entities) (ets : EntitySchema
     simp only [IsValidEntityUID]
     split at hv
     · simp
-    exact hv
+    · simp
+      rw [Set.contains_prop_bool_equiv] at hv
+      exact hv
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     constructor
     rename_i h₃
