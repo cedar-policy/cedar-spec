@@ -34,16 +34,12 @@ def Value.sliceEUIDs (v : Value) : Set EntityUID :=
   match v with
   | .prim (.entityUID uid) => Set.singleton uid
   -- TODO: You can't access these except by `in`, so maybe this could just be `Set.empty`
-  | .set s => List.unionAll $ s.elts.attach.map λ e => e.val.sliceEUIDs
-  | .record r => List.unionAll $ r.toList.attach.map λ e => e.val.snd.sliceEUIDs
+  | .set s => List.unionAll $ s.elts.attach.map λ e : { x // x ∈ s.elts} =>
+    have : sizeOf e.val < 1 + sizeOf s :=
+      by simp [←Nat.succ_eq_one_add, Nat.lt.step, Set.sizeOf_lt_of_mem e.property]
+    e.val.sliceEUIDs
+  | .record (Map.mk avs) => List.unionAll $ avs.attach₃.map λ e => e.val.snd.sliceEUIDs
   | .prim _ | .ext _ => ∅
-  decreasing_by
-    · simp [←Nat.succ_eq_one_add, Nat.lt.step, Set.sizeOf_lt_of_mem e.property]
-    · simp only [Map.toList] at e
-      have _ := Map.sizeOf_lt_of_kvs r
-      have _ := List.sizeOf_lt_of_mem e.property
-      have _ : sizeOf e.val.snd < sizeOf e.val := by simp [sizeOf, Prod._sizeOf_1, Nat.one_add]
-      rw [record.sizeOf_spec] ; omega
 
 def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
   (List.unionAll $ ed.attrs.values.map Value.sliceEUIDs) ∪
