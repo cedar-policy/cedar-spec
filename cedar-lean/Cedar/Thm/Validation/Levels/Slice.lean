@@ -120,12 +120,15 @@ theorem in_val_then_val_slice
     cases hv
     rename_i v a path' ha hv
     have ih := in_val_then_val_slice hv
-    simp only [Value.sliceEUIDs]
+    unfold Value.sliceEUIDs List.attach₃
+    simp only [List.map_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1]
     rw [set_mem_union_all_iff_mem_any]
     exists v.sliceEUIDs
     simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
     exists a, v
-    simp [Map.find?_mem_toList, ha]
+    replace ha := Map.find?_mem_toList ha
+    unfold Map.toList at ha
+    simp [ha]
   case set | ext => cases hv
 
 theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {tag : Tag} {path : List Attr}
@@ -195,12 +198,16 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     case principal | action | resource => simp [hf]
     case context v a path hf' hv =>
       right
-      simp only [Value.sliceEUIDs, set_mem_union_all_iff_mem_any, List.mem_map, Subtype.exists, Prod.exists]
+      unfold Value.sliceEUIDs List.attach₃
+      simp only [List.map_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) request.4.1]
+      simp only [set_mem_union_all_iff_mem_any, List.mem_map, Subtype.exists, Prod.exists]
       exists v.sliceEUIDs
       replace hv := in_val_then_val_slice hv
       simp only [hv, and_true]
       exists a, v
-      simp [Map.find?_mem_toList hf']
+      replace hf' := Map.find?_mem_toList hf'
+      unfold Map.toList at hf'
+      simp [hf']
   exact ReachableIn.in_start hi
 
 /--

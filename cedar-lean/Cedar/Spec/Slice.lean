@@ -33,13 +33,8 @@ def List.unionAll {α} [LT α] [DecidableLT α] : List (Set α) → Set α :=
 def Value.sliceEUIDs (v : Value) : Set EntityUID :=
   match v with
   | .prim (.entityUID uid) => Set.singleton uid
-  -- TODO: You can't access these except by `in`, so maybe this could just be `Set.empty`
-  | .set s => List.unionAll $ s.elts.attach.map λ e : { x // x ∈ s.elts} =>
-    have : sizeOf e.val < 1 + sizeOf s :=
-      by simp [←Nat.succ_eq_one_add, Nat.lt.step, Set.sizeOf_lt_of_mem e.property]
-    e.val.sliceEUIDs
   | .record (Map.mk avs) => List.unionAll $ avs.attach₃.map λ e => e.val.snd.sliceEUIDs
-  | .prim _ | .ext _ => ∅
+  | .prim _ | set _ | .ext _ => ∅
 
 def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
   (List.unionAll $ ed.attrs.values.map Value.sliceEUIDs) ∪
