@@ -16,6 +16,6 @@
 
 import Cedar.Thm.Data
 import Cedar.Thm.Authorization
-import Cedar.Thm.Slicing
+import Cedar.Thm.PolicySlice
 import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
