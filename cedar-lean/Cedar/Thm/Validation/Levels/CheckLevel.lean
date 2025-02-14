@@ -24,110 +24,134 @@ functions that do not need reason about the slicing functions.
 -/
 
 open Cedar.Validation
+open Cedar.Data
 open Cedar.Spec
 
-inductive EntityLit : TypedExpr → Prop where
-  | entity_lit {euid : EntityUID} {ty : CedarType} :
-    EntityLit (.lit (.entityUID euid) ty)
-  | ite_true {x₁ x₂ x₃ : TypedExpr} {ty : CedarType}
-    (hx₂ : EntityLit x₂) :
-    EntityLit (.ite x₁ x₂ x₃ ty)
-  | ite_false {x₁ x₂ x₃ : TypedExpr} {ty : CedarType}
-    (hx₃ : EntityLit x₃) :
-    EntityLit (.ite x₁ x₂ x₃ ty)
-  | get_attr {x₁ : TypedExpr} {a : Attr} {ty : CedarType}
-    (hx : EntityLit x₁) :
-    EntityLit (.getAttr x₁ a ty)
-  | get_tag {x₁ x₂ : TypedExpr} {ty : CedarType}
-    (hx₁ : EntityLit x₁) :
-    EntityLit (.binaryApp .getTag x₁ x₂ ty)
-  | record {attrs : List (Attr × TypedExpr)} {ty : CedarType} {a : Attr} {tx : TypedExpr}
-    (hx₁ : (a, tx) ∈ attrs)
-    (hx₂ : EntityLit tx) :
-    EntityLit (.record attrs ty)
+inductive EntityLit : TypedExpr → List Attr → Prop where
+  | entity_lit {euid : EntityUID} {ty : CedarType} {path : List Attr}:
+    EntityLit (.lit (.entityUID euid) ty) path
+  | ite_true {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
+    (hx₂ : EntityLit x₂ path) :
+    EntityLit (.ite x₁ x₂ x₃ ty) path
+  | ite_false {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
+    (hx₃ : EntityLit x₃ path) :
+    EntityLit (.ite x₁ x₂ x₃ ty) path
+  | get_attr {x₁ : TypedExpr} {a : Attr} {path : List Attr} {ty : CedarType}
+    (hx : EntityLit x₁ (a :: path)) :
+    EntityLit (.getAttr x₁ a ty) path
+  | get_tag {x₁ x₂ : TypedExpr} {path : List Attr} {ty : CedarType}
+    (hx₁ : EntityLit x₁ path) :
+    EntityLit (.binaryApp .getTag x₁ x₂ ty) path
+  | record {attrs : List (Attr × TypedExpr)} {ty : CedarType} {a : Attr} {path : List Attr} {tx : TypedExpr}
+    (hx₁ : (Map.make attrs).find? a = some tx)
+    (hx₂ : EntityLit tx path) :
+    EntityLit (.record attrs ty) (a :: path)
+
 
 theorem not_entity_lit_spec (tx : TypedExpr) :
-  (notEntityLit tx = true) ↔ (¬ EntityLit tx)
-:= by
-  cases tx <;> try (
-    simp only [notEntityLit, true_iff]
-    intros h₁
-    cases h₁
-  )
-  case lit p _ =>
-    cases p <;> simp [notEntityLit]
-    case entityUID => constructor
-    all_goals {
-      intro h₁
+  (notEntityLit tx = true) ↔ (¬ EntityLit tx [])
+:= not_entity_lit_spec' tx []
+where
+  not_entity_lit_spec' (tx : TypedExpr) (path : List Attr) :
+    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ EntityLit tx path)
+  := by
+    cases tx <;> try (
+      simp [notEntityLit.notEntityLit']
+      intros h₁
       cases h₁
-    }
-  case ite tx₁ tx₂ tx₃ _ =>
-    have ih₁ := not_entity_lit_spec tx₁
-    have ih₂ := not_entity_lit_spec tx₂
-    have ih₃ := not_entity_lit_spec tx₃
-    simp only [ih₁, ih₂, ih₃, notEntityLit, Bool.and_eq_true]
-    constructor
-    · intro ⟨hx₁, hx₂⟩ hite
-      cases hite <;> contradiction
-    · intro hite
-      constructor <;> (
-        intro h₁
-        apply hite
-      )
-      case left => exact EntityLit.ite_true h₁
-      case right => exact EntityLit.ite_false h₁
-  case binaryApp op tx₁ tx₂ _ =>
-    cases op <;> (
-      simp [notEntityLit]
-      try ( intro h₁ ; cases h₁ )
     )
-    have ih₁ := not_entity_lit_spec tx₁
-    have ih₂ := not_entity_lit_spec tx₂
-    simp [ih₁, ih₂]
-    constructor
-    · intros h₁ h₂
-      cases h₂
-      contradiction
-    · intros h₁ h₂
-      apply h₁
-      exact EntityLit.get_tag h₂
+    case lit p _ =>
+      cases p <;> simp [notEntityLit.notEntityLit']
+      case entityUID => constructor
+      all_goals {
+        intro h₁
+        cases h₁
+      }
+    case ite tx₁ tx₂ tx₃ _ =>
+      have ih₁ := not_entity_lit_spec' tx₁
+      have ih₂ := not_entity_lit_spec' tx₂
+      have ih₃ := not_entity_lit_spec' tx₃
+      simp only [ih₁, ih₂, ih₃, notEntityLit.notEntityLit', Bool.and_eq_true]
+      constructor
+      · intro ⟨hx₁, hx₂⟩ hite
+        cases hite <;> contradiction
+      · intro hite
+        constructor <;> (
+          intro h₁
+          apply hite
+        )
+        case left => exact EntityLit.ite_true h₁
+        case right => exact EntityLit.ite_false h₁
+    case binaryApp op tx₁ tx₂ _ =>
+      cases op <;> (
+        simp [notEntityLit.notEntityLit']
+        try ( intro h₁ ; cases h₁ )
+      )
+      have ih₁ := not_entity_lit_spec' tx₁
+      have ih₂ := not_entity_lit_spec' tx₂
+      simp [ih₁, ih₂]
+      constructor
+      · intros h₁ h₂
+        cases h₂
+        contradiction
+      · intros h₁ h₂
+        apply h₁
+        exact EntityLit.get_tag h₂
 
-  case getAttr tx₁ _ _ =>
-    simp only [notEntityLit]
-    have ih₁ := not_entity_lit_spec tx₁
-    simp only [ih₁]
-    constructor
-    · intros h₁ h₂
-      cases h₂
-      contradiction
-    · intros h₁ h₂
-      apply h₁
-      exact EntityLit.get_attr h₂
+    case getAttr tx₁ _ _ =>
+      simp only [notEntityLit.notEntityLit']
+      have ih₁ := not_entity_lit_spec' tx₁
+      simp only [ih₁]
+      constructor
+      · intros h₁ h₂
+        cases h₂
+        contradiction
+      · intros h₁ h₂
+        apply h₁
+        exact EntityLit.get_attr h₂
 
-  case record attrs ty =>
-    simp [notEntityLit]
-    constructor
-    · intros h₁ h₂
-      cases h₂
-      rename_i a tx' hx₁ hx₂
-      specialize h₁ a tx' hx₂
-      have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
-        have h₁ := List.sizeOf_lt_of_mem hx₂
-        rw [Prod.mk.sizeOf_spec] at h₁
-        omega
-      have ih := not_entity_lit_spec tx'
-      simp only [ih] at h₁
-      contradiction
-    · intro h₁ _ tx' h₂
-      have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
-        have h₁ := List.sizeOf_lt_of_mem h₂
-        rw [Prod.mk.sizeOf_spec] at h₁
-        omega
-      have ih := not_entity_lit_spec tx'
-      simp only [ih]
-      intro h₃
-      apply h₁
-      exact EntityLit.record h₂ h₃
+    case record attrs ty =>
+      cases path <;> simp [notEntityLit.notEntityLit']
+      case nil =>
+        intro hel
+        cases hel
+      case cons a path =>
+        constructor
+        · intros h₁ h₂
+          cases h₂
+          rename_i tx hi hl
+          split at h₁
+          · rename_i tx' hf
+            simp [hf] at hi
+            subst hi
+            have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
+              have h₁ : (a, tx') ∈ attrs := by
+                -- We have `hf : (Map.make attrs).find a = some tx'`, so the pair `(a, tx')` must existing in `attrs.
+                sorry
+              replace h₁ := List.sizeOf_lt_of_mem h₁
+              rw [Prod.mk.sizeOf_spec a tx'] at h₁
+              omega
+            have ih := not_entity_lit_spec' tx'
+            rw [ih] at h₁
+            contradiction
+          · -- `(Map.make attr)` must contain `a` because `hi : (a, tx') ∈ attrs`. We don't care if maps to `tx'`, which is not always the case.
+            sorry
+        · intro h₁
+          split
+          · rename_i _ tx' h₂
+            have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
+              have h₁ : (a, tx') ∈ attrs := by
+                -- We have `hf : (Map.make attrs).find a = some tx'`, so the pair `(a, tx')` must existing in `attrs.
+                sorry
+              replace h₁ := List.sizeOf_lt_of_mem h₁
+              rw [Prod.mk.sizeOf_spec a tx'] at h₁
+              omega
+            have ih := not_entity_lit_spec' tx'
+            rw [ih]
+            intros h₃
+            apply h₁
+            constructor <;> assumption
+          · simp
 
 inductive Level : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :
@@ -151,17 +175,17 @@ inductive Level : TypedExpr → Nat → Prop where
     (hl₁ : Level tx₁ n) :
     Level (.unaryApp op tx₁ ty) n
   | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ n.succ) :
     Level (.binaryApp .mem tx₁ tx₂ ty) n.succ
   | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ n.succ) :
     Level (.binaryApp .getTag tx₁ tx₂ ty) n.succ
   | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ n.succ) :
     Level (.binaryApp .hasTag tx₁ tx₂ ty) n.succ
@@ -174,15 +198,15 @@ inductive Level : TypedExpr → Nat → Prop where
     (hl₂ : Level tx₂ n) :
     Level (.binaryApp op tx₁ tx₂ ty) n
   | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n) :
     Level (.getAttr tx₁ a ty) n.succ
   | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n) :
     Level (.hasAttr tx₁ a ty) n.succ
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
     (hty :
       match tx₁.typeOf with
@@ -190,7 +214,7 @@ inductive Level : TypedExpr → Nat → Prop where
       | _ => False) :
     Level (.getAttr tx₁ a ty) n.succ
   | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁)
+    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
     (hty :
       match tx₁.typeOf with

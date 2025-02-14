@@ -30,21 +30,45 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-def notEntityLit : TypedExpr → Bool
-  | .lit (.entityUID _) _ => false
-  | .ite _ x₂ x₃ _ =>
-    notEntityLit x₂ && notEntityLit x₃
-  | .getAttr x₁ _ _
-  | .binaryApp .getTag x₁ _ _ =>
-    notEntityLit x₁
-  | .record axs _ =>
-    axs.attach.all λ e =>
-      have : sizeOf e.val.snd < 1 + sizeOf axs := by
-        have h₁ := List.sizeOf_lt_of_mem e.property
-        rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
-        omega
-      notEntityLit e.val.snd
-  | _ => true
+
+def notEntityLit (tx : TypedExpr) : Bool :=
+  notEntityLit' tx []
+where
+  notEntityLit' (tx : TypedExpr) (path : List Attr) : Bool :=
+    match tx, path with
+    | .lit (.entityUID _) _, _ => false
+    | .ite _ x₂ x₃ _, _ =>
+      notEntityLit' x₂ path && notEntityLit' x₃ path
+    | .getAttr x₁ a _, _=>
+      notEntityLit' x₁ (a :: path)
+    | .binaryApp .getTag x₁ _ _, _ =>
+      notEntityLit' x₁ path
+    | .record axs ty, (a :: path) =>
+      match (Map.make axs).find? a with
+      | some tx' =>
+        have : sizeOf tx' < 1 + sizeOf axs + sizeOf ty := by
+          have h₁ : (a, tx') ∈ axs := by sorry
+          replace h₁ := List.sizeOf_lt_of_mem h₁
+          rw [Prod.mk.sizeOf_spec a tx'] at h₁
+          omega
+        notEntityLit' tx' path
+      | none => true
+    | _, _ => true
+  termination_by tx
+
+-- nel {a: principal, b: User::"Alice"}.a.c []
+-- nel {a: principal, b: User::"Alice"}.a [c]
+-- nel {a: principal, b: User::"Alice"} [a, c]
+--   (Map.make axs).find? a = some principal
+-- nel principal [c] => true
+
+-- nel {a: principal, b: User::"Alice"}.b.c []
+-- nel {a: principal, b: User::"Alice"}.b [c]
+-- nel {a: principal, b: User::"Alice"} [b, c]
+--   (Map.make axs).find? b = some User::"Alice"
+-- nel User::"alice" [c] => false
+
+
 
 def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   match tx with

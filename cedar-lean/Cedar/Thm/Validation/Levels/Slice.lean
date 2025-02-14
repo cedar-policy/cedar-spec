@@ -212,7 +212,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
   (hl : checkLevel tx n)
-  (hrt : notEntityLit tx)
+  (hel : ¬ EntityLit tx path)
   (he : evaluate e request entities = .ok v)
   (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
@@ -223,7 +223,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     cases p
     case entityUID =>
       replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
-      simp [←ht, notEntityLit] at hrt
+      rw [←ht] at hel
+      specialize hel (by constructor)
+      contradiction
     all_goals {
       simp [evaluate] at he
       subst he
@@ -259,6 +261,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
       simp only [Bool.and_eq_true, decide_eq_true_eq] at hl
       have ⟨⟨hl₁, _⟩, hl₂ ⟩ := hl
+      rw [not_entity_lit_spec] at hl₁
 
       have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
       subst attrs
@@ -293,10 +296,12 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         rename_i v hv
         subst he
         have ha' : EuidInValue (Value.record attrs) (a :: path) euid := EuidInValue.record hv ha
-        have hrt' : notEntityLit tx' = true := by
-          rw [htx] at hrt
-          simp only [notEntityLit] at hrt
-          exact hrt
+        have hrt' : ¬ EntityLit tx' (a :: path) := by
+          rw [htx] at hel
+          intros hel'
+          apply hel
+          constructor
+          assumption
         exact checked_eval_entity_reachable hc hr ht' hl hrt' he₁ ha' hf
 
   case hasAttr e a =>
@@ -315,9 +320,13 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp only [checkLevel, Bool.and_eq_true] at hl
     have ⟨⟨ hl₁, hl₂⟩, hl₃⟩ := hl
 
-    rw [htx] at hrt
-    simp [notEntityLit] at hrt
-    have ⟨hrt₂, hrt₃⟩ := hrt
+    rw [htx] at hel
+    have hel₂ : ¬ EntityLit tx₂ path := by
+      intros hel₂
+      exact hel (EntityLit.ite_true hel₂)
+    have hel₃ : ¬ EntityLit tx₃ path := by
+      intros hel₃
+      exact hel (EntityLit.ite_false hel₃)
 
     simp [evaluate] at he
     cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp [he₁] at he
@@ -342,7 +351,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       replace hgc : CapabilitiesInvariant c₁ request entities := by
         simp only [he₂, GuardedCapabilitiesInvariant, forall_const] at hgc
         exact hgc
-      exact checked_eval_entity_reachable (capability_union_invariant hc hgc) hr htx₂ hl₂ hrt₂ he ha hf
+      exact checked_eval_entity_reachable (capability_union_invariant hc hgc) hr htx₂ hl₂ hel₂ he ha hf
     case isFalse hb =>
       cases b <;> simp only [Bool.false_eq_true, not_false_eq_true, not_true_eq_false] at hb ; clear hb
       have htx₃ : typeOf e₃ c env = .ok (tx₃, c₃) := by
@@ -352,7 +361,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
         subst v
         unfold EvaluatesTo at he₁
         simp [he₂] at he₁
-      exact checked_eval_entity_reachable hc hr htx₃ hl₃ hrt₃ he ha hf
+      exact checked_eval_entity_reachable hc hr htx₃ hl₃ hel₃ he ha hf
 
   case and e₁ e₂ | or e₁ e₂ =>
     simp [evaluate] at he
@@ -389,6 +398,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       simp [checkLevel] at hl
       have ⟨⟨⟨hrt₁, hn⟩, hl₁⟩, hl₂⟩ := hl ; clear hl
       rw [hty₁] at hi₁
+      rw [not_entity_lit_spec] at hrt₁
 
       have ⟨ euid', hety, hv⟩ := instance_of_entity_type_is_entity hi₁
       subst hety hv
@@ -424,16 +434,15 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     subst he ; cases ha
 
   case record attrs =>
-    replace ⟨ hc', rty, htx, hfat ⟩  := type_of_record_inversion ht
-    subst hc'
-    -- unfold AttrExprHasAttrType at hat
+    replace ⟨ hc', rty, atxs, htx, hfat ⟩  := type_of_record_inversion ht
+    subst hc' htx
 
     simp [evaluate] at he
     cases he₁ : attrs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
     subst v
     rename_i attrs'
     cases ha
-    rename_i v a path hf' hv
+    rename_i v a path' hf' hv
 
     have ⟨ e, he ⟩ : ∃ e, (Map.make attrs).find? a = some e := by
       -- We know `attrs` evals to `attrs'` by `he₁`, and `attr'` contains `a` by
@@ -468,15 +477,28 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- checks at `n` by `hl`, so `tx'` must also level check at `n`.
       by sorry
 
-    have hl' : notEntityLit tx' = true :=
-      -- `tx'` is the result of annotating `e` (by `htx'`), `e` is an attribute
-      -- of `attrs` (by `he`), `attrs` annotates to `tx` by `ht`, and `tx` is a
-      -- root by `hrt`, so `tx'` must also be a root.
-      by sorry
+    have hftx' : (Map.make atxs).find? a = some tx' := by
+      -- `tx'` is the result of type annotating `e` (by `htx'`), `e` is in `attrs` with key `a` (by `he`).
+      -- `atxs` is the result of type annotating `attrs` (by `ht`)
+      -- Assuming that type annotation `attrs` doesn't drop any attributes,
+      -- then `a` is also a key in `atxs` and it's value will be the result of type annotation `e`.
+      sorry
 
-    -- TODO: This proves the goal, but the termination checker isn't happy
-    -- exact checked_eval_entity_reachable hc hr htx' hl' hrt' he' (by exists path') hf
-    sorry
+    have hel' : ¬ EntityLit tx' path' := by
+      intro hel'
+      apply hel
+      have hx₂ : EntityLit tx' path' := hel'
+      exact EntityLit.record hftx' hel'
+
+    have : sizeOf e < sizeOf (Expr.record attrs) := by
+      have h₁ : (a, e) ∈ attrs := by
+        --from `he`
+        sorry
+      replace h₁ := List.sizeOf_lt_of_mem h₁
+      rw [Prod.mk.sizeOf_spec a e] at h₁
+      simp
+      omega
+    exact checked_eval_entity_reachable hc hr htx' hl' hel' he' hv hf
 
   case call xfn args =>
     simp only [evaluate] at he
@@ -488,6 +510,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     simp only [Except.ok.injEq, reduceCtorEq] at he
 
     all_goals { subst he ; cases ha }
+termination_by e
 
 theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
   (hw : euid ∈ work)
@@ -572,6 +595,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
     simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
+  rewrite [not_entity_lit_spec] at hrt
   have hw : ReachableIn entities request.sliceEUIDs euid n.succ :=
     checked_eval_entity_reachable hc hr ht hl hrt he (EuidInValue.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁

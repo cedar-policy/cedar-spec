@@ -76,8 +76,8 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
 theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.record axs) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
-  ∃ (rty : List (Attr × QualifiedType)),
-    ty.typeOf = .record (Map.make rty) ∧
+  ∃ (rty : List (Attr × QualifiedType)) (atxs : List (Attr × TypedExpr)),
+    ty = TypedExpr.record atxs (.record (Map.make rty)) ∧
     List.Forall₂ (AttrExprHasAttrType c env) axs rty
 := by
   simp [typeOf, ok] at h₁
@@ -85,12 +85,9 @@ theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilitie
   rename_i rty
   simp [h₁]
   exists (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) rty) ; simp [←h₁]
-  constructor
-  case left => simp [TypedExpr.typeOf]
-  case right =>
-    simp [List.mapM₂, List.attach₂] at h₂
-    simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env))] at h₂
-    exact type_of_record_inversion_forall h₂
+  simp [List.mapM₂, List.attach₂] at h₂
+  simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env))] at h₂
+  exact type_of_record_inversion_forall h₂
 
 theorem mk_vals_instance_of_mk_types₁ {a : Attr} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
   (h₁ : List.Forall₂ AttrValueHasAttrType avs rty)
@@ -275,7 +272,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   GuardedCapabilitiesInvariant (Expr.record axs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.record axs) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₆, rty, h₅, h₄⟩ := type_of_record_inversion h₃
+  have ⟨h₆, rty, _, h₅, h₄⟩ := type_of_record_inversion h₃
   subst h₆ ; rw [h₅]
   apply And.intro empty_guarded_capabilities_invariant
   simp [EvaluatesTo, evaluate, List.mapM₂, List.attach₂]
