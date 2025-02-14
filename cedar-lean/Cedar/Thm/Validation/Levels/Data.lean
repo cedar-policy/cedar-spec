@@ -29,8 +29,8 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem set_mem_flatten_union_iff_mem_any {α : Type} [LT α] [DecidableLT α] {ll : List (Set α)} {e : α}
-  : e ∈ flatten_union ll ↔ ∃ l ∈ ll, e ∈ l
+theorem set_mem_union_all_iff_mem_any {α : Type} [LT α] [DecidableLT α] {ll : List (Set α)} {e : α}
+  : e ∈ ll.unionAll ↔ ∃ l ∈ ll, e ∈ l
 := by sorry
 
 theorem map_find_then_value {α β : Type} [BEq α] {m : Map α β} {k : α} {v : β}

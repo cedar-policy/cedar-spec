@@ -27,15 +27,15 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-def flatten_union {α} [LT α] [DecidableLT α] : List (Set α) → Set α :=
+def List.unionAll {α} [LT α] [DecidableLT α] : List (Set α) → Set α :=
   List.foldl (· ∪ ·) ∅
 
 def Value.sliceEUIDs (v : Value) : Set EntityUID :=
   match v with
   | .prim (.entityUID uid) => Set.singleton uid
   -- TODO: You can't access these except by `in`, so maybe this could just be `Set.empty`
-  | .set s => flatten_union $ s.elts.attach.map λ e => e.val.sliceEUIDs
-  | .record r => flatten_union $ r.toList.attach.map λ e => e.val.snd.sliceEUIDs
+  | .set s => List.unionAll $ s.elts.attach.map λ e => e.val.sliceEUIDs
+  | .record r => List.unionAll $ r.toList.attach.map λ e => e.val.snd.sliceEUIDs
   | .prim _ | .ext _ => ∅
   decreasing_by
     · simp [←Nat.succ_eq_one_add, Nat.lt.step, Set.sizeOf_lt_of_mem e.property]
@@ -46,8 +46,8 @@ def Value.sliceEUIDs (v : Value) : Set EntityUID :=
       rw [record.sizeOf_spec] ; omega
 
 def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
-  (flatten_union $ ed.attrs.values.map Value.sliceEUIDs) ∪
-  (flatten_union $ ed.tags.values.map Value.sliceEUIDs)
+  (List.unionAll $ ed.attrs.values.map Value.sliceEUIDs) ∪
+  (List.unionAll $ ed.tags.values.map Value.sliceEUIDs)
 
 def Request.sliceEUIDs (r : Request) : Set EntityUID :=
   Set.make [r.principal, r.action, r.resource] ∪
@@ -63,5 +63,5 @@ where
     | 0 => some ∅
     | Nat.succ level => do
       let eds ← work.elts.mapM es.find?
-      let slice ← flatten_union <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
+      let slice ← List.unionAll <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
       some (work ∪ slice)

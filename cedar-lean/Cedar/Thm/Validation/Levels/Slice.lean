@@ -121,7 +121,7 @@ theorem in_val_then_val_slice
     rename_i v a path' ha hv
     have ih := in_val_then_val_slice hv
     simp only [Value.sliceEUIDs]
-    rw [set_mem_flatten_union_iff_mem_any]
+    rw [set_mem_union_all_iff_mem_any]
     exists v.sliceEUIDs
     simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
     exists a, v
@@ -141,7 +141,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
       simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       right
-      rw [set_mem_flatten_union_iff_mem_any]
+      rw [set_mem_union_all_iff_mem_any]
       exists tv.sliceEUIDs
       constructor
       case left =>
@@ -167,7 +167,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
       simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       left
-      rw [set_mem_flatten_union_iff_mem_any]
+      rw [set_mem_union_all_iff_mem_any]
       cases he₂
       rename_i v a path ha hv
       exists v.sliceEUIDs
@@ -195,7 +195,7 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     case principal | action | resource => simp [hf]
     case context v a path hf' hv =>
       right
-      simp only [Value.sliceEUIDs, set_mem_flatten_union_iff_mem_any, List.mem_map, Subtype.exists, Prod.exists]
+      simp only [Value.sliceEUIDs, set_mem_union_all_iff_mem_any, List.mem_map, Subtype.exists, Prod.exists]
       exists v.sliceEUIDs
       replace hv := in_val_then_val_slice hv
       simp only [hv, and_true]
@@ -527,7 +527,7 @@ theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID}
   <;> simp [hs₂] at hs
   rename_i slice'
   subst hs
-  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (flatten_union slice') euid
+  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work slice'.unionAll euid
   apply hc
   simp [hw]
 
@@ -549,7 +549,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;>
       simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
     rename_i eds
-    cases hs₂ : Option.map flatten_union (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
+    cases hs₂ : Option.map List.unionAll (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
       simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
     subst hs
     rename_i slice'
@@ -567,7 +567,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     case zero => cases hw
     case succ n =>
       have ih := slice_contains_reachable hw hs₄
-      rw [set_mem_flatten_union_iff_mem_any]
+      rw [set_mem_union_all_iff_mem_any]
       subst hs
       rename_i ed_slice _
       exists ed_slice
