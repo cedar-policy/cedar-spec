@@ -14,9 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
+import Cedar.Slice.PolicySlice
 import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Authorization.Slicing
+import Cedar.Thm.Authorization.PolicySlice
 
 /-!
 This file defines what it means for a policy slice to be sound.
@@ -38,7 +38,7 @@ We prove two main theorems:
 
 namespace Cedar.Thm
 
-open Cedar.Spec
+open Cedar.Spec Cedar.Slice
 
 /--
 Policy slicing soundness: `isAuthorized` produces the same result for a sound
@@ -83,15 +83,6 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
     simp only [h₃, Bool.false_eq_true, imp_false, Bool.not_eq_true] at h₅ h₆
     specialize h₄ h₅
     simp only [h₄, Bool.true_eq_false] at h₆
-
-/--
-Scope-based bound analysis extracts the bound from the policy scope.
--/
-def scopeAnalysis (policy : Policy) : PolicyBound :=
-  {
-    principalBound := policy.principalScope.scope.bound,
-    resourceBound  := policy.resourceScope.scope.bound,
-  }
 
 /--
 Scope-based bounds are sound.
