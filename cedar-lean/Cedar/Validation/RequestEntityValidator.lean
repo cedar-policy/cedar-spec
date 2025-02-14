@@ -136,7 +136,7 @@ where
 def requestMatchesEnvironment (env : Environment) (request : Request) (schema : EntitySchema): Bool := instanceOfRequestType request env.reqty schema
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
-  if ((schema.toEnvironments.any (requestMatchesEnvironment · request schema.ets)))
+  if ((schema.environments.any (requestMatchesEnvironment · request schema.ets)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
 
@@ -174,7 +174,7 @@ def updateSchema (schema : Schema) (actionSchemaEntities : Entities) : Schema :=
       (ty, ese)
 
 def validateEntities (schema : Schema) (entities : Entities) : EntityValidationResult :=
-  schema.toEnvironments.forM (entitiesMatchEnvironment · entities)
+  schema.environments.forM (entitiesMatchEnvironment · entities)
 
 -- json
 
