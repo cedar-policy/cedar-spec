@@ -120,38 +120,33 @@ where
         · intros h₁ h₂
           cases h₂
           rename_i tx hi hl
-          split at h₁
-          · rename_i tx' hf
-            simp [hf] at hi
-            subst hi
-            have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
-              have h₁ : (a, tx') ∈ attrs := by
-                -- We have `hf : (Map.make attrs).find a = some tx'`, so the pair `(a, tx')` must existing in `attrs.
-                sorry
-              replace h₁ := List.sizeOf_lt_of_mem h₁
-              rw [Prod.mk.sizeOf_spec a tx'] at h₁
-              omega
-            have ih := not_entity_lit_spec' tx'
-            rw [ih] at h₁
-            contradiction
-          · -- `(Map.make attr)` must contain `a` because `hi : (a, tx') ∈ attrs`. We don't care if maps to `tx'`, which is not always the case.
-            sorry
+          split at h₁ <;> (
+            rename_i hf
+            simp only [hf, Option.some.injEq, reduceCtorEq] at hi
+          )
+          subst hi
+          rename_i tx'
+          have : sizeOf tx' < 1 + sizeOf attrs := by
+            replace hf := Map.make_mem_list_mem (Map.find?_mem_toList hf)
+            replace hf := List.sizeOf_lt_of_mem hf
+            rw [Prod.mk.sizeOf_spec a tx'] at hf
+            omega
+          have ih := not_entity_lit_spec' tx'
+          rw [ih] at h₁
+          contradiction
         · intro h₁
-          split
-          · rename_i _ tx' h₂
-            have : sizeOf tx' < 1 + sizeOf attrs + sizeOf ty := by
-              have h₁ : (a, tx') ∈ attrs := by
-                -- We have `hf : (Map.make attrs).find a = some tx'`, so the pair `(a, tx')` must existing in `attrs.
-                sorry
-              replace h₁ := List.sizeOf_lt_of_mem h₁
-              rw [Prod.mk.sizeOf_spec a tx'] at h₁
-              omega
-            have ih := not_entity_lit_spec' tx'
-            rw [ih]
-            intros h₃
-            apply h₁
-            constructor <;> assumption
-          · simp
+          split <;> try rfl
+          rename_i tx' hf
+          have : sizeOf tx' < 1 + sizeOf attrs := by
+            replace hf := Map.make_mem_list_mem (Map.find?_mem_toList hf)
+            replace hf := List.sizeOf_lt_of_mem hf
+            rw [Prod.mk.sizeOf_spec a tx'] at hf
+            omega
+          have ih := not_entity_lit_spec' tx'
+          rw [ih]
+          intros h₃
+          apply h₁
+          constructor <;> assumption
 
 inductive Level : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :

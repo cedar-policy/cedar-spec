@@ -46,7 +46,7 @@ where
     | .record axs ty, (a :: path) =>
       match h₁ : (Map.make axs).find? a with
       | some tx' =>
-        have : sizeOf tx' < 1 + sizeOf axs + sizeOf ty := by
+        have : sizeOf tx' < sizeOf axs := by
           replace h₁ := Map.make_mem_list_mem (Map.find?_mem_toList h₁)
           replace h₁ := List.sizeOf_lt_of_mem h₁
           rw [Prod.mk.sizeOf_spec a tx'] at h₁
@@ -55,20 +55,6 @@ where
       | none => true
     | _, _ => true
   termination_by tx
-
--- nel {a: principal, b: User::"Alice"}.a.c []
--- nel {a: principal, b: User::"Alice"}.a [c]
--- nel {a: principal, b: User::"Alice"} [a, c]
---   (Map.make axs).find? a = some principal
--- nel principal [c] => true
-
--- nel {a: principal, b: User::"Alice"}.b.c []
--- nel {a: principal, b: User::"Alice"}.b [c]
--- nel {a: principal, b: User::"Alice"} [b, c]
---   (Map.make axs).find? b = some User::"Alice"
--- nel User::"alice" [c] => false
-
-
 
 def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   match tx with
