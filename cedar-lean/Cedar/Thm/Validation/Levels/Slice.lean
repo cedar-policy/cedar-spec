@@ -100,7 +100,7 @@ inductive EuidInValue : Value → List Attr → EntityUID → Prop where
 
 theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}
   (hr : ReachableIn entities start euid n)
-  : ReachableIn entities start euid (1 + n)
+  : ReachableIn entities start euid (n + 1)
 := by
   cases hr
   case in_start hi =>
