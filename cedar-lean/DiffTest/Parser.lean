@@ -277,8 +277,9 @@ def jsonToRequest (json : Lean.Json) : ParseResult Request := do
 
 
 def jsonToEntityData (json : Lean.Json) : ParseResult EntityData := do
-  let ancestorsArr ← getJsonField json "ancestors" >>= jsonToArray
-  let ancestors ← List.mapM jsonToEuid ancestorsArr.toList
+  let parentsArr ← getJsonField json "parents" >>= jsonToArray
+  let indirectAncestorsArr ← getJsonField json "indirect_ancestors" >>= jsonToArray
+  let ancestors ← List.mapM jsonToEuid (parentsArr.toList ++ indirectAncestorsArr.toList)
   let attrsKVs ← getJsonField json "attrs" >>= jsonObjToKVList
   let attrs ← mapMValues attrsKVs jsonToValue
   let tagsKVs ← -- the "tags" field may be absent
