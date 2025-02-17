@@ -172,18 +172,18 @@ inductive Level : TypedExpr → Nat → Prop where
   | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
-    (hl₂ : Level tx₂ n.succ) :
-    Level (.binaryApp .mem tx₁ tx₂ ty) n.succ
+    (hl₂ : Level tx₂ (n + 1)) :
+    Level (.binaryApp .mem tx₁ tx₂ ty) (n + 1)
   | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
-    (hl₂ : Level tx₂ n.succ) :
-    Level (.binaryApp .getTag tx₁ tx₂ ty) n.succ
+    (hl₂ : Level tx₂ (n + 1)) :
+    Level (.binaryApp .getTag tx₁ tx₂ ty) (n + 1)
   | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
-    (hl₂ : Level tx₂ n.succ) :
-    Level (.binaryApp .hasTag tx₁ tx₂ ty) n.succ
+    (hl₂ : Level tx₂ (n + 1)) :
+    Level (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1)
   | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (hop :
       match op with
@@ -195,11 +195,11 @@ inductive Level : TypedExpr → Nat → Prop where
   | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n) :
-    Level (.getAttr tx₁ a ty) n.succ
+    Level (.getAttr tx₁ a ty) (n + 1)
   | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n) :
-    Level (.hasAttr tx₁ a ty) n.succ
+    Level (.hasAttr tx₁ a ty) (n + 1)
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
@@ -207,7 +207,7 @@ inductive Level : TypedExpr → Nat → Prop where
       match tx₁.typeOf with
       | .record _ => True
       | _ => False) :
-    Level (.getAttr tx₁ a ty) n.succ
+    Level (.getAttr tx₁ a ty) (n + 1)
   | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
     (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
@@ -215,7 +215,7 @@ inductive Level : TypedExpr → Nat → Prop where
       match tx₁.typeOf with
       | .record _ => True
       | _ => False) :
-    Level (.hasAttr tx₁ a ty) n.succ
+    Level (.hasAttr tx₁ a ty) (n + 1)
   | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
     (hl : ∀ tx ∈ txs, Level tx n) :
     Level (.set txs ty) n
@@ -290,7 +290,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         )
         contradiction
       · intro ⟨ ⟨ ⟨ h₁, h₂⟩, h₃ ⟩ , h₄⟩
-        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = n'.succ := by simp [h₂]
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
         subst n
         constructor <;> assumption
     all_goals
@@ -323,7 +323,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         simp
         rw [←ih₁, not_entity_lit_spec]
         intro h₁ h₂ h₃
-        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = n'.succ := by simp [h₂]
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
         subst n
         constructor <;> assumption
     · sorry
@@ -334,38 +334,34 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
 
   case call => sorry
 
+theorem check_level_checked_succ' {e : TypedExpr} {n : Nat}
+  (h₁ : Level e n)
+  : Level e (n + 1)
+:= by
+  cases h₁
+  all_goals
+    constructor <;> (
+      try apply check_level_checked_succ'
+      try assumption
+    )
+  case call htx | set htx =>
+    intro tx hi
+    have _ := List.sizeOf_lt_of_mem hi
+    apply check_level_checked_succ'
+    exact htx tx hi
+  case record attrs _ ha =>
+    intro atx hi
+    have : sizeOf atx.snd < sizeOf attrs := by
+      have h₂ := List.sizeOf_lt_of_mem hi
+      rw [Prod.mk.sizeOf_spec] at h₂
+      omega
+    apply check_level_checked_succ'
+    exact ha atx hi
+termination_by e
 
 theorem check_level_checked_succ {e : TypedExpr} {n : Nat}
   (h₁ : checkLevel e n)
-  : checkLevel e (1 + n)
+  : checkLevel e (n + 1)
 := by
-  cases e <;> try (simp [checkLevel] at h₁ ; simp [checkLevel])
-  case ite | and | or | unaryApp =>
-    simp [h₁, check_level_checked_succ]
-  case binaryApp op e₀ _ _ =>
-    cases op
-    case mem | hasTag | getTag =>
-      simp only [checkLevel, Bool.and_eq_true, decide_eq_true_eq] at h₁
-      unfold checkLevel
-      simp only [h₁, check_level_checked_succ, Bool.true_and, Bool.and_eq_true, decide_eq_true_eq, and_true]
-      constructor
-      · omega
-      · have h₂ : (1 + n - 1) = (1 + (n - 1)) := by omega
-        simp [h₁, h₂, check_level_checked_succ]
-    all_goals {
-      simp only [checkLevel, Bool.and_eq_true] at h₁
-      unfold checkLevel
-      simp [h₁, check_level_checked_succ]
-    }
-  case hasAttr e _ _ | getAttr e _ _ =>
-    split at h₁
-    · simp only [Bool.and_eq_true, decide_eq_true_eq] at h₁ ⊢
-      constructor <;> try constructor
-      · simp [h₁]
-      · omega
-      · have h₂ : (1 + n - 1) = (1 + (n - 1)) := by omega
-        simp [h₁, h₂, check_level_checked_succ]
-    · simp [h₁, check_level_checked_succ]
-  -- should be trivial
-  case set | call => sorry
-  case record => sorry
+  rw [←level_spec] at h₁ ⊢
+  exact check_level_checked_succ' h₁

@@ -52,8 +52,8 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   simp [checkLevel, hety] at hl
   have ⟨ ⟨ hl₁, _⟩, hl₂ ⟩ := hl ; clear hl
   have h₈ := check_level_checked_succ hl₂
-  have h₉ : (1 + (n - 1)) = n := by omega
-  rw [h₉] at h₈ ; clear h₉
+  have h₉ : (n = (n - 1) + 1) := by omega
+  rw [h₉] at hs ; clear h₉
   simp [evaluate]
   rw [←ihe hs hc hr ht h₈]
   clear h₈
@@ -63,8 +63,6 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   cases hee : entities.attrs euid
   case error => simp [not_entities_attrs_then_not_slice_attrs hs hee]
   case ok =>
-    have h₈ : n = (n - 1).succ := by omega
-    rw [h₈] at hs
     have ⟨ ed, hee', hee''⟩ := entities_attrs_then_find? hee
     subst hee''
     have h₇ := checked_eval_entity_in_slice hc hr ht hl₂ hl₁ h₁₃ hee' hs

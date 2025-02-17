@@ -82,13 +82,13 @@ theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {ui
 inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Prop where
   | in_start {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat}
     (hs : finish ∈ start) :
-    ReachableIn es start finish level.succ
+    ReachableIn es start finish (level + 1)
   | step {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat} {ed : EntityData}
     (i : EntityUID)
     (hi : i ∈ start)
     (he : es.find? i = some ed)
     (hr : ReachableIn es ed.sliceEUIDs finish level) :
-    ReachableIn es start finish level.succ
+    ReachableIn es start finish (level + 1)
 
 inductive EuidInValue : Value → List Attr → EntityUID → Prop where
   | euid (euid : EntityUID) :
@@ -136,7 +136,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   (he₁ : entities.find? euid = some ed)
   (he₂ : ed.tags.find? tag = some tv)
   (he₃ : EuidInValue tv path euid') :
-  ReachableIn entities start euid' n.succ
+  ReachableIn entities start euid' (n + 1)
 := by
   cases hr
   case in_start n' hi =>
@@ -151,7 +151,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
         exact List.mem_map_of_mem _ (map_find_then_value he₂)
       case right =>
         exact in_val_then_val_slice he₃
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' n'.succ :=
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
   case step n' ed' euid'' he₁' hi hr' =>
@@ -162,7 +162,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   (hr : ReachableIn entities start euid n)
   (he₁: entities.find? euid = some ed)
   (he₂ : EuidInValue (.record ed.attrs) path euid' ) :
-  ReachableIn entities start euid' n.succ
+  ReachableIn entities start euid' (n + 1)
 := by
   cases hr
   case in_start n' hi =>
@@ -179,7 +179,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
         exact List.mem_map_of_mem _ (map_find_then_value ha)
       case right =>
         exact in_val_then_val_slice hv
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' n'.succ :=
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
   case step n' ed' euid'' he₁' hi hr' =>
@@ -190,7 +190,7 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
   (he : evaluate (.var var) request entities = .ok v)
   (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
-  ReachableIn entities request.sliceEUIDs euid n.succ
+  ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   have hi : euid ∈ request.sliceEUIDs := by
     rw [Request.sliceEUIDs, Set.mem_union_iff_mem_or, ←Set.make_mem]
@@ -223,7 +223,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (he : evaluate e request entities = .ok v)
   (ha : EuidInValue v path euid)
   (hf : entities.contains euid) :
-  ReachableIn entities request.sliceEUIDs euid n.succ
+  ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   cases e
   case lit p =>
@@ -276,7 +276,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
 
       have ih := checked_eval_entity_reachable hc hr ht' hl₂ hl₁ he₁ (EuidInValue.euid euid') hf'
 
-      have hn : (n - 1).succ = n := by
+      have hn : ((n - 1) + 1) = n := by
         have _ : 0 < n := by simp [hl]
         omega
       rw [hn] at ih ; clear hn
@@ -426,7 +426,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
       have ih := checked_eval_entity_reachable hc hr htx₁ hl₁ hrt₁ he₁ (EuidInValue.euid euid') hf'
-      have h₆ : (n - 1).succ = n := by omega
+      have h₆ : ((n - 1) + 1) = n := by omega
       rw [h₆] at ih ; clear h₆
       apply reachable_tag_step ih hed hv ha
 
@@ -521,7 +521,7 @@ termination_by e
 
 theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID} {euid : EntityUID} {n : Nat}
   (hw : euid ∈ work)
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice)
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work (n + 1) = some slice)
   : euid ∈ slice
 := by
   unfold Entities.sliceAtLevel.sliceAtLevel at hs
@@ -544,8 +544,8 @@ If an entity is reachable in `n` steps, then it must be included in slice at
 the entity isn't in the original entities if it's in `work`.
 -/
 theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityUID} {entities : Entities} {slice : Set EntityUID}
-  (hw : ReachableIn entities work euid n.succ)
-  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n.succ = some slice) :
+  (hw : ReachableIn entities work euid (n + 1))
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work (n + 1) = some slice) :
   euid ∈ slice
 := by
   cases hw
@@ -570,9 +570,9 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     rw [hf₁] at hf ; injections hf ; subst hf
     cases hs₄ : Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n <;>
       simp only [hs₄, reduceCtorEq, Option.some.injEq] at hs
-    cases n
-    case zero => cases hw
-    case succ n =>
+    match n with
+    | 0 => cases hw
+    | n + 1 =>
       have ih := slice_contains_reachable hw hs₄
       rw [set_mem_union_all_iff_mem_any]
       subst hs
@@ -591,11 +591,11 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hrt : notEntityLit tx)
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
-  (hs : slice = Entities.sliceAtLevel entities request n.succ) :
+  (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
   slice.find? euid = some ed
 := by
   simp only [Entities.sliceAtLevel] at hs
-  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n.succ  <;>
+  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (n + 1)  <;>
     simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
   rename_i eids
   cases hs₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
@@ -603,7 +603,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   rewrite [not_entity_lit_spec] at hrt
-  have hw : ReachableIn entities request.sliceEUIDs euid n.succ :=
+  have hw : ReachableIn entities request.sliceEUIDs euid (n + 1) :=
     checked_eval_entity_reachable hc hr ht hl hrt he (EuidInValue.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
