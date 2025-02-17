@@ -16,6 +16,7 @@
 
 import Cedar.Validation.TypedExpr
 import Cedar.Validation.Typechecker
+import Cedar.Thm.Data.Map
 
 /-!
 This file defines a level checking of a type-annotated AST. Level checking
@@ -30,7 +31,6 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-
 def notEntityLit (tx : TypedExpr) : Bool :=
   notEntityLit' tx []
 where
@@ -44,10 +44,10 @@ where
     | .binaryApp .getTag x₁ _ _, _ =>
       notEntityLit' x₁ path
     | .record axs ty, (a :: path) =>
-      match (Map.make axs).find? a with
+      match h₁ : (Map.make axs).find? a with
       | some tx' =>
         have : sizeOf tx' < 1 + sizeOf axs + sizeOf ty := by
-          have h₁ : (a, tx') ∈ axs := by sorry
+          replace h₁ := Map.make_mem_list_mem (Map.find?_mem_toList h₁)
           replace h₁ := List.sizeOf_lt_of_mem h₁
           rw [Prod.mk.sizeOf_spec a tx'] at h₁
           omega
