@@ -465,8 +465,11 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- `he`, so `rty` must also contain `a`
       sorry
     have het : AttrExprHasAttrType c env (a, e) (a, t')  := by
-      -- We know `a ∈ attrs` and `a ∈ rty` from `ht` and `he`. From `hfat` we
+      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
+      replace ht' := Map.make_mem_list_mem (Map.find?_mem_toList ht')
+      -- We know `a ∈ attrs` and `a ∈ rty` from `ht'` and `he`. From `hfat` we
       -- know `e` must then have type `t`.
+      -- TODO: need a stronger inversion lemma to show that `rty` and `attrs` have the same keys in the same order
       sorry
     unfold AttrExprHasAttrType at het
     simp at het
@@ -498,10 +501,8 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       exact EntityLit.record hftx' hel'
 
     have : sizeOf e < sizeOf (Expr.record attrs) := by
-      have h₁ : (a, e) ∈ attrs := by
-        --from `he`
-        sorry
-      replace h₁ := List.sizeOf_lt_of_mem h₁
+      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
+      have h₁ := List.sizeOf_lt_of_mem he
       rw [Prod.mk.sizeOf_spec a e] at h₁
       simp
       omega
