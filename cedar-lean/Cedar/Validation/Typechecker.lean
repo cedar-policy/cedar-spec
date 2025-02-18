@@ -321,9 +321,14 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .lessThanOrEqual, [.ext .datetime, .ext .datetime]    => ok (.bool .anyBool)
   | .greaterThan, [.ext .datetime, .ext .datetime]        => ok (.bool .anyBool)
   | .greaterThanOrEqual, [.ext .datetime, .ext .datetime] => ok (.bool .anyBool)
+  -- TODO: Add other datetime APIs
   | .duration, _  => do
   let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration)
   ok ty c
+  | .lessThan, [.ext .duration, .ext .duration]           => ok (.bool .anyBool)
+  | .lessThanOrEqual, [.ext .duration, .ext .duration]    => ok (.bool .anyBool)
+  | .greaterThan, [.ext .duration, .ext .duration]        => ok (.bool .anyBool)
+  | .greaterThanOrEqual, [.ext .duration, .ext .duration] => ok (.bool .anyBool)
   | _, _         => err (.extensionErr xs)
 
 
