@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
+import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.LT
 
 /-!
@@ -199,10 +200,22 @@ decreasing_by
     have := Map.sizeOf_lt_of_kvs m
     omega
 
+inductive Value.WellFormed : Value -> Prop
+  | prim_wf (p : Prim) : Value.WellFormed (.prim p)
+  | ext_wf (e : Ext) : Value.WellFormed (.ext e)
+  | set_wf (s : Set Value)
+    (h₁ : ∀ t, t ∈ s → Value.WellFormed t)
+    (h₂ : s.WellFormed) :
+    Value.WellFormed (.set s)
+  | record_wf (m : Map Attr Value)
+    (h₁ : ∀ t, t ∈ m.values → Value.WellFormed t)
+    (h₂ : m.WellFormed):
+    Value.WellFormed (.record m)
+
 theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
-  evaluate (Value.toExpr v) req es = .ok v
+  Value.WellFormed v → evaluate (Value.toExpr v) req es = .ok v
 := by
-  cases v
+  cases v <;> intro h
   case prim | ext =>
     simp only [Value.toExpr, evaluate]
   case set =>
@@ -211,12 +224,13 @@ theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
     rw [List.mapM₁_eq_mapM (fun x => evaluate x req es) (s.elts.map₁ fun x => Value.toExpr x.val)]
     simp only [List.map₁_eq_map]
     simp only [List.mapM_map_eq_mapM Value.toExpr (fun x => evaluate x req es) s.elts]
-    simp only [evaluate_value_roundtrip]
-    rw [List.mapM_all_ok s.elts]
-    simp
+    sorry
+    --simp only [evaluate_value_roundtrip]
+    --rw [List.mapM_all_ok s.elts]
+    --simp
     -- last step: Set.make s.elts = s
     -- which is true and unprovable at this moment
-    sorry
+    --sorry
   case record =>
     simp only [Value.toExpr, evaluate]
     sorry
