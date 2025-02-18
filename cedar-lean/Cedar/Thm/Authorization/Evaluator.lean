@@ -16,6 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.List
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -180,5 +181,37 @@ theorem policy_produces_bool_or_error (p : Policy) (request : Request) (entities
 := by
   unfold Policy.toExpr
   apply and_produces_bool_or_error
+
+def Value.toExpr : Value → Expr
+  | .prim p => .lit p
+  | .set s => .set $ s.elts.map₁ λ ⟨v, _⟩ ↦ Value.toExpr v
+  | .record m => .record $ m.kvs.attach₂.map λ ⟨(k, v), _⟩ ↦ (k, Value.toExpr v)
+  | .ext e => .ext e
+decreasing_by
+  all_goals simp_wf
+  case _ h₁ => -- set
+    have := Set.sizeOf_lt_of_mem h₁
+    omega
+  case _ h₁ => -- record
+    simp only at h₁
+    have := Map.sizeOf_lt_of_kvs m
+    omega
+
+theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
+  evaluate (Value.toExpr v) req es = .ok v
+:= by
+  cases v
+  case prim | ext =>
+    simp only [Value.toExpr, evaluate]
+  case set =>
+    simp only [Value.toExpr, evaluate, List.mapM₁]
+    rename_i s
+    have h : ∀ e, e ∈ s → evaluate (Value.toExpr e) req es = .ok e := by
+      sorry
+    sorry
+  case record =>
+    simp only [Value.toExpr, evaluate]
+    sorry
+
 
 end Cedar.Thm

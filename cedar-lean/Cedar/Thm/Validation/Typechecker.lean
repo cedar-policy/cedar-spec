@@ -53,6 +53,7 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
   intro h₁ h₂ h₃
   match e with
   | .lit l => exact type_of_lit_is_sound h₃
+  | .ext e => exact type_of_ext_is_sound h₃
   | .var var => exact type_of_var_is_sound h₂ h₃
   | .ite x₁ x₂ x₃ =>
     have ih₁ := @type_of_is_sound x₁

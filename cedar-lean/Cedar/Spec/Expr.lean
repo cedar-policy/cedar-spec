@@ -56,6 +56,7 @@ inductive BinaryOp where
 
 inductive Expr where
   | lit (p : Prim)
+  | ext (ext : Ext)
   | var (v : Var)
   | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
   | and (a : Expr) (b : Expr)
@@ -83,7 +84,7 @@ mutual
 def decExpr (x y : Expr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
-  case lit.lit x₁ y₁ | var.var x₁ y₁ =>
+  case lit.lit x₁ y₁ | var.var x₁ y₁ | ext.ext x₁ y₁ =>
     exact match decEq x₁ y₁ with
     | isTrue h => isTrue (by rw [h])
     | isFalse _ => isFalse (by intro h; injection h; contradiction)
