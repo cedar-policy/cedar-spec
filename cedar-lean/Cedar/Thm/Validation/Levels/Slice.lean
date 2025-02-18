@@ -460,39 +460,52 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- expression for attribute `a` from `he`. `attrs'` contains evaluated
       -- attributes by `he₁`.
       sorry
-    have ⟨ t', ht' ⟩ : ∃ t, (Map.make rty).find? a = some t := by
-      -- We know `attrs` has type `rty` by `hfat`, and `attrs` contains `a` by
-      -- `he`, so `rty` must also contain `a`
-      sorry
-    have het : AttrExprHasAttrType c env (a, e) (a, t')  := by
+
+    have ⟨t', het⟩ : ∃ t', AttrExprHasAttrType c env (a, e) (a, t')  := by
       replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
-      replace ht' := Map.make_mem_list_mem (Map.find?_mem_toList ht')
-      -- We know `a ∈ attrs` and `a ∈ rty` from `ht'` and `he`. From `hfat` we
-      -- know `e` must then have type `t`.
-      -- TODO: need a stronger inversion lemma to show that `rty` and `attrs` have the same keys in the same order
-      sorry
+      replace hfat := List.forall₂_implies_all_left hfat
+      have ⟨ aty, _, haty ⟩ := hfat (a, e) he
+      have haty' : aty.fst = a := by
+        unfold AttrExprHasAttrType at haty
+        replace ⟨ _, _, haty₂, _⟩ := haty
+        simp [haty₂]
+      subst haty'
+      exists aty.snd
     unfold AttrExprHasAttrType at het
-    simp at het
+    simp only [Prod.mk.injEq, true_and, exists_and_left] at het
     have ⟨ty', het₁, ⟨ c', het₂ ⟩⟩ := het ; clear het
     subst het₁
 
-    have ⟨ tx', htx', htx'' ⟩ : ∃ tx', typeOf e c env = .ok (tx', c') ∧ tx'.typeOf = ty' :=
-      -- `(typeOf e c env).typeOf` is `ok` by `het₂`, so it must also have a
-      -- `typeOf e c env` must also be `ok`.
-      sorry
-
-    have hl' : checkLevel tx' n = true :=
-      -- `tx'` is the result of annotating `e` (by `htx'`), `e` is an attribute
-      -- of `attrs` (by `he`), `attrs` annotates to `tx` by `ht`, and `tx` level
-      -- checks at `n` by `hl`, so `tx'` must also level check at `n`.
-      by sorry
+    have ⟨ tx', htx', htx'' ⟩ : ∃ tx', typeOf e c env = .ok (tx', c') ∧ tx'.typeOf = ty' := by
+      cases htx : typeOf e c env <;> simp [htx, ResultType.typeOf, Except.map] at het₂
+      rename_i aty
+      replace ⟨ het₂, het₃ ⟩ := het₂
+      subst het₂ het₃
+      exists aty.fst
+    subst htx''
 
     have hftx' : (Map.make atxs).find? a = some tx' := by
       -- `tx'` is the result of type annotating `e` (by `htx'`), `e` is in `attrs` with key `a` (by `he`).
       -- `atxs` is the result of type annotating `attrs` (by `ht`)
       -- Assuming that type annotation `attrs` doesn't drop any attributes,
       -- then `a` is also a key in `atxs` and it's value will be the result of type annotation `e`.
+      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
+      replace hfat := List.forall₂_implies_all_left hfat
+      have ⟨ aty, _, haty ⟩ := hfat (a, e) he
+      unfold AttrExprHasAttrType at haty
+      replace ⟨ _, _, haty₂, haty₃⟩ := haty
+      -- TODO: I think this needs a stronger inversion lemma
       sorry
+
+    have hitx' : (a, tx') ∈ atxs :=
+      Map.make_mem_list_mem (Map.find?_mem_toList hftx')
+
+    have hl' : checkLevel tx' n = true := by
+      rw [←level_spec] at hl ⊢
+      cases hl
+      rename_i hl
+      specialize hl (a, tx') hitx'
+      simp [hl]
 
     have hel' : ¬ EntityLit tx' path' := by
       intro hel'
