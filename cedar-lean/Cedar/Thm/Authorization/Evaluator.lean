@@ -17,6 +17,8 @@
 import Cedar.Spec
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Set
+import Cedar.Thm.Data.LT
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -204,14 +206,22 @@ theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
   case prim | ext =>
     simp only [Value.toExpr, evaluate]
   case set =>
-    simp only [Value.toExpr, evaluate, List.mapM₁]
+    simp only [Value.toExpr, evaluate]
     rename_i s
-    have h : ∀ e, e ∈ s → evaluate (Value.toExpr e) req es = .ok e := by
-      sorry
+    rw [List.mapM₁_eq_mapM (fun x => evaluate x req es) (s.elts.map₁ fun x => Value.toExpr x.val)]
+    simp only [List.map₁_eq_map]
+    simp only [List.mapM_map_eq_mapM Value.toExpr (fun x => evaluate x req es) s.elts]
+    simp only [evaluate_value_roundtrip]
+    rw [List.mapM_all_ok s.elts]
+    simp
+    -- last step: Set.make s.elts = s
+    -- which is true and unprovable at this moment
     sorry
   case record =>
     simp only [Value.toExpr, evaluate]
     sorry
-
+decreasing_by
+  all_goals simp_wf
+  sorry
 
 end Cedar.Thm

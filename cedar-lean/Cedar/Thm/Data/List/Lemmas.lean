@@ -354,6 +354,30 @@ theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   rw [←List.mapM'_eq_mapM]
   induction as <;> simp [*]
 
+theorem mapM_map_eq_mapM [Monad m] [LawfulMonad m]
+  (f : α → β)
+  (g : β → m γ)
+  (as : List α) :
+  List.mapM g (List.map f as)
+  = List.mapM (λ x => g (f x)) as := by
+  induction as
+  case _ => simp
+  case _ =>
+    rename_i h
+    simp
+    rw [h]
+
+theorem mapM_all_ok (as : List α) :
+List.mapM (λ x => ((Except.ok x) : Except β α)) as = (Except.ok as) := by
+  induction as
+  case _ =>
+    rfl
+  case _ =>
+    rename_i h
+    simp
+    rw [h]
+    simp
+
 theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :
