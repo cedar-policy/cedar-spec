@@ -30,8 +30,7 @@ open Cedar.Data
 def List.unionAll {α} [LT α] [DecidableLT α] : List (Set α) → Set α :=
   List.foldl (· ∪ ·) ∅
 
-def Value.sliceEUIDs (v : Value) : Set EntityUID :=
-  match v with
+def Value.sliceEUIDs : Value → Set EntityUID
   | .prim (.entityUID uid) => Set.singleton uid
   | .record (Map.mk avs) => List.unionAll $ avs.attach₃.map λ e => e.val.snd.sliceEUIDs
   | .prim _ | set _ | .ext _ => ∅
@@ -49,10 +48,9 @@ def Entities.sliceAtLevel (es : Entities) (r : Request) (level : Nat) : Option E
   let slice ← slice.elts.mapM λ e => do some (e, ←(es.find? e))
   some (Map.make slice)
 where
-  sliceAtLevel (work : Set EntityUID) (level : Nat) : Option (Set EntityUID) :=
-    match level with
+  sliceAtLevel (work : Set EntityUID) : Nat → Option (Set EntityUID)
     | 0 => some ∅
-    | Nat.succ level => do
+    | level + 1 => do
       let eds ← work.elts.mapM es.find?
       let slice ← List.unionAll <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
       some (work ∪ slice)
