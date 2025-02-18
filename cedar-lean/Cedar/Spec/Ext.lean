@@ -35,16 +35,16 @@ inductive Ext where
   | datetime (dt : Datetime)
   | duration (dur: Duration)
 
--- Ordering on extension types: .decimal < .ipaddr < .duration < .datetime
+-- Ordering on extension types: .decimal < .ipaddr < .datetime < .duration
 def Ext.lt : Ext → Ext → Bool
   | .decimal d₁, .decimal d₂ => d₁ < d₂
   | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
   | .datetime d₁, .datetime d₂ => d₁ < d₂
   | .duration d₁, .duration d₂ => d₁ < d₂
   | .decimal  _, _
-  | .ipaddr   _, .duration _
   | .ipaddr   _, .datetime _
-  | .duration _, .datetime _  => true
+  | .ipaddr   _, .duration _
+  | .datetime _, .duration _  => true
   | _ , _ => false
 
 ----- Derivations -----
@@ -62,5 +62,12 @@ instance : Coe Decimal Ext where
 
 instance : Coe IPAddr Ext where
   coe a := .ipaddr a
+
+-- Note: These instances are breaking the `type_of_call_decimal_is_sound`
+-- instance : Coe Datetime Ext where
+--   coe dt := .datetime dt
+--
+-- instance : Coe Duration Ext where
+--   coe dur := .duration dur
 
 end Cedar.Spec

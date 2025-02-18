@@ -314,6 +314,16 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
   | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
   | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
+  | .datetime, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime)
+  ok ty c
+  | .lessThan, [.ext .datetime, .ext .datetime]           => ok (.bool .anyBool)
+  | .lessThanOrEqual, [.ext .datetime, .ext .datetime]    => ok (.bool .anyBool)
+  | .greaterThan, [.ext .datetime, .ext .datetime]        => ok (.bool .anyBool)
+  | .greaterThanOrEqual, [.ext .datetime, .ext .datetime] => ok (.bool .anyBool)
+  | .duration, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration)
+  ok ty c
   | _, _         => err (.extensionErr xs)
 
 
