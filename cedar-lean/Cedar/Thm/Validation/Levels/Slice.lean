@@ -441,8 +441,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     subst he ; cases ha
 
   case record attrs =>
-    replace ⟨ hc', rty, atxs, htx, hfat ⟩  := type_of_record_inversion ht
+    replace ⟨ hc', atxs, htx, hfat ⟩  := type_of_record_inversion ht
     subst hc' htx
+
 
     simp [evaluate] at he
     cases he₁ : attrs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
@@ -476,15 +477,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     have ⟨ty', het₁, ⟨ c', het₂ ⟩⟩ := het ; clear het
     subst het₁
 
-    have ⟨ tx', htx', htx'' ⟩ : ∃ tx', typeOf e c env = .ok (tx', c') ∧ tx'.typeOf = ty' := by
-      cases htx : typeOf e c env <;> simp [htx, ResultType.typeOf, Except.map] at het₂
-      rename_i aty
-      replace ⟨ het₂, het₃ ⟩ := het₂
-      subst het₂ het₃
-      exists aty.fst
-    subst htx''
-
-    have hftx' : (Map.make atxs).find? a = some tx' := by
+    have hftx' : (Map.make atxs).find? a = some t' := by
       -- `tx'` is the result of type annotating `e` (by `htx'`), `e` is in `attrs` with key `a` (by `he`).
       -- `atxs` is the result of type annotating `attrs` (by `ht`)
       -- Assuming that type annotation `attrs` doesn't drop any attributes,
@@ -497,20 +490,20 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       -- TODO: I think this needs a stronger inversion lemma
       sorry
 
-    have hitx' : (a, tx') ∈ atxs :=
+    have hitx' : (a, t') ∈ atxs :=
       Map.make_mem_list_mem (Map.find?_mem_toList hftx')
 
-    have hl' : checkLevel tx' n = true := by
+    have hl' : checkLevel t' n = true := by
       rw [←level_spec] at hl ⊢
       cases hl
       rename_i hl
-      specialize hl (a, tx') hitx'
+      specialize hl (a, t') hitx'
       simp [hl]
 
-    have hel' : ¬ EntityLit tx' path' := by
+    have hel' : ¬ EntityLit t' path' := by
       intro hel'
       apply hel
-      have hx₂ : EntityLit tx' path' := hel'
+      have hx₂ : EntityLit t' path' := hel'
       exact EntityLit.record hftx' hel'
 
     have : sizeOf e < sizeOf (Expr.record attrs) := by
@@ -519,7 +512,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       rw [Prod.mk.sizeOf_spec a e] at h₁
       simp
       omega
-    exact checked_eval_entity_reachable hc hr htx' hl' hel' he' hv hf
+    exact checked_eval_entity_reachable hc hr het₂ hl' hel' he' hv hf
 
   case call xfn args =>
     simp only [evaluate] at he
