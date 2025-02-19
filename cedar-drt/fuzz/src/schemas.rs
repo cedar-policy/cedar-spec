@@ -247,11 +247,17 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
 impl Equiv for cedar_policy_validator::ValidatorEntityType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(&lhs.descendants, &rhs.descendants)?;
-        Equiv::equiv(
-            &lhs.attributes().collect::<HashMap<_, _>>(),
-            &rhs.attributes().collect::<HashMap<_, _>>(),
-        )?;
+        Equiv::equiv(&lhs.attributes(), &rhs.attributes())?;
         Ok(())
+    }
+}
+
+impl Equiv for cedar_policy_validator::types::Attributes {
+    fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
+        Equiv::equiv(
+            &lhs.iter().collect::<HashMap<_, _>>(),
+            &rhs.iter().collect::<HashMap<_, _>>(),
+        )
     }
 }
 
