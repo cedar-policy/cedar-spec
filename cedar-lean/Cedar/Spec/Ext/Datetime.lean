@@ -61,11 +61,6 @@ instance Datetime.decLe (d₁ d₂ : Datetime) : Decidable (d₁ ≤ d₂) :=
 
 deriving instance Repr, Inhabited, DecidableEq for Datetime
 
--- instance : Ord Datetime where
---   compare a b := Int64.compare d₁.val d₂.val
-
--- abbrev Datetime := Int64
-
 namespace Datetime
 
 def MAX_OFFSET_SECONDS: Nat := 86400

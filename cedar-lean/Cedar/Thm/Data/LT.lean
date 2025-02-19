@@ -126,6 +126,54 @@ instance IPNet.strictLT : StrictLT Ext.IPAddr.IPNet where
       decide_eq_true_eq, not_false_eq_true, or_false, or_true, imp_self, reduceCtorEq] <;>
     exact CIDR.strictLT.connected _ _
 
+----- `<` is strict on `Datetime` -----
+
+instance Datetime.strictLT : StrictLT Ext.Datetime where
+  asymmetric a b   := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+      exact Int64.strictLT.asymmetric _ _
+  transitive a b c := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+      exact Int64.strictLT.transitive _ _ _
+  connected  a b   := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    intro h₁
+    apply Int64.strictLT.connected _ _
+    exact fun h₂ => h₁ (congrArg Ext.Datetime.mk h₂)
+
+----- `<` is strict on `Duration` -----
+
+instance Duration.strictLT : StrictLT Ext.Datetime.Duration where
+  asymmetric a b   := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.Duration.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+      exact Int64.strictLT.asymmetric _ _
+  transitive a b c := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.Duration.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+      exact Int64.strictLT.transitive _ _ _
+  connected  a b   := by
+    simp only [LT.lt]
+    unfold Ext.Datetime.Duration.lt
+    simp only [not_false_eq_true, imp_self,
+      decide_eq_true_eq, not_true_eq_false, reduceCtorEq] <;>
+    intro h₁
+    apply Int64.strictLT.connected _ _
+    exact fun h₂ => h₁ (congrArg Ext.Datetime.Duration.mk h₂)
+
 ----- `<` is strict on `Ext` -----
 
 instance Ext.strictLT : StrictLT Ext where
@@ -140,11 +188,15 @@ instance Ext.strictLT : StrictLT Ext where
       cases h₃ : Ext.IPAddr.IPNet.lt x₁ x₂ <;>
       simp [h₃] at h₁ h₂ ; simp [h₂]
     case datetime =>
-      sorry
-      -- exact Int64.strictLT.asymmetric x₁ x₂ h₁
+      have h₂ := Datetime.strictLT.asymmetric x₁ x₂
+      simp [LT.lt] at h₂
+      cases h₃ : Ext.Datetime.lt x₁ x₂ <;>
+      simp [h₃] at h₁ h₂ ; simp [h₂]
     case duration =>
-      sorry
-      -- exact Int64.strictLT.asymmetric x₁ x₂ h₁
+      have h₂ := Duration.strictLT.asymmetric x₁ x₂
+      simp [LT.lt] at h₂
+      cases h₃ : Ext.Datetime.Duration.lt x₁ x₂ <;>
+      simp [h₃] at h₁ h₂ ; simp [h₂]
   transitive a b c := by
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
@@ -157,11 +209,17 @@ instance Ext.strictLT : StrictLT Ext where
       cases h₅ : Ext.IPAddr.IPNet.lt x₂ x₃ <;> simp [h₅] at *
       simp [h₃]
     case datetime =>
-      sorry
-      -- exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
+      have h₃ := Datetime.strictLT.transitive x₁ x₂ x₃
+      simp [LT.lt] at h₃
+      cases h₄ : Ext.Datetime.lt x₁ x₂ <;> simp [h₄] at *
+      cases h₅ : Ext.Datetime.lt x₂ x₃ <;> simp [h₅] at *
+      simp [h₃]
     case duration =>
-      sorry
-      -- exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
+      have h₃ := Duration.strictLT.transitive x₁ x₂ x₃
+      simp [LT.lt] at h₃
+      cases h₄ : Ext.Datetime.Duration.lt x₁ x₂ <;> simp [h₄] at *
+      cases h₅ : Ext.Datetime.Duration.lt x₂ x₃ <;> simp [h₅] at *
+      simp [h₃]
   connected  a b   := by
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
@@ -172,11 +230,13 @@ instance Ext.strictLT : StrictLT Ext where
       simp [LT.lt, h₁] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case datetime =>
-      sorry
-      -- exact Int64.strictLT.connected x₁ x₂ h₁
+      have h₂ := Datetime.strictLT.connected x₁ x₂
+      simp [LT.lt, h₁] at h₂
+      rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case duration =>
-      sorry
-      -- exact Int64.strictLT.connected x₁ x₂ h₁
+      have h₂ := Duration.strictLT.connected x₁ x₂
+      simp [LT.lt, h₁] at h₂
+      rcases h₂ with h₂ | h₂ <;> simp [h₂]
 
 ----- `<` is strict on `Name` -----
 
