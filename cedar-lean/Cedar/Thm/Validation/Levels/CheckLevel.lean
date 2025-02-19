@@ -192,30 +192,24 @@ inductive Level : TypedExpr → Nat → Prop where
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ n) :
     Level (.binaryApp op tx₁ tx₂ ty) n
-  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
+  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
     (he : ¬ EntityLit tx₁ [])
-    (hl₁ : Level tx₁ n) :
+    (hl₁ : Level tx₁ n)
+    (hty : tx₁.typeOf = .entity ety) :
     Level (.getAttr tx₁ a ty) (n + 1)
-  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
+  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
     (he : ¬ EntityLit tx₁ [])
-    (hl₁ : Level tx₁ n) :
+    (hl₁ : Level tx₁ n)
+    (hty : tx₁.typeOf = .entity ety) :
     Level (.hasAttr tx₁ a ty) (n + 1)
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
-    (hty :
-      match tx₁.typeOf with
-      | .record _ => True
-      | _ => False) :
-    Level (.getAttr tx₁ a ty) (n + 1)
+    (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
+    Level (.getAttr tx₁ a ty) n
   | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
     (hl₁ : Level tx₁ n)
-    (hty :
-      match tx₁.typeOf with
-      | .record _ => True
-      | _ => False) :
-    Level (.hasAttr tx₁ a ty) (n + 1)
+    (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
+    Level (.hasAttr tx₁ a ty) n
   | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
     (hl : ∀ tx ∈ txs, Level tx n) :
     Level (.set txs ty) n
@@ -224,7 +218,7 @@ inductive Level : TypedExpr → Nat → Prop where
     Level (.record attrs ty) n
   | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType)
     (hl : ∀ tx ∈ args, Level tx n) :
-    Level (.call cfn args ty) n
+    Level (.call xfn args ty) n
 
 theorem level_spec (tx : TypedExpr) (n : Nat):
   (Level tx n ) ↔ (checkLevel tx n = true)
@@ -315,7 +309,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
     · constructor
       · intro h
         cases h <;> simp [*] at *
-        rename_i n _ _
+        rename_i n _ _ _ _
         have ih₁ := level_spec tx₁ n
         rw [←ih₁, not_entity_lit_spec]
         constructor <;> assumption
@@ -326,30 +320,76 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
         subst n
         constructor <;> assumption
-    · sorry
+    · constructor
+      · intro h
+        cases h <;> simp [*] at *
+        have ih₁ := level_spec tx₁ n
+        rw [←ih₁]
+        assumption
+      · intro h
+        have ih₁ := level_spec tx₁ n
+        rw [←ih₁] at h
+        constructor <;> assumption
 
-  case set => sorry
+  case call | set =>
+    simp [checkLevel]
+    constructor
+    · intro h₁ tx h₂
+      have ih := level_spec tx n
+      cases h₁
+      rename_i h₃
+      specialize h₃ tx h₂
+      rw [←ih]
+      exact h₃
+    · intro h₁
+      constructor
+      intro tx h₂
+      have _ := List.sizeOf_lt_of_mem h₂
+      have ih := level_spec tx n
+      rw [ih]
+      exact h₁ tx h₂
 
-  case record => sorry
-
-  case call => sorry
+  case record attrs _ =>
+    simp [checkLevel]
+    constructor
+    · intro h₁ a tx h₂
+      cases h₁
+      rename_i h₃
+      specialize h₃ (a, tx) h₂
+      simp at h₃
+      have : sizeOf tx < 1 + sizeOf attrs := by
+        have h₄ := List.sizeOf_lt_of_mem h₂
+        rw [Prod.mk.sizeOf_spec a tx] at h₄
+        omega
+      have ih := level_spec tx n
+      rw [←ih]
+      exact h₃
+    · intro h₁
+      constructor
+      intro atx h₂
+      specialize h₁ atx.fst atx.snd h₂
+      have : sizeOf atx.snd < 1 + sizeOf attrs := by
+        have h₄ := List.sizeOf_lt_of_mem h₂
+        rw [Prod.mk.sizeOf_spec atx.fst atx.snd] at h₄
+        omega
+      have ih := level_spec atx.snd n
+      rw [ih]
+      exact h₁
+termination_by tx
 
 theorem check_level_checked_succ' {e : TypedExpr} {n : Nat}
   (h₁ : Level e n)
   : Level e (n + 1)
 := by
   cases h₁
-  all_goals
-    constructor <;> (
-      try apply check_level_checked_succ'
-      try assumption
-    )
   case call htx | set htx =>
+    constructor
     intro tx hi
     have _ := List.sizeOf_lt_of_mem hi
     apply check_level_checked_succ'
     exact htx tx hi
   case record attrs _ ha =>
+    constructor
     intro atx hi
     have : sizeOf atx.snd < sizeOf attrs := by
       have h₂ := List.sizeOf_lt_of_mem hi
@@ -357,6 +397,17 @@ theorem check_level_checked_succ' {e : TypedExpr} {n : Nat}
       omega
     apply check_level_checked_succ'
     exact ha atx hi
+  case getAttrRecord h₁ h₂ =>
+    have h₃ := check_level_checked_succ' h₂
+    apply Level.getAttrRecord <;> assumption
+  case hasAttrRecord h₁ h₂ =>
+    have h₃ := check_level_checked_succ' h₂
+    apply Level.hasAttrRecord <;> assumption
+  all_goals
+    constructor <;> (
+      try apply check_level_checked_succ'
+      try assumption
+    )
 termination_by e
 
 theorem check_level_checked_succ {e : TypedExpr} {n : Nat}

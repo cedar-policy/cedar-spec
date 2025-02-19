@@ -210,6 +210,42 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
       simp [hf']
   exact ReachableIn.in_start hi
 
+theorem record_value_attr_expr_attr'  {rxs : List (Attr × Expr)}
+   (h₁ : (rxs.mapM λ (a, x) => bindAttr a (evaluate x request entities)) = .ok rvs)
+   (h₂ : (Map.mk rvs).find? a = some v) :
+   ∃ tx, (Map.mk rxs).find? a = some tx ∧ evaluate tx request entities = .ok v
+:= by
+  cases rvs
+  case nil =>
+    simp [pure, Except.pure, Map.find?, List.find?] at h₂
+  case cons hv tvs =>
+    cases rxs
+    case nil =>
+      simp [pure, Except.pure, Map.find?, List.find?] at h₁
+    case cons hx txs  =>
+      simp at h₁
+      cases h₃ : bindAttr hx.fst (evaluate hx.snd request entities) <;> simp [h₃] at h₁
+      sorry
+
+theorem record_value_attr_expr_attr  {rxs : List (Attr × Expr)}
+   (h₁ : (rxs.mapM₂ λ ax => bindAttr ax.val.fst (evaluate ax.val.snd request entities)) = Except.ok rvs)
+   (h₂ : (Map.make rvs).find? a = some v) :
+   ∃ tx, (Map.make rxs).find? a = some tx ∧ evaluate tx request entities = .ok v
+:= by
+  simp [List.mapM₂, List.attach₂] at h₁
+  let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
+  simp [List.mapM_pmap_subtype f] at h₁
+  sorry
+  -- exact record_value_attr_expr_attr' h₁ h₂
+--  cases rvs <;> cases rxs
+--  all_goals
+--    simp [Map.make, List.canonicalize, Map.find?, List.find?] at h₂
+--  case nil =>
+--    simp [List.mapM₂,List.attach₂, pure, Except.pure] at h₁
+--  rename_i h t
+--  split at h₂ <;> simp at h₂
+--  subst h₂
+
 /--
 If an expression checks at level `n` and then evaluates an entity (or a record
 containing an entity), then that entity must reachable in `n + 1` steps.
@@ -448,23 +484,19 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     cases he₁ : rxs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
     subst he
     cases ha
-    rename_i v a path' hf' hv
+    rename_i rvs v a path' hf' hv
 
-    have ⟨ e, he ⟩ : ∃ e, (Map.make rxs).find? a = some e := by
+    have ⟨ x, hfx, hex ⟩ : ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok v := by
+
       -- We know `rxs` evals to `rvs` by `he₁`, and `attr'` contains `a` by
       -- `hv`, so `attrs` must also contain `a`
       sorry
-    have he' : evaluate e request entities = Except.ok v := by
-      -- From `hv`, `rvs` contains `v` for attribute `a`. `e` is the
-      -- expression for attribute `a` from `he`. `rvs` contains evaluated
-      -- attributes by `he₁`.
-      sorry
 
-    have ⟨atx, hfatx, het⟩ : ∃ atx, (Map.make rtxs).find? a = some atx ∧ AttrExprHasAttrType c env (a, e) (a, atx)  := by
-      have he' := Map.make_mem_list_mem (Map.find?_mem_toList he)
+    have ⟨atx, hfatx, het⟩ : ∃ atx, (Map.make rtxs).find? a = some atx ∧ AttrExprHasAttrType c env (a, x) (a, atx)  := by
+      have he' := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
       replace hfat' := List.forall₂_implies_all_left hfat
-      have ⟨ atx, _, haty ⟩ := hfat' (a, e) he'
-      have ⟨_, _, hf'', ht''⟩ := find_make_xs_find_make_txs hfat he
+      have ⟨ atx, _, haty ⟩ := hfat' (a, x) he'
+      have ⟨_, _, hf'', ht''⟩ := find_make_xs_find_make_txs hfat hfx
       have haty' := haty
       unfold AttrExprHasAttrType at haty'
       have ⟨haty₁, _, haty₂⟩ := haty ; clear haty'
@@ -490,13 +522,13 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
       apply hel
       exact EntityLit.record hfatx hel'
 
-    have : sizeOf e < sizeOf (Expr.record rxs) := by
-      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
+    have : sizeOf x < sizeOf (Expr.record rxs) := by
+      replace he := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
       have h₁ := List.sizeOf_lt_of_mem he
-      rw [Prod.mk.sizeOf_spec a e] at h₁
+      rw [Prod.mk.sizeOf_spec a x] at h₁
       simp
       omega
-    exact checked_eval_entity_reachable hc hr het hl' hel' he' hv hf
+    exact checked_eval_entity_reachable hc hr het hl' hel' hex hv hf
 
   case call xfn args =>
     simp only [evaluate] at he
