@@ -31,9 +31,8 @@ def AttrValueHasAttrType (av : Attr × Value) (aqty : Attr × QualifiedType) : P
   av.fst = aqty.fst ∧ InstanceOfType av.snd aqty.snd.getType
 
 def AttrExprHasAttrType (c : Capabilities) (env : Environment) (ax : Attr × Expr) (atx : Attr × TypedExpr) : Prop :=
-  ∃ tx' c',
-    atx = (ax.fst, tx') ∧
-    (typeOf ax.snd c env) = Except.ok (tx', c')
+  ax.fst = atx.fst ∧
+  ∃ c', (typeOf ax.snd c env) = Except.ok (atx.snd, c')
 
 theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabilities} {env : Environment} {rtx : List (Attr × TypedExpr)}
   (h₁ : axs.mapM (λ x => (typeOf x.snd c env).map (λ (ty, _) => (x.fst, ty))) = Except.ok rtx) :
@@ -139,8 +138,8 @@ theorem mk_vals_instance_of_mk_types₃ {a : Attr} {qty : QualifiedType} {avs : 
     simp [Map.contains, Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂
     simp [AttrValueHasAttrType] at h₄
-    have ⟨h₄, _⟩ := h₄ ; simp [h₄] at *
-    cases h₆ : rhd.fst == a <;> simp [h₆] at *
+    have ⟨h₄, _⟩ := h₄ ; simp [h₄]
+    cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ ⊢
     cases h₇ : rtl.find? λ (a', _) => a' == a <;> simp [h₇] at h₂
     have h₈ := @mk_vals_instance_of_mk_types₃ a qty atl rtl h₅
     simp [Map.find?, List.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
@@ -161,6 +160,43 @@ theorem mk_vals_instance_of_mk_types {avs : List (Attr × Value)} {rty : List (A
     intro a qty h₂ _
     exact mk_vals_instance_of_mk_types₃ h₁ h₂
 
+theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr × TypedExpr)}
+  (h₁ : List.Forall₂ (AttrExprHasAttrType c env) axs atxs)
+  (h₂ : (Map.mk axs).find? a = some x) :
+  ∃ tx c', (Map.mk atxs).find? a = some tx ∧ typeOf x c env = .ok (tx, c')
+:= by
+  cases axs <;> cases atxs <;> cases h₁
+  case nil =>
+    simp [Map.find?, List.find?] at h₂
+  case cons axh axt atxh athl h₄ h₅ =>
+    simp [Map.contains, Map.find?, List.find?]
+    simp [Map.find?, List.find?] at h₂
+    simp [AttrExprHasAttrType] at h₄
+    replace ⟨h₄, _, h₆⟩ := h₄ ; rw [←h₄]
+    cases h₇ : axh.fst == a <;> simp [h₇] at h₂ ⊢
+    · cases h₈ : axt.find? λ (a', _) => a' == a <;> simp [h₈] at h₂
+      subst h₂
+      rename_i ax
+      have h₉ := @find_mk_xs_find_mk_txs c env a ax.snd axt athl h₅
+      simp [h₈, Map.find?, List.find?, Map.kvs, Map.contains] at h₉
+      exact h₉
+    · subst h₂
+      simp [h₆]
+
+theorem find_make_xs_find_make_txs {axs : List (Attr × Expr)} {atxs : List (Attr × TypedExpr)}
+  (h₁ : List.Forall₂ (AttrExprHasAttrType c env) axs atxs)
+  (h₂ : (Map.make axs).find? a = some x) :
+  ∃ tx c', (Map.make atxs).find? a = some tx ∧ typeOf x c env = .ok (tx, c')
+:= by
+  apply @find_mk_xs_find_mk_txs _ _ _ _ (List.canonicalize Prod.fst axs)
+  · let p := fun (x :  Expr) (tx : TypedExpr) =>
+      ∃ c', (typeOf x c env) = Except.ok (tx, c')
+    have h₆ := List.canonicalize_preserves_forallᵥ p axs atxs
+    simp [p, List.Forallᵥ] at h₆
+    apply h₆ h₁
+  · simp only [Map.make] at h₂
+    exact h₂
+
 theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rhd : Attr × TypedExpr} {vhd : Attr × Value}
   (h₁ : TypeOfIsSound xhd.snd)
   (h₂ : CapabilitiesInvariant c₁ request entities)
@@ -170,7 +206,7 @@ theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capa
   AttrValueHasAttrType vhd (rhd.fst, .required rhd.snd.typeOf)
 := by
   simp [TypeOfIsSound] at h₁
-  have ⟨ty', c', h₄, h₆⟩ := h₄ ; subst h₄
+  replace ⟨h₄, _, h₆⟩ := h₄ ; rw [←h₄]
   specialize h₁ h₂ h₃ h₆
   have ⟨_, v, h₁, h₇⟩ := h₁
   simp [bindAttr] at h₅
@@ -243,7 +279,7 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       subst h₄ h₅
       specialize ih hd
       simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih
-      have ⟨ty', c', _, hh₃⟩ := hh₃
+      replace ⟨h₄, c', hh₃⟩ := hh₃
       specialize ih h₁ h₂ hh₃
       have ⟨_, v, ih, _⟩ := ih
       simp [EvaluatesTo, h₆] at ih
