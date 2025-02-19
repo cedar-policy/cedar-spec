@@ -20,6 +20,7 @@ import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.LT
+import Cedar.Data.SizeOf
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -208,7 +209,7 @@ inductive Value.WellFormed : Value -> Prop
     (h₂ : s.WellFormed) :
     Value.WellFormed (.set s)
   | record_wf (m : Map Attr Value)
-    (h₁ : ∀ t, t ∈ m.values → Value.WellFormed t)
+    (h₁ : ∀ t, (a, t) ∈ m.kvs → Value.WellFormed t)
     (h₂ : m.WellFormed):
     Value.WellFormed (.record m)
 
@@ -221,21 +222,42 @@ theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
   case set =>
     simp only [Value.toExpr, evaluate]
     rename_i s
-    rw [List.mapM₁_eq_mapM (fun x => evaluate x req es) (s.elts.map₁ fun x => Value.toExpr x.val)]
-    simp only [List.map₁_eq_map]
-    simp only [List.mapM_map_eq_mapM Value.toExpr (fun x => evaluate x req es) s.elts]
-    sorry
-    --simp only [evaluate_value_roundtrip]
-    --rw [List.mapM_all_ok s.elts]
-    --simp
-    -- last step: Set.make s.elts = s
-    -- which is true and unprovable at this moment
-    --sorry
+    cases h with
+    | set_wf _ hₐ hₛ =>
+    have h₁ : ∀ (x : { x : Value // x ∈ s.elts }),
+      evaluate (Value.toExpr x.val) req es = Except.ok x.val := by
+      intro x
+      have hₜ : sizeOf x.val < 1 + sizeOf s := by
+        have := Set.sizeOf_lt_of_mem x.property
+        omega
+      exact evaluate_value_roundtrip x.val (hₐ x.val x.property)
+    have h₂ : ((s.elts.map₁ fun x => Value.toExpr x.val).mapM₁ fun x => evaluate x.val req es)
+             = Except.ok s.elts := by
+      apply List.map₁_mapM₁_chain s.elts Value.toExpr (λ x => evaluate x req es)
+      intro x
+      exact h₁ x
+    rw [h₂]
+    simp
+    simp only [Set.WellFormed, Set.toList] at hₛ
+    symm
+    exact hₛ
   case record =>
-    simp only [Value.toExpr, evaluate]
+    simp only [Value.toExpr, evaluate, bindAttr]
+    rename_i m
+    cases h with
+    | record_wf _ hₐ hₘ =>
+    have h₁ : ∀ (x : { x // x ∈ m.kvs.attach₂ }),
+      evaluate (Value.toExpr x.val.1.snd) req es = Except.ok x.val.1.snd := by
+      intro x
+      rename_i a
+      have hᵢₙ : (a, x.val.val.snd) ∈ m.kvs := by
+        sorry
+      have hₜ : sizeOf x.val.val.snd < 1 + sizeOf m := by
+        have := x.val.property
+        have := Map.sizeOf_lt_of_kvs m
+        omega
+      exact evaluate_value_roundtrip x.val.1.snd (hₐ x.val.1.snd hᵢₙ)
     sorry
-decreasing_by
-  all_goals simp_wf
-  sorry
+termination_by sizeOf v
 
 end Cedar.Thm
