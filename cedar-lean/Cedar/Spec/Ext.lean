@@ -66,7 +66,7 @@ instance : Coe IPAddr Ext where
 -- Note: These instances are breaking the `type_of_call_decimal_is_sound`
 instance : Coe Datetime Ext where
   coe dt := .datetime dt
---
+
 instance : Coe Duration Ext where
   coe dur := .duration dur
 
