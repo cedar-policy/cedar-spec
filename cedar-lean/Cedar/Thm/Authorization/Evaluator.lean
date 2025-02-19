@@ -246,17 +246,47 @@ theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
     rename_i m
     cases h with
     | record_wf _ hₐ hₘ =>
-    have h₁ : ∀ (x : { x // x ∈ m.kvs.attach₂ }),
-      evaluate (Value.toExpr x.val.1.snd) req es = Except.ok x.val.1.snd := by
+    rename_i a
+
+    have hₑ : (List.map (fun x => (x.1.fst, Value.toExpr x.1.snd)) m.kvs.attach₂) = m.kvs.map (λ x => (x.fst, Value.toExpr x.snd)) := by
+      exact List.map_attach₂ (fun x => (x.fst, Value.toExpr x.snd))
+    rw [hₑ]
+    have hₑ₁ : ((List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs).mapM₂ fun x => do
+          let v ← evaluate x.1.snd req es
+          Except.ok (x.1.fst, v)) =
+          ((List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs).mapM fun x => do
+          let v ← evaluate x.snd req es
+          Except.ok (x.fst, v)) := by
+
+      have hₓ := List.mapM₂_eq_mapM (fun x : Attr × Expr => do
+          let v ← evaluate x.snd req es
+          Except.ok (x.fst, v))
+      have hₖ := hₓ (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs)
+
+      rw [hₖ]
+
+
+
+      --have hₑ₂ : x ∈ List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs →
+    --sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) := by
+      --sorry
+
+      simp only [List.mapM₂, List.attach₂]
+      --have hₓ : (List { x : Attr × Expr // sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) }) := ((List.pmap Subtype.mk (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) (fun x => List.sizeOf_snd_lt_sizeOf_list : ∀ (x : Attr × Expr),
+  --x ∈ List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs →
+    --sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs))))
+    rw [hₑ₁]
+    have h₁ : ∀ (x : { x // (a, x) ∈ m.kvs }),
+      evaluate (Value.toExpr x.val) req es = Except.ok x.val := by
       intro x
-      rename_i a
-      have hᵢₙ : (a, x.val.val.snd) ∈ m.kvs := by
-        sorry
-      have hₜ : sizeOf x.val.val.snd < 1 + sizeOf m := by
-        have := x.val.property
-        have := Map.sizeOf_lt_of_kvs m
+      have hₜ : sizeOf x.val < 1 + sizeOf m := by
+        have hₜ₁ := Map.sizeOf_lt_of_value x.property
+        simp only [Map.WellFormed, Map.toList] at hₘ
+        have hₜ₂ : sizeOf m = sizeOf (Map.mk m.kvs) := by
+          rw [hₘ]
         omega
-      exact evaluate_value_roundtrip x.val.1.snd (hₐ x.val.1.snd hᵢₙ)
+      exact evaluate_value_roundtrip x.val (hₐ x.val x.property)
+
     sorry
 termination_by sizeOf v
 
