@@ -487,9 +487,9 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     rename_i rvs v a path' hf' hv
 
     have ⟨ x, hfx, hex ⟩ : ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok v := by
-
-      -- We know `rxs` evals to `rvs` by `he₁`, and `attr'` contains `a` by
-      -- `hv`, so `attrs` must also contain `a`
+      -- Have `he₁ : (rxs.mapM₂ fun x => bindAttr x.val.fst (evaluate x.val.snd request entities)) = Except.ok rvs)`
+      -- and `hf' : (Map.make rvs).find? a = some v`
+      -- so I should be able to show that `a` is in `rxs` and that the associated expr evaluates to `v`
       sorry
 
     have ⟨atx, hfatx, het⟩ : ∃ atx, (Map.make rtxs).find? a = some atx ∧ AttrExprHasAttrType c env (a, x) (a, atx)  := by
