@@ -440,79 +440,63 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     cases he₁ : (es.mapM₁ (λ x => evaluate x.val request entities)) <;> simp [he₁] at he
     subst he ; cases ha
 
-  case record attrs =>
-    replace ⟨ hc', atxs, htx, hfat ⟩  := type_of_record_inversion ht
+  case record rxs =>
+    have ⟨ hc', rtxs, htx, hfat ⟩ := type_of_record_inversion ht
     subst hc' htx
 
-
     simp [evaluate] at he
-    cases he₁ : attrs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
-    subst v
-    rename_i attrs'
+    cases he₁ : rxs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
+    subst he
     cases ha
     rename_i v a path' hf' hv
 
-    have ⟨ e, he ⟩ : ∃ e, (Map.make attrs).find? a = some e := by
-      -- We know `attrs` evals to `attrs'` by `he₁`, and `attr'` contains `a` by
+    have ⟨ e, he ⟩ : ∃ e, (Map.make rxs).find? a = some e := by
+      -- We know `rxs` evals to `rvs` by `he₁`, and `attr'` contains `a` by
       -- `hv`, so `attrs` must also contain `a`
       sorry
     have he' : evaluate e request entities = Except.ok v := by
-      -- From `hv`, `attrs'` contains `v` for attribute `a`. `e` is the
-      -- expression for attribute `a` from `he`. `attrs'` contains evaluated
+      -- From `hv`, `rvs` contains `v` for attribute `a`. `e` is the
+      -- expression for attribute `a` from `he`. `rvs` contains evaluated
       -- attributes by `he₁`.
       sorry
 
-    have ⟨t', het⟩ : ∃ t', AttrExprHasAttrType c env (a, e) (a, t')  := by
-      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
-      replace hfat := List.forall₂_implies_all_left hfat
-      have ⟨ aty, _, haty ⟩ := hfat (a, e) he
-      have haty' : aty.fst = a := by
-        unfold AttrExprHasAttrType at haty
-        replace ⟨ _, _, haty₂, _⟩ := haty
-        simp [haty₂]
-      subst haty'
-      exists aty.snd
+    have ⟨atx, hfatx, het⟩ : ∃ atx, (Map.make rtxs).find? a = some atx ∧ AttrExprHasAttrType c env (a, e) (a, atx)  := by
+      have he' := Map.make_mem_list_mem (Map.find?_mem_toList he)
+      replace hfat' := List.forall₂_implies_all_left hfat
+      have ⟨ atx, _, haty ⟩ := hfat' (a, e) he'
+      have ⟨_, _, hf'', ht''⟩ := find_make_xs_find_make_txs hfat he
+      have haty' := haty
+      unfold AttrExprHasAttrType at haty'
+      have ⟨haty₁, _, haty₂⟩ := haty ; clear haty'
+      subst haty₁
+      exists atx.snd
+      simp [ht''] at haty₂
+      simp only [haty]
+      simp [←haty₂, ht'', hf'']
+
     unfold AttrExprHasAttrType at het
     simp only [Prod.mk.injEq, true_and, exists_and_left] at het
-    have ⟨ty', het₁, ⟨ c', het₂ ⟩⟩ := het ; clear het
-    subst het₁
+    replace ⟨_, het ⟩ := het
 
-    have hftx' : (Map.make atxs).find? a = some t' := by
-      -- `tx'` is the result of type annotating `e` (by `htx'`), `e` is in `attrs` with key `a` (by `he`).
-      -- `atxs` is the result of type annotating `attrs` (by `ht`)
-      -- Assuming that type annotation `attrs` doesn't drop any attributes,
-      -- then `a` is also a key in `atxs` and it's value will be the result of type annotation `e`.
-      replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
-      replace hfat := List.forall₂_implies_all_left hfat
-      have ⟨ aty, _, haty ⟩ := hfat (a, e) he
-      unfold AttrExprHasAttrType at haty
-      replace ⟨ _, _, haty₂, haty₃⟩ := haty
-      -- TODO: I think this needs a stronger inversion lemma
-      sorry
-
-    have hitx' : (a, t') ∈ atxs :=
-      Map.make_mem_list_mem (Map.find?_mem_toList hftx')
-
-    have hl' : checkLevel t' n = true := by
+    have hl' : checkLevel atx n = true := by
       rw [←level_spec] at hl ⊢
       cases hl
       rename_i hl
-      specialize hl (a, t') hitx'
+      specialize hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))
       simp [hl]
 
-    have hel' : ¬ EntityLit t' path' := by
+    have hel' : ¬ EntityLit atx path' := by
       intro hel'
       apply hel
-      have hx₂ : EntityLit t' path' := hel'
-      exact EntityLit.record hftx' hel'
+      exact EntityLit.record hfatx hel'
 
-    have : sizeOf e < sizeOf (Expr.record attrs) := by
+    have : sizeOf e < sizeOf (Expr.record rxs) := by
       replace he := Map.make_mem_list_mem (Map.find?_mem_toList he)
       have h₁ := List.sizeOf_lt_of_mem he
       rw [Prod.mk.sizeOf_spec a e] at h₁
       simp
       omega
-    exact checked_eval_entity_reachable hc hr het₂ hl' hel' he' hv hf
+    exact checked_eval_entity_reachable hc hr het hl' hel' he' hv hf
 
   case call xfn args =>
     simp only [evaluate] at he
