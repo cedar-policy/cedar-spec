@@ -141,7 +141,17 @@ theorem type_of_call_duration_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   GuardedCapabilitiesInvariant (Expr.call .duration xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.call .duration xs) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  sorry
+  have ⟨h₂, h₃, s, h₄, h₅⟩ := type_of_call_duration_inversion h₁
+  rw [h₂]
+  subst h₃ h₄
+  apply And.intro empty_guarded_capabilities_invariant
+  rw [Option.isSome_iff_exists] at h₅
+  have ⟨dt, h₅⟩ := h₅
+  exists .ext dt
+  constructor
+  · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+  · apply InstanceOfType.instance_of_ext
+    simp [InstanceOfExtType]
 
 theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .ip xs) c env = Except.ok (ty, c')) :
