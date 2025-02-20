@@ -66,23 +66,7 @@ def call : ExtFun → List Value → Result Value
   | .isInRange,
     [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]      => .ok (a₁.inRange a₂)
   | .datetime, [.prim (.string s)]              => res (Datetime.parse s)
-  | .lessThan,
-    [.ext (.datetime d₁), .ext (.datetime d₂)]    => .ok (d₁ < d₂ : Bool)
-  | .lessThanOrEqual,
-    [.ext (.datetime d₁), .ext (.datetime d₂)]    => .ok (d₁ ≤ d₂ : Bool)
-  | .greaterThan,
-    [.ext (.datetime d₁), .ext (.datetime d₂)]    => .ok (d₁ > d₂ : Bool)
-  | .greaterThanOrEqual,
-    [.ext (.datetime d₁), .ext (.datetime d₂)]    => .ok (d₁ ≥ d₂ : Bool)
   | .duration, [.prim (.string s)]              => res (Datetime.Duration.parse s)
-  | .lessThan,
-    [.ext (.duration d₁), .ext (.duration d₂)]    => .ok (d₁ < d₂ : Bool)
-  | .lessThanOrEqual,
-    [.ext (.duration d₁), .ext (.duration d₂)]    => .ok (d₁ ≤ d₂ : Bool)
-  | .greaterThan,
-    [.ext (.duration d₁), .ext (.duration d₂)]    => .ok (d₁ > d₂ : Bool)
-  | .greaterThanOrEqual,
-    [.ext (.duration d₁), .ext (.duration d₂)]    => .ok (d₁ ≥ d₂ : Bool)
   | .offset,
     [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
   | .durationSince,
