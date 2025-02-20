@@ -27,33 +27,32 @@ open Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-inductive EntityLit : TypedExpr → List Attr → Prop where
+inductive EntityLitViaPath : TypedExpr → List Attr → Prop where
   | entity_lit {euid : EntityUID} {ty : CedarType} {path : List Attr}:
-    EntityLit (.lit (.entityUID euid) ty) path
+    EntityLitViaPath (.lit (.entityUID euid) ty) path
   | ite_true {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₂ : EntityLit x₂ path) :
-    EntityLit (.ite x₁ x₂ x₃ ty) path
+    (hx₂ : EntityLitViaPath x₂ path) :
+    EntityLitViaPath (.ite x₁ x₂ x₃ ty) path
   | ite_false {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₃ : EntityLit x₃ path) :
-    EntityLit (.ite x₁ x₂ x₃ ty) path
+    (hx₃ : EntityLitViaPath x₃ path) :
+    EntityLitViaPath (.ite x₁ x₂ x₃ ty) path
   | get_attr {x₁ : TypedExpr} {a : Attr} {path : List Attr} {ty : CedarType}
-    (hx : EntityLit x₁ (a :: path)) :
-    EntityLit (.getAttr x₁ a ty) path
+    (hx : EntityLitViaPath x₁ (a :: path)) :
+    EntityLitViaPath (.getAttr x₁ a ty) path
   | get_tag {x₁ x₂ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₁ : EntityLit x₁ path) :
-    EntityLit (.binaryApp .getTag x₁ x₂ ty) path
+    (hx₁ : EntityLitViaPath x₁ path) :
+    EntityLitViaPath (.binaryApp .getTag x₁ x₂ ty) path
   | record {attrs : List (Attr × TypedExpr)} {ty : CedarType} {a : Attr} {path : List Attr} {tx : TypedExpr}
     (hx₁ : (Map.make attrs).find? a = some tx)
-    (hx₂ : EntityLit tx path) :
-    EntityLit (.record attrs ty) (a :: path)
-
+    (hx₂ : EntityLitViaPath tx path) :
+    EntityLitViaPath (.record attrs ty) (a :: path)
 
 theorem not_entity_lit_spec (tx : TypedExpr) :
-  (notEntityLit tx = true) ↔ (¬ EntityLit tx [])
+  (notEntityLit tx = true) ↔ (¬ EntityLitViaPath tx [])
 := not_entity_lit_spec' tx []
 where
   not_entity_lit_spec' (tx : TypedExpr) (path : List Attr) :
-    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ EntityLit tx path)
+    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ EntityLitViaPath tx path)
   := by
     cases tx <;> try (
       simp [notEntityLit.notEntityLit']
@@ -80,8 +79,8 @@ where
           intro h₁
           apply hite
         )
-        case left => exact EntityLit.ite_true h₁
-        case right => exact EntityLit.ite_false h₁
+        case left => exact EntityLitViaPath.ite_true h₁
+        case right => exact EntityLitViaPath.ite_false h₁
     case binaryApp op tx₁ tx₂ _ =>
       cases op <;> (
         simp [notEntityLit.notEntityLit']
@@ -96,7 +95,7 @@ where
         contradiction
       · intros h₁ h₂
         apply h₁
-        exact EntityLit.get_tag h₂
+        exact EntityLitViaPath.get_tag h₂
 
     case getAttr tx₁ _ _ =>
       simp only [notEntityLit.notEntityLit']
@@ -108,7 +107,7 @@ where
         contradiction
       · intros h₁ h₂
         apply h₁
-        exact EntityLit.get_attr h₂
+        exact EntityLitViaPath.get_attr h₂
 
     case record attrs ty =>
       cases path <;> simp [notEntityLit.notEntityLit']
@@ -148,6 +147,10 @@ where
           apply h₁
           constructor <;> assumption
 
+def DereferencingBinaryOp : BinaryOp → Prop
+  | .mem | .hasTag | .getTag => True
+  | _ => False
+
 inductive Level : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :
     Level (.lit p ty) n
@@ -170,35 +173,32 @@ inductive Level : TypedExpr → Nat → Prop where
     (hl₁ : Level tx₁ n) :
     Level (.unaryApp op tx₁ ty) n
   | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
+    (he : ¬ EntityLitViaPath tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ (n + 1)) :
     Level (.binaryApp .mem tx₁ tx₂ ty) (n + 1)
   | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
+    (he : ¬ EntityLitViaPath tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ (n + 1)) :
     Level (.binaryApp .getTag tx₁ tx₂ ty) (n + 1)
   | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
+    (he : ¬ EntityLitViaPath tx₁ [])
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ (n + 1)) :
     Level (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1)
   | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (hop :
-      match op with
-      | .mem | .hasTag | .getTag => False
-      | _ => True)
+    (hop : ¬ DereferencingBinaryOp op)
     (hl₁ : Level tx₁ n)
     (hl₂ : Level tx₂ n) :
     Level (.binaryApp op tx₁ tx₂ ty) n
   | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
+    (he : ¬ EntityLitViaPath tx₁ [])
     (hl₁ : Level tx₁ n)
     (hty : tx₁.typeOf = .entity ety) :
     Level (.getAttr tx₁ a ty) (n + 1)
   | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
-    (he : ¬ EntityLit tx₁ [])
+    (he : ¬ EntityLitViaPath tx₁ [])
     (hl₁ : Level tx₁ n)
     (hty : tx₁.typeOf = .entity ety) :
     Level (.hasAttr tx₁ a ty) (n + 1)
@@ -282,7 +282,8 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
           try simp
           try assumption
         )
-        contradiction
+        rename_i hop _ _
+        simp [DereferencingBinaryOp] at hop
       · intro ⟨ ⟨ ⟨ h₁, h₂⟩, h₃ ⟩ , h₄⟩
         have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
         subst n
@@ -299,7 +300,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         simp [h₁, h₂]
       · intro ⟨ h₁, h₂ ⟩
         constructor <;> (
-          try simp
+          try simp [DereferencingBinaryOp]
           try assumption
         )
 
