@@ -210,41 +210,39 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
       simp [hf']
   exact ReachableIn.in_start hi
 
-theorem record_value_attr_expr_attr'  {rxs : List (Attr × Expr)}
-   (h₁ : (rxs.mapM λ (a, x) => bindAttr a (evaluate x request entities)) = .ok rvs)
-   (h₂ : (Map.mk rvs).find? a = some v) :
-   ∃ tx, (Map.mk rxs).find? a = some tx ∧ evaluate tx request entities = .ok v
+theorem record_value_contains_evaluated_attrs
+  (he : evaluate (.record rxs) request entities = .ok (.record rvs))
+  (hfv : rvs.find? a = some av) :
+  ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok av
 := by
-  cases rvs
-  case nil =>
-    simp [pure, Except.pure, Map.find?, List.find?] at h₂
-  case cons hv tvs =>
-    cases rxs
-    case nil =>
-      simp [pure, Except.pure, Map.find?, List.find?] at h₁
-    case cons hx txs  =>
-      simp at h₁
-      cases h₃ : bindAttr hx.fst (evaluate hx.snd request entities) <;> simp [h₃] at h₁
-      sorry
-
-theorem record_value_attr_expr_attr  {rxs : List (Attr × Expr)}
-   (h₁ : (rxs.mapM₂ λ ax => bindAttr ax.val.fst (evaluate ax.val.snd request entities)) = Except.ok rvs)
-   (h₂ : (Map.make rvs).find? a = some v) :
-   ∃ tx, (Map.make rxs).find? a = some tx ∧ evaluate tx request entities = .ok v
-:= by
-  simp [List.mapM₂, List.attach₂] at h₁
-  let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
-  simp [List.mapM_pmap_subtype f] at h₁
-  sorry
-  -- exact record_value_attr_expr_attr' h₁ h₂
---  cases rvs <;> cases rxs
---  all_goals
---    simp [Map.make, List.canonicalize, Map.find?, List.find?] at h₂
---  case nil =>
---    simp [List.mapM₂,List.attach₂, pure, Except.pure] at h₁
---  rename_i h t
---  split at h₂ <;> simp at h₂
---  subst h₂
+  simp [evaluate] at he
+  cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
+  rw [←he] at hfv
+  rename_i rvs
+  rw [List.mapM₂, List.attach₂] at he₁
+  rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
+  rw [List.mapM_ok_iff_forall₂] at he₁
+  simp only [Map.make, Map.find?, Map.kvs] at *
+  split at hfv <;> simp at hfv
+  subst hfv
+  rename_i a v hfv
+  have hfv' := List.find?_some hfv
+  simp only [beq_iff_eq] at hfv'
+  subst hfv'
+  replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs := by
+    simp only [List.forallᵥ_def]
+    apply List.Forall₂.imp _ he₁
+    intro x y h
+    simp only [bindAttr] at h
+    cases hx : evaluate x.snd request entities <;> simp [hx] at h
+    simp only [← h, and_self]
+  replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
+  simp only [List.forallᵥ_def] at he₁
+  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, v) (List.mem_of_find?_eq_some hfv)
+  simp only at he₃ he₄
+  subst he₃
+  exists x
+  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, and_self]
 
 /--
 If an expression checks at level `n` and then evaluates an entity (or a record
@@ -480,17 +478,14 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
     have ⟨ hc', rtxs, htx, hfat ⟩ := type_of_record_inversion ht
     subst hc' htx
 
-    simp [evaluate] at he
-    cases he₁ : rxs.mapM₂ λ x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
-    subst he
+    have ⟨ rvs, hv ⟩ : ∃ rvs, Value.record rvs = v := by
+      simp [evaluate] at he
+      cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
+      simp [←he]
+    subst hv
     cases ha
-    rename_i rvs v a path' hf' hv
-
-    have ⟨ x, hfx, hex ⟩ : ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok v := by
-      -- Have `he₁ : (rxs.mapM₂ fun x => bindAttr x.val.fst (evaluate x.val.snd request entities)) = Except.ok rvs)`
-      -- and `hf' : (Map.make rvs).find? a = some v`
-      -- so I should be able to show that `a` is in `rxs` and that the associated expr evaluates to `v`
-      sorry
+    rename_i v a path' hfv hv
+    have ⟨ x, hfx, hex ⟩ := record_value_contains_evaluated_attrs he hfv
 
     have ⟨atx, hfatx, het⟩ : ∃ atx, (Map.make rtxs).find? a = some atx ∧ AttrExprHasAttrType c env (a, x) (a, atx)  := by
       have he' := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
