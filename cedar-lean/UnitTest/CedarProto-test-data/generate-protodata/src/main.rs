@@ -4,6 +4,7 @@ use cedar_policy_core::{
     parser::{parse_policy, parse_policy_or_template, parse_policyset, Loc},
 };
 use cedar_policy_validator::types as validator_types;
+use cedar_policy::proto;
 use prost::Message;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -18,7 +19,7 @@ fn output_dir() -> PathBuf {
 #[track_caller]
 fn encode_expr(path: impl AsRef<Path>, e: &str) {
     let expr: ast::Expr = e.parse().unwrap();
-    let proto: ast::proto::Expr = (&expr).into();
+    let proto: proto::models::Expr = (&expr).into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
@@ -27,56 +28,56 @@ fn encode_expr(path: impl AsRef<Path>, e: &str) {
 #[track_caller]
 fn encode_policy_as_template(path: impl AsRef<Path>, p: &str) {
     let policy: ast::Template = parse_policy_or_template(None, p).unwrap().into();
-    let proto: ast::proto::TemplateBody = (&policy).into();
+    let proto: proto::models::TemplateBody = (&policy).into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_policyset(path: impl AsRef<Path>, ps: &ast::PolicySet) {
-    let proto: ast::proto::LiteralPolicySet = ps.into();
+    let proto: proto::models::LiteralPolicySet = ps.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_request(path: impl AsRef<Path>, r: &ast::Request) {
-    let proto: ast::proto::Request = r.into();
+    let proto: proto::models::Request = r.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_entity(path: impl AsRef<Path>, e: &ast::Entity) {
-    let proto: ast::proto::Entity = e.into();
+    let proto: proto::models::Entity = e.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_entities(path: impl AsRef<Path>, es: &entities::Entities) {
-    let proto: ast::proto::Entities = es.into();
+    let proto: proto::models::Entities = es.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_val_type(path: impl AsRef<Path>, ty: &validator_types::Type) {
-    let proto: cedar_policy_validator::proto::Type = ty.into();
+    let proto: proto::models::Type = ty.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
 
 #[track_caller]
 fn encode_schema(path: impl AsRef<Path>, s: &str) {
-    let (schema, warnings) = cedar_policy_validator::ValidatorSchema::from_cedarschema_str(
+    let (schema, warnings) = proto::models::ValidatorSchema::from_cedarschema_str(
         s,
         &Extensions::all_available(),
     )
     .map_err(|e| format!("{:?}", miette::Report::new(e)))
     .unwrap();
     assert_eq!(warnings.count(), 0);
-    let proto: cedar_policy_validator::proto::ValidatorSchema = (&schema).into();
+    let proto: proto::models::ValidatorSchema = (&schema).into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
