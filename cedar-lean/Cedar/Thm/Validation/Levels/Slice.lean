@@ -37,22 +37,46 @@ open Cedar.Validation
 theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} {uid : EntityUID}
   (he : entities.attrs uid = .ok attrs)
   : ∃ ed, entities.find? uid = some ed ∧ ed.attrs = attrs
-:= by sorry
+:= by
+  simp [Entities.attrs, Map.findOrErr] at he
+  split at he <;> simp at he
+  rename_i ed h₁
+  exists ed
 
 theorem entities_find?_then_attrs {entities: Entities} {ed : EntityData} {uid : EntityUID}
   (he : entities.find? uid = some ed)
   : .ok ed.attrs = entities.attrs uid
-:= by sorry
+:= by
+  simp [Entities.attrs, Map.findOrErr]
+  split <;> simp
+  · rename_i he'
+    rw [he'] at he
+    injections he
+    simp [he]
+  · rename_i h₁
+    simp [he] at h₁
 
 theorem entities_tags_then_find? {entities: Entities} {tags : Map Tag Value} {uid : EntityUID}
   (he : entities.tags uid = .ok tags)
   : ∃ ed, entities.find? uid = some ed ∧ ed.tags = tags
-:= by sorry
+:= by
+  simp [Entities.tags, Map.findOrErr] at he
+  split at he <;> simp at he
+  rename_i ed h₁
+  exists ed
 
 theorem entities_find?_then_tags {entities: Entities} {ed : EntityData} {uid : EntityUID}
   (he : entities.find? uid = some ed)
   : .ok ed.tags = entities.tags uid
-:= by sorry
+:= by
+  simp [Entities.tags, Map.findOrErr]
+  split <;> simp
+  · rename_i he'
+    rw [he'] at he
+    injections he
+    simp [he]
+  · rename_i h₁
+    simp [he] at h₁
 
 theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request n)
