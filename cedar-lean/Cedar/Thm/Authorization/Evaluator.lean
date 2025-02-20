@@ -188,18 +188,9 @@ theorem policy_produces_bool_or_error (p : Policy) (request : Request) (entities
 
 def Value.toExpr : Value → Expr
   | .prim p => .lit p
-  | .set s => .set $ s.elts.map₁ λ ⟨v, _⟩ ↦ Value.toExpr v
-  | .record m => .record $ m.kvs.attach₂.map λ ⟨(k, v), _⟩ ↦ (k, Value.toExpr v)
   | .ext e => .ext e
-decreasing_by
-  all_goals simp_wf
-  case _ h₁ => -- set
-    have := Set.sizeOf_lt_of_mem h₁
-    omega
-  case _ h₁ => -- record
-    simp only at h₁
-    have := Map.sizeOf_lt_of_kvs m
-    omega
+  | .set (.mk vs) => .set (vs.map₁ λ ⟨v, _⟩ => Value.toExpr v)
+  | .record (.mk avs) => .record (avs.attach₃.map λ ⟨(k, v), _⟩ => (k, Value.toExpr v))
 
 inductive Value.WellFormed : Value -> Prop
   | prim_wf (p : Prim) : Value.WellFormed (.prim p)
@@ -209,85 +200,52 @@ inductive Value.WellFormed : Value -> Prop
     (h₂ : s.WellFormed) :
     Value.WellFormed (.set s)
   | record_wf (m : Map Attr Value)
-    (h₁ : ∀ t, (a, t) ∈ m.kvs → Value.WellFormed t)
+    (h₁ : ∀ a t, (a, t) ∈ m.kvs → Value.WellFormed t)
     (h₂ : m.WellFormed):
     Value.WellFormed (.record m)
 
-theorem evaluate_value_roundtrip (v : Value) {req : Request} {es : Entities} :
+theorem evaluate_value_toExpr_eq (v : Value) {req : Request} {es : Entities} :
   Value.WellFormed v → evaluate (Value.toExpr v) req es = .ok v
 := by
-  cases v <;> intro h
-  case prim | ext =>
+  intro h₁
+  induction v using Value.toExpr.induct
+  case case1 | case2 =>
+    simp [Value.toExpr, evaluate]
+  case case3 vs ih =>
     simp only [Value.toExpr, evaluate]
-  case set =>
-    simp only [Value.toExpr, evaluate]
-    rename_i s
-    cases h with
-    | set_wf _ hₐ hₛ =>
-    have h₁ : ∀ (x : { x : Value // x ∈ s.elts }),
-      evaluate (Value.toExpr x.val) req es = Except.ok x.val := by
-      intro x
-      have hₜ : sizeOf x.val < 1 + sizeOf s := by
-        have := Set.sizeOf_lt_of_mem x.property
-        omega
-      exact evaluate_value_roundtrip x.val (hₐ x.val x.property)
-    have h₂ : ((s.elts.map₁ fun x => Value.toExpr x.val).mapM₁ fun x => evaluate x.val req es)
-             = Except.ok s.elts := by
-      apply List.map₁_mapM₁_chain s.elts Value.toExpr (λ x => evaluate x req es)
-      intro x
-      exact h₁ x
+    cases h₁
+    rename_i h₁ h₂
+    have h₃ : ((vs.map₁ λ x => Value.toExpr x.val).mapM₁ λ x => evaluate x.val req es) = .ok vs := by
+      rw [List.mapM₁_eq_mapM λ x => evaluate x req es]
+      simp only [List.map₁, List.map_subtype, List.unattach_attach, List.mapM_map_eq_mapM]
+      rw [List.mapM_ok_iff_forall₂, List.forall₂_iff_map_eq, List.map_eq_map_iff]
+      intro v hv
+      specialize h₁ v
+      rw [← Set.in_list_iff_in_mk] at h₁
+      exact ih v hv (h₁ hv)
+    simp only [h₃, Except.bind_ok, Except.ok.injEq, Value.set.injEq]
+    simp only [Set.WellFormed] at h₂
     rw [h₂]
-    simp
-    simp only [Set.WellFormed, Set.toList] at hₛ
-    symm
-    exact hₛ
-  case record =>
-    simp only [Value.toExpr, evaluate, bindAttr]
-    rename_i m
-    cases h with
-    | record_wf _ hₐ hₘ =>
-    rename_i a
-
-    have hₑ : (List.map (fun x => (x.1.fst, Value.toExpr x.1.snd)) m.kvs.attach₂) = m.kvs.map (λ x => (x.fst, Value.toExpr x.snd)) := by
-      exact List.map_attach₂ (fun x => (x.fst, Value.toExpr x.snd))
-    rw [hₑ]
-    have hₑ₁ : ((List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs).mapM₂ fun x => do
-          let v ← evaluate x.1.snd req es
-          Except.ok (x.1.fst, v)) =
-          ((List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs).mapM fun x => do
-          let v ← evaluate x.snd req es
-          Except.ok (x.fst, v)) := by
-
-      have hₓ := List.mapM₂_eq_mapM (fun x : Attr × Expr => do
-          let v ← evaluate x.snd req es
-          Except.ok (x.fst, v))
-      have hₖ := hₓ (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs)
-
-      rw [hₖ]
-
-
-
-      --have hₑ₂ : x ∈ List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs →
-    --sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) := by
-      --sorry
-
-      simp only [List.mapM₂, List.attach₂]
-      --have hₓ : (List { x : Attr × Expr // sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) }) := ((List.pmap Subtype.mk (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs) (fun x => List.sizeOf_snd_lt_sizeOf_list : ∀ (x : Attr × Expr),
-  --x ∈ List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs →
-    --sizeOf x.snd < 1 + sizeOf (List.map (fun x => (x.fst, Value.toExpr x.snd)) m.kvs))))
-    rw [hₑ₁]
-    have h₁ : ∀ (x : { x // (a, x) ∈ m.kvs }),
-      evaluate (Value.toExpr x.val) req es = Except.ok x.val := by
-      intro x
-      have hₜ : sizeOf x.val < 1 + sizeOf m := by
-        have hₜ₁ := Map.sizeOf_lt_of_value x.property
-        simp only [Map.WellFormed, Map.toList] at hₘ
-        have hₜ₂ : sizeOf m = sizeOf (Map.mk m.kvs) := by
-          rw [hₘ]
-        omega
-      exact evaluate_value_roundtrip x.val (hₐ x.val x.property)
-
-    sorry
-termination_by sizeOf v
+    simp only [Set.toList]
+  case case4 avs ih =>
+    simp only [Value.toExpr, evaluate]
+    cases h₁
+    rename_i h₁ h₂
+    have h₃ : ((List.map (λ x => (x.1.fst, Value.toExpr x.1.snd)) avs.attach₃).mapM₂
+      λ x => bindAttr x.1.fst (evaluate x.1.snd req es)) = .ok avs := by
+      rw [List.attach₃, List.map_pmap_subtype λ (x : Attr × Value) => (x.fst, Value.toExpr x.snd)]
+      rw [List.mapM₂, List.attach₂, List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd req es)]
+      rw [List.mapM_map_eq_mapM, List.mapM_ok_iff_forall₂, List.forall₂_iff_map_eq,  List.map_eq_map_iff]
+      intro (a, v) hv
+      specialize h₁ a v
+      simp only [Map.kvs, hv, forall_const] at h₁
+      replace hv := List.sizeOf_snd_lt_sizeOf_list hv
+      simp only at hv
+      specialize ih a v (by simp only; omega) h₁
+      simp only [bindAttr, ih, Except.bind_ok]
+    simp only [h₃, Except.bind_ok, Except.ok.injEq, Value.record.injEq]
+    simp only [Map.WellFormed] at h₂
+    rw [h₂]
+    simp only [Map.toList]
 
 end Cedar.Thm
