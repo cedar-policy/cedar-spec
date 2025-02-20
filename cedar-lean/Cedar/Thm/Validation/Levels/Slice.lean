@@ -160,7 +160,7 @@ def CheckedEvalEntityReachable (e : Expr) :=
     CapabilitiesInvariant c request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf e c env = .ok (tx, c') →
-    Level tx n →
+    AtLevel tx n →
     ¬ EntityLitViaPath tx path →
     evaluate e request entities = .ok v →
     EuidViaPath v path euid →
@@ -212,7 +212,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite e₁ e₂ e₃) c env = .ok (tx, c'))
-  (hl : Level tx n)
+  (hl : AtLevel tx n)
   (hel : ¬ EntityLitViaPath tx path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
   (ha : EuidViaPath v path euid)
@@ -340,7 +340,7 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
-  (hl : Level tx n)
+  (hl : AtLevel tx n)
   (hel : ¬ EntityLitViaPath tx path)
   (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
   (ha : EuidViaPath v path euid)
@@ -423,7 +423,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
-  (hl : Level tx n)
+  (hl : AtLevel tx n)
   (hel : ¬ EntityLitViaPath tx path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
   (ha : EuidViaPath v path euid)
@@ -547,7 +547,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
-  (hl : Level tx n)
+  (hl : AtLevel tx n)
   (hel : ¬ EntityLitViaPath tx path)
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : EuidViaPath v path euid)
@@ -585,7 +585,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   simp only [Prod.mk.injEq, true_and, exists_and_left] at het
   replace ⟨_, het ⟩ := het
 
-  have hl' : Level atx n := by
+  have hl' : AtLevel atx n := by
     cases hl
     rename_i hl
     exact hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))
@@ -620,7 +620,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : Level tx n)
+  (hl : AtLevel tx n)
   (hel : ¬ EntityLitViaPath tx path)
   (he : evaluate e request entities = .ok v)
   (ha : EuidViaPath v path euid)
