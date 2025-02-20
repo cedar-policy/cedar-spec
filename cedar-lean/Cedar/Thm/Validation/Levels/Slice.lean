@@ -571,13 +571,6 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
     apply hel
     exact EntityLitViaPath.record hfatx hel'
 
-  have : sizeOf x < sizeOf (Expr.record rxs) := by
-    replace he := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
-    have h₁ := List.sizeOf_lt_of_mem he
-    rw [Prod.mk.sizeOf_spec a x] at h₁
-    simp
-    omega
-
   exact ih a x hfx hc hr het hl' hel' hex hv hf
 
 theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entities} {path : List Attr}
