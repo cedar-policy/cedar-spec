@@ -131,95 +131,6 @@ theorem in_val_then_val_slice
     simp [ha]
   case set | ext => cases hv
 
-theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {tag : Tag} {path : List Attr}
-  (hr : ReachableIn entities start euid n)
-  (he₁ : entities.find? euid = some ed)
-  (he₂ : ed.tags.find? tag = some tv)
-  (he₃ : EuidViaPath tv path euid') :
-  ReachableIn entities start euid' (n + 1)
-:= by
-  cases hr
-  case in_start n' hi =>
-    have he₄ : euid' ∈ ed.sliceEUIDs := by
-      simp only [EntityData.sliceEUIDs]
-      rw [Set.mem_union_iff_mem_or]
-      right
-      rw [set_mem_union_all_iff_mem_any]
-      exists tv.sliceEUIDs
-      constructor
-      case left =>
-        exact List.mem_map_of_mem _ (map_find_then_value he₂)
-      case right =>
-        exact in_val_then_val_slice he₃
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
-      ReachableIn.in_start he₄
-    exact ReachableIn.step euid hi he₁ hr'
-  case step n' ed' euid'' he₁' hi hr' =>
-    have ih := reachable_tag_step hr' he₁ he₂ he₃
-    exact ReachableIn.step euid'' hi he₁' ih
-
-theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {path : List Attr}
-  (hr : ReachableIn entities start euid n)
-  (he₁: entities.find? euid = some ed)
-  (he₂ : EuidViaPath (.record ed.attrs) path euid' ) :
-  ReachableIn entities start euid' (n + 1)
-:= by
-  cases hr
-  case in_start n' hi =>
-    have he₄ : euid' ∈ ed.sliceEUIDs := by
-      simp only [EntityData.sliceEUIDs]
-      rw [Set.mem_union_iff_mem_or]
-      left
-      rw [set_mem_union_all_iff_mem_any]
-      cases he₂
-      rename_i v a path ha hv
-      exists v.sliceEUIDs
-      constructor
-      case left =>
-        exact List.mem_map_of_mem _ (map_find_then_value ha)
-      case right =>
-        exact in_val_then_val_slice hv
-    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
-      ReachableIn.in_start he₄
-    exact ReachableIn.step euid hi he₁ hr'
-  case step n' ed' euid'' he₁' hi hr' =>
-    have ih := reachable_attr_step hr' he₁ he₂
-    exact ReachableIn.step euid'' hi he₁' ih
-
-theorem record_value_contains_evaluated_attrs
-  (he : evaluate (.record rxs) request entities = .ok (.record rvs))
-  (hfv : rvs.find? a = some av) :
-  ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok av
-:= by
-  simp [evaluate] at he
-  cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
-  rw [←he] at hfv
-  rename_i rvs
-  rw [List.mapM₂, List.attach₂] at he₁
-  rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
-  rw [List.mapM_ok_iff_forall₂] at he₁
-  simp only [Map.make, Map.find?, Map.kvs] at *
-  split at hfv <;> simp at hfv
-  subst hfv
-  rename_i a v hfv
-  have hfv' := List.find?_some hfv
-  simp only [beq_iff_eq] at hfv'
-  subst hfv'
-  replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs := by
-    simp only [List.forallᵥ_def]
-    apply List.Forall₂.imp _ he₁
-    intro x y h
-    simp only [bindAttr] at h
-    cases hx : evaluate x.snd request entities <;> simp [hx] at h
-    simp only [← h, and_self]
-  replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
-  simp only [List.forallᵥ_def] at he₁
-  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, v) (List.mem_of_find?_eq_some hfv)
-  simp only at he₃ he₄
-  subst he₃
-  exists x
-  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, and_self]
-
 def CheckedEvalEntityReachable (e : Expr) :=
   ∀ {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
     CapabilitiesInvariant c request entities →
@@ -374,6 +285,33 @@ theorem unary_not_euid_via_path {op : UnaryOp} {e₁ : Expr} {entities : Entitie
   try simp at he
   all_goals { subst he ; cases ha }
 
+theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {tag : Tag} {path : List Attr}
+  (hr : ReachableIn entities start euid n)
+  (he₁ : entities.find? euid = some ed)
+  (he₂ : ed.tags.find? tag = some tv)
+  (he₃ : EuidViaPath tv path euid') :
+  ReachableIn entities start euid' (n + 1)
+:= by
+  cases hr
+  case in_start n' hi =>
+    have he₄ : euid' ∈ ed.sliceEUIDs := by
+      simp only [EntityData.sliceEUIDs]
+      rw [Set.mem_union_iff_mem_or]
+      right
+      rw [set_mem_union_all_iff_mem_any]
+      exists tv.sliceEUIDs
+      constructor
+      case left =>
+        exact List.mem_map_of_mem _ (map_find_then_value he₂)
+      case right =>
+        exact in_val_then_val_slice he₃
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
+      ReachableIn.in_start he₄
+    exact ReachableIn.step euid hi he₁ hr'
+  case step n' ed' euid'' he₁' hi hr' =>
+    have ih := reachable_tag_step hr' he₁ he₂ he₃
+    exact ReachableIn.step euid'' hi he₁' ih
+
 theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
@@ -428,6 +366,34 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
     cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [he₃] at he
     subst he ; cases ha
   all_goals { subst he ; cases ha }
+
+theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {path : List Attr}
+  (hr : ReachableIn entities start euid n)
+  (he₁: entities.find? euid = some ed)
+  (he₂ : EuidViaPath (.record ed.attrs) path euid' ) :
+  ReachableIn entities start euid' (n + 1)
+:= by
+  cases hr
+  case in_start n' hi =>
+    have he₄ : euid' ∈ ed.sliceEUIDs := by
+      simp only [EntityData.sliceEUIDs]
+      rw [Set.mem_union_iff_mem_or]
+      left
+      rw [set_mem_union_all_iff_mem_any]
+      cases he₂
+      rename_i v a path ha hv
+      exists v.sliceEUIDs
+      constructor
+      case left =>
+        exact List.mem_map_of_mem _ (map_find_then_value ha)
+      case right =>
+        exact in_val_then_val_slice hv
+    have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
+      ReachableIn.in_start he₄
+    exact ReachableIn.step euid hi he₁ hr'
+  case step n' ed' euid'' he₁' hi hr' =>
+    have ih := reachable_attr_step hr' he₁ he₂
+    exact ReachableIn.step euid'' hi he₁' ih
 
 theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
@@ -518,6 +484,40 @@ theorem set_not_euid_via_path {xs : List Expr} {entities : Entities} {path : Lis
   simp [evaluate] at he
   cases he₁ : (xs.mapM₁ (λ x => evaluate x.val request entities)) <;> simp [he₁] at he
   subst he ; cases ha
+
+theorem record_value_contains_evaluated_attrs
+  (he : evaluate (.record rxs) request entities = .ok (.record rvs))
+  (hfv : rvs.find? a = some av) :
+  ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok av
+:= by
+  simp [evaluate] at he
+  cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;> simp [he₁] at he
+  rw [←he] at hfv
+  rename_i rvs
+  rw [List.mapM₂, List.attach₂] at he₁
+  rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
+  rw [List.mapM_ok_iff_forall₂] at he₁
+  simp only [Map.make, Map.find?, Map.kvs] at *
+  split at hfv <;> simp at hfv
+  subst hfv
+  rename_i a v hfv
+  have hfv' := List.find?_some hfv
+  simp only [beq_iff_eq] at hfv'
+  subst hfv'
+  replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs := by
+    simp only [List.forallᵥ_def]
+    apply List.Forall₂.imp _ he₁
+    intro x y h
+    simp only [bindAttr] at h
+    cases hx : evaluate x.snd request entities <;> simp [hx] at h
+    simp only [← h, and_self]
+  replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
+  simp only [List.forallᵥ_def] at he₁
+  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, v) (List.mem_of_find?_eq_some hfv)
+  simp only at he₃ he₄
+  subst he₃
+  exists x
+  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, and_self]
 
 theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
