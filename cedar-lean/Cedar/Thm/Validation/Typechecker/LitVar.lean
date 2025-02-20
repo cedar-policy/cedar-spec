@@ -49,6 +49,22 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
   }
 
+theorem type_of_ext_is_sound {e : Ext} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₃ : (typeOf (Expr.ext e) c₁ env) = Except.ok (ty, c₂)) :
+  GuardedCapabilitiesInvariant (Expr.ext e) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.ext e) request entities v ∧ InstanceOfType v ty.typeOf
+:= by
+  simp [EvaluatesTo, evaluate]
+  simp [typeOf, typeOfExt] at h₃
+  split at h₃ <;> simp [ok] at h₃
+  all_goals {
+    have ⟨h₃, h₄⟩ := h₃
+    subst c₂ ty
+    apply And.intro empty_guarded_capabilities_invariant
+    apply InstanceOfType.instance_of_ext
+    simp only [InstanceOfExtType]
+  }
+
 theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (e', c₂)) :

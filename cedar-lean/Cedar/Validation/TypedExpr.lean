@@ -33,6 +33,7 @@ stores the type of the expression.
 -/
 inductive TypedExpr where
   | lit (p : Prim) (ty : CedarType)
+  | ext (ext : Ext) (ty : CedarType)
   | var (v : Var) (ty : CedarType)
   | ite (cond : TypedExpr) (thenExpr : TypedExpr) (elseExpr : TypedExpr) (ty : CedarType)
   | and (a : TypedExpr) (b : TypedExpr) (ty : CedarType)
@@ -53,7 +54,7 @@ mutual
 def decTypedExpr (x y : TypedExpr) : Decidable (x = y) := by
   cases x <;> cases y <;>
   try { apply isFalse ; intro h ; injection h }
-  case lit.lit x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty =>
+  case lit.lit x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty | ext.ext x₁ tx y₁ ty =>
     exact match decEq x₁ y₁, decEq tx ty with
     | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
     | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
@@ -114,6 +115,7 @@ instance : DecidableEq TypedExpr := decTypedExpr
 
 def TypedExpr.typeOf : TypedExpr → CedarType
   | lit _ ty
+  | ext _ ty
   | var _ ty
   | ite _ _ _ ty
   | and _ _ ty
@@ -128,6 +130,7 @@ def TypedExpr.typeOf : TypedExpr → CedarType
 
 def TypedExpr.toExpr : TypedExpr → Expr
   | lit p _ => Expr.lit p
+  | ext e _ => Expr.ext e
   | var v _ => Expr.var v
   | ite cond thenExpr elseExpr _ => Expr.ite cond.toExpr thenExpr.toExpr elseExpr.toExpr
   | and a b _ => Expr.and a.toExpr b.toExpr

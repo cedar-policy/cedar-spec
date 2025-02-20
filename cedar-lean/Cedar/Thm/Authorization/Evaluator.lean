@@ -16,6 +16,11 @@
 
 import Cedar.Spec
 import Cedar.Thm.Data.Control
+import Cedar.Thm.Data.List
+import Cedar.Thm.Data.Set
+import Cedar.Thm.Data.Map
+import Cedar.Thm.Data.LT
+import Cedar.Data.SizeOf
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -180,5 +185,67 @@ theorem policy_produces_bool_or_error (p : Policy) (request : Request) (entities
 := by
   unfold Policy.toExpr
   apply and_produces_bool_or_error
+
+def Value.toExpr : Value → Expr
+  | .prim p => .lit p
+  | .ext e => .ext e
+  | .set (.mk vs) => .set (vs.map₁ λ ⟨v, _⟩ => Value.toExpr v)
+  | .record (.mk avs) => .record (avs.attach₃.map λ ⟨(k, v), _⟩ => (k, Value.toExpr v))
+
+inductive Value.WellFormed : Value -> Prop
+  | prim_wf (p : Prim) : Value.WellFormed (.prim p)
+  | ext_wf (e : Ext) : Value.WellFormed (.ext e)
+  | set_wf (s : Set Value)
+    (h₁ : ∀ t, t ∈ s → Value.WellFormed t)
+    (h₂ : s.WellFormed) :
+    Value.WellFormed (.set s)
+  | record_wf (m : Map Attr Value)
+    (h₁ : ∀ a t, (a, t) ∈ m.kvs → Value.WellFormed t)
+    (h₂ : m.WellFormed):
+    Value.WellFormed (.record m)
+
+theorem evaluate_value_toExpr_eq (v : Value) {req : Request} {es : Entities} :
+  Value.WellFormed v → evaluate (Value.toExpr v) req es = .ok v
+:= by
+  intro h₁
+  induction v using Value.toExpr.induct
+  case case1 | case2 =>
+    simp [Value.toExpr, evaluate]
+  case case3 vs ih =>
+    simp only [Value.toExpr, evaluate]
+    cases h₁
+    rename_i h₁ h₂
+    have h₃ : ((vs.map₁ λ x => Value.toExpr x.val).mapM₁ λ x => evaluate x.val req es) = .ok vs := by
+      rw [List.mapM₁_eq_mapM λ x => evaluate x req es]
+      simp only [List.map₁, List.map_subtype, List.unattach_attach, List.mapM_map_eq_mapM]
+      rw [List.mapM_ok_iff_forall₂, List.forall₂_iff_map_eq, List.map_eq_map_iff]
+      intro v hv
+      specialize h₁ v
+      rw [← Set.in_list_iff_in_mk] at h₁
+      exact ih v hv (h₁ hv)
+    simp only [h₃, Except.bind_ok, Except.ok.injEq, Value.set.injEq]
+    simp only [Set.WellFormed] at h₂
+    rw [h₂]
+    simp only [Set.toList]
+  case case4 avs ih =>
+    simp only [Value.toExpr, evaluate]
+    cases h₁
+    rename_i h₁ h₂
+    have h₃ : ((List.map (λ x => (x.1.fst, Value.toExpr x.1.snd)) avs.attach₃).mapM₂
+      λ x => bindAttr x.1.fst (evaluate x.1.snd req es)) = .ok avs := by
+      rw [List.attach₃, List.map_pmap_subtype λ (x : Attr × Value) => (x.fst, Value.toExpr x.snd)]
+      rw [List.mapM₂, List.attach₂, List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd req es)]
+      rw [List.mapM_map_eq_mapM, List.mapM_ok_iff_forall₂, List.forall₂_iff_map_eq,  List.map_eq_map_iff]
+      intro (a, v) hv
+      specialize h₁ a v
+      simp only [Map.kvs, hv, forall_const] at h₁
+      replace hv := List.sizeOf_snd_lt_sizeOf_list hv
+      simp only at hv
+      specialize ih a v (by simp only; omega) h₁
+      simp only [bindAttr, ih, Except.bind_ok]
+    simp only [h₃, Except.bind_ok, Except.ok.injEq, Value.record.injEq]
+    simp only [Map.WellFormed] at h₂
+    rw [h₂]
+    simp only [Map.toList]
 
 end Cedar.Thm

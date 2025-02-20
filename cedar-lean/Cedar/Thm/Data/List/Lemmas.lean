@@ -113,7 +113,6 @@ theorem map₁_eq_map (f : α → β) (as : List α) :
 := by
   simp only [map₁, attach_def, map_pmap_subtype]
 
-
 theorem map_attach₂ {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {xs : List (α × β)} (f : (α × β) → γ) :
   xs.attach₂.map (λ x : { x : α × β // sizeOf x.snd < 1 + sizeOf xs } => f x.1) =
   xs.map f
@@ -354,6 +353,30 @@ theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   rw [←List.mapM'_eq_mapM]
   induction as <;> simp [*]
 
+theorem mapM_map_eq_mapM [Monad m] [LawfulMonad m]
+  (f : α → β)
+  (g : β → m γ)
+  (as : List α) :
+  List.mapM g (List.map f as)
+  = List.mapM (λ x => g (f x)) as := by
+  induction as
+  case _ => simp
+  case _ =>
+    rename_i h
+    simp
+    rw [h]
+
+theorem mapM_all_ok (as : List α) :
+List.mapM (λ x => ((Except.ok x) : Except β α)) as = (Except.ok as) := by
+  induction as
+  case _ =>
+    rfl
+  case _ =>
+    rename_i h
+    simp
+    rw [h]
+    simp
+
 theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :
@@ -361,6 +384,28 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM f as
 := by
   simp [mapM₁, attach_def, mapM_pmap_subtype]
+
+theorem map₁_mapM₁_chain {α β : Type} (xs : List α)
+  (f : α → β) (g : β → Except δ α)
+  (h : ∀ x : { x // x ∈ xs }, g (f x.val) = Except.ok x) :
+  ((xs.map₁ λ x => f x.val).mapM₁ λ x => g x.val) = Except.ok xs :=
+by
+  rw [mapM₁_eq_mapM, map₁_eq_map]
+  induction xs with
+  | nil =>
+    simp
+    rfl
+  | cons x xs h₁ =>
+    simp at h₁
+    simp
+    have hₓ : g (f x) = Except.ok x := by
+      apply h ⟨ x, List.mem_cons_self x xs⟩
+    rw [hₓ]
+    simp
+    have hₓₛ : ∀ x, x ∈ xs → g (f x) = Except.ok x :=
+      fun a as => h ⟨a, List.mem_cons_of_mem x as⟩
+    rw [h₁ hₓₛ]
+    simp
 
 theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
   (f : (α × β) → m γ)

@@ -226,7 +226,7 @@ theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request)
   evaluate expr request entities
 := by
   cases h₀ : expr with
-  | lit p => simp only [substituteAction, mapOnVars]
+  | lit p | ext e => simp only [substituteAction, mapOnVars]
   | var vr =>
     cases vr <;> simp only [substituteAction, mapOnVars] <;> try assumption
     case action =>

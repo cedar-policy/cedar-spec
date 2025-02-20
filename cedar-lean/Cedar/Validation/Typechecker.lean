@@ -63,6 +63,12 @@ def typeOfLit (p : Prim) (env : Environment) : ResultType :=
     then ok (.entity uid.ty)
     else err (.unknownEntity uid.ty)
 
+def typeOfExt (ext : Ext) : ResultType :=
+  let ok := ok ∘ TypedExpr.ext ext
+  match ext with
+  | .decimal _ => ok (.ext .decimal)
+  | .ipaddr _ => ok (.ext .ipAddr)
+
 def typeOfVar (v : Var) (env : Environment) : ResultType :=
   let ok := ok ∘ TypedExpr.var v
   match v with
@@ -323,6 +329,7 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
 def typeOf (x : Expr) (c : Capabilities) (env : Environment) : ResultType :=
   match x with
   | .lit p => typeOfLit p env
+  | .ext e => typeOfExt e
   | .var v => typeOfVar v env
   | .ite x₁ x₂ x₃ => do
     let (ty₁, c₁) ← typeOf x₁ c env
