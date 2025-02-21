@@ -12,48 +12,18 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-abbrev Record := (Map Attr Value)
-abbrev PartialContext := Option Record
-
 structure PartialEntityUID where
   ty : EntityType                    -- Entity type is always known,
   id : Option String                 -- but entity id may not be.
 
--- TODO: enumerated entities also play a role here
-def PartialEntityUID.concretize (this : PartialEntityUID) (id : Option String) : Option EntityUID :=
-  sorry
-
--- Copy-paste from the RFC
-structure PartialRequest where
-  principal : PartialEntityUID
-  action : EntityUID                 -- Action is always known.
-  resource : PartialEntityUID
-  context :  PartialContext          -- Unknown context is omitted.
-
--- TODO: enumerated entities also play a role here
-def PartialRequest.concretize (this : PartialRequest) (principal_id : Option String) (resource_id : Option String) (context : PartialContext) : Option Request :=
-  sorry
-
-structure PartialEntityData where
-  attrs : Option Record              -- Attributes fully known or fully unknown.
-  ancestors : Option (Set EntityUID) -- Ancestors fully known or fully unknown.
-  tags : Option Record   -- Tags are fully known or fully unknown.
-
--- TODO: enumerated entities also play a role here
-def PartialEntityData.concretize (this : PartialEntityData) (other : PartialEntityData) : Option EntityData :=
-  sorry
-
-abbrev PartialEntities := Map EntityUID PartialEntityData
-
--- TODO: enumerated entities also play a role here
-def PartialEntities.concretize (this : PartialEntities) (other : PartialEntities) : Option Entities :=
-  sorry
+def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
+  self.id.map λ x ↦ ⟨ self.ty, x⟩
 
 -- The result produced by TPE
 -- We do not need `unknown`s because they can be represented by entity dereferences
--- Question: Does Residual need to be typed like `TypedExpr`
 inductive Residual where
-  | val (v : Value)  (ty : CedarType)
+  | prim (p : Prim) (ty : CedarType)
+  | ext (e : Ext) (ty : CedarType)
   | var (v : Var)  (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
@@ -66,9 +36,34 @@ inductive Residual where
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
 
+partial def Residual.asWellFormedInput (r : Residual) (env : Environment) : Bool :=
+  match r with
+  | .prim (.bool _) (.bool .anyBool) => true
+  | .prim (.int _) .int => true
+  | .prim (.string _) .string => true
+  | .prim (.entityUID uid) (.entity ety) => instanceOfEntityType uid ety env.ets.entityTypeMembers?
+  | .ext (.ipaddr _) (.ext .ipAddr) => true
+  | .ext (.decimal _) (.ext .decimal) => true
+  | .set s (.set ty) => s.all λ x ↦ x.asWellFormedInput env
+  | .record m (.record rty) => m.all λ (a, x) ↦ x.asWellFormedInput env
+  | _ => false
+
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   sorry
+
+structure PartialRequest where
+  principal : PartialEntityUID
+  action : EntityUID                 -- Action is always known.
+  resource : PartialEntityUID
+  context :  Option (Map Attr TypedResidual)          -- Unknown context is omitted.
+
+structure PartialEntityData where
+  attrs : Option (Map Attr TypedResidual)              -- Attributes fully known or fully unknown.
+  ancestors : Option (Set EntityUID) -- Ancestors fully known or fully unknown.
+  tags : Option (Map Attr TypedResidual)   -- Tags are fully known or fully unknown.
+
+abbrev PartialEntities := Map EntityUID PartialEntityData
 
 -- These are possible errors after validation and
 -- hence should be the possible errors thrown by TPE
@@ -92,43 +87,32 @@ def findMatchingEnv (schema : Schema) (req : PartialRequest) (es : PartialEntiti
   where
     matchRequestType rt :=
       instanceOfEntityType rt.principal req.principal schema.ets.entityTypeMembers? &&
-      instanceOfEntityType rt.resource req.resource schema.ets.entityTypeMembers? &&
-      instanceOfType rt.context req.context
+      instanceOfEntityType rt.resource req.resource schema.ets.entityTypeMembers?
+      -- TODO: also check context
     instanceOfEntityType ty pe (eids: EntityType → Option (Set String)) :=
       ty == pe.ty && match (pe.id, eids ty) with
         | (.some id, .some eids) => eids.contains id
         | _ => true
-    instanceOfType ty pc :=
-      match pc with
-        | .some ctx => Cedar.Validation.instanceOfType ctx (.record ty) schema.ets
-        | .none => true
-
 
 def tpeExpr (x : TypedExpr)
     (req : PartialRequest)
     (es : PartialEntities)
-    -- (h₀ : ∃ env, MatchesEnvironment req res env)
-    -- (h₁ : x.isWellFormed, i.e., ⊢ x : x.ty )
-    -- (h₁ : ∃ p, typeCheckPolicy p env = .ok x)
     : Except EvalError Residual :=
   match x with
-  | .lit l ty => .ok $ .val l ty
+  | .lit p ty => .ok $ .prim p ty
   | .var .principal ty =>
-    match req.principal.concretize none with
-    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
+    match req.principal.asEntityUID with
+    | .some uid => .ok $ .prim (.entityUID uid) ty
     | .none => .ok $ .var .principal ty
   | .var .resource ty =>
-    match req.resource.concretize none with
-    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
+    match req.resource.asEntityUID with
+    | .some uid => .ok $ .prim (.entityUID uid) ty
     | .none => .ok $ .var .resource ty
-  | .var .action ty => .ok $ .val (.prim (.entityUID req.action)) ty
+  | .var .action ty => .ok $ .prim (.entityUID req.action) ty
   | .ite c t e ty => do
     let c ← tpeExpr c req es
     match c with
-    | .val v ty₁ =>
-      -- Question: can type error exist here? I doubt it
-      -- a simple proof is based on that `tpeExpr req es` should produce the same value as `evaluate req' es'` ∀ req', res' => req.concretize = .ok req' ∧ es.concretize = .ok es', if the former does return a value
-      let b ← v.asBool.mapError λ _ => EvalError.typeError
+    | .prim (.bool b) ty₁ =>
       if b then tpeExpr t req es else tpeExpr e req es
     | _ =>
       let t ← tpeExpr t req es
@@ -137,23 +121,13 @@ def tpeExpr (x : TypedExpr)
   | .and l r ty => do
     let l ← tpeExpr l req es
     match l with
-    | .val v ty₁ =>
-      let b ← v.asBool.mapError λ _ => EvalError.typeError
-      if b then tpeExpr r req es else .ok $ .val (.prim (.bool b)) $ CedarType.bool .ff
+    | .prim (.bool b) ty₁ =>
+      if b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .ff)
     | _ =>
       let r ← tpeExpr r req es
-      match r with
-      | .val v ty₁ =>
-        let b ← v.asBool.mapError λ _ => EvalError.typeError
-        if b then .ok l else .ok $ .and l (.val (.prim (.bool b)) $ CedarType.bool .ff) ty
-      | _ => .ok $ .and l r ty
+      .ok $ .and l r ty
   | _ => sorry
 
--- soundness theorem is something like
--- let .ok res = tpePolicy schema p req es
--- req' = req.concretize
--- es' = es.concretize
--- res.evaluate req' es' = evaluate p req' es'
 def tpePolicy (schema : Schema)
   (p : Policy)
   (req : PartialRequest)

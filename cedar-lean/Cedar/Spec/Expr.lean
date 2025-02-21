@@ -55,7 +55,7 @@ inductive BinaryOp where
   | containsAny
 
 inductive Expr where
-  | lit (p : Lit)
+  | lit (p : Prim)
   | var (v : Var)
   | ite (cond : Expr) (thenExpr : Expr) (elseExpr : Expr)
   | and (a : Expr) (b : Expr)
