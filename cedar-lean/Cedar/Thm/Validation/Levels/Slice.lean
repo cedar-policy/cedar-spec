@@ -114,7 +114,7 @@ inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Pro
     (hr : ReachableIn es ed.sliceEUIDs finish level) :
     ReachableIn es start finish (level + 1)
 
-inductive EuidViaPath : Value → List Attr → EntityUID → Prop where
+inductive Value.EuidViaPath : Value → List Attr → EntityUID → Prop where
   | euid (euid : EntityUID) :
     EuidViaPath (.prim (.entityUID euid)) [] euid
   | record {a : Attr} {path : List Attr} {attrs : Map Attr Value}
@@ -133,7 +133,7 @@ theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {ent
     exact ReachableIn.step euid' hi hf (reachable_succ hr)
 
 theorem in_val_then_val_slice
-  (hv : EuidViaPath v path euid)
+  (hv : Value.EuidViaPath v path euid)
   : euid ∈ v.sliceEUIDs
 := by
   cases v
@@ -160,18 +160,18 @@ def CheckedEvalEntityReachable (e : Expr) :=
     CapabilitiesInvariant c request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf e c env = .ok (tx, c') →
-    AtLevel tx n →
-    ¬ EntityLitViaPath tx path →
+    TypedExpr.AtLevel tx n →
+    ¬ TypedExpr.EntityLitViaPath tx path →
     evaluate e request entities = .ok v →
-    EuidViaPath v path euid →
+    Value.EuidViaPath v path euid →
     entities.contains euid →
     ReachableIn entities request.sliceEUIDs euid (n + 1)
 
 theorem non_entity_lit_not_euid_via_path {p : Prim} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (ht : typeOf (.lit p) c env = .ok (tx, c'))
   (he : evaluate (.lit p) request entities = .ok v)
-  (hel : ¬ EntityLitViaPath tx path) :
-  ¬ EuidViaPath v path euid
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path) :
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   cases p
@@ -186,7 +186,7 @@ theorem non_entity_lit_not_euid_via_path {p : Prim} {c c' : Capabilities} {tx : 
 
 theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Request} {entities : Entities} {euid : EntityUID} {path : List Attr}
   (he : evaluate (.var var) request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
@@ -211,10 +211,10 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite e₁ e₂ e₃) c env = .ok (tx, c'))
-  (hl : AtLevel tx n)
-  (hel : ¬ EntityLitViaPath tx path)
+  (hl : TypedExpr.AtLevel tx n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
   (ih₂ : CheckedEvalEntityReachable e₂)
   (ih₃ : CheckedEvalEntityReachable e₃) :
@@ -228,12 +228,12 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   rename_i hl₁ hl₂ hl₃
 
   rw [htx] at hel
-  have hel₂ : ¬ EntityLitViaPath tx₂ path := by
+  have hel₂ : ¬ TypedExpr.EntityLitViaPath tx₂ path := by
     intros hel₂
-    exact hel (EntityLitViaPath.ite_true hel₂)
-  have hel₃ : ¬ EntityLitViaPath tx₃ path := by
+    exact hel (.ite_true hel₂)
+  have hel₃ : ¬ TypedExpr.EntityLitViaPath tx₃ path := by
     intros hel₃
-    exact hel (EntityLitViaPath.ite_false hel₃)
+    exact hel (.ite_false hel₃)
 
   simp only [evaluate] at he
   cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
@@ -274,7 +274,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
 
 theorem and_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.and e₁ e₂) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -289,7 +289,7 @@ theorem and_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : Li
 
 theorem or_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.or e₁ e₂) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -304,7 +304,7 @@ theorem or_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : Lis
 
 theorem unary_not_euid_via_path {op : UnaryOp} {e₁ : Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.unaryApp op e₁) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -318,7 +318,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   (hr : ReachableIn entities start euid n)
   (he₁ : entities.find? euid = some ed)
   (he₂ : ed.tags.find? tag = some tv)
-  (he₃ : EuidViaPath tv path euid') :
+  (he₃ : Value.EuidViaPath tv path euid') :
   ReachableIn entities start euid' (n + 1)
 := by
   cases hr
@@ -345,10 +345,10 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
-  (hl : AtLevel tx n)
-  (hel : ¬ EntityLitViaPath tx path)
+  (hl : TypedExpr.AtLevel tx n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (ih₁ : CheckedEvalEntityReachable e₁) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
@@ -388,7 +388,7 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
 theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {path : List Attr}
   (hr : ReachableIn entities start euid n)
   (he₁: entities.find? euid = some ed)
-  (he₂ : EuidViaPath (.record ed.attrs) path euid' ) :
+  (he₂ : Value.EuidViaPath (.record ed.attrs) path euid' ) :
   ReachableIn entities start euid' (n + 1)
 := by
   cases hr
@@ -417,10 +417,10 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
-  (hl : AtLevel tx n)
-  (hel : ¬ EntityLitViaPath tx path)
+  (hl : TypedExpr.AtLevel tx n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
   (ih : CheckedEvalEntityReachable e) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
@@ -458,7 +458,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
     subst attrs
     have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
     have ih := ih hc hr ht' hl hel he₁ (.euid euid') hf'
-    have ha' : EuidViaPath (Value.record ed.attrs) (a :: path) euid := .record hv ha
+    have ha' : Value.EuidViaPath (Value.record ed.attrs) (a :: path) euid := .record hv ha
     apply reachable_attr_step ih hed ha'
 
   case getAttrRecord hty hl =>
@@ -478,8 +478,8 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
       split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
       rename_i v hv
       subst he
-      have ha' : EuidViaPath (Value.record attrs) (a :: path) euid := .record hv ha
-      have hrt' : ¬ EntityLitViaPath tx' (a :: path) := by
+      have ha' : Value.EuidViaPath (Value.record attrs) (a :: path) euid := .record hv ha
+      have hrt' : ¬ TypedExpr.EntityLitViaPath tx' (a :: path) := by
         rw [htx] at hel
         intros hel'
         apply hel
@@ -489,7 +489,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
 
 theorem has_attr_not_euid_via_path {e₁ : Expr} {a : Attr} {entities : Entities} {path : List Attr}
   (he : evaluate (.hasAttr e₁ a) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -502,7 +502,7 @@ theorem has_attr_not_euid_via_path {e₁ : Expr} {a : Attr} {entities : Entities
 
 theorem set_not_euid_via_path {xs : List Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.set xs) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -549,10 +549,10 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
-  (hl : AtLevel tx n)
-  (hel : ¬ EntityLitViaPath tx path)
+  (hl : TypedExpr.AtLevel tx n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.record rxs) request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
   (ih : forall a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
@@ -588,21 +588,21 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   simp only [Prod.mk.injEq, true_and, exists_and_left] at het
   replace ⟨_, het ⟩ := het
 
-  have hl' : AtLevel atx n := by
+  have hl' : TypedExpr.AtLevel atx n := by
     cases hl
     rename_i hl
     exact hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))
 
-  have hel' : ¬ EntityLitViaPath atx path' := by
+  have hel' : ¬ TypedExpr.EntityLitViaPath atx path' := by
     intro hel'
     apply hel
-    exact EntityLitViaPath.record hfatx hel'
+    exact .record hfatx hel'
 
   exact ih a x hfx hc hr het hl' hel' hex hv hf
 
 theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.call xfn xs) request entities = .ok v) :
-  ¬ EuidViaPath v path euid
+  ¬ Value.EuidViaPath v path euid
 := by
   intro ha
   simp only [evaluate] at he
@@ -623,10 +623,10 @@ theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : AtLevel tx n)
-  (hel : ¬ EntityLitViaPath tx path)
+  (hl : TypedExpr.AtLevel tx n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate e request entities = .ok v)
-  (ha : EuidViaPath v path euid)
+  (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by

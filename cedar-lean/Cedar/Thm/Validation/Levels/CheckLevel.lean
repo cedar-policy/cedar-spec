@@ -27,7 +27,7 @@ open Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-inductive EntityLitViaPath : TypedExpr → List Attr → Prop where
+inductive TypedExpr.EntityLitViaPath : TypedExpr → List Attr → Prop where
   | entity_lit {euid : EntityUID} {ty : CedarType} {path : List Attr}:
     EntityLitViaPath (.lit (.entityUID euid) ty) path
   | ite_true {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
@@ -48,11 +48,11 @@ inductive EntityLitViaPath : TypedExpr → List Attr → Prop where
     EntityLitViaPath (.record attrs ty) (a :: path)
 
 theorem not_entity_lit_spec (tx : TypedExpr) :
-  (notEntityLit tx = true) ↔ (¬ EntityLitViaPath tx [])
+  (notEntityLit tx = true) ↔ (¬ TypedExpr.EntityLitViaPath tx [])
 := not_entity_lit_spec' tx []
 where
   not_entity_lit_spec' (tx : TypedExpr) (path : List Attr) :
-    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ EntityLitViaPath tx path)
+    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ TypedExpr.EntityLitViaPath tx path)
   := by
     cases tx <;> try (
       simp [notEntityLit.notEntityLit']
@@ -79,8 +79,8 @@ where
           intro h₁
           apply hite
         )
-        case left => exact EntityLitViaPath.ite_true h₁
-        case right => exact EntityLitViaPath.ite_false h₁
+        case left => exact .ite_true h₁
+        case right => exact .ite_false h₁
     case binaryApp op tx₁ tx₂ _ =>
       cases op <;> (
         simp [notEntityLit.notEntityLit']
@@ -95,7 +95,7 @@ where
         contradiction
       · intros h₁ h₂
         apply h₁
-        exact EntityLitViaPath.get_tag h₂
+        exact .get_tag h₂
 
     case getAttr tx₁ _ _ =>
       simp only [notEntityLit.notEntityLit']
@@ -107,7 +107,7 @@ where
         contradiction
       · intros h₁ h₂
         apply h₁
-        exact EntityLitViaPath.get_attr h₂
+        exact .get_attr h₂
 
     case record attrs ty =>
       cases path <;> simp [notEntityLit.notEntityLit']
@@ -151,7 +151,7 @@ def DereferencingBinaryOp : BinaryOp → Prop
   | .mem | .hasTag | .getTag => True
   | _ => False
 
-inductive AtLevel : TypedExpr → Nat → Prop where
+inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :
     AtLevel (.lit p ty) n
   | var (v : Var) (ty : CedarType) (n : Nat) :
@@ -221,7 +221,7 @@ inductive AtLevel : TypedExpr → Nat → Prop where
     AtLevel (.call xfn args ty) n
 
 theorem level_spec {tx : TypedExpr} {n : Nat}:
-  (AtLevel tx n ) ↔ (checkLevel tx n = true)
+  (TypedExpr.AtLevel tx n ) ↔ (checkLevel tx n = true)
 := by
   cases tx
   case lit =>
@@ -385,7 +385,7 @@ theorem check_level_succ {tx : TypedExpr} {n : Nat}:
   exact check_level_succ'
 where
   check_level_succ' {tx : TypedExpr} {n : Nat} :
-    AtLevel tx n → AtLevel tx (n + 1)
+    TypedExpr.AtLevel tx n → TypedExpr.AtLevel tx (n + 1)
   := by
     intro h₁
     cases h₁
@@ -406,10 +406,10 @@ where
       exact ha atx hi
     case getAttrRecord h₁ h₂ =>
       have h₃ := check_level_succ' h₂
-      apply AtLevel.getAttrRecord <;> assumption
+      apply TypedExpr.AtLevel.getAttrRecord <;> assumption
     case hasAttrRecord h₁ h₂ =>
       have h₃ := check_level_succ' h₂
-      apply AtLevel.hasAttrRecord <;> assumption
+      apply TypedExpr.AtLevel.hasAttrRecord <;> assumption
     all_goals
       constructor <;> (
         try apply check_level_succ'
