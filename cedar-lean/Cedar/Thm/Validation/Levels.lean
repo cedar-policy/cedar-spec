@@ -25,6 +25,8 @@ import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
 import Cedar.Thm.Validation.Levels.HasAttr
 import Cedar.Thm.Validation.Levels.UnaryApp
+import Cedar.Thm.Validation.Levels.And
+import Cedar.Thm.Validation.Levels.Or
 
 namespace Cedar.Thm
 
@@ -48,8 +50,14 @@ theorem level_based_slicing_is_sound {e : Expr} {tx : TypedExpr} {n : Nat} {c c�
     have iht := @level_based_slicing_is_sound t
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_if hs hc hr ht hl ihc iht ihe
-  case and => sorry -- inductive case, similar ast rewriting concerns as `if`, type annotation could be buggy
-  case or => sorry -- inductive case, similar ast rewriting concerns as `if`, type annotation could be buggy
+  case and e₁ e₂ =>
+    have ih₁ := @level_based_slicing_is_sound e₁
+    have ih₂ := @level_based_slicing_is_sound e₂
+    exact level_based_slicing_is_sound_and hs hc hr ht hl ih₁ ih₂
+  case or e₁ e₂ =>
+    have ih₁ := @level_based_slicing_is_sound e₁
+    have ih₂ := @level_based_slicing_is_sound e₂
+    exact level_based_slicing_is_sound_or hs hc hr ht hl ih₁ ih₂
   case unaryApp op e =>
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_unary_app hs hc hr ht hl ihe

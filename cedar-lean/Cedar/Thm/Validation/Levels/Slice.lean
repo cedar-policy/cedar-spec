@@ -513,7 +513,7 @@ theorem record_value_contains_evaluated_attrs
 := by
   simp only [evaluate] at he
   cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;>
-    simp? [he₁, Except.bind_err, reduceCtorEq, Except.bind_ok, Except.ok.injEq, Value.record.injEq] at he
+    simp only [he₁, Except.bind_err, reduceCtorEq, Except.bind_ok, Except.ok.injEq, Value.record.injEq] at he
   rw [←he] at hfv
   rename_i rvs
   rw [List.mapM₂, List.attach₂] at he₁

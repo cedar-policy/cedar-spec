@@ -25,23 +25,23 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
-  (h₁ : typeOf (Expr.ite x₁ x₂ x₃) c env = Except.ok (ty, c')) :
-  ∃ ty₁ bty₁ c₁ ty₂ c₂ ty₃ c₃,
-    ty = TypedExpr.ite ty₁ ty₂ ty₃ ty.typeOf ∧
-    typeOf x₁ c env = .ok (ty₁, c₁) ∧
-    ty₁.typeOf = .bool bty₁ ∧
+theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.ite x₁ x₂ x₃) c env = Except.ok (tx, c')) :
+  ∃ tx₁ bty₁ c₁ tx₂ c₂ tx₃ c₃,
+    tx = TypedExpr.ite tx₁ tx₂ tx₃ tx.typeOf ∧
+    typeOf x₁ c env = .ok (tx₁, c₁) ∧
+    tx₁.typeOf = .bool bty₁ ∧
     match bty₁ with
     | .ff      =>
-      typeOf x₃ c env = .ok (ty₃, c₃) ∧
-      ty.typeOf = ty₃.typeOf ∧ c' = c₃
+      typeOf x₃ c env = .ok (tx₃, c₃) ∧
+      tx.typeOf = tx₃.typeOf ∧ c' = c₃
     | .tt      =>
-      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
-      ty.typeOf = ty₂.typeOf ∧ c' = c₁ ∪ c₂
+      typeOf x₂ (c ∪ c₁) env = .ok (tx₂, c₂) ∧
+      tx.typeOf = tx₂.typeOf ∧ c' = c₁ ∪ c₂
     | .anyBool =>
-      typeOf x₂ (c ∪ c₁) env = .ok (ty₂, c₂) ∧
-      typeOf x₃ c env = .ok (ty₃, c₃) ∧
-      (ty₂.typeOf ⊔ ty₃.typeOf) = (.some ty.typeOf) ∧ c' = (c₁ ∪ c₂) ∩ c₃
+      typeOf x₂ (c ∪ c₁) env = .ok (tx₂, c₂) ∧
+      typeOf x₃ c env = .ok (tx₃, c₃) ∧
+      (tx₂.typeOf ⊔ tx₃.typeOf) = (.some tx.typeOf) ∧ c' = (c₁ ∪ c₂) ∩ c₃
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c env <;> simp [h₂, typeOfIf] at *

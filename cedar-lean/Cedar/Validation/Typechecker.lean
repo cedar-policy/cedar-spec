@@ -92,7 +92,7 @@ def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : Resul
 def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   let c₁ := r₁.snd
   match r₁.fst.typeOf with
-  | .bool .ff  => ok r₁.fst
+  | .bool .ff  => ok (TypedExpr.and r₁.fst r₁.fst (.bool .ff))
   | .bool ty₁  => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.and r₁.fst ty₂ ty) c
@@ -106,7 +106,7 @@ def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultTyp
 def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   let c₁ := r₁.snd
   match r₁.fst.typeOf with
-  | .bool .tt  => ok r₁.fst
+  | .bool .tt  => ok (TypedExpr.or r₁.fst r₁.fst (.bool .tt))
   | .bool .ff  => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c

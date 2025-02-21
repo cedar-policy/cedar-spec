@@ -1,0 +1,119 @@
+
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+import Cedar.Spec
+import Cedar.Data
+import Cedar.Validation
+import Cedar.Thm.Validation.Typechecker
+import Cedar.Thm.Validation.Typechecker.Basic
+import Cedar.Thm.Validation.Typechecker.IfThenElse
+import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.Levels.Basic
+
+/-!
+This file proves that level checking for `.or` expressions is sound.
+-/
+
+namespace Cedar.Thm
+
+open Cedar.Data
+open Cedar.Spec
+open Cedar.Validation
+
+theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+  (hs : slice = entities.sliceAtLevel request n)
+  (hc : CapabilitiesInvariant c₀ request entities)
+  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (ht : typeOf (.or e₁ e₂) c₀ env = Except.ok (tx, c₁))
+  (hl : checkLevel tx n = true)
+  (ih₁ : TypedAtLevelIsSound e₁)
+  (ih₂ : TypedAtLevelIsSound e₂)
+  : evaluate (.or e₁ e₂) request entities = evaluate (.or e₁ e₂) request slice
+:= by
+  replace ⟨ tx₁, bty, c', htx₁, hty₁, ht ⟩ := type_of_or_inversion ht
+  have ⟨ hgc, v₁, he₁, hv₁⟩  := type_of_is_sound hc hr htx₁
+  rw [hty₁] at hv₁
+  split at ht
+  case isTrue =>
+    replace ⟨ ht, _ ⟩ := ht
+    subst tx bty
+    replace hv₁ := instance_of_tt_is_true hv₁
+    subst v₁
+    unfold EvaluatesTo at he₁
+    simp [evaluate]
+    simp [checkLevel] at hl
+    specialize ih₁ hs hc hr htx₁ hl
+    rw [←ih₁]
+    rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+    simp [he₁, Result.as, Coe.coe, Value.asBool]
+  case isFalse =>
+    replace ⟨ tx₂, bty₂, c₂, htx₂, hty₂, ht ⟩ := ht
+    replace ⟨ b₁ , hv₁⟩  := instance_of_bool_is_bool hv₁
+    subst v₁
+    split at ht
+    case isTrue =>
+      replace ⟨ ht, _ ⟩ := ht
+      subst tx
+      simp [evaluate]
+      simp [checkLevel] at hl
+      specialize ih₁ hs hc hr htx₁ (by simp [hl])
+      rw [←ih₁]
+      rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+      simp [he₁, Result.as, Coe.coe, Value.asBool]
+      cases b₁ <;> simp
+      specialize ih₂ hs hc hr htx₂ (by simp [hl])
+      simp [ih₂]
+    case isFalse =>
+      split at ht
+      case isTrue =>
+        replace ⟨ ht, _ ⟩ := ht
+        subst tx
+        simp [evaluate]
+        simp [checkLevel] at hl
+        specialize ih₁ hs hc hr htx₁ (by simp [hl])
+        rw [←ih₁]
+        rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+        simp [he₁, Result.as, Coe.coe, Value.asBool]
+        cases b₁ <;> simp
+        specialize ih₂ hs hc hr htx₂ (by simp [hl])
+        simp [ih₂]
+      case isFalse =>
+        split at ht
+        case isTrue =>
+          replace ⟨ ht, _ ⟩ := ht
+          subst tx
+          simp [evaluate]
+          simp [checkLevel] at hl
+          specialize ih₁ hs hc hr htx₁ (by simp [hl])
+          rw [←ih₁]
+          rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+          simp [he₁, Result.as, Coe.coe, Value.asBool]
+          cases b₁ <;> simp
+          specialize ih₂ hs hc hr htx₂ (by simp [hl])
+          simp [ih₂]
+        case isFalse =>
+          replace ⟨ ht, _ ⟩ := ht
+          subst tx
+          simp [evaluate]
+          simp [checkLevel] at hl
+          specialize ih₁ hs hc hr htx₁ (by simp [hl])
+          rw [←ih₁]
+          rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+          simp [he₁, Result.as, Coe.coe, Value.asBool]
+          cases b₁ <;> simp
+          specialize ih₂ hs hc hr htx₂ (by simp [hl])
+          simp [ih₂]

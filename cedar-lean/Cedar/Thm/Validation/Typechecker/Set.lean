@@ -113,12 +113,12 @@ theorem type_of_set_tail
         subst h₆
         exists ty'
 
-theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : TypedExpr}
-  (h₁ : typeOf (Expr.set xs) c env = Except.ok (sty, c')) :
+theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.set xs) c env = Except.ok (tx, c')) :
   c' = ∅ ∧
-  ∃ ty,
-    sty.typeOf = .set ty ∧
-    ∀ xᵢ, xᵢ ∈ xs →
+  ∃ txs ty,
+    tx = (.set txs (.set ty)) ∧
+    ∀ xᵢ ∈ xs,
       ∃ tyᵢ cᵢ,
         (typeOf xᵢ c env).typeOf = Except.ok (tyᵢ, cᵢ) ∧
         (tyᵢ ⊔ ty) = .some ty
@@ -134,7 +134,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   have ⟨hl₁, hr₁⟩ := h₁
   subst hl₁ hr₁
   simp only [List.empty_eq, true_and]
-  exists ty
+  exists (hd :: tl), ty
   apply And.intro ; case left => simp [TypedExpr.typeOf]
   intro x h₄
   cases h₄
@@ -156,13 +156,17 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     · exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
-    have h₇ := @type_of_set_inversion xtl c ∅ env (.set tl ty'.set)
-    simp only [h₅, List.empty_eq, TypedExpr.typeOf, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and, true_implies] at h₇
-    specialize h₇ x h₄
-    have ⟨tyᵢ, ⟨c₁, h₇⟩, h₈⟩ := h₇
+    have h₇ := @type_of_set_inversion xtl c ∅ env (.set tl ty'.set) h₅
+    simp only [List.empty_eq, exists_and_right, true_and] at h₇
+    replace ⟨ txs, ty, h₇, h₈ ⟩ := h₇
+    simp only [TypedExpr.set.injEq, CedarType.set.injEq] at h₇
+    replace ⟨ h₇, h₉ ⟩ := h₇
+    subst h₇ h₉
+    specialize h₈ x h₄
+    replace ⟨tyᵢ, ⟨c₁, h₈⟩, h₉⟩ := h₈
     exists tyᵢ, c₁
-    simp only [true_and, h₇]
-    exact lub_trans h₈ h₆
+    simp only [h₈, true_and]
+    exact lub_trans h₉ h₆
 
 theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → TypeOfIsSound xᵢ) :
@@ -274,7 +278,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   GuardedCapabilitiesInvariant (Expr.set xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType v sty.typeOf
 := by
-  have ⟨h₆, ty, h₄, h₅⟩ := type_of_set_inversion h₃
+  have ⟨h₆, txs, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ ; rw [h₄]
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def,

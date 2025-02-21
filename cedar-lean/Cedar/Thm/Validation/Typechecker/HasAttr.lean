@@ -37,14 +37,14 @@ theorem hasAttrInRecord_has_empty_or_singleton_capabilities {x₁ : Expr} {a : A
   simp [ok, err] at h₁ <;>
   simp [h₁]
 
-theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr}
-  (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (e', c₂)) :
+theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (tx, c₂)) :
   (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ (.attr a)) ∧
-  ∃ ty₁ c₁',
-    typeOf x₁ c₁ env = .ok (ty₁, c₁') ∧
-    e' = .hasAttr ty₁ a e'.typeOf ∧
-    ((∃ ety, ty₁.typeOf = .entity ety) ∨
-     (∃ rty, ty₁.typeOf = .record rty))
+  ∃ tx₁ c₁',
+    typeOf x₁ c₁ env = .ok (tx₁, c₁') ∧
+    tx = .hasAttr tx₁ a tx.typeOf ∧
+    ((∃ ety, tx₁.typeOf = .entity ety) ∨
+     (∃ rty, tx₁.typeOf = .record rty))
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁

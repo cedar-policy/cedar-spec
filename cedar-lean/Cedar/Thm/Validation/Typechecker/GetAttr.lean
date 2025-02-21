@@ -37,14 +37,14 @@ theorem getAttrInRecord_has_empty_capabilities {x₁ : Expr} {a : Attr} {c₁ c�
   simp [ok, err] at h₁ <;>
   simp [h₁]
 
-theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
-  (h₁ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (ty, c₂)) :
+theorem type_of_getAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.getAttr x₁ a) c₁ env = Except.ok (tx, c₂)) :
   c₂ = ∅ ∧
-  ∃ ty₁ c₁',
-    typeOf x₁ c₁ env = .ok (ty₁, c₁') ∧
-    ty = .getAttr ty₁ a ty.typeOf ∧
-      ((∃ ety, ty₁.typeOf = .entity ety) ∨
-       (∃ rty, ty₁.typeOf = .record rty))
+  ∃ tx₁ c₁',
+    typeOf x₁ c₁ env = .ok (tx₁, c₁') ∧
+    tx = .getAttr tx₁ a tx.typeOf ∧
+      ((∃ ety, tx₁.typeOf = .entity ety) ∨
+       (∃ rty, tx₁.typeOf = .record rty))
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
