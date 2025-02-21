@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
+import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Typechecker.Basic
@@ -145,14 +146,14 @@ theorem in_val_then_val_slice
     rename_i v a path' ha hv
     have ih := in_val_then_val_slice hv
     unfold Value.sliceEUIDs List.attach₃
-    simp only [List.map_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1]
-    rw [set_mem_union_all_iff_mem_any]
-    exists v.sliceEUIDs
-    simp only [ih, List.mem_map, Subtype.exists, Prod.exists, and_true]
-    exists a, v
-    replace ha := Map.find?_mem_toList ha
-    unfold Map.toList at ha
-    simp [ha]
+    simp only [List.mapUnion_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1]
+    rw [Set.mem_mapUnion_iff_mem_exists]
+    exists (a, v)
+    constructor
+    · replace ha := Map.find?_mem_toList ha
+      unfold Map.toList at ha
+      exact ha
+    · simp [ih]
   case set | ext => cases hv
 
 def CheckedEvalEntityReachable (e : Expr) :=
@@ -197,13 +198,12 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     case context v a path hf' hv =>
       right
       unfold Value.sliceEUIDs List.attach₃
-      simp only [List.map_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) request.4.1, set_mem_union_all_iff_mem_any, List.mem_map, Prod.exists]
-      exists v.sliceEUIDs
+      simp only [List.mapUnion_pmap_subtype  (λ e : (Attr × Value) => e.snd.sliceEUIDs) request.4.1, Set.mem_mapUnion_iff_mem_exists, List.mem_map, Prod.exists]
+      exists a, v
       constructor
-      · exists a, v
-        replace hf' := Map.find?_mem_toList hf'
+      · replace hf' := Map.find?_mem_toList hf'
         unfold Map.toList at hf'
-        simp [hf']
+        exact hf'
       · exact in_val_then_val_slice hv
   exact ReachableIn.in_start hi
 
@@ -327,13 +327,11 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
       simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       right
-      rw [set_mem_union_all_iff_mem_any]
-      exists tv.sliceEUIDs
+      rw [Set.mem_mapUnion_iff_mem_exists]
+      exists tv
       constructor
-      case left =>
-        exact List.mem_map_of_mem _ (map_find_then_value he₂)
-      case right =>
-        exact in_val_then_val_slice he₃
+      · exact map_find_then_value he₂
+      · exact in_val_then_val_slice he₃
     have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
@@ -397,15 +395,13 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
       simp only [EntityData.sliceEUIDs]
       rw [Set.mem_union_iff_mem_or]
       left
-      rw [set_mem_union_all_iff_mem_any]
+      rw [Set.mem_mapUnion_iff_mem_exists]
       cases he₂
       rename_i v a path ha hv
-      exists v.sliceEUIDs
+      exists v
       constructor
-      case left =>
-        exact List.mem_map_of_mem _ (map_find_then_value ha)
-      case right =>
-        exact in_val_then_val_slice hv
+      · exact map_find_then_value ha
+      · exact in_val_then_val_slice hv
     have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
@@ -703,7 +699,7 @@ theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID}
   <;> simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq,Option.some.injEq] at hs
   rename_i slice'
   subst hs
-  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work slice'.unionAll euid
+  have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (slice'.mapUnion id) euid
   apply hc
   simp [hw]
 
@@ -725,7 +721,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     cases hs₁ : (List.mapM (Map.find? entities) work.elts) <;>
       simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
     rename_i eds
-    cases hs₂ : Option.map List.unionAll (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
+    cases hs₂ : Option.map (List.mapUnion id) (List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds) <;>
       simp only [hs₂, Option.map_eq_map, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
     subst hs
     rename_i slice'
@@ -743,7 +739,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     | 0 => cases hw
     | n + 1 =>
       have ih := slice_contains_reachable hw hs₄
-      rw [set_mem_union_all_iff_mem_any]
+      rw [Set.mem_mapUnion_iff_mem_exists]
       subst hs
       rename_i ed_slice _
       exists ed_slice

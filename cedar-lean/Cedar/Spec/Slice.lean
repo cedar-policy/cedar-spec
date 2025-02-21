@@ -27,17 +27,14 @@ namespace Cedar.Spec
 
 open Cedar.Data
 
-def List.unionAll {α} [LT α] [DecidableLT α] : List (Set α) → Set α :=
-  List.foldl (· ∪ ·) ∅
-
 def Value.sliceEUIDs : Value → Set EntityUID
   | .prim (.entityUID uid) => Set.singleton uid
-  | .record (Map.mk avs) => List.unionAll $ avs.attach₃.map λ e => e.val.snd.sliceEUIDs
+  | .record (Map.mk avs) => avs.attach₃.mapUnion λ e => e.val.snd.sliceEUIDs
   | .prim _ | set _ | .ext _ => ∅
 
 def EntityData.sliceEUIDs (ed : EntityData) : Set EntityUID :=
-  (List.unionAll $ ed.attrs.values.map Value.sliceEUIDs) ∪
-  (List.unionAll $ ed.tags.values.map Value.sliceEUIDs)
+  ed.attrs.values.mapUnion Value.sliceEUIDs ∪
+  ed.tags.values.mapUnion Value.sliceEUIDs
 
 def Request.sliceEUIDs (r : Request) : Set EntityUID :=
   Set.make [r.principal, r.action, r.resource] ∪
@@ -52,5 +49,5 @@ where
     | 0 => some ∅
     | level + 1 => do
       let eds ← work.elts.mapM es.find?
-      let slice ← List.unionAll <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
+      let slice ← List.mapUnion id <$> eds.mapM (λ ed => sliceAtLevel ed.sliceEUIDs level)
       some (work ∪ slice)
