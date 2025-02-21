@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.EntityReference
@@ -69,7 +69,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.In) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (mergeER · x)
+      pure (pure $ mergeER · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -102,7 +102,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Eq) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (mergeER · x)
+      pure (pure $ mergeER · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -135,7 +135,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Is) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityTypeProto ← Field.guardedParse t
-      pure (mergeET · x)
+      pure (pure $ mergeET · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -176,10 +176,10 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.IsIn) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (mergeER · x)
+      pure (pure $ mergeER · x)
     | 2 =>
       let x : EntityTypeProto ← Field.guardedParse t
-      pure (mergeET · x)
+      pure (pure $ mergeET · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -263,19 +263,19 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate) := do
   match t.fieldNum with
     | 1 =>
       let x : Proto.ScopeTemplate.Ty ← Field.guardedParse t
-      pure (mergeTy · x)
+      pure (pure $ mergeTy · x)
     | 2 =>
       let x : Proto.ScopeTemplate.In ← Field.guardedParse t
-      pure (mergeIn · x)
+      pure (pure $ mergeIn · x)
     | 3 =>
       let x : Proto.ScopeTemplate.Eq ← Field.guardedParse t
-      pure (mergeEq · x)
+      pure (pure $ mergeEq · x)
     | 4 =>
       let x : Proto.ScopeTemplate.Is ← Field.guardedParse t
-      pure (mergeIs · x)
+      pure (pure $ mergeIs · x)
     | 5 =>
       let x : Proto.ScopeTemplate.IsIn ← Field.guardedParse t
-      pure (mergeIsIn · x)
+      pure (pure $ mergeIsIn · x)
     | _ =>
       t.wireType.skip
       pure ignore

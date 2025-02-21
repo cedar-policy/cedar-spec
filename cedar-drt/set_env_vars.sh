@@ -19,6 +19,10 @@ if ! command -v lean &> /dev/null; then
     return 1
 else
     export LEAN_LIB_DIR=$(lean --print-libdir)
+    if [ -z "$LEAN_LIB_DIR" ]; then
+        echo "error: lean --print-libdir returned no output"
+        return 1
+    fi
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH+$LD_LIBRARY_PATH:}$(lean --print-libdir)
     export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH+$DYLD_LIBRARY_PATH:}$(lean --print-libdir)
 

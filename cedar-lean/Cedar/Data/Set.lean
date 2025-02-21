@@ -109,6 +109,13 @@ def size {α} (s : Set α) : Nat :=
 def singleton {α} (a : α) : Set α :=
   Set.mk [a]
 
+/-- If `s` is a singleton set, returns the single element -/
+def singleton? [Inhabited α] (s : Set α) : Option α :=
+  match s.elts with
+  | [] => none
+  | [x] => x
+  | _ => none
+
 def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
   s.elts.foldl f init
 
@@ -117,8 +124,8 @@ def foldl {α β} (f : α → β → α) (init : α) (s : Set β) : α :=
 instance [LT α] : LT (Set α) where
   lt a b := a.elts < b.elts
 
-instance decLt [LT α] [DecidableLT α] : (n m : Set α) → Decidable (n < m)
-  | .mk nelts, .mk melts => List.hasDecidableLt nelts melts
+instance decLt [LT α] [DecidableEq α] [DecidableLT α] : (n m : Set α) → Decidable (n < m)
+  | .mk nelts, .mk melts => List.decidableLT nelts melts
 
 -- enables ∅
 instance : EmptyCollection (Set α) where

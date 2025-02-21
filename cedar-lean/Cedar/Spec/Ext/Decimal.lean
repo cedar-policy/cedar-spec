@@ -32,14 +32,14 @@ We restrict the number of the digits after the decimal point to 4.
 
 def DECIMAL_DIGITS : Nat := 4
 
-abbrev Decimal := Data.Int64
+abbrev Decimal := Int64
 
 namespace Decimal
 
 ----- Definitions -----
 
 def decimal? (i : Int) : Option Decimal :=
-  Int64.mk? i
+  Int64.ofInt? i
 
 def parse (str : String) : Option Decimal :=
   match str.split (· = '.') with
@@ -60,7 +60,7 @@ def parse (str : String) : Option Decimal :=
 
 instance : ToString Decimal where
   toString (d : Decimal) : String :=
-    let neg   := if d < (0 : Int) then "-" else ""
+    let neg   := if d < 0 then "-" else ""
     let d     := d.natAbs
     let left  := d / (Nat.pow 10 DECIMAL_DIGITS)
     let right := d % (Nat.pow 10 DECIMAL_DIGITS)

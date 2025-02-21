@@ -57,19 +57,19 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
   | cons h' t' =>
     intro policy pin
     simp only [EvaluatesToBool]
-    apply typecheck_policy_with_environments_is_sound policy schema.toEnvironments request entities h₁
+    apply typecheck_policy_with_environments_is_sound policy schema.environments request entities h₁
     subst h₃
     simp only [List.forM_cons'] at h₀
-    cases h₄ : (typecheckPolicyWithEnvironments h' schema.toEnvironments) <;>
+    cases h₄ : (typecheckPolicyWithEnvironments h' schema.environments) <;>
     simp only [h₄, Except.bind_err, reduceCtorEq] at h₀
     case ok _ =>
       rw [List.mem_cons] at pin
       cases pin with
       | inl h₅ =>
         subst h₅
-        assumption
+        exact h₄
       | inr h₅ =>
-      apply List.forM_ok_implies_all_ok t' (λ x => typecheckPolicyWithEnvironments x schema.toEnvironments)
-      repeat assumption
+        apply List.forM_ok_implies_all_ok t' (typecheckPolicyWithEnvironments · schema.environments)
+        repeat assumption
 
 end Cedar.Thm

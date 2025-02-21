@@ -28,7 +28,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, UnreservedId};
 use cedar_policy_core::est::Annotations;
-use cedar_policy_validator::json_schema;
+use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
@@ -590,11 +590,14 @@ impl<'a> ExprGenerator<'a> {
                                         .expect("Failed to select entity index."),
                                 )
                                 .expect("Failed to select entity from map.");
-                            let attr_names: Vec<&SmolStr> =
-                                attrs_from_attrs_or_context(&self.schema.schema, &entity_type.shape)
-                                    .attrs
-                                    .keys()
-                                    .collect::<Vec<_>>();
+                            let attr_names: Vec<&SmolStr> = match &entity_type.kind {
+                                // Generate an empty vec here so that we fail fast
+                                EntityTypeKind::Enum { .. } => vec![],
+                                EntityTypeKind::Standard(StandardEntityType { shape, ..}) => attrs_from_attrs_or_context(&self.schema.schema, shape)
+                                .attrs
+                                .keys()
+                                .collect::<Vec<_>>()
+                            };
                             let attr_name = SmolStr::clone(u.choose(&attr_names)?);
                             Ok(ast::Expr::has_attr(
                                 self.generate_expr_for_schematype(
@@ -1182,6 +1185,13 @@ impl<'a> ExprGenerator<'a> {
                     if !self.settings.enable_extensions {
                         return Err(Error::ExtensionsDisabled);
                     };
+
+                    if !self.settings.enable_datetime_extension
+                        && matches!(target_type, Type::DateTime | Type::Duration)
+                    {
+                        return Err(Error::DatetimeExtensionsDisabled);
+                    }
+
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed, so, just call the constructor
                         // Invariant (MethodStyleArgs), Function Style, no worries
@@ -1687,7 +1697,13 @@ impl<'a> ExprGenerator<'a> {
             } => match name.as_ref() {
                 "ipaddr" => self.generate_expr_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_expr_for_type(&Type::decimal(), max_depth, u),
+                "datetime" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "datetime" => self.generate_expr_for_type(&Type::datetime(), max_depth, u),
+                "duration" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "duration" => self.generate_expr_for_type(&Type::duration(), max_depth, u),
                 _ => panic!("unrecognized extension type: {name:?}"),
             },
@@ -1822,8 +1838,14 @@ impl<'a> ExprGenerator<'a> {
                     "decimal" => {
                         self.generate_ext_func_call_for_type(&Type::decimal(), max_depth, u)
                     }
+                    "datetime" if !self.settings.enable_datetime_extension => {
+                        return Err(Error::DatetimeExtensionsDisabled);
+                    }
                     "datetime" => {
                         self.generate_ext_func_call_for_type(&Type::datetime(), max_depth, u)
+                    }
+                    "duration" if !self.settings.enable_datetime_extension => {
+                        return Err(Error::DatetimeExtensionsDisabled);
                     }
                     "duration" => {
                         self.generate_ext_func_call_for_type(&Type::duration(), max_depth, u)
@@ -1885,6 +1907,11 @@ impl<'a> ExprGenerator<'a> {
                 // the only valid extension-typed attribute value is a call of an extension constructor with return the type returned
                 if max_depth == 0 {
                     return Err(Error::TooDeep);
+                }
+                if !self.settings.enable_datetime_extension
+                    && matches!(target_type, Type::DateTime | Type::Duration)
+                {
+                    return Err(Error::DatetimeExtensionsDisabled);
                 }
                 let func = self
                     .ext_funcs
@@ -2155,7 +2182,13 @@ impl<'a> ExprGenerator<'a> {
             } => match name.as_ref() {
                 "ipaddr" => self.generate_attr_value_for_type(&Type::ipaddr(), max_depth, u),
                 "decimal" => self.generate_attr_value_for_type(&Type::decimal(), max_depth, u),
+                "datetime" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "datetime" => self.generate_attr_value_for_type(&Type::datetime(), max_depth, u),
+                "duration" if !self.settings.enable_datetime_extension => {
+                    Err(Error::DatetimeExtensionsDisabled)
+                }
                 "duration" => self.generate_attr_value_for_type(&Type::duration(), max_depth, u),
                 _ => unimplemented!("extension type {name:?}"),
             },
@@ -2529,7 +2562,7 @@ impl<'a> ExprGenerator<'a> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {
-            None => generate_uid_with_type(ty.clone(), u),
+            None => generate_uid_with_type(ty.clone(), &self.schema.get_uid_choices(ty), u),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
         }
     }

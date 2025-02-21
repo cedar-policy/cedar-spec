@@ -40,15 +40,7 @@ theorem sizeOf_lt_of_value [SizeOf α] [SizeOf β] {m : Map α β} {k : α} {v :
   have m1_lt_m : sizeOf m.1 < sizeOf m := by
     simp only [sizeOf, Map._sizeOf_1]
     omega
-  let a := sizeOf v
-  let c := sizeOf m.1
-  let d := sizeOf m
-  have v_lt_m1 : a < c := by apply Nat.lt_trans v_lt_kv h
-  have v_lt_m : a < d := by apply Nat.lt_trans v_lt_m1 m1_lt_m
-  have ha : a = sizeOf v := by simp
-  have hd : d = sizeOf m := by simp
-  rw [ha, hd] at v_lt_m
-  exact v_lt_m
+  omega
 
 theorem sizeOf_lt_of_kvs [SizeOf α] [SizeOf β] (m : Map α β) :
   sizeOf m.kvs < sizeOf m
@@ -66,9 +58,6 @@ theorem sizeOf_lt_of_tl [SizeOf α] [SizeOf β] {m : Map α β} {tl : List (α �
   simp only
   unfold kvs at h
   simp only [h, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
-  generalize sizeOf k = kn
-  generalize sizeOf v = vn
-  generalize sizeOf tl = tn
   omega
 
 end Cedar.Data.Map

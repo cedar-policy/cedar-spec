@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.Entity
@@ -51,7 +51,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntitiesProto) := do
   match t.fieldNum with
     | 1 =>
       let x : Repeated EntityProto ← Field.guardedParse t
-      pure (mergeEntities · x)
+      pure (pure $ mergeEntities · x)
     -- Ignoring 3 | mode
     | _ =>
       t.wireType.skip

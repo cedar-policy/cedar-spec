@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.TemplateBody
@@ -54,10 +54,10 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn LiteralPolicySet) := do
   match t.fieldNum with
     | 1 =>
       let x : Proto.Map String Template ← Field.guardedParse t
-      pure (mergeTemplates · x)
+      pure (pure $ mergeTemplates · x)
     | 2 =>
       let x : Proto.Map String TemplateLinkedPolicy ← Field.guardedParse t
-      pure (mergeLinks · x)
+      pure (pure $ mergeLinks · x)
     | _ =>
       t.wireType.skip
       pure ignore

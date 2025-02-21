@@ -93,4 +93,7 @@ def mapM₃ {m : Type u → Type v} [Monad m] {γ : Type u} [SizeOf α] [SizeOf 
   (xs : List (α × β)) (f : { x : α × β // sizeOf x.snd < 1 + (1 + sizeOf xs) } → m γ) : m (List γ) :=
   xs.attach₃.mapM f
 
+def mapUnion {α β} [Union α] [EmptyCollection α] (f : β → α) (bs : List β) : α :=
+  bs.foldl (λ a b => a ∪ f b) ∅
+
 end List

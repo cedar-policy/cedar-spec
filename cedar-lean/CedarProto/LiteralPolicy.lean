@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.EntityUID
@@ -68,16 +68,16 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn TemplateLinkedPolicy) := do
   match t.fieldNum with
     | 1 =>
       let x : String ← Field.guardedParse t
-      pure (mergeTemplateId · x)
+      pure (pure $ mergeTemplateId · x)
     | 2 =>
       let x : String ← Field.guardedParse t
-      pure (mergeId · x)
+      pure (pure $ mergeId · x)
     | 4 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (mergePrincipalEuid · x)
+      pure (pure $ mergePrincipalEuid · x)
     | 5 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (mergeResourceEuid · x)
+      pure (pure $ mergeResourceEuid · x)
     | _ =>
       t.wireType.skip
       pure ignore

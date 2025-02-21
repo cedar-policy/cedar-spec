@@ -84,7 +84,7 @@ pub fn run_pe_test(
         TestResult::Failure(err) => {
             // TODO(#175): Ignore cases where the definitional code returned an error due to
             // an unknown extension function.
-            if err.contains("jsonToExtFun: unknown extension function") {
+            if err.contains("unknown extension function") {
                 return;
             }
             // No other errors are expected
@@ -139,7 +139,7 @@ pub fn run_eval_test(
         TestResult::Failure(err) => {
             // TODO(#175): Ignore cases where the definitional code returned an error due to
             // an unknown extension function.
-            if err.contains("jsonToExtFun: unknown extension function") {
+            if err.contains("unknown extension function") {
                 return;
             }
             // No other errors are expected
@@ -176,7 +176,7 @@ pub fn run_auth_test(
         TestResult::Failure(err) => {
             // TODO(#175): For now, ignore cases where the Lean code returned an error due to
             // an unknown extension function.
-            if err.contains("jsonToExtFun: unknown extension function") {
+            if err.contains("unknown extension function") {
                 rust_res
             } else {
                 panic!(
@@ -249,7 +249,9 @@ pub fn run_val_test(
         TestResult::Failure(err) => {
             // TODO(#175): For now, ignore cases where the Lean code returned an error due to
             // an unknown extension function.
-            if !err.contains("jsonToExtFun: unknown extension function") {
+            if !err.contains("unknown extension function")
+                && !err.contains("unknown extension type")
+            {
                 panic!(
                     "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
                     &policies, schema
@@ -437,19 +439,24 @@ fn test_run_auth_test() {
         EntityUID::with_eid_and_type("User", "alice").unwrap(),
         alice_attributes,
         std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
         std::iter::empty(),
         &Extensions::all_available(),
     )
     .unwrap();
     let entity_view = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Action", "view").unwrap(),
-        std::collections::HashMap::new(),
+        [],
         std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
+        [],
     );
     let entity_vacation = Entity::new_with_attr_partial_value(
         EntityUID::with_eid_and_type("Photo", "vacation").unwrap(),
-        std::collections::HashMap::new(),
+        [],
         std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
+        [],
     );
     let entities = Entities::from_entities(
         vec![entity_alice, entity_view, entity_vacation],

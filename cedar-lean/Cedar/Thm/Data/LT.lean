@@ -133,10 +133,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Data.Int64.strictLT.asymmetric x₁ x₂
-      simp [LT.lt] at h₂
-      cases h₃ : Data.Int64.lt x₁ x₂ <;>
-      simp [h₃] at h₁ h₂ ; simp [h₂]
+      exact Int64.strictLT.asymmetric x₁ x₂ h₁
     case ipaddr =>
       have h₂ := IPNet.strictLT.asymmetric x₁ x₂
       simp [LT.lt] at h₂
@@ -146,11 +143,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
     case decimal =>
-      have h₃ := Data.Int64.strictLT.transitive x₁ x₂ x₃
-      simp [LT.lt] at h₃
-      cases h₄ : Data.Int64.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Data.Int64.lt x₂ x₃ <;> simp [h₅] at *
-      simp [h₃]
+      exact Int64.strictLT.transitive x₁ x₂ x₃ h₁ h₂
     case ipaddr =>
       have h₃ := IPNet.strictLT.transitive x₁ x₂ x₃
       simp [LT.lt] at h₃
@@ -161,9 +154,7 @@ instance Ext.strictLT : StrictLT Ext where
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ <;> intro h₁
     case decimal =>
-      have h₂ := Data.Int64.strictLT.connected x₁ x₂
-      simp [LT.lt, h₁] at h₂
-      rcases h₂ with h₂ | h₂ <;> simp [h₂]
+      exact Int64.strictLT.connected x₁ x₂ h₁
     case ipaddr =>
       have h₂ := IPNet.strictLT.connected x₁ x₂
       simp [LT.lt, h₁] at h₂
@@ -173,13 +164,16 @@ instance Ext.strictLT : StrictLT Ext where
 
 instance Name.strictLT : StrictLT Name where
   asymmetric a b   := by
-    simp [LT.lt, Name.lt]
-    apply List.lt_asymm
+    simp only [LT.lt, Bool.not_eq_true]
+    simp only [Name.lt, decide_eq_true_eq, decide_eq_false_iff_not, List.not_lt]
+    apply List.slt_asymm
   transitive a b c := by
-    simp [LT.lt, Name.lt]
+    simp only [LT.lt]
+    simp only [Name.lt, decide_eq_true_eq]
     apply List.slt_trans
   connected  a b   := by
-    simp [LT.lt, Name.lt]
+    simp only [ne_eq, LT.lt]
+    simp only [Name.lt, decide_eq_true_eq]
     intro h₁
     apply List.lt_conn
     by_contra h₂
@@ -212,24 +206,22 @@ theorem EntityUID.lt_asymm {a b : EntityUID} :
 theorem EntityUID.lt_trans {a b c : EntityUID} :
   a < b → b < c → a < c
 := by
-  simp [LT.lt, EntityUID.lt]
+  simp only [LT.lt]
+  simp only [EntityUID.lt, Bool.decide_or, Bool.decide_and, Bool.or_eq_true, decide_eq_true_eq,
+    Bool.and_eq_true]
   intro h₁ h₂
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  · have h₃ := Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂
-    simp only [LT.lt] at h₃
-    simp [h₃]
-  · have ⟨h₂, _⟩ := h₂
+  · simp [Name.strictLT.transitive a.ty b.ty c.ty h₁ h₂]
+  · replace ⟨h₂, _⟩ := h₂
     simp [h₂] at h₁
     simp [h₁]
-  · have ⟨h₁, _⟩ := h₁
+  · replace ⟨h₁, _⟩ := h₁
     simp [←h₁] at h₂
     simp [h₂]
-  · have ⟨hl₁, hr₁⟩ := h₁
-    have ⟨hl₂, hr₂⟩ := h₂
+  · replace ⟨hl₁, hr₁⟩ := h₁ ; clear h₁
+    replace ⟨hl₂, hr₂⟩ := h₂ ; clear h₂
     simp [hl₁] at * ; simp [hl₂] at *
-    have h₃ := String.strictLT.transitive a.eid b.eid c.eid hr₁ hr₂
-    simp only [LT.lt] at h₃
-    simp [h₃]
+    simp [String.strictLT.transitive a.eid b.eid c.eid hr₁ hr₂]
 
 theorem EntityUID.lt_conn {a b : EntityUID} :
   a ≠ b → (a < b ∨ b < a)
@@ -261,7 +253,7 @@ theorem Prim.lt_asymm {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
-  case int i₁ i₂           => exact (Data.Int64.strictLT.asymmetric i₁ i₂)
+  case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.asymmetric uid₁ uid₂)
 
@@ -271,7 +263,7 @@ theorem Prim.lt_trans {a b c : Prim} :
   cases a <;> cases b <;> cases c <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂ b₃            => exact (Bool.strictLT.transitive b₁ b₂ b₃)
-  case int i₁ i₂ i₃             => exact (Data.Int64.strictLT.transitive i₁ i₂ i₃)
+  case int i₁ i₂ i₃             => exact (Int64.strictLT.transitive i₁ i₂ i₃)
   case string s₁ s₂ s₃          => exact (String.strictLT.transitive s₁ s₂ s₃)
   case entityUID uid₁ uid₂ uid₃ => exact (EntityUID.strictLT.transitive uid₁ uid₂ uid₃)
 
@@ -281,7 +273,7 @@ theorem Prim.lt_conn {a b : Prim} :
   cases a <;> cases b <;> simp [LT.lt] <;>
   simp [Prim.lt]
   case bool b₁ b₂          => exact (Bool.strictLT.connected b₁ b₂)
-  case int i₁ i₂           => exact (Data.Int64.strictLT.connected i₁ i₂)
+  case int i₁ i₂           => exact (Int64.strictLT.connected i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.connected s₁ s₂)
   case entityUID uid₁ uid₂ => exact (EntityUID.strictLT.connected uid₁ uid₂)
 
@@ -396,7 +388,8 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
       have h₂ := String.strictLT.asymmetric a₁ a₂ h₁
       have h₃ := StrictLT.not_eq a₁ a₂ h₁
       rw [eq_comm] at h₃
-      simp [h₂, h₃]
+      simp only [h₃, false_implies, and_true, ge_iff_le]
+      simp_all only [String.not_lt]
     case inr =>
       have ⟨hl₁, h₂⟩ := h₁
       subst hl₁

@@ -36,7 +36,7 @@ def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Enti
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
 def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
-  ∃ env ∈ schema.toEnvironments,
+  ∃ env ∈ schema.environments,
   RequestAndEntitiesMatchEnvironment env request entities
 
 theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :

@@ -16,23 +16,14 @@
 
 import Cedar.Spec
 
-/-! This file contains definitions relevant to slicing. -/
+/-!
+This file defines a simple policy slicing algorithm that is based
+on policy scopes. For proofs of correctness, see Cedar.Thm.PolicySlice.
+-/
 
-namespace Cedar.Thm
+namespace Cedar.Slice
 
 open Cedar.Spec
-
-/--
-A policy slice is a subset of a collection of policies.  This slice is sound for
-a given request and entities if every policy in the collection that is not in
-the slice is also not satisfied with respect to the request and entities, and
-doesn't produce an error when evaluated.
--/
-def IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : Policies) : Prop :=
-  slice ⊆ policies ∧
-  ∀ policy ∈ policies,
-    policy ∉ slice →
-    ¬ satisfied policy req entities ∧ ¬ hasError policy req entities
 
 /--
 A policy bound consists of optional `principal` and `resource` entities.
@@ -55,31 +46,28 @@ def satisfiedBound (bound : PolicyBound) (request : Request) (entities : Entitie
   inSomeOrNone request.principal bound.principalBound entities ∧
   inSomeOrNone request.resource bound.resourceBound entities
 
-/--
-A bound is sound for a given policy if the bound is satisfied for every request
-and entities for which the policy is satisfied or for which the policy produces
-an error.
--/
-def IsSoundPolicyBound (bound : PolicyBound) (policy : Policy) : Prop :=
-  ∀ (request : Request) (entities : Entities),
-  (satisfied policy request entities →
-  satisfiedBound bound request entities) ∧
-  (hasError policy request entities →
-  satisfiedBound bound request entities)
 
 /--
 A bound analysis takes as input a policy and returns a PolicyBound.
 -/
 abbrev BoundAnalysis := Policy → PolicyBound
 
+/--
+A bound-based slicing algorithm takes as input a bound analysis, request, entities,
+and policies, and filters out the policies whose bound is not satisfied by the
+request and entities.
+-/
 def BoundAnalysis.slice (ba : BoundAnalysis) (request : Request) (entities : Entities) (policies : Policies) : Policies :=
   policies.filter (fun policy => satisfiedBound (ba policy) request entities)
 
+
 /--
-A bound analysis is sound if it produces sound bounds for all policies.
+Scope-based bound analysis extracts the bound from the policy scope.
 -/
-def IsSoundBoundAnalysis (ba : BoundAnalysis) : Prop :=
-  ∀ (policy : Policy), IsSoundPolicyBound (ba policy) policy
+def scopeAnalysis (policy : Policy) : PolicyBound :=
+  {
+    principalBound := policy.principalScope.scope.bound,
+    resourceBound  := policy.resourceScope.scope.bound,
+  }
 
-
-end Cedar.Thm
+end Cedar.Slice

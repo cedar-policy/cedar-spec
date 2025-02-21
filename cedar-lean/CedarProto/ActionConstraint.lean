@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Enum
 
 -- Message Dependencies
@@ -73,7 +73,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.In) := do
   match t.fieldNum with
     | 1 =>
       let x : Repeated EntityUID ← Field.guardedParse t
-      pure (mergeEuids · x)
+      pure (pure $ mergeEuids · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -105,7 +105,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.Eq) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (mergeEuid · x)
+      pure (pure $ mergeEuid · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -157,13 +157,13 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope) := do
   match t.fieldNum with
     | 1 =>
       let x : Proto.ActionScope.Ty ← Field.guardedParse t
-      pure (mergeTy · x)
+      pure (pure $ mergeTy · x)
     | 2 =>
       let x : Proto.ActionScope.In ← Field.guardedParse t
-      pure (mergeIn · x)
+      pure (pure $ mergeIn · x)
     | 3 =>
       let x : Proto.ActionScope.Eq ← Field.guardedParse t
-      pure (mergeEq · x)
+      pure (pure $ mergeEq · x)
     | _ =>
       t.wireType.skip
       pure ignore

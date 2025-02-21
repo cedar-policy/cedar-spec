@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.Expr
@@ -119,19 +119,19 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Template) := do
     -- NOTE: Doesn't look like id gets utilized in this message
     | 4 =>
       let x : Effect ← Field.guardedParse t
-      pure (mergeEffect · x)
+      pure (pure $ mergeEffect · x)
     | 5 =>
       let x : PrincipalScopeTemplate ← Field.guardedParse t
-      pure (mergePrincipalScope · x)
+      pure (pure $ mergePrincipalScope · x)
     | 6 =>
       let x : ActionScope ← Field.guardedParse t
-      pure (mergeActionScope · x)
+      pure (pure $ mergeActionScope · x)
     | 7 =>
       let x : ResourceScopeTemplate ← Field.guardedParse t
-      pure (mergeResourceScope · x)
+      pure (pure $ mergeResourceScope · x)
     | 8 =>
       let x : Conditions ← Field.guardedParse t
-      pure (mergeConditions · x)
+      pure (pure $ mergeConditions · x)
     | _ =>
       t.wireType.skip
       pure ignore

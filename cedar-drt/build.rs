@@ -33,16 +33,12 @@ fn main() {
     println!("cargo:rerun-if-changed={LEAN_BUILD_DIR}");
 
     let mut config = prost_build::Config::new();
-    config.extern_path(".cedar_policy_core", "::cedar_policy_core::ast::proto");
-    config.extern_path(".cedar_policy_validator", "::cedar_policy_validator::proto");
+    config.extern_path(".cedar_policy_core", "::cedar_policy::proto::models");
+    config.extern_path(".cedar_policy_validator", "::cedar_policy::proto::models");
     config
         .compile_protos(
             &["./protobuf_schema/Messages.proto"],
-            &[
-                "./protobuf_schema",
-                "../cedar/cedar-policy-core/protobuf_schema",
-                "../cedar/cedar-policy-validator/protobuf_schema",
-            ],
+            &["./protobuf_schema", "../cedar/cedar-policy/protobuf_schema"],
         )
         .unwrap();
 }

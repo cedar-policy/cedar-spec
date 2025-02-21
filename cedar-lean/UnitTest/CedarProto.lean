@@ -88,7 +88,7 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/true.protodata"
       (Cedar.Spec.Expr.lit (.bool true)),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/345.protodata"
-      (Cedar.Spec.Expr.lit (.int (Cedar.Data.Int64.mk 345 (by decide)))),
+      (Cedar.Spec.Expr.lit (.int (Int64.ofIntChecked 345 (by decide)))),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/emptystring.protodata"
       (Cedar.Spec.Expr.lit (.string "")),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/thisiscedar.protodata"
@@ -103,13 +103,13 @@ def tests := [
       (Cedar.Spec.Expr.set []),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/set.protodata"
       (Cedar.Spec.Expr.set [
-        .lit (.int (Cedar.Data.Int64.mk (-2) (by decide))),
+        .lit (.int (Int64.ofIntChecked (-2) (by decide))),
         .lit (.string "minustwo"),
       ]),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/nested_set.protodata"
       (Cedar.Spec.Expr.set [
-        .set [ .lit (.int (Cedar.Data.Int64.mk 1 (by decide))), .lit (.int (Cedar.Data.Int64.mk 2 (by decide))) ],
-        .set [ .lit (.int (Cedar.Data.Int64.mk 3 (by decide))), .getAttr (.var .principal) "foo" ],
+        .set [ .lit (.int (Int64.ofIntChecked 1 (by decide))), .lit (.int (Int64.ofIntChecked 2 (by decide))) ],
+        .set [ .lit (.int (Int64.ofIntChecked 3 (by decide))), .getAttr (.var .principal) "foo" ],
         .lit (.bool false),
       ]),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/emptyrecord.protodata"
@@ -117,15 +117,15 @@ def tests := [
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/record.protodata"
       Cedar.Spec.Expr.mkWf
       (.record [
-        ("eggs", .lit (.int (Cedar.Data.Int64.mk 7 (by decide)))),
-        ("ham", .lit (.int (Cedar.Data.Int64.mk 3 (by decide)))),
+        ("eggs", .lit (.int (Int64.ofIntChecked 7 (by decide)))),
+        ("ham", .lit (.int (Int64.ofIntChecked 3 (by decide)))),
       ]),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/nested_record.protodata"
       Cedar.Spec.Expr.mkWf
       (.record [
         ("eggs", .set [ .lit (.string "this is"), .lit (.string "a set") ]),
         ("ham", .record [
-          ("a", .lit (.int (Cedar.Data.Int64.mk 0 (by decide)))),
+          ("a", .lit (.int (Int64.ofIntChecked 0 (by decide)))),
           ("b", .lit (.bool false)),
         ]),
       ]),
@@ -146,19 +146,19 @@ def tests := [
         (.unaryApp .not (.getAttr (.var .principal) "foo"))
         (.unaryApp .not (.binaryApp .eq
           (.unaryApp .neg (.getAttr (.var .principal) "bar"))
-          (.lit (.int (Cedar.Data.Int64.mk 3 (by decide))))
+          (.lit (.int (Int64.ofIntChecked 3 (by decide))))
         ))
       ),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/plus_and_minus_and_times.protodata"
       (Cedar.Spec.Expr.binaryApp .sub
-        (.binaryApp .add (.lit (.int (Cedar.Data.Int64.mk 32 (by decide)))) (.getAttr (.var .context) "count"))
-        (.binaryApp .mul (.lit (.int (Cedar.Data.Int64.mk 7 (by decide)))) (.lit (.int (Cedar.Data.Int64.mk 4 (by decide)))))
+        (.binaryApp .add (.lit (.int (Int64.ofIntChecked 32 (by decide)))) (.getAttr (.var .context) "count"))
+        (.binaryApp .mul (.lit (.int (Int64.ofIntChecked 7 (by decide)))) (.lit (.int (Int64.ofIntChecked 4 (by decide)))))
       ),
     testDeserializeProtodata "UnitTest/CedarProto-test-data/contains.protodata"
       (Cedar.Spec.Expr.binaryApp .contains
         (.set [
-          (.lit (.int (Cedar.Data.Int64.mk 2 (by decide)))),
-          (.lit (.int (Cedar.Data.Int64.mk 3 (by decide)))),
+          (.lit (.int (Int64.ofIntChecked 2 (by decide)))),
+          (.lit (.int (Int64.ofIntChecked 3 (by decide)))),
           (.lit (.entityUID (mkUid [] "User" "alice"))),
         ])
         (.getAttr (.var .context) "foo")
@@ -182,7 +182,7 @@ def tests := [
         (.getAttr
           (.getAttr
             (.ite
-              (.binaryApp .less (.getAttr (.var .context) "foo") (.lit (.int (Cedar.Data.Int64.mk 3 (by decide)))))
+              (.binaryApp .less (.getAttr (.var .context) "foo") (.lit (.int (Int64.ofIntChecked 3 (by decide)))))
               (.getAttr (.var .principal) "foo")
               (.getAttr (.var .principal) "bar")
             )
@@ -240,7 +240,7 @@ def tests := [
             kind := .when
             body := .unaryApp .not (.binaryApp .lessEq
               (.getAttr (.var .resource) "eligibility")
-              (.lit (.int (Cedar.Data.Int64.mk 2 (by decide))))
+              (.lit (.int (Int64.ofIntChecked 2 (by decide))))
             )
           }]
         },
@@ -255,7 +255,7 @@ def tests := [
             body := .binaryApp .eq
               (.binaryApp .sub
                 (.getAttr (.var .context) "foo")
-                (.lit (.int (Cedar.Data.Int64.mk 7 (by decide))))
+                (.lit (.int (Int64.ofIntChecked 7 (by decide))))
               )
               (.getAttr (.var .context) "bar")
           }]
@@ -321,8 +321,8 @@ def tests := [
         data := {
           attrs := Map.make [
             ("foo", .set (Set.make [
-              (.prim (.int (Cedar.Data.Int64.mk 1 (by decide)))),
-              (.prim (.int (Cedar.Data.Int64.mk (-1) (by decide)))),
+              (.prim (.int (Int64.ofIntChecked 1 (by decide)))),
+              (.prim (.int (Int64.ofIntChecked (-1) (by decide)))),
             ])),
             ("bar", .prim (.bool false)),
           ]
@@ -365,12 +365,12 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.make [{ id := "A", path := [] }]
             tags := none
@@ -401,17 +401,17 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.make [
               ("a", .required (.bool .anyBool)),
               ("b", .required .int),
@@ -464,22 +464,22 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "F", path := [] }, {
+          ({ id := "F", path := [] }, .standard {
             attrs := Map.make [
               ("z", .required .string),
               ("y", .optional (.set (.set (.entity { id := "C", path := [] })))),
@@ -509,32 +509,32 @@ def tests := [
       Cedar.Validation.Proto.ValidatorSchema.toSchema
       {
         ets := Map.make [
-          ({ id := "A", path := [] }, {
+          ({ id := "A", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "B", path := [] }, {
+          ({ id := "B", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := none
           }),
-          ({ id := "C", path := [] }, {
+          ({ id := "C", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := some .string
           }),
-          ({ id := "D", path := [] }, {
+          ({ id := "D", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.make [{ id := "B", path := [] }]
             tags := some (.set .string)
           }),
-          ({ id := "E", path := [] }, {
+          ({ id := "E", path := [] }, .standard {
             attrs := Map.empty
             ancestors := Set.empty
             tags := some (.set (.entity { id := "A", path := [] }))
           }),
-          ({ id := "F", path := [] }, {
+          ({ id := "F", path := [] }, .standard {
             attrs := Map.make [
               ("z", .required (.set .string)),
             ]

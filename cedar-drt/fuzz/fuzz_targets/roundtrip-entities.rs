@@ -21,7 +21,10 @@ use cedar_drt::{
     extensions::Extensions,
     Entities, ValidatorSchema,
 };
-use cedar_policy::{entities_errors::EntitiesError, entities_json_errors::JsonSerializationError};
+use cedar_policy::{
+    conformance_errors::EntitySchemaConformanceError, entities_errors::EntitiesError,
+    entities_json_errors::JsonSerializationError,
+};
 use cedar_policy_generators::{
     hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
@@ -50,6 +53,8 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
+    // It's Ok to enable this flag because this target is PBT.
+    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -105,14 +110,24 @@ fuzz_target!(|input: FuzzTargetInput| {
         Extensions::all_available(),
         TCComputation::EnforceAlreadyComputed,
     );
-    let roundtripped_entities = eparser
-        .from_json_value(json.clone())
-        .expect("Should be able to parse serialized entity JSON");
-    // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
-    for e in input.entities {
-        let roundtripped_e = roundtripped_entities
-            .entity(e.uid())
-            .expect("Schema-based roundtrip dropped entity");
-        assert_eq!(&e, roundtripped_e);
+    // The entity store generator currently produces entities of enumerated entity types but with invalid EIDs,
+    // which are rejected by entity validation
+    match eparser.from_json_value(json.clone()) {
+        Ok(roundtripped_entities) => {
+            // Weaker assertion for schema based parsing because it adds actions from the schema into entities.
+            for e in input.entities {
+                let roundtripped_e = roundtripped_entities
+                    .entity(e.uid())
+                    .expect("Schema-based roundtrip dropped entity");
+                assert_eq!(&e, roundtripped_e);
+            }
+        }
+        Err(err) => {
+            // The error should only be `InvalidEnumEntity`
+            assert!(matches!(
+                err,
+                EntitiesError::InvalidEntity(EntitySchemaConformanceError::InvalidEnumEntity(_))
+            ));
+        }
     }
 });

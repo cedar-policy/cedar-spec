@@ -41,15 +41,24 @@ structure Name where
   id : Id
   path : List Id
 
+instance : ToString Name where
+  toString n := String.join (n.path.map λ s => s!"{s}::") ++ n.id
+
 abbrev EntityType := Name
+
+instance : ToString EntityType where
+  toString ety := let n : Name := ety ; ToString.toString n
 
 structure EntityUID where
   ty : EntityType
   eid : String
 
+instance : ToString EntityUID where
+  toString euid := s!"{euid.ty}::\"{euid.eid}\""
+
 inductive Prim where
   | bool (b : Bool)
-  | int (i : Data.Int64)
+  | int (i : Int64)
   | string (s : String)
   | entityUID (uid : EntityUID)
 
@@ -79,7 +88,7 @@ def Value.asString : Value →  Result String
   | .prim (.string s) => .ok s
   | _ => .error Error.typeError
 
-def Value.asInt : Value →  Result Data.Int64
+def Value.asInt : Value →  Result Int64
   | .prim (.int i) => .ok i
   | _ => .error Error.typeError
 
@@ -90,7 +99,7 @@ def Result.as {α} (β) [Coe α (Result β)] : Result α → Result β
 instance : Coe Bool Value where
   coe b := .prim (.bool b)
 
-instance : Coe Data.Int64 Value where
+instance : Coe Int64 Value where
   coe i := .prim (.int i)
 
 instance : Coe String Value where
@@ -114,7 +123,7 @@ instance : Coe (Map Attr Value) Value where
 instance : Coe Value (Result Bool) where
   coe v := v.asBool
 
-instance : Coe Value (Result Data.Int64) where
+instance : Coe Value (Result Int64) where
   coe v := v.asInt
 
 instance : Coe Value (Result String) where

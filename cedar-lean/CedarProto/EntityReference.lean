@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Enum
 
 -- Message Dependencies
@@ -74,10 +74,10 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUIDOrSlot) := do
   match t.fieldNum with
     | 1 =>
       let x : Proto.EntityReferenceType ← Field.guardedParse t
-      pure (mergeTy · x)
+      pure (pure $ mergeTy · x)
     | 2 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (mergeEuid · x)
+      pure (pure $ mergeEuid · x)
     | _ =>
       t.wireType.skip
       pure ignore

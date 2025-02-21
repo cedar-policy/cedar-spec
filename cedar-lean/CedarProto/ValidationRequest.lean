@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Message
 import Protobuf.String
 
@@ -28,7 +28,6 @@ namespace Cedar.Validation.Proto
 
 deriving instance DecidableEq for ActionSchemaEntry
 deriving instance DecidableEq for ActionSchema
-deriving instance DecidableEq for EntitySchemaEntry
 deriving instance DecidableEq for EntitySchema
 deriving instance DecidableEq for Schema
 
@@ -63,10 +62,10 @@ def parseField (t : Tag) : BParsec (MergeFn ValidationRequest) := do
   match t.fieldNum with
     | 1 =>
       let x : Schema ← Field.guardedParse t
-      pure (mergeSchema · x)
+      pure (pure $ mergeSchema · x)
     | 2 =>
       let x : Spec.Policies ← Field.guardedParse t
-      pure (mergePolicies · x)
+      pure (pure $ mergePolicies · x)
     | _ =>
       t.wireType.skip
       pure ignore

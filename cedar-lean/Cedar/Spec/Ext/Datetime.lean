@@ -15,12 +15,59 @@
 -/
 
 import Cedar.Data.Int64
+import Std.Time
+import Std.Time.Format
 
 /-! This file defines Cedar datetime values and functions. -/
 
 namespace Cedar.Spec.Ext
 
 open Cedar.Data
+
+namespace Datetime
+
+/--
+  A datetime value is measured in milliseconds and constructed from a datetime string.
+  A datetime string must be of one of the forms:
+    - `YYYY-MM-DD` (date only)
+    - `YYYY-MM-DDThh:mm:ssZ` (UTC)
+    - `YYYY-MM-DDThh:mm:ss.SSSZ` (UTC with millisecond precision)
+    - `YYYY-MM-DDThh:mm:ss(+|-)hhmm` (With timezone offset in hours and minutes)
+    - `YYYY-MM-DDThh:mm:ss.SSS(+|-)hhmm` (With timezone offset in hours and minutes and millisecond precision)
+
+  Regardless of the timezone, offset is always normalized to UTC.
+
+  The datetime type does not provide a way to create a datetime from a Unix timestamp.
+  One of the readable formats listed above must be used instead.
+-/
+abbrev Datetime := Int64
+
+def MAX_OFFSET_SECONDS: Nat := 86400
+
+def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
+def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
+def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
+def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxx")
+def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
+
+abbrev datetime? := Int64.ofInt?
+
+def dateContainsLeapSeconds (str: String) : Bool :=
+  str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
+
+def parse (str: String) : Option Datetime := do
+  if dateContainsLeapSeconds str then failure
+  let val :=
+    DateOnly.parse str <|>
+    DateUTC.parse str <|>
+    DateUTCWithMillis.parse str <|>
+    DateWithOffset.parse str <|>
+    DateWithOffsetAndMillis.parse str
+
+  let zonedTime ← val.toOption
+  if zonedTime.timezone.offset.second.val.natAbs < MAX_OFFSET_SECONDS
+  then datetime? zonedTime.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
+  else none
 
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
@@ -38,9 +85,7 @@ open Cedar.Data
 
   A duration may be negative. Negative duration strings must begin with `-`.
 -/
-abbrev Duration := Data.Int64
-
-namespace Datetime
+abbrev Duration := Int64
 
 def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
@@ -49,11 +94,10 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
 
-def duration? (i : Int) : Option Duration :=
-  Int64.mk? i
+abbrev duration? := Int64.ofInt?
 
 def durationUnits? (n: Nat) (suffix: String) : Option Duration :=
-  match Int64.mk? n with
+  match Int64.ofInt? n with
   | none => none
   | some i =>
     match suffix with
@@ -113,5 +157,28 @@ def Duration.parse (str : String) : Option Duration :=
 deriving instance Repr for Duration
 
 abbrev duration := Duration.parse
+
+def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
+  datetime.add? duration
+
+def durationSince (datetime other: Datetime) : Option Duration :=
+  datetime.sub? other
+
+def toDate (datetime: Datetime) : Option Datetime :=
+  let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
+  if datetime >= 0
+  then millisPerDayI64 * (datetime.div millisPerDayI64)
+  else if datetime.mod millisPerDayI64 == 0
+       then datetime
+       else ((datetime.div millisPerDayI64) - 1) * millisPerDayI64
+
+def toTime (datetime: Datetime) : Duration :=
+  let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
+  if datetime >= 0
+  then datetime.mod millisPerDayI64
+  else let rem := datetime.mod millisPerDayI64
+       if rem == 0
+       then rem
+       else rem + millisPerDayI64
 
 end Datetime

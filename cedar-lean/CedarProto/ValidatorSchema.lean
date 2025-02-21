@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Message
 import Protobuf.String
 
@@ -36,7 +36,7 @@ structure ValidatorSchema where
   acts : EntityUidWithActionsIdMap
 deriving Inhabited
 
-instance : Data.DecidableLT Spec.EntityTypeProto := by
+instance : DecidableLT Spec.EntityTypeProto := by
   unfold Spec.EntityTypeProto
   apply inferInstance
 
@@ -49,12 +49,12 @@ The definitions and utility functions below are used to convert the descendant
 representation to the ancestor representation.
 -/
 @[inline]
-private def findInMapValues [LT α] [DecidableEq α] [Data.DecidableLT α] (m : Data.Map α (Data.Set α)) (k₁ : α) : Data.Set α :=
+private def findInMapValues [LT α] [DecidableEq α] [DecidableLT α] (m : Data.Map α (Data.Set α)) (k₁ : α) : Data.Set α :=
   let setOfSets := List.map (λ (k₂,v) => if v.contains k₁ then Data.Set.singleton k₂ else Data.Set.empty) m.toList
   setOfSets.foldl (λ acc v => acc.union v) Data.Set.empty
 
 @[inline]
-private def descendantsToAncestors [LT α] [DecidableEq α] [Data.DecidableLT α] (descendants : Data.Map α (Data.Set α)) : Data.Map α (Data.Set α) :=
+private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (descendants : Data.Map α (Data.Set α)) : Data.Map α (Data.Set α) :=
   Data.Map.make (List.map
     (λ (k,_) => (k, findInMapValues descendants k)) descendants.toList)
 
@@ -71,11 +71,15 @@ def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
   let ancestorMap := descendantsToAncestors descendantMap
   Data.Map.make (ets.map
     (λ (k,v) => (k,
-      {
+      if v.enums.isEmpty then
+      .standard {
         ancestors := ancestorMap.find! k,
         attrs := Data.Map.make v.attrs.kvs,
         tags := v.tags,
-      })))
+      }
+      else
+      .enum $ Cedar.Data.Set.mk v.enums.toList
+      )))
 end Cedar.Validation.Proto.EntityTypeWithTypesMap
 
 namespace Cedar.Validation.Proto.EntityUidWithActionsIdMap
@@ -129,10 +133,10 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorSchema) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityTypeWithTypesMap ← Field.guardedParse t
-      pure (mergeEntityTypes · x)
+      pure (pure $ mergeEntityTypes · x)
     | 2 =>
       let x : EntityUidWithActionsIdMap ← Field.guardedParse t
-      pure (mergeActionIds · x)
+      pure (pure $ mergeActionIds · x)
     | _ =>
       t.wireType.skip
       pure ignore

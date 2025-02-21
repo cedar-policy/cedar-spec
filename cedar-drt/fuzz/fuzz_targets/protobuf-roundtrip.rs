@@ -18,11 +18,13 @@
 
 use libfuzzer_sys::arbitrary::{self, MaxRecursionReached};
 use prost::Message;
+use serde::Serialize;
 
 use crate::arbitrary::Arbitrary;
 use crate::arbitrary::Unstructured;
 use cedar_drt::{AuthorizationRequestMsg, OwnedAuthorizationRequestMsg};
 use cedar_drt_inner::{fuzz_target, schemas::Equiv};
+use cedar_policy::proto;
 use cedar_policy_core::{
     ast, entities::Entities, entities::NoEntitiesSchema, entities::TCComputation,
     extensions::Extensions,
@@ -32,8 +34,9 @@ use cedar_policy_generators::{
     settings::ABACSettings,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
+    #[serde(skip)]
     request: ABACRequest,
     policy: ABACPolicy,
     entities: Entities,
@@ -47,13 +50,15 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,
-    enable_additional_attributes: true,
+    enable_additional_attributes: false,
     enable_like: true,
     enable_action_groups_and_attrs: true,
     enable_arbitrary_func_call: false,
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
+    // It's Ok to enable this flag because this target is PBT
+    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -143,13 +148,13 @@ fn roundtrip_authz_request_msg(auth_request: AuthorizationRequestMsg) {
 
 fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
     // AST -> Protobuf bytes
-    let schema_proto = cedar_policy_validator::proto::ValidatorSchema::from(&schema);
+    let schema_proto = proto::models::ValidatorSchema::from(&schema);
 
     // Protobuf -> Bytes
     let buf = schema_proto.encode_to_vec();
 
     // Bytes -> Protobuf
-    let roundtripped_proto = cedar_policy_validator::proto::ValidatorSchema::decode(&buf[..])
+    let roundtripped_proto = proto::models::ValidatorSchema::decode(&buf[..])
         .expect("Failed to deserialize Schema from proto");
 
     // Protobuf -> AST

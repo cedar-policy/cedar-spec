@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Message
 import Protobuf.String
 
@@ -32,6 +32,7 @@ structure ValidatorEntityType where
   descendants : Array Spec.EntityTypeProto
   attrs : RecordType
   tags : Option CedarType
+  enums: Array String
 deriving Inhabited
 
 -- the Tag message in Validator.proto
@@ -46,7 +47,7 @@ def parseField (t : Tag) : BParsec (MergeFn TagMessage) := do
   match t.fieldNum with
     | 1 =>
       let ty : CedarType ← Field.guardedParse t
-      pure λ { optional_type := old_ty } => { optional_type := Field.merge old_ty ty }
+      pure λ { optional_type := old_ty } => pure { optional_type := Field.merge old_ty ty }
     | _ =>
       t.wireType.skip
       pure ignore
@@ -92,11 +93,18 @@ def mergeTags (result : ValidatorEntityType) (x : TagMessage) : ValidatorEntityT
   }
 
 @[inline]
+def mergeEnums (result : ValidatorEntityType) (x : Array String) : ValidatorEntityType :=
+  {result with
+    enums := result.enums ++ x
+  }
+
+@[inline]
 def merge (x y : ValidatorEntityType) : ValidatorEntityType :=
   {
     descendants := y.descendants ++ x.descendants
     attrs := Field.merge x.attrs y.attrs
     tags := mergeOption x.tags y.tags
+    enums := x.enums ++ y.enums
   }
 
 @[inline]
@@ -104,13 +112,16 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
   match t.fieldNum with
     | 2 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeDescendants · x)
+      pure (pure $ mergeDescendants · x)
     | 3 =>
       let x : RecordType ← Field.guardedParse t
-      pure (mergeAttributes · x)
+      pure (pure $ mergeAttributes · x)
     | 5 =>
       let x : TagMessage ← Field.guardedParse t
-      pure (mergeTags · x)
+      pure (pure $ mergeTags · x)
+    | 6 =>
+      let x : Repeated String ← Field.guardedParse t
+      pure (pure $ mergeEnums · x)
     | _ =>
       t.wireType.skip
       pure ignore

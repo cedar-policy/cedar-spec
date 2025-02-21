@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Message
 
 -- Message Dependencies
@@ -47,7 +47,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntityTypeProto) := do
   match t.fieldNum with
     | 1 =>
       let x : Name ← Field.guardedParse t
-      pure (mergeName · x)
+      pure (pure $ mergeName · x)
     | _ =>
       t.wireType.skip
       pure ignore

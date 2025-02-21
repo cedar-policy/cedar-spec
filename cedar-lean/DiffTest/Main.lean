@@ -34,12 +34,22 @@ open Proto
 
 structure Timed (α : Type) where
   data : α
+  /-- Duration in nanoseconds -/
   duration : Nat
 deriving Lean.ToJson
 
 def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
   let start ← IO.monoNanosNow
   let result := f ()
+  let stop ← IO.monoNanosNow
+  .ok {
+    data := result,
+    duration := stop - start
+  }
+
+def runAndTimeIO (f : IO α) : IO (Timed α) := do
+  let start ← IO.monoNanosNow
+  let result ← f
   let stop ← IO.monoNanosNow
   .ok {
     data := result,

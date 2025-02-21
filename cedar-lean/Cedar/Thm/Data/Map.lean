@@ -359,6 +359,18 @@ theorem find?_notmem_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α
       replace h₂ := List.mem_of_find?_eq_some h₂
       exact in_list_in_keys h₂
 
+theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+  m.find? k = none → ∀ v, ¬ (k, v) ∈ m.kvs
+:= by
+  intro hn v
+  by_contra hc
+  simp only [find?] at hn
+  cases hf : List.find? (fun x => x.fst == k) m.kvs <;>
+  simp only [hf, reduceCtorEq] at hn
+  simp only [List.find?_eq_none, beq_iff_eq] at hf
+  specialize hf (k, v) hc
+  simp only [not_true_eq_false] at hf
+
 theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by

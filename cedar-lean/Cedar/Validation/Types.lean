@@ -61,12 +61,43 @@ abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
 
-structure EntitySchemaEntry where
+structure StandardSchemaEntry where
   ancestors : Cedar.Data.Set EntityType
   attrs : RecordType
   tags : Option CedarType
 
+inductive EntitySchemaEntry where
+  | standard (ty: StandardSchemaEntry)
+  | enum (eids: Set String)
+
+def EntitySchemaEntry.isValidEntityEID (entry: EntitySchemaEntry) (eid: String): Bool :=
+  match entry with
+  | .standard _ => true
+  | .enum eids => eids.contains eid
+
+def EntitySchemaEntry.tags? : EntitySchemaEntry → Option CedarType
+  | .standard ty => ty.tags
+  | .enum _ => none
+
+def EntitySchemaEntry.attrs : EntitySchemaEntry → RecordType
+  | .standard ty => ty.attrs
+  | .enum _ => Map.empty
+
+def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
+  | .standard ty => ty.ancestors
+  | .enum _ => Set.empty
+
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
+
+def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
+  match ets.find? et with
+  | .some (.enum eids) => .some eids
+  | _ => .none
+
+def EntitySchema.isValidEntityUID (ets : EntitySchema) (uid : EntityUID) : Bool :=
+  match ets.find? uid.ty with
+  | .some entry => entry.isValidEntityEID uid.eid
+  | .none   => false
 
 def EntitySchema.contains (ets : EntitySchema) (ety : EntityType) : Bool :=
   (ets.find? ety).isSome
@@ -75,7 +106,7 @@ def EntitySchema.attrs? (ets : EntitySchema) (ety : EntityType) : Option RecordT
   (ets.find? ety).map EntitySchemaEntry.attrs
 
 def EntitySchema.tags? (ets : EntitySchema) (ety : EntityType) : Option (Option CedarType) :=
-  (ets.find? ety).map EntitySchemaEntry.tags
+  (ets.find? ety).map EntitySchemaEntry.tags?
 
 def EntitySchema.descendentOf (ets : EntitySchema) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
@@ -124,6 +155,7 @@ deriving instance Repr, DecidableEq, Inhabited for ExtType
 deriving instance Repr, DecidableEq, Inhabited for Qualified
 deriving instance Repr, Inhabited for CedarType
 deriving instance Repr for ActionSchemaEntry
+deriving instance Repr for StandardSchemaEntry
 deriving instance Repr for EntitySchemaEntry
 deriving instance Repr for Schema
 
@@ -197,5 +229,25 @@ def decAttrQualifiedCedarTypeMap (as bs : Map Attr QualifiedType) : Decidable (a
 end
 
 instance : DecidableEq CedarType := decCedarType
+
+deriving instance DecidableEq for StandardSchemaEntry
+
+def decEntitySchemaEntry (e₁ e₂: EntitySchemaEntry) : Decidable (e₁ = e₂) := by
+  cases e₁ <;> cases e₂
+  case standard.standard t₁ t₂ =>
+    exact match decEq t₁ t₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case enum.enum l₁ l₂ =>
+    exact match decEq l₁ l₂ with
+    | isTrue h => isTrue (by rw [h])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+  all_goals {
+    apply isFalse
+    intro h
+    injection h
+  }
+
+instance : DecidableEq EntitySchemaEntry := decEntitySchemaEntry
 
 end Cedar.Validation

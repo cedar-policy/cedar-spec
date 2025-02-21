@@ -504,7 +504,7 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   split at h₃
   case h_1 data h₄ =>
     rw [Set.contains_prop_bool_equiv] at h₃
-    have ⟨entry, h₂₁, _, h₂₂, _⟩ := h₁ euid₁ data h₄
+    have ⟨entry, h₂₁, _, _, h₂₂, _⟩ := h₁ euid₁ data h₄
     specialize h₂₂ euid₂ h₃
     rw [←Set.contains_prop_bool_equiv] at h₂₂
     simp [h₂₁, h₂₂] at h₂
@@ -636,7 +636,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     cases h₆ : Map.find? entities euid <;>
     simp only [h₆, List.not_mem_nil] at h₅
     rename_i data
-    replace ⟨entry, h₁, _, h₇, _⟩ := h₁ euid data h₆
+    replace ⟨entry, h₁, _, _, h₇, _⟩ := h₁ euid data h₆
     specialize h₇ euid' h₅
     split at h₂ <;> try contradiction
     rename_i h₈
@@ -659,7 +659,6 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
     subst h₁
     simp only [List.map_nil]
   case cons hd tl =>
-    simp only [List.mapM', bind_pure_comp] at h₁
     cases h₂ : evaluate (Expr.lit hd) request entities <;> simp [h₂] at h₁
     cases h₃ : List.mapM' (fun x => evaluate x request entities) (List.map Expr.lit tl) <;> simp [h₃] at h₁
     rename_i vhd vtl
@@ -903,8 +902,11 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
     replace ⟨e', h₂, h₃⟩ := h₂
     simp only [hf', Option.some.injEq] at h₂
     subst h₂
-    simp only [h₃] at h₁
-    simp only [h₁, map_empty_contains_instance_of_ff]
+    simp only [EntitySchemaEntry.tags?] at h₁ h₃
+    split at h₃
+    · simp only [h₃] at h₁
+      simp only [h₁, map_empty_contains_instance_of_ff]
+    · simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
@@ -1067,19 +1069,20 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
     type_is_inhabited, and_self, reduceCtorEq]
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
-  replace ⟨entry, hf₂, _, _, h₂⟩  := h₂.right.left uid d hf₁
+  replace ⟨entry, hf₂, _, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂
-  simp only [EntitySchema.tags?, Option.map_eq_some'] at ht
-  replace ⟨_, he, ht⟩ := ht
-  simp only [hf₂, Option.some.injEq] at he
-  subst he
-  simp only [ht] at h₂
-  rw [htx] ; simp only [TypedExpr.typeOf]
+  simp [EntitySchema.tags?, Option.map_eq_some'] at ht
+  replace ⟨_, ht₁, ht₂⟩ := ht
+  simp only [hf₂, Option.some.injEq] at ht₁
+  subst ht₁
+  simp only [EntitySchemaEntry.tags?] at h₂ ht₂
+  split at ht₂
+  simp only [ht₂] at h₂
   have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
   rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
   simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
     Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
-  · simp only [← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
+  · simp only [htx, TypedExpr.typeOf, ← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
     apply h₂
     exact Map.findOrErr_ok_implies_in_values hf₃
   · replace h₁ := h₁.right x₁ x₂ hc₁
@@ -1088,6 +1091,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
     replace ⟨_, h₁⟩ := h₁
     simp only [Map.findOrErr_err_iff_find?_none, h₁, reduceCtorEq] at hf₃
+  · cases ht₂
 
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.PrincipalOrResourceConstraint
@@ -41,7 +41,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PrincipalScopeTemplate) := do
   match t.fieldNum with
     | 1 =>
       let x : ScopeTemplate ← Field.guardedParse t
-      pure (mergeConstraint · x)
+      pure (pure $ mergeConstraint · x)
     | _ =>
       t.wireType.skip
       pure ignore

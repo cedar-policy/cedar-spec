@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar
+import Cedar.Spec
 import Protobuf.Message
 import Protobuf.String
 
@@ -55,10 +55,10 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorApplySpec) := do
   match t.fieldNum with
     | 1 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergePas · x)
+      pure (pure $ mergePas · x)
     | 2 =>
       let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
-      pure (mergeRas · x)
+      pure (pure $ mergeRas · x)
     | _ =>
       t.wireType.skip
       pure ignore

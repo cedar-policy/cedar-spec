@@ -30,6 +30,8 @@ pub struct ABACSettings {
     /// If true, may generate extension function calls in policies and/or
     /// attribute values.
     pub enable_extensions: bool,
+    /// If true, may generate `datetime` extension types/functions/expressions.
+    pub enable_datetime_extension: bool,
     /// Maximum depth of an expression or type. E.g., maximum nesting of sets.
     ///
     /// This is used in the following places:
