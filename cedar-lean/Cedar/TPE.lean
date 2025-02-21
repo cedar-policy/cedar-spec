@@ -83,7 +83,59 @@ partial def Residual.asWellFormedInput (r : Residual) (env : Environment) : Bool
 
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
-  sorry
+  match x with
+  | .prim p _ => .ok $ .prim p
+  | .ext e _ => .ok $ .ext e
+  | .var (.principal) _ => .ok req.principal
+  | .var (.resource) _ => .ok req.resource
+  | .var (.action) _ => .ok req.action
+  | .var (.context) _ => .ok req.context
+  | .ite c x y _ => do
+    let c ← c.evaluate req es
+    let b ← c.asBool
+    if b then x.evaluate req es else y.evaluate req es
+  | .and x y _ => do
+    let b ← (x.evaluate req es).as Bool
+    if !b then .ok b else (y.evaluate req es).as Bool
+  | .or x y _ => do
+    let b ← (x.evaluate req es).as Bool
+    if b then .ok b else (y.evaluate req es).as Bool
+  | .unaryApp op e _ => do
+    let v ← e.evaluate req es
+    apply₁ op v
+  | .binaryApp op x y _ => do
+    let v₁ ← evaluate x req es
+    let v₂ ← evaluate y req es
+    apply₂ op v₁ v₂ es
+  | .hasAttr e a _ => do
+    let v ← e.evaluate req es
+    Cedar.Spec.hasAttr v a es
+  | .getAttr e a _ => do
+    let v ← e.evaluate req es
+    Cedar.Spec.hasAttr v a es
+  | .set xs _ => do
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
+    .ok (Set.make vs)
+  | .record axs _ => do
+    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
+    .ok (Map.make avs)
+  | .call xfn xs _ => do
+    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
+    Cedar.Spec.call xfn vs
+termination_by x
+decreasing_by
+  all_goals
+    simp_wf
+    try omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ h =>
+    simp at h
+    omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
 
 structure PartialRequest where
   principal : PartialEntityUID
@@ -159,6 +211,14 @@ def tpeExpr (x : Residual)
     | _ =>
       let r ← tpeExpr r req es
       .ok $ .and l r ty
+  | .or l r ty => do
+    let l ← tpeExpr l req es
+    match l with
+    | .prim (.bool b) ty₁ =>
+      if !b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .tt)
+    | _ =>
+      let r ← tpeExpr r req es
+      .ok $ .or l r ty
   | _ => sorry
 
 def tpePolicy (schema : Schema)
