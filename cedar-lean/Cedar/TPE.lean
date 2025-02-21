@@ -23,8 +23,8 @@ def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
 -- The result produced by TPE
 -- We do not need `unknown`s because they can be represented by entity dereferences
 inductive Residual where
+  | val (v : Value) (ty : CedarType)
   | prim (p : Prim) (ty : CedarType)
-  | ext (e : Ext) (ty : CedarType)
   | var (v : Var)  (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
@@ -69,23 +69,34 @@ decreasing_by
 instance : Coe TypedExpr Residual where
   coe := TypedExpr.toResidual
 
-partial def Residual.asWellFormedInput (r : Residual) (env : Environment) : Bool :=
-  match r with
-  | .prim (.bool _) (.bool .anyBool) => true
-  | .prim (.int _) .int => true
-  | .prim (.string _) .string => true
-  | .prim (.entityUID uid) (.entity ety) => instanceOfEntityType uid ety env.ets.entityTypeMembers?
-  | .ext (.ipaddr _) (.ext .ipAddr) => true
-  | .ext (.decimal _) (.ext .decimal) => true
-  | .set s (.set ty) => s.all λ x ↦ x.asWellFormedInput env
-  | .record m (.record rty) => m.all λ (a, x) ↦ x.asWellFormedInput env
-  | _ => false
+
+def Residual.asValue : Residual → Option Value
+  | .prim p _ => .some p
+  | .val v _ => .some v
+  | .set s _ =>
+    (s.mapM₁ (fun ⟨x₁, _⟩ => x₁.asValue)).map λ x ↦ Set.mk x
+  | .record m _ =>
+    (m.mapM₁ (fun ⟨(a₁, x₁), _⟩ =>
+      do
+        let v ← x₁.asValue
+        pure (a₁, v))).map λ x ↦ Map.mk x
+  | _ => .none
+decreasing_by
+  all_goals
+    simp_wf
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ h =>
+    have h₁ := List.sizeOf_lt_of_mem h
+    simp at h₁
+    omega
 
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
+  | .val v _ => .ok v
   | .prim p _ => .ok $ .prim p
-  | .ext e _ => .ok $ .ext e
   | .var (.principal) _ => .ok req.principal
   | .var (.resource) _ => .ok req.resource
   | .var (.action) _ => .ok req.action
@@ -141,27 +152,22 @@ structure PartialRequest where
   principal : PartialEntityUID
   action : EntityUID                 -- Action is always known.
   resource : PartialEntityUID
-  context :  Option (Map Attr TypedResidual)          -- Unknown context is omitted.
+  context :  Option (Map Attr Residual)          -- Unknown context is omitted.
 
 structure PartialEntityData where
-  attrs : Option (Map Attr TypedResidual)              -- Attributes fully known or fully unknown.
+  attrs : Option (Map Attr Residual)              -- Attributes fully known or fully unknown.
   ancestors : Option (Set EntityUID) -- Ancestors fully known or fully unknown.
-  tags : Option (Map Attr TypedResidual)   -- Tags are fully known or fully unknown.
+  tags : Option (Map Attr Residual)   -- Tags are fully known or fully unknown.
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
--- These are possible errors after validation and
--- hence should be the possible errors thrown by TPE
-inductive EvalError where
-  | typeError
-  | entityDoesNotExist
-  | arithBoundsError
-  | extensionError
-
 inductive Error where
-  | evaluation (err : EvalError)
+  | evaluation (err : Spec.Error)
   | invalidPolicy (err : TypeError)
   | noValidEnvironment
+
+instance : Coe Spec.Error Error where
+  coe := Error.evaluation
 
 def findMatchingEnv (schema : Schema) (req : PartialRequest) (es : PartialEntities) : Option Environment :=
   do
@@ -179,12 +185,12 @@ def findMatchingEnv (schema : Schema) (req : PartialRequest) (es : PartialEntiti
         | (.some id, .some eids) => eids.contains id
         | _ => true
 
-def tpeExpr (x : Residual)
+partial def tpeExpr (x : Residual)
     (req : PartialRequest)
     (es : PartialEntities)
-    : Except EvalError Residual :=
+    : Except Spec.Error Residual :=
   match x with
-  | .prim _ _ => .ok x
+  | .prim _ _ | .val _ _ => .ok x
   | .var .principal ty =>
     match req.principal.asEntityUID with
     | .some uid => .ok $ .prim (.entityUID uid) ty
@@ -194,6 +200,7 @@ def tpeExpr (x : Residual)
     | .some uid => .ok $ .prim (.entityUID uid) ty
     | .none => .ok $ .var .resource ty
   | .var .action ty => .ok $ .prim (.entityUID req.action) ty
+  | .var .context ty => sorry
   | .ite c t e ty => do
     let c ← tpeExpr c req es
     match c with
@@ -219,7 +226,39 @@ def tpeExpr (x : Residual)
     | _ =>
       let r ← tpeExpr r req es
       .ok $ .or l r ty
-  | _ => sorry
+  | .call f args ty => do
+    let rs ← args.mapM₁ (fun ⟨x₁, _⟩ => tpeExpr x₁ req es)
+    match rs.mapM Residual.asValue with
+    | .some vs => (Spec.call f vs).map λ v ↦ .val v ty
+    | .none => .ok $ .call f rs ty
+  | .unaryApp op e ty => do
+    let r ← tpeExpr e req es
+    match r.asValue with
+    | .some v => (apply₁ op v).map λ v ↦ .val v ty
+    | .none => .ok $ .unaryApp op r ty
+  | .binaryApp op x y ty => do
+    let x ← tpeExpr x req es
+    let y ← tpeExpr y req es
+    -- TODO reduction
+    .ok $ .binaryApp op x y ty
+  | .getAttr e a ty => do
+    let r ← tpeExpr e req es
+    sorry
+  | .set xs ty => do
+    let rs ← xs.mapM₁ (fun ⟨x₁, _⟩ => tpeExpr x₁ req es)
+    match rs.mapM Residual.asValue with
+    | .some vs => .ok $ .val (.set (Set.mk vs)) ty
+    | .none => .ok $ .set rs ty
+  | .record m ty => do
+    let m₁ ← m.mapM₁ (fun ⟨(a, x₁), _⟩ => do
+      let v ← tpeExpr x₁ req es
+      pure (a, v))
+    match m₁.mapM λ (a, r₁) ↦ do
+      let v₁ ← r₁.asValue
+      pure (a, v₁) with
+    | .some xs => .ok $ .val (.record (Map.mk xs)) ty
+    | .none => .ok $ .record m₁ ty
+  | .hasAttr e a ty => sorry
 
 def tpePolicy (schema : Schema)
   (p : Policy)
