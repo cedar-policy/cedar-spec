@@ -61,59 +61,10 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
   case isFalse =>
-    replace ⟨ tx₂, bty₂, c₂, htx₂, hty₂, ht ⟩ := ht
-    replace ⟨ b₁ , hv₁⟩  := instance_of_bool_is_bool hv₁
-    subst v₁
-    split at ht
-    case isTrue =>
-      replace ⟨ ht, _ ⟩ := ht
-      subst tx
-      simp [evaluate]
-      simp [checkLevel] at hl
-      specialize ih₁ hs hc hr htx₁ (by simp [hl])
-      rw [←ih₁]
-      rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-      simp [he₁, Result.as, Coe.coe, Value.asBool]
-      cases b₁ <;> simp
-      specialize ih₂ hs hc hr htx₂ (by simp [hl])
-      simp [ih₂]
-    case isFalse =>
-      split at ht
-      case isTrue =>
-        replace ⟨ ht, _ ⟩ := ht
-        subst tx
-        simp [evaluate]
-        simp [checkLevel] at hl
-        specialize ih₁ hs hc hr htx₁ (by simp [hl])
-        rw [←ih₁]
-        rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-        simp [he₁, Result.as, Coe.coe, Value.asBool]
-        cases b₁ <;> simp
-        specialize ih₂ hs hc hr htx₂ (by simp [hl])
-        simp [ih₂]
-      case isFalse =>
-        split at ht
-        case isTrue =>
-          replace ⟨ ht, _ ⟩ := ht
-          subst tx
-          simp [evaluate]
-          simp [checkLevel] at hl
-          specialize ih₁ hs hc hr htx₁ (by simp [hl])
-          rw [←ih₁]
-          rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-          simp [he₁, Result.as, Coe.coe, Value.asBool]
-          cases b₁ <;> simp
-          specialize ih₂ hs hc hr htx₂ (by simp [hl])
-          simp [ih₂]
-        case isFalse =>
-          replace ⟨ ht, _ ⟩ := ht
-          subst tx
-          simp [evaluate]
-          simp [checkLevel] at hl
-          specialize ih₁ hs hc hr htx₁ (by simp [hl])
-          rw [←ih₁]
-          rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-          simp [he₁, Result.as, Coe.coe, Value.asBool]
-          cases b₁ <;> simp
-          specialize ih₂ hs hc hr htx₂ (by simp [hl])
-          simp [ih₂]
+    replace ⟨ bt, tx₂, bty₂, c₂, htx, htx₂, hty₂, ht ⟩ := ht
+    subst tx
+    simp [checkLevel] at hl
+    specialize ih₁ hs hc hr htx₁ (by simp [hl])
+    specialize ih₂ hs hc hr htx₂ (by simp [hl])
+    simp [evaluate]
+    rw [ih₁, ih₂]

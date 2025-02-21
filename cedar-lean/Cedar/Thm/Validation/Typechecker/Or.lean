@@ -33,16 +33,17 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     tx₁.typeOf = .bool bty₁ ∧
     if bty₁ = BoolType.tt
     then tx = (.or tx₁ tx₁ (.bool BoolType.tt)) ∧ c' = ∅
-    else ∃ tx₂ bty₂ c₂,
+    else ∃ bty tx₂ bty₂ c₂,
+      tx = (.or tx₁ tx₂ (.bool bty)) ∧
       typeOf x₂ c env = .ok (tx₂, c₂) ∧
       tx₂.typeOf = .bool bty₂ ∧
       if bty₁ = BoolType.ff
-      then tx = (.or tx₁ tx₂ (.bool bty₂)) ∧ c' = c₂
+      then bty = bty₂ ∧ c' = c₂
       else if bty₂ = BoolType.tt
-      then tx = (.or tx₁ tx₂ (.bool BoolType.tt)) ∧ c' = ∅
+      then bty = BoolType.tt ∧ c' = ∅
       else if bty₂ = BoolType.ff
-      then tx = (.or tx₁ tx₂ (.bool BoolType.anyBool)) ∧ c' = c₁
-      else tx = (.or tx₁ tx₂ (.bool BoolType.anyBool)) ∧ c' = c₁ ∩ c₂
+      then bty = BoolType.anyBool ∧ c' = c₁
+      else bty = BoolType.anyBool ∧ c' = c₁ ∩ c₂
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c env <;> simp [h₂] at *
@@ -62,7 +63,9 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     subst ht hc
     exists res₁.fst, BoolType.ff, res₁.snd
     simp only [hr₁, hr₂, true_and]
-    exists res₂.fst, bty₂, res₂.snd
+    exists bty₂, res₂.fst
+    simp only [exists_eq_right_right', true_and]
+    exists bty₂, res₂.snd
   case ok.h_3 bty₁ hneq₁ hneq₂ =>
     cases bty₁ <;> simp at hneq₁ hneq₂
     exists res₁.fst, BoolType.anyBool, res₁.snd
@@ -73,15 +76,25 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     rename_i hr₂ <;>
     have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [hr₁, ResultType.typeOf, Except.map]
     case anyBool.ok.h_1 =>
-      exists res₂.fst
-      simp only [hr₂, and_true, exists_eq_right]
-      exists res₂.snd
+      exists BoolType.tt, res₂.fst
+      simp only [hr₂, true_and]
+      exists BoolType.tt, res₂.snd
     case anyBool.ok.h_2 =>
-      exists res₂.fst, BoolType.ff, res₂.snd
+      exists BoolType.anyBool, res₂.fst
+      simp only [true_and]
+      exists BoolType.ff, res₂.snd
     case anyBool.ok.h_3 bty₂ hneq₁ hneq₂ =>
-      exists res₂.fst, bty₂, res₂.snd
-      simp [←hr₂, TypedExpr.typeOf]
-      cases bty₂ <;> simp at *
+      exists BoolType.anyBool, res₂.fst
+      simp
+      exists bty₂, res₂.snd
+      simp [←hr₂]
+      constructor
+      · intro heq
+        specialize hneq₁ heq
+        contradiction
+      · intro heq
+        specialize hneq₂ heq
+        contradiction
 
 theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -110,10 +123,11 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     try exact type_is_inhabited (CedarType.bool BoolType.tt)
     exact true_is_instance_of_tt
   case isFalse =>
-    have ⟨tx₂, bty₂, rc₂, h₅', h₇, h₈⟩ := h₆
-    specialize ih₂ h₁ h₂ h₅'
+    have ⟨bty, tx₂, bty₂, rc₂, h₅', h₇, h₈, h₉⟩ := h₆
+    subst ty
+    specialize ih₂ h₁ h₂ h₇
     have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
-    rw [h₇] at ih₂₃
+    rw [h₈] at ih₂₃
     have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
     subst hb₂
     simp [EvaluatesTo]
@@ -128,16 +142,18 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
       case false h₉ =>
         cases bty₁ <;> simp at h₉ h₈
         case anyBool =>
-          cases bty₂ <;> simp at h₈ <;>
-          replace ⟨h₈, _⟩ := h₈ <;> rw [h₈] <;>
+          cases bty₂ <;> simp at h₉ <;>
+          replace ⟨h₉, _⟩ := h₉ <;> rw [h₉] <;>
           try exact bool_is_instance_of_anyBool false
           exact ih₂₃
         case ff =>
-          rw [h₈.left]
+          rw [h₉.left]
           exact ih₂₃
+        case tt =>
+          contradiction
       case true h₉ =>
         cases bty₁ <;> cases bty₂ <;> simp at h₉ h₈ <;>
-        have ⟨hty, hc⟩ := h₈ <;> simp [hty, hc] at *
+        have ⟨hty, hc⟩ := h₉ <;> simp [hty, hc] at *
         case ff.ff =>
           rcases ih₂₃ with ⟨_, _, ih₂₃⟩
           simp [InstanceOfBoolType] at ih₂₃
@@ -164,18 +180,17 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     all_goals {
       simp [GuardedCapabilitiesInvariant] at ih₁₁ ih₂₁
       simp [ih₁₂] at ih₁₁ ; simp [ih₂₂] at ih₂₁
-      rename_i h₉
+      rename_i h₁₀
       rcases ih₁₃ with ⟨_, _, ih₁₃⟩
       simp [InstanceOfBoolType] at ih₁₃
-      cases bty₁ <;> simp at h₉ ih₁₃ h₈
-      cases bty₂ <;> simp at h₈ <;>
-      have ⟨ht, hc⟩ := h₈ <;> simp [ht, hc] at * <;>
+      cases bty₁ <;> simp at h₁₀ ih₁₃ h₈
+      cases bty₂ <;> simp at h₉ <;>
+      have ⟨ht, hc⟩ := h₉ <;> simp [ht, hc] at * <;>
       simp [TypedExpr.typeOf, true_is_instance_of_tt, bool_is_instance_of_anyBool] <;>
       try { apply empty_capabilities_invariant } <;>
       try { assumption }
       apply capability_intersection_invariant
       simp [ih₁₁]
     }
-
 
 end Cedar.Thm
