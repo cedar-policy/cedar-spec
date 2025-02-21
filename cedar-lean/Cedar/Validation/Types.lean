@@ -57,6 +57,26 @@ inductive CedarType where
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
 
+def CedarType.isBool : CedarType → Bool
+  | .bool _ => true
+  | _ => false
+
+def CedarType.isInt : CedarType → Bool
+  | .int => true
+  | _ => false
+
+def CedarType.isString : CedarType → Bool
+  | .string => true
+  | _ => false
+
+def CedarType.isEntity : CedarType → Bool
+  | .entity _ => true
+  | _ => false
+
+def CedarType.isSet : CedarType → Bool
+  | .set _ => true
+  | _ => false
+
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
