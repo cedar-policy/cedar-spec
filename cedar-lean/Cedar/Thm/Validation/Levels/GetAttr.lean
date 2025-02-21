@@ -51,7 +51,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   subst h₁₄ h₁₅
   simp [checkLevel, hety] at hl
   have ⟨ ⟨ hl₁, _⟩, hl₂ ⟩ := hl ; clear hl
-  have h₈ := check_level_checked_succ hl₂
+  have h₈ := check_level_succ hl₂
   have h₉ : (n = (n - 1) + 1) := by omega
   rw [h₉] at hs ; clear h₉
   simp [evaluate]

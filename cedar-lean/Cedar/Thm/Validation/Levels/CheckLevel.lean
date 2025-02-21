@@ -220,7 +220,7 @@ inductive AtLevel : TypedExpr → Nat → Prop where
     (hl : ∀ tx ∈ args, AtLevel tx n) :
     AtLevel (.call xfn args ty) n
 
-theorem level_spec (tx : TypedExpr) (n : Nat):
+theorem level_spec {tx : TypedExpr} {n : Nat}:
   (AtLevel tx n ) ↔ (checkLevel tx n = true)
 := by
   cases tx
@@ -231,9 +231,9 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
     simp [checkLevel]
     constructor
   case ite tx₁ tx₂ tx₃ _ =>
-    have ih₁ := level_spec tx₁ n
-    have ih₂ := level_spec tx₂ n
-    have ih₃ := level_spec tx₃ n
+    have ih₁ := @level_spec tx₁
+    have ih₂ := @level_spec tx₂
+    have ih₃ := @level_spec tx₃
     simp [checkLevel]
     rw [←ih₁, ←ih₂, ←ih₃]
     constructor
@@ -244,8 +244,8 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
       constructor <;> assumption
 
   case or tx₁ tx₂ _ | and tx₁ tx₂ _ =>
-    have ih₁ := level_spec tx₁ n
-    have ih₂ := level_spec tx₂ n
+    have ih₁ := @level_spec tx₁
+    have ih₂ := @level_spec tx₂
     simp [checkLevel]
     rw [←ih₁, ←ih₂]
     constructor
@@ -256,7 +256,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
       constructor <;> assumption
 
   case unaryApp op tx₁ _ =>
-    have ih₁ := level_spec tx₁ n
+    have ih₁ := @level_spec tx₁
     simp [checkLevel]
     rw [←ih₁]
     constructor
@@ -270,8 +270,8 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
   case binaryApp op tx₁ tx₂ _ =>
     cases op
     case getTag | hasTag | mem =>
-      have ih₁ := level_spec tx₁ (n - 1)
-      have ih₂ := level_spec tx₂ n
+      have ih₁ := @level_spec tx₁
+      have ih₂ := @level_spec tx₂
       simp [checkLevel]
       rw [←ih₁, ←ih₂, not_entity_lit_spec]
       constructor
@@ -289,8 +289,8 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         subst n
         constructor <;> assumption
     all_goals
-      have ih₁ := level_spec tx₁ n
-      have ih₂ := level_spec tx₂ n
+      have ih₁ := @level_spec tx₁
+      have ih₂ := @level_spec tx₂
       simp [checkLevel]
       rw [←ih₁, ←ih₂]
       constructor
@@ -311,10 +311,10 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
       · intro h
         cases h <;> simp [*] at *
         rename_i n _ _ _ _
-        have ih₁ := level_spec tx₁ n
+        have ih₁ := @level_spec tx₁
         rw [←ih₁, not_entity_lit_spec]
         constructor <;> assumption
-      · have ih₁ := level_spec tx₁ (n - 1)
+      · have ih₁ := @level_spec tx₁
         simp
         rw [←ih₁, not_entity_lit_spec]
         intro h₁ h₂ h₃
@@ -324,11 +324,11 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
     · constructor
       · intro h
         cases h <;> simp [*] at *
-        have ih₁ := level_spec tx₁ n
+        have ih₁ := @level_spec tx₁
         rw [←ih₁]
         assumption
       · intro h
-        have ih₁ := level_spec tx₁ n
+        have ih₁ := @level_spec tx₁
         rw [←ih₁] at h
         constructor <;> assumption
 
@@ -336,7 +336,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
     simp [checkLevel]
     constructor
     · intro h₁ tx h₂
-      have ih := level_spec tx n
+      have ih := @level_spec tx
       cases h₁
       rename_i h₃
       specialize h₃ tx h₂
@@ -346,7 +346,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
       constructor
       intro tx h₂
       have _ := List.sizeOf_lt_of_mem h₂
-      have ih := level_spec tx n
+      have ih := @level_spec tx
       rw [ih]
       exact h₁ tx h₂
 
@@ -362,7 +362,7 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         have h₄ := List.sizeOf_lt_of_mem h₂
         rw [Prod.mk.sizeOf_spec a tx] at h₄
         omega
-      have ih := level_spec tx n
+      have ih := @level_spec tx
       rw [←ih]
       exact h₃
     · intro h₁
@@ -373,47 +373,45 @@ theorem level_spec (tx : TypedExpr) (n : Nat):
         have h₄ := List.sizeOf_lt_of_mem h₂
         rw [Prod.mk.sizeOf_spec atx.fst atx.snd] at h₄
         omega
-      have ih := level_spec atx.snd n
+      have ih := @level_spec atx.snd
       rw [ih]
       exact h₁
 termination_by tx
 
-theorem check_level_checked_succ' {e : TypedExpr} {n : Nat}
-  (h₁ : AtLevel e n)
-  : AtLevel e (n + 1)
+theorem check_level_succ {tx : TypedExpr} {n : Nat}:
+  checkLevel tx n → checkLevel tx (n + 1)
 := by
-  cases h₁
-  case call htx | set htx =>
-    constructor
-    intro tx hi
-    have _ := List.sizeOf_lt_of_mem hi
-    apply check_level_checked_succ'
-    exact htx tx hi
-  case record attrs _ ha =>
-    constructor
-    intro atx hi
-    have : sizeOf atx.snd < sizeOf attrs := by
-      have h₂ := List.sizeOf_lt_of_mem hi
-      rw [Prod.mk.sizeOf_spec] at h₂
-      omega
-    apply check_level_checked_succ'
-    exact ha atx hi
-  case getAttrRecord h₁ h₂ =>
-    have h₃ := check_level_checked_succ' h₂
-    apply AtLevel.getAttrRecord <;> assumption
-  case hasAttrRecord h₁ h₂ =>
-    have h₃ := check_level_checked_succ' h₂
-    apply AtLevel.hasAttrRecord <;> assumption
-  all_goals
-    constructor <;> (
-      try apply check_level_checked_succ'
-      try assumption
-    )
-termination_by e
-
-theorem check_level_checked_succ {e : TypedExpr} {n : Nat}
-  (h₁ : checkLevel e n)
-  : checkLevel e (n + 1)
-:= by
-  rw [←level_spec] at h₁ ⊢
-  exact check_level_checked_succ' h₁
+  rw [←@level_spec tx n, ←@level_spec tx (n + 1)]
+  exact check_level_succ'
+where
+  check_level_succ' {tx : TypedExpr} {n : Nat} :
+    AtLevel tx n → AtLevel tx (n + 1)
+  := by
+    intro h₁
+    cases h₁
+    case call htx | set htx =>
+      constructor
+      intro tx hi
+      have _ := List.sizeOf_lt_of_mem hi
+      apply check_level_succ'
+      exact htx tx hi
+    case record attrs _ ha =>
+      constructor
+      intro atx hi
+      have : sizeOf atx.snd < sizeOf attrs := by
+        have h₂ := List.sizeOf_lt_of_mem hi
+        rw [Prod.mk.sizeOf_spec] at h₂
+        omega
+      apply check_level_succ'
+      exact ha atx hi
+    case getAttrRecord h₁ h₂ =>
+      have h₃ := check_level_succ' h₂
+      apply AtLevel.getAttrRecord <;> assumption
+    case hasAttrRecord h₁ h₂ =>
+      have h₃ := check_level_succ' h₂
+      apply AtLevel.hasAttrRecord <;> assumption
+    all_goals
+      constructor <;> (
+        try apply check_level_succ'
+        try assumption
+      )
