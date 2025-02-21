@@ -101,21 +101,6 @@ theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   · apply InstanceOfType.instance_of_ext
     simp [InstanceOfExtType]
 
-def IsDatetimeMethod : ExtFun → Prop
-  | .offset
-  | .durationSince
-  | .toDate
-  | .toTime        => True
-  | _              => False
-
-theorem type_of_call_datetime_method_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
-  (h₀ : IsDatetimeMethod xfn)
-  (h₁ : typeOf (Expr.call xfn xs) c₁ env = Except.ok (ty, c₂)) :
-  GuardedCapabilitiesInvariant (Expr.call xfn xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.call xfn xs) request entities v ∧ InstanceOfType v ty.typeOf
-:= by
-  sorry
-
 theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .duration xs) c env = Except.ok (ty, c')) :
   ty.typeOf = .ext .duration ∧
@@ -434,6 +419,94 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       rename_i res₁ _ _ res₂ _
       cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₂ <;> simp [h₂] at h₁
 
+theorem type_of_call_toTime_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+  (h₁ : typeOf (Expr.call .toTime xs) c env = Except.ok (ty, c')) :
+  ty.typeOf = .ext .duration ∧
+  c' = ∅ ∧
+  ∃ (x₁ : Expr) (c₁ : Capabilities),
+    xs = [x₁] ∧
+    (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁)
+:= by
+  simp [typeOf] at h₁
+  cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  simp [h₂] at h₁
+  rename_i tys
+  simp [typeOfCall] at h₁
+  all_goals {
+    split at h₁ <;> try { contradiction }
+    all_goals {
+      simp [ok] at h₁
+      have ⟨hl₁, hr₁⟩ := h₁
+      rw [←hl₁]
+      simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
+      rename_i h₃
+      cases tys <;> try simp at h₃
+      rename_i tys
+      cases tys <;> try simp at h₃
+      rw [←h₃]
+      apply typeOf_of_unary_call_inversion h₂
+    }
+  }
+
+theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
+  (h₁ : CapabilitiesInvariant c₁ request entities)
+  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₃ : typeOf (Expr.call .toTime xs) c₁ env = Except.ok (ty, c₂))
+  (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
+  GuardedCapabilitiesInvariant (Expr.call .toTime xs) c₂ request entities ∧
+  ∃ v, EvaluatesTo (Expr.call .toTime xs) request entities v ∧ InstanceOfType v ty.typeOf
+:= by
+  have ⟨h₄, h₅, x₁, c₁', h₆, h₇⟩ := type_of_call_toTime_inversion h₃
+  rw [h₄]
+  subst h₅ h₆
+  apply And.intro empty_guarded_capabilities_invariant
+  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    List.mapM_nil, pure_bind, bind_assoc]
+  have ih₁ := ih x₁
+  simp [TypeOfIsSound] at ih₁
+  split_type_of h₇ ; rename_i h₇ hl₇ hr₇
+  have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
+  simp [EvaluatesTo] at hl₁
+  rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
+  simp [hl₁] <;>
+  try { exact type_is_inhabited (CedarType.ext .duration)}
+  rw [hl₇] at hr₁
+  have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
+  subst hr₁
+  simp [call]
+  apply InstanceOfType.instance_of_ext
+  simp only [InstanceOfExtType]
+
+-- NOTE: We need to complete `typeOfCall` first so we use it with `simp`
+-- theorem type_of_call_toDate_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+--   (h₁ : typeOf (Expr.call .toDate xs) c env = Except.ok (ty, c')) :
+--   ty.typeOf = .ext .duration ∧
+--   c' = ∅ ∧
+--   ∃ (x₁ : Expr) (c₁ : Capabilities),
+--     xs = [x₁] ∧
+--     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁)
+-- := by
+  -- simp [typeOf] at h₁
+  -- cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
+  -- simp [h₂] at h₁
+  -- rename_i tys
+  -- simp [typeOfCall] at h₁
+  -- all_goals {
+  --   split at h₁ <;> try { contradiction }
+  --   all_goals {
+  --     simp [ok] at h₁
+  --     have ⟨hl₁, hr₁⟩ := h₁
+  --     rw [←hl₁]
+  --     simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
+  --     rename_i h₃
+  --     cases tys <;> try simp at h₃
+  --     rename_i tys
+  --     cases tys <;> try simp at h₃
+  --     rw [←h₃]
+  --     apply typeOf_of_unary_call_inversion h₂
+  --   }
+  -- }
+
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₀ : IsIpAddrRecognizer xfn)
   (h₁ : typeOf (Expr.call xfn xs) c env = Except.ok (ty, c')) :
@@ -510,6 +583,8 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   match xfn with
   | .decimal            => exact type_of_call_decimal_is_sound h₃
   | .ip                 => exact type_of_call_ip_is_sound h₃
+  | .datetime           => exact type_of_call_datetime_is_sound h₃
+  | .duration           => exact type_of_call_duration_is_sound h₃
   | .lessThan
   | .lessThanOrEqual
   | .greaterThan
@@ -519,11 +594,9 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   | .isIpv6
   | .isLoopback
   | .isMulticast        => exact type_of_call_ipAddr_recognizer_is_sound (by simp [IsIpAddrRecognizer]) h₁ h₂ h₃ ih
-  | .datetime           => exact type_of_call_datetime_is_sound h₃
-  | .duration           => exact type_of_call_duration_is_sound h₃
-  | .offset
-  | .durationSince
-  | .toDate
-  | .toTime             => exact type_of_call_datetime_method_is_sound (by simp only [IsDatetimeMethod]) h₃
+  -- | .offset
+  -- | .durationSince
+  -- | .toDate             => exact type_of_call_toDate_is_sound h₁ h₂ h₃ ih
+  | .toTime             => exact type_of_call_toTime_is_sound h₁ h₂ h₃ ih
 
 end Cedar.Thm

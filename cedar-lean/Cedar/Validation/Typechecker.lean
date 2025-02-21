@@ -296,6 +296,14 @@ def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarTy
     | .none   => err (.extensionErr xs)
   | _ => err (.extensionErr xs)
 
+def typeOfOptionCallUnary (f : Expr → Option α) (xs : List Expr) (ty : CedarType) : Except TypeError (CedarType × Capabilities) :=
+  match xs with
+  | [x] =>
+    match f x with
+    | .some _ => ok ty
+    | .none   => err (.extensionErr xs)
+  | _ => err (.extensionErr xs)
+
 def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.call xfn tys ty) c
   match xfn, tys.map TypedExpr.typeOf with
@@ -305,6 +313,12 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .ip, _       => do
     let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.IPAddr.ip xs (.ext .ipAddr)
     ok ty c
+  | .datetime, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime)
+  ok ty c
+  | .duration, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration)
+  ok ty c
   | .lessThan, [.ext .decimal, .ext .decimal]           => ok (.bool .anyBool)
   | .lessThanOrEqual, [.ext .decimal, .ext .decimal]    => ok (.bool .anyBool)
   | .greaterThan, [.ext .decimal, .ext .decimal]        => ok (.bool .anyBool)
@@ -314,13 +328,15 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
   | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
   | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
-  | .datetime, _  => do
-  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime)
-  ok ty c
-  | .duration, _  => do
-  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration)
-  ok ty c
-  -- TODO: Add other datetime APIs
+  | .toTime, [.ext .datetime]                           => ok (.ext .duration)
+  -- NOTE: The following types depend on whether the call was successful or not,
+  -- similar to the parsing functions.
+  -- | .offset,
+  --   [.ext .datetime, .ext .duration] => .except
+  -- | .durationSince,
+  --   [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
+  -- | .toDate, [.ext .datetime]              =>
+
   | _, _         => err (.extensionErr xs)
 
 
