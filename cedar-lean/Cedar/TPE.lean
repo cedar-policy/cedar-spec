@@ -5,6 +5,7 @@ import Cedar.Validation.TypedExpr
 import Cedar.Validation.Validator
 import Cedar.Validation.Typechecker
 import Cedar.Validation.RequestEntityValidator
+import Cedar.Thm.Data.List
 
 namespace Cedar.TPE
 
@@ -35,6 +36,38 @@ inductive Residual where
   | set (ls : List Residual)  (ty : CedarType)
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
+
+def TypedExpr.toResidual : TypedExpr → Residual
+  | .lit p ty => .prim p ty
+  | .var v ty => .var v ty
+  | .ite c x y ty => .ite (toResidual c) (toResidual x) (toResidual y) ty
+  | .and a b ty => .and (toResidual a) (toResidual b) ty
+  | .or a b ty => .or (toResidual a) (toResidual b) ty
+  | .unaryApp op e ty => .unaryApp op (toResidual e) ty
+  | .binaryApp op a b ty => .binaryApp op (toResidual a) (toResidual b) ty
+  | .getAttr e a ty => .getAttr (toResidual e) a ty
+  | .hasAttr e a ty => .hasAttr (toResidual e) a ty
+  | .set s ty => .set (s.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
+  | .record m ty => .record (m.map₁ λ ⟨(a, x), _⟩ ↦ (a, toResidual x)) ty
+  | .call f args ty => .call f (args.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
+decreasing_by
+  all_goals
+    simp_wf
+    try omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ h =>
+    replace h := List.sizeOf_lt_of_mem h
+    have h₁ : sizeOf (a, x) >= sizeOf x := by
+      simp_arith
+    omega
+  case _ h =>
+    replace h := List.sizeOf_lt_of_mem h
+    omega
+
+instance : Coe TypedExpr Residual where
+  coe := TypedExpr.toResidual
 
 partial def Residual.asWellFormedInput (r : Residual) (env : Environment) : Bool :=
   match r with
@@ -94,12 +127,12 @@ def findMatchingEnv (schema : Schema) (req : PartialRequest) (es : PartialEntiti
         | (.some id, .some eids) => eids.contains id
         | _ => true
 
-def tpeExpr (x : TypedExpr)
+def tpeExpr (x : Residual)
     (req : PartialRequest)
     (es : PartialEntities)
     : Except EvalError Residual :=
   match x with
-  | .lit p ty => .ok $ .prim p ty
+  | .prim _ _ => .ok x
   | .var .principal ty =>
     match req.principal.asEntityUID with
     | .some uid => .ok $ .prim (.entityUID uid) ty
