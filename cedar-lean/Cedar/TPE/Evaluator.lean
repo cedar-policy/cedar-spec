@@ -30,26 +30,84 @@ inductive Error where
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
+def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) (ty : CedarType): Residual :=
+  if uid₁ = uid₂
+    then .val true ty
+    else
+    match es.find? uid₁ with
+    | .some ⟨_, .some uids, _⟩ => .val (uids.contains uid₂) ty
+    | .some ⟨_, .none, _⟩ => .binaryApp .mem (.val (.prim (.entityUID uid₁)) (.entity uid₁.ty)) (.val (.prim (.entityUID uid₂)) (.entity uid₂.ty)) ty
+    | .none => .val false ty
+
+def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType): Result Residual :=
+  let self : Result Residual := .ok $ .binaryApp op₂ r₁ r₂ ty
+  match op₂, r₁, r₂ with
+  | .eq, (.val v₁ _), (.val v₂ _) => .ok $ .val (v₁ == v₂) ty
+  | .less, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    .ok $ .val ((i < j): Bool) ty
+  | .lessEq, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    .ok $ .val ((i ≤ j): Bool) ty
+  | .add, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    (intOrErr (i.add? j)).map (Value.toResidual · ty)
+  | .sub, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    (intOrErr (i.sub? j)).map (Value.toResidual · ty)
+  | .mul, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    (intOrErr (i.mul? j)).map (Value.toResidual · ty)
+  | .contains, (.val (.set vs₁) _), (.val v₂ _) =>
+    .ok $ .val (vs₁.contains v₂) ty
+  | .containsAll, (.val (.set vs₁) _), (.val (.set vs₂) _) =>
+    .ok $ .val (vs₂.subset vs₁) ty
+  | .containsAny, (.val (.set vs₁) _), (.val (.set vs₂) _) =>
+    .ok $ .val (vs₁.intersects vs₂) ty
+  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.entityUID uid₂)) _) =>
+    .ok $ inₑ uid₁ uid₂ es ty
+  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.set vs) _) => do
+    let uids ← vs.mapOrErr Value.asEntityUID .typeError
+    let rs := uids.toList.map λ uid ↦ inₑ uid₁ uid es ty
+    if rs.any λ r ↦ match r with
+      | .val (.prim (.bool _)) _ => false
+      | _ => true
+    then self
+    else .ok $ (.val (.prim (.bool (rs.any λ r ↦ match r with
+      | .val (.prim (.bool true)) _ => true
+      | _ => false
+    ))) ty)
+  | .hasTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
+    match es.find? uid₁ with
+    | .some ⟨_, _, .some m⟩ => .ok $ .val (m.contains tag) ty
+    | .some ⟨_, _, .none⟩ => self
+    | .none => .ok $ .val false ty
+  | .getTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
+    match es.find? uid₁ with
+    | .some ⟨_, _, .some m⟩ => (m.findOrErr tag .tagDoesNotExist).map (Value.toResidual · ty)
+    | .some ⟨_, _, .none⟩ => self
+    | .none => .error .entityDoesNotExist
+  | _, _, _ => self
+
 partial def tpeExpr (x : Residual)
     (req : PartialRequest)
     (es : PartialEntities)
-    : Except Spec.Error Residual :=
+    : Result Residual :=
   match x with
-  | .prim _ _ | .val _ _ => .ok x
+  | .prim p ty => .ok $ .val p ty
+  | .val _ _ => .ok x
   | .var .principal ty =>
     match req.principal.asEntityUID with
     | .some uid => .ok $ .prim (.entityUID uid) ty
-    | .none => .ok $ .var .principal ty
+    | .none => .ok x
   | .var .resource ty =>
     match req.resource.asEntityUID with
     | .some uid => .ok $ .prim (.entityUID uid) ty
-    | .none => .ok $ .var .resource ty
+    | .none => .ok x
   | .var .action ty => .ok $ .prim (.entityUID req.action) ty
-  | .var .context ty => sorry
+  | .var .context ty =>
+    match req.context with
+    | .some m => .ok (.val (.record m) ty)
+    | .none => .ok x
   | .ite c t e ty => do
     let c ← tpeExpr c req es
     match c with
-    | .prim (.bool b) ty₁ =>
+    | .prim (.bool b) _ =>
       if b then tpeExpr t req es else tpeExpr e req es
     | _ =>
       let t ← tpeExpr t req es
@@ -58,7 +116,7 @@ partial def tpeExpr (x : Residual)
   | .and l r ty => do
     let l ← tpeExpr l req es
     match l with
-    | .prim (.bool b) ty₁ =>
+    | .prim (.bool b) _ =>
       if b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .ff)
     | _ =>
       let r ← tpeExpr r req es
@@ -66,36 +124,50 @@ partial def tpeExpr (x : Residual)
   | .or l r ty => do
     let l ← tpeExpr l req es
     match l with
-    | .prim (.bool b) ty₁ =>
+    | .prim (.bool b) _ =>
       if !b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .tt)
     | _ =>
       let r ← tpeExpr r req es
       .ok $ .or l r ty
   | .call f args ty => do
-    let rs ← args.mapM₁ (fun ⟨x₁, _⟩ => tpeExpr x₁ req es)
+    let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     match rs.mapM Residual.asValue with
-    | .some vs => (Spec.call f vs).map λ v ↦ .val v ty
+    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
     | .none => .ok $ .call f rs ty
   | .unaryApp op e ty => do
     let r ← tpeExpr e req es
     match r.asValue with
-    | .some v => (apply₁ op v).map λ v ↦ .val v ty
+    | .some v => (apply₁ op v).map (Value.toResidual · ty)
     | .none => .ok $ .unaryApp op r ty
   | .binaryApp op x y ty => do
     let x ← tpeExpr x req es
     let y ← tpeExpr y req es
-
-    .ok $ .binaryApp op x y ty
+    apply₂ op x y es ty
   | .getAttr e a ty => do
     let r ← tpeExpr e req es
-    sorry
+    match r with
+    | .val (.record xs) _ =>
+      (xs.findOrErr a .attrDoesNotExist).map
+        (Value.toResidual · ty)
+    | .val (.prim (.entityUID uid)) _ =>
+      let data ← es.findOrErr uid .entityDoesNotExist
+      match data.attrs with
+      | .some m =>
+        (m.findOrErr a .attrDoesNotExist).map
+          (Value.toResidual · ty)
+      | .none => .ok $ .getAttr r a ty
+    | .record xs _ =>
+      match xs.find? λ (a₁, _) ↦ a₁ = a with
+      | .some (_, r₁) => .ok r₁
+      | .none => .error .attrDoesNotExist
+    | _ => .error .typeError
   | .set xs ty => do
-    let rs ← xs.mapM₁ (fun ⟨x₁, _⟩ => tpeExpr x₁ req es)
+    let rs ← xs.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     match rs.mapM Residual.asValue with
     | .some vs => .ok $ .val (.set (Set.mk vs)) ty
     | .none => .ok $ .set rs ty
   | .record m ty => do
-    let m₁ ← m.mapM₁ (fun ⟨(a, x₁), _⟩ => do
+    let m₁ ← m.mapM₁ (λ ⟨(a, x₁), _⟩ ↦ do
       let v ← tpeExpr x₁ req es
       pure (a, v))
     match m₁.mapM λ (a, r₁) ↦ do
@@ -103,7 +175,22 @@ partial def tpeExpr (x : Residual)
       pure (a, v₁) with
     | .some xs => .ok $ .val (.record (Map.mk xs)) ty
     | .none => .ok $ .record m₁ ty
-  | .hasAttr e a ty => sorry
+  | .hasAttr e a ty => do
+    let r ← tpeExpr e req es
+    match r with
+    | .val (.record xs) _ =>
+      .ok $ .val (xs.contains a) ty
+    | .val (.prim (.entityUID uid)) _ =>
+      match es.find? uid with
+      | .some ⟨ .some m, _ , _⟩  =>
+        .ok $ .val (m.contains a) ty
+      | .some ⟨ .none, _ , _⟩  => .ok $ .hasAttr r a ty
+      | .none => .ok $ .val false ty
+    | .record xs _ =>
+      match xs.find? λ (a₁, _) ↦ a₁ = a with
+      | .some (_, r₁) => .ok r₁
+      | .none => .error .attrDoesNotExist
+    | _ => .error .typeError
 
 def tpePolicy (schema : Schema)
   (p : Policy)

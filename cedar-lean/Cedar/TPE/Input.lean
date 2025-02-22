@@ -82,28 +82,12 @@ decreasing_by
 instance : Coe TypedExpr Residual where
   coe := TypedExpr.toResidual
 
-
 def Residual.asValue : Residual → Option Value
-  | .prim p _ => .some p
   | .val v _ => .some v
-  | .set s _ =>
-    (s.mapM₁ (fun ⟨x₁, _⟩ => x₁.asValue)).map λ x ↦ Set.mk x
-  | .record m _ =>
-    (m.mapM₁ (fun ⟨(a₁, x₁), _⟩ =>
-      do
-        let v ← x₁.asValue
-        pure (a₁, v))).map λ x ↦ Map.mk x
   | _ => .none
-decreasing_by
-  all_goals
-    simp_wf
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    have h₁ := List.sizeOf_lt_of_mem h
-    simp at h₁
-    omega
+
+def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
+  .val v ty
 
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
@@ -163,14 +147,14 @@ decreasing_by
 
 structure PartialRequest where
   principal : PartialEntityUID
-  action : EntityUID                 -- Action is always known.
+  action : EntityUID
   resource : PartialEntityUID
-  context :  Option (Map Attr Residual)          -- Unknown context is omitted.
+  context :  Option (Map Attr Value)
 
 structure PartialEntityData where
-  attrs : Option (Map Attr Residual)              -- Attributes fully known or fully unknown.
-  ancestors : Option (Set EntityUID) -- Ancestors fully known or fully unknown.
-  tags : Option (Map Attr Residual)   -- Tags are fully known or fully unknown.
+  attrs : Option (Map Attr Value)
+  ancestors : Option (Set EntityUID)
+  tags : Option (Map Attr Value)
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
