@@ -155,11 +155,7 @@ def tpeExpr (x : TypedExpr)
         (m.findOrErr a .attrDoesNotExist).map
           (Value.toResidual · ty)
       | .none => .ok $ .getAttr r a ty
-    | .record xs _ =>
-      match xs.find? λ (a₁, _) ↦ a₁ = a with
-      | .some (_, r₁) => .ok r₁
-      | .none => .error .attrDoesNotExist
-    | _ => .error .typeError
+    | _ => .ok $ .getAttr r a ty
   | .set xs ty => do
     let rs ← xs.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     match rs.mapM Residual.asValue with
@@ -185,11 +181,7 @@ def tpeExpr (x : TypedExpr)
         .ok $ .val (m.contains a) ty
       | .some ⟨ .none, _ , _⟩  => .ok $ .hasAttr r a ty
       | .none => .ok $ .val false ty
-    | .record xs _ =>
-      match xs.find? λ (a₁, _) ↦ a₁ = a with
-      | .some (_, r₁) => .ok r₁
-      | .none => .error .attrDoesNotExist
-    | _ => .error .typeError
+    | _ => .ok $ .getAttr r a ty
 termination_by x
 decreasing_by
   all_goals
