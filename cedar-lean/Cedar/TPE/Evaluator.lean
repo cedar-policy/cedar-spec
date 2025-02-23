@@ -84,13 +84,12 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     | .none => .error .entityDoesNotExist
   | _, _, _ => self
 
-partial def tpeExpr (x : Residual)
+def tpeExpr (x : TypedExpr)
     (req : PartialRequest)
     (es : PartialEntities)
     : Result Residual :=
   match x with
-  | .prim p ty => .ok $ .val p ty
-  | .val _ _ => .ok x
+  | .lit p ty => .ok $ .val p ty
   | .var .principal ty =>
     match req.principal.asEntityUID with
     | .some uid => .ok $ .prim (.entityUID uid) ty
@@ -191,6 +190,21 @@ partial def tpeExpr (x : Residual)
       | .some (_, r₁) => .ok r₁
       | .none => .error .attrDoesNotExist
     | _ => .error .typeError
+termination_by x
+decreasing_by
+  all_goals
+    simp_wf
+    try omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
+    omega
+  case _ h =>
+    have h₁ := List.sizeOf_lt_of_mem h
+    simp at h₁
+    omega
 
 def tpePolicy (schema : Schema)
   (p : Policy)
