@@ -205,7 +205,7 @@ def tpePolicy (schema : Schema)
   (req : PartialRequest)
   (es : PartialEntities)
   : Except Error Residual :=
-  match schema.getEnvironment req.principal.ty req.resource.ty req.action with
+  match schema.environment? req.principal.ty req.resource.ty req.action with
     | .some env => if RequestAndEntitiesIsValid env req es then
       do
         let expr := substituteAction env.reqty.action p.toExpr
