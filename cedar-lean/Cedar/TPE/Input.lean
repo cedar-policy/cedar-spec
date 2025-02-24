@@ -33,118 +33,6 @@ structure PartialEntityUID where
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
   self.id.map λ x ↦ ⟨ self.ty, x⟩
 
--- The result produced by TPE
--- We do not need `unknown`s because they can be represented by entity dereferences
-inductive Residual where
-  | val (v : Value) (ty : CedarType)
-  | prim (p : Prim) (ty : CedarType)
-  | var (v : Var)  (ty : CedarType)
-  | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
-  | and (a : Residual) (b : Residual)  (ty : CedarType)
-  | or (a : Residual) (b : Residual)  (ty : CedarType)
-  | unaryApp (op : UnaryOp) (expr : Residual)  (ty : CedarType)
-  | binaryApp (op : BinaryOp) (a : Residual) (b : Residual)  (ty : CedarType)
-  | getAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
-  | hasAttr (expr : Residual) (attr : Attr)  (ty : CedarType)
-  | set (ls : List Residual)  (ty : CedarType)
-  | record (map : List (Attr × Residual))  (ty : CedarType)
-  | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
-
-def TypedExpr.toResidual : TypedExpr → Residual
-  | .lit p ty => .prim p ty
-  | .var v ty => .var v ty
-  | .ite c x y ty => .ite (toResidual c) (toResidual x) (toResidual y) ty
-  | .and a b ty => .and (toResidual a) (toResidual b) ty
-  | .or a b ty => .or (toResidual a) (toResidual b) ty
-  | .unaryApp op e ty => .unaryApp op (toResidual e) ty
-  | .binaryApp op a b ty => .binaryApp op (toResidual a) (toResidual b) ty
-  | .getAttr e a ty => .getAttr (toResidual e) a ty
-  | .hasAttr e a ty => .hasAttr (toResidual e) a ty
-  | .set s ty => .set (s.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
-  | .record m ty => .record (m.map₁ λ ⟨(a, x), _⟩ ↦ (a, toResidual x)) ty
-  | .call f args ty => .call f (args.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
-decreasing_by
-  all_goals
-    simp_wf
-    try omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    replace h := List.sizeOf_lt_of_mem h
-    have h₁ : sizeOf (a, x) >= sizeOf x := by
-      simp_arith
-    omega
-  case _ h =>
-    replace h := List.sizeOf_lt_of_mem h
-    omega
-
-instance : Coe TypedExpr Residual where
-  coe := TypedExpr.toResidual
-
-def Residual.asValue : Residual → Option Value
-  | .val v _ => .some v
-  | _ => .none
-
-def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
-  .val v ty
-
--- The interpreter of `Residual` that defines its semantics
-def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
-  match x with
-  | .val v _ => .ok v
-  | .prim p _ => .ok $ .prim p
-  | .var (.principal) _ => .ok req.principal
-  | .var (.resource) _ => .ok req.resource
-  | .var (.action) _ => .ok req.action
-  | .var (.context) _ => .ok req.context
-  | .ite c x y _ => do
-    let c ← c.evaluate req es
-    let b ← c.asBool
-    if b then x.evaluate req es else y.evaluate req es
-  | .and x y _ => do
-    let b ← (x.evaluate req es).as Bool
-    if !b then .ok b else (y.evaluate req es).as Bool
-  | .or x y _ => do
-    let b ← (x.evaluate req es).as Bool
-    if b then .ok b else (y.evaluate req es).as Bool
-  | .unaryApp op e _ => do
-    let v ← e.evaluate req es
-    apply₁ op v
-  | .binaryApp op x y _ => do
-    let v₁ ← evaluate x req es
-    let v₂ ← evaluate y req es
-    apply₂ op v₁ v₂ es
-  | .hasAttr e a _ => do
-    let v ← e.evaluate req es
-    Cedar.Spec.hasAttr v a es
-  | .getAttr e a _ => do
-    let v ← e.evaluate req es
-    Cedar.Spec.hasAttr v a es
-  | .set xs _ => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    .ok (Set.make vs)
-  | .record axs _ => do
-    let avs ← axs.mapM₂ (fun ⟨(a₁, x₁), _⟩ => bindAttr a₁ (evaluate x₁ req es))
-    .ok (Map.make avs)
-  | .call xfn xs _ => do
-    let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
-    Cedar.Spec.call xfn vs
-termination_by x
-decreasing_by
-  all_goals
-    simp_wf
-    try omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    simp at h
-    omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-
 structure PartialRequest where
   principal : PartialEntityUID
   action : EntityUID
@@ -158,20 +46,45 @@ structure PartialEntityData where
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
-def findMatchingEnv (schema : Schema) (req : PartialRequest) (es : PartialEntities) : Option Environment :=
-  do
-    let entry ← schema.acts.find? req.action
-    let reqType ← (entry.toRequestTypes req.action).find? matchRequestType
-    -- TODO: check validity of `es`
-    pure ⟨ schema.ets, schema.acts, reqType ⟩
-  where
-    matchRequestType rt :=
-      instanceOfEntityType rt.principal req.principal schema.ets.entityTypeMembers? &&
-      instanceOfEntityType rt.resource req.resource schema.ets.entityTypeMembers?
-      -- TODO: also check context
-    instanceOfEntityType ty pe (eids: EntityType → Option (Set String)) :=
-      ty == pe.ty && match (pe.id, eids ty) with
-        | (.some id, .some eids) => eids.contains id
-        | _ => true
+def NoneIsTrue {α} (o : Option α) (f : α → Bool) : Bool :=
+  match o with
+  | .some v => f v
+  | .none => true
+
+def RequestIsValid (env : Environment) (req : PartialRequest) : Bool :=
+  (NoneIsTrue req.principal.asEntityUID λ principal ↦
+    instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
+  (NoneIsTrue req.resource.asEntityUID λ resource ↦
+    instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
+  (NoneIsTrue req.context λ m ↦
+    instanceOfType (.record m) (.record env.reqty.context) env.ets)
+
+def EntitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
+  (es.toList.all EntityIsValid) && (env.acts.toList.all instanceOfActionSchema)
+where
+  EntityIsValid p :=
+  let (uid, ⟨attrs, ancestors, tags⟩) := p
+  match env.ets.find? uid.ty with
+  | .some entry =>
+    entry.isValidEntityEID uid.eid &&
+    (NoneIsTrue ancestors λ ancestors ↦
+      ancestors.all (λ ancestor =>
+      entry.ancestors.contains ancestor.ty &&
+      instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
+    (NoneIsTrue attrs λ attrs ↦
+      instanceOfType attrs (.record entry.attrs) env.ets) &&
+    (NoneIsTrue tags λ tags ↦
+      match entry.tags? with
+    | .some tty => tags.values.all (instanceOfType · tty env.ets)
+    | .none     => tags == Map.empty)
+  | .none => false
+  instanceOfActionSchema p :=
+    let (uid, entry) := p
+    match es.find? uid with
+      | .some entry₁ => entry.ancestors == entry₁.ancestors
+      | _ => false
+
+def RequestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
+  RequestIsValid env req && EntitiesIsValid env es
 
 end Cedar.TPE
