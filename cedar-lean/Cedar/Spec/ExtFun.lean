@@ -39,9 +39,9 @@ inductive ExtFun where
   | isInRange
   | datetime            ----- Datetime functions -----
   | duration
-  -- | offset
-  -- | durationSince
-  -- | toDate
+  | offset
+  | durationSince
+  | toDate
   | toTime
 
 def res {α} [Coe α Ext] : Option α → Result Value

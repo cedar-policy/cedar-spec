@@ -296,14 +296,6 @@ def typeOfConstructor (mk : String → Option α) (xs : List Expr) (ty : CedarTy
     | .none   => err (.extensionErr xs)
   | _ => err (.extensionErr xs)
 
-def typeOfOptionCallUnary (f : Expr → Option α) (xs : List Expr) (ty : CedarType) : Except TypeError (CedarType × Capabilities) :=
-  match xs with
-  | [x] =>
-    match f x with
-    | .some _ => ok ty
-    | .none   => err (.extensionErr xs)
-  | _ => err (.extensionErr xs)
-
 def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.call xfn tys ty) c
   match xfn, tys.map TypedExpr.typeOf with
@@ -328,16 +320,11 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
   | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
   | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
+  | .offset, [.ext .datetime, .ext .duration]           => ok (.ext .datetime)
+  | .durationSince, [.ext .datetime, .ext .datetime]    => ok (.ext .duration)
+  | .toDate, [.ext .datetime]                           => ok (.ext .datetime)
   | .toTime, [.ext .datetime]                           => ok (.ext .duration)
-  -- NOTE: The following types depend on whether the call was successful or not,
-  -- similar to the parsing functions.
-  -- | .offset,
-  --   [.ext .datetime, .ext .duration] => .except
-  -- | .durationSince,
-  --   [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
-  -- | .toDate, [.ext .datetime]              =>
-
-  | _, _         => err (.extensionErr xs)
+  | _, _                                                => err (.extensionErr xs)
 
 
 -- Note: if x types as .tt or .ff, it is okay to replace x with the literal
