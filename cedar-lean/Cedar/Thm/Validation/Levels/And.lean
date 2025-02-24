@@ -53,28 +53,21 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
     subst tx bty
     replace hv₁ := instance_of_ff_is_false hv₁
     subst v₁
-    unfold EvaluatesTo at he₁
-    simp [evaluate]
-    simp [checkLevel] at hl
+    simp only [checkLevel, Bool.and_self] at hl
     specialize ih₁ hs hc hr htx₁ hl
-    rw [←ih₁]
+    simp only [evaluate, ←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
   case isFalse =>
-    replace ⟨ tx₂, bty₂, c₂, htx₂, hty₂, ht ⟩ := ht
-    replace ⟨ b₁ , hv₁⟩  := instance_of_bool_is_bool hv₁
-    subst v₁
-    split at ht
-    all_goals
-      replace ⟨ ht, _ ⟩ := ht
-      subst tx
-      simp [evaluate]
-      simp [checkLevel] at hl
-      specialize ih₁ hs hc hr htx₁ (by simp [hl])
-      rw [←ih₁]
-      rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-      simp [he₁, Result.as, Coe.coe, Value.asBool]
-      cases b₁ <;> simp
-      specialize hgc he₁
-      specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂ (by simp [hl])
-      simp [ih₂]
+    replace ⟨ bty, tx₂, bty₂, c₂, htx, htx₂, hty₂, ht ⟩ := ht
+    replace ⟨ b₁ , hv₁⟩ := instance_of_bool_is_bool hv₁
+    subst v₁ tx
+    simp only [checkLevel, Bool.and_eq_true] at hl
+    specialize ih₁ hs hc hr htx₁ (by simp [hl])
+    simp only [evaluate, ←ih₁]
+    rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
+    simp [he₁, Result.as, Coe.coe, Value.asBool]
+    cases b₁ <;> simp only [Bool.true_eq_false, ↓reduceIte]
+    specialize hgc he₁
+    specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂ (by simp [hl])
+    simp [ih₂]
