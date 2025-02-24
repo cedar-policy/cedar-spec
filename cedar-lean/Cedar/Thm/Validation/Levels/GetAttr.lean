@@ -39,7 +39,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : checkLevel (tx₁.getAttr a ty) n = true)
+  (hl : TypedExpr.AtLevel (tx₁.getAttr a ty) n)
   (ht : typeOf e c₀ env = Except.ok (tx₁, c₁))
   (hety : tx₁.typeOf = CedarType.entity ety)
   (ihe : TypedAtLevelIsSound e)
@@ -49,14 +49,14 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   rw [hety] at h₁₄
   replace ⟨ euid, h₁₄, h₁₅⟩ := instance_of_entity_type_is_entity h₁₄
   subst h₁₄ h₁₅
-  simp [checkLevel, hety] at hl
-  have ⟨ ⟨ hl₁, _⟩, hl₂ ⟩ := hl ; clear hl
-  have h₈ := check_level_succ hl₂
-  have h₉ : (n = (n - 1) + 1) := by omega
-  rw [h₉] at hs ; clear h₉
+  cases hl
+  case getAttrRecord hnety _ =>
+    specialize hnety euid.ty
+    contradiction
+  rename_i n hel₁ hl₁ _
+  have hl₁' := check_level_succ hl₁
   simp [evaluate]
-  rw [←ihe hs hc hr ht h₈]
-  clear h₈
+  rw [←ihe hs hc hr ht hl₁']
   simp [getAttr, attrsOf]
   unfold EvaluatesTo at h₁₃
   rcases h₁₃ with h₁₃ | h₁₃ | h₁₃ | h₁₃ <;> simp [h₁₃]
@@ -65,7 +65,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   case ok =>
     have ⟨ ed, hee', hee''⟩ := entities_attrs_then_find? hee
     subst hee''
-    have h₇ := checked_eval_entity_in_slice hc hr ht hl₂ hl₁ h₁₃ hee' hs
+    have h₇ := checked_eval_entity_in_slice hc hr ht hl₁ hel₁ h₁₃ hee' hs
     replace h₇ := entities_find?_then_attrs h₇
     simp [h₇]
 
@@ -73,7 +73,7 @@ theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : checkLevel (ty₁.getAttr a tx.typeOf) n = true)
+  (hl : TypedExpr.AtLevel (ty₁.getAttr a tx.typeOf) n)
   (ht : typeOf e c₀ env = Except.ok (ty₁, c₁'))
   (hrty : ty₁.typeOf = CedarType.record rty)
   (ihe : TypedAtLevelIsSound e)
@@ -83,7 +83,10 @@ theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr}
   rw [hrty] at h₁₄
   replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
   subst h₁₄
-  simp [checkLevel, hrty] at hl
+  cases hl
+  case getAttr hety =>
+    simp [hety] at hrty
+  rename_i hl
   have ih := ihe hs hc hr ht hl
   simp [evaluate, ←ih]
   cases he : evaluate e request entities <;> simp [he]
@@ -99,7 +102,7 @@ theorem level_based_slicing_is_sound_get_attr {e : Expr} {tx : TypedExpr} {a : A
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c₀ env = Except.ok (tx, c₁))
-  (hl : checkLevel tx n = true)
+  (hl : TypedExpr.AtLevel tx n)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.getAttr e a) request entities = evaluate (.getAttr e a) request slice
 := by

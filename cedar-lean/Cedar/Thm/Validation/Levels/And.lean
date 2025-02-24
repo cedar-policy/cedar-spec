@@ -39,7 +39,7 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.and e₁ e₂) c₀ env = Except.ok (tx, c₁))
-  (hl : checkLevel tx n = true)
+  (hl : TypedExpr.AtLevel tx n)
   (ih₁ : TypedAtLevelIsSound e₁)
   (ih₂ : TypedAtLevelIsSound e₂)
   : evaluate (.and e₁ e₂) request entities = evaluate (.and e₁ e₂) request slice
@@ -53,8 +53,8 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
     subst tx bty
     replace hv₁ := instance_of_ff_is_false hv₁
     subst v₁
-    simp only [checkLevel, Bool.and_self] at hl
-    specialize ih₁ hs hc hr htx₁ hl
+    cases hl ; rename_i hl₁
+    specialize ih₁ hs hc hr htx₁ (by assumption)
     simp only [evaluate, ←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
@@ -62,12 +62,12 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
     replace ⟨ bty, tx₂, bty₂, c₂, htx, htx₂, hty₂, ht ⟩ := ht
     replace ⟨ b₁ , hv₁⟩ := instance_of_bool_is_bool hv₁
     subst v₁ tx
-    simp only [checkLevel, Bool.and_eq_true] at hl
-    specialize ih₁ hs hc hr htx₁ (by simp [hl])
+    cases hl ; rename_i hl₁ hl₂
+    specialize ih₁ hs hc hr htx₁ hl₁
     simp only [evaluate, ←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
-    simp [he₁, Result.as, Coe.coe, Value.asBool]
-    cases b₁ <;> simp only [Bool.true_eq_false, ↓reduceIte]
+    simp only [he₁, Result.as, Bool.not_eq_eq_eq_not, Bool.not_true, Coe.coe, Value.asBool, Except.bind_err]
+    cases b₁ <;> simp only [Except.bind_ok, ↓reduceIte]
     specialize hgc he₁
-    specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂ (by simp [hl])
+    specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂ hl₂
     simp [ih₂]

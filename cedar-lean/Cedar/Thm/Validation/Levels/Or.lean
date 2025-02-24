@@ -39,7 +39,7 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.or e₁ e₂) c₀ env = Except.ok (tx, c₁))
-  (hl : checkLevel tx n = true)
+  (hl : TypedExpr.AtLevel tx n)
   (ih₁ : TypedAtLevelIsSound e₁)
   (ih₂ : TypedAtLevelIsSound e₂)
   : evaluate (.or e₁ e₂) request entities = evaluate (.or e₁ e₂) request slice
@@ -55,16 +55,18 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     subst v₁
     unfold EvaluatesTo at he₁
     simp [evaluate]
-    simp [checkLevel] at hl
-    specialize ih₁ hs hc hr htx₁ hl
+    cases hl
+    rename_i hl₁ hl₂
+    specialize ih₁ hs hc hr htx₁ hl₁
     rw [←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
   case isFalse =>
     replace ⟨ bt, tx₂, bty₂, c₂, htx, htx₂, hty₂, ht ⟩ := ht
     subst tx
-    simp [checkLevel] at hl
-    specialize ih₁ hs hc hr htx₁ (by simp [hl])
-    specialize ih₂ hs hc hr htx₂ (by simp [hl])
+    cases hl
+    rename_i hl₁ hl₂
+    specialize ih₁ hs hc hr htx₁ hl₁
+    specialize ih₂ hs hc hr htx₂ hl₂
     simp [evaluate]
     rw [ih₁, ih₂]

@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Validation.Typechecker.Basic
+import Cedar.Thm.Validation.Levels.CheckLevel
 
 namespace Cedar.Thm
 
@@ -30,5 +31,5 @@ def TypedAtLevelIsSound (e : Expr) : Prop := ∀ {n : Nat} {tx : TypedExpr} {c c
   CapabilitiesInvariant c request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c env = Except.ok (tx, c₁) →
-  checkLevel tx n →
+  TypedExpr.AtLevel tx n →
   evaluate e request entities = evaluate e request slice

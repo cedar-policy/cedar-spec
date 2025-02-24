@@ -752,8 +752,8 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : checkLevel tx n)
-  (hrt : notEntityLit tx)
+  (hl : TypedExpr.AtLevel tx n)
+  (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
@@ -767,8 +767,6 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
     simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
-  rewrite [not_entity_lit_spec] at hrt
-  rewrite [←level_spec] at hl
   have hw : ReachableIn entities request.sliceEUIDs euid (n + 1) :=
     checked_eval_entity_reachable hc hr ht hl hrt he (.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁

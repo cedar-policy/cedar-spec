@@ -378,40 +378,34 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
       exact h₁
 termination_by tx
 
-theorem check_level_succ {tx : TypedExpr} {n : Nat}:
-  checkLevel tx n → checkLevel tx (n + 1)
+theorem check_level_succ {tx : TypedExpr} {n : Nat}
+  (h₁ : TypedExpr.AtLevel tx n) :
+  TypedExpr.AtLevel tx (n + 1)
 := by
-  rw [←@level_spec tx n, ←@level_spec tx (n + 1)]
-  exact check_level_succ'
-where
-  check_level_succ' {tx : TypedExpr} {n : Nat} :
-    TypedExpr.AtLevel tx n → TypedExpr.AtLevel tx (n + 1)
-  := by
-    intro h₁
-    cases h₁
-    case call htx | set htx =>
-      constructor
-      intro tx hi
-      have _ := List.sizeOf_lt_of_mem hi
-      apply check_level_succ'
-      exact htx tx hi
-    case record attrs _ ha =>
-      constructor
-      intro atx hi
-      have : sizeOf atx.snd < sizeOf attrs := by
-        have h₂ := List.sizeOf_lt_of_mem hi
-        rw [Prod.mk.sizeOf_spec] at h₂
-        omega
-      apply check_level_succ'
-      exact ha atx hi
-    case getAttrRecord h₁ h₂ =>
-      have h₃ := check_level_succ' h₂
-      apply TypedExpr.AtLevel.getAttrRecord <;> assumption
-    case hasAttrRecord h₁ h₂ =>
-      have h₃ := check_level_succ' h₂
-      apply TypedExpr.AtLevel.hasAttrRecord <;> assumption
-    all_goals
-      constructor <;> (
-        try apply check_level_succ'
-        try assumption
-      )
+  cases h₁
+  case call htx | set htx =>
+    constructor
+    intro tx hi
+    have _ := List.sizeOf_lt_of_mem hi
+    apply check_level_succ
+    exact htx tx hi
+  case record attrs _ ha =>
+    constructor
+    intro atx hi
+    have : sizeOf atx.snd < sizeOf attrs := by
+      have h₂ := List.sizeOf_lt_of_mem hi
+      rw [Prod.mk.sizeOf_spec] at h₂
+      omega
+    apply check_level_succ
+    exact ha atx hi
+  case getAttrRecord h₁ h₂ =>
+    have h₃ := check_level_succ h₂
+    apply TypedExpr.AtLevel.getAttrRecord <;> assumption
+  case hasAttrRecord h₁ h₂ =>
+    have h₃ := check_level_succ h₂
+    apply TypedExpr.AtLevel.hasAttrRecord <;> assumption
+  all_goals
+    constructor <;> (
+      try apply check_level_succ
+      try assumption
+    )
