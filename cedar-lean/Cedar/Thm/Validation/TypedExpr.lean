@@ -98,8 +98,19 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
     (h₁ : ∀ a e, (a, e) ∈ m → WellTyped env e)
     (h₂ : ∀ a e, (a, e) ∈ m → (a, e.typeOf) ∈ rty.kvs.map λ (a, qt) ↦ (a, qt.getType)) :
     WellTyped env (.record m (.record rty))
+  | getAttr_entity_wt (e : TypedExpr) (a : Attr) (ety : EntityType) (rty : RecordType) (ty : CedarType)
+    (h₁ : WellTyped env e)
+    (h₂ : e.typeOf = .entity ety)
+    (h₃ : env.ets.attrs? ety = .some rty)
+    (h₄ : ((rty.find? a).map Qualified.getType) = .some ty) :
+    WellTyped env (.getAttr e a ty)
+  | getAttr_record_wt (e : TypedExpr) (a : Attr) (rty : RecordType) (ty : CedarType)
+    (h₁ : WellTyped env e)
+    (h₂ : e.typeOf = .record rty)
+    (h₃ : ((rty.find? a).map λ qt ↦ qt.getType) = .some ty) :
+    WellTyped env (.getAttr e a ty)
 
-theorem well_typed_expr_can_never_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
   ∃ v, EvaluatesTo ty.toExpr request entities v ∧ InstanceOfType v ty.typeOf := by
@@ -138,17 +149,17 @@ theorem well_typed_expr_can_never_go_wrong {env : Environment} {ty : TypedExpr} 
   case ite ce te ee =>
     cases h₁
     rename_i cond h₃ h₄ h₅ h₆ h₇
-    have ⟨ b, ⟨ h₈, h₉⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₃
+    have ⟨ b, ⟨ h₈, h₉⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₃
     simp only [EvaluatesTo] at h₈
     rcases h₈ with (hₑ | hₑ₁ | hₐ | hₒ)
     · simp [hₑ, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
       exists vc
     · simp [hₑ₁, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
       exists vc
     · simp [hₐ, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
       exists vc
     · simp [CedarType.isBool] at h₄
       split at h₄
@@ -160,8 +171,8 @@ theorem well_typed_expr_can_never_go_wrong {env : Environment} {ty : TypedExpr} 
         simp [hₒ, Result.as, hb, Coe.coe, Value.asBool]
         cases bv <;> simp
         · rw [h₇]
-          exact well_typed_expr_can_never_go_wrong h₀ h₆
-        · exact well_typed_expr_can_never_go_wrong h₀ h₅
+          exact well_typed_expr_cannot_go_wrong h₀ h₆
+        · exact well_typed_expr_cannot_go_wrong h₀ h₅
       case _ => cases h₄
   case and a b t =>
     cases h₁
