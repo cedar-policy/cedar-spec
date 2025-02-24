@@ -67,11 +67,11 @@ def call : ExtFun → List Value → Result Value
     [.ext (.ipaddr a₁), .ext (.ipaddr a₂)]      => .ok (a₁.inRange a₂)
   | .datetime, [.prim (.string s)]              => res (Datetime.parse s)
   | .duration, [.prim (.string s)]              => res (Datetime.Duration.parse s)
-  -- | .offset,
-  --   [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
-  -- | .durationSince,
-  --   [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
-  -- | .toDate, [.ext (.datetime dt)]              => res (dt.toDate)
+  | .offset,
+    [.ext (.datetime dt), .ext (.duration dur)] => res (dt.offset dur)
+  | .durationSince,
+    [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
+  | .toDate, [.ext (.datetime dt)]              => res (dt.toDate)
   | .toTime, [.ext (.datetime dt)]              => .ok dt.toTime
   | _, _                                        => .error .typeError
 
