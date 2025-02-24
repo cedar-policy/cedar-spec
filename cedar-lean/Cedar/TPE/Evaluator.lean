@@ -28,6 +28,7 @@ inductive Error where
   | invalidPolicy (err : TypeError)
   | noValidEnvironment
   | invalidRequestOrEntities
+deriving Repr
 
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
@@ -117,19 +118,23 @@ def tpeExpr (x : TypedExpr)
   | .and l r ty => do
     let l ← tpeExpr l req es
     match l with
-    | .prim (.bool b) _ =>
+    | .val (.prim (.bool b)) _ =>
       if b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .ff)
     | _ =>
       let r ← tpeExpr r req es
-      .ok $ .and l r ty
+      match r with
+      | .val true _ => .ok l
+      | _ => .ok $ .and l r ty
   | .or l r ty => do
     let l ← tpeExpr l req es
     match l with
-    | .prim (.bool b) _ =>
+    | .val (.prim (.bool b)) _ =>
       if !b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .tt)
     | _ =>
       let r ← tpeExpr r req es
-      .ok $ .or l r ty
+      match r with
+      | .val false _ => .ok l
+      | _ => .ok $ .or l r ty
   | .call f args ty => do
     let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     match rs.mapM Residual.asValue with

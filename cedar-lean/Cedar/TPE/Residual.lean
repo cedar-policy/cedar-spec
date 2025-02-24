@@ -40,6 +40,7 @@ inductive Residual where
   | set (ls : List Residual)  (ty : CedarType)
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
+deriving Repr
 
 def TypedExpr.toResidual : TypedExpr → Residual
   | .lit p ty => .prim p ty
