@@ -29,28 +29,22 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.hasAttr e a) request entities = evaluate (.hasAttr e a) request slice
 := by
-  have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc hr ht
-  rw [hety] at h₁₄
-  replace ⟨ euid, h₁₄, h₁₅⟩ := instance_of_entity_type_is_entity h₁₄
-  subst h₁₄ h₁₅
+  have ⟨ hgc, v, he, hv ⟩ := type_of_is_sound hc hr ht
+  rw [hety] at hv
+  replace ⟨ euid, hety', hv⟩ := instance_of_entity_type_is_entity hv
+  subst hety' hv
   cases hl
   case hasAttrRecord hnety _ =>
     specialize hnety euid.ty
     contradiction
   rename_i n hel₁ hl₁ _
-  have h₈ := check_level_succ hl₁
   simp [evaluate]
-  rw [←ihe hs hc hr ht h₈]
-  clear h₈
-  simp [hasAttr, attrsOf, Entities.attrsOrEmpty]
-  unfold EvaluatesTo at h₁₃
-  rcases h₁₃ with h₁₃ | h₁₃ | h₁₃ | h₁₃ <;> simp [h₁₃]
-  cases hee : entities.find? euid <;> simp [hee]
-  case none =>
-    simp [not_entities_then_not_slice hs hee]
-  case some =>
-    have h₇ := checked_eval_entity_in_slice hc hr ht hl₁ hel₁ h₁₃ hee hs
-    simp [h₇]
+  specialize ihe hs hc hr ht (check_level_succ hl₁)
+  rw [←ihe]
+  unfold EvaluatesTo at he
+  rcases he with he | he | he | he <;> simp [he]
+  have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ hel₁ he hs
+  simp [hfeq, hasAttr, attrsOf, Entities.attrsOrEmpty]
 
 theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)

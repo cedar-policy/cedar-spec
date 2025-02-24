@@ -21,6 +21,7 @@ import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Basic
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Levels.Basic
+import Cedar.Thm.Validation.Levels.Slice
 
 /-!
 This file proves that level checking for `.binaryApp` expressions is sound.
@@ -44,6 +45,21 @@ theorem not_dereferencing_apply₂_invariant_entities {op : BinaryOp} {entities 
       cases p₁ <;> cases p₂ <;> simp
     )
 
+theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : EntityUID} {n : Nat} {c₀ c₁ : Capabilities} {entities slice : Entities}
+  (hc : CapabilitiesInvariant c₀ request entities)
+  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (ht : typeOf e₁ c₀ env = Except.ok (tx₁, c₁))
+  (hl : TypedExpr.AtLevel tx₁ n)
+  (hel : ¬ TypedExpr.EntityLitViaPath tx₁ [])
+  (he : evaluate e₁ request entities = .ok (Value.prim (Prim.entityUID euid₁)))
+  (hs : some slice = entities.sliceAtLevel request (n + 1))
+  : inₑ euid₁ euid₂ entities = inₑ euid₁ euid₂ slice
+:= by
+  simp only [inₑ]
+  cases heq : euid₁ == euid₂ <;> simp only [Bool.false_or, Bool.true_or]
+  have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl hel he hs
+  simp [hfeq, Entities.ancestorsOrEmpty]
+
 theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
@@ -56,13 +72,43 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
 := by
   replace ⟨tx₁, c₁, tx₂, c₂, htx₁, htx₂, ty, htx⟩ := type_of_binaryApp_inversion ht
   subst tx
+  simp only [evaluate]
   cases hl
-  case hasTag => sorry
-  case getTag => sorry
-  case mem => sorry
-  case binaryApp =>
-    rename_i hop hl₁ hl₂
-    simp only [evaluate]
+  case getTag hel hl₁ hl₂ | hasTag hel hl₁ hl₂ =>
+    specialize ihe₂ hs hc hr htx₂ hl₂
+    rw [←ihe₂]
+    have hl₁' := check_level_succ hl₁
+    specialize ihe₁ hs hc hr htx₁ hl₁'
+    rw [←ihe₁]
+    cases he₁ : evaluate e₁ request entities <;> simp [he₁]
+    cases he₂ : evaluate e₂ request entities <;> simp [he₂]
+    rename_i v₁ v₂
+    cases v₁ <;> cases v₂ <;> simp only [apply₂]
+    rename_i p₁ p₂
+    cases p₁ <;> cases p₂ <;> simp only
+    rename_i euid _
+    have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr htx₁ hl₁ hel he₁ hs
+    simp only [hfeq, hasTag, getTag, Entities.tagsOrEmpty, Entities.tags, Map.findOrErr]
+  case mem hel hl₁ hl₂ =>
+    specialize ihe₂ hs hc hr htx₂ hl₂
+    rw [←ihe₂]
+    have hl₁' := check_level_succ hl₁
+    specialize ihe₁ hs hc hr htx₁ hl₁'
+    rw [←ihe₁]
+    cases he₁ : evaluate e₁ request entities <;> simp [he₁]
+    cases he₂ : evaluate e₂ request entities <;> simp [he₂]
+    rename_i v₁ v₂
+    cases v₁ <;> cases v₂ <;> simp only [apply₂]
+    case prim =>
+      rename_i p₁ p₂
+      cases p₁ <;> cases p₂ <;> simp only
+      simp [level_based_slicing_is_sound_inₑ hc hr htx₁ hl₁ hel he₁ hs]
+    case set =>
+      rename_i p₁ sv
+      cases p₁ <;> simp only
+      simp [inₛ]
+      simp [level_based_slicing_is_sound_inₑ hc hr htx₁ hl₁ hel he₁ hs]
+  case binaryApp hop hl₁ hl₂ =>
     specialize ihe₁ hs hc hr htx₁ hl₁
     specialize ihe₂ hs hc hr htx₂ hl₂
     rw [ihe₁, ihe₂]

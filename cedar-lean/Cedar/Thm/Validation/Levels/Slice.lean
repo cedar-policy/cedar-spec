@@ -79,30 +79,16 @@ theorem entities_find?_then_tags {entities: Entities} {ed : EntityData} {uid : E
   · rename_i h₁
     simp [he] at h₁
 
-theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
-  (hs : some slice = Entities.sliceAtLevel entities request n)
-  (hse : entities.find? uid = none)
-  : slice.find? uid = none
-:= by
-  simp only [Entities.sliceAtLevel] at hs
-  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n <;>
-    simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
-  rename_i eids
-  cases hs₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
-    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
-  subst hs
-  exact mapm_none_find_none hs₂ hse
-
-theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
-  (hs : slice = Entities.sliceAtLevel entities request n)
-  (he : entities.attrs uid = .error e)
-  : slice.attrs uid = .error e
-:= by
-  simp only [Entities.attrs, Map.findOrErr] at he
-  split at he <;> simp at he
-  rename_i hf
-  cases hf₁ : entities.find? uid <;> simp only [hf₁, Option.some.injEq, forall_eq'] at hf
-  simp [he, not_entities_then_not_slice hs hf₁, Entities.attrs, Map.findOrErr]
+-- theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
+--   (hs : slice = Entities.sliceAtLevel entities request n)
+--   (he : entities.attrs uid = .error e)
+--   : slice.attrs uid = .error e
+-- := by
+--   simp only [Entities.attrs, Map.findOrErr] at he
+--   split at he <;> simp at he
+--   rename_i hf
+--   cases hf₁ : entities.find? uid <;> simp only [hf₁, Option.some.injEq, forall_eq'] at hf
+--   simp [he, not_entities_then_not_slice hs hf₁, Entities.attrs, Map.findOrErr]
 
 inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Prop where
   | in_start {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat}
@@ -772,3 +758,34 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
   exact map_find_mapm_value hs₂ hi
+
+theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
+  (hs : some slice = Entities.sliceAtLevel entities request n)
+  (hse : entities.find? uid = none)
+  : slice.find? uid = none
+:= by
+  simp only [Entities.sliceAtLevel] at hs
+  cases hs₁ : Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n <;>
+    simp only [hs₁, Option.bind_none_fun, reduceCtorEq] at hs
+  rename_i eids
+  cases hs₂ : (List.mapM (λ e => (Map.find? entities e).bind λ ed => some (e, ed)) eids.elts) <;>
+    simp only [hs₂, Option.bind_eq_bind, Option.bind_some_fun, Option.none_bind, reduceCtorEq, Option.some_bind, Option.some.injEq] at hs
+  subst hs
+  exact mapm_none_find_none hs₂ hse
+
+theorem checked_eval_entity_find_entities_eq_find_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
+  (hc : CapabilitiesInvariant c request entities)
+  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (ht : typeOf e c env = .ok (tx, c'))
+  (hl : TypedExpr.AtLevel tx n)
+  (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
+  (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
+  (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
+  entities.find? euid = slice.find? euid
+:= by
+  cases hfe : Map.find? entities euid
+  case none =>
+    simp [not_entities_then_not_slice hs hfe]
+  case some =>
+    have h₇ := checked_eval_entity_in_slice hc hr ht hl hrt he hfe hs
+    simp [h₇]

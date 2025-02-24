@@ -45,29 +45,22 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.getAttr e a) request entities = evaluate (.getAttr e a) request slice
 := by
-  have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc hr ht
-  rw [hety] at h₁₄
-  replace ⟨ euid, h₁₄, h₁₅⟩ := instance_of_entity_type_is_entity h₁₄
-  subst h₁₄ h₁₅
+  have ⟨ hgc, v, he, hv ⟩ := type_of_is_sound hc hr ht
+  rw [hety] at hv
+  replace ⟨ euid, hety', hv⟩ := instance_of_entity_type_is_entity hv
+  subst hety' hv
   cases hl
   case getAttrRecord hnety _ =>
     specialize hnety euid.ty
     contradiction
   rename_i n hel₁ hl₁ _
-  have hl₁' := check_level_succ hl₁
-  simp [evaluate]
-  rw [←ihe hs hc hr ht hl₁']
-  simp [getAttr, attrsOf]
-  unfold EvaluatesTo at h₁₃
-  rcases h₁₃ with h₁₃ | h₁₃ | h₁₃ | h₁₃ <;> simp [h₁₃]
-  cases hee : entities.attrs euid
-  case error => simp [not_entities_attrs_then_not_slice_attrs hs hee]
-  case ok =>
-    have ⟨ ed, hee', hee''⟩ := entities_attrs_then_find? hee
-    subst hee''
-    have h₇ := checked_eval_entity_in_slice hc hr ht hl₁ hel₁ h₁₃ hee' hs
-    replace h₇ := entities_find?_then_attrs h₇
-    simp [h₇]
+  simp only [evaluate]
+  specialize ihe hs hc hr ht (check_level_succ hl₁)
+  rw [←ihe]
+  unfold EvaluatesTo at he
+  rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
+  have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ hel₁ he hs
+  simp [hfeq, getAttr, attrsOf, Entities.attrs, Map.findOrErr]
 
 theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)

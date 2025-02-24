@@ -25,6 +25,7 @@ import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
 import Cedar.Thm.Validation.Levels.HasAttr
 import Cedar.Thm.Validation.Levels.UnaryApp
+import Cedar.Thm.Validation.Levels.BinaryApp
 import Cedar.Thm.Validation.Levels.And
 import Cedar.Thm.Validation.Levels.Or
 
@@ -61,7 +62,10 @@ theorem level_based_slicing_is_sound {e : Expr} {tx : TypedExpr} {n : Nat} {c c�
   case unaryApp op e =>
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_unary_app hs hc hr ht hl ihe
-  case binaryApp => sorry -- includes tags cases which should follow the attr cases and `in` case which might be tricky
+  case binaryApp op e₁ e₂ =>
+    have ihe₁ := @level_based_slicing_is_sound e₁
+    have ihe₂ := @level_based_slicing_is_sound e₂
+    exact level_based_slicing_is_sound_binary_app hs hc hr ht hl ihe₁ ihe₂
   case getAttr e _ =>
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_get_attr hs hc hr ht hl ihe
