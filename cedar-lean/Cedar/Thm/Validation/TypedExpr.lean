@@ -31,8 +31,8 @@ inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
     (h : et = env.reqty.principal) :
     Var.WellTyped env (.principal) (.entity et)
   | resource (et : EntityType)
-    (h : et = env.reqty.principal ) :
-    Var.WellTyped env (.principal) (.entity et)
+    (h : et = env.reqty.resource ) :
+    Var.WellTyped env (.resource) (.entity et)
   | action (et : EntityType)
     (h : et = env.reqty.action.ty) :
     Var.WellTyped env (.action) (.entity et)
@@ -98,6 +98,86 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
     (h₁ : ∀ a e, (a, e) ∈ m → WellTyped env e)
     (h₂ : ∀ a e, (a, e) ∈ m → (a, e.typeOf) ∈ rty.kvs.map λ (a, qt) ↦ (a, qt.getType)) :
     WellTyped env (.record m (.record rty))
+
+theorem well_typed_expr_can_never_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+  RequestAndEntitiesMatchEnvironment env request entities →
+  TypedExpr.WellTyped env ty →
+  ∃ v, EvaluatesTo ty.toExpr request entities v ∧ InstanceOfType v ty.typeOf := by
+  intro h₀ h₁
+  cases ty <;> simp [EvaluatesTo, TypedExpr.toExpr, TypedExpr.typeOf, evaluate]
+  case lit p =>
+    cases h₁
+    rename_i h₂
+    exact h₂
+  case var v t =>
+    cases h₁
+    rename_i h₂
+    cases h₂ <;> simp [evaluate]
+    · rename_i et heq
+      replace ⟨ h₀, _⟩ := h₀
+      simp only [InstanceOfRequestType] at h₀
+      replace ⟨ h₀, _⟩ := h₀
+      rw [heq]
+      exact InstanceOfType.instance_of_entity request.principal env.reqty.principal h₀
+    · rename_i et heq
+      replace ⟨ h₀, _⟩ := h₀
+      simp only [InstanceOfRequestType] at h₀
+      replace ⟨ _, ⟨_, ⟨h₀, _⟩ ⟩ ⟩ := h₀
+      rw [heq]
+      exact InstanceOfType.instance_of_entity request.resource env.reqty.resource h₀
+    · rename_i et heq
+      replace ⟨ h₀, _⟩ := h₀
+      replace ⟨ _, ⟨h₀, ⟨_, _⟩ ⟩ ⟩ := h₀
+      rw [heq, h₀]
+      exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty rfl
+    · rename_i rt heq
+      replace ⟨ h₀, _⟩ := h₀
+      replace ⟨ _, ⟨_, ⟨_, h₀⟩ ⟩ ⟩ := h₀
+      rw [heq]
+      exact h₀
+  case ite ce te ee =>
+    cases h₁
+    rename_i cond h₃ h₄ h₅ h₆ h₇
+    have ⟨ b, ⟨ h₈, h₉⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₃
+    simp only [EvaluatesTo] at h₈
+    rcases h₈ with (hₑ | hₑ₁ | hₐ | hₒ)
+    · simp [hₑ, Result.as]
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      exists vc
+    · simp [hₑ₁, Result.as]
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      exists vc
+    · simp [hₐ, Result.as]
+      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_can_never_go_wrong h₀ h₅
+      exists vc
+    · simp [CedarType.isBool] at h₄
+      split at h₄
+      case _ bty heq =>
+        rw [heq] at h₉
+        have h₈ := instance_of_bool_is_bool h₉
+        cases h₈
+        rename_i bv hb
+        simp [hₒ, Result.as, hb, Coe.coe, Value.asBool]
+        cases bv <;> simp
+        · rw [h₇]
+          exact well_typed_expr_can_never_go_wrong h₀ h₆
+        · exact well_typed_expr_can_never_go_wrong h₀ h₅
+      case _ => cases h₄
+  case and a b t =>
+    cases h₁
+    rename_i h₁ h₂ h₃
+    replace ⟨h₃, h₄⟩ := h₃
+    -- need something like a is bool then a is a Bool
+    sorry
+  case or a b t => sorry
+  case unaryApp op expr t => sorry
+  case binaryApp op a b t => sorry
+  case getAttr expr attr t => sorry
+  case hasAttr expr attr t => sorry
+  case set ls t => sorry
+  case record m t => sorry
+  case call fn args t => sorry
+
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
