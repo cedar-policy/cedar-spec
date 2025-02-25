@@ -502,23 +502,23 @@ def merge (x1 x2 : ExprKind.HasAttr) : ExprKind.HasAttr :=
 end Proto.ExprKind.HasAttr
 
 namespace PatElem
-inductive Ty where
+inductive Wildcard where
   | star
 deriving Inhabited
 
-namespace Ty
-def fromInt (n : Int) : Except String Ty :=
+namespace Wildcard
+def fromInt (n : Int) : Except String Wildcard :=
   match n with
     | 0 => .ok .star
     | n => .error s!"Field {n} does not exist in enum"
 
-instance : ProtoEnum Ty := {
+instance : ProtoEnum Wildcard := {
   fromInt := fromInt
 }
-end Ty
+end Wildcard
 
 @[inline]
-def mergeTy (_ : PatElem) (x : Ty) : PatElem :=
+def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
   -- With enums we perform replacement
   match x with
     | .star => .star
@@ -540,8 +540,8 @@ def merge (_ : PatElem) (y : PatElem) : PatElem :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
   match t.fieldNum with
     | 1 =>
-      let x : Ty ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
+      let x : Wildcard ← Field.guardedParse t
+      pure (pure $ mergeWildcard · x)
     | 2 =>
       let x : String ← Field.guardedParse t
       pure (pure $ mergeC · x)
@@ -586,7 +586,7 @@ def mergeExpr (result : ExprKind.Is) (e2 : Expr) : ExprKind.Is :=
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
 
 @[inline]
-def mergeEt (result : ExprKind.Is) (et2 : EntityTypeProto) : ExprKind.Is :=
+def mergeEt (result : ExprKind.Is) (et2 : Name) : ExprKind.Is :=
   match result with
   | .unaryApp (.is et1) e => .unaryApp (.is (Field.merge et1 et2)) e
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
@@ -871,7 +871,7 @@ partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (MergeFn Prot
       let x : Expr ← Field.guardedParse t
       pure (pure $ Proto.ExprKind.Is.mergeExpr · x)
     | 2 =>
-      let x : EntityTypeProto ← Field.guardedParse t
+      let x : Name ← Field.guardedParse t
       pure (pure $ Proto.ExprKind.Is.mergeEt · x)
     | _ =>
       t.wireType.skip

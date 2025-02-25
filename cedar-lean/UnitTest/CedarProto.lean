@@ -228,7 +228,7 @@ def tests := [
         ]
       } : Cedar.Spec.Template),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := "linkedpolicy"
@@ -289,11 +289,11 @@ def tests := [
         },
       ],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_just_templates.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
       [],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_one_static_policy.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := ""
@@ -362,7 +362,7 @@ def tests := [
         ("ham", .required .string),
       ])),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_basic.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -398,7 +398,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_attrs.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -461,7 +461,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_commontypes.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -506,7 +506,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_tags.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {

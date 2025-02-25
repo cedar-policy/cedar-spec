@@ -6,7 +6,7 @@ use cedar_policy_core::{
 use cedar_policy_validator::types as validator_types;
 use cedar_policy::proto;
 use prost::Message;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -35,7 +35,7 @@ fn encode_policy_as_template(path: impl AsRef<Path>, p: &str) {
 
 #[track_caller]
 fn encode_policyset(path: impl AsRef<Path>, ps: &ast::PolicySet) {
-    let proto: proto::models::LiteralPolicySet = ps.into();
+    let proto: proto::models::PolicySet = ps.into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
@@ -70,14 +70,14 @@ fn encode_val_type(path: impl AsRef<Path>, ty: &validator_types::Type) {
 
 #[track_caller]
 fn encode_schema(path: impl AsRef<Path>, s: &str) {
-    let (schema, warnings) = proto::models::ValidatorSchema::from_cedarschema_str(
+    let (schema, warnings) = cedar_policy_validator::ValidatorSchema::from_cedarschema_str(
         s,
         &Extensions::all_available(),
     )
     .map_err(|e| format!("{:?}", miette::Report::new(e)))
     .unwrap();
     assert_eq!(warnings.count(), 0);
-    let proto: proto::models::ValidatorSchema = (&schema).into();
+    let proto: proto::models::Schema = (&schema).into();
     let encoded = proto.encode_to_vec();
     std::fs::write(output_dir().join(path.as_ref()), encoded).unwrap();
 }
@@ -229,6 +229,7 @@ fn main() {
                 ast::EntityUID::with_eid_and_type("Parent", "1").unwrap(),
                 ast::EntityUID::with_eid_and_type("Grandparent", "A").unwrap(),
             ]),
+            HashSet::new(),
             [
                 ("tag1".into(), ast::RestrictedExpr::val("val1")),
                 ("tag2".into(), ast::RestrictedExpr::val("val2")),
@@ -282,8 +283,8 @@ fn main() {
     encode_val_type(
         "type_record.protodata",
         &validator_types::Type::EntityOrRecord(validator_types::EntityRecordKind::Record {
-            attrs: validator_types::Attributes {
-                attrs: BTreeMap::from_iter([
+            attrs: validator_types::Attributes::with_attributes(
+                [
                     (
                         "ham".into(),
                         validator_types::AttributeType::required_attribute(
@@ -294,8 +295,8 @@ fn main() {
                         "eggs".into(),
                         validator_types::AttributeType::optional_attribute(primitive_long.clone()),
                     ),
-                ]),
-            },
+                ]
+            ),
             open_attributes: validator_types::OpenTag::ClosedAttributes,
         }),
     );

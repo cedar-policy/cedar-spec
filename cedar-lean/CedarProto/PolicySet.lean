@@ -17,40 +17,40 @@ import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.TemplateBody
-import CedarProto.LiteralPolicy
+import CedarProto.Policy
 
 open Proto
 
 namespace Cedar.Spec
 
-structure LiteralPolicySet where
+structure PolicySet where
   templates : Proto.Map String Template
   links : Proto.Map String TemplateLinkedPolicy
 deriving Inhabited
 
-namespace LiteralPolicySet
+namespace PolicySet
 
 @[inline]
-def mergeTemplates (result : LiteralPolicySet) (x : Proto.Map String Template) : LiteralPolicySet :=
+def mergeTemplates (result : PolicySet) (x : Proto.Map String Template) : PolicySet :=
   {result with
     templates := result.templates ++ x
   }
 
 @[inline]
-def mergeLinks (result : LiteralPolicySet) (x : Proto.Map String TemplateLinkedPolicy) : LiteralPolicySet :=
+def mergeLinks (result : PolicySet) (x : Proto.Map String TemplateLinkedPolicy) : PolicySet :=
   {result with
     links := result.links ++ x
   }
 
 @[inline]
-def merge (x y : LiteralPolicySet) : LiteralPolicySet :=
+def merge (x y : PolicySet) : PolicySet :=
   {
     templates := x.templates ++ y.templates
     links := x.links ++ y.links
   }
 
 @[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn LiteralPolicySet) := do
+def parseField (t : Proto.Tag) : BParsec (MergeFn PolicySet) := do
   match t.fieldNum with
     | 1 =>
       let x : Proto.Map String Template ← Field.guardedParse t
@@ -62,29 +62,29 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn LiteralPolicySet) := do
       t.wireType.skip
       pure ignore
 
-instance : Message LiteralPolicySet := {
+instance : Message PolicySet := {
   parseField := parseField
   merge := merge
 }
 
-end LiteralPolicySet
+end PolicySet
 
 
 namespace Policies
 
 @[inline]
-def fromLiteralPolicySet (x : LiteralPolicySet) : Policies :=
+def fromPolicySet (x : PolicySet) : Policies :=
   let templates := Cedar.Data.Map.make x.templates.toList
   let links := x.links.map (λ ⟨id, p⟩ => (p.mergeId id).mkWf)
   match link? templates links.toList with
   | .ok policies => policies
-  | .error e => panic!(s!"fromLiteralPolicySet: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}}")
+  | .error e => panic!(s!"fromPolicySet: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}}")
 
 @[inline]
 private def merge (x y : Policies) : Policies :=
   x ++ y
 
-instance : Field Policies := Field.fromInterField fromLiteralPolicySet merge
+instance : Field Policies := Field.fromInterField fromPolicySet merge
 
 end Policies
 end Cedar.Spec

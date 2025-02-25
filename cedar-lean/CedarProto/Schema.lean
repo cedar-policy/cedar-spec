@@ -18,27 +18,23 @@ import Protobuf.Message
 import Protobuf.String
 
 -- Message Dependencies
-import CedarProto.ValidatorEntityType
-import CedarProto.ValidatorActionId
+import CedarProto.ActionDecl
+import CedarProto.EntityDecl
 
 open Proto
 
 namespace Cedar.Validation.Proto
 
-def EntityTypeWithTypesMap := Proto.Map Spec.EntityTypeProto ValidatorEntityType
+def EntityTypeToEntityDeclMap := Proto.Map Spec.Name EntityDecl
   deriving Inhabited, Field
 
-def EntityUidWithActionsIdMap := Proto.Map Spec.EntityUID ValidatorActionId
+def EntityUidToActionDeclMap := Proto.Map Spec.EntityUID ActionDecl
   deriving Inhabited, Field
 
-structure ValidatorSchema where
-  ets : EntityTypeWithTypesMap
-  acts : EntityUidWithActionsIdMap
+structure Schema where
+  ets : EntityTypeToEntityDeclMap
+  acts : EntityUidToActionDeclMap
 deriving Inhabited
-
-instance : DecidableLT Spec.EntityTypeProto := by
-  unfold Spec.EntityTypeProto
-  apply inferInstance
 
 /-
 The Rust data types store _descendant_ information for the entity type store
@@ -60,97 +56,91 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (de
 
 end Cedar.Validation.Proto
 
-namespace Cedar.Validation.Proto.EntityTypeWithTypesMap
+namespace Cedar.Validation.Proto.EntityTypeToEntityDeclMap
 @[inline]
-def toEntitySchema (ets : EntityTypeWithTypesMap) : EntitySchema :=
+def toEntitySchema (ets : EntityTypeToEntityDeclMap) : EntitySchema :=
   let ets := ets.toList
-  let descendantMap := Data.Map.make (List.map (λ (k,v) =>
-    have descendants := Data.Set.mk v.descendants.toList
-    (k, descendants))
-  ets)
+  let descendantMap := Data.Map.make $
+    ets.map λ (k,v) => (k, Data.Set.mk v.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
-  Data.Map.make (ets.map
-    (λ (k,v) => (k,
+  Data.Map.make $ ets.map λ (k,v) =>
+    (k,
       if v.enums.isEmpty then
       .standard {
-        ancestors := ancestorMap.find! k,
-        attrs := Data.Map.make v.attrs.kvs,
-        tags := v.tags,
+        ancestors := ancestorMap.find! k
+        attrs := Data.Map.make v.attrs.toList
+        tags := v.tags
       }
       else
       .enum $ Cedar.Data.Set.mk v.enums.toList
-      )))
-end Cedar.Validation.Proto.EntityTypeWithTypesMap
+    )
+end Cedar.Validation.Proto.EntityTypeToEntityDeclMap
 
-namespace Cedar.Validation.Proto.EntityUidWithActionsIdMap
+namespace Cedar.Validation.Proto.EntityUidToActionDeclMap
 -- Needed for panic
 deriving instance Inhabited for ActionSchemaEntry
 
 @[inline]
-def toActionSchema (acts : EntityUidWithActionsIdMap) : ActionSchema :=
+def toActionSchema (acts : EntityUidToActionDeclMap) : ActionSchema :=
   let acts := acts.toList
-  let descendantMap := Data.Map.make (List.map (λ (k,v) =>
-    have descendants := Data.Set.make v.descendants.toList
-    (k, descendants))
-  acts)
+  let descendantMap := Data.Map.make $
+    acts.map λ (k,v) => (k, Data.Set.make v.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
-  Data.Map.make (List.map (λ (k,v) =>
+  Data.Map.make $ acts.map λ (k,v) =>
     match v.context with
       | .record rty =>
         (k, {
-          appliesToPrincipal := Data.Set.make v.appliesTo.principalApplySpec.toList,
-          appliesToResource := Data.Set.make v.appliesTo.resourceApplySpec.toList,
+          appliesToPrincipal := Data.Set.make v.principal_types.toList,
+          appliesToResource := Data.Set.make v.resource_types.toList,
           ancestors := ancestorMap.find! k,
           context := rty
         })
-      | _ =>
-        panic!("EntityUidWithActionsIdMap.toActionSchema : context should be record-typed")
-    ) acts)
-end Cedar.Validation.Proto.EntityUidWithActionsIdMap
+      | _ => panic!("EntityUidWithActionsIdMap.toActionSchema : context should be record-typed")
+end Cedar.Validation.Proto.EntityUidToActionDeclMap
 
-namespace Cedar.Validation.Proto.ValidatorSchema
+namespace Cedar.Validation.Proto.Schema
 @[inline]
-def mergeEntityTypes (result : ValidatorSchema) (x : EntityTypeWithTypesMap) : ValidatorSchema :=
+def mergeEntityTypes (result : Schema) (x : EntityTypeToEntityDeclMap) : Schema :=
   {result with
     ets := Field.merge result.ets x
   }
 
 @[inline]
-def mergeActionIds (result : ValidatorSchema) (x : EntityUidWithActionsIdMap) : ValidatorSchema :=
+def mergeActionIds (result : Schema) (x : EntityUidToActionDeclMap) : Schema :=
   {result with
     acts := Field.merge result.acts x
   }
 
 @[inline]
-def merge (x y : ValidatorSchema) : ValidatorSchema :=
+def merge (x y : Schema) : Schema :=
   {
     ets := Field.merge x.ets y.ets
     acts := Field.merge x.acts y.acts
   }
 
 @[inline]
-def parseField (t : Tag) : BParsec (MergeFn ValidatorSchema) := do
+def parseField (t : Tag) : BParsec (MergeFn Schema) := do
   match t.fieldNum with
     | 1 =>
-      let x : EntityTypeWithTypesMap ← Field.guardedParse t
+      let x : EntityTypeToEntityDeclMap ← Field.guardedParse t
       pure (pure $ mergeEntityTypes · x)
     | 2 =>
-      let x : EntityUidWithActionsIdMap ← Field.guardedParse t
+      let x : EntityUidToActionDeclMap ← Field.guardedParse t
       pure (pure $ mergeActionIds · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
-instance : Message ValidatorSchema := {
+instance : Message Schema := {
   parseField := parseField
   merge := merge
 }
 
 @[inline]
-def toSchema (v : ValidatorSchema) : Schema :=
+def toSchema (v : Schema) : Validation.Schema :=
   .mk v.ets.toEntitySchema v.acts.toActionSchema
 
-end Cedar.Validation.Proto.ValidatorSchema
+end Cedar.Validation.Proto.Schema
 
 
 namespace Cedar.Validation.Schema
@@ -184,6 +174,6 @@ def merge (x1 x2 : Schema) : Schema :=
   }
 
 deriving instance Inhabited for Schema
-instance : Field Schema := Field.fromInterField Proto.ValidatorSchema.toSchema merge
+instance : Field Schema := Field.fromInterField Proto.Schema.toSchema merge
 
 end Cedar.Validation.Schema
