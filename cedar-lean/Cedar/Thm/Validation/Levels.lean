@@ -74,7 +74,14 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
   case hasAttr e _ =>
     have ihe := @level_based_slicing_is_sound_expr e
     exact level_based_slicing_is_sound_has_attr hs hc hr ht hl ihe
-  case set => sorry -- trivial recursive case maybe a little tricky
+  case set xs =>
+    replace ⟨ hc, txs, ty,  htx, ht ⟩  := type_of_set_inversion ht
+    subst tx
+    cases hl ; rename_i hl
+    -- TODO: I need a slightly stronger inversion lemma that gives me something like
+    --       ∀ x ∈ xs, ∃ tx c', typeOf x c env = .ok (tx, c') ∧ (tx.typeOf ⊔ ty) = some ty ∧ tx ∈ txs
+    --       Notably, `tx ∈ txs` is required to concluded `TypedAtLevel tx n` by `hl`
+    sorry
   case call => sorry -- should be the same as set
   case record rxs =>
     have ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd := by
