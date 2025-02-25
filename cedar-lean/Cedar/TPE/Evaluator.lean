@@ -95,13 +95,13 @@ def tpeExpr (x : TypedExpr)
   | .lit p ty => .ok $ .val p ty
   | .var .principal ty =>
     match req.principal.asEntityUID with
-    | .some uid => .ok $ .prim (.entityUID uid) ty
+    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
     | .none => .ok x
   | .var .resource ty =>
     match req.resource.asEntityUID with
-    | .some uid => .ok $ .prim (.entityUID uid) ty
+    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
     | .none => .ok x
-  | .var .action ty => .ok $ .prim (.entityUID req.action) ty
+  | .var .action ty => .ok $ .val (.prim (.entityUID req.action)) ty
   | .var .context ty =>
     match req.context with
     | .some m => .ok (.val (.record m) ty)

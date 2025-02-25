@@ -19,7 +19,7 @@ import Cedar.Spec.Expr
 import Cedar.Validation.Types
 import Cedar.Data.Map
 
-namespace UnitTest.TPE
+namespace UnitTest.TPE.Basic
 
 open Cedar.TPE
 open Cedar.Spec
@@ -51,6 +51,7 @@ action Delete appliesTo {
   }
 };
 -/
+
 def ActionType : EntityType :=
   ⟨"Action", []⟩
 
@@ -130,7 +131,23 @@ permit (
   context.hasMFA &&
   resource.owner == principal
 };
+-/
 
+def policy₂ : Policy :=
+  ⟨ "2",
+  .permit,
+  .principalScope .any,
+  .actionScope (.eq ⟨ActionType, "View"⟩),
+  .resourceScope .any,
+  [
+     ⟨.when,
+     (.and
+       (.getAttr (.var .context) "hasMFA")
+       (.binaryApp .eq (.getAttr (.var .resource) "owner") (.var .principal))
+       )⟩
+  ]⟩
+
+/-
 // Users can delete owned documents if they are mfa-authenticated
 // and on the company network.
 permit (
@@ -143,6 +160,20 @@ permit (
   context.srcIP.isInRange(ip("1.1.1.0/24"))
 };
 -/
+
+def policy₃ : Policy :=
+  ⟨ "2",
+  .permit,
+  .principalScope .any,
+  .actionScope (.eq ⟨ActionType, "Delete"⟩),
+  .resourceScope .any,
+  [
+     ⟨.when,
+     (.and
+       (.getAttr (.var .context) "hasMFA")
+       (.binaryApp .eq (.getAttr (.var .resource) "owner") (.var .principal))
+       )⟩
+  ]⟩
 
 /-
 // Typed partial request, with an unknown resource of type Document.
@@ -180,8 +211,129 @@ def es : PartialEntities :=
      (⟨UserType, "Alice"⟩, ⟨.some default, .some default, default⟩)
   ]
 
-#eval policy₁.toExpr
-
 #eval (tpePolicy schema policy₁ req es)
+#eval (tpePolicy schema policy₂ req es)
+#eval (tpePolicy schema policy₃ req es)
 
-end UnitTest.TPE
+end UnitTest.TPE.Basic
+
+namespace UnitTest.TPE.Motivation
+
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+/-
+// Schema
+type Address = {
+   street: String,
+   zip?: String,
+};
+
+entity User {
+  address: Address
+};
+
+entity Package {
+  address: Address
+};
+
+action PickUp appliesTo {
+  principal: [User],
+  resource: [Package],
+  context: {}
+};
+-/
+def ActionType : EntityType :=
+  ⟨"Action", []⟩
+
+def AddressType : RecordType :=
+  Map.mk [
+     ("street", (.required .string)),
+     ("zip", (.optional .string))
+  ]
+
+def UserType : EntityType :=
+  ⟨"User", []⟩
+
+def PackageType : EntityType :=
+  ⟨"Package", []⟩
+
+def schema : Schema :=
+  ⟨Map.mk [
+  (
+     ActionType,
+     .standard ⟨default, default, default⟩
+  ),
+  (
+     UserType,
+     .standard ⟨
+          default,
+          Map.mk [
+               ("address", (.required (.record AddressType)))
+          ],
+          default⟩
+  ),
+    (
+     PackageType,
+     .standard ⟨
+          default,
+          Map.mk [
+               ("address", (.required (.record AddressType)))
+          ],
+          default⟩
+  ),
+  ],
+  Map.mk [
+     (⟨ActionType, "PickUp"⟩, ⟨
+          Set.mk [UserType],
+          Set.mk [PackageType],
+          default,
+          default
+      ⟩)
+  ]⟩
+
+/-
+// Policy
+permit(principal, action == Action::"PickUp", resource)
+when {
+  principal.address == resource.address
+}
+-/
+
+def policy : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope (.eq ⟨ActionType, "PickUp"⟩),
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .eq
+       (.getAttr (.var .principal) "address")
+       (.getAttr (.var .resource) "address"))⟩
+  ]⟩
+
+/-
+* principal is User::"Alice" with the address of { "street": "Sesame Street"},
+* action is Action::"PickUp, and
+* resource is unknown("pkg").
+-/
+
+def req : PartialRequest :=
+  ⟨
+     ⟨UserType, "Alice"⟩,
+     ⟨ActionType, "PickUp"⟩,
+     ⟨PackageType, default⟩,
+     .some $ default
+  ⟩
+
+def es : PartialEntities :=
+  Map.mk [
+     (⟨ActionType, "PickUp"⟩, ⟨.some default, .some default, .some default⟩),
+     (⟨UserType, "Alice"⟩, ⟨.some $ Map.mk [("address", .record $ Map.mk [("street", "Sesame Street")])], .some default, default⟩)
+  ]
+
+#eval tpePolicy schema policy req es
+end UnitTest.TPE.Motivation
