@@ -162,8 +162,12 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
   (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty.typeOf = .bool .anyBool ∧
-  (∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.int, c₁)) ∧
-  (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.int, c₂))
+  ((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.int, c₁)) ∧
+  (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.int, c₂))) ∨
+  ((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.ext .datetime, c₁)) ∧
+  (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.ext .datetime, c₂))) ∨
+  ((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.ext .duration, c₁)) ∧
+  (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.ext .duration, c₂)))
 := by
   simp [typeOf] at *
   cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
@@ -173,6 +177,8 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
     subst h₁
     simp [typeOfBinaryApp, err, ok] at h₂
     split at h₂ <;> try contradiction
+    -- NOTE: `Except.ok _ = Except.ok _` won't be simplified for the cases with
+    -- extension types so those goals fail after
     simp at h₂ ; simp [←h₂, TypedExpr.typeOf]
     rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     constructor
