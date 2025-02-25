@@ -27,8 +27,9 @@ open Cedar.Validation
 -- The result produced by TPE
 -- We do not need `unknown`s because they can be represented by entity dereferences
 inductive Residual where
+  -- val contains values obtained by TPE
+  -- We don't need `prim` like `TypedExpr` because these expressions should've been reduced to `val`
   | val (v : Value) (ty : CedarType)
-  | prim (p : Prim) (ty : CedarType)
   | var (v : Var)  (ty : CedarType)
   | ite (cond : Residual) (thenExpr : Residual) (elseExpr : Residual)  (ty : CedarType)
   | and (a : Residual) (b : Residual)  (ty : CedarType)
@@ -42,38 +43,6 @@ inductive Residual where
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
 deriving Repr
 
-def TypedExpr.toResidual : TypedExpr → Residual
-  | .lit p ty => .prim p ty
-  | .var v ty => .var v ty
-  | .ite c x y ty => .ite (toResidual c) (toResidual x) (toResidual y) ty
-  | .and a b ty => .and (toResidual a) (toResidual b) ty
-  | .or a b ty => .or (toResidual a) (toResidual b) ty
-  | .unaryApp op e ty => .unaryApp op (toResidual e) ty
-  | .binaryApp op a b ty => .binaryApp op (toResidual a) (toResidual b) ty
-  | .getAttr e a ty => .getAttr (toResidual e) a ty
-  | .hasAttr e a ty => .hasAttr (toResidual e) a ty
-  | .set s ty => .set (s.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
-  | .record m ty => .record (m.map₁ λ ⟨(a, x), _⟩ ↦ (a, toResidual x)) ty
-  | .call f args ty => .call f (args.map₁ λ ⟨x, _⟩ ↦ toResidual x) ty
-decreasing_by
-  all_goals
-    simp_wf
-    try omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    replace h := List.sizeOf_lt_of_mem h
-    have h₁ : sizeOf (a, x) >= sizeOf x := by
-      simp_arith
-    omega
-  case _ h =>
-    replace h := List.sizeOf_lt_of_mem h
-    omega
-
-instance : Coe TypedExpr Residual where
-  coe := TypedExpr.toResidual
-
 def Residual.asValue : Residual → Option Value
   | .val v _ => .some v
   | _ => .none
@@ -85,7 +54,6 @@ def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
   | .val v _ => .ok v
-  | .prim p _ => .ok $ .prim p
   | .var (.principal) _ => .ok req.principal
   | .var (.resource) _ => .ok req.resource
   | .var (.action) _ => .ok req.action

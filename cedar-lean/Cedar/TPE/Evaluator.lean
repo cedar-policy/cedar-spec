@@ -96,20 +96,20 @@ def tpeExpr (x : TypedExpr)
   | .var .principal ty =>
     match req.principal.asEntityUID with
     | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
-    | .none => .ok x
+    | .none => .ok $ .var .principal ty
   | .var .resource ty =>
     match req.resource.asEntityUID with
     | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
-    | .none => .ok x
+    | .none => .ok $ .var .resource ty
   | .var .action ty => .ok $ .val (.prim (.entityUID req.action)) ty
   | .var .context ty =>
     match req.context with
     | .some m => .ok (.val (.record m) ty)
-    | .none => .ok x
+    | .none => .ok $ .var .context ty
   | .ite c t e ty => do
     let c ← tpeExpr c req es
     match c with
-    | .prim (.bool b) _ =>
+    | .val (.prim (.bool b)) _ =>
       if b then tpeExpr t req es else tpeExpr e req es
     | _ =>
       let t ← tpeExpr t req es
@@ -119,7 +119,7 @@ def tpeExpr (x : TypedExpr)
     let l ← tpeExpr l req es
     match l with
     | .val (.prim (.bool b)) _ =>
-      if b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .ff)
+      if b then tpeExpr r req es else .ok $ .val (.prim (.bool b)) (.bool .ff)
     | _ =>
       let r ← tpeExpr r req es
       match r with
@@ -129,17 +129,12 @@ def tpeExpr (x : TypedExpr)
     let l ← tpeExpr l req es
     match l with
     | .val (.prim (.bool b)) _ =>
-      if !b then tpeExpr r req es else .ok $ .prim (.bool b) (.bool .tt)
+      if !b then tpeExpr r req es else .ok $ .val (.prim (.bool b)) (.bool .tt)
     | _ =>
       let r ← tpeExpr r req es
       match r with
       | .val false _ => .ok l
       | _ => .ok $ .or l r ty
-  | .call f args ty => do
-    let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
-    match rs.mapM Residual.asValue with
-    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
-    | .none => .ok $ .call f rs ty
   | .unaryApp op e ty => do
     let r ← tpeExpr e req es
     match r.asValue with
@@ -163,6 +158,18 @@ def tpeExpr (x : TypedExpr)
           (Value.toResidual · ty)
       | .none => .ok $ .getAttr r a ty
     | _ => .ok $ .getAttr r a ty
+  | .hasAttr e a ty => do
+    let r ← tpeExpr e req es
+    match r with
+    | .val (.record xs) _ =>
+      .ok $ .val (xs.contains a) ty
+    | .val (.prim (.entityUID uid)) _ =>
+      match es.find? uid with
+      | .some ⟨ .some m, _ , _⟩  =>
+        .ok $ .val (m.contains a) ty
+      | .some ⟨ .none, _ , _⟩  => .ok $ .hasAttr r a ty
+      | .none => .ok $ .val false ty
+    | _ => .ok $ .getAttr r a ty
   | .set xs ty => do
     let rs ← xs.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     match rs.mapM Residual.asValue with
@@ -177,18 +184,11 @@ def tpeExpr (x : TypedExpr)
       pure (a, v₁) with
     | .some xs => .ok $ .val (.record (Map.mk xs)) ty
     | .none => .ok $ .record m₁ ty
-  | .hasAttr e a ty => do
-    let r ← tpeExpr e req es
-    match r with
-    | .val (.record xs) _ =>
-      .ok $ .val (xs.contains a) ty
-    | .val (.prim (.entityUID uid)) _ =>
-      match es.find? uid with
-      | .some ⟨ .some m, _ , _⟩  =>
-        .ok $ .val (m.contains a) ty
-      | .some ⟨ .none, _ , _⟩  => .ok $ .hasAttr r a ty
-      | .none => .ok $ .val false ty
-    | _ => .ok $ .getAttr r a ty
+  | .call f args ty => do
+    let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
+    match rs.mapM Residual.asValue with
+    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
+    | .none => .ok $ .call f rs ty
 termination_by x
 decreasing_by
   all_goals
@@ -198,11 +198,11 @@ decreasing_by
     have := List.sizeOf_lt_of_mem h
     omega
   case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
     have h₁ := List.sizeOf_lt_of_mem h
     simp at h₁
+    omega
+  case _ h =>
+    have := List.sizeOf_lt_of_mem h
     omega
 
 def tpePolicy (schema : Schema)

@@ -37,8 +37,12 @@ structure PartialRequest where
   principal : PartialEntityUID
   action : EntityUID
   resource : PartialEntityUID
+  -- no type annotation is needed here because this value can only be accessed
+  -- via evaluating a `TypedExpr`, which allows us to obtain a (typed)
+  -- `Residual`
   context :  Option (Map Attr Value)
 
+-- no type annotation is needed here following the rationale above
 structure PartialEntityData where
   attrs : Option (Map Attr Value)
   ancestors : Option (Set EntityUID)
