@@ -80,8 +80,8 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
     have hl₁' := check_level_succ hl₁
     specialize ihe₁ hs hc hr htx₁ hl₁'
     rw [←ihe₁]
-    cases he₁ : evaluate e₁ request entities <;> simp [he₁]
-    cases he₂ : evaluate e₂ request entities <;> simp [he₂]
+    cases he₁ : evaluate e₁ request entities <;> simp only [Except.bind_ok, Except.bind_err]
+    cases he₂ : evaluate e₂ request entities <;> simp only [Except.bind_ok, Except.bind_err]
     rename_i v₁ v₂
     cases v₁ <;> cases v₂ <;> simp only [apply₂]
     rename_i p₁ p₂
@@ -95,8 +95,8 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
     have hl₁' := check_level_succ hl₁
     specialize ihe₁ hs hc hr htx₁ hl₁'
     rw [←ihe₁]
-    cases he₁ : evaluate e₁ request entities <;> simp [he₁]
-    cases he₂ : evaluate e₂ request entities <;> simp [he₂]
+    cases he₁ : evaluate e₁ request entities <;> simp only [Except.bind_ok, Except.bind_err]
+    cases he₂ : evaluate e₂ request entities <;> simp only [Except.bind_ok, Except.bind_err]
     rename_i v₁ v₂
     cases v₁ <;> cases v₂ <;> simp only [apply₂]
     case prim =>
@@ -106,8 +106,7 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
     case set =>
       rename_i p₁ sv
       cases p₁ <;> simp only
-      simp [inₛ]
-      simp [level_based_slicing_is_sound_inₑ hc hr htx₁ hl₁ hel he₁ hs]
+      simp [inₛ, level_based_slicing_is_sound_inₑ hc hr htx₁ hl₁ hel he₁ hs]
   case binaryApp hop hl₁ hl₂ =>
     specialize ihe₁ hs hc hr htx₁ hl₁
     specialize ihe₂ hs hc hr htx₂ hl₂

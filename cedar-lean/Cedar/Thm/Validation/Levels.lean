@@ -20,6 +20,7 @@ import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 
+import Cedar.Thm.Validation.Levels.Basic
 import Cedar.Thm.Validation.Levels.CheckLevel
 import Cedar.Thm.Validation.Levels.IfThenElse
 import Cedar.Thm.Validation.Levels.GetAttr
@@ -28,6 +29,7 @@ import Cedar.Thm.Validation.Levels.UnaryApp
 import Cedar.Thm.Validation.Levels.BinaryApp
 import Cedar.Thm.Validation.Levels.And
 import Cedar.Thm.Validation.Levels.Or
+import Cedar.Thm.Validation.Levels.Record
 
 namespace Cedar.Thm
 
@@ -35,7 +37,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound {e : Expr} {tx : TypedExpr} {n : Nat} {c c₁ : Capabilities} {env : Environment} {request : Request} {slice entities : Entities}
+theorem level_based_slicing_is_sound {e : Expr} {n : Nat} {tx : TypedExpr} {c c₁ : Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
@@ -73,5 +75,15 @@ theorem level_based_slicing_is_sound {e : Expr} {tx : TypedExpr} {n : Nat} {c c�
     have ihe := @level_based_slicing_is_sound e
     exact level_based_slicing_is_sound_has_attr hs hc hr ht hl ihe
   case set => sorry -- trivial recursive case maybe a little tricky
-  case record => sorry -- likely to be tricky. Record cases are always hard, and here there might be an odd interaction with attribute access
   case call => sorry -- should be the same as set
+  case record rxs =>
+    have ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd := by
+      intro x hx
+      have _ : sizeOf x.snd < sizeOf (Expr.record rxs) := by
+        have h₁ := List.sizeOf_lt_of_mem hx
+        rw [Prod.mk.sizeOf_spec] at h₁
+        simp only [Expr.record.sizeOf_spec]
+        omega
+      exact @level_based_slicing_is_sound x.snd
+    exact level_based_slicing_is_sound_record hs hc hr ht hl ih
+termination_by e

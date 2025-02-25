@@ -39,56 +39,19 @@ theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} 
   (he : entities.attrs uid = .ok attrs)
   : ∃ ed, entities.find? uid = some ed ∧ ed.attrs = attrs
 := by
-  simp [Entities.attrs, Map.findOrErr] at he
-  split at he <;> simp at he
+  simp only [Entities.attrs, Map.findOrErr] at he
+  split at he <;> simp only [Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
   rename_i ed h₁
   exists ed
-
-theorem entities_find?_then_attrs {entities: Entities} {ed : EntityData} {uid : EntityUID}
-  (he : entities.find? uid = some ed)
-  : .ok ed.attrs = entities.attrs uid
-:= by
-  simp [Entities.attrs, Map.findOrErr]
-  split <;> simp
-  · rename_i he'
-    rw [he'] at he
-    injections he
-    simp [he]
-  · rename_i h₁
-    simp [he] at h₁
 
 theorem entities_tags_then_find? {entities: Entities} {tags : Map Tag Value} {uid : EntityUID}
   (he : entities.tags uid = .ok tags)
   : ∃ ed, entities.find? uid = some ed ∧ ed.tags = tags
 := by
-  simp [Entities.tags, Map.findOrErr] at he
-  split at he <;> simp at he
+  simp only [Entities.tags, Map.findOrErr] at he
+  split at he <;> simp only [Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
   rename_i ed h₁
   exists ed
-
-theorem entities_find?_then_tags {entities: Entities} {ed : EntityData} {uid : EntityUID}
-  (he : entities.find? uid = some ed)
-  : .ok ed.tags = entities.tags uid
-:= by
-  simp [Entities.tags, Map.findOrErr]
-  split <;> simp
-  · rename_i he'
-    rw [he'] at he
-    injections he
-    simp [he]
-  · rename_i h₁
-    simp [he] at h₁
-
--- theorem not_entities_attrs_then_not_slice_attrs {n: Nat} {request : Request} {uid : EntityUID} {e : Error} {entities slice : Entities}
---   (hs : slice = Entities.sliceAtLevel entities request n)
---   (he : entities.attrs uid = .error e)
---   : slice.attrs uid = .error e
--- := by
---   simp only [Entities.attrs, Map.findOrErr] at he
---   split at he <;> simp at he
---   rename_i hf
---   cases hf₁ : entities.find? uid <;> simp only [hf₁, Option.some.injEq, forall_eq'] at hf
---   simp [he, not_entities_then_not_slice hs hf₁, Entities.attrs, Map.findOrErr]
 
 inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Prop where
   | in_start {es : Entities} {start : Set EntityUID} {finish : EntityUID} {level : Nat}

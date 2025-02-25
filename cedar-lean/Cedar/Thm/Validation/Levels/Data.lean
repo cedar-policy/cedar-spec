@@ -91,6 +91,29 @@ theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {
         rw [h₃]
       · simp
 
+theorem mapm_none_lookup_none {α γ : Type} [BEq α] [LT α] [DecidableLT α] [DecidableEq α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
+  (h₂ : l.mapM (λ e => (f e).bind (λ e' => (e, e'))) = some l')
+  (h₁ : f e = none) :
+  l'.lookup e = none
+:= by
+  cases l
+  case nil =>
+    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq, List.nil_eq] at h₂
+    simp [h₂, List.lookup]
+  case cons h t =>
+    simp at h₂
+    cases h₃ : (f h) <;> simp [h₃] at h₂
+    cases h₄ : ((List.mapM (fun e => (f e).bind fun e' => some (e, e')) t)) <;> simp [h₄] at h₂
+    subst h₂
+    simp [List.lookup]
+    split
+    · rename_i heq
+      have _ : e = h := by sorry
+      subst e
+      rw [h₃] at h₁
+      contradiction
+    · exact mapm_none_lookup_none h₄ h₁
+
 theorem map_cons_find_none {α β : Type} [BEq α] [LT α] [DecidableLT α] {e₁ e₂ : α} {v : β} {t : List (α × β)}
   (h₁ : e₁ ≠ e₂)
   (h₂ : (Map.make t).find? e₁ = none) :
