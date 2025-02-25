@@ -22,7 +22,6 @@ import Protobuf.String
 
 -- Message Dependencies
 import CedarProto.Name
-import CedarProto.EntityType
 
 open Proto
 
@@ -30,7 +29,6 @@ namespace Cedar.Validation
 
 namespace Proto
 -- AttributeType <-> QualifiedType
--- Attributes <-> RecordType
 def EntityRecordKind := CedarType
   deriving Inhabited
 
@@ -48,15 +46,6 @@ def EntityRecordKind.ActionEntity := EntityRecordKind
 instance : Inhabited EntityRecordKind.ActionEntity where
   default := .entity default
 end Proto
-
-namespace RecordType
-def mergeAttrs (result : RecordType) (x : Array (String × QualifiedType)) : RecordType :=
-  Cedar.Data.Map.mk (result.kvs ++ x.toList)
-
-def merge (x1 x2 : RecordType) : RecordType :=
-  Cedar.Data.Map.mk (x1.kvs ++ x2.kvs)
-
-end RecordType
 
 namespace QualifiedType
 
@@ -81,24 +70,28 @@ end QualifiedType
 
 namespace Proto.EntityRecordKind
 
-inductive Ty where
-  | AnyEntity
+inductive AnyEntity where
+  | any
 
-namespace Ty
+namespace AnyEntity
 @[inline]
-def fromInt (n : Int) : Except String Ty :=
+def fromInt (n : Int) : Except String AnyEntity :=
   match n with
-    | 0 => .ok .AnyEntity
+    | 0 => .ok .any
     | n => .error s!"Field {n} does not exist in enum"
-instance : ProtoEnum Ty where
+instance : ProtoEnum AnyEntity where
   fromInt := fromInt
-end Ty
+end AnyEntity
 
 namespace Record
 @[inline]
 def mergeAttributes (result : Record) (m2 : RecordType) : Record :=
-  have m2 : Cedar.Data.Map Cedar.Spec.Attr (Qualified CedarType) := m2
   match result with
+    -- todo: this re-sorts every time we merge.
+    -- to be more efficient, we would have to use a type other than CedarType
+    -- here temporarily, which held Proto.Map instead of Cedar.Data.Map;
+    -- accumulate a Proto.Map, and then convert once at the end to Cedar.Data.Map.
+    -- See for instance how `EntityDecl` accumulates attributes.
     | .record m1 => .record (Cedar.Data.Map.make (m2.kvs ++ m1.kvs))
     | _ => panic!("EntityRecordKind.Record is not set to the CedarType.record constructor")
 
@@ -114,8 +107,9 @@ def merge (x1 x2 : Record) : Record :=
 end Record
 
 namespace Entity
+
 @[inline]
-def mergeE (result : Entity) (e2 : Spec.EntityTypeProto) : Entity :=
+def mergeE (result : Entity) (e2 : Spec.Name) : Entity :=
   match result with
     | .entity e1 => .entity (Field.merge e1 e2)
     | _ => panic!("Entity expected CedarType constructor to be .entity")
@@ -126,20 +120,8 @@ def merge (x1 x2 : Entity) : Entity :=
     | .entity e1, .entity e2 => .entity (Field.merge e1 e2)
     | _, _ => panic!("Entity expected CedarType constructor to be .entity")
 
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn Entity) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Spec.EntityTypeProto ← Field.guardedParse t
-      pure (pure $ mergeE · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+instance : Field Entity := Field.fromInterField .entity merge
 
-instance : Message Entity := {
-  parseField := parseField
-  merge := merge
-}
 end Entity
 
 namespace ActionEntity
@@ -147,7 +129,7 @@ namespace ActionEntity
 -- since this isn't represented in the formal model
 
 @[inline]
-def mergeName (result : ActionEntity) (e2 : Spec.EntityTypeProto) : ActionEntity :=
+def mergeName (result : ActionEntity) (e2 : Spec.Name) : ActionEntity :=
   match result with
     | .entity e1 => .entity (Field.merge e1 e2)
     | _ => panic!("ActionEntity expected CedarType constructor to be .entity")
@@ -162,7 +144,7 @@ def merge (x1 x2 : ActionEntity) : ActionEntity :=
 def parseField (t : Tag) : BParsec (MergeFn ActionEntity) := do
   match t.fieldNum with
     | 1 =>
-      let x : Spec.EntityTypeProto ← Field.guardedParse t
+      let x : Spec.Name ← Field.guardedParse t
       pure (pure $ mergeName · x)
     | _ =>
       t.wireType.skip
@@ -175,9 +157,9 @@ instance : Message ActionEntity := {
 end ActionEntity
 
 @[inline]
-def mergeTy (_ : EntityRecordKind) (x : Ty) : EntityRecordKind :=
+def mergeAnyEntity (_ : EntityRecordKind) (x : AnyEntity) : EntityRecordKind :=
   match x with
-   | .AnyEntity => panic!("Not Implemented")
+   | .any => panic!("Not Implemented")
 
 @[inline]
 def mergeRecord (result : EntityRecordKind) (x : Record) : EntityRecordKind :=
@@ -319,15 +301,6 @@ def QualifiedType.merge (x1 x2 : QualifiedType) : QualifiedType :=
 
 
 mutual
-partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
-  have : Message QualifiedType := { parseField := QualifiedType.parseField, merge := QualifiedType.merge }
-  match t.fieldNum with
-    | 1 =>
-      let x : Proto.Map String QualifiedType ← Field.guardedParse t
-      pure (pure $ RecordType.mergeAttrs · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
 
 partial def QualifiedType.parseField (t : Tag) : BParsec (MergeFn QualifiedType) := do
   have : Message CedarType := { parseField := CedarType.parseField, merge := CedarType.merge}
@@ -346,24 +319,27 @@ partial def Proto.EntityRecordKind.parseField (t : Tag) : BParsec (MergeFn Proto
   have : Message Proto.EntityRecordKind.Record := { parseField := Proto.EntityRecordKind.Record.parseField, merge := Proto.EntityRecordKind.Record.merge }
   match t.fieldNum with
     | 1 =>
-      let x : Proto.EntityRecordKind.Ty ← Field.guardedParse t
-      pure (pure $ Proto.EntityRecordKind.mergeTy · x)
+      let x : Proto.EntityRecordKind.AnyEntity ← Field.guardedParse t
+      pure (pure $ Proto.EntityRecordKind.mergeAnyEntity · x)
     | 2 =>
       let x : Proto.EntityRecordKind.Record ← Field.guardedParse t
       pure (pure $ Proto.EntityRecordKind.mergeRecord · x)
     | 3 =>
       let x : Proto.EntityRecordKind.Entity ← Field.guardedParse t
       pure (pure $ Proto.EntityRecordKind.mergeEntity · x)
+    | 4 =>
+      let x : Proto.EntityRecordKind.ActionEntity ← Field.guardedParse t
+      pure (pure $ Proto.EntityRecordKind.mergeActionEntity · x)
     | _ =>
       t.wireType.skip
       pure ignore
 
 partial def Proto.EntityRecordKind.Record.parseField (t : Tag) : BParsec (MergeFn Proto.EntityRecordKind.Record) := do
-  have : Message RecordType := { parseField := RecordType.parseField, merge := RecordType.merge }
+  have : Message QualifiedType := { parseField := QualifiedType.parseField, merge := QualifiedType.merge }
   match t.fieldNum with
     | 1 =>
-      let x : RecordType ← Field.guardedParse t
-      pure (pure $ Proto.EntityRecordKind.Record.mergeAttributes · x)
+      let x : Proto.Map String QualifiedType ← Field.guardedParse t
+      pure (pure $ Proto.EntityRecordKind.Record.mergeAttributes · (Cedar.Data.Map.mk x.toList)) -- using `mk` instead of `make` because we know `mergeAttributes` will re-sort anyway
     | _ =>
       t.wireType.skip
       pure ignore
@@ -389,13 +365,6 @@ partial def CedarType.parseField (t : Tag) : BParsec (MergeFn CedarType) := do
       pure ignore
 end
 
-namespace RecordType
-instance : Message RecordType := {
-  parseField := parseField
-  merge := merge
-}
-end RecordType
-
 namespace QualifiedType
 instance : Message QualifiedType := {
   parseField := parseField
@@ -416,6 +385,13 @@ instance : Message Proto.EntityRecordKind.Record := {
   merge := merge
 }
 end Proto.EntityRecordKind.Record
+
+namespace Proto.EntityRecordKind.ActionEntity
+instance : Message Proto.EntityRecordKind.ActionEntity := {
+  parseField := parseField
+  merge := merge
+}
+end Proto.EntityRecordKind.ActionEntity
 
 namespace CedarType
 instance : Message CedarType := {

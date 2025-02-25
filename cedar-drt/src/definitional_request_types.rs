@@ -36,7 +36,7 @@ impl From<&AuthorizationRequestMsg<'_>> for proto::AuthorizationRequestMsg {
     fn from(v: &AuthorizationRequestMsg<'_>) -> Self {
         Self {
             request: Some(cedar_policy::proto::models::Request::from(v.request)),
-            policies: Some(cedar_policy::proto::models::LiteralPolicySet::from(
+            policies: Some(cedar_policy::proto::models::PolicySet::from(
                 v.policies,
             )),
             entities: Some(cedar_policy::proto::models::Entities::from(v.entities)),
@@ -74,8 +74,8 @@ pub struct ValidationRequestMsg<'a> {
 impl From<&ValidationRequestMsg<'_>> for proto::ValidationRequestMsg {
     fn from(v: &ValidationRequestMsg<'_>) -> Self {
         Self {
-            schema: Some(cedar_policy::proto::models::ValidatorSchema::from(v.schema)),
-            policies: Some(cedar_policy::proto::models::LiteralPolicySet::from(
+            schema: Some(cedar_policy::proto::models::Schema::from(v.schema)),
+            policies: Some(cedar_policy::proto::models::PolicySet::from(
                 v.policies,
             )),
             mode: cedar_policy::proto::models::ValidationMode::from(&v.mode).into(),

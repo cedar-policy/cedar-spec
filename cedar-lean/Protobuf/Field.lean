@@ -61,8 +61,8 @@ def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
 @[inline]
 def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β) (merge : β → β → β) : Field β := {
   parse := do
-    let intMessage : α ← Field.parse
-    pure (convert intMessage)
+    let m : α ← Field.parse
+    pure $ convert m
   expectedWireType := Field.expectedWireType α
   merge := merge
 }

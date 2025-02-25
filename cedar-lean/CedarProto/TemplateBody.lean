@@ -13,13 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.Expr
-import CedarProto.PrincipalConstraint
 import CedarProto.ActionConstraint
-import CedarProto.ResourceConstraint
+import CedarProto.PrincipalOrResourceConstraint
 
 open Proto
 
@@ -58,7 +58,33 @@ instance : Field Conditions := Field.fromInterField fromExpr merge
 
 end Conditions
 
-namespace Template
+namespace PrincipalScopeTemplate
+
+deriving instance Inhabited for PrincipalScopeTemplate
+
+@[inline]
+def merge (x : PrincipalScopeTemplate) (y : PrincipalScopeTemplate) : PrincipalScopeTemplate :=
+  have ⟨ sc1 ⟩ := x
+  have ⟨ sc2 ⟩ := y
+  .principalScope (ScopeTemplate.merge sc1 sc2)
+
+instance : Field PrincipalScopeTemplate := Field.fromInterField .principalScope merge
+
+end PrincipalScopeTemplate
+
+namespace ResourceScopeTemplate
+
+deriving instance Inhabited for ResourceScopeTemplate
+
+@[inline]
+def merge (x : ResourceScopeTemplate) (y : ResourceScopeTemplate) : ResourceScopeTemplate :=
+  let ⟨ sc1 ⟩ := x
+  let ⟨ sc2 ⟩ := y
+  .resourceScope (ScopeTemplate.merge sc1 sc2)
+
+instance : Field ResourceScopeTemplate := Field.fromInterField .resourceScope merge
+
+end ResourceScopeTemplate
 
 -- Note that Cedar.Spec.Template is defined as
 -- structure Template where
@@ -73,6 +99,8 @@ namespace Template
 instance : Inhabited Effect where default := .forbid
 deriving instance Inhabited for Template -- must come after the Inhabited Effect instance
 
+namespace Template
+
 @[inline]
 def mergeEffect (result : Template) (x : Effect) : Template :=
   {result with
@@ -80,9 +108,10 @@ def mergeEffect (result : Template) (x : Effect) : Template :=
   }
 
 @[inline]
-def mergePrincipalScope (result : Template) (x : PrincipalScopeTemplate) : Template :=
+def mergePrincipalScope (result : Template) (x : ScopeTemplate) : Template :=
+  have ⟨ result_st ⟩ := result.principalScope
   {result with
-    principalScope := Field.merge result.principalScope x
+    principalScope := .principalScope $ ScopeTemplate.merge result_st (x.withSlot "?principal")
   }
 
 @[inline]
@@ -92,9 +121,10 @@ def mergeActionScope (result : Template) (x : ActionScope) : Template :=
   }
 
 @[inline]
-def mergeResourceScope (result : Template) (x : ResourceScopeTemplate) : Template :=
+def mergeResourceScope (result : Template) (x : ScopeTemplate) : Template :=
+  have ⟨ result_st ⟩ := result.resourceScope
   {result with
-    resourceScope := Field.merge result.resourceScope x
+    resourceScope := .resourceScope $ ScopeTemplate.merge result_st (x.withSlot "?resource")
   }
 
 @[inline]
@@ -121,13 +151,13 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn Template) := do
       let x : Effect ← Field.guardedParse t
       pure (pure $ mergeEffect · x)
     | 5 =>
-      let x : PrincipalScopeTemplate ← Field.guardedParse t
+      let x : ScopeTemplate ← Field.guardedParse t
       pure (pure $ mergePrincipalScope · x)
     | 6 =>
       let x : ActionScope ← Field.guardedParse t
       pure (pure $ mergeActionScope · x)
     | 7 =>
-      let x : ResourceScopeTemplate ← Field.guardedParse t
+      let x : ScopeTemplate ← Field.guardedParse t
       pure (pure $ mergeResourceScope · x)
     | 8 =>
       let x : Conditions ← Field.guardedParse t
