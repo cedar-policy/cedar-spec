@@ -17,6 +17,7 @@
 import Cedar.Validation.TypedExpr
 import Cedar.Validation.Typechecker
 import Cedar.Thm.Data.Map
+import Cedar.Spec.Policy
 
 /-!
 This file defines a level checking of a type-annotated AST. Level checking
@@ -99,7 +100,7 @@ def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
         omega
       checkLevel e.val.snd n
 
-def typedAtLevel (e : Expr) (c : Capabilities) (env : Environment) (n : Nat) : Bool :=
-  match typeOf e c env with
-  | .ok (te, _) => checkLevel te n
+def typecheckAtLevel (policy : Policy) (env : Environment) (n : Nat) : Bool :=
+  match typeOf policy.toExpr ∅ env with
+  | .ok (tx, _) => checkLevel tx n
   | _           => false
