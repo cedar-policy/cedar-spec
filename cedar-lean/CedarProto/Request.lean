@@ -58,7 +58,7 @@ def mergeContext (result : Request) (x : Value) : Request :=
   match x with
   | .record pairs =>
     {result with
-      context := Data.Map.mk (result.context.kvs ++ pairs.kvs)
+      context := Data.Map.make (result.context.kvs ++ pairs.kvs)
     }
   | _ => panic!("Context is not of correct type")
 
