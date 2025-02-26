@@ -38,7 +38,28 @@ open Cedar.Data
   The datetime type does not provide a way to create a datetime from a Unix timestamp.
   One of the readable formats listed above must be used instead.
 -/
-abbrev Datetime := Int64
+structure Datetime where
+  val : Int64
+
+def Datetime.lt (d₁ d₂ : Datetime) : Bool :=
+  d₁.val < d₂.val
+
+def Datetime.le (d₁ d₂ : Datetime) : Bool :=
+  d₁.val ≤ d₂.val
+
+instance : LT Datetime where
+  lt := fun d₁ d₂ => Datetime.lt d₁ d₂
+
+instance : LE Datetime where
+  le := fun d₁ d₂ => Datetime.le d₁ d₂
+
+instance Datetime.decLt (d₁ d₂ : Datetime) : Decidable (d₁ < d₂) :=
+  if h : Datetime.lt d₁ d₂ then isTrue h else isFalse h
+
+instance Datetime.decLe (d₁ d₂ : Datetime) : Decidable (d₁ ≤ d₂) :=
+  if h : Datetime.le d₁ d₂ then isTrue h else isFalse h
+
+deriving instance Repr, Inhabited, DecidableEq for Datetime
 
 namespace Datetime
 
@@ -50,7 +71,8 @@ def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH
 def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxx")
 def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
 
-abbrev datetime? := Int64.ofInt?
+def datetime? (i: Int) : Option Datetime :=
+  Int64.ofInt? i |>.map Datetime.mk
 
 def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
@@ -85,7 +107,28 @@ def parse (str: String) : Option Datetime := do
 
   A duration may be negative. Negative duration strings must begin with `-`.
 -/
-abbrev Duration := Int64
+structure Duration where
+  val : Int64
+
+deriving instance Repr, Inhabited, DecidableEq for Duration
+
+def Duration.lt (d₁ d₂ : Duration) : Bool :=
+  d₁.val < d₂.val
+
+def Duration.le (d₁ d₂ : Duration) : Bool :=
+  d₁.val ≤ d₂.val
+
+instance : LT Duration where
+  lt := fun d₁ d₂ => Duration.lt d₁ d₂
+
+instance : LE Duration where
+  le := fun d₁ d₂ => Duration.le d₁ d₂
+
+instance Duration.decLt (d₁ d₂ : Duration) : Decidable (d₁ < d₂) :=
+  if h : Duration.lt d₁ d₂ then isTrue h else isFalse h
+
+instance Duration.decLe (d₁ d₂ : Duration) : Decidable (d₁ ≤ d₂) :=
+  if h : Duration.le d₁ d₂ then isTrue h else isFalse h
 
 def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
@@ -94,18 +137,22 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
 
-abbrev duration? := Int64.ofInt?
+def duration? (i: Int) : Option Duration :=
+  Int64.ofInt? i |>.map Duration.mk
 
-def durationUnits? (n: Nat) (suffix: String) : Option Duration :=
+def Duration.neg? (d : Duration) : Option Duration :=
+  d.val.neg? |>.map Duration.mk
+
+def durationUnits? (n: Nat) (suffix: String) : Option Int :=
   match Int64.ofInt? n with
   | none => none
   | some i =>
     match suffix with
-    | "ms" => duration? i
-    | "s" => duration? (i * MILLISECONDS_PER_SECOND)
-    | "m" => duration? (i * MILLISECONDS_PER_MINUTE)
-    | "h" => duration? (i * MILLISECONDS_PER_HOUR)
-    | "d" => duration? (i * MILLISECONDS_PER_DAY)
+    | "ms" => some i
+    | "s" => some (i * MILLISECONDS_PER_SECOND)
+    | "m" => some (i * MILLISECONDS_PER_MINUTE)
+    | "h" => some (i * MILLISECONDS_PER_HOUR)
+    | "d" => some (i * MILLISECONDS_PER_DAY)
     | _ => none
 
 def unitsToMilliseconds (days hours minutes second milliseconds: Int) : Int :=
@@ -120,7 +167,7 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def parseUnit? (str : String) (suffix : String) : Option (Duration × String) :=
+def parseUnit? (str : String) (suffix : String) : Option (Int × String) :=
   if str.endsWith suffix
   then
     let newStr := str.dropRight suffix.length
@@ -132,7 +179,7 @@ def parseUnit? (str : String) (suffix : String) : Option (Duration × String) :=
       let units ← durationUnits? (← String.toNat? (String.mk digits)) suffix
       some (units, newStr.dropRight digits.length)
   else
-    some (⟨0, (by decide)⟩, str)
+    some (0, str)
 
 def parseUnsignedDuration? (str : String) : Option Duration := do
   if str.isEmpty then failure
@@ -150,7 +197,7 @@ def Duration.parse (str : String) : Option Duration :=
   match parseUnsignedDuration? restStr with
   | some duration =>
     if isNegative
-    then Int64.neg? duration
+    then duration.neg?
     else some duration
   | none => none
 
@@ -159,26 +206,26 @@ deriving instance Repr for Duration
 abbrev duration := Duration.parse
 
 def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
-  datetime.add? duration
+  Int64.add? datetime.val duration.val |>.map Datetime.mk
 
 def durationSince (datetime other: Datetime) : Option Duration :=
-  datetime.sub? other
+  Int64.sub? datetime.val other.val |>.map Duration.mk
 
 def toDate (datetime: Datetime) : Option Datetime :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
-  if datetime >= 0
-  then millisPerDayI64 * (datetime.div millisPerDayI64)
-  else if datetime.mod millisPerDayI64 == 0
+  if datetime.val >= 0
+  then datetime? (millisPerDayI64 * (datetime.val.div millisPerDayI64))
+  else if datetime.val.mod millisPerDayI64 == 0
        then datetime
-       else ((datetime.div millisPerDayI64) - 1) * millisPerDayI64
+       else datetime? (((datetime.val.div millisPerDayI64) - 1) * millisPerDayI64)
 
 def toTime (datetime: Datetime) : Duration :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
-  if datetime >= 0
-  then datetime.mod millisPerDayI64
-  else let rem := datetime.mod millisPerDayI64
+  if datetime.val >= 0
+  then Duration.mk (datetime.val.mod millisPerDayI64)
+  else let rem := datetime.val.mod millisPerDayI64
        if rem == 0
-       then rem
-       else rem + millisPerDayI64
+       then Duration.mk rem
+       else Duration.mk (rem + millisPerDayI64)
 
 end Datetime
