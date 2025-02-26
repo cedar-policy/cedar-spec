@@ -91,4 +91,23 @@ where
 def RequestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
   RequestIsValid env req && EntitiesIsValid env es
 
+inductive ConcretizationError
+  | typeError
+  | requestsDoNotMatch
+  | entitiesDoNotMatch
+
+def isConsistent (env : Environment) (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Except ConcretizationError Unit :=
+  RequestIsConsistent >>= (λ _ => EntitiesIsConsistent)
+
+where
+  RequestIsConsistent : Except ConcretizationError Unit :=
+  if !RequestIsValid env preq || !requestMatchesEnvironment env req env.ets
+  then
+  sorry
+  else
+  sorry
+  EntitiesIsConsistent :=
+    pure ()
+
+
 end Cedar.TPE
