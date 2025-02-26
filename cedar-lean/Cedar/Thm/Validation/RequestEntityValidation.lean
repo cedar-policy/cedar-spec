@@ -230,8 +230,8 @@ theorem instance_of_action_schema_refl {entities : Entities} {acts : ActionSchem
     simp only [h₀]
 
 
-theorem request_and_entities_match_env {env : Environment} {request : Request} {entities : Entities} {schema: EntitySchema} :
-  requestMatchesEnvironment env request schema →
+theorem request_and_entities_match_env {env : Environment} {request : Request} {entities : Entities} :
+  requestMatchesEnvironment env request →
   entitiesMatchEnvironment env entities = .ok () →
   RequestAndEntitiesMatchEnvironment env request entities
 := by
