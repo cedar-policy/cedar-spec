@@ -1,29 +1,15 @@
 
+
+
+B
+
+B 
 
 
 A
 
 A
-B 
-
-
-B
-
-B 0
-
-
-ActionWrite
-
-
-ActionWrite"A
-
-
-ActionRead-
-
-
-ActionRead
-
-ActionReadX"?
+B ?
 
 
 ActionReadX*
@@ -31,5 +17,19 @@
 
 ActionReadX":
 AB
-AB
-B
+BB
+AA
+
+
+ActionRead-
+
+
+ActionRead
+
+ActionReadX"0
+
+
+ActionWrite
+
+
+ActionWrite"
