@@ -51,8 +51,9 @@ open CedarProto
 open Cedar.Data
 
 /--
-  Similar to `testDeserializeProtodata`, but `f` is applied to the deserialized
-  value before comparing to `expected`
+  `filename` is expected to be the name of a file containing binary protobuf data.
+  This data is deserialized, and `f` is applied to it.
+  Then, this test ensures that the result is equal to the value `expected`.
 -/
 def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.Message α]
   (filename : String) (f : α → β) (expected : β) : TestCase IO :=
@@ -65,8 +66,8 @@ def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.M
   ⟩
 
 /--
-  `filename` is expected to be the name of a file containing binary protobuf data.
-  This test will ensure that that binary data deserializes into the value `expected`.
+  Convenience alias for `testDeserializeProtodata'` with `f := id`, that is, no
+  transform necessary on the deserialized data before comparing to `expected`.
 -/
 def testDeserializeProtodata [Inhabited α] [DecidableEq α] [Repr α] [Proto.Message α]
   (filename : String) (expected : α) : TestCase IO :=
