@@ -96,18 +96,41 @@ inductive ConcretizationError
   | requestsDoNotMatch
   | entitiesDoNotMatch
 
-def isConsistent (env : Environment) (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Except ConcretizationError Unit :=
+def isConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
   RequestIsConsistent >>= (λ _ => EntitiesIsConsistent)
-
 where
-  RequestIsConsistent : Except ConcretizationError Unit :=
-  if !RequestIsValid env preq || !requestMatchesEnvironment env req env.ets
+  RequestIsConsistent :=
+  if !RequestIsValid env req₂ || !requestMatchesEnvironment env req₁
   then
-  sorry
+    .error .typeError
   else
-  sorry
-  EntitiesIsConsistent :=
-    pure ()
-
+    let ⟨p₁, a₁, r₁, c₁⟩ := req₁
+    let ⟨p₂, a₂, r₂, c₂⟩ := req₂
+    if NoneIsTrue p₂.asEntityUID λ uid ↦ uid = p₁ &&
+      a₁ = a₂ &&
+      NoneIsTrue r₂.asEntityUID λ uid ↦ uid = r₁ &&
+      NoneIsTrue c₂ λ c ↦ c = c₁
+    then
+      pure ()
+    else
+      .error .requestsDoNotMatch
+  EntitiesIsConsistent : Except ConcretizationError Unit :=
+    if !EntitiesIsValid env es₂ || !(entitiesMatchEnvironment env es₁).isOk
+    then
+      .error .typeError
+    else
+      if EntitiesMatch then
+        pure ()
+      else
+        .error .entitiesDoNotMatch
+  EntitiesMatch :=
+      es₂.kvs.all λ (a₂, e₂) ↦ match es₁.find? a₂ with
+        | .some e₁ =>
+          let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
+          let ⟨attrs₂, ancestors₂, tags₂⟩ := e₂
+          NoneIsTrue attrs₂ λ val ↦ val = attrs₁ &&
+          NoneIsTrue ancestors₂ λ val ↦ val = ancestors₁ &&
+          NoneIsTrue tags₂ λ val ↦ val = tags₁
+        | .none => false
 
 end Cedar.TPE
