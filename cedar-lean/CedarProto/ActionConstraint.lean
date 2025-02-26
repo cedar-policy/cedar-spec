@@ -31,7 +31,7 @@ namespace Cedar.Spec
 namespace Proto
 -- Constructors for ActionScope
 
-inductive ActionScope.Ty where
+inductive ActionScope.Any where
   | any
 deriving Inhabited
 
@@ -39,17 +39,17 @@ def ActionScope.In := ActionScope
 def ActionScope.Eq := ActionScope
 end Proto
 
-namespace Proto.ActionScope.Ty
+namespace Proto.ActionScope.Any
 @[inline]
-def fromInt (n : Int) : Except String ActionScope.Ty :=
+def fromInt (n : Int) : Except String ActionScope.Any :=
   match n with
   | 0 => .ok .any
   | n => .error s!"Field {n} does not exist in enum"
 
-instance : ProtoEnum ActionScope.Ty := {
+instance : ProtoEnum ActionScope.Any := {
   fromInt := fromInt
 }
-end Proto.ActionScope.Ty
+end Proto.ActionScope.Any
 
 namespace Proto.ActionScope.In
 instance : Inhabited ActionScope.In where
@@ -119,7 +119,7 @@ end Proto.ActionScope.Eq
 namespace ActionScope
 
 @[inline]
-def mergeTy (_ : ActionScope) (x : Proto.ActionScope.Ty) : ActionScope :=
+def mergeAny (_ : ActionScope) (x : Proto.ActionScope.Any) : ActionScope :=
   match x with
     | .any => .actionScope (Scope.any)
 
@@ -156,8 +156,8 @@ def merge (x1 x2 : ActionScope) : ActionScope :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope) := do
   match t.fieldNum with
     | 1 =>
-      let x : Proto.ActionScope.Ty ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
+      let x : Proto.ActionScope.Any ← Field.guardedParse t
+      pure (pure $ mergeAny · x)
     | 2 =>
       let x : Proto.ActionScope.In ← Field.guardedParse t
       pure (pure $ mergeIn · x)

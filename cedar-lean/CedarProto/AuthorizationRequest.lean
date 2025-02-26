@@ -17,7 +17,7 @@ import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.Request
-import CedarProto.LiteralPolicySet
+import CedarProto.PolicySet
 import CedarProto.Entities
 
 open Proto

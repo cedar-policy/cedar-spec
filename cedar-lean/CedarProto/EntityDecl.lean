@@ -18,7 +18,7 @@ import Protobuf.Message
 import Protobuf.String
 
 -- Message Dependencies
-import CedarProto.EntityType
+import CedarProto.Name
 import CedarProto.Type
 
 open Proto
@@ -27,44 +27,15 @@ namespace Cedar.Validation.Proto
 
 -- Note: EntitySchemaEntry takes ancestors, so we'll create this intermediate
 -- representation. Once we gather all the entries, we will perform the transform.
-structure ValidatorEntityType where
+structure EntityDecl where
   /-- All (transitive) descendants. Assumes TC is computed before encoding into protobuf. -/
-  descendants : Array Spec.EntityTypeProto
-  attrs : RecordType
+  descendants : Array Spec.Name
+  attrs : Proto.Map String QualifiedType
   tags : Option CedarType
   enums: Array String
 deriving Inhabited
 
--- the Tag message in Validator.proto
-structure TagMessage where
-  optional_type: CedarType
-deriving Repr, Inhabited
-
-namespace TagMessage
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn TagMessage) := do
-  match t.fieldNum with
-    | 1 =>
-      let ty : CedarType ← Field.guardedParse t
-      pure λ { optional_type := old_ty } => pure { optional_type := Field.merge old_ty ty }
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-@[inline]
-def merge (x y : TagMessage) : TagMessage :=
-  {
-    optional_type := Message.merge x.optional_type y.optional_type
-  }
-
-instance : Message TagMessage where
-  parseField := parseField
-  merge := merge
-
-end TagMessage
-
-namespace ValidatorEntityType
+namespace EntityDecl
 
 @[inline]
 def mergeOption [Field α] (x1 x2 : Option α) : Option α :=
@@ -75,49 +46,49 @@ def mergeOption [Field α] (x1 x2 : Option α) : Option α :=
   | none, none => none
 
 @[inline]
-def mergeDescendants (result : ValidatorEntityType) (x : Array Spec.EntityTypeProto) : ValidatorEntityType :=
+def mergeDescendants (result : EntityDecl) (x : Array Spec.Name) : EntityDecl :=
   {result with
     descendants := result.descendants ++ x
   }
 
 @[inline]
-def mergeAttributes (result : ValidatorEntityType) (x : RecordType) : ValidatorEntityType :=
+def mergeAttributes (result : EntityDecl) (x : Proto.Map String QualifiedType) : EntityDecl :=
   {result with
-    attrs := Field.merge result.attrs x
+    attrs := result.attrs ++ x
   }
 
 @[inline]
-def mergeTags (result : ValidatorEntityType) (x : TagMessage) : ValidatorEntityType :=
+def mergeTags (result : EntityDecl) (x : CedarType) : EntityDecl :=
   {result with
-    tags := mergeOption result.tags (some x.optional_type)
+    tags := mergeOption result.tags (some x)
   }
 
 @[inline]
-def mergeEnums (result : ValidatorEntityType) (x : Array String) : ValidatorEntityType :=
+def mergeEnums (result : EntityDecl) (x : Array String) : EntityDecl :=
   {result with
     enums := result.enums ++ x
   }
 
 @[inline]
-def merge (x y : ValidatorEntityType) : ValidatorEntityType :=
+def merge (x y : EntityDecl) : EntityDecl :=
   {
     descendants := y.descendants ++ x.descendants
-    attrs := Field.merge x.attrs y.attrs
+    attrs := x.attrs ++ y.attrs
     tags := mergeOption x.tags y.tags
     enums := x.enums ++ y.enums
   }
 
 @[inline]
-def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
+def parseField (t : Tag) : BParsec (MergeFn EntityDecl) := do
   match t.fieldNum with
     | 2 =>
-      let x : Repeated Spec.EntityTypeProto ← Field.guardedParse t
+      let x : Repeated Spec.Name ← Field.guardedParse t
       pure (pure $ mergeDescendants · x)
     | 3 =>
-      let x : RecordType ← Field.guardedParse t
+      let x : Proto.Map String QualifiedType ← Field.guardedParse t
       pure (pure $ mergeAttributes · x)
     | 5 =>
-      let x : TagMessage ← Field.guardedParse t
+      let x : CedarType ← Field.guardedParse t
       pure (pure $ mergeTags · x)
     | 6 =>
       let x : Repeated String ← Field.guardedParse t
@@ -126,11 +97,11 @@ def parseField (t : Tag) : BParsec (MergeFn ValidatorEntityType) := do
       t.wireType.skip
       pure ignore
 
-instance : Message ValidatorEntityType := {
+instance : Message EntityDecl := {
   parseField := parseField
   merge := merge
 }
 
-end ValidatorEntityType
+end EntityDecl
 
 end Cedar.Validation.Proto

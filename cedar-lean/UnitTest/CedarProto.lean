@@ -52,21 +52,8 @@ open Cedar.Data
 
 /--
   `filename` is expected to be the name of a file containing binary protobuf data.
-  This test will ensure that that binary data deserializes into the value `expected`.
--/
-def testDeserializeProtodata [Inhabited α] [DecidableEq α] [Repr α] [Proto.Message α]
-  (filename : String) (expected : α) : TestCase IO :=
-  test s!"Deserialize {filename}" ⟨λ () => do
-    let buf ← IO.FS.readBinFile filename
-    let parsed : Except String α := Proto.Message.interpret? buf
-    match parsed with
-    | .ok req => checkEq req expected
-    | .error e => pure (.error e)
-  ⟩
-
-/--
-  Similar to `testDeserializeProtodata`, but `f` is applied to the deserialized
-  value before comparing to `expected`
+  This data is deserialized, and `f` is applied to it.
+  Then, this test ensures that the result is equal to the value `expected`.
 -/
 def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.Message α]
   (filename : String) (f : α → β) (expected : β) : TestCase IO :=
@@ -77,6 +64,14 @@ def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.M
     | .ok req => checkEq (f req) expected
     | .error e => pure (.error e)
   ⟩
+
+/--
+  Convenience alias for `testDeserializeProtodata'` with `f := id`, that is, no
+  transform necessary on the deserialized data before comparing to `expected`.
+-/
+def testDeserializeProtodata [Inhabited α] [DecidableEq α] [Repr α] [Proto.Message α]
+  (filename : String) (expected : α) : TestCase IO :=
+  testDeserializeProtodata' filename id expected
 
 private def mkUid (path : List String) (ty : String) (eid : String) : Cedar.Spec.EntityUID :=
   { ty := { path, id := ty }, eid }
@@ -202,16 +197,20 @@ def tests := [
         (.call .decimal [.lit (.string "3.14")]),
         (.call .decimal [.lit (.string "3.1416")]),
       ]),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/rbac.protodata"
-      ({
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/rbac.protodata"
+      Cedar.Spec.Policies.fromPolicySet
+      [{
+        id := "policy0"
         effect := .permit
-        principalScope := .principalScope (.eq (.entityUID (mkUid [] "User" "a b c")))
+        principalScope := .principalScope (.eq (mkUid [] "User" "a b c"))
         actionScope := .actionScope .any
         resourceScope := .resourceScope (.is { id := "Widget", path := ["App"] })
         condition := [{ kind := .when, body := .lit (.bool true) }]
-      } : Cedar.Spec.Template),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/abac.protodata"
-      ({
+      }],
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/abac.protodata"
+      Cedar.Spec.Policies.fromPolicySet
+      [{
+        id := "policy0"
         effect := .permit
         principalScope := .principalScope .any
         actionScope := .actionScope .any
@@ -226,9 +225,9 @@ def tests := [
               (.unaryApp .not (.getAttr (.var .resource) "sensitive"))
           },
         ]
-      } : Cedar.Spec.Template),
+      }],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := "linkedpolicy"
@@ -289,11 +288,11 @@ def tests := [
         },
       ],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_just_templates.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
       [],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_one_static_policy.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromLiteralPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := ""
@@ -342,27 +341,83 @@ def tests := [
         (mkUid [] "ABC" "123", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
         (mkUid [] "DEF" "234", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
       ]) : Cedar.Spec.Entities),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_true.protodata"
-      (Cedar.Validation.CedarType.bool .tt),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_false.protodata"
-      (Cedar.Validation.CedarType.bool .ff),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_bool.protodata"
-      (Cedar.Validation.CedarType.bool .anyBool),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_long.protodata"
-      (Cedar.Validation.CedarType.int),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_string.protodata"
-      (Cedar.Validation.CedarType.string),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_set_of_string.protodata"
-      (Cedar.Validation.CedarType.set Cedar.Validation.CedarType.string),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_ip.protodata"
-      (Cedar.Validation.CedarType.ext .ipAddr),
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/type_record.protodata"
-      (Cedar.Validation.CedarType.record (Map.make [
-        ("eggs", .optional .int),
-        ("ham", .required .string),
-      ])),
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_bool.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required (.bool .anyBool)) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_long.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required .int) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_string.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required .string) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_set_of_string.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required (.set .string)) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_ip.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required (.ext .ipAddr)) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/type_record.protodata"
+      Cedar.Validation.Proto.Schema.toSchema
+      {
+        ets := Map.make [
+          ({ id := "E", path := [] }, .standard {
+            attrs := Map.make [ ("attr", .required (.record (Map.make [
+              ("eggs", .optional .int),
+              ("ham", .required .string),
+            ]))) ]
+            ancestors := Set.empty
+            tags := none
+          })
+        ]
+        acts := Map.empty
+      },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_basic.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -398,7 +453,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_attrs.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -461,7 +516,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_commontypes.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
@@ -506,7 +561,7 @@ def tests := [
         ]
       },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/schema_tags.protodata"
-      Cedar.Validation.Proto.ValidatorSchema.toSchema
+      Cedar.Validation.Proto.Schema.toSchema
       {
         ets := Map.make [
           ({ id := "A", path := [] }, .standard {
