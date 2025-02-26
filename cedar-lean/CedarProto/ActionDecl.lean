@@ -33,12 +33,10 @@ namespace Cedar.Validation.Proto
 structure ActionDecl where
   name : Spec.EntityUID
   descendants : Array Spec.EntityUID
-  context : CedarType
+  context : Proto.Map String (Qualified ProtoType)
   principal_types : Array Spec.Name
   resource_types : Array Spec.Name
-
-instance : Inhabited ActionDecl where
-  default := ActionDecl.mk default default (CedarType.record default) default default
+deriving Repr, Inhabited
 
 namespace ActionDecl
 
@@ -55,7 +53,7 @@ def mergeDescendants (result : ActionDecl) (x : Array Spec.EntityUID) : ActionDe
   }
 
 @[inline]
-def mergeContext (result : ActionDecl) (x : CedarType) : ActionDecl :=
+def mergeContext (result : ActionDecl) (x : Proto.Map String (Qualified ProtoType)) : ActionDecl :=
   {result with
     context := Field.merge result.context x
   }
@@ -92,12 +90,12 @@ def parseField (t : Tag) : BParsec (MergeFn ActionDecl) := do
       let x : Repeated Spec.EntityUID ← Field.guardedParse t
       pure (pure $ mergeDescendants · x)
     | 4 =>
-      let x : CedarType ← Field.guardedParse t
+      let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
       pure (pure $ mergeContext · x)
-    | 7 =>
+    | 5 =>
       let x : Repeated Spec.Name ← Field.guardedParse t
       pure (pure $ mergePrincipalTypes · x)
-    | 8 =>
+    | 6 =>
       let x : Repeated Spec.Name ← Field.guardedParse t
       pure (pure $ mergeResourceTypes · x)
     | _ =>
