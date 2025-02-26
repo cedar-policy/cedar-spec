@@ -26,7 +26,7 @@ open Cedar.Validation
 inductive Error where
   | evaluation (err : Spec.Error)
   | invalidPolicy (err : TypeError)
-  | noValidEnvironment
+  | inValidEnvironment
   | invalidRequestOrEntities
 deriving Repr
 
@@ -211,12 +211,12 @@ def tpePolicy (schema : Schema)
   (es : PartialEntities)
   : Except Error Residual :=
   match schema.environment? req.principal.ty req.resource.ty req.action with
-    | .some env => if RequestAndEntitiesIsValid env req es then
+    | .some env => if requestAndEntitiesIsValid env req es then
       do
         let expr := substituteAction env.reqty.action p.toExpr
         let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
         (tpeExpr te req es).mapError Error.evaluation
       else .error .invalidRequestOrEntities
-    | .none => .error Error.noValidEnvironment
+    | .none => .error .inValidEnvironment
 
 end Cedar.TPE

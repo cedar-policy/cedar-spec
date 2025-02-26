@@ -62,7 +62,7 @@ def DocumentType : EntityType :=
   ⟨"Document", []⟩
 
 def schema : Schema :=
-  ⟨Map.mk [
+  ⟨Map.make [
   (
      ActionType,
      .standard ⟨default, default, default⟩
@@ -75,25 +75,25 @@ def schema : Schema :=
      DocumentType,
      .standard ⟨
           default,
-          Map.mk [
+          Map.make [
                ("isPublic", (.required (.bool .anyBool))),
                ("owner", (.required (.entity UserType)))
           ],
           default⟩
   )
   ],
-  Map.mk [
+  Map.make [
      (⟨ActionType, "View"⟩, ⟨
-          Set.mk [UserType],
-          Set.mk [DocumentType],
+          Set.singleton UserType,
+          Set.singleton DocumentType,
           default,
-          Map.mk [("hasMFA", (.required (.bool .anyBool)))]
+          Map.make [("hasMFA", (.required (.bool .anyBool)))]
       ⟩),
       (⟨ActionType, "Delete"⟩, ⟨
-          Set.mk [UserType],
-          Set.mk [DocumentType],
+          Set.singleton UserType,
+          Set.singleton DocumentType,
           default,
-          Map.mk [
+          Map.make [
                ("hasMFA", (.required (.bool .anyBool))),
                ("srcIP", (.required (.ext .ipAddr)))]
       ⟩)
@@ -201,11 +201,11 @@ def req : PartialRequest :=
      ⟨UserType, "Alice"⟩,
      ⟨ActionType, "View"⟩,
      ⟨DocumentType, default⟩,
-     .some $ Map.mk [("hasMFA", true)]
+     .some $ Map.make [("hasMFA", true)]
   ⟩
 
 def es : PartialEntities :=
-  Map.mk [
+  Map.make [
      (⟨ActionType, "View"⟩, ⟨.some default, .some default, .some default⟩),
      (⟨ActionType, "Delete"⟩, ⟨.some default, .some default, .some default⟩),
      (⟨UserType, "Alice"⟩, ⟨.some default, .some default, default⟩)
@@ -249,7 +249,7 @@ def ActionType : EntityType :=
   ⟨"Action", []⟩
 
 def AddressType : RecordType :=
-  Map.mk [
+  Map.make [
      ("street", (.required .string)),
      ("zip", (.optional .string))
   ]
@@ -261,7 +261,7 @@ def PackageType : EntityType :=
   ⟨"Package", []⟩
 
 def schema : Schema :=
-  ⟨Map.mk [
+  ⟨Map.make [
   (
      ActionType,
      .standard ⟨default, default, default⟩
@@ -270,7 +270,7 @@ def schema : Schema :=
      UserType,
      .standard ⟨
           default,
-          Map.mk [
+          Map.make [
                ("address", (.required (.record AddressType)))
           ],
           default⟩
@@ -279,16 +279,16 @@ def schema : Schema :=
      PackageType,
      .standard ⟨
           default,
-          Map.mk [
+          Map.make [
                ("address", (.required (.record AddressType)))
           ],
           default⟩
   ),
   ],
-  Map.mk [
+  Map.make [
      (⟨ActionType, "PickUp"⟩, ⟨
-          Set.mk [UserType],
-          Set.mk [PackageType],
+          Set.singleton UserType,
+          Set.singleton PackageType,
           default,
           default
       ⟩)
@@ -330,9 +330,9 @@ def req : PartialRequest :=
   ⟩
 
 def es : PartialEntities :=
-  Map.mk [
+  Map.make [
      (⟨ActionType, "PickUp"⟩, ⟨.some default, .some default, .some default⟩),
-     (⟨UserType, "Alice"⟩, ⟨.some $ Map.mk [("address", .record $ Map.mk [("street", "Sesame Street")])], .some default, default⟩)
+     (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])], .some default, default⟩)
   ]
 
 #eval tpePolicy schema policy req es

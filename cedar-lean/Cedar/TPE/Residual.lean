@@ -24,7 +24,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
--- The result produced by TPE
+/- The result produced by TPE -/
 -- We do not need `unknown`s because they can be represented by entity dereferences
 inductive Residual where
   -- val contains values obtained by TPE

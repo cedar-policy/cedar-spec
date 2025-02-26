@@ -27,22 +27,22 @@ open Cedar.Spec
 open Cedar.Validation
 
 structure PartialEntityUID where
-  ty : EntityType                    -- Entity type is always known,
-  id : Option String                 -- but entity id may not be.
+  ty : EntityType
+  id : Option String
 
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
-  self.id.map λ x ↦ ⟨ self.ty, x⟩
+  self.id.map λ x ↦ ⟨self.ty, x⟩
 
 structure PartialRequest where
   principal : PartialEntityUID
   action : EntityUID
   resource : PartialEntityUID
-  -- no type annotation is needed here because this value can only be accessed
-  -- via evaluating a `TypedExpr`, which allows us to obtain a (typed)
-  -- `Residual`
+  -- We don't need type annotation here because the value of `context` can only
+  -- be accessed via evaluating a `TypedExpr`, which allows us to obtain a
+  -- (typed) `Residual`
   context :  Option (Map Attr Value)
 
--- no type annotation is needed here following the rationale above
+-- We don't need type annotations here following the rationale above
 structure PartialEntityData where
   attrs : Option (Map Attr Value)
   ancestors : Option (Set EntityUID)
@@ -50,46 +50,44 @@ structure PartialEntityData where
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
-def NoneIsTrue {α} (o : Option α) (f : α → Bool) : Bool :=
-  match o with
-  | .some v => f v
-  | .none => true
+def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
+  (o.map f).getD true
 
-def RequestIsValid (env : Environment) (req : PartialRequest) : Bool :=
-  (NoneIsTrue req.principal.asEntityUID λ principal ↦
+def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
+  (partialIsValid req.principal.asEntityUID λ principal ↦
     instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
-  (NoneIsTrue req.resource.asEntityUID λ resource ↦
+  (partialIsValid req.resource.asEntityUID λ resource ↦
     instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
-  (NoneIsTrue req.context λ m ↦
+  (partialIsValid req.context λ m ↦
     instanceOfType (.record m) (.record env.reqty.context) env.ets)
 
-def EntitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
-  (es.toList.all EntityIsValid) && (env.acts.toList.all instanceOfActionSchema)
+def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
+  (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
-  EntityIsValid p :=
+  entityIsValid p :=
   let (uid, ⟨attrs, ancestors, tags⟩) := p
   match env.ets.find? uid.ty with
   | .some entry =>
     entry.isValidEntityEID uid.eid &&
-    (NoneIsTrue ancestors λ ancestors ↦
+    (partialIsValid ancestors λ ancestors ↦
       ancestors.all (λ ancestor =>
       entry.ancestors.contains ancestor.ty &&
       instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
-    (NoneIsTrue attrs λ attrs ↦
+    (partialIsValid attrs λ attrs ↦
       instanceOfType attrs (.record entry.attrs) env.ets) &&
-    (NoneIsTrue tags λ tags ↦
+    (partialIsValid tags λ tags ↦
       match entry.tags? with
-    | .some tty => tags.values.all (instanceOfType · tty env.ets)
-    | .none     => tags == Map.empty)
+      | .some tty => tags.values.all (instanceOfType · tty env.ets)
+      | .none     => tags == Map.empty)
   | .none => false
   instanceOfActionSchema p :=
     let (uid, entry) := p
     match es.find? uid with
-      | .some entry₁ => entry.ancestors == entry₁.ancestors
-      | _ => false
+    | .some entry₁ => entry.ancestors == entry₁.ancestors
+    | _ => false
 
-def RequestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
-  RequestIsValid env req && EntitiesIsValid env es
+def requestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
+  requestIsValid env req && entitiesIsValid env es
 
 inductive ConcretizationError
   | typeError
@@ -97,40 +95,40 @@ inductive ConcretizationError
   | entitiesDoNotMatch
 
 def isConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
-  RequestIsConsistent >>= (λ _ => EntitiesIsConsistent)
+  requestIsConsistent >>= (λ _ => entitiesIsConsistent)
 where
-  RequestIsConsistent :=
-  if !RequestIsValid env req₂ || !requestMatchesEnvironment env req₁
+  requestIsConsistent :=
+  if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
   then
     .error .typeError
   else
     let ⟨p₁, a₁, r₁, c₁⟩ := req₁
     let ⟨p₂, a₂, r₂, c₂⟩ := req₂
-    if NoneIsTrue p₂.asEntityUID λ uid ↦ uid = p₁ &&
+    if partialIsValid p₂.asEntityUID λ uid ↦ uid = p₁ &&
       a₁ = a₂ &&
-      NoneIsTrue r₂.asEntityUID λ uid ↦ uid = r₁ &&
-      NoneIsTrue c₂ λ c ↦ c = c₁
+      partialIsValid r₂.asEntityUID λ uid ↦ uid = r₁ &&
+      partialIsValid c₂ λ c ↦ c = c₁
     then
       pure ()
     else
       .error .requestsDoNotMatch
-  EntitiesIsConsistent : Except ConcretizationError Unit :=
-    if !EntitiesIsValid env es₂ || !(entitiesMatchEnvironment env es₁).isOk
+  entitiesIsConsistent : Except ConcretizationError Unit :=
+    if !entitiesIsValid env es₂ || !(entitiesMatchEnvironment env es₁).isOk
     then
       .error .typeError
     else
-      if EntitiesMatch then
+      if entitiesMatch then
         pure ()
       else
         .error .entitiesDoNotMatch
-  EntitiesMatch :=
+  entitiesMatch :=
       es₂.kvs.all λ (a₂, e₂) ↦ match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
           let ⟨attrs₂, ancestors₂, tags₂⟩ := e₂
-          NoneIsTrue attrs₂ λ val ↦ val = attrs₁ &&
-          NoneIsTrue ancestors₂ λ val ↦ val = ancestors₁ &&
-          NoneIsTrue tags₂ λ val ↦ val = tags₁
+          partialIsValid attrs₂ λ val ↦ val = attrs₁ &&
+          partialIsValid ancestors₂ λ val ↦ val = ancestors₁ &&
+          partialIsValid tags₂ λ val ↦ val = tags₁
         | .none => false
 
 end Cedar.TPE
