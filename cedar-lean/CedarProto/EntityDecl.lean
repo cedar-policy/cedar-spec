@@ -28,12 +28,13 @@ namespace Cedar.Validation.Proto
 -- Note: EntitySchemaEntry takes ancestors, so we'll create this intermediate
 -- representation. Once we gather all the entries, we will perform the transform.
 structure EntityDecl where
+  name : Spec.Name
   /-- All (transitive) descendants. Assumes TC is computed before encoding into protobuf. -/
   descendants : Array Spec.Name
-  attrs : Proto.Map String QualifiedType
-  tags : Option CedarType
-  enums: Array String
-deriving Inhabited
+  attrs : Proto.Map String (Qualified ProtoType)
+  tags : Option ProtoType
+  enums : Array String
+deriving Repr, Inhabited
 
 namespace EntityDecl
 
@@ -46,19 +47,25 @@ def mergeOption [Field α] (x1 x2 : Option α) : Option α :=
   | none, none => none
 
 @[inline]
+def mergeName (result : EntityDecl) (x : Spec.Name) : EntityDecl :=
+  {result with
+    name := Field.merge result.name x
+  }
+
+@[inline]
 def mergeDescendants (result : EntityDecl) (x : Array Spec.Name) : EntityDecl :=
   {result with
     descendants := result.descendants ++ x
   }
 
 @[inline]
-def mergeAttributes (result : EntityDecl) (x : Proto.Map String QualifiedType) : EntityDecl :=
+def mergeAttributes (result : EntityDecl) (x : Proto.Map String (Qualified ProtoType)) : EntityDecl :=
   {result with
     attrs := result.attrs ++ x
   }
 
 @[inline]
-def mergeTags (result : EntityDecl) (x : CedarType) : EntityDecl :=
+def mergeTags (result : EntityDecl) (x : ProtoType) : EntityDecl :=
   {result with
     tags := mergeOption result.tags (some x)
   }
@@ -72,6 +79,7 @@ def mergeEnums (result : EntityDecl) (x : Array String) : EntityDecl :=
 @[inline]
 def merge (x y : EntityDecl) : EntityDecl :=
   {
+    name := Field.merge x.name y.name
     descendants := y.descendants ++ x.descendants
     attrs := x.attrs ++ y.attrs
     tags := mergeOption x.tags y.tags
@@ -81,14 +89,17 @@ def merge (x y : EntityDecl) : EntityDecl :=
 @[inline]
 def parseField (t : Tag) : BParsec (MergeFn EntityDecl) := do
   match t.fieldNum with
+    | 1 =>
+      let x : Spec.Name ← Field.guardedParse t
+      pure (pure $ mergeName · x)
     | 2 =>
       let x : Repeated Spec.Name ← Field.guardedParse t
       pure (pure $ mergeDescendants · x)
     | 3 =>
-      let x : Proto.Map String QualifiedType ← Field.guardedParse t
+      let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
       pure (pure $ mergeAttributes · x)
     | 5 =>
-      let x : CedarType ← Field.guardedParse t
+      let x : ProtoType ← Field.guardedParse t
       pure (pure $ mergeTags · x)
     | 6 =>
       let x : Repeated String ← Field.guardedParse t
