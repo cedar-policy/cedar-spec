@@ -31,19 +31,24 @@ namespace Cedar.Spec
 
 def EntitiesProto : Type := Array EntityProto
 deriving instance Inhabited for EntitiesProto
+instance : HAppend EntitiesProto EntitiesProto EntitiesProto where
+  hAppend x y :=
+    let x : Array EntityProto := x
+    let y : Array EntityProto := y
+    x ++ y
+instance : HAppend EntitiesProto (Array EntityProto) EntitiesProto where
+  hAppend x y :=
+    let x : Array EntityProto := x
+    x ++ y
 
 namespace EntitiesProto
 
 @[inline]
-def mergeEntities (result : EntitiesProto) (x : Repeated EntityProto) : EntitiesProto :=
-  have x : Array EntityProto := x.map λ xi => { xi with data := xi.data.mkWf }
-  have result : Array EntityProto := result
+def mergeEntities (result : EntitiesProto) (x : Array EntityProto) : EntitiesProto :=
   result ++ x
 
 @[inline]
 def merge (x : EntitiesProto) (y : EntitiesProto) : EntitiesProto :=
-  have x : Array EntityProto := x
-  have y : Array EntityProto := y
   x ++ y
 
 @[inline]
@@ -52,7 +57,6 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn EntitiesProto) := do
     | 1 =>
       let x : Repeated EntityProto ← Field.guardedParse t
       pure (pure $ mergeEntities · x)
-    -- Ignoring 3 | mode
     | _ =>
       t.wireType.skip
       pure ignore
@@ -71,8 +75,6 @@ end EntitiesProto
 namespace Entities
 @[inline]
 def merge (e1 : Entities) (e2 : Entities) : Entities :=
-  let e1 : Cedar.Data.Map EntityUID EntityData := e1
-  let e2 : Cedar.Data.Map EntityUID EntityData := e2
   -- Don't sort if e1 is empty
   match e1.kvs with
     | [] => e2
