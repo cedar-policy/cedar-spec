@@ -24,6 +24,13 @@ import CedarProto.Type
 
 open Proto
 
+macro "update " f:Lean.Parser.Term.structInstLVal : term => `(λ x v => { x with $f := v })
+
+def parseFieldElement {α β} [Field β] (t : Tag) (f : α → β) (g : α → β → α) : BParsec (MergeFn α) := do
+  let x : β ← Field.guardedParse t
+  let merge result x := g result (Field.merge (f result) x)
+  pure (pure $ merge · x)
+
 namespace Cedar.Validation.Proto
 
 -- Note: EntitySchemaEntry takes ancestors,
@@ -32,78 +39,34 @@ namespace Cedar.Validation.Proto
 -- the transform
 structure ActionDecl where
   name : Spec.EntityUID
-  descendants : Array Spec.EntityUID
+  descendants : Repeated Spec.EntityUID
   context : Proto.Map String (Qualified ProtoType)
-  principal_types : Array Spec.Name
-  resource_types : Array Spec.Name
+  principalTypes : Repeated Spec.Name
+  resourceTypes : Repeated Spec.Name
 deriving Repr, Inhabited
 
 namespace ActionDecl
 
 @[inline]
-def mergeName (result : ActionDecl) (x : Spec.EntityUID) : ActionDecl :=
-  {result with
-    name := Field.merge result.name x
-  }
-
-@[inline]
-def mergeDescendants (result : ActionDecl) (x : Array Spec.EntityUID) : ActionDecl :=
-  {result with
-    descendants := result.descendants ++ x
-  }
-
-@[inline]
-def mergeContext (result : ActionDecl) (x : Proto.Map String (Qualified ProtoType)) : ActionDecl :=
-  {result with
-    context := Field.merge result.context x
-  }
-
-@[inline]
-def mergePrincipalTypes (result : ActionDecl) (x : Array Spec.Name) : ActionDecl :=
-  {result with
-    principal_types := result.principal_types ++ x
-  }
-
-@[inline]
-def mergeResourceTypes (result : ActionDecl) (x : Array Spec.Name) : ActionDecl :=
-  {result with
-    resource_types := result.resource_types ++ x
-  }
-
-@[inline]
 def merge (x y : ActionDecl) : ActionDecl :=
   {
-    name := Field.merge x.name y.name
-    descendants := x.descendants ++ y.descendants
-    context := Field.merge x.context y.context
-    principal_types := x.principal_types ++ y.principal_types
-    resource_types := x.resource_types ++ y.resource_types
+    name           := Field.merge x.name           y.name
+    descendants    := Field.merge x.descendants    y.descendants
+    context        := Field.merge x.context        y.context
+    principalTypes := Field.merge x.principalTypes y.principalTypes
+    resourceTypes  := Field.merge x.resourceTypes  y.resourceTypes
   }
 
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn ActionDecl) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Spec.EntityUID ← Field.guardedParse t
-      pure (pure $ mergeName · x)
-    | 3 =>
-      let x : Repeated Spec.EntityUID ← Field.guardedParse t
-      pure (pure $ mergeDescendants · x)
-    | 4 =>
-      let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
-      pure (pure $ mergeContext · x)
-    | 5 =>
-      let x : Repeated Spec.Name ← Field.guardedParse t
-      pure (pure $ mergePrincipalTypes · x)
-    | 6 =>
-      let x : Repeated Spec.Name ← Field.guardedParse t
-      pure (pure $ mergeResourceTypes · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
 instance : Message ActionDecl := {
-  parseField := parseField
+  parseField (t : Tag) := do
+    match t.fieldNum with
+      | 1 => parseFieldElement t name (update name)
+      | 3 => parseFieldElement t descendants (update descendants)
+      | 4 => parseFieldElement t context (update context)
+      | 5 => parseFieldElement t principalTypes (update principalTypes)
+      | 6 => parseFieldElement t resourceTypes (update resourceTypes)
+      | _ => let _ ← t.wireType.skip ; pure ignore
+
   merge := merge
 }
 
