@@ -204,11 +204,6 @@ def ifLubThenBool (ty₁ ty₂ : CedarType) : Except TypeError (CedarType × Cap
   | some _ => ok (.bool .anyBool)
   | none   => err (.lubErr ty₁ ty₂)
 
-def checkDatetimeTypes (ty₁ ty₂: CedarType) : Except TypeError (CedarType × Capabilities) :=
-  if ty₁ == ty₂ && (ty₁ == .ext .datetime || ty₁ == .ext .duration)
-  then ok (.bool .anyBool)
-  else err (.unexpectedType ty₁)
-
 def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.binaryApp op₂ ty₁ ty₂ ty) c
   match op₂, ty₁.typeOf, ty₂.typeOf with
@@ -224,17 +219,9 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Ex
   | .less,   .int, .int                     => ok (.bool .anyBool)
   | .less, (.ext .datetime), (.ext .datetime) => ok (.bool .anyBool)
   | .less, (.ext .duration), (.ext .duration) => ok (.bool .anyBool)
-  -- do
-    -- let (ty, c) ← checkDatetimeTypes ty₃ ty₄
-  -- if ty₃ == ty₄ && (ty₃ == .ext .datetime || ty₃ == .ext .duration)
-  -- then ok (.bool .anyBool)
-  -- else err (.unexpectedType ty₃)
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
   | .lessEq,  (.ext .datetime), (.ext .datetime) => ok (.bool .anyBool)
   | .lessEq,  (.ext .duration), (.ext .duration) => ok (.bool .anyBool)
-  -- if ty₃ == ty₄ && (ty₃ == .ext .datetime || ty₃ == .ext .duration)
-  -- then ok (.bool .anyBool)
-  -- else err (.unexpectedType ty₃)
   | .add,    .int, .int                     => ok .int
   | .sub,    .int, .int                     => ok .int
   | .mul,    .int, .int                     => ok .int
