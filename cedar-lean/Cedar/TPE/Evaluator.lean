@@ -66,47 +66,37 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Result (Opt
     | .none => .error .tagDoesNotExist
   | .none => .ok .none
 
-def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType): Result Residual :=
-  let self := .binaryApp op₂ r₁ r₂ ty
+def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Result Residual :=
   match op₂, r₁, r₂ with
-  | .eq, .val v₁ _, .val v₂ _ => .ok (.val (v₁ == v₂) ty)
+  | .eq, .val v₁ _, .val v₂ _ =>
+    .ok (.val (v₁ == v₂) ty)
   | .less, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    .ok $ .val ((i < j): Bool) ty
-  | .lessEq, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
-    .ok $ .val ((i ≤ j): Bool) ty
-  | .add, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+    .ok (.val (i < j : Bool) ty)
+  | .lessEq, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
+    .ok (.val (i ≤ j : Bool) ty)
+  | .add, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     (intOrErr (i.add? j)).map (Value.toResidual · ty)
-  | .sub, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+  | .sub, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     (intOrErr (i.sub? j)).map (Value.toResidual · ty)
-  | .mul, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+  | .mul, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     (intOrErr (i.mul? j)).map (Value.toResidual · ty)
-  | .contains, (.val (.set vs₁) _), (.val v₂ _) =>
-    .ok $ .val (vs₁.contains v₂) ty
-  | .containsAll, (.val (.set vs₁) _), (.val (.set vs₂) _) =>
-    .ok $ .val (vs₂.subset vs₁) ty
-  | .containsAny, (.val (.set vs₁) _), (.val (.set vs₂) _) =>
-    .ok $ .val (vs₁.intersects vs₂) ty
-  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.entityUID uid₂)) _) =>
-    .ok $
-      match inₑ uid₁ uid₂ es with
-      | .some b => b
-      | .none => self
-  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.set vs) _) =>
-    (inₛ uid₁ vs es).map λ b ↦
-      match b with
-      | .some b => b
-      | .none => self
-  | .hasTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
-    .ok $
-      match hasTag uid₁ tag es with
-      | .some b => b
-      | .none => self
-  | .getTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
-     (getTag uid₁ tag es).map λ v ↦
-      match v with
-      | .some v => .val v ty
-      | .none => self
-  | _, _, _ => .ok self
+  | .contains, .val (.set vs₁) _, .val v₂ _ =>
+    .ok (.val (vs₁.contains v₂) ty)
+  | .containsAll, .val (.set vs₁) _, .val (.set vs₂) _ =>
+    .ok (.val (vs₂.subset vs₁) ty)
+  | .containsAny, .val (.set vs₁) _, .val (.set vs₂) _ =>
+    .ok (.val (vs₁.intersects vs₂) ty)
+  | .mem, .val (.prim (.entityUID uid₁)) _, .val (.prim (.entityUID uid₂)) _ =>
+    .ok (((inₑ uid₁ uid₂ es).map Coe.coe).getD self)
+  | .mem, .val (.prim (.entityUID uid₁)) _, .val (.set vs) _ =>
+    (inₛ uid₁ vs es).map (λ b => (b.map Coe.coe).getD self)
+  | .hasTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
+    .ok (((hasTag uid₁ tag es).map Coe.coe).getD self)
+  | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
+    (getTag uid₁ tag es).map (λ v => (v.map λ v => (.val v ty)).getD self)
+  | _, _, _ =>
+    .ok self
+where self := .binaryApp op₂ r₁ r₂ ty
 
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Result Residual :=
   match r with
