@@ -1,35 +1,23 @@
 
-
-
-B
-
-B 
-
-
-A
+
+
 
 A
-B ?
+B
+
+
+B
 
 
-ActionReadX*
+ActionWrite"
 
 
-ActionReadX":
-AB
-BB
-AA
-
-
-ActionRead-
+ActionReadX*
+A2
+A2
+B%
 
 
 ActionRead
 
-ActionReadX"0
-
-
-ActionWrite
-
-
-ActionWrite"
+ActionReadX
