@@ -33,6 +33,11 @@ deriving Repr
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
+def varₚ (val : Option Value) (var : Var) (ty : CedarType) : Result Residual :=
+  match val with
+  | .some v => .ok (.val v ty)
+  | .none   => .ok (.var var ty)
+
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Result Residual :=
   match r.asValue with
   | .some v => (Spec.apply₁ op₁ v).map (Value.toResidual · ty)
@@ -143,20 +148,11 @@ def tpeExpr (x : TypedExpr)
     (es : PartialEntities)
     : Result Residual :=
   match x with
-  | .lit p ty => .ok $ .val p ty
-  | .var .principal ty =>
-    match req.principal.asEntityUID with
-    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
-    | .none => .ok $ .var .principal ty
-  | .var .resource ty =>
-    match req.resource.asEntityUID with
-    | .some uid => .ok $ .val (.prim (.entityUID uid)) ty
-    | .none => .ok $ .var .resource ty
-  | .var .action ty => .ok $ .val (.prim (.entityUID req.action)) ty
-  | .var .context ty =>
-    match req.context with
-    | .some m => .ok (.val (.record m) ty)
-    | .none => .ok $ .var .context ty
+  | .lit p ty => .ok (.val p ty)
+  | .var .principal ty => varₚ req.principal.asEntityUID .principal ty
+  | .var .resource ty => varₚ req.resource.asEntityUID .resource ty
+  | .var .action ty => varₚ (req.action) .action ty
+  | .var .context ty => varₚ (req.context.map (.record ·)) .context ty
   | .ite c t e ty => do
     let c ← tpeExpr c req es
     match c with
