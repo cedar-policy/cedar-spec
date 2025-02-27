@@ -43,6 +43,12 @@ inductive Residual where
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
 deriving Repr
 
+instance : Coe Bool Residual where
+  coe b := .val (Prim.bool b) (.bool .anyBool)
+
+instance : Coe EntityUID Residual where
+  coe uid := .val (Prim.entityUID uid) (.entity uid.ty)
+
 def Residual.asValue : Residual → Option Value
   | .val v _ => .some v
   | _ => .none

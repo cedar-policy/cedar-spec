@@ -33,17 +33,36 @@ deriving Repr
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
-def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) (ty : CedarType): Residual :=
+def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂
-    then .val true ty
-    else
-    match es.find? uid₁ with
-    | .some ⟨_, .some uids, _⟩ => .val (uids.contains uid₂) ty
-    | .some ⟨_, .none, _⟩ => .binaryApp .mem (.val (.prim (.entityUID uid₁)) (.entity uid₁.ty)) (.val (.prim (.entityUID uid₂)) (.entity uid₂.ty)) ty
-    | .none => .val false ty
+  then
+    pure true
+  else
+    ((es.ancestorsOrEmpty uid₁).map
+      λ ancestors ↦ ancestors.contains uid₂)
+
+def inₛ (uid₁ : EntityUID) (vs : Set Value) (es : PartialEntities): Result (Option Bool) :=
+  (vs.mapOrErr Value.asEntityUID .typeError).map λ uids ↦
+    uids.foldl disjunction (.some false)
+where disjunction accum uid₂ := do
+  let l ← inₑ uid₁ uid₂ es
+  let r ← accum
+  pure (l || r)
+
+def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
+   ((es.tagsOrEmpty uid).map
+      λ tags ↦ tags.contains tag)
+
+def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Result (Option Value) := do
+  match es.tagsOrEmpty uid with
+  | .some tags =>
+    match tags.find? tag with
+    | .some val => .ok $ .some val
+    | .none => .error .tagDoesNotExist
+  | .none => .ok .none
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType): Result Residual :=
-  let self : Result Residual := .ok $ .binaryApp op₂ r₁ r₂ ty
+  let self := .binaryApp op₂ r₁ r₂ ty
   match op₂, r₁, r₂ with
   | .eq, (.val v₁ _), (.val v₂ _) => .ok $ .val (v₁ == v₂) ty
   | .less, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
@@ -63,29 +82,26 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   | .containsAny, (.val (.set vs₁) _), (.val (.set vs₂) _) =>
     .ok $ .val (vs₁.intersects vs₂) ty
   | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.entityUID uid₂)) _) =>
-    .ok $ inₑ uid₁ uid₂ es ty
-  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.set vs) _) => do
-    let uids ← vs.mapOrErr Value.asEntityUID .typeError
-    let rs := uids.toList.map λ uid ↦ inₑ uid₁ uid es ty
-    if rs.any λ r ↦ match r with
-      | .val (.prim (.bool _)) _ => false
-      | _ => true
-    then self
-    else .ok $ (.val (.prim (.bool (rs.any λ r ↦ match r with
-      | .val (.prim (.bool true)) _ => true
-      | _ => false
-    ))) ty)
+    .ok $
+      match inₑ uid₁ uid₂ es with
+      | .some b => b
+      | .none => self
+  | .mem, (.val (.prim (.entityUID uid₁)) _), (.val (.set vs) _) =>
+    (inₛ uid₁ vs es).map λ b ↦
+      match b with
+      | .some b => b
+      | .none => self
   | .hasTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
-    match es.find? uid₁ with
-    | .some ⟨_, _, .some m⟩ => .ok $ .val (m.contains tag) ty
-    | .some ⟨_, _, .none⟩ => self
-    | .none => .ok $ .val false ty
+    .ok $
+      match hasTag uid₁ tag es with
+      | .some b => b
+      | .none => self
   | .getTag, (.val (.prim (.entityUID uid₁)) _), (.val (.prim (.string tag)) _) =>
-    match es.find? uid₁ with
-    | .some ⟨_, _, .some m⟩ => (m.findOrErr tag .tagDoesNotExist).map (Value.toResidual · ty)
-    | .some ⟨_, _, .none⟩ => self
-    | .none => .error .entityDoesNotExist
-  | _, _, _ => self
+     (getTag uid₁ tag es).map λ v ↦
+      match v with
+      | .some v => .val v ty
+      | .none => self
+  | _, _, _ => .ok self
 
 def tpeExpr (x : TypedExpr)
     (req : PartialRequest)
