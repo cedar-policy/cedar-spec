@@ -37,11 +37,6 @@ namespace Merge
 @[inline]
 def override (_ : α) (x : α) : α := x
 
-/-- Concatenation semantics, combines two arrays -/
-@[inline]
-def concatenate (x1 : Array α) (x2 : Array α) : Array α :=
-  x1.append x2
-
 end Merge
 
 @[inline]
@@ -57,6 +52,15 @@ def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
   let foundWt := Field.expectedWireType α
   if foundWt ≠ wt then
     throw s!"WireType mismatch: found {repr foundWt}, expected {repr wt}"
+
+instance [Field α] : Field (Option α) where
+  parse := do
+    let a : α ← Field.parse
+    pure (some a)
+  merge
+  | some a1, some a2 => some (Field.merge a1 a2)
+  | _, a2 => a2
+  expectedWireType := Field.expectedWireType α
 
 @[inline]
 def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β) (merge : β → β → β) : Field β := {

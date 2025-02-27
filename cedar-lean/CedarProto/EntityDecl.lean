@@ -39,14 +39,6 @@ deriving Repr, Inhabited
 namespace EntityDecl
 
 @[inline]
-def mergeOption [Field α] (x1 x2 : Option α) : Option α :=
-  match x1, x2 with
-  | some s1, some s2 => some (Field.merge s1 s2)
-  | none, some x => some x
-  | some x, none => some x
-  | none, none => none
-
-@[inline]
 def mergeName (result : EntityDecl) (x : Spec.Name) : EntityDecl :=
   {result with
     name := Field.merge result.name x
@@ -67,7 +59,7 @@ def mergeAttributes (result : EntityDecl) (x : Proto.Map String (Qualified Proto
 @[inline]
 def mergeTags (result : EntityDecl) (x : ProtoType) : EntityDecl :=
   {result with
-    tags := mergeOption result.tags (some x)
+    tags := Field.merge result.tags (some x)
   }
 
 @[inline]
@@ -82,7 +74,7 @@ def merge (x y : EntityDecl) : EntityDecl :=
     name := Field.merge x.name y.name
     descendants := y.descendants ++ x.descendants
     attrs := x.attrs ++ y.attrs
-    tags := mergeOption x.tags y.tags
+    tags := Field.merge x.tags y.tags
     enums := x.enums ++ y.enums
   }
 
