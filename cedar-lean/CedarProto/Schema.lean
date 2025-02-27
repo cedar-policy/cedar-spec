@@ -69,8 +69,8 @@ def toSchema (schema : Schema) : Validation.Schema :=
   let ancestorMap := descendantsToAncestors descendantMap
   let acts := Data.Map.make $ acts.map λ decl =>
     (decl.name, {
-      appliesToPrincipal := Data.Set.make decl.principal_types.toList
-      appliesToResource := Data.Set.make decl.resource_types.toList
+      appliesToPrincipal := Data.Set.make decl.principalTypes.toList
+      appliesToResource := Data.Set.make decl.resourceTypes.toList
       ancestors := ancestorMap.find! decl.name
       context := Data.Map.make $ decl.context.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
     })
