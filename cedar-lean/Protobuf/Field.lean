@@ -54,12 +54,10 @@ def guardWireType {α : Type} [Field α] (wt : WireType) : BParsec Unit := do
     throw s!"WireType mismatch: found {repr foundWt}, expected {repr wt}"
 
 instance [Field α] : Field (Option α) where
-  parse := do
-    let a : α ← Field.parse
-    pure (some a)
+  parse := Field.parse.map some
   merge
-  | some a1, some a2 => some (Field.merge a1 a2)
-  | _, a2 => a2
+    | some a₁, some a₂ => some (Field.merge a₁ a₂)
+    | _, a₂ => a₂
   expectedWireType := Field.expectedWireType α
 
 @[inline]
