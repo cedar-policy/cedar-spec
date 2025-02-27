@@ -175,7 +175,7 @@ def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
       | .error _ => .error ty
     | .none => .call f rs ty
 
-def tpeExpr (x : TypedExpr)
+def evaluate (x : TypedExpr)
     (req : PartialRequest)
     (es : PartialEntities)
     : Residual :=
@@ -183,39 +183,39 @@ def tpeExpr (x : TypedExpr)
   | .lit p ty => .val p ty
   | .var v ty => varₚ req v ty
   | .ite c t e ty =>
-    let c := tpeExpr c req es
-    let t := tpeExpr t req es
-    let e := tpeExpr e req es
+    let c := evaluate c req es
+    let t := evaluate t req es
+    let e := evaluate e req es
     ite c t e ty
   | .and l r ty =>
-    let l := tpeExpr l req es
-    let r := tpeExpr r req es
+    let l := evaluate l req es
+    let r := evaluate r req es
     and l r ty
   | .or l r ty =>
-    let l := tpeExpr l req es
-    let r := tpeExpr r req es
+    let l := evaluate l req es
+    let r := evaluate r req es
     or l r ty
   | .unaryApp op₁ e ty =>
-    let r := tpeExpr e req es
+    let r := evaluate e req es
     apply₁ op₁ r ty
   | .binaryApp op₂ x y ty =>
-    let x := tpeExpr x req es
-    let y := tpeExpr y req es
+    let x := evaluate x req es
+    let y := evaluate y req es
     apply₂ op₂ x y es ty
   | .hasAttr e a ty =>
-    let r := tpeExpr e req es
+    let r := evaluate e req es
     hasAttr r a es ty
   | .getAttr e a ty =>
-    let r := tpeExpr e req es
+    let r := evaluate e req es
     getAttr r a es ty
   | .set xs ty =>
-    let rs := xs.map₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
+    let rs := xs.map₁ (λ ⟨x₁, _⟩ ↦ evaluate x₁ req es)
     set rs ty
   | .record m ty =>
-    let m := m.map₁ (λ ⟨(a, x₁), _⟩ ↦ (a, (tpeExpr x₁ req es)))
+    let m := m.map₁ (λ ⟨(a, x₁), _⟩ ↦ (a, (evaluate x₁ req es)))
     record m ty
   | .call f args ty =>
-    let rs := args.map₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
+    let rs := args.map₁ (λ ⟨x₁, _⟩ ↦ evaluate x₁ req es)
     call f rs ty
 termination_by x
 decreasing_by
@@ -233,7 +233,7 @@ decreasing_by
     have := List.sizeOf_lt_of_mem h
     omega
 
-def tpePolicy (schema : Schema)
+def evaluatePolicy (schema : Schema)
   (p : Policy)
   (req : PartialRequest)
   (es : PartialEntities)
@@ -243,7 +243,7 @@ def tpePolicy (schema : Schema)
       do
         let expr := substituteAction env.reqty.action p.toExpr
         let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-        .ok (tpeExpr te req es)
+        .ok (evaluate te req es)
       else .error .invalidRequestOrEntities
     | .none => .error .inValidEnvironment
 

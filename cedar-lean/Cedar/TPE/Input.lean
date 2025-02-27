@@ -74,21 +74,21 @@ def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
   (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
 where
   entityIsValid p :=
-  let (uid, ⟨attrs, ancestors, tags⟩) := p
-  match env.ets.find? uid.ty with
-  | .some entry =>
-    entry.isValidEntityEID uid.eid &&
-    (partialIsValid ancestors λ ancestors ↦
-      ancestors.all (λ ancestor =>
-      entry.ancestors.contains ancestor.ty &&
-      instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
-    (partialIsValid attrs λ attrs ↦
-      instanceOfType attrs (.record entry.attrs) env.ets) &&
-    (partialIsValid tags λ tags ↦
-      match entry.tags? with
-      | .some tty => tags.values.all (instanceOfType · tty env.ets)
-      | .none     => tags == Map.empty)
-  | .none => false
+    let (uid, ⟨attrs, ancestors, tags⟩) := p
+    match env.ets.find? uid.ty with
+    | .some entry =>
+      entry.isValidEntityEID uid.eid &&
+      (partialIsValid ancestors λ ancestors ↦
+        ancestors.all (λ ancestor =>
+        entry.ancestors.contains ancestor.ty &&
+        instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
+      (partialIsValid attrs λ attrs ↦
+        instanceOfType attrs (.record entry.attrs) env.ets) &&
+      (partialIsValid tags λ tags ↦
+        match entry.tags? with
+        | .some tty => tags.values.all (instanceOfType · tty env.ets)
+        | .none     => tags == Map.empty)
+    | .none => false
   instanceOfActionSchema p :=
     let (uid, entry) := p
     match es.find? uid with
