@@ -502,23 +502,23 @@ def merge (x1 x2 : ExprKind.HasAttr) : ExprKind.HasAttr :=
 end Proto.ExprKind.HasAttr
 
 namespace PatElem
-inductive Ty where
+inductive Wildcard where
   | star
 deriving Inhabited
 
-namespace Ty
-def fromInt (n : Int) : Except String Ty :=
+namespace Wildcard
+def fromInt (n : Int) : Except String Wildcard :=
   match n with
     | 0 => .ok .star
     | n => .error s!"Field {n} does not exist in enum"
 
-instance : ProtoEnum Ty := {
+instance : ProtoEnum Wildcard := {
   fromInt := fromInt
 }
-end Ty
+end Wildcard
 
 @[inline]
-def mergeTy (_ : PatElem) (x : Ty) : PatElem :=
+def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
   -- With enums we perform replacement
   match x with
     | .star => .star
@@ -540,8 +540,8 @@ def merge (_ : PatElem) (y : PatElem) : PatElem :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
   match t.fieldNum with
     | 1 =>
-      let x : Ty ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
+      let x : Wildcard ← Field.guardedParse t
+      pure (pure $ mergeWildcard · x)
     | 2 =>
       let x : String ← Field.guardedParse t
       pure (pure $ mergeC · x)
@@ -586,7 +586,7 @@ def mergeExpr (result : ExprKind.Is) (e2 : Expr) : ExprKind.Is :=
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
 
 @[inline]
-def mergeEt (result : ExprKind.Is) (et2 : EntityTypeProto) : ExprKind.Is :=
+def mergeEt (result : ExprKind.Is) (et2 : Name) : ExprKind.Is :=
   match result with
   | .unaryApp (.is et1) e => .unaryApp (.is (Field.merge et1 et2)) e
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
@@ -729,14 +729,6 @@ def merge (x1 x2 : ExprKind) : ExprKind :=
 -- end of this file
 end Proto.ExprKind
 
-namespace Expr
--- There's one additinoal message wrapped around ExprKind
--- that we need to parse
-@[inline]
-def mergeExprKind (x1 : Expr) (x2 : Proto.ExprKind) : Expr :=
-  Expr.merge x1 x2
-end Expr
-
 -- Expr depends on ExprKind and ExprKind is a sum type
 -- where many of the constructors depend on Expr
 mutual
@@ -871,7 +863,7 @@ partial def Proto.ExprKind.Is.parseField (t : Proto.Tag) : BParsec (MergeFn Prot
       let x : Expr ← Field.guardedParse t
       pure (pure $ Proto.ExprKind.Is.mergeExpr · x)
     | 2 =>
-      let x : EntityTypeProto ← Field.guardedParse t
+      let x : Name ← Field.guardedParse t
       pure (pure $ Proto.ExprKind.Is.mergeEt · x)
     | _ =>
       t.wireType.skip
@@ -897,7 +889,7 @@ partial def Proto.ExprKind.Record.parseField (t : Proto.Tag) : BParsec (MergeFn 
       t.wireType.skip
       pure ignore
 
-partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind) := do
+partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   have : Message Proto.ExprKind.If := { parseField := Proto.ExprKind.If.parseField, merge := Proto.ExprKind.If.merge }
   have : Message Proto.ExprKind.And := { parseField := Proto.ExprKind.And.parseField, merge := Proto.ExprKind.And.merge }
   have : Message Proto.ExprKind.Or := { parseField := Proto.ExprKind.Or.parseField, merge := Proto.ExprKind.Or.merge }
@@ -910,7 +902,6 @@ partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.E
   have : Message Proto.ExprKind.Is := { parseField := Proto.ExprKind.Is.parseField, merge := Proto.ExprKind.Is.merge }
   have : Message Proto.ExprKind.Set := { parseField := Proto.ExprKind.Set.parseField, merge := Proto.ExprKind.Set.merge }
   have : Message Proto.ExprKind.Record := { parseField := Proto.ExprKind.Record.parseField, merge := Proto.ExprKind.Record.merge }
-
 
   match t.fieldNum with
     | 1 =>
@@ -955,16 +946,6 @@ partial def Proto.ExprKind.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.E
     | 15 =>
       let x : Proto.ExprKind.Record ← Field.guardedParse t
       pure (pure $ Proto.ExprKind.mergeRecord · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
-  have : Message Proto.ExprKind := { parseField := Proto.ExprKind.parseField, merge := Proto.ExprKind.merge }
-  match t.fieldNum with
-    | 1 =>
-      let x : Proto.ExprKind ← Field.guardedParse t
-      pure (pure $ Expr.mergeExprKind · x)
     | _ =>
       t.wireType.skip
       pure ignore

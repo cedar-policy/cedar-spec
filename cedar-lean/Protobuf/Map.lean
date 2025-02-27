@@ -67,7 +67,7 @@ def parse [Inhabited KeyT] [Inhabited ValueT] [Field KeyT] [Field ValueT] : BPar
 instance {α β : Type} [Inhabited α] [Inhabited β] [Field α] [Field β] : Field (Map α β) := {
   parse := parse
   expectedWireType := WireType.LEN
-  merge := Field.Merge.concatenate
+  merge := (· ++ ·)
 }
 end Map
 end Proto

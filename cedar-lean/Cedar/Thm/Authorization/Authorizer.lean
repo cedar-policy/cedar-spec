@@ -16,7 +16,6 @@
 
 import Cedar.Spec
 import Cedar.Spec.Authorizer
-import Cedar.Thm.Authorization.Slicing
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Data
 import Cedar.Thm.Validation.Typechecker.BinaryApp -- mapM'_asEntityUID_eq_entities
@@ -27,8 +26,7 @@ This file contains useful lemmas about the `Authorizer` functions.
 
 namespace Cedar.Thm
 
-open Cedar.Spec
-open Cedar.Data
+open Cedar.Spec Cedar.Data
 
 theorem determiningPolicies_wf {policies : Policies} {request : Request} {entities : Entities} :
   (isAuthorized request entities policies).determiningPolicies.WellFormed
@@ -113,56 +111,7 @@ theorem errorPolicies_order_and_dup_independent {policies₁ policies₂ : Polic
   rw [Set.make_make_eqv]
   exact List.filterMap_equiv (errored · request entities) policies₁ policies₂ h₁
 
-theorem sound_policy_slice_is_equisatisfied (effect : Effect) {request : Request} {entities : Entities} {slice policies : Policies} :
-  IsSoundPolicySlice request entities slice policies →
-  slice.filterMap (satisfiedWithEffect effect · request entities) ≡
-  policies.filterMap (satisfiedWithEffect effect · request entities)
-:= by
-  intro h
-  unfold IsSoundPolicySlice at h
-  have ⟨h₁, h₂⟩ := h; clear h
-  simp [List.Equiv]
-  simp [List.subset_def]
-  apply And.intro <;>
-  intros pid policy h₃ h₄ <;>
-  exists policy <;>
-  simp [h₄]
-  case left =>
-    simp [List.subset_def] at h₁
-    specialize h₁ h₃
-    exact h₁
-  case right =>
-    by_contra h₅
-    specialize h₂ policy h₃ h₅
-    simp [h₂, satisfiedWithEffect] at h₄
 
-theorem satisfiedPolicies_eq_for_sound_policy_slice (effect : Effect) {request : Request} {entities : Entities} {slice policies : Policies} :
-  IsSoundPolicySlice request entities slice policies →
-  satisfiedPolicies effect slice request entities = satisfiedPolicies effect policies request entities
-:= by
-  intro h
-  unfold satisfiedPolicies
-  rw [Set.make_make_eqv]
-  exact sound_policy_slice_is_equisatisfied effect h
-
-theorem sound_policy_slice_is_equierror {request : Request} {entities : Entities} {slice policies : Policies} :
-  IsSoundPolicySlice request entities slice policies →
-  slice.filter (hasError · request entities) ≡ policies.filter (hasError · request entities)
-:= by
-  intro h
-  unfold IsSoundPolicySlice at h
-  have ⟨h₁, h₂⟩ := h; clear h
-  simp [List.Equiv, List.subset_def]
-  rw [List.subset_def] at h₁
-  apply And.intro <;>
-  intro policy h₄ h₅ <;>
-  apply And.intro
-  · exact h₁ h₄
-  · exact h₅
-  · by_contra h₆
-    specialize h₂ policy h₄ h₆
-    exact h₂.right h₅
-  · exact h₅
 
 /--
   an alternate, proved-equivalent, definition of errorPolicies that's easier to prove things about
@@ -191,17 +140,6 @@ theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (reque
     intro pid p h₁ h₂ h₃
     exists p
     simp only [h₁, errored, h₂, reduceIte, h₃, and_self]
-
-theorem errorPolicies_eq_for_sound_policy_slice {request : Request} {entities : Entities} {slice policies : Policies} :
-  IsSoundPolicySlice request entities slice policies →
-  errorPolicies slice request entities = errorPolicies policies request entities
-:= by
-  intro h
-  repeat rw [alternate_errorPolicies_equiv_errorPolicies]
-  unfold alternateErrorPolicies
-  rw [Set.make_make_eqv]
-  apply List.map_equiv
-  exact sound_policy_slice_is_equierror h
 
 theorem principal_eval_ok_means_principal_in_uid {policy : Policy} {request : Request} {entities : Entities} {uid: EntityUID} :
   evaluate policy.principalScope.toExpr request entities = .ok true →

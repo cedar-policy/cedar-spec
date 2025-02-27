@@ -19,3 +19,4 @@ import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Data.Map
 import Cedar.Thm.Data.Set
+import Cedar.Thm.Data.MapUnion

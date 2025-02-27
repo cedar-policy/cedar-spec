@@ -29,7 +29,7 @@ open Cedar.Data
 For a given action, compute the cross-product of the applicable principal and
 resource types.
 -/
-def ActionSchemaEntry.toRequestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
+def ActionSchemaEntry.requestTypes (action : EntityUID) (entry : ActionSchemaEntry) : List RequestType :=
   entry.appliesToPrincipal.toList.foldl (fun acc principal =>
     let reqtys : List RequestType :=
       entry.appliesToResource.toList.map (fun resource =>
@@ -42,27 +42,51 @@ def ActionSchemaEntry.toRequestTypes (action : EntityUID) (entry : ActionSchemaE
     reqtys ++ acc) ∅
 
 /-- Return every schema-defined environment. -/
-def Schema.toEnvironments (schema : Schema) : List Environment :=
+def Schema.environments (schema : Schema) : List Environment :=
   let requestTypes : List RequestType :=
-    schema.acts.toList.foldl (fun acc (action,entry) => entry.toRequestTypes action ++ acc) ∅
+    schema.acts.toList.foldl (fun acc (action,entry) => entry.requestTypes action ++ acc) ∅
   requestTypes.map ({
     ets := schema.ets,
     acts := schema.acts,
     reqty := ·
   })
 
-/-- Return the environment for the particular (p,a,r) tuple, or `none` if this
-is not a valid tuple in this schema -/
-def Schema.getEnvironment (schema : Schema) (principalTy resourceTy : EntityType) (action : EntityUID) : Option Environment := do
+/--
+  Return all the schema-defined environments for a particular `action`, or
+  `none` if this action is not declared in the schema.
+
+  Note that `some ∅` means something different than `none` -- `some ∅` means
+  that the `action` was declared in the schema, but there are no valid
+  environments for it
+-/
+def Schema.environmentsForAction? (schema : Schema) (action : EntityUID) : Option (List Environment) := do
   let ase ← schema.acts.find? action
-  match ase.appliesToPrincipal.contains principalTy, ase.appliesToResource.contains resourceTy with
+  let p_r_pairs := List.productTR ase.appliesToPrincipal.elts ase.appliesToResource.elts
+  some $ p_r_pairs.map λ (principal, resource) => {
+    ets := schema.ets,
+    acts := schema.acts,
+    reqty := {
+      principal,
+      action,
+      resource,
+      context := ase.context,
+    }
+  }
+
+/--
+  Return the environment for the particular (p,a,r) tuple, or `none` if this
+  is not a valid tuple in this schema
+-/
+def Schema.environment? (schema : Schema) (principal resource : EntityType) (action : EntityUID) : Option Environment := do
+  let ase ← schema.acts.find? action
+  match ase.appliesToPrincipal.contains principal, ase.appliesToResource.contains resource with
   | true, true => some {
     ets := schema.ets,
     acts := schema.acts,
     reqty := {
-      principal := principalTy,
-      action := action,
-      resource := resourceTy,
+      principal,
+      action,
+      resource,
       context := ase.context,
     }
   }
@@ -140,12 +164,11 @@ def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) 
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /--
-Analyze a set of policies to checks that all are boolean-typed, and that
+Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
-  let envs := schema.toEnvironments
-  policies.forM (typecheckPolicyWithEnvironments · envs)
+  policies.forM (typecheckPolicyWithEnvironments · schema.environments)
 
 ----- Derivations -----
 

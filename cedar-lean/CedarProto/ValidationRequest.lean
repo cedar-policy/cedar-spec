@@ -18,8 +18,8 @@ import Protobuf.Message
 import Protobuf.String
 
 -- Message Dependencies
-import CedarProto.ValidatorSchema
-import CedarProto.LiteralPolicySet
+import CedarProto.Schema
+import CedarProto.PolicySet
 
 
 open Proto
@@ -28,19 +28,18 @@ namespace Cedar.Validation.Proto
 
 deriving instance DecidableEq for ActionSchemaEntry
 deriving instance DecidableEq for ActionSchema
-deriving instance DecidableEq for EntitySchemaEntry
 deriving instance DecidableEq for EntitySchema
-deriving instance DecidableEq for Schema
+deriving instance DecidableEq for Validation.Schema
 
 structure ValidationRequest where
-  schema : Schema
+  schema : Validation.Schema
   policies : Spec.Policies
 deriving Inhabited, DecidableEq, Repr
 
 namespace ValidationRequest
 
 @[inline]
-def mergeSchema (result : ValidationRequest) (x : Schema) : ValidationRequest :=
+def mergeSchema (result : ValidationRequest) (x : Validation.Schema) : ValidationRequest :=
   {result with
     schema := Field.merge result.schema x
   }
@@ -62,7 +61,7 @@ def merge (x y : ValidationRequest) : ValidationRequest :=
 def parseField (t : Tag) : BParsec (MergeFn ValidationRequest) := do
   match t.fieldNum with
     | 1 =>
-      let x : Schema ← Field.guardedParse t
+      let x : Validation.Schema ← Field.guardedParse t
       pure (pure $ mergeSchema · x)
     | 2 =>
       let x : Spec.Policies ← Field.guardedParse t

@@ -393,22 +393,22 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
   simp only [List.mapM₁] at h₁
   cases xs
   case nil =>
-    simp only [List.mapM, List.mapM.loop, pure, Except.pure, List.reverse_nil, Except.ok.injEq,
-      List.ne_cons_self] at h₁
+    simp only [List.mapM, List.attach_nil, List.mapM.loop, pure, Except.pure, List.reverse_nil,
+      Except.ok.injEq, List.ne_cons_self] at h₁
   case cons hd₁ tl₁ =>
     cases tl₁
     case nil =>
-      simp only [List.mapM, List.mapM.loop, List.reverse_cons, List.reverse_nil, List.nil_append,
-        bind_pure_comp] at h₁
-      cases h₂ : justType (typeOf hd₁ c env) <;>
-      simp only [h₂, Except.map_error, reduceCtorEq,
-        Except.map_ok, Except.ok.injEq, List.cons.injEq, and_true] at h₁
-      simp only [justType, Except.map] at h₂
-      subst h₁
-      split at h₂ <;> simp at h₂
-      rename_i res₁ h₃
-      exists hd₁, res₁.snd
-      simp only [ResultType.typeOf, Except.map, h₃, ← h₂, and_self]
+      simp only [List.attach_cons, List.attach_nil, List.map_nil, List.mapM_cons, List.mapM_nil,
+        bind_pure_comp, map_pure] at h₁
+      cases h₂ : justType (typeOf hd₁ c env)
+      · simp_all only [justType, List.cons.injEq, and_true, exists_and_left, exists_eq_left', Except.map_error, Except.map_ok, Except.ok.injEq]
+        simp at h₁
+      · simp only [List.cons.injEq, and_true, exists_and_left, exists_eq_left'] at *
+        simp_all only [Except.map_ok, Except.ok.injEq, List.cons.injEq, and_true]
+        subst h₁ ; rename_i ty₁
+        cases h₁ : typeOf hd₁ c env
+        <;> simp only [justType, h₁, Except.map, Except.ok.injEq, reduceCtorEq] at h₂
+        simp [h₂, ResultType.typeOf, Except.map.eq_2]
     case cons hd₂ tl₂ =>
       simp only [List.attach_def, List.pmap, List.mapM_cons,
         List.mapM_pmap_subtype (fun x => justType (typeOf x c env)), bind_assoc, pure_bind] at h₁

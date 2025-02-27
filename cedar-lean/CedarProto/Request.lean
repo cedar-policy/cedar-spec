@@ -18,9 +18,9 @@ import Protobuf.Message
 import Protobuf.String
 
 -- Message Dependencies
-import CedarProto.EntityUIDEntry
+import CedarProto.EntityUID
+import CedarProto.Expr
 import CedarProto.Value
-import CedarProto.Context
 
 open Proto
 
@@ -36,28 +36,31 @@ namespace Cedar.Spec
 namespace Request
 
 @[inline]
-def mergePrincipal (result : Request) (x : EntityUIDEntry) : Request :=
+def mergePrincipal (result : Request) (x : EntityUID) : Request :=
   {result with
     principal := Field.merge result.principal x
   }
 
 @[inline]
-def mergeAction (result : Request) (x : EntityUIDEntry) : Request :=
+def mergeAction (result : Request) (x : EntityUID) : Request :=
   {result with
     action := Field.merge result.action x
   }
 
 @[inline]
-def mergeResource (result : Request) (x : EntityUIDEntry) : Request :=
+def mergeResource (result : Request) (x : EntityUID) : Request :=
   {result with
     resource := Field.merge result.resource x
   }
 
 @[inline]
-def mergeContext (result : Request) (x : Context) : Request :=
-  {result with
-    context := (@Field.merge Context) result.context x
-  }
+def mergeContext (result : Request) (x : Value) : Request :=
+  match x with
+  | .record pairs =>
+    {result with
+      context := Data.Map.make (result.context.kvs ++ pairs.kvs)
+    }
+  | _ => panic!("Context is not of correct type")
 
 @[inline]
 def merge (x : Request) (y : Request) : Request :=
@@ -65,23 +68,27 @@ def merge (x : Request) (y : Request) : Request :=
     principal := Field.merge x.principal y.principal
     action := Field.merge x.action y.action
     resource := Field.merge x.resource y.resource
-    context := (@Field.merge Context) x.context y.context
+    context :=
+      -- Avoid a sort if x1 is empty
+      match x.context.kvs with
+        | [] => y.context
+        | _ => Data.Map.make (y.context.kvs ++ x.context.kvs)
   }
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn Request) := do
   match t.fieldNum with
     | 1 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
+      let x : EntityUID ← Field.guardedParse t
       pure (pure $ mergePrincipal · x)
     | 2 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
+      let x : EntityUID ← Field.guardedParse t
       pure (pure $ mergeAction · x)
     | 3 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
+      let x : EntityUID ← Field.guardedParse t
       pure (pure $ mergeResource · x)
     | 4 =>
-      let x : Context ← Field.guardedParse t
+      let x : Value ← Field.guardedParse t
       pure (pure $ mergeContext · x)
     | _ =>
       t.wireType.skip

@@ -18,7 +18,7 @@ import Protobuf.Message
 import Protobuf.String
 
 -- Message Dependencies
-import CedarProto.EntityType
+import CedarProto.Name
 
 open Proto
 
@@ -32,7 +32,7 @@ namespace Cedar.Spec
 namespace EntityUID
 
 @[inline]
-def mergeTy (result : EntityUID) (ty : EntityTypeProto) : EntityUID :=
+def mergeTy (result : EntityUID) (ty : Name) : EntityUID :=
   {result with
     ty := Field.merge result.ty ty
   }
@@ -54,7 +54,7 @@ def merge (x1 : EntityUID) (x2 : EntityUID) : EntityUID :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUID) := do
   match t.fieldNum with
     | 1 =>
-      let x : EntityTypeProto ← Field.guardedParse t
+      let x : Name ← Field.guardedParse t
       pure (pure $ mergeTy · x)
     | 2 =>
       let x : String ← Field.guardedParse t
