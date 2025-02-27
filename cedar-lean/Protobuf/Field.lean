@@ -67,6 +67,15 @@ def fromInterField {α β : Type} [Inhabited α] [Field α] (convert : α → β
   merge := merge
 }
 
+@[inline]
+def fromInterFieldFallible {α β : Type} [Inhabited α] [Field α] (convert : α → Except String β) (merge : β → β → β) : Field β := {
+  parse := do
+    let m : α ← Field.parse
+    ofExcept $ convert m
+  expectedWireType := Field.expectedWireType α
+  merge := merge
+}
+
 end Field
 
 end Proto

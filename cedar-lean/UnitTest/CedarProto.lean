@@ -53,25 +53,29 @@ open Cedar.Data
 /--
   `filename` is expected to be the name of a file containing binary protobuf data.
   This data is deserialized, and `f` is applied to it.
-  Then, this test ensures that the result is equal to the value `expected`.
+  Then, this test ensures that `f` succeeds and that the result is equal to the value `expected`.
 -/
 def testDeserializeProtodata' [Inhabited α] [DecidableEq β] [Repr β] [Proto.Message α]
-  (filename : String) (f : α → β) (expected : β) : TestCase IO :=
+  (filename : String) (f : α → Except String β) (expected : β) : TestCase IO :=
   test s!"Deserialize {filename}" ⟨λ () => do
     let buf ← IO.FS.readBinFile filename
     let parsed : Except String α := Proto.Message.interpret? buf
     match parsed with
-    | .ok req => checkEq (f req) expected
+    | .ok req => do
+      let actual ← IO.ofExcept (f req)
+      checkEq actual expected
     | .error e => pure (.error e)
   ⟩
 
+private def infallible (f : α → β) : α → Except ε β := λ a => .ok (f a)
+
 /--
-  Convenience alias for `testDeserializeProtodata'` with `f := id`, that is, no
+  Convenience alias for `testDeserializeProtodata'` with `f := pure`, that is, no
   transform necessary on the deserialized data before comparing to `expected`.
 -/
 def testDeserializeProtodata [Inhabited α] [DecidableEq α] [Repr α] [Proto.Message α]
   (filename : String) (expected : α) : TestCase IO :=
-  testDeserializeProtodata' filename id expected
+  testDeserializeProtodata' filename pure expected
 
 private def mkUid (path : List String) (ty : String) (eid : String) : Cedar.Spec.EntityUID :=
   { ty := { path, id := ty }, eid }
@@ -110,13 +114,13 @@ def tests := [
     testDeserializeProtodata "UnitTest/CedarProto-test-data/emptyrecord.protodata"
       (Cedar.Spec.Expr.record []),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/record.protodata"
-      Cedar.Spec.Expr.mkWf
+      (infallible Cedar.Spec.Expr.mkWf)
       (.record [
         ("eggs", .lit (.int (Int64.ofIntChecked 7 (by decide)))),
         ("ham", .lit (.int (Int64.ofIntChecked 3 (by decide)))),
       ]),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/nested_record.protodata"
-      Cedar.Spec.Expr.mkWf
+      (infallible Cedar.Spec.Expr.mkWf)
       (.record [
         ("eggs", .set [ .lit (.string "this is"), .lit (.string "a set") ]),
         ("ham", .record [
@@ -198,7 +202,7 @@ def tests := [
         (.call .decimal [.lit (.string "3.1416")]),
       ]),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/rbac.protodata"
-      Cedar.Spec.Policies.fromPolicySet
+      (infallible Cedar.Spec.Policies.fromPolicySet)
       [{
         id := "policy0"
         effect := .permit
@@ -208,7 +212,7 @@ def tests := [
         condition := [{ kind := .when, body := .lit (.bool true) }]
       }],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/abac.protodata"
-      Cedar.Spec.Policies.fromPolicySet
+      (infallible Cedar.Spec.Policies.fromPolicySet)
       [{
         id := "policy0"
         effect := .permit
@@ -227,7 +231,7 @@ def tests := [
         ]
       }],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (infallible $ Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := "linkedpolicy"
@@ -288,11 +292,11 @@ def tests := [
         },
       ],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_just_templates.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (infallible $ Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
       [],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_one_static_policy.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (infallible $ Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
       [
         {
           id := ""
@@ -314,7 +318,7 @@ def tests := [
         context := Map.make [ ("foo", .prim (.bool true)) ]
       } : Cedar.Spec.Request),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entity.protodata"
-      Cedar.Spec.EntityProto.mkWf
+      (infallible Cedar.Spec.EntityProto.mkWf)
       ({
         uid := mkUid ["A"] "B" "C"
         data := {
@@ -336,7 +340,7 @@ def tests := [
         }
       }),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entities.protodata"
-      Cedar.Spec.EntitiesProto.toEntities
+      (infallible Cedar.Spec.EntitiesProto.toEntities)
       ((Map.make [
         (mkUid [] "ABC" "123", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
         (mkUid [] "DEF" "234", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),

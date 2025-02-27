@@ -150,17 +150,19 @@ partial def merge (x1 x2 : ProtoType) : ProtoType :=
   | _, _ => x2
 end
 
-partial def toCedarType : ProtoType → CedarType
-  | .prim .bool => .bool .anyBool
-  | .prim .long => .int
-  | .prim .string => .string
-  | .set t => .set t.toCedarType
-  | .entity e => .entity e
-  | .record r => .record $ Data.Map.make $ r.attrs.map λ (k,v) => (k, v.map toCedarType)
+partial def toCedarType : ProtoType → Except String CedarType
+  | .prim .bool => .ok (.bool .anyBool)
+  | .prim .long => .ok .int
+  | .prim .string => .ok .string
+  | .set t => do .ok (.set (← t.toCedarType))
+  | .entity e => .ok (.entity e)
+  | .record r => do
+    let attrs ← r.attrs.mapM λ (k,v) => do .ok (k, ← v.map toCedarType |>.transpose)
+    .ok (.record $ Data.Map.make attrs)
   | .ext n => match n.id with -- ignoring n.path because currently no extension types have nonempty namespaces
-    | "ipaddr" => .ext .ipAddr
-    | "decimal" => .ext .decimal
-    | _ => panic!(s!"unknown extension type name: {n}")
+    | "ipaddr" => .ok (.ext .ipAddr)
+    | "decimal" => .ok (.ext .decimal)
+    | _ => .error s!"unknown extension type name: {n}"
 
 end ProtoType
 

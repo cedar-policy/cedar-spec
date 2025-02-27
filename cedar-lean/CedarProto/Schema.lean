@@ -49,32 +49,42 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (de
 
 namespace Schema
 
-def toSchema (schema : Schema) : Validation.Schema :=
+private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : Except String (Data.Map Spec.Attr (Qualified CedarType)) := do
+  let attrs ← attrs.toList.mapM λ (k,v) => do
+    let v ← v.map ProtoType.toCedarType |>.transpose
+    .ok (k, v)
+  .ok $ Data.Map.make attrs
+
+/-- was surprised this isn't in the stdlib -/
+def option_transpose : Option (Except ε α) → Except ε (Option α)
+  | none => .ok none
+  | some (.ok a) => .ok (some a)
+  | some (.error e) => .error e
+
+def toSchema (schema : Schema) : Except String Validation.Schema := do
   let ets := schema.ets.toList
   let descendantMap := ets.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
-  let ets := Data.Map.make $ ets.map λ decl =>
-    (decl.name,
-      if decl.enums.isEmpty then
-      .standard {
+  let ets ← ets.mapM λ decl => do
+    let ese : EntitySchemaEntry ←
+      if decl.enums.isEmpty then .ok $ .standard {
         ancestors := ancestorMap.find! decl.name
-        attrs := Data.Map.make $ decl.attrs.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
-        tags := decl.tags.map ProtoType.toCedarType
+        attrs := ← attrsToCedarType decl.attrs
+        tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
       }
-      else
-      .enum $ Cedar.Data.Set.make decl.enums.toList
-    )
+      else .ok $ .enum $ Cedar.Data.Set.make decl.enums.toList
+    .ok (decl.name, ese)
   let acts := schema.acts.toList
   let descendantMap := acts.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
-  let acts := Data.Map.make $ acts.map λ decl =>
-    (decl.name, {
+  let acts ← acts.mapM λ decl => do
+    .ok (decl.name, {
       appliesToPrincipal := Data.Set.make decl.principalTypes.toList
       appliesToResource := Data.Set.make decl.resourceTypes.toList
       ancestors := ancestorMap.find! decl.name
-      context := Data.Map.make $ decl.context.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
+      context := ← attrsToCedarType decl.context
     })
-  { ets, acts }
+  .ok { ets := Data.Map.make ets, acts := Data.Map.make acts }
 
 @[inline]
 def mergeEntityDecls (result : Schema) (x : Array EntityDecl) : Schema :=
@@ -143,6 +153,6 @@ def merge (x1 x2 : Schema) : Schema :=
   }
 
 deriving instance Inhabited for Schema
-instance : Field Schema := Field.fromInterField Proto.Schema.toSchema merge
+instance : Field Schema := Field.fromInterFieldFallible Proto.Schema.toSchema merge
 
 end Cedar.Validation.Schema
