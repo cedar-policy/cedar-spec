@@ -41,6 +41,7 @@ inductive Residual where
   | set (ls : List Residual)  (ty : CedarType)
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
+  | error (ty : CedarType)
 deriving Repr
 
 instance : Coe Bool Residual where
@@ -96,6 +97,7 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Val
   | .call xfn xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     Cedar.Spec.call xfn vs
+  | .error _ => .error .extensionError
 termination_by x
 decreasing_by
   all_goals

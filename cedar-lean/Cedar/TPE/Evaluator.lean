@@ -33,7 +33,7 @@ deriving Repr
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
-def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Result Residual :=
+def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
   | .principal => varₒ req.principal.asEntityUID .principal ty
   | .resource => varₒ req.resource.asEntityUID .resource ty
@@ -41,34 +41,36 @@ def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Result Residual
   | .context => varₒ (req.context.map (.record ·)) .context ty
 where varₒ (val : Option Value) var ty :=
   match val with
-  | .some v => .ok (.val v ty)
-  | .none   => .ok (.var var ty)
+  | .some v => .val v ty
+  | .none   => .var var ty
 
-def ite (c t e : Residual)(ty : CedarType) : Result Residual :=
+def ite (c t e : Residual)(ty : CedarType) : Residual :=
   match c with
     | .val (.prim (.bool b)) _ =>
-      .ok (if b then t else e)
+      if b then t else e
     | _ =>
-      .ok (.ite c t e ty)
+      .ite c t e ty
 
-def and (l r : Residual)(ty : CedarType) : Result Residual :=
+def and (l r : Residual)(ty : CedarType) : Residual :=
   match l, r with
-  | .val true _, _ => .ok r
-  | .val false _, _ => .ok false
-  | _, .val true _ => .ok l
-  | _, _ => .ok (.and l r ty)
+  | .val true _, _ => r
+  | .val false _, _ => false
+  | _, .val true _ => l
+  | _, _ => .and l r ty
 
-def or (l r : Residual)(ty : CedarType) : Result Residual :=
+def or (l r : Residual)(ty : CedarType) : Residual :=
   match l, r with
-  | .val true _, _ => .ok true
-  | .val false _, _ => .ok r
-  | _, .val false _ => .ok l
-  | _, _ => .ok (.and l r ty)
+  | .val true _, _ => true
+  | .val false _, _ => r
+  | _, .val false _ => l
+  | _, _ => .and l r ty
 
-def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Result Residual :=
+def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r.asValue with
-  | .some v => (Spec.apply₁ op₁ v).map (Value.toResidual · ty)
-  | .none => .ok (.unaryApp op₁ r ty)
+  | .some v => match (Spec.apply₁ op₁ v).map (Value.toResidual · ty) with
+    | .ok v => v
+    | .error _ => .error ty
+  | .none => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂
@@ -87,74 +89,75 @@ where disjunction accum uid₂ := do
   pure (l || r)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
-   ((es.tags uid).map
-      λ tags ↦ tags.contains tag)
+  (es.tags uid).map λ tags ↦ tags.contains tag
 
-def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Result (Option Value) := do
-  match es.tags uid with
-  | .some tags =>
-    match tags.find? tag with
-    | .some val => .ok $ .some val
-    | .none => .error .tagDoesNotExist
-  | .none => .ok .none
+def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Option Residual :=
+  (es.tags uid).map (λ tags ↦
+    ((tags.find? tag).map (.val · ty)).getD (.error ty))
 
-def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Result Residual :=
+def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
   match op₂, r₁, r₂ with
   | .eq, .val v₁ _, .val v₂ _ =>
-    .ok (.val (v₁ == v₂) ty)
+    .val (v₁ == v₂) ty
   | .less, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    .ok (.val (i < j : Bool) ty)
+    .val (i < j : Bool) ty
   | .lessEq, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    .ok (.val (i ≤ j : Bool) ty)
+    .val (i ≤ j : Bool) ty
   | .add, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    (intOrErr (i.add? j)).map (Value.toResidual · ty)
+    ((i.add? j).map (Value.toResidual · ty)).getD error
   | .sub, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    (intOrErr (i.sub? j)).map (Value.toResidual · ty)
+    ((i.sub? j).map (Value.toResidual · ty)).getD error
   | .mul, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    (intOrErr (i.mul? j)).map (Value.toResidual · ty)
+    ((i.mul? j).map (Value.toResidual · ty)).getD error
   | .contains, .val (.set vs₁) _, .val v₂ _ =>
-    .ok (.val (vs₁.contains v₂) ty)
+    .val (vs₁.contains v₂) ty
   | .containsAll, .val (.set vs₁) _, .val (.set vs₂) _ =>
-    .ok (.val (vs₂.subset vs₁) ty)
+    .val (vs₂.subset vs₁) ty
   | .containsAny, .val (.set vs₁) _, .val (.set vs₂) _ =>
-    .ok (.val (vs₁.intersects vs₂) ty)
+    .val (vs₁.intersects vs₂) ty
   | .mem, .val (.prim (.entityUID uid₁)) _, .val (.prim (.entityUID uid₂)) _ =>
-    .ok (((inₑ uid₁ uid₂ es).map Coe.coe).getD self)
+    ((inₑ uid₁ uid₂ es).map Coe.coe).getD self
   | .mem, .val (.prim (.entityUID uid₁)) _, .val (.set vs) _ =>
-    (inₛ uid₁ vs es).map (λ b => (b.map Coe.coe).getD self)
+    match inₛ uid₁ vs es with
+    | .ok (.some b) => b
+    | .ok .none => self
+    | .error _ => error
   | .hasTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    .ok (((hasTag uid₁ tag es).map Coe.coe).getD self)
+    ((hasTag uid₁ tag es).map Coe.coe).getD self
   | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    (getTag uid₁ tag es).map (λ v => (v.map λ v => (.val v ty)).getD self)
+    (getTag uid₁ tag es ty).getD self
   | _, _, _ =>
-    .ok self
-where self := .binaryApp op₂ r₁ r₂ ty
+    self
+where
+  self := .binaryApp op₂ r₁ r₂ ty
+  error := .error ty
 
-def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Result Residual :=
+def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
-    | .val (.record m) _ => .ok (m.contains a)
+    | .val (.record m) _ => m.contains a
     | .val (.prim (.entityUID uid)) _ =>
       match es.attrs uid with
-      | .some m  => .ok (m.contains a)
-      | .none => .ok (.hasAttr r a ty)
-    | _ => .ok (.hasAttr r a ty)
+      | .some m  => m.contains a
+      | .none => self
+    | _ => self
+where self := .hasAttr r a ty
 
-def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Result Residual :=
+def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .val (.record xs) _ =>
-    (xs.findOrErr a .attrDoesNotExist).map
-      (Value.toResidual · ty)
+    ((xs.find? a).map (Value.toResidual · ty)).getD (.error ty)
   | .val (.prim (.entityUID uid)) _ =>
     match es.attrs uid with
-    | .some m  => (m.findOrErr a .attrDoesNotExist).map
-      (Value.toResidual · ty)
-    | .none => .ok (.getAttr r a ty)
-  | _ => .ok (.getAttr r a ty)
+    | .some m  =>
+      ((m.find? a).map (Value.toResidual · ty)).getD (.error ty)
+    | .none => self
+  | _ => self
+where self := .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some vs => .val (Value.set (Set.make vs)) ty
-  | .none => Residual.set rs ty
+  | .some vs => .val (.set (Set.make vs)) ty
+  | .none => .set rs ty
 
 def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   let v ← res
@@ -165,52 +168,54 @@ def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   | .some xs => .val (.record (Map.make xs)) ty
   | .none => .record m ty
 
-def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Result Residual :=
+def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
-    | .none => .ok (.call f rs ty)
+    | .some vs => match (Spec.call f vs).map (Value.toResidual · ty) with
+      | .ok v => v
+      | .error _ => .error ty
+    | .none => .call f rs ty
 
 def tpeExpr (x : TypedExpr)
     (req : PartialRequest)
     (es : PartialEntities)
-    : Result Residual :=
+    : Residual :=
   match x with
-  | .lit p ty => .ok (.val p ty)
-
-  | .ite c t e ty => do
-    let c ← tpeExpr c req es
-    let t ← tpeExpr t req es
-    let e ← tpeExpr e req es
+  | .lit p ty => .val p ty
+  | .var v ty => varₚ req v ty
+  | .ite c t e ty =>
+    let c := tpeExpr c req es
+    let t := tpeExpr t req es
+    let e := tpeExpr e req es
     ite c t e ty
-  | .and l r ty => do
-    let l ← tpeExpr l req es
-    let r ← tpeExpr r req es
+  | .and l r ty =>
+    let l := tpeExpr l req es
+    let r := tpeExpr r req es
     and l r ty
-  | .or l r ty => do
-    let l ← tpeExpr l req es
-    let r ← tpeExpr r req es
+  | .or l r ty =>
+    let l := tpeExpr l req es
+    let r := tpeExpr r req es
     or l r ty
-  | .unaryApp op₁ e ty => do
-    let r ← tpeExpr e req es
+  | .unaryApp op₁ e ty =>
+    let r := tpeExpr e req es
     apply₁ op₁ r ty
-  | .binaryApp op₂ x y ty => do
-    let x ← tpeExpr x req es
-    let y ← tpeExpr y req es
+  | .binaryApp op₂ x y ty =>
+    let x := tpeExpr x req es
+    let y := tpeExpr y req es
     apply₂ op₂ x y es ty
-  | .hasAttr e a ty => do
-    let r ← tpeExpr e req es
+  | .hasAttr e a ty =>
+    let r := tpeExpr e req es
     hasAttr r a es ty
-  | .getAttr e a ty => do
-    let r ← tpeExpr e req es
+  | .getAttr e a ty =>
+    let r := tpeExpr e req es
     getAttr r a es ty
-  | .set xs ty => do
-    let rs ← xs.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
-    .ok (set rs ty)
-  | .record m ty => do
-    let m ← m.mapM₁ (λ ⟨(a, x₁), _⟩ ↦ bindAttr a (tpeExpr x₁ req es))
-    .ok (record m ty)
-  | .call f args ty => do
-    let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
+  | .set xs ty =>
+    let rs := xs.map₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
+    set rs ty
+  | .record m ty =>
+    let m := m.map₁ (λ ⟨(a, x₁), _⟩ ↦ (a, (tpeExpr x₁ req es)))
+    record m ty
+  | .call f args ty =>
+    let rs := args.map₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
     call f rs ty
 termination_by x
 decreasing_by
@@ -238,7 +243,7 @@ def tpePolicy (schema : Schema)
       do
         let expr := substituteAction env.reqty.action p.toExpr
         let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-        (tpeExpr te req es).mapError Error.evaluation
+        .ok (tpeExpr te req es)
       else .error .invalidRequestOrEntities
     | .none => .error .inValidEnvironment
 
