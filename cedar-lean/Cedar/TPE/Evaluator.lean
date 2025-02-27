@@ -33,10 +33,37 @@ deriving Repr
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
-def varₚ (val : Option Value) (var : Var) (ty : CedarType) : Result Residual :=
+def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Result Residual :=
+  match var with
+  | .principal => varₒ req.principal.asEntityUID .principal ty
+  | .resource => varₒ req.resource.asEntityUID .resource ty
+  | .action => varₒ (req.action) .action ty
+  | .context => varₒ (req.context.map (.record ·)) .context ty
+where varₒ (val : Option Value) var ty :=
   match val with
   | .some v => .ok (.val v ty)
   | .none   => .ok (.var var ty)
+
+def ite (c t e : Residual)(ty : CedarType) : Result Residual :=
+  match c with
+    | .val (.prim (.bool b)) _ =>
+      .ok (if b then t else e)
+    | _ =>
+      .ok (.ite c t e ty)
+
+def and (l r : Residual)(ty : CedarType) : Result Residual :=
+  match l, r with
+  | .val true _, _ => .ok r
+  | .val false _, _ => .ok false
+  | _, .val true _ => .ok l
+  | _, _ => .ok (.and l r ty)
+
+def or (l r : Residual)(ty : CedarType) : Result Residual :=
+  match l, r with
+  | .val true _, _ => .ok true
+  | .val false _, _ => .ok r
+  | _, .val false _ => .ok l
+  | _, _ => .ok (.and l r ty)
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Result Residual :=
   match r.asValue with
@@ -149,39 +176,20 @@ def tpeExpr (x : TypedExpr)
     : Result Residual :=
   match x with
   | .lit p ty => .ok (.val p ty)
-  | .var .principal ty => varₚ req.principal.asEntityUID .principal ty
-  | .var .resource ty => varₚ req.resource.asEntityUID .resource ty
-  | .var .action ty => varₚ (req.action) .action ty
-  | .var .context ty => varₚ (req.context.map (.record ·)) .context ty
+
   | .ite c t e ty => do
     let c ← tpeExpr c req es
-    match c with
-    | .val (.prim (.bool b)) _ =>
-      if b then tpeExpr t req es else tpeExpr e req es
-    | _ =>
-      let t ← tpeExpr t req es
-      let e ← tpeExpr e req es
-      .ok $ .ite c t e ty
+    let t ← tpeExpr t req es
+    let e ← tpeExpr e req es
+    ite c t e ty
   | .and l r ty => do
     let l ← tpeExpr l req es
-    match l with
-    | .val (.prim (.bool b)) _ =>
-      if b then tpeExpr r req es else .ok $ .val (.prim (.bool b)) (.bool .ff)
-    | _ =>
-      let r ← tpeExpr r req es
-      match r with
-      | .val true _ => .ok l
-      | _ => .ok $ .and l r ty
+    let r ← tpeExpr r req es
+    and l r ty
   | .or l r ty => do
     let l ← tpeExpr l req es
-    match l with
-    | .val (.prim (.bool b)) _ =>
-      if !b then tpeExpr r req es else .ok $ .val (.prim (.bool b)) (.bool .tt)
-    | _ =>
-      let r ← tpeExpr r req es
-      match r with
-      | .val false _ => .ok l
-      | _ => .ok $ .or l r ty
+    let r ← tpeExpr r req es
+    or l r ty
   | .unaryApp op₁ e ty => do
     let r ← tpeExpr e req es
     apply₁ op₁ r ty
