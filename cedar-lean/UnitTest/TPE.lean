@@ -18,6 +18,7 @@ import Cedar.TPE.Evaluator
 import Cedar.Spec.Expr
 import Cedar.Validation.Types
 import Cedar.Data.Map
+import UnitTest.Run
 
 namespace UnitTest.TPE.Basic
 
@@ -211,9 +212,30 @@ def es : PartialEntities :=
      (⟨UserType, "Alice"⟩, ⟨.some default, .some default, default⟩)
   ]
 
-#eval (tpePolicy schema policy₁ req es)
-#eval (tpePolicy schema policy₂ req es)
-#eval (tpePolicy schema policy₃ req es)
+private def testResult (p : Policy) (r : Residual) : TestCase IO :=
+  test s!"policy {p.id}" ⟨λ _ => checkEq (evaluatePolicy schema p req es) (.ok r)⟩
+
+def tests :=
+  suite "TPE results for the RFC basic example"
+  [
+    testResult policy₁
+      (.getAttr (.var .resource (.entity { id := "Document", path := [] }))
+        "isPublic"
+      (.bool .anyBool)),
+    testResult policy₂
+      (.binaryApp
+        .eq
+        (.getAttr
+          (.var .resource (.entity { id := "Document", path := [] }))
+          "owner"
+          (.entity { id := "User", path := [] }))
+          (.val
+            (.prim (.entityUID { ty := { id := "User", path := [] }, eid := "Alice" }))
+            (.entity { id := "User", path := [] }))
+        (.bool .anyBool)),
+    testResult policy₃ (.val false (.bool .ff))
+  ]
+--#eval TestSuite.runAll [tests]
 
 end UnitTest.TPE.Basic
 
@@ -335,5 +357,33 @@ def es : PartialEntities :=
      (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])], .some default, default⟩)
   ]
 
-#eval tpePolicy schema policy req es
+private def testResult (p : Policy) (r : Residual) : TestCase IO :=
+  test s!"policy {p.id}" ⟨λ _ => checkEq (evaluatePolicy schema p req es) (.ok r)⟩
+
+def tests :=
+  suite "TPE results for the RFC basic example"
+  [
+    testResult policy
+      (.binaryApp
+        .eq
+        (.val
+          (.record
+            (Map.mk [("street", .prim (.string "Sesame Street"))]))
+          (.record AddressType))
+        (.getAttr
+          (.var
+            .resource
+            (.entity { id := "Package", path := [] }))
+          "address"
+          (.record AddressType))
+      (.bool .anyBool))
+  ]
+-- #eval TestSuite.runAll [tests]
+
 end UnitTest.TPE.Motivation
+
+namespace UnitTest.TPE
+
+def tests := [Basic.tests, Motivation.tests]
+
+end UnitTest.TPE

@@ -28,7 +28,7 @@ inductive Error where
   | invalidPolicy (err : TypeError)
   | inValidEnvironment
   | invalidRequestOrEntities
-deriving Repr
+deriving Repr, Inhabited, DecidableEq
 
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
@@ -51,7 +51,7 @@ def ite (c t e : Residual)(ty : CedarType) : Residual :=
     | _ =>
       .ite c t e ty
 
-def and (l r : Residual)(ty : CedarType) : Residual :=
+def and (l r : Residual) (ty : CedarType) : Residual :=
   match l, r with
   | .val true _, _ => r
   | .val false _, _ => false

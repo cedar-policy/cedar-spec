@@ -57,7 +57,7 @@ def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option 
 
 def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
 
-def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.tags
+def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := es.get uid PartialEntityData.attrs
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true

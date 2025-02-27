@@ -42,7 +42,7 @@ inductive Residual where
   | record (map : List (Attr × Residual))  (ty : CedarType)
   | call (xfn : ExtFun) (args : List Residual) (ty : CedarType)
   | error (ty : CedarType)
-deriving Repr
+deriving Repr, Inhabited
 
 instance : Coe Bool Residual where
   coe b := .val (Prim.bool b) (.bool .anyBool)
@@ -112,5 +112,73 @@ decreasing_by
   case _ h =>
     have := List.sizeOf_lt_of_mem h
     omega
+
+mutual
+
+def decResidual (x y : Residual) : Decidable (x = y) := by
+  cases x <;> cases y <;>
+  try { apply isFalse ; intro h ; injection h }
+  case val.val x₁ tx  y₁ ty  | var.var x₁ tx y₁ ty =>
+    exact match decEq x₁ y₁, decEq tx ty with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _  | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case ite.ite x₁ x₂ x₃ tx y₁ y₂ y₃ ty =>
+    exact match decResidual x₁ y₁, decResidual x₂ y₂, decResidual x₃ y₃, decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃, isTrue h₄ => isTrue (by rw [h₁, h₂, h₃, h₄])
+    | isFalse _, _, _, _ | _, isFalse _, _, _ | _, _, isFalse _, _ | _, _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case and.and x₁ x₂ tx y₁ y₂ ty | or.or x₁ x₂ tx y₁ y₂ ty =>
+    exact match decResidual x₁ y₁, decResidual x₂ y₂, decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case unaryApp.unaryApp o x₁ tx o' y₁ ty =>
+    exact match decEq o o', decResidual x₁ y₁, decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case binaryApp.binaryApp o x₁ x₂ tx o' y₁ y₂ ty =>
+    exact match decEq o o', decResidual x₁ y₁, decResidual x₂ y₂, decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃, isTrue h₄ => isTrue (by rw [h₁, h₂, h₃, h₄])
+    | isFalse _, _, _, _ | _, isFalse _, _, _ | _, _, isFalse _, _ | _, _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case getAttr.getAttr x₁ a tx y₁ a' ty | hasAttr.hasAttr x₁ a tx y₁ a' ty =>
+    exact match decResidual x₁ y₁, decEq a a', decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case set.set xs tx ys ty =>
+    exact match decResidualList xs ys, decEq tx ty with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case record.record axs tx ays ty =>
+    exact match decProdAttrResidualList axs ays, decEq tx ty with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case call.call f xs tx f' ys ty =>
+    exact match decEq f f', decResidualList xs ys, decEq tx ty with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+  case error.error ty₁ ty₂ =>
+    exact match decEq ty₁ ty₂ with
+    | isTrue h₁ => isTrue (by rw [h₁])
+    | isFalse _ => isFalse (by intro h; injection h; contradiction)
+
+def decProdAttrResidualList (axs ays : List (Prod Attr Residual)) : Decidable (axs = ays) :=
+  match axs, ays with
+  | [], [] => isTrue rfl
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | (a, x)::axs, (a', y)::ays =>
+    match decEq a a', decResidual x y, decProdAttrResidualList axs ays with
+    | isTrue h₁, isTrue h₂, isTrue h₃ => isTrue (by rw [h₁, h₂, h₃])
+    | isFalse _, _, _ | _, isFalse _, _ | _, _, isFalse _ =>
+      isFalse (by simp; intros; first | contradiction | assumption)
+
+def decResidualList (xs ys : List Residual) : Decidable (xs = ys) :=
+  match xs, ys with
+  | [], [] => isTrue rfl
+  | _::_, [] | [], _::_ => isFalse (by intro; contradiction)
+  | x::xs, y::ys =>
+    match decResidual x y, decResidualList xs ys with
+    | isTrue h₁, isTrue h₂ => isTrue (by rw [h₁, h₂])
+    | isFalse _, _ | _, isFalse _ => isFalse (by intro h; injection h; contradiction)
+end
+
+instance : DecidableEq Residual := decResidual
 
 end Cedar.TPE
