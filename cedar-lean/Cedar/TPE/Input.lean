@@ -50,9 +50,11 @@ structure PartialEntityData where
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
-def PartialEntities.ancestorsOrEmpty (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := (es.find? uid).bind PartialEntityData.ancestors
+def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := (es.find? uid).bind PartialEntityData.ancestors
 
-def PartialEntities.tagsOrEmpty (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := (es.find? uid).bind PartialEntityData.tags
+def PartialEntities.tags (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := (es.find? uid).bind PartialEntityData.tags
+
+def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map Tag Value) := (es.find? uid).bind PartialEntityData.tags
 
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true

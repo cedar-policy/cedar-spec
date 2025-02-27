@@ -33,12 +33,17 @@ deriving Repr
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
+def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Result Residual :=
+  match r.asValue with
+  | .some v => (Spec.apply₁ op₁ v).map (Value.toResidual · ty)
+  | .none => .ok (.unaryApp op₁ r ty)
+
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂
   then
     pure true
   else
-    ((es.ancestorsOrEmpty uid₁).map
+    ((es.ancestors uid₁).map
       λ ancestors ↦ ancestors.contains uid₂)
 
 def inₛ (uid₁ : EntityUID) (vs : Set Value) (es : PartialEntities): Result (Option Bool) :=
@@ -50,11 +55,11 @@ where disjunction accum uid₂ := do
   pure (l || r)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
-   ((es.tagsOrEmpty uid).map
+   ((es.tags uid).map
       λ tags ↦ tags.contains tag)
 
 def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Result (Option Value) := do
-  match es.tagsOrEmpty uid with
+  match es.tags uid with
   | .some tags =>
     match tags.find? tag with
     | .some val => .ok $ .some val
@@ -64,8 +69,8 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Result (Opt
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType): Result Residual :=
   let self := .binaryApp op₂ r₁ r₂ ty
   match op₂, r₁, r₂ with
-  | .eq, (.val v₁ _), (.val v₂ _) => .ok $ .val (v₁ == v₂) ty
-  | .less, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
+  | .eq, .val v₁ _, .val v₂ _ => .ok (.val (v₁ == v₂) ty)
+  | .less, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     .ok $ .val ((i < j): Bool) ty
   | .lessEq, (.val (.prim (.int i)) _), (.val (.prim (.int j)) _) =>
     .ok $ .val ((i ≤ j): Bool) ty
@@ -102,6 +107,46 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
       | .some v => .val v ty
       | .none => self
   | _, _, _ => .ok self
+
+def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Result Residual :=
+  match r with
+    | .val (.record m) _ => .ok (m.contains a)
+    | .val (.prim (.entityUID uid)) _ =>
+      match es.attrs uid with
+      | .some m  => .ok (m.contains a)
+      | .none => .ok (.hasAttr r a ty)
+    | _ => .ok (.hasAttr r a ty)
+
+def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Result Residual :=
+  match r with
+  | .val (.record xs) _ =>
+    (xs.findOrErr a .attrDoesNotExist).map
+      (Value.toResidual · ty)
+  | .val (.prim (.entityUID uid)) _ =>
+    match es.attrs uid with
+    | .some m  => (m.findOrErr a .attrDoesNotExist).map
+      (Value.toResidual · ty)
+    | .none => .ok (.getAttr r a ty)
+  | _ => .ok (.getAttr r a ty)
+
+def set (rs : List Residual) (ty : CedarType) : Residual :=
+  match rs.mapM Residual.asValue with
+  | .some vs => .val (Value.set (Set.make vs)) ty
+  | .none => Residual.set rs ty
+
+def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
+  let v ← res
+  pure (a, v)
+
+def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
+  match m.mapM λ (a, r₁) ↦ bindAttr a r₁.asValue with
+  | .some xs => .val (.record (Map.make xs)) ty
+  | .none => .record m ty
+
+def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Result Residual :=
+  match rs.mapM Residual.asValue with
+    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
+    | .none => .ok (.call f rs ty)
 
 def tpeExpr (x : TypedExpr)
     (req : PartialRequest)
@@ -151,60 +196,28 @@ def tpeExpr (x : TypedExpr)
       match r with
       | .val false _ => .ok l
       | _ => .ok $ .or l r ty
-  | .unaryApp op e ty => do
+  | .unaryApp op₁ e ty => do
     let r ← tpeExpr e req es
-    match r.asValue with
-    | .some v => (apply₁ op v).map (Value.toResidual · ty)
-    | .none => .ok $ .unaryApp op r ty
-  | .binaryApp op x y ty => do
+    apply₁ op₁ r ty
+  | .binaryApp op₂ x y ty => do
     let x ← tpeExpr x req es
     let y ← tpeExpr y req es
-    apply₂ op x y es ty
-  | .getAttr e a ty => do
-    let r ← tpeExpr e req es
-    match r with
-    | .val (.record xs) _ =>
-      (xs.findOrErr a .attrDoesNotExist).map
-        (Value.toResidual · ty)
-    | .val (.prim (.entityUID uid)) _ =>
-      let data ← es.findOrErr uid .entityDoesNotExist
-      match data.attrs with
-      | .some m =>
-        (m.findOrErr a .attrDoesNotExist).map
-          (Value.toResidual · ty)
-      | .none => .ok $ .getAttr r a ty
-    | _ => .ok $ .getAttr r a ty
+    apply₂ op₂ x y es ty
   | .hasAttr e a ty => do
     let r ← tpeExpr e req es
-    match r with
-    | .val (.record xs) _ =>
-      .ok $ .val (xs.contains a) ty
-    | .val (.prim (.entityUID uid)) _ =>
-      match es.find? uid with
-      | .some ⟨ .some m, _ , _⟩  =>
-        .ok $ .val (m.contains a) ty
-      | .some ⟨ .none, _ , _⟩  => .ok $ .hasAttr r a ty
-      | .none => .ok $ .val false ty
-    | _ => .ok $ .getAttr r a ty
+    hasAttr r a es ty
+  | .getAttr e a ty => do
+    let r ← tpeExpr e req es
+    getAttr r a es ty
   | .set xs ty => do
     let rs ← xs.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
-    match rs.mapM Residual.asValue with
-    | .some vs => .ok $ .val (.set (Set.mk vs)) ty
-    | .none => .ok $ .set rs ty
+    .ok (set rs ty)
   | .record m ty => do
-    let m₁ ← m.mapM₁ (λ ⟨(a, x₁), _⟩ ↦ do
-      let v ← tpeExpr x₁ req es
-      pure (a, v))
-    match m₁.mapM λ (a, r₁) ↦ do
-      let v₁ ← r₁.asValue
-      pure (a, v₁) with
-    | .some xs => .ok $ .val (.record (Map.mk xs)) ty
-    | .none => .ok $ .record m₁ ty
+    let m ← m.mapM₁ (λ ⟨(a, x₁), _⟩ ↦ bindAttr a (tpeExpr x₁ req es))
+    .ok (record m ty)
   | .call f args ty => do
     let rs ← args.mapM₁ (λ ⟨x₁, _⟩ ↦ tpeExpr x₁ req es)
-    match rs.mapM Residual.asValue with
-    | .some vs => (Spec.call f vs).map (Value.toResidual · ty)
-    | .none => .ok $ .call f rs ty
+    call f rs ty
 termination_by x
 decreasing_by
   all_goals
