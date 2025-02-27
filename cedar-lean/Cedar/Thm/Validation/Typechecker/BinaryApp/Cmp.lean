@@ -32,23 +32,40 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
   (h₂ : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
   ty.typeOf = .bool .anyBool ∧
-  (∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.int, c₁)) ∧
-  (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.int, c₂))
+  (((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.int, c₁)) ∧
+   (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.int, c₂))) ∨
+  ((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.ext .datetime, c₁)) ∧
+   (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.ext .datetime, c₂))) ∨
+  ((∃ c₁, (typeOf x₁ c env).typeOf = Except.ok (.ext .duration, c₁)) ∧
+   (∃ c₂, (typeOf x₂ c env).typeOf = Except.ok (.ext .duration, c₂))))
 := by
   simp [typeOf] at *
   cases h₃ : typeOf x₁ c env <;> simp [h₃] at h₂
   cases h₄ : typeOf x₂ c env <;> simp [h₄] at h₂
   rcases h₁ with h₁ | h₁
-  all_goals {
+  all_goals (
     subst h₁
-    simp [typeOfBinaryApp, err, ok] at h₂
-    split at h₂ <;> try contradiction
-    simp at h₂ ; simp [←h₂, TypedExpr.typeOf]
-    rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
+    simp only [typeOfBinaryApp, ok, List.empty_eq, err] at h₂
+    split at h₂ <;> try {contradiction}
+    all_goals (
+      simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₂
+      simp only [← h₂, TypedExpr.typeOf, true_and]
+      rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
+    )
+  )
+  case' h_6 | h_9 =>
+    apply Or.inl
+  case' h_7 | h_10 =>
+    apply Or.inr
+    apply Or.inl
+  case' h_8 | h_11 =>
+    apply Or.inr
+    apply Or.inr
+  all_goals (
     constructor
     · exists tc₁.snd ; simp [←h₅, ResultType.typeOf, Except.map]
     · exists tc₂.snd ; simp [←h₆, ResultType.typeOf, Except.map]
-  }
+  )
 
 theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₀ : op₂ = .less ∨ op₂ = .lessEq)
@@ -60,28 +77,40 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨hc, hty, ht₁, ht₂⟩ := type_of_int_cmp_inversion h₀ h₃
-  subst hc ; rw [hty]
-  apply And.intro empty_guarded_capabilities_invariant
-  replace ⟨c₁', ht₁⟩ := ht₁
-  replace ⟨c₂', ht₂⟩ := ht₂
-  split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
-  split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
-  specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
-  specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-  simp [EvaluatesTo, evaluate] at *
-  cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
-  cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-  try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
-  replace ⟨ihl₁, ih₃⟩ := ih₁
-  replace ⟨ihl₂, ih₄⟩ := ih₂
-  rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
-  rw [htl₁] at ih₃
-  rw [htl₂] at ih₄
-  have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
-  have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
-  subst ih₁ ih₂
-  rcases h₀ with h₀ | h₀
+  have ⟨hc, hty, ht⟩ := type_of_int_cmp_inversion h₀ h₃
+  rcases ht with ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩
+  all_goals (
+    subst hc ; rw [hty]
+    apply And.intro empty_guarded_capabilities_invariant
+    replace ⟨c₁', ht₁⟩ := ht₁
+    replace ⟨c₂', ht₂⟩ := ht₂
+    split_type_of ht₁ ; rename_i ht₁ htl₁ htr₁
+    split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
+    specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
+    specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
+    simp [EvaluatesTo, evaluate] at *
+    cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
+    cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
+    try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
+    replace ⟨ihl₁, ih₃⟩ := ih₁
+    replace ⟨ihl₂, ih₄⟩ := ih₂
+    rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
+    rw [htl₁] at ih₃
+    rw [htl₂] at ih₄
+  )
+  case' inl =>
+    have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
+    have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
+  case' inr.inl =>
+    have ⟨i₁, ih₁⟩ := instance_of_datetime_type_is_datetime ih₃
+    have ⟨i₂, ih₂⟩ := instance_of_datetime_type_is_datetime ih₄
+  case' inr.inr =>
+    have ⟨i₁, ih₁⟩ := instance_of_duration_type_is_duration ih₃
+    have ⟨i₂, ih₂⟩ := instance_of_duration_type_is_duration ih₄
+  all_goals (
+    subst ih₁ ih₂
+    rcases h₀ with h₀ | h₀
+  )
   all_goals {
     subst h₀
     simp [apply₂]
