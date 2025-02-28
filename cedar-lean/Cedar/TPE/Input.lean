@@ -62,6 +62,8 @@ def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
 
+-- We do not check if `req`'s action is valid (i.e, if it's contained in `env`)
+-- because this function is called after validation, which already ensures it
 def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
     instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
