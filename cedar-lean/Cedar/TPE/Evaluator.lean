@@ -125,27 +125,21 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
 where
   self := .binaryApp op₂ r₁ r₂ ty
 
-def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Option (Map Attr Value) :=
   match r with
-  | .val (.record m) _ => m.contains a
-  | .val (.prim (.entityUID uid)) _ =>
-    match es.attrs uid with
-    | .some m  => m.contains a
-    | .none => self
-  | _ => self
-where self := .hasAttr r a ty
+  | .val (.record m) _  => .some m
+  | .val (.prim (.entityUID uid)) _ => lookup uid
+  | _ => none
+
+def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+  match attrsOf r es.attrs with
+  | .some m => m.contains a
+  | .none => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match r with
-  | .val (.record xs) _ =>
-    optionValueToResidual (xs.find? a) ty
-  | .val (.prim (.entityUID uid)) _ =>
-    match es.attrs uid with
-    | .some m  =>
-      optionValueToResidual (m.find? a) ty
-    | .none => self
-  | _ => self
-where self := .getAttr r a ty
+  match attrsOf r es.attrs with
+  | .some m => optionValueToResidual (m.find? a) ty
+  | .none => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
