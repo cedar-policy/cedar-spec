@@ -52,14 +52,16 @@ instance : Message Request := {
   }
 }
 
-def toRequest : Request → Spec.Request
-  | { principal, action, resource, context } =>
-    {
+def toRequest : Request → Except String Spec.Request
+  | { principal, action, resource, context } => do
+    .ok {
       principal
       action
       resource
-      context := match context with
-        | .record pairs => Data.Map.make $ pairs.map λ (k,v) => (k, Spec.Value.exprToValue v)
+      context := ← match context with
+        | .record pairs => do
+          let pairs ← pairs.mapM λ (k,v) => do .ok (k, ← Spec.Value.exprToValue v)
+          .ok $ Data.Map.make pairs
         | _ => panic!("expected context to be a record")
     }
 
@@ -80,6 +82,6 @@ def Request.merge (x y : Request) : Request := {
   | xkvs, ykvs => Data.Map.make $ xkvs ++ ykvs
 }
 
-instance : Field Request := Field.fromInterField Proto.Request.toRequest Request.merge
+instance : Field Request := Field.fromInterFieldFallible Proto.Request.toRequest Request.merge
 
 end Cedar.Spec
