@@ -35,7 +35,7 @@ inductive Ext where
   | datetime (dt : Datetime)
   | duration (dur: Duration)
 
--- Ordering on extension types: .decimal < .ipaddr < .datetime < .duration
+/-- Ordering on extension types: .decimal < .ipaddr < .datetime < .duration -/
 def Ext.lt : Ext → Ext → Bool
   | .decimal d₁, .decimal d₂ => d₁ < d₂
   | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
