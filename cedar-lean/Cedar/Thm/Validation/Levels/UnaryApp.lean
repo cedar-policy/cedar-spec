@@ -33,11 +33,12 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+  (hn : nmax ≥ n)
+  (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.unaryApp op e) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.unaryApp op e) request entities = evaluate (.unaryApp op e) request slice
 := by
@@ -45,5 +46,5 @@ theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Na
   subst tx
   cases hl
   rename_i hl₁
-  specialize ihe hs hc hr htx₁ hl₁
+  specialize ihe hn hs hc hr htx₁ hl₁
   simp [evaluate, ihe]

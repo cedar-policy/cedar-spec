@@ -34,11 +34,12 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n : Nat} {c : Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+  (hn : nmax ≥ n)
+  (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : List.Forall₂ (AttrExprHasAttrType c env) rxs atxs)
-  (hl : ∀ atx ∈ atxs, TypedExpr.AtLevel atx.snd n)
+  (hl : ∀ atx ∈ atxs, TypedExpr.AtLevel atx.snd n nmax)
   (ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd)
   :
   (rxs.mapM₂ λ x => do
@@ -56,21 +57,22 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
     replace ⟨ ihx, ih ⟩ := ih
     replace ⟨ hlx, hl ⟩ := hl
     replace ⟨ _, _, htx ⟩ := htx
-    specialize ihx hs hc hr htx hlx
+    specialize ihx hn hs hc hr htx hlx
     simp only [←ihx, List.mapM₂, List.attach₂, List.pmap_cons, List.mapM_cons]
     cases he₁ : evaluate x.snd request entities <;> simp only [Except.bind_err, Except.bind_ok]
-    have ih' := level_based_slicing_is_sound_record_attrs hs hc hr ht hl ih
+    have ih' := level_based_slicing_is_sound_record_attrs hn hs hc hr ht hl ih
     simp only [List.mapM₂, List.attach₂] at ih'
     simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request entities; .ok (x.fst, v)) rxs'] at ih' ⊢
     simp only [List.mapM_pmap_subtype (λ x : (Attr × Expr) => do let v ← evaluate x.snd request slice; .ok (x.fst, v)) rxs'] at ih' ⊢
     rw [ih']
 
 theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+  (hn : nmax ≥ n)
+  (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd) :
   evaluate (.record rxs) request entities = evaluate (.record rxs) request slice
 := by
@@ -78,5 +80,5 @@ theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat
   subst htx
   cases hl
   rename_i hlatxs
-  have h := level_based_slicing_is_sound_record_attrs hs hc hr hatxs hlatxs ih
+  have h := level_based_slicing_is_sound_record_attrs hn hs hc hr hatxs hlatxs ih
   simp [h, evaluate, bindAttr]

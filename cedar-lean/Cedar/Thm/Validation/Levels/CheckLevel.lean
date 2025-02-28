@@ -151,77 +151,77 @@ def DereferencingBinaryOp : BinaryOp → Prop
   | .mem | .hasTag | .getTag => True
   | _ => False
 
-inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
-  | lit (p : Prim) (ty : CedarType) (n : Nat) :
-    AtLevel (.lit p ty) n
-  | var (v : Var) (ty : CedarType) (n : Nat) :
-    AtLevel (.var v ty) n
-  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n : Nat)
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ n)
-    (hl₃ : AtLevel tx₃ n) :
-    AtLevel (.ite tx₁ tx₂ tx₃ ty) n
-  | and (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ n) :
-    AtLevel (.and tx₁ tx₂ ty) n
+inductive TypedExpr.AtLevel : TypedExpr → Nat → Nat → Prop where
+  | lit (p : Prim) (ty : CedarType) (n nmax : Nat) :
+    AtLevel (.lit p ty) n nmax
+  | var (v : Var) (ty : CedarType) (n nmax : Nat) :
+    AtLevel (.var v ty) n nmax
+  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n nmax : Nat)
+    (hl₁ : AtLevel tx₁ nmax nmax)
+    (hl₂ : AtLevel tx₂ n nmax)
+    (hl₃ : AtLevel tx₃ n nmax) :
+    AtLevel (.ite tx₁ tx₂ tx₃ ty) n nmax
+  | and (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ n nmax) :
+    AtLevel (.and tx₁ tx₂ ty) n nmax
   | or (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ n) :
-    AtLevel (.or tx₁ tx₂ ty) n
-  | unaryApp (op : UnaryOp) (tx₁ : TypedExpr) (ty : CedarType)
-    (hl₁ : AtLevel tx₁ n) :
-    AtLevel (.unaryApp op tx₁ ty) n
-  | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ n nmax) :
+    AtLevel (.or tx₁ tx₂ ty) n nmax
+  | unaryApp (op : UnaryOp) (tx₁ : TypedExpr) (ty : CedarType) (n nmax : Nat)
+    (hl₁ : AtLevel tx₁ n nmax) :
+    AtLevel (.unaryApp op tx₁ ty) n nmax
+  | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat)
     (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ (n + 1)) :
-    AtLevel (.binaryApp .mem tx₁ tx₂ ty) (n + 1)
-  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ nmax nmax) :
+    AtLevel (.binaryApp .mem tx₁ tx₂ ty) (n + 1) nmax
+  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat)
     (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ (n + 1)) :
-    AtLevel (.binaryApp .getTag tx₁ tx₂ ty) (n + 1)
-  | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ nmax nmax) :
+    AtLevel (.binaryApp .getTag tx₁ tx₂ ty) (n + 1) nmax
+  | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat)
     (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ (n + 1)) :
-    AtLevel (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ nmax nmax) :
+    AtLevel (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1) nmax
   | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (hop : ¬ DereferencingBinaryOp op)
-    (hl₁ : AtLevel tx₁ n)
-    (hl₂ : AtLevel tx₂ n) :
-    AtLevel (.binaryApp op tx₁ tx₂ ty) n
-  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
+    (hl₂ : AtLevel tx₂ n nmax) :
+    AtLevel (.binaryApp op tx₁ tx₂ ty) n nmax
+  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n nmax : Nat)
     (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : AtLevel tx₁ n)
+    (hl₁ : AtLevel tx₁ n nmax)
     (hty : tx₁.typeOf = .entity ety) :
-    AtLevel (.getAttr tx₁ a ty) (n + 1)
-  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
+    AtLevel (.getAttr tx₁ a ty) (n + 1) nmax
+  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n nmax : Nat)
     (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : AtLevel tx₁ n)
+    (hl₁ : AtLevel tx₁ n nmax)
     (hty : tx₁.typeOf = .entity ety) :
-    AtLevel (.hasAttr tx₁ a ty) (n + 1)
-  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (hl₁ : AtLevel tx₁ n)
+    AtLevel (.hasAttr tx₁ a ty) (n + 1) nmax
+  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n nmax : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    AtLevel (.getAttr tx₁ a ty) n
-  | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
-    (hl₁ : AtLevel tx₁ n)
+    AtLevel (.getAttr tx₁ a ty) n nmax
+  | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n nmax : Nat)
+    (hl₁ : AtLevel tx₁ n nmax)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    AtLevel (.hasAttr tx₁ a ty) n
-  | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
-    (hl : ∀ tx ∈ txs, AtLevel tx n) :
-    AtLevel (.set txs ty) n
-  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType)
-    (hl : ∀ atx ∈ attrs, AtLevel atx.snd n) :
-    AtLevel (.record attrs ty) n
-  | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType)
-    (hl : ∀ tx ∈ args, AtLevel tx n) :
-    AtLevel (.call xfn args ty) n
+    AtLevel (.hasAttr tx₁ a ty) n nmax
+  | set (txs : List TypedExpr) (ty : CedarType) (n nmax : Nat)
+    (hl : ∀ tx ∈ txs, AtLevel tx n nmax) :
+    AtLevel (.set txs ty) n nmax
+  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (n nmax : Nat)
+    (hl : ∀ atx ∈ attrs, AtLevel atx.snd n nmax) :
+    AtLevel (.record attrs ty) n nmax
+  | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType) (n nmax : Nat)
+    (hl : ∀ tx ∈ args, AtLevel tx n nmax) :
+    AtLevel (.call xfn args ty) n nmax
 
-theorem level_spec {tx : TypedExpr} {n : Nat}:
-  (TypedExpr.AtLevel tx n ) ↔ (checkLevel tx n = true)
+theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
+  (TypedExpr.AtLevel tx n nmax) ↔ (checkLevel tx n nmax = true)
 := by
   cases tx
   case lit =>
@@ -378,9 +378,10 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
       exact h₁
 termination_by tx
 
-theorem check_level_succ {tx : TypedExpr} {n : Nat}
-  (h₁ : TypedExpr.AtLevel tx n) :
-  TypedExpr.AtLevel tx (n + 1)
+
+theorem check_level_succ {tx : TypedExpr} {n nmax : Nat}
+  (h₁ : TypedExpr.AtLevel tx n nmax) :
+  TypedExpr.AtLevel tx (n + 1) nmax
 := by
   cases h₁
   case call htx | set htx =>
@@ -409,3 +410,9 @@ theorem check_level_succ {tx : TypedExpr} {n : Nat}
       try apply check_level_succ
       try assumption
     )
+
+theorem check_level_greater {tx : TypedExpr} {n n' nmax : Nat}
+  (hn : n ≤ n')
+  (h₁ : TypedExpr.AtLevel tx n nmax) :
+  TypedExpr.AtLevel tx n' nmax
+:= Nat.le.rec h₁ (λ _ ih => check_level_succ ih) hn

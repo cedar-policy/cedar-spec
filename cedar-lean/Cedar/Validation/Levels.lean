@@ -57,50 +57,50 @@ where
     | _, _ => true
   termination_by tx
 
-def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
+def checkLevel (tx : TypedExpr) (l lmax : Nat) : Bool :=
   match tx with
   | .lit _ _ => true
   | .var _ _ => true
   | .ite x₁ x₂ x₃ _ =>
-    checkLevel x₁ n &&
-    checkLevel x₂ n &&
-    checkLevel x₃ n
+    checkLevel x₁ lmax lmax &&
+    checkLevel x₂ l lmax &&
+    checkLevel x₃ l lmax
   | .unaryApp _ x₁ _ =>
-    checkLevel x₁ n
+    checkLevel x₁ l lmax
   | .binaryApp .mem x₁ x₂ _
   | .binaryApp .getTag x₁ x₂ _
   | .binaryApp .hasTag x₁ x₂ _ =>
     notEntityLit x₁ &&
-    n > 0 &&
-    checkLevel x₁ (n - 1) &&
-    checkLevel x₂ n
+    l > 0 &&
+    checkLevel x₁ (l - 1) lmax &&
+    checkLevel x₂ lmax lmax
   | .and x₁ x₂ _
   | .or x₁ x₂ _
   | .binaryApp _ x₁ x₂ _ =>
-    checkLevel x₁ n &&
-    checkLevel x₂ n
+    checkLevel x₁ l lmax &&
+    checkLevel x₂ l lmax
   | .hasAttr x₁ _ _
   | .getAttr x₁ _ _ =>
     match x₁.typeOf with
     | .entity _ =>
       notEntityLit x₁ &&
-      n > 0 &&
-      checkLevel x₁ (n - 1)
-    | _ => checkLevel x₁ n
+      l > 0 &&
+      checkLevel x₁ (l - 1) lmax
+    | _ => checkLevel x₁ l lmax
   | .call _ xs _
   | .set xs _ =>
     xs.attach.all λ e =>
       have := List.sizeOf_lt_of_mem e.property
-      checkLevel e n
+      checkLevel e l lmax
   | .record axs _ =>
     axs.attach.all λ e =>
       have : sizeOf e.val.snd < 1 + sizeOf axs := by
         have h₁ := List.sizeOf_lt_of_mem e.property
         rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
         omega
-      checkLevel e.val.snd n
+      checkLevel e.val.snd l lmax
 
 def typecheckAtLevel (policy : Policy) (env : Environment) (n : Nat) : Bool :=
   match typeOf policy.toExpr ∅ env with
-  | .ok (tx, _) => checkLevel tx n
+  | .ok (tx, _) => checkLevel tx n n
   | _           => false

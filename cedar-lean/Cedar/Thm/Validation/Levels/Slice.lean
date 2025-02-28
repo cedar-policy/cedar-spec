@@ -106,11 +106,11 @@ theorem in_val_then_val_slice
   case set | ext => cases hv
 
 def CheckedEvalEntityReachable (e : Expr) :=
-  ∀ {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
+  ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
     CapabilitiesInvariant c request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf e c env = .ok (tx, c') →
-    TypedExpr.AtLevel tx n →
+    TypedExpr.AtLevel tx n nmax →
     ¬ TypedExpr.EntityLitViaPath tx path →
     evaluate e request entities = .ok v →
     Value.EuidViaPath v path euid →
@@ -160,7 +160,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite e₁ e₂ e₃) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -292,7 +292,7 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -362,7 +362,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -376,14 +376,13 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   rw [htx] at hl
   have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
   cases hl
-  case getAttr n hel hl hety  =>
+  case getAttr v₁' ety n hel hety hl =>
     have ⟨euid', hv⟩ : ∃ euid', v = Value.prim (Prim.entityUID euid') := by
       rw [hety] at hi
       have ⟨ euid', hety, hv⟩ := instance_of_entity_type_is_entity hi
       simp [hv]
     subst hv
 
-    rename_i v₁' _
     have hv : v₁' = Value.prim (Prim.entityUID euid') := by
       unfold EvaluatesTo at he'
       rw [he₁] at he'
@@ -494,7 +493,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -533,7 +532,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   simp only [Prod.mk.injEq, true_and, exists_and_left] at het
   replace ⟨_, het ⟩ := het
 
-  have hl' : TypedExpr.AtLevel atx n := by
+  have hl' : TypedExpr.AtLevel atx n nmax := by
     cases hl
     rename_i hl
     exact hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))
@@ -564,11 +563,11 @@ theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entit
 If an expression checks at level `n` and then evaluates an entity (or a record
 containing an entity), then that entity must reachable in `n + 1` steps.
 -/
-theorem checked_eval_entity_reachable {e : Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
+theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v : Value} {path : List Attr} {euid : EntityUID}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate e request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -701,7 +700,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
@@ -736,11 +735,11 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
   subst hs
   exact mapm_none_find_none hs₂ hse
 
-theorem checked_eval_entity_find_entities_eq_find_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
+theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :

@@ -35,11 +35,12 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hs : slice = entities.sliceAtLevel request n)
+  (hn : nmax ≥ n)
+  (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.or e₁ e₂) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx n nmax)
   (ih₁ : TypedAtLevelIsSound e₁)
   (ih₂ : TypedAtLevelIsSound e₂)
   : evaluate (.or e₁ e₂) request entities = evaluate (.or e₁ e₂) request slice
@@ -57,7 +58,7 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     simp [evaluate]
     cases hl
     rename_i hl₁ hl₂
-    specialize ih₁ hs hc hr htx₁ hl₁
+    specialize ih₁ hn hs hc hr htx₁ hl₁
     rw [←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
@@ -66,7 +67,7 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     subst tx
     cases hl
     rename_i hl₁ hl₂
-    specialize ih₁ hs hc hr htx₁ hl₁
-    specialize ih₂ hs hc hr htx₂ hl₂
+    specialize ih₁ hn hs hc hr htx₁ hl₁
+    specialize ih₂ hn hs hc hr htx₂ hl₂
     simp [evaluate]
     rw [ih₁, ih₂]
