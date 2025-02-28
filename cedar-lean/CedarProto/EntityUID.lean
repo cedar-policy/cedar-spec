@@ -13,61 +13,28 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 import Protobuf.Message
-import Protobuf.String
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Name
 
 open Proto
 
-namespace Cedar.Spec
-
--- Note that Cedar.Spec.EntityUID is defined as
--- structure EntityUID where
---   ty : EntityType
---   eid : String
-
-namespace EntityUID
-
-@[inline]
-def mergeTy (result : EntityUID) (ty : Name) : EntityUID :=
-  {result with
-    ty := Field.merge result.ty ty
-  }
-
-@[inline]
-def mergeEid (result : EntityUID) (eid : String) : EntityUID :=
-  {result with
-    eid := Field.merge result.eid eid
-  }
-
-@[inline]
-def merge (x1 : EntityUID) (x2 : EntityUID) : EntityUID :=
-  {x1 with
-    ty := Field.merge x1.ty x2.ty
-    eid := Field.merge x1.eid x2.eid
-  }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUID) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Name ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
-    | 2 =>
-      let x : String ← Field.guardedParse t
-      pure (pure $ mergeEid · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+namespace Cedar.Spec.EntityUID
 
 instance : Message EntityUID := {
-  parseField := parseField
-  merge := merge
+  parseField (t : Proto.Tag) := do match t.fieldNum with
+    | 1 => parseFieldElement t ty (update ty)
+    | 2 => parseFieldElement t eid (update eid)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    ty  := Field.merge x.ty  y.ty
+    eid := Field.merge x.eid y.eid
+  }
 }
 
-end EntityUID
-
-end Cedar.Spec
+end Cedar.Spec.EntityUID

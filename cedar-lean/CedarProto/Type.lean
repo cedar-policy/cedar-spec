@@ -42,9 +42,9 @@ deriving Repr, Inhabited
 inductive ProtoType where
   | prim (p : PrimType)
   | set (elTy : ProtoType)
-  | entity (ety : Spec.Name)
+  | entity (ety : Spec.Proto.Name)
   | record (rty : RecordType)
-  | ext (extTy : Spec.Name)
+  | ext (extTy : Spec.Proto.Name)
 deriving Repr, Inhabited
 end
 
@@ -114,13 +114,13 @@ def mergePrim (result : ProtoType) (x : PrimType) : ProtoType :=
   | _ => .prim x
 
 @[inline]
-def mergeEntity (result : ProtoType) (x : Spec.Name) : ProtoType :=
+def mergeEntity (result : ProtoType) (x : Spec.Proto.Name) : ProtoType :=
   match result with
   | .entity n => .entity (Field.merge n x)
   | _ => .entity x
 
 @[inline]
-def mergeExt (result : ProtoType) (x : Spec.Name) : ProtoType :=
+def mergeExt (result : ProtoType) (x : Spec.Proto.Name) : ProtoType :=
   match result with
   | .ext n => .ext (Field.merge n x)
   | _ => .ext x
@@ -155,12 +155,12 @@ partial def toCedarType : ProtoType → CedarType
   | .prim .long => .int
   | .prim .string => .string
   | .set t => .set t.toCedarType
-  | .entity e => .entity e
+  | .entity e => .entity e.toName
   | .record r => .record $ Data.Map.make $ r.attrs.map λ (k,v) => (k, v.map toCedarType)
   | .ext n => match n.id with -- ignoring n.path because currently no extension types have nonempty namespaces
     | "ipaddr" => .ext .ipAddr
     | "decimal" => .ext .decimal
-    | _ => panic!(s!"unknown extension type name: {n}")
+    | _ => panic!(s!"unknown extension type name: {n.toName}")
 
 end ProtoType
 
@@ -201,13 +201,13 @@ partial def ProtoType.parseField (t : Tag) : BParsec (MergeFn ProtoType) := do
       let x : ProtoType ← Field.guardedParse t
       pure (pure $ ProtoType.mergeSet · x)
     | 3 =>
-      let x : Spec.Name ← Field.guardedParse t
+      let x : Spec.Proto.Name ← Field.guardedParse t
       pure (pure $ ProtoType.mergeEntity · x)
     | 4 =>
       let x : RecordType ← Field.guardedParse t
       pure (pure $ ProtoType.mergeRecord · x)
     | 5 =>
-      let x : Spec.Name ← Field.guardedParse t
+      let x : Spec.Proto.Name ← Field.guardedParse t
       pure (pure $ ProtoType.mergeExt · x)
     | _ =>
       t.wireType.skip

@@ -13,7 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
+import Protobuf.Message
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.EntityUID
@@ -21,7 +24,7 @@ import CedarProto.Value
 
 open Proto
 
-namespace Cedar.Spec
+namespace Cedar.Spec.Proto
 
 -- Note that Cedar.Spec.EntityData is defined as
 -- structure EntityData where
@@ -34,93 +37,31 @@ namespace Cedar.Spec
 -- needed when crafting Entities, therefore
 -- we store within an intermediate representation instead
 
-structure EntityProto where
+structure Entity where
   uid : EntityUID
-  data : EntityData
-deriving Inhabited, DecidableEq, Repr
+  attrs : Proto.Map String Value
+  ancestors: Repeated EntityUID
+  tags : Proto.Map String Value
+deriving Repr, Inhabited
 
-namespace EntityProto
+namespace Entity
 
-@[inline]
-def mergeUid (result : EntityProto) (x : EntityUID) : EntityProto :=
-  {result with
-    uid := Field.merge result.uid x
+instance : Message Entity := {
+  parseField (t : Proto.Tag) := do match t.fieldNum with
+    | 1 => parseFieldElement t uid (update uid)
+    | 2 => parseFieldElement t attrs (update attrs)
+    | 3 => parseFieldElement t ancestors (update ancestors)
+    | 4 => parseFieldElement t tags (update tags)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    uid       := Field.merge x.uid       y.uid
+    attrs     := Field.merge x.attrs     y.attrs
+    ancestors := Field.merge x.ancestors y.ancestors
+    tags      := Field.merge x.tags      y.tags
   }
-
-@[inline]
-def mergeAttrs (result : EntityProto) (x : Array (String × Value)) : EntityProto :=
-  {result with
-    data.attrs := Cedar.Data.Map.mk (result.data.attrs.kvs ++ x.toList)
-  }
-
-@[inline]
-def mergeAncestors (result : EntityProto) (x : Array EntityUID) : EntityProto :=
-  {result with
-    data.ancestors := Cedar.Data.Set.mk (result.data.ancestors.elts ++ x.toList)
-  }
-
-@[inline]
-def mergeTags (result : EntityProto) (x : Array (String × Value)) : EntityProto :=
-  {result with
-    data.tags := Cedar.Data.Map.mk (result.data.tags.kvs ++ x.toList)
-  }
-
-@[inline]
-def merge (x : EntityProto) (y : EntityProto) : EntityProto :=
-  {
-    uid := Field.merge x.uid y.uid
-    data.attrs := Cedar.Data.Map.mk (x.data.attrs.kvs ++ y.data.attrs.kvs)
-    data.ancestors := Cedar.Data.Set.mk (x.data.ancestors.elts ++ y.data.ancestors.elts)
-    data.tags := Cedar.Data.Map.mk (x.data.tags.kvs ++ y.data.tags.kvs)
-  }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn EntityProto) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : EntityUID ← Field.guardedParse t
-      pure (pure $ mergeUid · x)
-    | 2 =>
-      let x : Proto.Map String Value ← Field.guardedParse t
-      pure (pure $ mergeAttrs · x)
-    | 3 =>
-      let x : Repeated EntityUID ← Field.guardedParse t
-      pure (pure $ mergeAncestors · x)
-    | 4 =>
-      let x : Proto.Map String Value ← Field.guardedParse t
-      pure (pure $ mergeTags · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message EntityProto := {
-  parseField := parseField
-  merge := merge
 }
 
-end EntityProto
+end Entity
 
-namespace EntityData
-
-@[inline]
-def mkWf (e : EntityData) : EntityData :=
-  {
-    attrs := Cedar.Data.Map.make e.attrs.kvs
-    ancestors := Cedar.Data.Set.make e.ancestors.elts
-    tags := Cedar.Data.Map.make e.tags.kvs
-  }
-
-end EntityData
-
-namespace EntityProto
-
-@[inline]
-def mkWf (e : EntityProto) : EntityProto :=
-  {
-    uid := e.uid
-    data := e.data.mkWf
-  }
-
-end EntityProto
-
-end Cedar.Spec
+end Cedar.Spec.Proto

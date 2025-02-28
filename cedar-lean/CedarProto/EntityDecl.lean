@@ -13,9 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 import Protobuf.Message
-import Protobuf.String
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Name
@@ -28,81 +29,32 @@ namespace Cedar.Validation.Proto
 -- Note: EntitySchemaEntry takes ancestors, so we'll create this intermediate
 -- representation. Once we gather all the entries, we will perform the transform.
 structure EntityDecl where
-  name : Spec.Name
+  name : Spec.Proto.Name
   /-- All (transitive) descendants. Assumes TC is computed before encoding into protobuf. -/
-  descendants : Array Spec.Name
+  descendants : Repeated Spec.Proto.Name
   attrs : Proto.Map String (Qualified ProtoType)
   tags : Option ProtoType
-  enums : Array String
+  enums : Repeated String
 deriving Repr, Inhabited
 
 namespace EntityDecl
 
-@[inline]
-def mergeName (result : EntityDecl) (x : Spec.Name) : EntityDecl :=
-  {result with
-    name := Field.merge result.name x
-  }
-
-@[inline]
-def mergeDescendants (result : EntityDecl) (x : Array Spec.Name) : EntityDecl :=
-  {result with
-    descendants := result.descendants ++ x
-  }
-
-@[inline]
-def mergeAttributes (result : EntityDecl) (x : Proto.Map String (Qualified ProtoType)) : EntityDecl :=
-  {result with
-    attrs := result.attrs ++ x
-  }
-
-@[inline]
-def mergeTags (result : EntityDecl) (x : ProtoType) : EntityDecl :=
-  {result with
-    tags := Field.merge result.tags (some x)
-  }
-
-@[inline]
-def mergeEnums (result : EntityDecl) (x : Array String) : EntityDecl :=
-  {result with
-    enums := result.enums ++ x
-  }
-
-@[inline]
-def merge (x y : EntityDecl) : EntityDecl :=
-  {
-    name := Field.merge x.name y.name
-    descendants := y.descendants ++ x.descendants
-    attrs := x.attrs ++ y.attrs
-    tags := Field.merge x.tags y.tags
-    enums := x.enums ++ y.enums
-  }
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn EntityDecl) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Spec.Name ← Field.guardedParse t
-      pure (pure $ mergeName · x)
-    | 2 =>
-      let x : Repeated Spec.Name ← Field.guardedParse t
-      pure (pure $ mergeDescendants · x)
-    | 3 =>
-      let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
-      pure (pure $ mergeAttributes · x)
-    | 5 =>
-      let x : ProtoType ← Field.guardedParse t
-      pure (pure $ mergeTags · x)
-    | 6 =>
-      let x : Repeated String ← Field.guardedParse t
-      pure (pure $ mergeEnums · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
 instance : Message EntityDecl := {
-  parseField := parseField
-  merge := merge
+  parseField (t : Tag) := do match t.fieldNum with
+    | 1 => parseFieldElement t name (update name)
+    | 2 => parseFieldElement t descendants (update descendants)
+    | 3 => parseFieldElement t attrs (update attrs)
+    | 5 => parseFieldElement t tags (update tags)
+    | 6 => parseFieldElement t enums (update enums)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    name        := Field.merge x.name        y.name
+    descendants := Field.merge x.descendants y.descendants
+    attrs       := Field.merge x.attrs       y.attrs
+    tags        := Field.merge x.tags        y.tags
+    enums       := Field.merge x.enums       y.enums
+  }
 }
 
 end EntityDecl

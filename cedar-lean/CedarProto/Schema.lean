@@ -26,8 +26,8 @@ open Proto
 namespace Cedar.Validation.Proto
 
 structure Schema where
-  ets : Array EntityDecl
-  acts : Array ActionDecl
+  ets : Repeated EntityDecl
+  acts : Repeated ActionDecl
 deriving Repr, Inhabited
 
 /-
@@ -49,15 +49,28 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (de
 
 namespace Schema
 
+instance : Message Schema := {
+  parseField (t : Tag) := do match t.fieldNum with
+    | 1 => parseFieldElement t ets (update ets)
+    | 2 => parseFieldElement t acts (update acts)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    ets  := Field.merge x.ets  y.ets
+    acts := Field.merge x.acts y.acts
+  }
+}
+
 def toSchema (schema : Schema) : Validation.Schema :=
   let ets := schema.ets.toList
-  let descendantMap := ets.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
+  let descendantMap := ets.map λ decl => (decl.name.toName, Data.Set.make $ decl.descendants.toList.map Spec.Proto.Name.toName)
   let ancestorMap := descendantsToAncestors descendantMap
   let ets := Data.Map.make $ ets.map λ decl =>
-    (decl.name,
+    let name := decl.name.toName
+    (name,
       if decl.enums.isEmpty then
       .standard {
-        ancestors := ancestorMap.find! decl.name
+        ancestors := ancestorMap.find! name
         attrs := Data.Map.make $ decl.attrs.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
         tags := decl.tags.map ProtoType.toCedarType
       }
@@ -69,49 +82,12 @@ def toSchema (schema : Schema) : Validation.Schema :=
   let ancestorMap := descendantsToAncestors descendantMap
   let acts := Data.Map.make $ acts.map λ decl =>
     (decl.name, {
-      appliesToPrincipal := Data.Set.make decl.principalTypes.toList
-      appliesToResource := Data.Set.make decl.resourceTypes.toList
+      appliesToPrincipal := Data.Set.make $ decl.principalTypes.toList.map Spec.Proto.Name.toName
+      appliesToResource := Data.Set.make $ decl.resourceTypes.toList.map Spec.Proto.Name.toName
       ancestors := ancestorMap.find! decl.name
       context := Data.Map.make $ decl.context.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
     })
   { ets, acts }
-
-@[inline]
-def mergeEntityDecls (result : Schema) (x : Array EntityDecl) : Schema :=
-  {result with
-    ets := result.ets ++ x
-  }
-
-@[inline]
-def mergeActionDecls (result : Schema) (x : Array ActionDecl) : Schema :=
-  {result with
-    acts := result.acts ++ x
-  }
-
-@[inline]
-def merge (x y : Schema) : Schema :=
-  {
-    ets := x.ets ++ y.ets
-    acts := x.acts ++ y.acts
-  }
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn Schema) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Repeated EntityDecl ← Field.guardedParse t
-      pure (pure $ mergeEntityDecls · x)
-    | 2 =>
-      let x : Repeated ActionDecl ← Field.guardedParse t
-      pure (pure $ mergeActionDecls · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message Schema := {
-  parseField := parseField
-  merge := merge
-}
 
 end Cedar.Validation.Proto.Schema
 

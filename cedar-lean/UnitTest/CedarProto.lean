@@ -198,7 +198,7 @@ def tests := [
         (.call .decimal [.lit (.string "3.1416")]),
       ]),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/rbac.protodata"
-      Cedar.Spec.Policies.fromPolicySet
+      Cedar.Spec.Proto.PolicySet.toPolicies
       [{
         id := "policy0"
         effect := .permit
@@ -208,7 +208,7 @@ def tests := [
         condition := [{ kind := .when, body := .lit (.bool true) }]
       }],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/abac.protodata"
-      Cedar.Spec.Policies.fromPolicySet
+      Cedar.Spec.Proto.PolicySet.toPolicies
       [{
         id := "policy0"
         effect := .permit
@@ -227,7 +227,7 @@ def tests := [
         ]
       }],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Proto.PolicySet.toPolicies)
       [
         {
           id := "linkedpolicy"
@@ -288,11 +288,11 @@ def tests := [
         },
       ],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_just_templates.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Proto.PolicySet.toPolicies)
       -- when it's just a template, it gets dropped in the Lean `Cedar.Spec.Policies` representation
       [],
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/policyset_one_static_policy.protodata"
-      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Policies.fromPolicySet)
+      (Cedar.Spec.Policies.sortByPolicyId ∘ Cedar.Spec.Proto.PolicySet.toPolicies)
       [
         {
           id := ""
@@ -306,18 +306,18 @@ def tests := [
           }]
         }
       ],
-    testDeserializeProtodata "UnitTest/CedarProto-test-data/request.protodata"
-      ({
+    testDeserializeProtodata' "UnitTest/CedarProto-test-data/request.protodata"
+      Cedar.Spec.Proto.Request.toRequest
+      {
         principal := mkUid [] "User" "alice"
         action := mkUid [] "Action" "access"
         resource := mkUid [] "Folder" "data"
         context := Map.make [ ("foo", .prim (.bool true)) ]
-      } : Cedar.Spec.Request),
+      },
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entity.protodata"
-      Cedar.Spec.EntityProto.mkWf
-      ({
-        uid := mkUid ["A"] "B" "C"
-        data := {
+      (λ eproto => Cedar.Spec.Proto.Entities.toEntities ({ entities := #[eproto] }))
+      ((Map.make [
+        (mkUid ["A"] "B" "C", {
           attrs := Map.make [
             ("foo", .set (Set.make [
               (.prim (.int (Int64.ofIntChecked 1 (by decide)))),
@@ -333,10 +333,10 @@ def tests := [
             ("tag1", .prim (.string "val1")),
             ("tag2", .prim (.string "val2")),
           ]
-        }
-      }),
+        })
+      ])),
     testDeserializeProtodata' "UnitTest/CedarProto-test-data/entities.protodata"
-      Cedar.Spec.EntitiesProto.toEntities
+      Cedar.Spec.Proto.Entities.toEntities
       ((Map.make [
         (mkUid [] "ABC" "123", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
         (mkUid [] "DEF" "234", { attrs := Map.empty, ancestors := Set.empty, tags := Map.empty }),
