@@ -136,17 +136,6 @@ instance Duration.decLe (d₁ d₂ : Duration) : Decidable (d₁ ≤ d₂) :=
 instance : Coe Int64 Duration where
   coe i := Duration.mk i
 
--- Note: The instances below are only used for tests.
--- We might redefine them if they are need for something else.
-instance : OfNat Duration n where
-  ofNat := ⟨Int64.ofNat n⟩
-
-instance : ToString Duration where
-  toString d := toString d.val
-
-instance : Neg Duration where
-  neg d := ⟨-d.val⟩
-
 def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
 def MILLISECONDS_PER_HOUR: Int := 360000
