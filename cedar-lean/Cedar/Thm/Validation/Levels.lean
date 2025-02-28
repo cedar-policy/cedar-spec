@@ -85,7 +85,15 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n nmax : Nat} {tx : TypedE
         omega
       exact @level_based_slicing_is_sound_expr x
     exact level_based_slicing_is_sound_set hn hs hc hr ht hl ih
-  case call => sorry -- should be the same as set
+  case call xfn xs =>
+    have ih : ∀ x ∈ xs, TypedAtLevelIsSound x := by
+      intro x hx
+      have _ : sizeOf x < sizeOf (Expr.set xs) := by
+        have h₁ := List.sizeOf_lt_of_mem hx
+        simp only [Expr.set.sizeOf_spec]
+        omega
+      exact @level_based_slicing_is_sound_expr x
+    exact level_based_slicing_is_sound_call hn hs hc hr ht hl ih
   case record rxs =>
     have ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd := by
       intro x hx

@@ -34,3 +34,20 @@ def TypedAtLevelIsSound (e : Expr) : Prop := ∀ {n nmax : Nat} {tx : TypedExpr}
   typeOf e c env = Except.ok (tx, c₁) →
   TypedExpr.AtLevel tx n nmax →
   evaluate e request entities = evaluate e request slice
+
+theorem mapm_eval_congr_entities {xs : List Expr} {request : Request} {entities slice : Entities}
+  (he : ∀ (x : Expr), x ∈ xs → evaluate x request entities = evaluate x request slice) :
+  List.mapM (fun x => evaluate x request entities) xs = List.mapM (fun x => evaluate x request slice) xs
+:= by
+  cases xs
+  case nil => simp
+  case cons x xs =>
+    simp only [List.mapM_cons, bind_pure_comp]
+    rw [he x (by simp)]
+    have he' : ∀ (x : Expr), x ∈ xs → evaluate x request entities = evaluate x request slice := by
+      intros x' hx'
+      replace hx' : x' ∈ x :: xs := by simp [hx']
+      exact he x' hx'
+    cases evaluate x request slice <;> simp only [Except.bind_err, Except.bind_ok]
+    have ih := mapm_eval_congr_entities he'
+    rw [ih]

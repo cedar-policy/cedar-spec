@@ -32,18 +32,18 @@ theorem level_based_slicing_is_sound_set {xs : List Expr} {n : Nat} {c₀ c₁: 
   (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (ht : typeOf (.set xs) c₀ env = Except.ok (tx, c₁))
+  (ht : typeOf (.call xfn xs) c₀ env = Except.ok (tx, c₁))
   (hl : TypedExpr.AtLevel tx n nmax)
   (ih : ∀ x ∈ xs, TypedAtLevelIsSound x) :
-  evaluate (.set xs) request entities = evaluate (.set xs) request slice
+  evaluate (.call xfn xs) request entities = evaluate (.call xfn xs) request slice
 := by
-  replace ⟨ _, txs, ty,  htx, ht ⟩ := type_of_set_inversion ht
+  replace ⟨ _, txs, ty, ht ⟩ := type_of_call_inversion ht
   subst tx
   cases hl ; rename_i hl
 
   have he : ∀ x ∈ xs, evaluate x request entities = evaluate x request slice := by
     intros x hx
-    replace ⟨ tx, _, htxs, htx, _ ⟩ := ht x hx
+    replace ⟨ tx, c', htxs, htx ⟩ := ht x hx
     specialize hl tx htxs
     exact ih x hx hn hs hc hr htx hl
 

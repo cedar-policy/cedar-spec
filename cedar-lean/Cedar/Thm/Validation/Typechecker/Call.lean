@@ -26,6 +26,16 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
+theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.call xfn xs) c env = Except.ok (tx, c')) :
+  ∃ txs ty,
+    tx = .call xfn txs ty ∧
+    ∀ xᵢ ∈ xs,
+      ∃ txᵢ cᵢ,
+        txᵢ ∈ txs ∧
+        typeOf xᵢ c env = Except.ok (txᵢ, cᵢ)
+:= by sorry
+
 theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .decimal xs) c env = Except.ok (ty, c')) :
   ty.typeOf = .ext .decimal ∧
