@@ -143,17 +143,15 @@ def duration? (i: Int) : Option Duration :=
 def Duration.neg? (d : Duration) : Option Duration :=
   d.val.neg? |>.map Duration.mk
 
-def durationUnits? (n: Nat) (suffix: String) : Option Int :=
-  match Int64.ofInt? n with
-  | none => none
-  | some i =>
-    match suffix with
-    | "ms" => some i
-    | "s" => some (i * MILLISECONDS_PER_SECOND)
-    | "m" => some (i * MILLISECONDS_PER_MINUTE)
-    | "h" => some (i * MILLISECONDS_PER_HOUR)
-    | "d" => some (i * MILLISECONDS_PER_DAY)
-    | _ => none
+def durationUnits? (n: Nat) (suffix: String) : Option Int := do
+  let i ← Int64.ofInt? n
+  match suffix with
+  | "ms" => some i
+  | "s" => some (i * MILLISECONDS_PER_SECOND)
+  | "m" => some (i * MILLISECONDS_PER_MINUTE)
+  | "h" => some (i * MILLISECONDS_PER_HOUR)
+  | "d" => some (i * MILLISECONDS_PER_DAY)
+  | _ => none
 
 def unitsToMilliseconds (days hours minutes second milliseconds: Int) : Int :=
   days * MILLISECONDS_PER_DAY +
