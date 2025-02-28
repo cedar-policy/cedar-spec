@@ -57,6 +57,10 @@ def Residual.asValue : Residual → Option Value
 def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
   .val v ty
 
+def Residual.isError : Residual → Bool
+  | .error _ => true
+  | _        => false
+
 -- The interpreter of `Residual` that defines its semantics
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with

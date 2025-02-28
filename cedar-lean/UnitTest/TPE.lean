@@ -382,6 +382,136 @@ def tests :=
 
 end UnitTest.TPE.Motivation
 
+namespace UnitTest.TPE.Spec
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+def ActionType : EntityType := ⟨"Action", []⟩
+def schema : Schema :=
+  ⟨Map.make [
+  (
+     ActionType,
+     .standard ⟨default, default, default⟩
+  ),
+  (
+     ⟨"A0", []⟩,
+     .standard ⟨
+          Set.singleton ⟨"A1", []⟩,
+          default,
+          default⟩
+  ),
+  (
+     ⟨"A1", []⟩,
+     .standard ⟨
+          default,
+          default,
+          default⟩
+  ),
+  ],
+  Map.make [
+     (⟨ActionType, "a"⟩, ⟨
+          Set.singleton ⟨"A0", []⟩,
+          Set.singleton ⟨"A1", []⟩,
+          default,
+          default
+      ⟩)
+  ]⟩
+
+def es : PartialEntities :=
+  Map.make [
+     (⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩),
+  ]
+
+def req : PartialRequest :=
+  ⟨
+     ⟨⟨"A0", []⟩, "a0"⟩,
+     ⟨ActionType, "a"⟩,
+     ⟨⟨"A1", []⟩, "a1"⟩,
+     default
+  ⟩
+
+def policy₀ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .mem (.var .principal) (.lit (.entityUID ⟨⟨"A0", []⟩, "a0"⟩)))⟩
+  ]⟩
+
+def policy₁ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .mem (.var .principal) (.lit (.entityUID ⟨⟨"A0", []⟩, "a00"⟩)))⟩
+  ]⟩
+
+def policy₂ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .mem
+        (.var .principal)
+        (.ite
+          (.binaryApp .less (.binaryApp .add (.lit (.int 1)) (.lit (.int 2))) (.lit (.int 5)))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a0"⟩))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a00"⟩))
+          ))⟩
+  ]⟩
+
+def policy₃ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .mem
+        (.var .principal)
+        (.ite
+          (.binaryApp .less (.binaryApp .add (.lit (.int 1)) (.lit (.int 6))) (.lit (.int 5)))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a0"⟩))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a00"⟩))
+          ))⟩
+  ]⟩
+
+def policy₄ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.binaryApp .mem
+        (.var .principal)
+        (.ite
+          (.binaryApp .less (.binaryApp .mul (.lit (.int 9223372036854775807)) (.lit (.int 9223372036854775807))) (.lit (.int 5)))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a0"⟩))
+          (.lit (.entityUID ⟨⟨"A0", []⟩, "a00"⟩))
+          ))⟩
+  ]⟩
+
+#eval evaluatePolicy schema policy₀ req es
+#eval evaluatePolicy schema policy₁ req es
+#eval evaluatePolicy schema policy₂ req es
+#eval evaluatePolicy schema policy₃ req es
+#eval evaluatePolicy schema policy₄ req es
+end UnitTest.TPE.Spec
+
 namespace UnitTest.TPE
 
 def tests := [Basic.tests, Motivation.tests]

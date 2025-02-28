@@ -55,24 +55,30 @@ where
 def ite (c t e : Residual) (ty : CedarType) : Residual :=
   match c with
   | .val (.prim (.bool b)) _ => if b then t else e
+  | .error _                 => .error ty
   | _                        => .ite c t e ty
 
 def and : Residual → Residual → CedarType → Residual
   | .val true  _, r, _ => r
   | .val false _, _, _ => false
+  | .error _, _, ty    => .error ty
   | l, .val true _, _  => l
   | l, r, ty           => .and l r ty
 
 def or : Residual → Residual → CedarType → Residual
   | .val true  _, _, _ => true
   | .val false _, r, _ => r
+  | .error _, _, ty    => .error ty
   | l, .val false _, _ => l
   | l, r, ty           => .and l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
-  match r.asValue with
-  | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
-  | .none   => .unaryApp op₁ r ty
+  match r with
+  | .error _ => .error ty
+  | _ =>
+    match r.asValue with
+    | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
+    | .none   => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
@@ -118,6 +124,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     someOrSelf (hasTag uid₁ tag es) ty self
   | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
     (getTag uid₁ tag es ty).getD self
+  | _, .error _, _ | _, _, .error _ => .error ty
   | _, _, _ => self
 where
   self := .binaryApp op₂ r₁ r₂ ty
@@ -129,29 +136,35 @@ def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Op
   | _                               => none
 
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match attrsOf r es.attrs with
-  | .some m => m.contains a
-  | .none   => .hasAttr r a ty
+  match r with
+  | .error _ => .error ty
+  | _ =>
+    match attrsOf r es.attrs with
+    | .some m => m.contains a
+    | .none   => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match attrsOf r es.attrs with
-  | .some m => someOrError (m.find? a) ty
-  | .none   => .getAttr r a ty
+  match r with
+  | .error _ => .error ty
+  | _ =>
+    match attrsOf r es.attrs with
+    | .some m => someOrError (m.find? a) ty
+    | .none   => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
   | .some xs => .val (.set (Set.make xs)) ty
-  | .none    => .set rs ty
+  | .none    => if rs.any Residual.isError then .error ty else .set rs ty
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
   | .some xs => .val (.record (Map.make xs)) ty
-  | .none    => .record m ty
+  | .none    => if m.any λ (_, r₁) => r₁.isError then .error ty else .record m ty
 
 def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
   | .some xs => someOrError (Spec.call xfn xs).toOption ty
-  | .none    => .call xfn rs ty
+  | .none    => if rs.any Residual.isError then .error ty else .call xfn rs ty
 
 def evaluate
   (x : TypedExpr)
