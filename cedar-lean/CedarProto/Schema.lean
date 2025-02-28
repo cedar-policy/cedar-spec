@@ -50,7 +50,8 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (de
 namespace Schema
 
 instance : Message Schema := {
-  parseField (t : Tag) := do match t.fieldNum with
+  parseField (t : Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t ets (update ets)
     | 2 => parseFieldElement t acts (update acts)
     | _ => let _ ← t.wireType.skip ; pure ignore

@@ -26,7 +26,8 @@ open Proto
 namespace Cedar.Spec.EntityUID
 
 instance : Message EntityUID := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t ty (update ty)
     | 2 => parseFieldElement t eid (update eid)
     | _ => let _ ← t.wireType.skip ; pure ignore

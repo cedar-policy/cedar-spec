@@ -47,7 +47,8 @@ deriving Repr, Inhabited
 namespace Entity
 
 instance : Message Entity := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t uid (update uid)
     | 2 => parseFieldElement t attrs (update attrs)
     | 3 => parseFieldElement t ancestors (update ancestors)

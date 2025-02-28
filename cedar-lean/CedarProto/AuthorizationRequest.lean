@@ -35,7 +35,8 @@ deriving Inhabited, DecidableEq, Repr
 namespace AuthorizationRequest
 
 instance : Message AuthorizationRequest := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t request (update request)
     | 2 => parseFieldElement t policies (update policies)
     | 3 => parseFieldElement t entities (update entities)

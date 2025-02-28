@@ -36,7 +36,8 @@ deriving Repr, Inhabited
 namespace Policy
 
 instance : Message Policy := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t templateId (update templateId)
     | 2 => parseFieldElement t linkId (update linkId)
     | 3 => parseFieldElement t isTemplateLink (update isTemplateLink)

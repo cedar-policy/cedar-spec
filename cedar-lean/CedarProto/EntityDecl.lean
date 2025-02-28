@@ -40,7 +40,8 @@ deriving Repr, Inhabited
 namespace EntityDecl
 
 instance : Message EntityDecl := {
-  parseField (t : Tag) := do match t.fieldNum with
+  parseField (t : Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t name (update name)
     | 2 => parseFieldElement t descendants (update descendants)
     | 3 => parseFieldElement t attrs (update attrs)

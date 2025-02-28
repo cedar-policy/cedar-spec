@@ -27,7 +27,8 @@ macro "update " f:Lean.Parser.Term.structInstLVal : term => `(λ x v => { x with
 Helper function for defining `parseField` for a structure (Protobuf message).
 For example, for a struct with fields `name` and `value`,
 ```
-  parseField (t : Tag) := do match t.fieldNum with
+  parseField (t : Tag) := do
+     match t.fieldNum with
      | 1 => parseFieldElement t name (update name)
      | 2 => parseFieldElement t value (update value)
      | _ => let _ ← t.wireType.skip ; pure ignore

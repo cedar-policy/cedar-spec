@@ -41,7 +41,8 @@ deriving Repr, Inhabited
 namespace ActionDecl
 
 instance : Message ActionDecl := {
-  parseField (t : Tag) := do match t.fieldNum with
+  parseField (t : Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t name (update name)
     | 3 => parseFieldElement t descendants (update descendants)
     | 4 => parseFieldElement t context (update context)

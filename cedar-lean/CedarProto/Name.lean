@@ -31,7 +31,8 @@ deriving Repr, Inhabited
 namespace Name
 
 instance : Message Name := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t id (update id)
     | 2 => parseFieldElement t path (update path)
     | _ => let _ ← t.wireType.skip ; pure ignore

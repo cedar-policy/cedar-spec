@@ -44,7 +44,8 @@ instance : HAppend Entities (Repeated Entity) Entities where
 namespace Entities
 
 instance : Message Entities := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t entities (update entities)
     | _ => let _ ← t.wireType.skip ; pure ignore
 

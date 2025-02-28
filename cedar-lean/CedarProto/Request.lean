@@ -36,7 +36,8 @@ deriving Repr, Inhabited
 namespace Request
 
 instance : Message Request := {
-  parseField (t : Proto.Tag) := do match t.fieldNum with
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
     | 1 => parseFieldElement t principal (update principal)
     | 2 => parseFieldElement t action (update action)
     | 3 => parseFieldElement t resource (update resource)
