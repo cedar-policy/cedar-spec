@@ -36,6 +36,8 @@ def BoolType.not : BoolType → BoolType
 inductive ExtType where
   | ipAddr
   | decimal
+  | datetime
+  | duration
 deriving Repr
 
 inductive Qualified (α : Type u) where

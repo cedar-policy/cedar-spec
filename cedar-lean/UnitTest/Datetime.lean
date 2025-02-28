@@ -89,7 +89,16 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "2016-12-31T00:00:00+9999" "invalid offset range",
   ]
 
-theorem testDuration16 : toString ((Duration.parse "0d0h0m0s0ms").get!) = "0" := by native_decide
+-- Note: The instances below are only used for tests.
+-- We might redefine them if they are need for something else.
+instance : OfNat Duration n where
+  ofNat := ⟨Int64.ofNat n⟩
+
+instance : ToString Duration where
+  toString d := toString d.val
+
+instance : Neg Duration where
+  neg d := ⟨-d.val⟩
 
 private def testValidDuration (str : String) (rep : Int) : TestCase IO :=
   test str ⟨λ _ => checkEq (Duration.parse str) (duration? rep)⟩
