@@ -91,10 +91,10 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     split_type_of ht₂ ; rename_i ht₂ htl₂ htr₂
     specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁
     specialize ih₂ h₁ h₂ ht₂ ; replace ⟨_, v₂, ih₂⟩ := ih₂
-    simp [EvaluatesTo, evaluate] at *
+    simp only [List.empty_eq, EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; exact type_is_inhabited (.bool .anyBool) }
+    try { simp only [ih₁, ih₂, true_and] ; exact type_is_inhabited (.bool .anyBool) }
     replace ⟨ihl₁, ih₃⟩ := ih₁
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
@@ -116,7 +116,7 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
   )
   all_goals {
     subst h₀
-    simp [apply₂]
+    simp only [apply₂, reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
     apply bool_is_instance_of_anyBool
   }
 

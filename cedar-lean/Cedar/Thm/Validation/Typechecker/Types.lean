@@ -203,7 +203,7 @@ theorem instance_of_entity_type_is_entity {ety : EntityType} :
   intro h₁
   cases h₁
   rename_i euid h₁
-  simp [InstanceOfEntityType] at h₁
+  simp only [InstanceOfEntityType] at h₁
   exists euid
   simp [h₁]
 
@@ -214,7 +214,7 @@ theorem instance_of_decimal_type_is_decimal {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i d _
   exists d
@@ -226,7 +226,7 @@ theorem instance_of_ipAddr_type_is_ipAddr {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i ip _
   exists ip
@@ -238,7 +238,7 @@ theorem instance_of_datetime_type_is_datetime {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i d _
   exists d
@@ -250,7 +250,7 @@ theorem instance_of_duration_type_is_duration {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i d _
   exists d

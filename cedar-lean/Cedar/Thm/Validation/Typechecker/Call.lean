@@ -71,18 +71,19 @@ theorem type_of_call_datetime_inversion {xs : List Expr} {c c' : Capabilities} {
     xs = [.lit (.string s)] ∧
     (Cedar.Spec.Ext.Datetime.parse s).isSome
 := by
-  simp [typeOf] at h₁
+  simp only [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall, typeOfConstructor] at h₁
+  simp only [typeOfCall, typeOfConstructor, List.empty_eq, Except.bind_ok] at h₁
   split at h₁ <;> simp [ok, err] at h₁
   rename_i s
   split at h₁ <;> simp at h₁
-  simp [h₁]
+  simp only [h₁, List.empty_eq, List.cons.injEq, Expr.lit.injEq, Prim.string.injEq, and_true,
+    exists_eq_left', true_and]
   rename_i h₃
   cases h₁ ; subst ty
-  simp [h₃, TypedExpr.typeOf]
+  simp only [TypedExpr.typeOf, h₃, Option.isSome_some, and_self]
 
 theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : typeOf (Expr.call .datetime xs) c₁ env = Except.ok (ty, c₂)) :
@@ -109,11 +110,11 @@ theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {
     xs = [.lit (.string s)] ∧
     (Cedar.Spec.Ext.Datetime.duration s).isSome
 := by
-  simp [typeOf] at h₁
+  simp only [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall, typeOfConstructor] at h₁
+  simp only [typeOfCall, typeOfConstructor, List.empty_eq] at h₁
   split at h₁ <;> simp [ok, err] at h₁
   rename_i s
   split at h₁ <;> simp at h₁
@@ -429,13 +430,13 @@ theorem type_of_call_toTime_inversion {xs : List Expr} {c c' : Capabilities} {en
 := by
   simp [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall] at h₁
+  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
-      simp [ok] at h₁
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       have ⟨hl₁, hr₁⟩ := h₁
       rw [←hl₁]
       simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
@@ -463,17 +464,19 @@ theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
-  simp [TypeOfIsSound] at ih₁
+  simp only [List.mem_singleton, TypeOfIsSound, forall_const] at ih₁
   split_type_of h₇ ; rename_i h₇ hl₇ hr₇
   have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
-  simp [EvaluatesTo] at hl₁
+  simp only [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
-  simp [hl₁] <;>
+  simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
+    true_and] <;>
   try { exact type_is_inhabited (CedarType.ext .duration)}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
-  simp [call]
+  simp only [call, gt_iff_lt, ge_iff_le, Except.bind_ok, reduceCtorEq, Except.ok.injEq, false_or,
+    exists_eq_left']
   apply InstanceOfType.instance_of_ext
   simp only [InstanceOfExtType]
 
@@ -485,15 +488,15 @@ theorem type_of_call_toDate_inversion {xs : List Expr} {c c' : Capabilities} {en
     xs = [x₁] ∧
     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁)
 := by
-  simp [typeOf] at h₁
+  simp only [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall] at h₁
+  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
-      simp [ok] at h₁
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       have ⟨hl₁, hr₁⟩ := h₁
       rw [←hl₁]
       simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
@@ -521,24 +524,25 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
-  simp [TypeOfIsSound] at ih₁
+  simp only [List.mem_singleton, TypeOfIsSound, forall_const] at ih₁
   split_type_of h₇ ; rename_i h₇ hl₇ hr₇
   have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
-  simp [EvaluatesTo] at hl₁
+  simp only [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
-  simp [hl₁] <;>
+  simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
+    true_and] <;>
   try { exact type_is_inhabited (CedarType.ext .datetime)}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
-  simp only [call, res]
+  simp only [call, res, gt_iff_lt, ge_iff_le, Except.bind_ok]
   cases dt₁.toDate with
   | some v =>
-    simp []
+    simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
     apply InstanceOfType.instance_of_ext
     simp [InstanceOfExtType]
   | none =>
-    simp [InstanceOfType]
+    simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
     apply type_is_inhabited
 
 theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -550,15 +554,15 @@ theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {en
     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁) ∧
     (typeOf x₂ c env).typeOf = .ok ((CedarType.ext .duration), c₂)
 := by
-  simp [typeOf] at h₁
+  simp only [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall] at h₁
+  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
-      simp [ok] at h₁
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       have ⟨hl₁, hr₁⟩ := h₁
       rw [←hl₁]
       simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
@@ -590,23 +594,24 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
-    simp [TypeOfIsSound] at ih₁
+    simp only [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₁
     split_type_of h₇ ; rename_i h₇ hl₇ hr₇
     have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
-    simp [EvaluatesTo] at hl₁
+    simp only [EvaluatesTo] at hl₁
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
-    simp [hl₁] <;>
+    simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and] <;>
     try { exact type_is_inhabited (CedarType.ext .datetime)}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
     have ih₂ := ih x₂
-    simp [TypeOfIsSound] at ih₂
+    simp [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₂
     split_type_of h₈ ; rename_i h₈ hl₈ hr₈
     have ⟨_, v₂, hl₂, hr₂⟩ := ih₂ h₁ h₂ h₈
-    simp [EvaluatesTo] at hl₂
+    simp only [EvaluatesTo] at ih₂
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
-    simp [hl₂] <;>
+    simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
+      or_false, or_true, true_and] <;>
     try { exact type_is_inhabited (CedarType.ext .datetime)}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_duration_type_is_duration hr₂
@@ -614,11 +619,11 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp only [call, res]
     cases dt₁.offset dt₂ with
     | some v =>
-      simp []
+      simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
       apply InstanceOfType.instance_of_ext
       simp [InstanceOfExtType]
     | none =>
-      simp [InstanceOfType]
+      simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
       apply type_is_inhabited
 
 theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -630,15 +635,15 @@ theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabiliti
     (typeOf x₁ c env).typeOf = .ok ((CedarType.ext .datetime), c₁) ∧
     (typeOf x₂ c env).typeOf = .ok ((CedarType.ext .datetime), c₂)
 := by
-  simp [typeOf] at h₁
+  simp only [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
-  simp [h₂] at h₁
+  simp only [h₂, Except.bind_err, reduceCtorEq] at h₁
   rename_i tys
-  simp [typeOfCall] at h₁
+  simp only [typeOfCall, List.empty_eq, Except.bind_ok] at h₁
   all_goals {
     split at h₁ <;> try { contradiction }
     all_goals {
-      simp [ok] at h₁
+      simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₁
       have ⟨hl₁, hr₁⟩ := h₁
       rw [←hl₁]
       simp only [TypedExpr.typeOf, hr₁, List.empty_eq, true_and]
@@ -670,12 +675,13 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
-    simp [TypeOfIsSound] at ih₁
+    simp only [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₁
     split_type_of h₇ ; rename_i h₇ hl₇ hr₇
     have ⟨_, v₁, hl₁, hr₁⟩ := ih₁ h₁ h₂ h₇
-    simp [EvaluatesTo] at hl₁
+    simp only [EvaluatesTo] at hl₁
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
-    simp [hl₁] <;>
+    simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
+      true_and] <;>
     try { exact type_is_inhabited (CedarType.ext .duration)}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
@@ -684,9 +690,10 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     simp [TypeOfIsSound] at ih₂
     split_type_of h₈ ; rename_i h₈ hl₈ hr₈
     have ⟨_, v₂, hl₂, hr₂⟩ := ih₂ h₁ h₂ h₈
-    simp [EvaluatesTo] at hl₂
+    simp only [EvaluatesTo] at hl₂
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
-    simp [hl₂] <;>
+    simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
+      or_false, or_true, true_and] <;>
     try { exact type_is_inhabited (CedarType.ext .duration)}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_datetime_type_is_datetime hr₂
@@ -694,11 +701,11 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     simp only [call, res]
     cases dt₁.durationSince dt₂ with
     | some v =>
-      simp []
+      simp only [reduceCtorEq, Except.ok.injEq, false_or, exists_eq_left']
       apply InstanceOfType.instance_of_ext
       simp [InstanceOfExtType]
     | none =>
-      simp [InstanceOfType]
+      simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
       apply type_is_inhabited
 
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}

@@ -189,14 +189,14 @@ instance Ext.strictLT : StrictLT Ext where
       simp [h₃] at h₁ h₂ ; simp [h₂]
     case datetime =>
       have h₂ := Datetime.strictLT.asymmetric x₁ x₂
-      simp [LT.lt] at h₂
+      simp only [LT.lt, Bool.not_eq_true] at h₂
       cases h₃ : Ext.Datetime.lt x₁ x₂ <;>
-      simp [h₃] at h₁ h₂ ; simp [h₂]
+      simp only [h₃, Bool.false_eq_true] at h₁ h₂ ; simp only [h₂]
     case duration =>
       have h₂ := Duration.strictLT.asymmetric x₁ x₂
-      simp [LT.lt] at h₂
+      simp only [LT.lt, Bool.not_eq_true] at h₂
       cases h₃ : Ext.Datetime.Duration.lt x₁ x₂ <;>
-      simp [h₃] at h₁ h₂ ; simp [h₂]
+      simp only [h₃, Bool.false_eq_true] at h₁ h₂ ; simp only [h₂]
   transitive a b c := by
     cases a <;> cases b <;> cases c <;> simp [LT.lt, Ext.lt] <;>
     rename_i x₁ x₂ x₃ <;> intro h₁ h₂
@@ -210,15 +210,15 @@ instance Ext.strictLT : StrictLT Ext where
       simp [h₃]
     case datetime =>
       have h₃ := Datetime.strictLT.transitive x₁ x₂ x₃
-      simp [LT.lt] at h₃
-      cases h₄ : Ext.Datetime.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Ext.Datetime.lt x₂ x₃ <;> simp [h₅] at *
+      simp only [LT.lt] at h₃
+      cases h₄ : Ext.Datetime.lt x₁ x₂ <;> simp only [h₄, Bool.false_eq_true] at *
+      cases h₅ : Ext.Datetime.lt x₂ x₃ <;> simp only [h₅, Bool.false_eq_true] at *
       simp [h₃]
     case duration =>
       have h₃ := Duration.strictLT.transitive x₁ x₂ x₃
-      simp [LT.lt] at h₃
-      cases h₄ : Ext.Datetime.Duration.lt x₁ x₂ <;> simp [h₄] at *
-      cases h₅ : Ext.Datetime.Duration.lt x₂ x₃ <;> simp [h₅] at *
+      simp only [LT.lt] at h₃
+      cases h₄ : Ext.Datetime.Duration.lt x₁ x₂ <;> simp only [h₄, Bool.false_eq_true] at *
+      cases h₅ : Ext.Datetime.Duration.lt x₂ x₃ <;> simp only [h₅, Bool.false_eq_true] at *
       simp [h₃]
   connected  a b   := by
     cases a <;> cases b <;> simp [LT.lt, Ext.lt] <;>
@@ -231,11 +231,11 @@ instance Ext.strictLT : StrictLT Ext where
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case datetime =>
       have h₂ := Datetime.strictLT.connected x₁ x₂
-      simp [LT.lt, h₁] at h₂
+      simp only [ne_eq, h₁, not_false_eq_true, LT.lt, forall_const] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
     case duration =>
       have h₂ := Duration.strictLT.connected x₁ x₂
-      simp [LT.lt, h₁] at h₂
+      simp only [ne_eq, h₁, not_false_eq_true, LT.lt, forall_const] at h₂
       rcases h₂ with h₂ | h₂ <;> simp [h₂]
 
 ----- `<` is strict on `Name` -----
