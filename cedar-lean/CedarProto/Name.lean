@@ -60,6 +60,6 @@ def Name.merge (x y : Name) : Name := {
 def EntityType.merge := Name.merge
 
 instance : Field Name := Field.fromInterField Proto.Name.toName Name.merge
-instance : Field EntityType := Field.fromInterField (λ n => n) EntityType.merge
+instance : Field EntityType := Field.fromInterField id EntityType.merge
 
 end Cedar.Spec
