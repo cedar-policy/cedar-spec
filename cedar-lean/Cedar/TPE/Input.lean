@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Value
 import Cedar.Spec.Expr
 import Cedar.Spec.Request
-import Cedar.Validation.TypedExpr
+import Cedar.Spec.Value
 import Cedar.Validation.RequestEntityValidator
+import Cedar.Validation.TypedExpr
 
 namespace Cedar.TPE
 
@@ -35,18 +35,18 @@ def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
 
 structure PartialRequest where
   principal : PartialEntityUID
-  action : EntityUID
-  resource : PartialEntityUID
+  action    : EntityUID
+  resource  : PartialEntityUID
   -- We don't need type annotation here because the value of `context` can only
   -- be accessed via evaluating a `TypedExpr`, which allows us to obtain a
   -- (typed) `Residual`
-  context :  Option (Map Attr Value)
+  context   : Option (Map Attr Value)
 
 -- We don't need type annotations here following the rationale above
 structure PartialEntityData where
-  attrs : Option (Map Attr Value)
+  attrs     : Option (Map Attr Value)
   ancestors : Option (Set EntityUID)
-  tags : Option (Map Attr Value)
+  tags      : Option (Map Attr Value)
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
@@ -87,12 +87,12 @@ where
         match entry.tags? with
         | .some tty => tags.values.all (instanceOfType · tty env.ets)
         | .none     => tags == Map.empty)
-    | .none => false
+    | .none       => false
   instanceOfActionSchema p :=
     let (uid, entry) := p
     match es.find? uid with
     | .some entry₁ => entry.ancestors == entry₁.ancestors
-    | _ => false
+    | _            => false
 
 def requestAndEntitiesIsValid (env : Environment) (req : PartialRequest) (es : PartialEntities) : Bool :=
   requestIsValid env req && entitiesIsValid env es
@@ -117,7 +117,7 @@ where
       partialIsValid r₂.asEntityUID (· = r₁) &&
       partialIsValid c₂ (· = c₁)
     then
-      pure ()
+      .ok ()
     else
       .error .requestsDoNotMatch
   entitiesIsConsistent : Except ConcretizationError Unit :=
@@ -126,7 +126,7 @@ where
       .error .typeError
     else
       if entitiesMatch then
-        pure ()
+        .ok ()
       else
         .error .entitiesDoNotMatch
   entitiesMatch :=

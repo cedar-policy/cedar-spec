@@ -36,45 +36,43 @@ instance : Coe Spec.Error Error where
 def optionValueToResidual (v : Option Value) (ty : CedarType) : Residual :=
   match v with
   | .some v => .val v ty
-  | .none => .error ty
+  | .none   => .error ty
 
 def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
   | .principal => varₒ req.principal.asEntityUID .principal ty
-  | .resource => varₒ req.resource.asEntityUID .resource ty
-  | .action => varₒ req.action .action ty
-  | .context => varₒ (req.context.map (.record ·)) .context ty
-where varₒ (val : Option Value) var ty :=
-  match val with
-  | .some v => .val v ty
-  | .none   => .var var ty
+  | .resource  => varₒ req.resource.asEntityUID .resource ty
+  | .action    => varₒ req.action .action ty
+  | .context   => varₒ (req.context.map (.record ·)) .context ty
+where
+  varₒ (val : Option Value) (var : Var) (ty : CedarType) : Residual :=
+    match val with
+    | .some v => .val v ty
+    | .none   => .var var ty
 
 def ite (c t e : Residual) (ty : CedarType) : Residual :=
   match c with
   | .val (.prim (.bool b)) _ => if b then t else e
-  | _ => .ite c t e ty
+  | _                        => .ite c t e ty
 
 def and (l r : Residual) (ty : CedarType) : Residual :=
   match l, r with
-  | .val true _, _ => r
+  | .val true  _, _ => r
   | .val false _, _ => false
-  | _, .val true _ => l
-  | _, _ => .and l r ty
+  | _, .val true  _ => l
+  | _, _            => .and l r ty
 
 def or (l r : Residual) (ty : CedarType) : Residual :=
   match l, r with
-  | .val true _, _ => true
+  | .val true  _, _ => true
   | .val false _, _ => r
   | _, .val false _ => l
-  | _, _ => .and l r ty
+  | _, _            => .and l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r.asValue with
-  | .some v =>
-    match (Spec.apply₁ op₁ v).map (Value.toResidual · ty) with
-    | .ok v => v
-    | .error _ => .error ty
-  | .none => .unaryApp op₁ r ty
+  | .some v => optionValueToResidual (Spec.apply₁ op₁ v).toOption ty
+  | .none   => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
@@ -90,7 +88,7 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
   let tags ← es.tags uid
   match tags.find? tag with
   | .some v => .some (.val v ty)
-  | .none => .some (.error ty)
+  | .none   => .some (.error ty)
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
   match op₂, r₁, r₂ with
@@ -127,34 +125,34 @@ where
 
 def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Option (Map Attr Value) :=
   match r with
-  | .val (.record m) _  => .some m
+  | .val (.record m) _              => .some m
   | .val (.prim (.entityUID uid)) _ => lookup uid
-  | _ => none
+  | _                               => none
 
 def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match attrsOf r es.attrs with
   | .some m => m.contains a
-  | .none => .hasAttr r a ty
+  | .none   => .hasAttr r a ty
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match attrsOf r es.attrs with
   | .some m => optionValueToResidual (m.find? a) ty
-  | .none => .getAttr r a ty
+  | .none   => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
   | .some vs => .val (.set (Set.make vs)) ty
-  | .none => .set rs ty
+  | .none    => .set rs ty
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
   | .some xs => .val (.record (Map.make xs)) ty
-  | .none => .record m ty
+  | .none    => .record m ty
 
 def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
   | .some vs => optionValueToResidual (Spec.call f vs).toOption ty
-  | .none => .call f rs ty
+  | .none    => .call f rs ty
 
 def evaluate
   (x : TypedExpr)

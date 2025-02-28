@@ -14,8 +14,8 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Value
 import Cedar.Spec.Expr
+import Cedar.Spec.Value
 import Cedar.Validation.TypedExpr
 
 namespace Cedar.TPE
@@ -52,7 +52,7 @@ instance : Coe EntityUID Residual where
 
 def Residual.asValue : Residual → Option Value
   | .val v _ => .some v
-  | _ => .none
+  | _        => .none
 
 def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
   .val v ty
