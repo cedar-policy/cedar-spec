@@ -37,6 +37,11 @@ def pure (a : α) : BParsec α := λ pos => { pos, res := .ok a }
 @[inline]
 def fail (msg : String) : BParsec α := λ pos => { pos, res := .error msg }
 
+@[inline]
+def ofExcept : Except String α → BParsec α
+  | .ok a => pure a
+  | .error e => fail e
+
 instance (α : Type) : Inhabited (BParsec α) := ⟨fail ""⟩
 
 @[inline]

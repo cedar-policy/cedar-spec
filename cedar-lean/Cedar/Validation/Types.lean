@@ -61,6 +61,12 @@ def map {α β} (f : α → β) : Qualified α → Qualified β
   | optional a => optional (f a)
   | required a => required (f a)
 
+def transpose {α ε} : Qualified (Except ε α) → Except ε (Qualified α)
+  | optional (.ok a) => .ok (optional a)
+  | required (.ok a) => .ok (required a)
+  | optional (.error e) => .error e
+  | required (.error e) => .error e
+
 end Qualified
 
 inductive CedarType where
