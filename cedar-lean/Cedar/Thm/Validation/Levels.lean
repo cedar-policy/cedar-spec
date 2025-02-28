@@ -30,6 +30,7 @@ import Cedar.Thm.Validation.Levels.BinaryApp
 import Cedar.Thm.Validation.Levels.And
 import Cedar.Thm.Validation.Levels.Or
 import Cedar.Thm.Validation.Levels.Record
+import Cedar.Thm.Validation.Levels.Set
 
 namespace Cedar.Thm
 
@@ -76,13 +77,14 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n nmax : Nat} {tx : TypedE
     have ihe := @level_based_slicing_is_sound_expr e
     exact level_based_slicing_is_sound_has_attr hn hs hc hr ht hl ihe
   case set xs =>
-    replace ⟨ hc, txs, ty,  htx, ht ⟩  := type_of_set_inversion ht
-    subst tx
-    cases hl ; rename_i hl
-    -- TODO: I need a slightly stronger inversion lemma that gives me something like
-    --       ∀ x ∈ xs, ∃ tx c', typeOf x c env = .ok (tx, c') ∧ (tx.typeOf ⊔ ty) = some ty ∧ tx ∈ txs
-    --       Notably, `tx ∈ txs` is required to concluded `TypedAtLevel tx n` by `hl`
-    sorry
+    have ih : ∀ x ∈ xs, TypedAtLevelIsSound x := by
+      intro x hx
+      have _ : sizeOf x < sizeOf (Expr.set xs) := by
+        have h₁ := List.sizeOf_lt_of_mem hx
+        simp only [Expr.set.sizeOf_spec]
+        omega
+      exact @level_based_slicing_is_sound_expr x
+    exact level_based_slicing_is_sound_set hn hs hc hr ht hl ih
   case call => sorry -- should be the same as set
   case record rxs =>
     have ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd := by
