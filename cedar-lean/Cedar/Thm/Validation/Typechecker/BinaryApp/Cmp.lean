@@ -53,11 +53,14 @@ theorem type_of_int_cmp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : 
       rename_i tc₁ tc₂ _ _ _ _ h₅ h₆
     )
   )
+  -- cases with `CedarType.int`
   case' h_6 | h_9 =>
     apply Or.inl
+  -- cases with `CedarType.ext ExtType.datetime`
   case' h_7 | h_10 =>
     apply Or.inr
     apply Or.inl
+  -- cases with `CedarType.ext ExtType.duration`
   case' h_8 | h_11 =>
     apply Or.inr
     apply Or.inr
