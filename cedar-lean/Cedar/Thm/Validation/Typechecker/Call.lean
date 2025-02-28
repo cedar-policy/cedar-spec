@@ -605,7 +605,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
     have ih₂ := ih x₂
-    simp [List.mem_cons, List.mem_singleton, true_or, TypeOfIsSound, forall_const] at ih₂
+    simp [TypeOfIsSound] at ih₂
     split_type_of h₈ ; rename_i h₈ hl₈ hr₈
     have ⟨_, v₂, hl₂, hr₂⟩ := ih₂ h₁ h₂ h₈
     simp only [EvaluatesTo] at ih₂
