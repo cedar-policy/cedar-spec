@@ -22,6 +22,7 @@ import Protobuf.Message
 import Protobuf.Packed
 import Protobuf.Proofs
 import Protobuf.String
+import Protobuf.Structure
 import Protobuf.Structures
 import Protobuf.Varint
 import Protobuf.WireType

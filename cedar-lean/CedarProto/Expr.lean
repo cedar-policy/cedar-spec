@@ -35,49 +35,43 @@ namespace Prim
 --   | int (i : Int64)
 --   | string (s : String)
 --   | entityUID (uid : EntityUID)
--- Note: This is the same as Literal in the proto file
+-- Note: This corresponds to Literal in the protobuf definitions
 
 @[inline]
 def merge_bool (p : Prim) (b2 : Bool) : Prim :=
   match p with
-    | .bool b1 => Prim.bool (Field.merge b1 b2)
-    | _ => Prim.bool b2
+    | .bool b1 => .bool (Field.merge b1 b2)
+    | _ => .bool b2
 
 @[inline]
 def merge_int (_ : Prim) (pi : Proto.Int64) : Prim :=
   have i : Int := pi
-  if H1 : i < Int64.MIN then
+  if h₁ : i < Int64.MIN then
     panic!("Integer less than INT64_MIN")
-  else if H2 : i > Int64.MAX then
+  else if h₂ : i > Int64.MAX then
     panic!("Integer greater than INT64_MAX")
   else
-    have h1 : Int64.MIN ≤ i ∧ i ≤ Int64.MAX := by
-      unfold Proto.Int64 at *
-      omega
-
+    have h : Int64.MIN ≤ i ∧ i ≤ Int64.MAX := by omega
     -- Override semantics
-    Prim.int (Int64.ofIntChecked i h1)
+    .int (Int64.ofIntChecked i h)
 
 @[inline]
 def merge_string (p : Prim) (s2 : String) : Prim :=
   match p with
-    | .string s1 => Prim.string (Field.merge s1 s2)
-    | _ => Prim.string s2
+    | .string s1 => .string (Field.merge s1 s2)
+    | _ => .string s2
 
 @[inline]
 def merge_euid (p : Prim) (euid2 : EntityUID) : Prim :=
   match p with
-    | .entityUID euid1 => Prim.entityUID (Field.merge euid1 euid2)
-    | _ => Prim.entityUID euid2
+    | .entityUID euid1 => .entityUID (Field.merge euid1 euid2)
+    | _ => .entityUID euid2
 
 @[inline]
 def merge (p1 : Prim) (p2 : Prim) : Prim :=
   match p2 with
     | .bool b2 => merge_bool p1 b2
-    | .int i2 =>
-      let i2₁ : Int := i2.toInt
-      let i2₂ : Proto.Int64 := i2₁
-      merge_int p1 i2₂
+    | .int i2 => merge_int p1 (i2 : Int)
     | .string s2 => merge_string p1 s2
     | .entityUID e2 => merge_euid p1 e2
 
@@ -115,7 +109,7 @@ def fromInt (n : Int) : Except String Var :=
     | 1 => .ok .action
     | 2 => .ok .resource
     | 3 => .ok .context
-    | n => .error s!"Field {n} does not exist in enum"
+    | n => .error s!"Field {n} does not exist in Var"
 
 instance : Inhabited Var where
   default := .principal
@@ -125,6 +119,71 @@ instance : ProtoEnum Var := {
 }
 
 end Var
+
+namespace PatElem
+
+inductive Wildcard where
+  | star
+deriving Inhabited
+
+instance : ProtoEnum Wildcard where
+  fromInt
+    | 0 => .ok .star
+    | n => .error s!"Field {n} does not exist in enum"
+
+@[inline]
+def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
+  -- With enums we perform replacement
+  match x with
+    | .star => .star
+
+@[inline]
+def mergeC (_ : PatElem) (x2 : String) : PatElem :=
+  -- With a single character we'll perform replacement
+  match x2.data with
+    | [c2] => .justChar c2
+    | _ => panic!("Only expected a single character in PatElem")
+
+@[inline]
+def merge (_ : PatElem) (y : PatElem) : PatElem :=
+  -- Each constructor of the sum type merges through
+  -- replacement, so we'll do the same here
+  y
+
+@[inline]
+def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
+  match t.fieldNum with
+    | 1 =>
+      let x : Wildcard ← Field.guardedParse t
+      pure (pure $ mergeWildcard · x)
+    | 2 =>
+      let x : String ← Field.guardedParse t
+      pure (pure $ mergeC · x)
+    | _ =>
+      t.wireType.skip
+      pure ignore
+
+instance : Message PatElem where
+  parseField := parseField
+  merge := merge
+
+instance : Field Pattern := Field.fromInterField (λ (elems : Repeated PatElem) => elems.toList) (· ++ ·)
+
+end PatElem
+
+instance : ProtoEnum UnaryOp where
+  fromInt
+    | 0 => .ok .not
+    | 1 => .ok .neg
+    | 2 => .ok .isEmpty
+    | n => .error s!"Field {n} does not exist in UnaryOp"
+
+def UnaryOp.merge : UnaryOp → UnaryOp → UnaryOp
+  | .like p1, .like p2 => .like (Field.merge p1 p2)
+  | .is et1, .is et2 => .is (Field.merge et1 et2)
+  | _, op2 => op2 -- in all other cases, override
+
+instance : Field UnaryOp := Field.fromInterField id UnaryOp.merge
 
 namespace Proto
 
@@ -194,11 +253,7 @@ def Expr.merge (e1 : Expr) (e2 : Expr) : Expr :=
   | .or left1 right1, .or left2 right2 =>
     .or (merge left1 left2) (merge right1 right2)
   | .unaryApp op1 e1, .unaryApp op2 e2 =>
-    let newOp := match op1, op2 with
-      | .like p1, .like p2 => .like (p1 ++ p2)
-      | .is et1, .is et2 => .is (Field.merge et1 et2)
-      | _, _ => op2
-    .unaryApp newOp (merge e1 e2)
+    .unaryApp (UnaryOp.merge op1 op2) (merge e1 e2)
   | .binaryApp _ left1 right1, .binaryApp op2 left2 right2 =>
     .binaryApp op2 (merge left1 left2) (merge right1 right2)
   | .getAttr e1 a1, .getAttr e2 a2 =>
@@ -422,7 +477,7 @@ end Proto.ExprKind.BinaryApp
 
 namespace Proto.ExprKind.ExtensionFunctionApp
 @[inline]
-def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Name) : BParsec ExprKind.ExtensionFunctionApp :=
+def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BParsec ExprKind.ExtensionFunctionApp :=
   match result with
   | .call _ es => match xfn.id with
     | "decimal" => pure $ .call .decimal es
@@ -501,60 +556,6 @@ def merge (x1 x2 : ExprKind.HasAttr) : ExprKind.HasAttr :=
 -- parseField requires mutual recursion and can be found at the end of this file
 end Proto.ExprKind.HasAttr
 
-namespace PatElem
-inductive Wildcard where
-  | star
-deriving Inhabited
-
-namespace Wildcard
-def fromInt (n : Int) : Except String Wildcard :=
-  match n with
-    | 0 => .ok .star
-    | n => .error s!"Field {n} does not exist in enum"
-
-instance : ProtoEnum Wildcard := {
-  fromInt := fromInt
-}
-end Wildcard
-
-@[inline]
-def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
-  -- With enums we perform replacement
-  match x with
-    | .star => .star
-
-@[inline]
-def mergeC (_ : PatElem) (x2 : String) : PatElem :=
-  -- With a single character we'll perform replacement
-  match x2.data with
-    | [c2] => .justChar c2
-    | _ => panic!("Only expected a single character in PatElem")
-
-@[inline]
-def merge (_ : PatElem) (y : PatElem) : PatElem :=
-  -- Each constructor of the sum type merges through
-  -- replacement, so we'll do the same here
-  y
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Wildcard ← Field.guardedParse t
-      pure (pure $ mergeWildcard · x)
-    | 2 =>
-      let x : String ← Field.guardedParse t
-      pure (pure $ mergeC · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message PatElem := {
-  parseField := parseField
-  merge := merge
-}
-end PatElem
-
 namespace Proto.ExprKind.Like
 @[inline]
 def mergeExpr (result : ExprKind.Like) (e2 : Expr) : ExprKind.Like :=
@@ -563,16 +564,16 @@ def mergeExpr (result : ExprKind.Like) (e2 : Expr) : ExprKind.Like :=
   | _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
 
 @[inline]
-def mergePattern (result : ExprKind.Like) (pat2 : Array PatElem) : ExprKind.Like :=
+def mergePattern (result : ExprKind.Like) (pat2 : Repeated PatElem) : ExprKind.Like :=
   match result with
-  | .unaryApp (.like pat1) e => .unaryApp (.like (pat1 ++ pat2.toList)) e
+  | .unaryApp (.like pat1) e => .unaryApp (.like (Field.merge pat1 pat2.toList)) e
   | _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
 
 @[inline]
 def merge (x1 x2 : ExprKind.Like) : ExprKind.Like :=
   match x1, x2 with
   | .unaryApp (.like p1) e1, .unaryApp (.like p2) e2 =>
-    .unaryApp (.like (p1 ++ p2)) (Expr.merge e1 e2)
+    .unaryApp (.like (Field.merge p1 p2)) (Expr.merge e1 e2)
   | _, _ => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
 
 -- parseField relies on mutual recursion and can be found at the end of the file
@@ -586,7 +587,7 @@ def mergeExpr (result : ExprKind.Is) (e2 : Expr) : ExprKind.Is :=
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
 
 @[inline]
-def mergeEt (result : ExprKind.Is) (et2 : Name) : ExprKind.Is :=
+def mergeEt (result : ExprKind.Is) (et2 : Spec.Name) : ExprKind.Is :=
   match result with
   | .unaryApp (.is et1) e => .unaryApp (.is (Field.merge et1 et2)) e
   | _ => panic!("Expected ExprKind.Is to have constructor .unaryApp .is")
@@ -808,7 +809,7 @@ partial def Proto.ExprKind.ExtensionFunctionApp.parseField (t : Proto.Tag) : BPa
   have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
   match t.fieldNum with
     | 1 =>
-      let x : Name ← Field.guardedParse t
+      let x : Spec.Name ← Field.guardedParse t
       pure (Proto.ExprKind.ExtensionFunctionApp.mergeName · x)
     | 2 =>
       let x : Repeated Expr ← Field.guardedParse t

@@ -13,7 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
+import Protobuf.Message
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Request
@@ -31,51 +34,19 @@ deriving Inhabited, DecidableEq, Repr
 
 namespace AuthorizationRequest
 
-@[inline]
-def mergeRequest (result : AuthorizationRequest) (x : Request) : AuthorizationRequest :=
-  {result with
-    request := Field.merge result.request x
-  }
+instance : Message AuthorizationRequest := {
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t request (update request)
+    | 2 => parseFieldElement t policies (update policies)
+    | 3 => parseFieldElement t entities (update entities)
+    | _ => let _ ← t.wireType.skip ; pure ignore
 
-@[inline]
-def mergeEntities (result : AuthorizationRequest) (x : Entities) : AuthorizationRequest :=
-  {result with
-    entities := Field.merge result.entities x
-  }
-
-@[inline]
-def mergePolicies (result : AuthorizationRequest) (x : Policies) : AuthorizationRequest :=
-  {result with
-    policies := Field.merge result.policies x
-  }
-
-@[inline]
-def merge (x y : AuthorizationRequest) : AuthorizationRequest :=
-  {
-    request := Field.merge x.request y.request
+  merge x y := {
+    request :=  Field.merge x.request  y.request
     entities := Field.merge x.entities y.entities
     policies := Field.merge x.policies y.policies
   }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn AuthorizationRequest) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Request ← Field.guardedParse t
-      pure (pure $ mergeRequest · x)
-    | 2 =>
-      let x : Policies ← Field.guardedParse t
-      pure (pure $ mergePolicies · x)
-    | 3 =>
-      let x : Entities ← Field.guardedParse t
-      pure (pure $ mergeEntities · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message AuthorizationRequest := {
-  parseField := parseField
-  merge := merge
 }
 
 end AuthorizationRequest

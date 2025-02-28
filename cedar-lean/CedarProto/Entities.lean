@@ -13,14 +13,17 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
+import Protobuf.Message
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Entity
 
 open Proto
 
-namespace Cedar.Spec
+namespace Cedar.Spec.Proto
 
 -- Note that Cedar.Spec.Entities is defined as
 -- abbrev Entities := Map EntityUID EntityData
@@ -29,59 +32,50 @@ namespace Cedar.Spec
 -- we need to parse an intermediate representation EntityProto
 -- which contains that and transform it to the appropriate types.
 
-def EntitiesProto : Type := Array EntityProto
-deriving instance Inhabited for EntitiesProto
-instance : HAppend EntitiesProto EntitiesProto EntitiesProto where
-  hAppend x y :=
-    let x : Array EntityProto := x
-    let y : Array EntityProto := y
-    x ++ y
-instance : HAppend EntitiesProto (Array EntityProto) EntitiesProto where
-  hAppend x y :=
-    let x : Array EntityProto := x
-    x ++ y
+structure Entities where
+  entities : Repeated Entity
+deriving Repr, Inhabited
 
-namespace EntitiesProto
+instance : HAppend Entities Entities Entities where
+  hAppend x y := { entities := x.entities ++ y.entities }
+instance : HAppend Entities (Repeated Entity) Entities where
+  hAppend x y := { entities := x.entities ++ y }
 
-@[inline]
-def mergeEntities (result : EntitiesProto) (x : Array EntityProto) : EntitiesProto :=
-  result ++ x
+namespace Entities
 
-@[inline]
-def merge (x : EntitiesProto) (y : EntitiesProto) : EntitiesProto :=
-  x ++ y
+instance : Message Entities := {
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t entities (update entities)
+    | _ => let _ ← t.wireType.skip ; pure ignore
 
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn EntitiesProto) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Repeated EntityProto ← Field.guardedParse t
-      pure (pure $ mergeEntities · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message EntitiesProto := {
-  parseField := parseField
-  merge := merge
+  merge := (· ++ ·)
 }
 
 @[inline]
-def toEntities (e : EntitiesProto) : Entities :=
-  Cedar.Data.Map.make (e.toList.map λ entity => ⟨entity.uid, entity.data⟩)
-
-end EntitiesProto
-
-namespace Entities
-@[inline]
-def merge (e1 : Entities) (e2 : Entities) : Entities :=
-  -- Don't sort if e1 is empty
-  match e1.kvs with
-    | [] => e2
-    | _ => Cedar.Data.Map.make (e2.kvs ++ e1.kvs)
-
-instance : Field Entities := Field.fromInterField EntitiesProto.toEntities merge
+def toEntities (e : Entities) : Spec.Entities :=
+  Data.Map.make $ e.entities.toList.map λ { uid, attrs, ancestors, tags } => (
+    uid,
+    {
+      attrs := Data.Map.make attrs.toList
+      ancestors := Data.Set.make ancestors.toList
+      tags := Data.Map.make tags.toList
+    }
+  )
 
 end Entities
+
+end Cedar.Spec.Proto
+
+namespace Cedar.Spec
+
+def Entities.merge (x y : Entities) : Entities :=
+  -- avoid sorting if either is empty
+  match x.kvs, y.kvs with
+  | [], _ => y
+  | _, [] => x
+  | _, _  => Data.Map.make (x.kvs ++ y.kvs)
+
+instance : Field Entities := Field.fromInterField Proto.Entities.toEntities Entities.merge
 
 end Cedar.Spec

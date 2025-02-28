@@ -13,7 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
+import Protobuf.Map
+import Protobuf.Message
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.TemplateBody
@@ -21,7 +25,7 @@ import CedarProto.Policy
 
 open Proto
 
-namespace Cedar.Spec
+namespace Cedar.Spec.Proto
 
 structure PolicySet where
   templates : Proto.Map String Template
@@ -63,28 +67,31 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PolicySet) := do
       pure ignore
 
 instance : Message PolicySet := {
-  parseField := parseField
-  merge := merge
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t templates (update templates)
+    | 2 => parseFieldElement t links (update links)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    templates := Field.merge x.templates y.templates
+    links     := Field.merge x.links     y.links
+  }
 }
+
+def toPolicies : PolicySet → Spec.Policies
+  | { templates, links } =>
+    let templates := Data.Map.make templates.toList
+    match link? templates (links.toList.map Prod.snd) with
+    | .ok policies => policies
+    | .error e => panic!(s!"toPolicies: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}")
 
 end PolicySet
 
+end Cedar.Spec.Proto
 
-namespace Policies
+namespace Cedar.Spec
 
-@[inline]
-def fromPolicySet (x : PolicySet) : Policies :=
-  let templates := Cedar.Data.Map.make x.templates.toList
-  let links := x.links.map (λ ⟨id, p⟩ => (p.mergeId id).mkWf)
-  match link? templates links.toList with
-  | .ok policies => policies
-  | .error e => panic!(s!"fromPolicySet: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}}")
+instance : Field Policies := Field.fromInterField Proto.PolicySet.toPolicies (· ++ ·)
 
-@[inline]
-private def merge (x y : Policies) : Policies :=
-  x ++ y
-
-instance : Field Policies := Field.fromInterField fromPolicySet merge
-
-end Policies
 end Cedar.Spec
