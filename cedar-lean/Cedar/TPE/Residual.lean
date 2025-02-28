@@ -61,10 +61,12 @@ def Value.toResidual (v : Value) (ty : CedarType) : Residual :=
 def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Value :=
   match x with
   | .val v _ => .ok v
-  | .var (.principal) _ => .ok req.principal
-  | .var (.resource) _ => .ok req.resource
-  | .var (.action) _ => .ok req.action
-  | .var (.context) _ => .ok req.context
+  | .var v _ =>
+    match v with
+    | .principal => .ok req.principal
+    | .resource => .ok req.resource
+    | .action => .ok req.action
+    | .context => .ok req.context
   | .ite c x y _ => do
     let c ← c.evaluate req es
     let b ← c.asBool
