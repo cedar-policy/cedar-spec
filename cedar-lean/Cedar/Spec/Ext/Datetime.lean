@@ -59,6 +59,9 @@ instance Datetime.decLt (d₁ d₂ : Datetime) : Decidable (d₁ < d₂) :=
 instance Datetime.decLe (d₁ d₂ : Datetime) : Decidable (d₁ ≤ d₂) :=
   if h : Datetime.le d₁ d₂ then isTrue h else isFalse h
 
+instance : Coe Int64 Datetime where
+  coe i := Datetime.mk i
+
 deriving instance Repr, Inhabited, DecidableEq for Datetime
 
 namespace Datetime
@@ -72,7 +75,7 @@ def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm
 def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
 
 def datetime? (i: Int) : Option Datetime :=
-  Int64.ofInt? i |>.map Datetime.mk
+  Int64.ofInt? i
 
 def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
@@ -130,6 +133,9 @@ instance Duration.decLt (d₁ d₂ : Duration) : Decidable (d₁ < d₂) :=
 instance Duration.decLe (d₁ d₂ : Duration) : Decidable (d₁ ≤ d₂) :=
   if h : Duration.le d₁ d₂ then isTrue h else isFalse h
 
+instance : Coe Int64 Duration where
+  coe i := Duration.mk i
+
 -- Note: The instances below are only used for tests.
 -- We might redefine them if they are need for something else.
 instance : OfNat Duration n where
@@ -149,10 +155,10 @@ def MILLISECONDS_PER_DAY: Int := 86400000
 ----- Definitions -----
 
 def duration? (i: Int) : Option Duration :=
-  Int64.ofInt? i |>.map Duration.mk
+  Int64.ofInt? i
 
 def Duration.neg? (d : Duration) : Option Duration :=
-  d.val.neg? |>.map Duration.mk
+  d.val.neg?
 
 def durationUnits? (n: Nat) (suffix: String) : Option Int := do
   let i ← Int64.ofInt? n
@@ -215,10 +221,10 @@ deriving instance Repr for Duration
 abbrev duration := Duration.parse
 
 def offset (datetime: Datetime) (duration: Duration) : Option Datetime :=
-  Int64.add? datetime.val duration.val |>.map Datetime.mk
+  Int64.add? datetime.val duration.val
 
 def durationSince (datetime other: Datetime) : Option Duration :=
-  Int64.sub? datetime.val other.val |>.map Duration.mk
+  Int64.sub? datetime.val other.val
 
 def toDate (datetime: Datetime) : Option Datetime :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
@@ -231,10 +237,10 @@ def toDate (datetime: Datetime) : Option Datetime :=
 def toTime (datetime: Datetime) : Duration :=
   let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
   if datetime.val >= 0
-  then Duration.mk (datetime.val.mod millisPerDayI64)
+  then datetime.val.mod millisPerDayI64
   else let rem := datetime.val.mod millisPerDayI64
        if rem == 0
-       then Duration.mk rem
-       else Duration.mk (rem + millisPerDayI64)
+       then rem
+       else (rem + millisPerDayI64)
 
 end Datetime
