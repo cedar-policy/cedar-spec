@@ -77,22 +77,21 @@ def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   then
     pure true
   else
-    ((es.ancestors uid₁).map
-      λ ancestors ↦ ancestors.contains uid₂)
+    (es.ancestors uid₁).map (Set.contains · uid₂)
 
 def inₛ (uid₁ : EntityUID) (vs : Set Value) (es : PartialEntities): Result (Option Bool) :=
-  (vs.mapOrErr Value.asEntityUID .typeError).map λ uids ↦
-    uids.foldl disjunction (.some false)
+  (vs.mapOrErr Value.asEntityUID .typeError).map
+    (Set.foldl disjunction (.some false))
 where disjunction accum uid₂ := do
   let l ← inₑ uid₁ uid₂ es
   let r ← accum
   pure (l || r)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
-  (es.tags uid).map λ tags ↦ tags.contains tag
+  (es.tags uid).map (Map.contains · tag)
 
 def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Option Residual :=
-  (es.tags uid).map (λ tags ↦
+  (es.tags uid).map (λ tags =>
     ((tags.find? tag).map (.val · ty)).getD (.error ty))
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
@@ -164,7 +163,7 @@ def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   pure (a, v)
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
-  match m.mapM λ (a, r₁) ↦ bindAttr a r₁.asValue with
+  match m.mapM λ (a, r₁) => bindAttr a r₁.asValue with
   | .some xs => .val (.record (Map.make xs)) ty
   | .none => .record m ty
 
@@ -209,13 +208,13 @@ def evaluate (x : TypedExpr)
     let r := evaluate e req es
     getAttr r a es ty
   | .set xs ty =>
-    let rs := xs.map₁ (λ ⟨x₁, _⟩ ↦ evaluate x₁ req es)
+    let rs := xs.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)
     set rs ty
   | .record m ty =>
-    let m := m.map₁ (λ ⟨(a, x₁), _⟩ ↦ (a, (evaluate x₁ req es)))
+    let m := m.map₁ (λ ⟨(a, x₁), _⟩ => (a, (evaluate x₁ req es)))
     record m ty
   | .call f args ty =>
-    let rs := args.map₁ (λ ⟨x₁, _⟩ ↦ evaluate x₁ req es)
+    let rs := args.map₁ (λ ⟨x₁, _⟩ => evaluate x₁ req es)
     call f rs ty
 termination_by x
 decreasing_by

@@ -31,7 +31,7 @@ structure PartialEntityUID where
   id : Option String
 
 def PartialEntityUID.asEntityUID (self : PartialEntityUID) : Option EntityUID :=
-  self.id.map λ x ↦ ⟨self.ty, x⟩
+  self.id.map (⟨self.ty, ·⟩)
 
 structure PartialRequest where
   principal : PartialEntityUID
@@ -63,11 +63,11 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
 
 def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
-  (partialIsValid req.principal.asEntityUID λ principal ↦
+  (partialIsValid req.principal.asEntityUID λ principal =>
     instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
-  (partialIsValid req.resource.asEntityUID λ resource ↦
+  (partialIsValid req.resource.asEntityUID λ resource =>
     instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
-  (partialIsValid req.context λ m ↦
+  (partialIsValid req.context λ m =>
     instanceOfType (.record m) (.record env.reqty.context) env.ets)
 
 def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
@@ -78,13 +78,12 @@ where
     match env.ets.find? uid.ty with
     | .some entry =>
       entry.isValidEntityEID uid.eid &&
-      (partialIsValid ancestors λ ancestors ↦
+      (partialIsValid ancestors λ ancestors =>
         ancestors.all (λ ancestor =>
         entry.ancestors.contains ancestor.ty &&
         instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
-      (partialIsValid attrs λ attrs ↦
-        instanceOfType attrs (.record entry.attrs) env.ets) &&
-      (partialIsValid tags λ tags ↦
+      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env.ets)) &&
+      (partialIsValid tags λ tags =>
         match entry.tags? with
         | .some tty => tags.values.all (instanceOfType · tty env.ets)
         | .none     => tags == Map.empty)
@@ -104,7 +103,7 @@ inductive ConcretizationError
   | entitiesDoNotMatch
 
 def isConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
-  requestIsConsistent >>= (λ _ => entitiesIsConsistent)
+  do requestIsConsistent; entitiesIsConsistent
 where
   requestIsConsistent :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
@@ -113,10 +112,10 @@ where
   else
     let ⟨p₁, a₁, r₁, c₁⟩ := req₁
     let ⟨p₂, a₂, r₂, c₂⟩ := req₂
-    if partialIsValid p₂.asEntityUID λ uid ↦ uid = p₁ &&
+    if partialIsValid p₂.asEntityUID (· = p₁) &&
       a₁ = a₂ &&
-      partialIsValid r₂.asEntityUID λ uid ↦ uid = r₁ &&
-      partialIsValid c₂ λ c ↦ c = c₁
+      partialIsValid r₂.asEntityUID (· = r₁) &&
+      partialIsValid c₂ (· = c₁)
     then
       pure ()
     else
@@ -131,13 +130,13 @@ where
       else
         .error .entitiesDoNotMatch
   entitiesMatch :=
-      es₂.kvs.all λ (a₂, e₂) ↦ match es₁.find? a₂ with
+      es₂.kvs.all λ (a₂, e₂) => match es₁.find? a₂ with
         | .some e₁ =>
           let ⟨attrs₁, ancestors₁, tags₁⟩ := e₁
           let ⟨attrs₂, ancestors₂, tags₂⟩ := e₂
-          partialIsValid attrs₂ λ val ↦ val = attrs₁ &&
-          partialIsValid ancestors₂ λ val ↦ val = ancestors₁ &&
-          partialIsValid tags₂ λ val ↦ val = tags₁
+          partialIsValid attrs₂ (· = attrs₁) &&
+          partialIsValid ancestors₂ (· = ancestors₁) &&
+          partialIsValid tags₂ (· = tags₁)
         | .none => false
 
 end Cedar.TPE
