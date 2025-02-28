@@ -27,7 +27,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_set {xs : List Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_call {xs : List Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hn : nmax ≥ n)
   (hs : slice = entities.sliceAtLevel request nmax)
   (hc : CapabilitiesInvariant c₀ request entities)

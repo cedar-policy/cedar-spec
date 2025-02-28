@@ -31,6 +31,7 @@ import Cedar.Thm.Validation.Levels.And
 import Cedar.Thm.Validation.Levels.Or
 import Cedar.Thm.Validation.Levels.Record
 import Cedar.Thm.Validation.Levels.Set
+import Cedar.Thm.Validation.Levels.Call
 
 namespace Cedar.Thm
 
