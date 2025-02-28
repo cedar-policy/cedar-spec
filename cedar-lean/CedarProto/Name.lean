@@ -57,7 +57,7 @@ def Name.merge (x y : Name) : Name := {
   path := x.path ++ y.path
 }
 
-def EntityType.merge (x y : EntityType) : EntityType := Name.merge x y
+def EntityType.merge := Name.merge
 
 instance : Field Name := Field.fromInterField Proto.Name.toName Name.merge
 instance : Field EntityType := Field.fromInterField (λ n => n) EntityType.merge
