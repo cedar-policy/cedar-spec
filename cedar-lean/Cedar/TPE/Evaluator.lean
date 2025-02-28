@@ -33,10 +33,13 @@ deriving Repr, Inhabited, DecidableEq
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
-def optionValueToResidual (v : Option Value) (ty : CedarType) : Residual :=
-  match v with
-  | .some v => .val v ty
-  | .none   => .error ty
+def someOrError : Option Value → CedarType → Residual
+  | .some v, ty => .val v ty
+  | .none,   ty => .error ty
+
+def someOrSelf : Option Value → CedarType → Residual → Residual
+  | .some v, ty, _   => .val v ty
+  | .none,   _, self => self
 
 def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
@@ -45,7 +48,7 @@ def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   | .action    => varₒ req.action .action ty
   | .context   => varₒ (req.context.map (.record ·)) .context ty
 where
-  varₒ (val : Option Value) (var : Var) (ty : CedarType) : Residual :=
+  varₒ (val : Option Value) var ty : Residual :=
     match val with
     | .some v => .val v ty
     | .none   => .var var ty
@@ -55,23 +58,21 @@ def ite (c t e : Residual) (ty : CedarType) : Residual :=
   | .val (.prim (.bool b)) _ => if b then t else e
   | _                        => .ite c t e ty
 
-def and (l r : Residual) (ty : CedarType) : Residual :=
-  match l, r with
-  | .val true  _, _ => r
-  | .val false _, _ => false
-  | _, .val true  _ => l
-  | _, _            => .and l r ty
+def and : Residual → Residual → CedarType → Residual
+  | .val true  _, r, _ => r
+  | .val false _, _, _ => false
+  | l, .val true _, _  => l
+  | l, r, ty           => .and l r ty
 
-def or (l r : Residual) (ty : CedarType) : Residual :=
-  match l, r with
-  | .val true  _, _ => true
-  | .val false _, _ => r
-  | _, .val false _ => l
-  | _, _            => .and l r ty
+def or : Residual → Residual → CedarType → Residual
+  | .val true  _, _, _ => true
+  | .val false _, r, _ => r
+  | l, .val false _, _ => l
+  | l, r, ty           => .and l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r.asValue with
-  | .some v => optionValueToResidual (Spec.apply₁ op₁ v).toOption ty
+  | .some v => someOrError (Spec.apply₁ op₁ v).toOption ty
   | .none   => .unaryApp op₁ r ty
 
 def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
@@ -99,11 +100,11 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   | .lessEq, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     .val (i ≤ j : Bool) ty
   | .add, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    optionValueToResidual (i.add? j) ty
+    someOrError (i.add? j) ty
   | .sub, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    optionValueToResidual (i.sub? j) ty
+    someOrError (i.sub? j) ty
   | .mul, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    optionValueToResidual (i.mul? j) ty
+    someOrError (i.mul? j) ty
   | .contains, .val (.set vs₁) _, .val v₂ _ =>
     .val (vs₁.contains v₂) ty
   | .containsAll, .val (.set vs₁) _, .val (.set vs₂) _ =>
@@ -111,15 +112,14 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   | .containsAny, .val (.set vs₁) _, .val (.set vs₂) _ =>
     .val (vs₁.intersects vs₂) ty
   | .mem, .val (.prim (.entityUID uid₁)) _, .val (.prim (.entityUID uid₂)) _ =>
-    ((inₑ uid₁ uid₂ es).map Coe.coe).getD self
+    someOrSelf (inₑ uid₁ uid₂ es) ty self
   | .mem, .val (.prim (.entityUID uid₁)) _, .val (.set vs) _ =>
-    ((inₛ uid₁ vs es).map Coe.coe).getD self
+    someOrSelf (inₛ uid₁ vs es) ty self
   | .hasTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    ((hasTag uid₁ tag es).map Coe.coe).getD self
+    someOrSelf (hasTag uid₁ tag es) ty self
   | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
     (getTag uid₁ tag es ty).getD self
-  | _, _, _ =>
-    self
+  | _, _, _ => self
 where
   self := .binaryApp op₂ r₁ r₂ ty
 
@@ -136,12 +136,12 @@ def hasAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : 
 
 def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
   match attrsOf r es.attrs with
-  | .some m => optionValueToResidual (m.find? a) ty
+  | .some m => someOrError (m.find? a) ty
   | .none   => .getAttr r a ty
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some vs => .val (.set (Set.make vs)) ty
+  | .some xs => .val (.set (Set.make xs)) ty
   | .none    => .set rs ty
 
 def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
@@ -149,10 +149,10 @@ def record (m : List (Attr × Residual)) (ty : CedarType) : Residual :=
   | .some xs => .val (.record (Map.make xs)) ty
   | .none    => .record m ty
 
-def call (f : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
+def call (xfn : ExtFun) (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
-  | .some vs => optionValueToResidual (Spec.call f vs).toOption ty
-  | .none    => .call f rs ty
+  | .some xs => someOrError (Spec.call xfn xs).toOption ty
+  | .none    => .call xfn rs ty
 
 def evaluate
   (x : TypedExpr)
