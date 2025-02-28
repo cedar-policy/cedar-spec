@@ -188,15 +188,10 @@ decreasing_by
   all_goals
     simp_wf
     try omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    have h₁ := List.sizeOf_lt_of_mem h
-    simp at h₁
-    omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
+  any_goals
+    rename_i h
+    replace h := List.sizeOf_lt_of_mem h
+    try simp at h
     omega
 
 def evaluatePolicy (schema : Schema)

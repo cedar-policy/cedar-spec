@@ -104,15 +104,9 @@ termination_by x
 decreasing_by
   all_goals
     simp_wf
-    try omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
-    omega
-  case _ h =>
-    simp at h
-    omega
-  case _ h =>
-    have := List.sizeOf_lt_of_mem h
+    rename_i h
+    try have := List.sizeOf_lt_of_mem h
+    try simp at h
     omega
 
 mutual
