@@ -33,25 +33,24 @@ deriving Repr, Inhabited, DecidableEq
 instance : Coe Spec.Error Error where
   coe := Error.evaluation
 
+/- Convert an optional value to a residual: Return `.error ty` when it's none -/
 def someOrError : Option Value → CedarType → Residual
   | .some v, ty => .val v ty
   | .none,   ty => .error ty
 
+/- Convert an optional value to a residual: Return `self` when it's none -/
 def someOrSelf : Option Value → CedarType → Residual → Residual
   | .some v, ty, _   => .val v ty
   | .none,   _, self => self
 
 def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
-  | .principal => varₒ req.principal.asEntityUID .principal ty
-  | .resource  => varₒ req.resource.asEntityUID .resource ty
-  | .action    => varₒ req.action .action ty
-  | .context   => varₒ (req.context.map (.record ·)) .context ty
+  | .principal => varₒ req.principal.asEntityUID
+  | .resource  => varₒ req.resource.asEntityUID
+  | .action    => varₒ req.action
+  | .context   => varₒ (req.context.map (.record ·))
 where
-  varₒ (val : Option Value) var ty : Residual :=
-    match val with
-    | .some v => .val v ty
-    | .none   => .var var ty
+  varₒ := (someOrSelf · ty (.var var ty))
 
 def ite (c t e : Residual) (ty : CedarType) : Residual :=
   match c with
