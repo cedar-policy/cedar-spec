@@ -49,8 +49,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's *not* Ok to enable this flag because this target will otherwise throw unknown extension function errors.
-    enable_datetime_extension: false,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

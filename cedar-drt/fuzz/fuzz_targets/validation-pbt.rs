@@ -65,8 +65,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT.
-    enable_datetime_extension: true,
 };
 
 const LOG_FILENAME_GENERATION_START: &str = "./logs/01_generation_start.txt";
@@ -162,7 +160,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
             Err(Error::OtherArbitrary(_)) => {
                 checkpoint(LOG_FILENAME_ERR_OTHER.to_string() + "_" + doing_what)
             }
-            Ok(_) | Err(Error::DatetimeExtensionsDisabled) => (),
+            Ok(_) => (),
         }
     }
     res
