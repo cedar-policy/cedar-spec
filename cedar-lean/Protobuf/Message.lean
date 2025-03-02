@@ -27,6 +27,8 @@ namespace Proto
 
 def MergeFn (α : Type) : Type := (α → BParsec α)
 
+def pureMergeFn (f : α → α) : BParsec (α → BParsec α) := pure (λ x => pure (f x))
+
 /--
   a MergeFn which ignores the newly parsed data and just takes the previous
   value as-is
