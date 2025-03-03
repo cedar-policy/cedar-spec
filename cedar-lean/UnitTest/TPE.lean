@@ -20,11 +20,20 @@ import Cedar.Validation.Types
 import Cedar.Data.Map
 import UnitTest.Run
 
+namespace UnitTest.TPE
+
+open Cedar.Spec
+open Cedar.TPE
+open Cedar.Validation
+
+def ActionType : EntityType := ⟨"Action", []⟩
+
+def testResult (p : Policy) (schema : Schema) (req : PartialRequest) (es : PartialEntities) (r : Residual) : TestCase IO :=
+  test s!"policy {p.id}" ⟨λ _ => checkEq (evaluatePolicy schema p req es) (.ok r)⟩
+
 namespace UnitTest.TPE.Basic
 
-open Cedar.TPE
 open Cedar.Spec
-open Cedar.Validation
 open Cedar.Data
 
 /-
@@ -52,9 +61,6 @@ action Delete appliesTo {
   }
 };
 -/
-
-def ActionType : EntityType :=
-  ⟨"Action", []⟩
 
 def UserType : EntityType :=
   ⟨"User", []⟩
@@ -212,17 +218,14 @@ def es : PartialEntities :=
      (⟨UserType, "Alice"⟩, ⟨.some default, .some default, default⟩)
   ]
 
-private def testResult (p : Policy) (r : Residual) : TestCase IO :=
-  test s!"policy {p.id}" ⟨λ _ => checkEq (evaluatePolicy schema p req es) (.ok r)⟩
-
 def tests :=
   suite "TPE results for the RFC basic example"
   [
-    testResult policy₁
+    testResult policy₁ schema req es
       (.getAttr (.var .resource (.entity { id := "Document", path := [] }))
         "isPublic"
       (.bool .anyBool)),
-    testResult policy₂
+    testResult policy₂ schema req es
       (.binaryApp
         .eq
         (.getAttr
@@ -233,7 +236,7 @@ def tests :=
             (.prim (.entityUID { ty := { id := "User", path := [] }, eid := "Alice" }))
             (.entity { id := "User", path := [] }))
         (.bool .anyBool)),
-    testResult policy₃ (.val false (.bool .ff))
+    testResult policy₃ schema req es (.val false (.bool .ff))
   ]
 --#eval TestSuite.runAll [tests]
 
@@ -267,8 +270,6 @@ action PickUp appliesTo {
   context: {}
 };
 -/
-def ActionType : EntityType :=
-  ⟨"Action", []⟩
 
 def AddressType : RecordType :=
   Map.make [
@@ -357,13 +358,10 @@ def es : PartialEntities :=
      (⟨UserType, "Alice"⟩, ⟨.some $ Map.make [("address", .record $ Map.make [("street", "Sesame Street")])], .some default, default⟩)
   ]
 
-private def testResult (p : Policy) (r : Residual) : TestCase IO :=
-  test s!"policy {p.id}" ⟨λ _ => checkEq (evaluatePolicy schema p req es) (.ok r)⟩
-
 def tests :=
   suite "TPE results for the RFC basic example"
   [
-    testResult policy
+    testResult policy schema req es
       (.binaryApp
         .eq
         (.val
@@ -388,7 +386,7 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Data
 
-def ActionType : EntityType := ⟨"Action", []⟩
+
 def schema : Schema :=
   ⟨Map.make [
   (
@@ -505,15 +503,88 @@ def policy₄ : Policy :=
           ))⟩
   ]⟩
 
-#eval evaluatePolicy schema policy₀ req es
-#eval evaluatePolicy schema policy₁ req es
-#eval evaluatePolicy schema policy₂ req es
-#eval evaluatePolicy schema policy₃ req es
-#eval evaluatePolicy schema policy₄ req es
+def policy₅ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.and
+        (.ite
+          (.binaryApp .less (.binaryApp .mul (.lit (.int 9223372036854775807)) (.lit (.int 9223372036854775807))) (.lit (.int 5)))
+          (.lit (.bool true))
+          (.lit (.bool false))
+          )
+        (.lit (.bool false)))⟩
+  ]⟩
+
+  def policy₆ : Policy :=
+  ⟨ "0",
+  .permit,
+  .principalScope .any,
+  .actionScope .any,
+  .resourceScope .any,
+  [
+     ⟨.when,
+       (.or
+        (.binaryApp .eq
+        (.var .principal)
+        (.lit (.entityUID ⟨⟨"A0", []⟩, "a00"⟩)))
+        (.ite
+          (.binaryApp .less (.binaryApp .mul (.lit (.int 9223372036854775807)) (.lit (.int 9223372036854775807))) (.lit (.int 5)))
+          (.lit (.bool true))
+          (.lit (.bool false))
+          )
+        )⟩
+  ]⟩
+
+def tests :=
+  suite "TPE results for the RFC basic example"
+  [
+    -- x in x -> true
+    testResult policy₀ schema req es
+    (.val (.prim (.bool true)) (.bool .tt)),
+    -- A0::"a0" (LHS) does not exist in the entities and hence is unknown
+    testResult policy₁ schema req es
+    (.binaryApp .mem
+      (.val
+        (.prim (.entityUID { ty := { id := "A0", path := [] }, eid := "a0" }))
+        (.entity { id := "A0", path := [] }))
+      (.val
+        (.prim (.entityUID { ty := { id := "A0", path := [] }, eid := "a00" }))
+        (.entity { id := "A0", path := [] }))
+    (.bool .anyBool)),
+    -- A0::"a0" in (if (1 + 2) < 5 then A0::"a0" else A0::"a00")
+    testResult policy₂ schema req es
+    (.val (.prim (.bool true)) (.bool (.tt))),
+    -- A0::"a0" in (if (1 + 6) < 5 then A0::"a0" else A0::"a00")
+    testResult policy₃ schema req es
+    (.binaryApp .mem
+      (.val
+        (.prim (.entityUID { ty := { id := "A0", path := [] }, eid := "a0" }))
+        (.entity { id := "A0", path := [] }))
+      (.val
+        (.prim (.entityUID { ty := { id := "A0", path := [] }, eid := "a00" }))
+        (.entity { id := "A0", path := [] }))
+    (.bool .anyBool)),
+    -- integer overflow happens in the condition of ite
+    testResult policy₄ schema req es
+    (.error (.bool .anyBool)),
+    -- and x y -> false where x contains integer overflow
+    testResult policy₅ schema req es
+    (.error (.bool .ff)),
+    -- or x y -> error where x is false and y contains integer overflow
+    testResult policy₆ schema req es
+    (.error (.bool .anyBool)),
+  ]
+
+#eval TestSuite.runAll [tests]
 end UnitTest.TPE.Spec
 
-namespace UnitTest.TPE
+open UnitTest.TPE
 
-def tests := [Basic.tests, Motivation.tests]
+def tests := [Basic.tests, Motivation.tests, Spec.tests]
 
 end UnitTest.TPE
