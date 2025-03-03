@@ -65,10 +65,8 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PolicySet) := do
 instance : Message PolicySet := {
   parseField := fun t => do
     match t.fieldNum with
-    | 1 =>
-      parseFieldElement t templates (update templates)
-    | 2 =>
-      parseFieldElement t links (update links)
+    | 1 => parseFieldElement t templates (update templates)
+    | 2 => parseFieldElement t links (update links)
     | _ =>
       let _ ← t.wireType.skip
       pure ignore,
