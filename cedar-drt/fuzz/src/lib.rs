@@ -315,10 +315,9 @@ pub fn run_req_val_test(
     });
     info!("{}{}", RUST_REQ_VALIDATION_MSG, rust_auth_dur.as_nanos());
 
-    let definitional_res = custom_impl.validate_request(&schema, &request);
-    match definitional_res {
-        TestResult::Failure(_) => {
-            panic!("request validation test: failed to parse");
+    match custom_impl.validate_request(&schema, &request) {
+        TestResult::Failure(e) => {
+            panic!("failed to execute request validation: {e}");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
@@ -354,10 +353,9 @@ pub fn run_ent_val_test(
         )
     });
     info!("{}{}", RUST_ENT_VALIDATION_MSG, rust_auth_dur.as_nanos());
-    let definitional_res = custom_impl.validate_entities(&schema, &entities);
-    match definitional_res {
-        TestResult::Failure(_) => {
-            panic!("entity validation test: failed to parse");
+    match custom_impl.validate_entities(&schema, &entities) {
+        TestResult::Failure(e) => {
+            panic!("failed to execute entity validation: {e}");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {

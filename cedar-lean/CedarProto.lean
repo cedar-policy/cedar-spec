@@ -22,12 +22,15 @@ import CedarProto.Entity
 import CedarProto.EntityDecl
 import CedarProto.EntityReference
 import CedarProto.EntityUID
+import CedarProto.EntityValidationRequest
+import CedarProto.EvaluationRequest
 import CedarProto.Expr
 import CedarProto.Name
 import CedarProto.Policy
 import CedarProto.PolicySet
 import CedarProto.PrincipalOrResourceConstraint
 import CedarProto.Request
+import CedarProto.RequestValidationRequest
 import CedarProto.Schema
 import CedarProto.TemplateBody
 import CedarProto.Type

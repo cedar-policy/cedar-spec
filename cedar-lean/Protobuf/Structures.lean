@@ -25,9 +25,6 @@ Various Protobuf Structures, likely will reorganize later
 
 namespace Proto
 
-structure MessageSchema where
-  schema : Std.HashMap Nat PType
-
 structure Tag where
   fieldNum : Nat
   wireType : WireType
@@ -72,7 +69,7 @@ def parse : BParsec Tag := do
                     else if wt_uint = 3 then pure WireType.SGROUP
                     else if wt_uint = 4 then pure WireType.EGROUP
                     else if wt_uint = 5 then pure WireType.I32
-                    else throw "Unexcepted Wire Type"
+                    else throw "Unexpected Wire Type"
   have field_num := element >>> 3
   pure (Tag.mk field_num.toNat wire_type)
 

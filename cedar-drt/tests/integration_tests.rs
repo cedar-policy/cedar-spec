@@ -126,15 +126,15 @@ fn protobuf_roundtrip() {
 
         for request in requests {
             // Construct Message
-            let request_msg = AuthorizationRequestMsg {
+            let request_msg = AuthorizationRequest {
                 request: &request,
                 policies: &policies,
                 entities: &entities,
             };
 
             // Perform a roundtrip serialize/de-serialize from protobuf and AST
-            let request_msg_proto = proto::AuthorizationRequestMsg::from(&request_msg);
-            let request_msg_rt = OwnedAuthorizationRequestMsg::from(request_msg_proto);
+            let request_msg_proto = proto::AuthorizationRequest::from(&request_msg);
+            let request_msg_rt = OwnedAuthorizationRequest::from(request_msg_proto);
 
             // Checking request equality (ignores loc field)
             assert_eq!(
@@ -163,14 +163,14 @@ fn protobuf_roundtrip() {
             // Time protobuf serialization from AST -> bytes
             let (request_msg_proto, proto_serialize_dur): (Vec<u8>, Duration) =
                 time_function(|| {
-                    proto::AuthorizationRequestMsg::from(&request_msg).encode_to_vec()
+                    proto::AuthorizationRequest::from(&request_msg).encode_to_vec()
                 });
 
             // Time protobuf deserialization from bytes -> AST
             let (_request_msg_rt, proto_deserialize_dur) = time_function(|| {
-                OwnedAuthorizationRequestMsg::from(
-                    proto::AuthorizationRequestMsg::decode(&request_msg_proto[..])
-                        .expect("Failed to deserialize AuthorizationRequestMsg proto"),
+                OwnedAuthorizationRequest::from(
+                    proto::AuthorizationRequest::decode(&request_msg_proto[..])
+                        .expect("Failed to deserialize AuthorizationRequest proto"),
                 )
             });
 

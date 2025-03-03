@@ -55,14 +55,16 @@ unsafe def main (args : List String) : IO Unit :=
         IO.println response
       | "evaluate" =>
         let request ← IO.FS.readFile filename
+        -- does not use evaluateDRT, because that just takes an `expected`
+        -- and returns true/false whether the result matched expected
         let response := evaluate request
         IO.println s!"{repr response}"
       | "validateRequest" =>
-        let request ← IO.FS.readFile filename
+        let request ← IO.FS.readBinFile filename
         let response := validateRequestDRT request
         IO.println response
       | "validateEntities" =>
-        let request ← IO.FS.readFile filename
+        let request ← IO.FS.readBinFile filename
         let response := validateEntitiesDRT request
         IO.println response
       | _ => printUsage s!"Invalid command `{command}` (expected `authorize`, `validate`, `validateRequest`, `validateEntities`, or `evaluate`)"
