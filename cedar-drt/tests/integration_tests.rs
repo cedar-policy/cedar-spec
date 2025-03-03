@@ -104,8 +104,6 @@ fn protobuf_roundtrip() {
     let mut proto_serialize_durs: Vec<f64> = vec![];
     let mut proto_serialize_sizes: Vec<f64> = vec![];
     let mut proto_deserialize_durs: Vec<f64> = vec![];
-    let mut json_serialize_durs: Vec<f64> = vec![];
-    let mut json_serialize_sizes: Vec<f64> = vec![];
 
     for test in tests {
         // Load test from JSON file
@@ -180,20 +178,6 @@ fn protobuf_roundtrip() {
                     as f64,
             );
             proto_deserialize_durs.push(proto_deserialize_dur.as_micros() as f64);
-
-            // Time JSON serialization to a string
-            let (request_json, json_serialize_dur) = time_function(|| {
-                serde_json::to_string(&AuthorizationRequest {
-                    request: &request,
-                    policies: &policies,
-                    entities: &entities,
-                })
-                .expect("Failed to seralize Authorization request")
-            });
-
-            // Log JSON serialization time and size of string
-            json_serialize_durs.push(json_serialize_dur.as_micros() as f64);
-            json_serialize_sizes.push(request_json.len() as f64);
         }
     }
 
@@ -219,16 +203,4 @@ fn protobuf_roundtrip() {
     let std_proto_deserialize_dur = d_proto_deserialize_durs.std_dev().unwrap();
     println!("Protobuf Mean Deserialization Time {mean_proto_deserialize_dur} micros");
     println!("Protobuf Std Deserialization Time {std_proto_deserialize_dur} micros\n");
-
-    let d_json_serialize_durs = Data::new(json_serialize_durs);
-    let mean_json_serialize_dur = d_json_serialize_durs.mean().unwrap();
-    let std_json_serialize_dur = d_json_serialize_durs.std_dev().unwrap();
-    println!("JSON Mean Serialization Time {mean_json_serialize_dur} micros");
-    println!("JSON Std Serialization Time {std_json_serialize_dur} micros\n");
-
-    let d_json_serialize_sizes = Data::new(json_serialize_sizes);
-    let mean_json_serialize_size = d_json_serialize_sizes.mean().unwrap();
-    let std_json_serialize_size = d_json_serialize_sizes.std_dev().unwrap();
-    println!("JSON Mean Serialization Size {mean_json_serialize_size} bytes");
-    println!("JSON Std Serialization Size {std_json_serialize_size} bytes");
 }
