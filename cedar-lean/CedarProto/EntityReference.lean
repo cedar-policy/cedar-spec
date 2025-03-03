@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 import Protobuf.Enum
 
@@ -21,24 +22,21 @@ import CedarProto.EntityUID
 
 open Proto
 
-namespace Cedar.Spec
+namespace Cedar.Spec.Proto
 
-namespace Proto
-inductive EntityReferenceType where
+inductive EntityReferenceSlot where
   | slot
-deriving Inhabited
+deriving Repr, Inhabited
 
-namespace EntityReferenceType
-@[inline]
-def fromInt (n : Int) : Except String EntityReferenceType :=
-  match n with
+namespace EntityReferenceSlot
+
+instance : ProtoEnum EntityReferenceSlot where
+  fromInt
     | 0 => .ok .slot
-    | n => .error s!"Field {n} does not exist in enum"
+    | n => .error s!"Field {n} does not exist in EntityReferenceSlot"
 
-instance : ProtoEnum EntityReferenceType := {
-  fromInt := fromInt
-}
-end EntityReferenceType
+end EntityReferenceSlot
+
 end Proto
 
 namespace EntityUIDOrSlot
@@ -46,13 +44,13 @@ namespace EntityUIDOrSlot
 deriving instance Inhabited for EntityUIDOrSlot
 
 @[inline]
-def mergeTy (result : EntityUIDOrSlot) (x : Proto.EntityReferenceType) : EntityUIDOrSlot :=
+def mergeSlot (result : EntityUIDOrSlot) (x : Proto.EntityReferenceSlot) : EntityUIDOrSlot :=
   -- For enums, if result is already of the same type, then we don't do anything
   -- otherwise, we construct a default object of the new type.
   match x with
     | .slot => match result with
-      | .entityUID _ => .slot default
       | .slot _ => result
+      | .entityUID _ => .slot default
 
 @[inline]
 def mergeEuid (result : EntityUIDOrSlot) (x : EntityUID) : EntityUIDOrSlot :=
@@ -68,13 +66,12 @@ def merge (x : EntityUIDOrSlot) (y : EntityUIDOrSlot) : EntityUIDOrSlot :=
       | .entityUID _ => y
       | .slot s1 => .slot (Field.merge s1 s2)
 
-
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUIDOrSlot) := do
   match t.fieldNum with
     | 1 =>
-      let x : Proto.EntityReferenceType ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
+      let x : Proto.EntityReferenceSlot ← Field.guardedParse t
+      pure (pure $ mergeSlot · x)
     | 2 =>
       let x : EntityUID ← Field.guardedParse t
       pure (pure $ mergeEuid · x)
@@ -90,7 +87,7 @@ instance : Message EntityUIDOrSlot := {
 @[inline]
 def withSlot (x : EntityUIDOrSlot) (s : SlotID) : EntityUIDOrSlot :=
   match x with
-    | .entityUID _ => x
+    | .entityUID x => .entityUID x
     | .slot _ => .slot s
 
 end EntityUIDOrSlot

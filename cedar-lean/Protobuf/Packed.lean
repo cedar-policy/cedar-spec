@@ -43,6 +43,12 @@ instance [Repr α] [Field α] : Repr (Repeated α) := by
   unfold Repeated
   apply inferInstance
 
+instance [Field α] : HAppend (Repeated α) (Repeated α) (Repeated α) where
+  hAppend a b :=
+    let a : Array α := a
+    let b : Array α := b
+    a ++ b
+
 /-- Parses one value from a record -/
 @[inline]
 def parse (α : Type) [Field α] : BParsec (Array α) := do
@@ -50,9 +56,9 @@ def parse (α : Type) [Field α] : BParsec (Array α) := do
   pure #[element]
 
 instance [Field α] : Field (Repeated α) := {
-  parse := (parse α)
+  parse := parse α
   expectedWireType := Field.expectedWireType α
-  merge := Field.Merge.concatenate
+  merge := (· ++ ·)
 }
 
 end Repeated
@@ -76,6 +82,12 @@ instance [Repr α] [Field α] : Repr (Packed α) := by
   unfold Packed
   apply inferInstance
 
+instance [Field α] : HAppend (Packed α) (Packed α) (Packed α) where
+  hAppend a b :=
+    let a : Array α := a
+    let b : Array α := b
+    a ++ b
+
 @[inline]
 def parse (α : Type) [Field α] : BParsec (Array α) := do
   let len_size ← Len.parseSize
@@ -86,9 +98,9 @@ def parse (α : Type) [Field α] : BParsec (Array α) := do
     #[]
 
 instance [Field α] : Field (Packed α) := {
-  parse := (parse α)
+  parse := parse α
   expectedWireType := WireType.LEN
-  merge := Field.Merge.concatenate
+  merge := (· ++ ·)
 }
 
 end Packed

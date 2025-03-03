@@ -26,28 +26,36 @@ namespace Cedar.Spec.Value
 @[inline]
 def merge (v1 : Value) (v2 : Value) : Value :=
   match v1, v2 with
-  | .prim p1, .prim p2 => .prim (Field.merge p1 p2)
-  | .set s1, .set s2 => Cedar.Data.Set.mk (s1.elts ++ s2.elts)
-  | .record m1, .record m2 => Cedar.Data.Map.mk (m1.kvs ++ m2.kvs)
-  | _, _ => v2 -- note this includes all the .ext cases
+  | .prim (.bool b1), .prim (.bool b2) => .prim (.bool (Field.merge b1 b2))
+  | .prim (.int _), .prim (.int i2) => .prim (.int i2)
+  | .prim (.string s1), .prim (.string s2) => .prim (.string (Field.merge s1 s2))
+  | .prim (.entityUID _), .prim (.entityUID e2) => .prim (.entityUID e2) -- todo: is this correct
+  | .set s1, .set s2 => Cedar.Data.Set.make (s1.elts ++ s2.elts)
+  | .record m1, .record m2 => Cedar.Data.Map.make (m1.kvs ++ m2.kvs)
+  | .ext _, .ext _ => panic!("merge for Value.ext is not yet implemented")
+  | _, _ => v2
 
-private def extExprToValue (xfn : ExtFun) (args : List Expr) : Value :=
+private def extExprToValue (xfn : ExtFun) (args : List Expr) : Except String Value :=
   match xfn, args with
   | .decimal, [.lit (.string s)] => match Spec.Ext.Decimal.decimal s with
-    | .some v => .ext (.decimal v)
-    | .none => panic! s!"exprToValue: failed to parse decimal {s}"
+    | .some v => .ok $ .ext (.decimal v)
+    | .none => .error s!"exprToValue: failed to parse decimal {s}"
   | .ip, [.lit (.string s)] => match Spec.Ext.IPAddr.ip s with
-    | .some v => .ext (.ipaddr v)
-    | .none => panic! s!"exprToValue: failed to parse ip {s}"
-  | _, _ => panic! ("exprToValue: unexpected extension value\n" ++ toString (repr (Expr.call xfn args)))
+    | .some v => .ok $ .ext (.ipaddr v)
+    | .none => .error s!"exprToValue: failed to parse ip {s}"
+  | _, _ => .error s!"exprToValue: unexpected extension value\n{repr (Expr.call xfn args)}"
 
-private partial def exprToValue : Expr → Value
-  | .lit p => .prim p
-  | .record r => .record (Cedar.Data.Map.make (r.map λ ⟨attr, e⟩ => ⟨attr, exprToValue e⟩))
-  | .set s => .set (Cedar.Data.Set.make (s.map exprToValue))
+partial def exprToValue : Expr → Except String Value
+  | .lit p => .ok (.prim p)
+  | .record r => do
+      let attrs ← r.mapM λ ⟨attr, e⟩ => do .ok ⟨attr, ← exprToValue e⟩
+      .ok $ .record (Cedar.Data.Map.make attrs)
+  | .set s => do
+      let elts ← s.mapM exprToValue
+      .ok $ .set (Cedar.Data.Set.make elts)
   | .call xfn args => extExprToValue xfn args
-  | _ => panic!("exprToValue: invalid input expression")
+  | e => .error s!"exprToValue: invalid input expression {repr e}"
 
-instance : Field Value := Field.fromInterField exprToValue merge
+instance : Field Value := Field.fromInterFieldFallible exprToValue merge
 
 end Cedar.Spec.Value

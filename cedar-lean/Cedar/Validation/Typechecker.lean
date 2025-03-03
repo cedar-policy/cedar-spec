@@ -217,7 +217,11 @@ def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Ex
     let (ty, c) ← typeOfGetTag ety₁ x₁ x₂ c env
     ok ty c
   | .less,   .int, .int                     => ok (.bool .anyBool)
+  | .less, (.ext .datetime), (.ext .datetime) => ok (.bool .anyBool)
+  | .less, (.ext .duration), (.ext .duration) => ok (.bool .anyBool)
   | .lessEq, .int, .int                     => ok (.bool .anyBool)
+  | .lessEq,  (.ext .datetime), (.ext .datetime) => ok (.bool .anyBool)
+  | .lessEq,  (.ext .duration), (.ext .duration) => ok (.bool .anyBool)
   | .add,    .int, .int                     => ok .int
   | .sub,    .int, .int                     => ok .int
   | .mul,    .int, .int                     => ok .int
@@ -305,6 +309,12 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .ip, _       => do
     let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.IPAddr.ip xs (.ext .ipAddr)
     ok ty c
+  | .datetime, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime)
+  ok ty c
+  | .duration, _  => do
+  let (ty, c) ← typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration)
+  ok ty c
   | .lessThan, [.ext .decimal, .ext .decimal]           => ok (.bool .anyBool)
   | .lessThanOrEqual, [.ext .decimal, .ext .decimal]    => ok (.bool .anyBool)
   | .greaterThan, [.ext .decimal, .ext .decimal]        => ok (.bool .anyBool)
@@ -314,7 +324,11 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .isLoopback, [.ext .ipAddr]                         => ok (.bool .anyBool)
   | .isMulticast, [.ext .ipAddr]                        => ok (.bool .anyBool)
   | .isInRange, [.ext .ipAddr, .ext .ipAddr]            => ok (.bool .anyBool)
-  | _, _         => err (.extensionErr xs)
+  | .offset, [.ext .datetime, .ext .duration]           => ok (.ext .datetime)
+  | .durationSince, [.ext .datetime, .ext .datetime]    => ok (.ext .duration)
+  | .toDate, [.ext .datetime]                           => ok (.ext .datetime)
+  | .toTime, [.ext .datetime]                           => ok (.ext .duration)
+  | _, _                                                => err (.extensionErr xs)
 
 
 -- Note: if x types as .tt or .ff, it is okay to replace x with the literal

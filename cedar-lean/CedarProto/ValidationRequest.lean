@@ -13,9 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 import Protobuf.Message
-import Protobuf.String
+import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Schema

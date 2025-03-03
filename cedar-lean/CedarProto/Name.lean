@@ -13,56 +13,53 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 import Cedar.Spec
 import Protobuf.Message
 import Protobuf.String
+import Protobuf.Structure
 
 open Proto
 
-namespace Cedar.Spec.Name
+namespace Cedar.Spec.Proto
 
--- Note that Cedar.Spec.Name is defined as
--- structure Name where
---   id : String
---   path : List String
--- deriving Inhabited, Repr, DecidableEq
+structure Name where
+  id : String
+  path : Repeated String
+deriving Repr, Inhabited
 
-@[inline]
-def mergeId (result : Name) (x : String) : Name :=
-  {result with
-    id := Field.merge result.id x
-  }
-
-@[inline]
-def mergePath (result : Name) (path_elem : Repeated String) : Name :=
-  {result with
-    path := result.path ++ path_elem.toList
-  }
-
-@[inline]
-def merge (x y : Name) : Name :=
-  {
-    id := Field.merge x.id y.id
-    path := x.path ++ y.path
-  }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn Name) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : String ← Field.guardedParse t
-      pure (pure $ mergeId · x)
-    | 2 =>
-      let x : Repeated String ← Field.guardedParse t
-      pure (pure $ mergePath · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
+namespace Name
 
 instance : Message Name := {
-  parseField := parseField
-  merge := merge
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t id (update id)
+    | 2 => parseFieldElement t path (update path)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    id   := Field.merge x.id   y.id
+    path := Field.merge x.path y.path
+  }
 }
 
-end Cedar.Spec.Name
+def toName : Name -> Spec.Name
+  | { id, path } => { id, path := path.toList }
+
+end Name
+
+end Cedar.Spec.Proto
+
+namespace Cedar.Spec
+
+def Name.merge (x y : Name) : Name := {
+  id := Field.merge x.id y.id
+  path := x.path ++ y.path
+}
+
+def EntityType.merge := Name.merge
+
+instance : Field Name := Field.fromInterField Proto.Name.toName Name.merge
+instance : Field EntityType := Field.fromInterField id EntityType.merge
+
+end Cedar.Spec

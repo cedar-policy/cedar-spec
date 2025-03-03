@@ -49,6 +49,8 @@ def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
   | .decimal _, .decimal => true
   | .ipaddr _, .ipAddr => true
+  | .datetime _, .datetime => true
+  | .duration _, .duration => true
   | _, _ => false
 
 def requiredAttributePresent (r : Map Attr Value) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=

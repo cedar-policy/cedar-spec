@@ -26,8 +26,8 @@ open Proto
 namespace Cedar.Validation.Proto
 
 structure Schema where
-  ets : Array EntityDecl
-  acts : Array ActionDecl
+  ets : Repeated EntityDecl
+  acts : Repeated ActionDecl
 deriving Repr, Inhabited
 
 /-
@@ -49,69 +49,56 @@ private def descendantsToAncestors [LT α] [DecidableEq α] [DecidableLT α] (de
 
 namespace Schema
 
-def toSchema (schema : Schema) : Validation.Schema :=
+instance : Message Schema := {
+  parseField (t : Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t ets (update ets)
+    | 2 => parseFieldElement t acts (update acts)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    ets  := Field.merge x.ets  y.ets
+    acts := Field.merge x.acts y.acts
+  }
+}
+
+/-- was surprised this isn't in the stdlib -/
+def option_transpose : Option (Except ε α) → Except ε (Option α)
+  | none => .ok none
+  | some (.ok a) => .ok (some a)
+  | some (.error e) => .error e
+
+private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : Except String (Data.Map Spec.Attr (Qualified CedarType)) := do
+  let attrs ← attrs.toList.mapM λ (k,v) => do
+    let v ← v.map ProtoType.toCedarType |>.transpose
+    .ok (k, v)
+  .ok $ Data.Map.make attrs
+
+def toSchema (schema : Schema) : Except String Validation.Schema := do
   let ets := schema.ets.toList
-  let descendantMap := ets.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
+  let descendantMap := ets.map λ decl => (decl.name.toName, Data.Set.make $ decl.descendants.toList.map Spec.Proto.Name.toName)
   let ancestorMap := descendantsToAncestors descendantMap
-  let ets := Data.Map.make $ ets.map λ decl =>
-    (decl.name,
-      if decl.enums.isEmpty then
-      .standard {
-        ancestors := ancestorMap.find! decl.name
-        attrs := Data.Map.make $ decl.attrs.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
-        tags := decl.tags.map ProtoType.toCedarType
+  let ets ← ets.mapM λ decl => do
+    let name := decl.name.toName
+    let ese : EntitySchemaEntry ←
+      if decl.enums.isEmpty then .ok $ .standard {
+        ancestors := ancestorMap.find! name
+        attrs := ← attrsToCedarType decl.attrs
+        tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
       }
-      else
-      .enum $ Cedar.Data.Set.make decl.enums.toList
-    )
+      else .ok $ .enum $ Cedar.Data.Set.make decl.enums.toList
+    .ok (name, ese)
   let acts := schema.acts.toList
   let descendantMap := acts.map λ decl => (decl.name, Data.Set.make decl.descendants.toList)
   let ancestorMap := descendantsToAncestors descendantMap
-  let acts := Data.Map.make $ acts.map λ decl =>
-    (decl.name, {
-      appliesToPrincipal := Data.Set.make decl.principalTypes.toList
-      appliesToResource := Data.Set.make decl.resourceTypes.toList
+  let acts ← acts.mapM λ decl => do
+    .ok (decl.name, {
+      appliesToPrincipal := Data.Set.make $ decl.principalTypes.toList.map Spec.Proto.Name.toName
+      appliesToResource := Data.Set.make $ decl.resourceTypes.toList.map Spec.Proto.Name.toName
       ancestors := ancestorMap.find! decl.name
-      context := Data.Map.make $ decl.context.toList.map λ (k,v) => (k, v.map ProtoType.toCedarType)
+      context := ← attrsToCedarType decl.context
     })
-  { ets, acts }
-
-@[inline]
-def mergeEntityDecls (result : Schema) (x : Array EntityDecl) : Schema :=
-  {result with
-    ets := result.ets ++ x
-  }
-
-@[inline]
-def mergeActionDecls (result : Schema) (x : Array ActionDecl) : Schema :=
-  {result with
-    acts := result.acts ++ x
-  }
-
-@[inline]
-def merge (x y : Schema) : Schema :=
-  {
-    ets := x.ets ++ y.ets
-    acts := x.acts ++ y.acts
-  }
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn Schema) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Repeated EntityDecl ← Field.guardedParse t
-      pure (pure $ mergeEntityDecls · x)
-    | 2 =>
-      let x : Repeated ActionDecl ← Field.guardedParse t
-      pure (pure $ mergeActionDecls · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message Schema := {
-  parseField := parseField
-  merge := merge
-}
+  .ok { ets := Data.Map.make ets, acts := Data.Map.make acts }
 
 end Cedar.Validation.Proto.Schema
 
@@ -143,6 +130,6 @@ def merge (x1 x2 : Schema) : Schema :=
   }
 
 deriving instance Inhabited for Schema
-instance : Field Schema := Field.fromInterField Proto.Schema.toSchema merge
+instance : Field Schema := Field.fromInterFieldFallible Proto.Schema.toSchema merge
 
 end Cedar.Validation.Schema
