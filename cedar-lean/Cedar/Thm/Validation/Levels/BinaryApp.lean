@@ -20,8 +20,8 @@ import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Basic
 import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.Slice
 import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.Slice
 
 /-!
 This file proves that level checking for `.binaryApp` expressions is sound.

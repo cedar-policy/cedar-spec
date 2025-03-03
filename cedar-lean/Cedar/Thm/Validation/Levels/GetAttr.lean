@@ -21,7 +21,7 @@ import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Basic
 import Cedar.Thm.Validation.Typechecker.IfThenElse
 import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Levels.Slice
+import Cedar.Thm.Validation.Slice
 import Cedar.Thm.Validation.Levels.Basic
 import Cedar.Thm.Validation.Levels.CheckLevel
 
