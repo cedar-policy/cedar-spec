@@ -84,17 +84,15 @@ def inₑ (uid₁ uid₂ : EntityUID) (es : PartialEntities) : Option Bool :=
   if uid₁ = uid₂ then .some true else (es.ancestors uid₁).map (Set.contains · uid₂)
 
 def inₛ (uid : EntityUID) (vs : Set Value) (es : PartialEntities): Option Bool := do
-  let uids ← vs.toList.mapM (Except.toOption ∘ Value.asEntityUID)
-  uids.anyM (inₑ uid · es)
+  (← vs.toList.mapM (Except.toOption ∘ Value.asEntityUID)).anyM (inₑ uid · es)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
   (es.tags uid).map (Map.contains · tag)
 
-def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Option Residual := do
-  let tags ← es.tags uid
-  match tags.find? tag with
-  | .some v => .some (.val v ty)
-  | .none   => .some (.error ty)
+def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Residual :=
+  match es.tags uid with
+  | .some tags => someOrError (tags.find? tag) ty
+  | .none => .binaryApp .getTag uid tag ty
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
   match op₂, r₁, r₂ with
@@ -131,7 +129,7 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
   | .hasTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
     someOrSelf (hasTag uid₁ tag es) ty self
   | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    (getTag uid₁ tag es ty).getD self
+    getTag uid₁ tag es ty
   | _, .error _, _ | _, _, .error _ => .error ty
   | _, _, _ => self
 where

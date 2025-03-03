@@ -47,6 +47,9 @@ deriving Repr, Inhabited
 instance : Coe Bool Residual where
   coe b := .val (Prim.bool b) (.bool .anyBool)
 
+instance : Coe String Residual where
+  coe s := .val (Prim.string s) .string
+
 instance : Coe EntityUID Residual where
   coe uid := .val (Prim.entityUID uid) (.entity uid.ty)
 
