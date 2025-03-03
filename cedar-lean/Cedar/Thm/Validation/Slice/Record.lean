@@ -45,7 +45,7 @@ theorem record_value_contains_evaluated_attrs
   rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
   rw [List.mapM_ok_iff_forall₂] at he₁
   simp only [Map.make, Map.find?, Map.kvs] at *
-  split at hfv <;> simp at hfv
+  split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
   subst hfv
   rename_i a v hfv
   have hfv' := List.find?_some hfv
@@ -56,8 +56,8 @@ theorem record_value_contains_evaluated_attrs
     apply List.Forall₂.imp _ he₁
     intro x y h
     simp only [bindAttr] at h
-    cases hx : evaluate x.snd request entities <;> simp [hx] at h
-    simp only [← h, and_self]
+    cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at h
+    simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
   simp only [List.forallᵥ_def] at he₁
   have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, v) (List.mem_of_find?_eq_some hfv)

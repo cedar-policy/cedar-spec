@@ -68,7 +68,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
 := by
   simp only [evaluate] at he
   cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   simp only [apply₂] at he
   split at he <;> try contradiction
   rename_i euid' _ _
@@ -101,16 +101,16 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
   intro ha
   simp only [evaluate] at he
   cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  cases he₂ : evaluate e₂ request entities <;> simp [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  cases he₂ : evaluate e₂ request entities <;> simp only [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   simp only [apply₂, intOrErr, inₛ, hasTag] at he
   split at he <;> try split at he
   all_goals first
   | contradiction
-  | simp at he
-    subst he
+  | simp only [Except.ok.injEq] at he
+    rw [←he] at ha
     cases ha
   | rename_i vs
-    cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [he₃] at he
+    cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp only [he₃, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
     subst he ; cases ha
 
 theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
@@ -123,7 +123,7 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   (ih₁ : CheckedEvalEntityReachable e₁) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
-  cases hop : op == .getTag <;> simp at hop
+  cases hop : op == .getTag <;> simp only [beq_eq_false_iff_ne, beq_iff_eq] at hop
   · exfalso
     exact binary_op_not_euid_via_path hop he ha
   · subst op

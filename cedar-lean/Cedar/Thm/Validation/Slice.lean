@@ -77,7 +77,7 @@ theorem or_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : Lis
   cases he₁ : Result.as Bool (evaluate e₁ request entities) <;>
     simp only [he₁, bind_pure_comp, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   split at he
-  · simp at he
+  · simp only [Except.ok.injEq] at he
     subst he ; cases ha
   · cases he₂ : Result.as Bool (evaluate e₂ request entities) <;>
       simp only [he₂, Except.map_error, reduceCtorEq, Except.map_ok, Except.ok.injEq] at he
@@ -90,7 +90,7 @@ theorem unary_not_euid_via_path {op : UnaryOp} {e₁ : Expr} {entities : Entitie
   intro ha
   simp only [evaluate] at he
   cases he₁ : evaluate e₁ request entities <;>
-    simp [he₁, intOrErr, apply₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+    simp only [he₁, intOrErr, apply₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   (split at he <;> try split at he) <;>
   try simp only [reduceCtorEq] at he
   all_goals { injections he ; subst he ; cases ha }
@@ -115,7 +115,7 @@ theorem set_not_euid_via_path {xs : List Expr} {entities : Entities} {path : Lis
   intro ha
   simp only [evaluate] at he
   cases he₁ : (xs.mapM₁ (λ x => evaluate x.val request entities)) <;>
-    simp [he₁, Except.bind_err, Except.bind_ok, Except.ok.injEq] at he
+    simp only [he₁, Except.bind_err, Except.bind_ok, Except.ok.injEq, reduceCtorEq] at he
   subst he ; cases ha
 
 theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entities} {path : List Attr}
