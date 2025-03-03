@@ -208,20 +208,13 @@ instance Int.strictLT : StrictLT Int where
   transitive a b c := Int.lt_trans
   connected  a b   := by omega
 
-theorem UInt32.lt_iff {x y : UInt32} : x < y ↔ x.1.1 < y.1.1 := by
-  cases x
-  cases y
-  simp only [LT.lt, Nat.lt, Nat.succ_eq_add_one, Nat.le_eq,
-    Nat.reducePow, BitVec.val_toFin]
-
-
 instance UInt32.strictLT : StrictLT UInt32 where
   asymmetric a b   := by apply Nat.strictLT.asymmetric
   transitive a b c := by apply Nat.strictLT.transitive
   connected  a b   := by
     simp only [ne_eq, UInt32.ext_iff, LT.lt, Nat.lt,
       toNat_toBitVec_eq_toNat, Nat.succ_eq_add_one, Nat.le_eq]
-    omega
+    apply StrictLT.connected
 
 instance Char.strictLT : StrictLT Char where
   asymmetric a b   := by apply UInt32.strictLT.asymmetric
