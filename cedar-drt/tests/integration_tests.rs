@@ -162,9 +162,7 @@ fn protobuf_roundtrip() {
 
             // Time protobuf serialization from AST -> bytes
             let (request_msg_proto, proto_serialize_dur): (Vec<u8>, Duration) =
-                time_function(|| {
-                    proto::AuthorizationRequest::from(&request_msg).encode_to_vec()
-                });
+                time_function(|| proto::AuthorizationRequest::from(&request_msg).encode_to_vec());
 
             // Time protobuf deserialization from bytes -> AST
             let (_request_msg_rt, proto_deserialize_dur) = time_function(|| {
