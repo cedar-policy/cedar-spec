@@ -28,9 +28,9 @@ namespace Cedar.Spec
 namespace Effect
 def fromInt (n : Int) : Except String Effect :=
   match n with
-    | 0 => .ok .forbid
-    | 1 => .ok .permit
-    | n => .error s!"Field {n} does not exist in enum"
+  | 0 => .ok .forbid
+  | 1 => .ok .permit
+  | n => .error s!"Field {n} does not exist in enum"
 
 instance : Inhabited Effect := {
   default := .forbid
@@ -147,24 +147,24 @@ def merge (x y : Template) : Template :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn Template) := do
   match t.fieldNum with
     -- NOTE: Doesn't look like id gets utilized in this message
-    | 4 =>
-      let x : Effect ← Field.guardedParse t
-      pure (pure $ mergeEffect · x)
-    | 5 =>
-      let x : ScopeTemplate ← Field.guardedParse t
-      pure (pure $ mergePrincipalScope · x)
-    | 6 =>
-      let x : ActionScope ← Field.guardedParse t
-      pure (pure $ mergeActionScope · x)
-    | 7 =>
-      let x : ScopeTemplate ← Field.guardedParse t
-      pure (pure $ mergeResourceScope · x)
-    | 8 =>
-      let x : Conditions ← Field.guardedParse t
-      pure (pure $ mergeConditions · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 4 =>
+    let x : Effect ← Field.guardedParse t
+    pureMergeFn (mergeEffect · x)
+  | 5 =>
+    let x : ScopeTemplate ← Field.guardedParse t
+    pureMergeFn (mergePrincipalScope · x)
+  | 6 =>
+    let x : ActionScope ← Field.guardedParse t
+    pureMergeFn (mergeActionScope · x)
+  | 7 =>
+    let x : ScopeTemplate ← Field.guardedParse t
+    pureMergeFn (mergeResourceScope · x)
+  | 8 =>
+    let x : Conditions ← Field.guardedParse t
+    pureMergeFn (mergeConditions · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message Template := {
   parseField := parseField

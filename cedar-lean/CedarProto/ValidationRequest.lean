@@ -63,10 +63,10 @@ def parseField (t : Tag) : BParsec (MergeFn ValidationRequest) := do
   match t.fieldNum with
     | 1 =>
       let x : Validation.Schema ← Field.guardedParse t
-      pure (pure $ mergeSchema · x)
+      pureMergeFn (mergeSchema · x)
     | 2 =>
       let x : Spec.Policies ← Field.guardedParse t
-      pure (pure $ mergePolicies · x)
+      pureMergeFn (mergePolicies · x)
     | _ =>
       t.wireType.skip
       pure ignore

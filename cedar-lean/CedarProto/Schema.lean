@@ -113,19 +113,19 @@ namespace Cedar.Validation.Schema
 @[inline]
 private def ES.merge (x1 x2 : EntitySchema) : EntitySchema :=
   match x1.kvs with
-    | [] => x2
-    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
+  | [] => x2
+  | _  => Data.Map.make (x2.kvs ++ x1.kvs)
 
 @[inline]
 private def AS.merge (x1 x2 : ActionSchema) : ActionSchema :=
   match x1.kvs with
-    | [] => x2
-    | _ => Data.Map.make (x2.kvs ++ x1.kvs)
+  | [] => x2
+  | _  => Data.Map.make (x2.kvs ++ x1.kvs)
 
 @[inline]
 def merge (x1 x2 : Schema) : Schema :=
   {
-    ets := ES.merge x1.ets x2.ets
+    ets  := ES.merge x1.ets x2.ets
     acts := AS.merge x1.acts x2.acts
   }
 

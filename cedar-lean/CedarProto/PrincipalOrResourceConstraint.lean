@@ -40,8 +40,8 @@ namespace Proto.ScopeTemplate.Any
 @[inline]
 def fromInt (n : Int) : Except String ScopeTemplate.Any :=
   match n with
-    | 0 => .ok .any
-    | n => .error s!"Field {n} does not exist in enum"
+  | 0 => .ok .any
+  | n => .error s!"Field {n} does not exist in enum"
 
 instance : ProtoEnum ScopeTemplate.Any := {
   fromInt := fromInt
@@ -54,25 +54,25 @@ instance : Inhabited ScopeTemplate.In where
 @[inline]
 def mergeER (result : ScopeTemplate.In) (e2 : EntityUIDOrSlot) : ScopeTemplate.In :=
   match result with
-    | .mem e1 => .mem (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+  | .mem e1 => .mem (Field.merge e1 e2)
+  | _       => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
 
 @[inline]
 def merge (x1 x2 : ScopeTemplate.In) : ScopeTemplate.In :=
   have e2 := match x2 with
-    | .mem e => e
-    | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
+  | .mem e => e
+  | _ => panic!("ScopeTemplate.In expected ScopeTemplate constructor to be set to .in")
   mergeER x1 e2
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.In) := do
   match t.fieldNum with
-    | 1 =>
-      let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (pure $ mergeER · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : EntityUIDOrSlot ← Field.guardedParse t
+    pureMergeFn (mergeER · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ScopeTemplate.In := {
   parseField := parseField
@@ -87,25 +87,26 @@ instance : Inhabited ScopeTemplate.Eq where
 @[inline]
 def mergeER (result : ScopeTemplate.Eq) (e2 : EntityUIDOrSlot) : ScopeTemplate.Eq :=
   match result with
-    | .eq e1 => .eq (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+  | .eq e1 => .eq (Field.merge e1 e2)
+  | _      => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
 
 @[inline]
 def merge (x1 x2 : ScopeTemplate.Eq) : ScopeTemplate.Eq :=
-  have e2 := match x2 with
+  have e2 :=
+    match x2 with
     | .eq e => e
-    | _ => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
+    | _     => panic!("ScopeTemplate.Eq expected ScopeTemplate constructor to be set to .eq")
   mergeER x1 e2
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Eq) := do
   match t.fieldNum with
-    | 1 =>
-      let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (pure $ mergeER · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : EntityUIDOrSlot ← Field.guardedParse t
+    pureMergeFn (mergeER · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ScopeTemplate.Eq := {
   parseField := parseField
@@ -120,25 +121,26 @@ instance : Inhabited ScopeTemplate.Is where
 @[inline]
 def mergeET (result : ScopeTemplate.Is) (e2 : Spec.Name) : ScopeTemplate.Is :=
   match result with
-    | .is e1 => .is (Field.merge e1 e2)
-    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+  | .is e1 => .is (Field.merge e1 e2)
+  | _      => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
 
 @[inline]
 def merge (x1 x2 : ScopeTemplate.Is) : ScopeTemplate.Is :=
-  have e2 := match x2 with
+  have e2 :=
+    match x2 with
     | .is e => e
-    | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
+    | _     => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
   mergeET x1 e2
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Is) := do
   match t.fieldNum with
-    | 1 =>
-      let x : Spec.Name ← Field.guardedParse t
-      pure (pure $ mergeET · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Spec.Name ← Field.guardedParse t
+    pureMergeFn (mergeET · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ScopeTemplate.Is := {
   parseField := parseField
@@ -153,36 +155,37 @@ instance : Inhabited ScopeTemplate.IsIn where
 @[inline]
 def mergeER (result : ScopeTemplate.IsIn) (er2 : EntityUIDOrSlot) : ScopeTemplate.IsIn :=
   match result with
-    | .isMem et er1 => .isMem et (Field.merge er1 er2)
-    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+  | .isMem et er1 => .isMem et (Field.merge er1 er2)
+  | _             => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
 def mergeET (result : ScopeTemplate.IsIn) (et2 : Spec.Name) : ScopeTemplate.IsIn :=
   match result with
-    | .isMem et1 er => .isMem (Field.merge et1 et2) er
-    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+  | .isMem et1 er => .isMem (Field.merge et1 et2) er
+  | _             => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
 def merge (x1 x2 : ScopeTemplate.IsIn) : ScopeTemplate.IsIn :=
-  have ⟨et2, er2⟩ := match x2 with
+  have ⟨et2, er2⟩ :=
+    match x2 with
     | .isMem et er => (et, er)
-    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+    | _            => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
   match x1 with
-    | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
-    | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
+  | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
+  | _              => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.IsIn) := do
   match t.fieldNum with
-    | 1 =>
-      let x : EntityUIDOrSlot ← Field.guardedParse t
-      pure (pure $ mergeER · x)
-    | 2 =>
-      let x : Spec.Name ← Field.guardedParse t
-      pure (pure $ mergeET · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : EntityUIDOrSlot ← Field.guardedParse t
+    pureMergeFn (mergeER · x)
+  | 2 =>
+    let x : Spec.Name ← Field.guardedParse t
+    pureMergeFn (mergeET · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ScopeTemplate.IsIn := {
   parseField := parseField
@@ -207,43 +210,46 @@ deriving instance Inhabited for EntityUIDOrSlot
 @[inline]
 def mergeAny (_ : ScopeTemplate) (x : Proto.ScopeTemplate.Any) : ScopeTemplate :=
   match x with
-    | .any => .any
+  | .any => .any
 
 @[inline]
 def mergeIn (result : ScopeTemplate) (x : Proto.ScopeTemplate.In) : ScopeTemplate :=
-  have er2 := match x with
+  have er2 :=
+    match x with
     | .mem e => e
-    | _ => panic!("Proto.ScopeTemplate.In expected to have constructor .mem")
+    | _      => panic!("Proto.ScopeTemplate.In expected to have constructor .mem")
   match result with
-    | .mem er1 => .mem (Field.merge er1 er2)
-    | _ => .mem er2
+  | .mem er1 => .mem (Field.merge er1 er2)
+  | _        => .mem er2
 
 @[inline]
 def mergeEq (result : ScopeTemplate) (x : Proto.ScopeTemplate.Eq) : ScopeTemplate :=
-  have er2 := match x with
+  have er2 :=
+    match x with
     | .eq e => e
-    | _ => panic!("Proto.ScopeTemplate.Eq expected to have constructor .eq")
+    | _     => panic!("Proto.ScopeTemplate.Eq expected to have constructor .eq")
   match result with
-    | .eq er1 => .eq (Field.merge er1 er2)
-    | _ => .eq er2
+  | .eq er1 => .eq (Field.merge er1 er2)
+  | _       => .eq er2
 
 @[inline]
 def mergeIs (result : ScopeTemplate) (x : Proto.ScopeTemplate.Is) : ScopeTemplate :=
-  have et2 := match x with
+  have et2 :=
+    match x with
     | .is e => e
-    | _ => panic!("Proto.ScopeTemplate.Is expected to have constructor .is")
+    | _     => panic!("Proto.ScopeTemplate.Is expected to have constructor .is")
   match result with
-    | .is et1 => .is (Field.merge et1 et2)
-    | _ => .is et2
+  | .is et1 => .is (Field.merge et1 et2)
+  | _       => .is et2
 
 @[inline]
 def mergeIsIn (result : ScopeTemplate) (x : Proto.ScopeTemplate.IsIn) : ScopeTemplate :=
   have ⟨et2, er2⟩ := match x with
-    | .isMem et er => (et, er)
-    | _ => panic!("Proto.ScopeTemplate.IsIn expected to have constructor .isMem")
+  | .isMem et er => (et, er)
+  | _            => panic!("Proto.ScopeTemplate.IsIn expected to have constructor .isMem")
   match result with
-    | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
-    | _ => .isMem et2 er2
+  | .isMem et1 er1 => .isMem (Field.merge et1 et2) (Field.merge er1 er2)
+  | _              => .isMem et2 er2
 
 
 @[inline]
@@ -261,24 +267,24 @@ def merge (x1 : ScopeTemplate) (x2 : ScopeTemplate) : ScopeTemplate :=
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate) := do
   match t.fieldNum with
-    | 1 =>
-      let x : Proto.ScopeTemplate.Any ← Field.guardedParse t
-      pure (pure $ mergeAny · x)
-    | 2 =>
-      let x : Proto.ScopeTemplate.In ← Field.guardedParse t
-      pure (pure $ mergeIn · x)
-    | 3 =>
-      let x : Proto.ScopeTemplate.Eq ← Field.guardedParse t
-      pure (pure $ mergeEq · x)
-    | 4 =>
-      let x : Proto.ScopeTemplate.Is ← Field.guardedParse t
-      pure (pure $ mergeIs · x)
-    | 5 =>
-      let x : Proto.ScopeTemplate.IsIn ← Field.guardedParse t
-      pure (pure $ mergeIsIn · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Proto.ScopeTemplate.Any ← Field.guardedParse t
+    pureMergeFn (mergeAny · x)
+  | 2 =>
+    let x : Proto.ScopeTemplate.In ← Field.guardedParse t
+    pureMergeFn (mergeIn · x)
+  | 3 =>
+    let x : Proto.ScopeTemplate.Eq ← Field.guardedParse t
+    pureMergeFn (mergeEq · x)
+  | 4 =>
+    let x : Proto.ScopeTemplate.Is ← Field.guardedParse t
+    pureMergeFn (mergeIs · x)
+  | 5 =>
+    let x : Proto.ScopeTemplate.IsIn ← Field.guardedParse t
+    pureMergeFn (mergeIsIn · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ScopeTemplate := {
   parseField := parseField
@@ -288,11 +294,11 @@ instance : Message ScopeTemplate := {
 @[inline]
 def withSlot (x : ScopeTemplate) (s : SlotID) : ScopeTemplate :=
   match x with
-    | .any => .any
-    | .mem er => .mem (er.withSlot s)
-    | .eq er => .eq (er.withSlot s)
-    | .is et => .is et
-    | .isMem et er => .isMem et (er.withSlot s)
+  | .any => .any
+  | .mem er => .mem (er.withSlot s)
+  | .eq er => .eq (er.withSlot s)
+  | .is et => .is et
+  | .isMem et er => .isMem et (er.withSlot s)
 
 end ScopeTemplate
 
