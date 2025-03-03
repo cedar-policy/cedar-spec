@@ -360,7 +360,7 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM₁ as (λ x : { x // x ∈ as } => f x.val) =
   List.mapM f as
 := by
-  simp [mapM₁, attach_def, mapM_pmap_subtype]
+  simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
 theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
   (f : (α × β) → m γ)
@@ -368,7 +368,7 @@ theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
   List.mapM f as
 := by
-  simp [mapM₂, attach₂, mapM_pmap_subtype]
+  simp only [mapM₂, attach₂, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :

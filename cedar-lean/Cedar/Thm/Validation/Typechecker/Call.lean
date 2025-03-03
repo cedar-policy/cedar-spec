@@ -199,7 +199,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     case cons hd₂ tl₂ =>
       cases tl₂
       case nil =>
-        rw [List.attach_def, List.pmap, List.mapM, List.mapM.loop, justType, Except.map.eq_def] at h₁
+        rw [List.mapM, List.mapM.loop, justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
         rw [List.mapM.loop, justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
@@ -207,9 +207,8 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         rename_i res₁ h₂ _ res₂ h₃
         exists hd₁, hd₂, res₁.2, res₂.2
         simp [ResultType.typeOf, Except.map]
-        have ⟨hl₁, hr₁⟩ := h₁
+        have ⟨hl₁, hr₁⟩ := h₁ ; clear h₁
         subst hl₁ hr₁
-        simp at h₂ h₃
         simp [h₂, h₃]
       case cons hd₃ tl₃ =>
         simp only [List.attach_def, List.pmap, List.mapM_cons,
