@@ -360,7 +360,7 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM₁ as (λ x : { x // x ∈ as } => f x.val) =
   List.mapM f as
 := by
-  simp [mapM₁, attach_def, mapM_pmap_subtype]
+  simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
 theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
   (f : (α × β) → m γ)
@@ -368,7 +368,7 @@ theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
   List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
   List.mapM f as
 := by
-  simp [mapM₂, attach₂, mapM_pmap_subtype]
+  simp only [mapM₂, attach₂, mapM_pmap_subtype]
 
 theorem mapM_implies_nil {f : α → Except β γ} {as : List α}
   (h₁ : List.mapM f as = Except.ok []) :
@@ -1169,9 +1169,9 @@ theorem mapM_forM {α β : Type} (f : α → Except β PUnit) (xs : List α) (ys
 := by
   intro h₀
   induction xs generalizing ys with
-  | nil => simp only [forM_nil', pure, Except.pure]
+  | nil => simp only [forM_eq_forM, forM_nil]; rfl
   | cons xh xt ih =>
-    simp only [forM_cons']
+    simp only [forM_eq_forM, forM_cons]
     cases h₁ : f xh with
     | error =>
       simp only [List.mapM_cons] at h₀
@@ -1204,11 +1204,11 @@ theorem forM_mapM {α β : Type} (f : α → Except β PUnit) (xs : List α) :
     cases h₂ : f xh with
     | error =>
       simp only [List.mapM'_cons, pure, Except.pure]
-      simp only [forM_cons'] at h₁
+      simp only [forM_eq_forM, forM_cons] at h₁
       rw [h₂] at h₁
       simp only [Except.bind_err, reduceCtorEq] at h₁
     | ok y' =>
-      simp only [List.forM_cons'] at h₁
+      simp only [forM_eq_forM, forM_cons] at h₁
       rw [h₂] at h₁
       simp only [Except.bind_ok] at h₁
       simp only [List.mapM'_cons, pure, Except.pure]

@@ -1,16 +1,11 @@
-
-üJù
-
-
-lessThan°
-}J{
-:
-decimal/+decimal("3.14").lessThan(decimal("3.1416"))=
-
-3.141+decimal("3.14").lessThan(decimal("3.1416"))/++decimal("3.14").lessThan(decimal("3.1416"))·
-J
-<
-decimal1+decimal("3.14").lessThan(decimal("3.1416"))?
+J@
 
 
-3.14161!+decimal("3.14").lessThan(decimal("3.1416"))1+decimal("3.14").lessThan(decimal("3.1416"))/++decimal("3.14").lessThan(decimal("3.1416"))
+lessThanJ
+	
+decimal
+3.14J
+	
+decimal
+
+3.1416

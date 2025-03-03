@@ -5,12 +5,12 @@ import "validator.proto";
 
 message AuthorizationRequestMsg {
     cedar_policy_core.Request request = 1;
-    cedar_policy_core.LiteralPolicySet policies = 2;
+    cedar_policy_core.PolicySet policies = 2;
     cedar_policy_core.Entities entities = 3;
 }
 
 message ValidationRequestMsg {
-    cedar_policy_validator.ValidatorSchema schema = 1;
-    cedar_policy_core.LiteralPolicySet policies = 2;
+    cedar_policy_validator.Schema schema = 1;
+    cedar_policy_core.PolicySet policies = 2;
     cedar_policy_validator.ValidationMode mode = 3;
 }

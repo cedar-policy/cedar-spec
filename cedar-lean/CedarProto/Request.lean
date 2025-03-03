@@ -15,83 +15,73 @@
 -/
 import Cedar.Spec
 import Protobuf.Message
-import Protobuf.String
+import Protobuf.Structure
 
 -- Message Dependencies
-import CedarProto.EntityUIDEntry
+import CedarProto.EntityUID
+import CedarProto.Expr
 import CedarProto.Value
-import CedarProto.Context
 
 open Proto
 
-namespace Cedar.Spec
+namespace Cedar.Spec.Proto
 
--- Note that Cedar.Spec.Request is defined as
--- structure Request where
---   principal : EntityUID
---   action : EntityUID
---   resource : EntityUID
---   context : Map Attr Value
+structure Request where
+  principal : EntityUID
+  action : EntityUID
+  resource : EntityUID
+  context : Expr
+deriving Repr, Inhabited
 
 namespace Request
 
-@[inline]
-def mergePrincipal (result : Request) (x : EntityUIDEntry) : Request :=
-  {result with
-    principal := Field.merge result.principal x
-  }
-
-@[inline]
-def mergeAction (result : Request) (x : EntityUIDEntry) : Request :=
-  {result with
-    action := Field.merge result.action x
-  }
-
-@[inline]
-def mergeResource (result : Request) (x : EntityUIDEntry) : Request :=
-  {result with
-    resource := Field.merge result.resource x
-  }
-
-@[inline]
-def mergeContext (result : Request) (x : Context) : Request :=
-  {result with
-    context := (@Field.merge Context) result.context x
-  }
-
-@[inline]
-def merge (x : Request) (y : Request) : Request :=
-  {
-    principal := Field.merge x.principal y.principal
-    action := Field.merge x.action y.action
-    resource := Field.merge x.resource y.resource
-    context := (@Field.merge Context) x.context y.context
-  }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn Request) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
-      pure (pure $ mergePrincipal · x)
-    | 2 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
-      pure (pure $ mergeAction · x)
-    | 3 =>
-      let x : EntityUIDEntry ← Field.guardedParse t
-      pure (pure $ mergeResource · x)
-    | 4 =>
-      let x : Context ← Field.guardedParse t
-      pure (pure $ mergeContext · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
 instance : Message Request := {
-  parseField := parseField
-  merge := merge
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t principal (update principal)
+    | 2 => parseFieldElement t action (update action)
+    | 3 => parseFieldElement t resource (update resource)
+    | 4 => parseFieldElement t context (update context)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    principal := Field.merge x.principal y.principal
+    action    := Field.merge x.action    y.action
+    resource  := Field.merge x.resource  y.resource
+    context   := Field.merge x.context   y.context
+  }
 }
 
+def toRequest : Request → Except String Spec.Request
+  | { principal, action, resource, context } => do
+    .ok {
+      principal
+      action
+      resource
+      context := ← match context with
+        | .record pairs => do
+          let pairs ← pairs.mapM λ (k,v) => do .ok (k, ← Spec.Value.exprToValue v)
+          .ok $ Data.Map.make pairs
+        | _ => panic!("expected context to be a record")
+    }
+
 end Request
+
+end Cedar.Spec.Proto
+
+namespace Cedar.Spec
+
+def Request.merge (x y : Request) : Request := {
+  principal := Field.merge x.principal y.principal
+  action    := Field.merge x.action    y.action
+  resource  := Field.merge x.resource  y.resource
+  context   := match x.context.kvs, y.context.kvs with
+  -- avoid sort if either is empty
+  | [], _ => y.context
+  | _, [] => x.context
+  | xkvs, ykvs => Data.Map.make $ xkvs ++ ykvs
+}
+
+instance : Field Request := Field.fromInterFieldFallible Proto.Request.toRequest Request.merge
 
 end Cedar.Spec

@@ -49,6 +49,8 @@ def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
   | .decimal _, .decimal => true
   | .ipaddr _, .ipAddr => true
+  | .datetime _, .datetime => true
+  | .duration _, .duration => true
   | _, _ => false
 
 def requiredAttributePresent (r : Map Attr Value) (rty : Map Attr (Qualified CedarType)) (k : Attr) :=
@@ -133,10 +135,10 @@ where
                        else .error (.typeError "action ancestors inconsistent with type store information")
       | _ => .error (.typeError s!"action type {uid.eid} not defined in type store")
 
-def requestMatchesEnvironment (env : Environment) (request : Request) (schema : EntitySchema): Bool := instanceOfRequestType request env.reqty schema
+def requestMatchesEnvironment (env : Environment) (request : Request): Bool := instanceOfRequestType request env.reqty env.ets
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
-  if ((schema.environments.any (requestMatchesEnvironment · request schema.ets)))
+  if ((schema.environments.any (requestMatchesEnvironment · request)))
   then .ok ()
   else .error (.typeError "request could not be validated in any environment")
 

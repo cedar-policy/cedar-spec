@@ -44,6 +44,8 @@ def InstanceOfEntityType (e : EntityUID) (ety: EntityType) : Prop :=
 def InstanceOfExtType : Ext → ExtType → Prop
   | .decimal _, .decimal => True
   | .ipaddr _,  .ipAddr  => True
+  | .datetime _, .datetime => True
+  | .duration _, .duration => True
   | _, _                 => False
 
 inductive InstanceOfType : Value → CedarType → Prop where
@@ -201,7 +203,7 @@ theorem instance_of_entity_type_is_entity {ety : EntityType} :
   intro h₁
   cases h₁
   rename_i euid h₁
-  simp [InstanceOfEntityType] at h₁
+  simp only [InstanceOfEntityType] at h₁
   exists euid
   simp [h₁]
 
@@ -212,7 +214,7 @@ theorem instance_of_decimal_type_is_decimal {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i d _
   exists d
@@ -224,10 +226,34 @@ theorem instance_of_ipAddr_type_is_ipAddr {v₁ : Value} :
   intro h₁
   cases h₁
   rename_i x h₁
-  simp [InstanceOfExtType] at h₁
+  simp only [InstanceOfExtType] at h₁
   split at h₁ <;> try { contradiction }
   rename_i ip _
   exists ip
+
+theorem instance_of_datetime_type_is_datetime {v₁ : Value} :
+  InstanceOfType v₁ (CedarType.ext ExtType.datetime) →
+  ∃ d, v₁ = .ext (.datetime d)
+:= by
+  intro h₁
+  cases h₁
+  rename_i x h₁
+  simp only [InstanceOfExtType] at h₁
+  split at h₁ <;> try { contradiction }
+  rename_i d _
+  exists d
+
+theorem instance_of_duration_type_is_duration {v₁ : Value} :
+  InstanceOfType v₁ (CedarType.ext ExtType.duration) →
+  ∃ d, v₁ = .ext (.duration d)
+:= by
+  intro h₁
+  cases h₁
+  rename_i x h₁
+  simp only [InstanceOfExtType] at h₁
+  split at h₁ <;> try { contradiction }
+  rename_i d _
+  exists d
 
 theorem instance_of_set_type_is_set {v : Value} {ty : CedarType} :
   InstanceOfType v (.set ty) →
@@ -330,6 +356,8 @@ theorem ext_type_is_inhabited (xty : ExtType) :
   cases xty
   case ipAddr  => exists (Ext.ipaddr (default : IPAddr))
   case decimal => exists (Ext.decimal (default : Ext.Decimal))
+  case datetime => exists (Ext.datetime (default : Ext.Datetime))
+  case duration => exists (Ext.duration (default : Ext.Datetime.Duration))
 
 theorem instance_of_record_nil :
   InstanceOfType (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
