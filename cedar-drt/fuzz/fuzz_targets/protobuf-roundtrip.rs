@@ -18,7 +18,6 @@
 
 use libfuzzer_sys::arbitrary::{self, MaxRecursionReached};
 use prost::Message;
-use serde::Serialize;
 
 use crate::arbitrary::Arbitrary;
 use crate::arbitrary::Unstructured;
@@ -34,9 +33,8 @@ use cedar_policy_generators::{
     settings::ABACSettings,
 };
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
-    #[serde(skip)]
     request: ABACRequest,
     policy: ABACPolicy,
     entities: Entities,
