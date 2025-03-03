@@ -102,8 +102,16 @@ def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (t
     .val (v₁ == v₂) ty
   | .less, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     .val (i < j : Bool) ty
+  | .less, .val (.ext (.datetime d₁)) _, .val (.ext (.datetime d₂)) _ =>
+    .val (d₁ < d₂: Bool) ty
+  | .less, .val (.ext (.duration d₁)) _, .val (.ext (.duration d₂)) _ =>
+    .val (d₁ < d₂: Bool) ty
   | .lessEq, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     .val (i ≤ j : Bool) ty
+  | .lessEq, .val (.ext (.datetime d₁)) _, .val (.ext (.datetime d₂)) _ =>
+    .val (d₁ ≤ d₂: Bool) ty
+  | .lessEq, .val (.ext (.duration d₁)) _, .val (.ext (.duration d₂)) _ =>
+    .val (d₁ ≤ d₂: Bool) ty
   | .add, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
     someOrError (i.add? j) ty
   | .sub, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
