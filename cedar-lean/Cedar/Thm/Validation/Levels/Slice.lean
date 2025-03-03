@@ -288,13 +288,12 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
     have ih := reachable_tag_step hr' he₁ he₂ he₃
     exact ReachableIn.step euid'' hi he₁' ih
 
-theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
+  (ht : typeOf (.binaryApp .getTag e₁ e₂) c env = .ok (tx, c'))
   (hl : TypedExpr.AtLevel tx n nmax)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
-  (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
+  (he : evaluate (.binaryApp .getTag e₁ e₂) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (ih₁ : CheckedEvalEntityReachable e₁) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
@@ -302,35 +301,65 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   simp only [evaluate] at he
   cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   cases he₂ : evaluate e₂ request entities <;> simp [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  simp only [apply₂, intOrErr, inₛ, hasTag, getTag] at he
+  simp only [apply₂] at he
+  split at he <;> try contradiction
+  rename_i euid' _ _
 
-  (split at he <;> try split at he) <;>
-  try contradiction
+  have ⟨hc', ety, ty, tx₁, tx₂, c₁', c₂', htx₁, hty₁, htx₂, hty₂, ht, htx, hc₁⟩ := type_of_getTag_inversion ht
+  subst htx hc'
+  cases hl
+  case binaryApp hop _  _ =>
+    simp [DereferencingBinaryOp] at hop
+  case getTag hrt₁ hl₁ hl₂ =>
+    simp only [getTag] at he
+    cases he₃ : entities.tags euid' <;> simp only [he₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at he
+    simp only [Map.findOrErr] at he
+    split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
+    subst he
+    rename_i hv
 
-  case h_13 euid' tag =>
-    have ⟨hc', ety, ty, tx₁, tx₂, c₁', c₂', htx₁, hty₁, htx₂, hty₂, ht, htx, hc₁⟩ := type_of_getTag_inversion ht
-    subst htx hc'
-    cases hl
-    case binaryApp hop _  _ =>
-      simp [DereferencingBinaryOp] at hop
-    case getTag hrt₁ hl₁ hl₂ =>
-      cases he₃ : entities.tags euid' <;> simp only [he₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at he
-      simp only [Map.findOrErr] at he
-      split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
-      subst he
-      rename_i hv
+    have ⟨ ed, hed, hed' ⟩ := entities_tags_then_find? he₃
+    subst hed'
+    have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-      have ⟨ ed, hed, hed' ⟩ := entities_tags_then_find? he₃
-      subst hed'
-      have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
+    have ih := ih₁ hc hr htx₁ hl₁ hrt₁ he₁ (.euid euid') hf'
+    exact reachable_tag_step ih hed hv ha
 
-      have ih := ih₁ hc hr htx₁ hl₁ hrt₁ he₁ (.euid euid') hf'
-      exact reachable_tag_step ih hed hv ha
-
-  case h_11 vs =>
+theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
+  (hop : op ≠ .getTag)
+  (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v) :
+  ¬Value.EuidViaPath v path euid
+:= by
+  intro ha
+  simp only [evaluate] at he
+  cases he₁ : evaluate e₁ request entities <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  cases he₂ : evaluate e₂ request entities <;> simp [he₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  simp only [apply₂, intOrErr, inₛ, hasTag] at he
+  split at he <;> try split at he
+  all_goals first
+  | contradiction
+  | simp at he
+    subst he
+    cases ha
+  | rename_i vs
     cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp [he₃] at he
     subst he ; cases ha
-  all_goals { injections he ; subst he ; cases ha }
+
+theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+  (hc : CapabilitiesInvariant c request entities)
+  (hr : RequestAndEntitiesMatchEnvironment env request entities)
+  (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
+  (hl : TypedExpr.AtLevel tx n nmax)
+  (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
+  (ha : Value.EuidViaPath v path euid)
+  (ih₁ : CheckedEvalEntityReachable e₁) :
+  ReachableIn entities request.sliceEUIDs euid (n + 1)
+:= by
+  cases hop : op == .getTag <;> simp at hop
+  · exfalso
+    exact binary_op_not_euid_via_path hop he ha
+  · subst op
+    exact checked_eval_entity_reachable_get_tag hc hr ht hl he ha ih₁
 
 theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set EntityUID} {entities : Entities} {ed : EntityData} {path : List Attr}
   (hr : ReachableIn entities start euid n)
@@ -601,7 +630,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
 
   case binaryApp op e₁ e₂ =>
     have ih₁ := @checked_eval_entity_reachable e₁
-    exact checked_eval_entity_reachable_binary hc hr ht hl hel he ha ih₁
+    exact checked_eval_entity_reachable_binary hc hr ht hl he ha ih₁
 
   case getAttr e _ =>
     have ih := @checked_eval_entity_reachable e

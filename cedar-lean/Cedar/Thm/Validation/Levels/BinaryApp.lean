@@ -39,11 +39,13 @@ theorem not_dereferencing_apply₂_invariant_entities {op : BinaryOp} {entities 
 := by
   cases op <;> simp only [DereferencingBinaryOp, not_true_eq_false] at hop
   all_goals
-    cases v₁ <;> cases v₂ <;> simp only [apply₂]
-    try (
+    cases v₁ <;> cases v₂ <;>
+    simp only [apply₂] <;>
+    (
       rename_i p₁ p₂
-      cases p₁ <;> cases p₂ <;> simp
-    )
+      cases p₁ <;> cases p₂
+    ) <;>
+    simp
 
 theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : EntityUID} {n nmax : Nat} {c₀ c₁ : Capabilities} {entities slice : Entities}
   (hn : nmax ≥ n + 1)
