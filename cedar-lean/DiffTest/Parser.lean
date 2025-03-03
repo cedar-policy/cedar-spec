@@ -133,6 +133,12 @@ def jsonToExtFun (json : Lean.Json) : ParseResult ExtFun := do
   | "isLoopback" => .ok .isLoopback
   | "isMulticast" => .ok .isMulticast
   | "isInRange" => .ok .isInRange
+  | "datetime" => .ok .datetime
+  | "duration" => .ok .duration
+  | "offset" => .ok .offset
+  | "durationSince" => .ok .durationSince
+  | "toDate" => .ok .toDate
+  | "toTime" => .ok .toTime
   | xfn => .error s!"jsonToExtFun: unknown extension function {xfn}"
 
 /- mapM functions for lists of key-value pairs -/
@@ -410,6 +416,8 @@ def jsonToExtType (json : Lean.Json) : ParseResult ExtType := do
   match xty.id with
   | "ipaddr" => .ok .ipAddr
   | "decimal" => .ok .decimal
+  | "datetime" => .ok .datetime
+  | "duration" => .ok .duration
   | xty => .error s!"jsonToExtType: unknown extension type {xty}"
 
 /-
