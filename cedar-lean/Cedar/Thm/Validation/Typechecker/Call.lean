@@ -26,15 +26,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
-  (h₁ : typeOf (Expr.call xfn xs) c env = Except.ok (tx, c')) :
-  ∃ txs ty,
-    tx = .call xfn txs ty ∧
-    ∀ xᵢ ∈ xs,
-      ∃ txᵢ cᵢ,
-        txᵢ ∈ txs ∧
-        typeOf xᵢ c env = Except.ok (txᵢ, cᵢ)
-:= by sorry
 
 theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .decimal xs) c env = Except.ok (ty, c')) :
@@ -808,5 +799,31 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   | .durationSince      => exact type_of_call_durationSince_is_sound h₁ h₂ h₃ ih
   | .toDate             => exact type_of_call_toDate_is_sound h₁ h₂ h₃ ih
   | .toTime             => exact type_of_call_toTime_is_sound h₁ h₂ h₃ ih
+
+theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+  (htx : typeOf (Expr.call xfn xs) c env = Except.ok (tx, c')) :
+  ∃ txs,
+    (∃ ty, tx = .call xfn txs ty) ∧
+    List.Forall₂ (λ xᵢ txᵢ => ∃ cᵢ, typeOf xᵢ c env = .ok (txᵢ, cᵢ)) xs txs
+:= by
+  simp [typeOf] at htx
+  cases htx₁ : xs.mapM₁ fun x => justType (typeOf x.val c env) <;> simp [htx₁] at htx
+  simp [typeOfCall] at htx
+  rename_i txs
+  exists txs
+  and_intros
+  · split at htx <;>
+    (first
+    | contradiction
+    | cases htx₁ : typeOfConstructor Ext.Decimal.decimal xs (CedarType.ext ExtType.decimal) <;> simp only [htx₁] at htx
+    | cases htx₁ : typeOfConstructor Ext.IPAddr.ip xs (CedarType.ext ExtType.ipAddr) <;> simp only [htx₁] at htx
+    | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime) <;> simp only [htx₁] at htx
+    | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration) <;> simp only [htx₁] at htx
+    | skip) <;>
+    simp only [ok, err, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx <;>
+    simp [←htx]
+  · clear htx
+
+    sorry
 
 end Cedar.Thm
