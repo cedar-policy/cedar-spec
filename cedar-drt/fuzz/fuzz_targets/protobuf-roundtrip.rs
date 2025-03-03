@@ -57,8 +57,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -148,14 +146,14 @@ fn roundtrip_authz_request_msg(auth_request: AuthorizationRequestMsg) {
 
 fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
     // AST -> Protobuf bytes
-    let schema_proto = proto::models::ValidatorSchema::from(&schema);
+    let schema_proto = proto::models::Schema::from(&schema);
 
     // Protobuf -> Bytes
     let buf = schema_proto.encode_to_vec();
 
     // Bytes -> Protobuf
-    let roundtripped_proto = proto::models::ValidatorSchema::decode(&buf[..])
-        .expect("Failed to deserialize Schema from proto");
+    let roundtripped_proto =
+        proto::models::Schema::decode(&buf[..]).expect("Failed to deserialize Schema from proto");
 
     // Protobuf -> AST
     let roundtripped = cedar_policy_validator::ValidatorSchema::from(&roundtripped_proto);

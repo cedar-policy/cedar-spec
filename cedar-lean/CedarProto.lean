@@ -15,27 +15,21 @@
 -/
 
 import CedarProto.ActionConstraint
+import CedarProto.ActionDecl
 import CedarProto.AuthorizationRequest
-import CedarProto.Context
 import CedarProto.Entities
 import CedarProto.Entity
+import CedarProto.EntityDecl
 import CedarProto.EntityReference
-import CedarProto.EntityType
 import CedarProto.EntityUID
-import CedarProto.EntityUIDEntry
 import CedarProto.Expr
-import CedarProto.LiteralPolicy
-import CedarProto.LiteralPolicySet
 import CedarProto.Name
-import CedarProto.PrincipalConstraint
+import CedarProto.Policy
+import CedarProto.PolicySet
 import CedarProto.PrincipalOrResourceConstraint
 import CedarProto.Request
-import CedarProto.ResourceConstraint
+import CedarProto.Schema
 import CedarProto.TemplateBody
 import CedarProto.Type
 import CedarProto.ValidationRequest
-import CedarProto.ValidatorActionId
-import CedarProto.ValidatorApplySpec
-import CedarProto.ValidatorEntityType
-import CedarProto.ValidatorSchema
 import CedarProto.Value

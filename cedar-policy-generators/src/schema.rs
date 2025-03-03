@@ -257,19 +257,11 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
             json_schema::TypeVariant::Extension {
                 name: "decimal".parse().unwrap(),
             },
-            if settings.enable_datetime_extension {
-                json_schema::TypeVariant::Extension {
-                    name: "datetime".parse().unwrap(),
-                }
-            } else {
-                Err(Error::DatetimeExtensionsDisabled)?
+            json_schema::TypeVariant::Extension {
+                name: "datetime".parse().unwrap(),
             },
-            if settings.enable_datetime_extension {
-                json_schema::TypeVariant::Extension {
-                    name: "duration".parse().unwrap(),
-                }
-            } else {
-                Err(Error::DatetimeExtensionsDisabled)?
+            json_schema::TypeVariant::Extension {
+                name: "duration".parse().unwrap(),
             }
         ),
         loc: None,
@@ -1963,7 +1955,6 @@ mod tests {
         enable_unknowns: false,
         enable_unspecified_apply_spec: true,
         enable_action_in_constraints: true,
-        enable_datetime_extension: true,
     };
 
     const GITHUB_SCHEMA_STR: &str = r#"

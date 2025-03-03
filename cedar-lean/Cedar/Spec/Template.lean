@@ -69,7 +69,9 @@ abbrev SlotEnv := Map SlotID EntityUID
 def SlotEnv.empty : SlotEnv := Map.empty
 
 structure TemplateLinkedPolicy where
+  /-- ID of the link, which for static policies will match the `templateId` -/
   id : PolicyID
+  /-- ID of the template, which for static policies will match the `id` -/
   templateId : TemplateID
   slotEnv : SlotEnv
 deriving Repr

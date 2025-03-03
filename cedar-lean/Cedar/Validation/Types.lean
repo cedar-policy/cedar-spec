@@ -26,6 +26,7 @@ inductive BoolType where
   | anyBool
   | tt
   | ff
+deriving Repr
 
 def BoolType.not : BoolType → BoolType
   | .anyBool => .anyBool
@@ -35,18 +36,40 @@ def BoolType.not : BoolType → BoolType
 inductive ExtType where
   | ipAddr
   | decimal
+  | datetime
+  | duration
+deriving Repr
 
 inductive Qualified (α : Type u) where
   | optional (a : α)
   | required (a : α)
+deriving Repr
 
-def Qualified.getType {α} : Qualified α → α
+namespace Qualified
+
+instance [Inhabited α] : Inhabited (Qualified α) where
+  default := .required default
+
+def getType {α} : Qualified α → α
   | optional a => a
   | required a => a
 
-def Qualified.isRequired {α} : Qualified α → Bool
+def isRequired {α} : Qualified α → Bool
   | optional _ => false
   | required _ => true
+
+-- effectively making Qualified a functor
+def map {α β} (f : α → β) : Qualified α → Qualified β
+  | optional a => optional (f a)
+  | required a => required (f a)
+
+def transpose {α ε} : Qualified (Except ε α) → Except ε (Qualified α)
+  | optional (.ok a) => .ok (optional a)
+  | required (.ok a) => .ok (required a)
+  | optional (.error e) => .error e
+  | required (.error e) => .error e
+
+end Qualified
 
 inductive CedarType where
   | bool (bty : BoolType)
@@ -56,6 +79,10 @@ inductive CedarType where
   | set (ty : CedarType)
   | record (rty : Map Attr (Qualified CedarType))
   | ext (xty : ExtType)
+deriving Repr
+
+instance : Inhabited CedarType where
+  default := .int
 
 def CedarType.isBool : CedarType → Bool
   | .bool _ => true
@@ -140,6 +167,7 @@ structure ActionSchemaEntry where
   appliesToResource : Set EntityType
   ancestors : Set EntityUID
   context : RecordType
+deriving Repr, Inhabited
 
 abbrev ActionSchema := Map EntityUID ActionSchemaEntry
 

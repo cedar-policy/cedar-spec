@@ -17,7 +17,7 @@ import Cedar.Spec
 
 -- Message Dependencies
 import CedarProto.EntityReference
-import CedarProto.EntityType
+import CedarProto.Name
 
 open Proto
 
@@ -26,7 +26,7 @@ namespace Cedar.Spec
 namespace Proto
 -- Constructors for ScopeTemplate
 
-inductive ScopeTemplate.Ty where
+inductive ScopeTemplate.Any where
   | any
 deriving Inhabited
 
@@ -36,17 +36,17 @@ def ScopeTemplate.Is := ScopeTemplate
 def ScopeTemplate.IsIn := ScopeTemplate
 end Proto
 
-namespace Proto.ScopeTemplate.Ty
+namespace Proto.ScopeTemplate.Any
 @[inline]
-def fromInt (n : Int) : Except String ScopeTemplate.Ty :=
+def fromInt (n : Int) : Except String ScopeTemplate.Any :=
   match n with
     | 0 => .ok .any
     | n => .error s!"Field {n} does not exist in enum"
 
-instance : ProtoEnum ScopeTemplate.Ty := {
+instance : ProtoEnum ScopeTemplate.Any := {
   fromInt := fromInt
 }
-end Proto.ScopeTemplate.Ty
+end Proto.ScopeTemplate.Any
 
 namespace Proto.ScopeTemplate.In
 instance : Inhabited ScopeTemplate.In where
@@ -118,7 +118,7 @@ instance : Inhabited ScopeTemplate.Is where
   default := .is default
 
 @[inline]
-def mergeET (result : ScopeTemplate.Is) (e2 : EntityTypeProto) : ScopeTemplate.Is :=
+def mergeET (result : ScopeTemplate.Is) (e2 : Spec.Name) : ScopeTemplate.Is :=
   match result with
     | .is e1 => .is (Field.merge e1 e2)
     | _ => panic!("ScopeTemplate.Is expected ScopeTemplate constructor to be set to .is")
@@ -134,7 +134,7 @@ def merge (x1 x2 : ScopeTemplate.Is) : ScopeTemplate.Is :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.Is) := do
   match t.fieldNum with
     | 1 =>
-      let x : EntityTypeProto ← Field.guardedParse t
+      let x : Spec.Name ← Field.guardedParse t
       pure (pure $ mergeET · x)
     | _ =>
       t.wireType.skip
@@ -157,7 +157,7 @@ def mergeER (result : ScopeTemplate.IsIn) (er2 : EntityUIDOrSlot) : ScopeTemplat
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
 
 @[inline]
-def mergeET (result : ScopeTemplate.IsIn) (et2 : EntityTypeProto) : ScopeTemplate.IsIn :=
+def mergeET (result : ScopeTemplate.IsIn) (et2 : Spec.Name) : ScopeTemplate.IsIn :=
   match result with
     | .isMem et1 er => .isMem (Field.merge et1 et2) er
     | _ => panic!("ScopeTemplate.IsIn expected ScopeTemplate constructor to be set to .isMem")
@@ -178,7 +178,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate.IsIn) := do
       let x : EntityUIDOrSlot ← Field.guardedParse t
       pure (pure $ mergeER · x)
     | 2 =>
-      let x : EntityTypeProto ← Field.guardedParse t
+      let x : Spec.Name ← Field.guardedParse t
       pure (pure $ mergeET · x)
     | _ =>
       t.wireType.skip
@@ -205,7 +205,7 @@ deriving instance Inhabited for ScopeTemplate
 deriving instance Inhabited for EntityUIDOrSlot
 
 @[inline]
-def mergeTy (_ : ScopeTemplate) (x : Proto.ScopeTemplate.Ty) : ScopeTemplate :=
+def mergeAny (_ : ScopeTemplate) (x : Proto.ScopeTemplate.Any) : ScopeTemplate :=
   match x with
     | .any => .any
 
@@ -262,8 +262,8 @@ def merge (x1 : ScopeTemplate) (x2 : ScopeTemplate) : ScopeTemplate :=
 def parseField (t : Proto.Tag) : BParsec (MergeFn ScopeTemplate) := do
   match t.fieldNum with
     | 1 =>
-      let x : Proto.ScopeTemplate.Ty ← Field.guardedParse t
-      pure (pure $ mergeTy · x)
+      let x : Proto.ScopeTemplate.Any ← Field.guardedParse t
+      pure (pure $ mergeAny · x)
     | 2 =>
       let x : Proto.ScopeTemplate.In ← Field.guardedParse t
       pure (pure $ mergeIn · x)
