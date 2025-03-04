@@ -76,8 +76,11 @@ def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : Resul
   match r₁.fst.typeOf with
   | .bool .tt  => do
     let (ty₂, c₂) ← r₂
-    ok ty₂ (c₁ ∪ c₂)
-  | .bool .ff => r₃
+    -- Changed during proof of slicing soundness. Previously returned ty₂ directly
+    ok (.ite r₁.fst ty₂ ty₂ ty₂.typeOf) (c₁ ∪ c₂)
+  | .bool .ff => do
+    let (ty₃, c₃) ← r₃
+    ok (.ite r₁.fst ty₃ ty₃ ty₃.typeOf) c₃
   | .bool .anyBool => do
     let (ty₂, c₂) ← r₂
     let (ty₃, c₃) ← r₃
@@ -89,7 +92,7 @@ def typeOfIf (r₁ : TypedExpr × Capabilities) (r₂ r₃ : ResultType) : Resul
 def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   let c₁ := r₁.snd
   match r₁.fst.typeOf with
-  | .bool .ff  => ok r₁.fst
+  | .bool .ff  => ok (TypedExpr.and r₁.fst r₁.fst (.bool .ff))
   | .bool ty₁  => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.and r₁.fst ty₂ ty) c
@@ -103,7 +106,7 @@ def typeOfAnd (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultTyp
 def typeOfOr (r₁ : TypedExpr × Capabilities) (r₂ : ResultType) : ResultType :=
   let c₁ := r₁.snd
   match r₁.fst.typeOf with
-  | .bool .tt  => ok r₁.fst
+  | .bool .tt  => ok (TypedExpr.or r₁.fst r₁.fst (.bool .tt))
   | .bool .ff  => do
     let (ty₂, c₂) ← r₂
     let ok ty (c := ∅) := ok (TypedExpr.or r₁.fst ty₂ ty) c
