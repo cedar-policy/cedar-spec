@@ -37,13 +37,13 @@ theorem level_based_slicing_is_sound_call {xs : List Expr} {n : Nat} {c₀ c₁:
   (ih : ∀ x ∈ xs, TypedAtLevelIsSound x) :
   evaluate (.call xfn xs) request entities = evaluate (.call xfn xs) request slice
 := by
-  replace ⟨ _, txs, ty, ht ⟩ := type_of_call_inversion ht
+  replace ⟨ txs, ⟨ty, hty⟩, ht ⟩ := type_of_call_inversion ht
   subst tx
   cases hl ; rename_i hl
 
   have he : ∀ x ∈ xs, evaluate x request entities = evaluate x request slice := by
     intros x hx
-    replace ⟨ tx, c', htxs, htx ⟩ := ht x hx
+    replace ⟨ tx, htxs, c', htx ⟩ := List.forall₂_implies_all_left ht x hx
     specialize hl tx htxs
     exact ih x hx hn hs hc hr htx hl
 
