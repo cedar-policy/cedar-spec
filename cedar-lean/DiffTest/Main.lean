@@ -105,12 +105,6 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
       .ok { data, duration }
   toString (Lean.toJson result)
 
-@[export partialAuthorizeDRT] unsafe def partialAuthorizeDRT (req : String) : String :=
-  s!"partialAuthorizeDRT: not supported {req}"
-
-@[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
-  s!"partialEvaluateDRT: not supported {req}"
-
 /--
   `req`: binary protobuf for an `EntityValidationRequest`
 
