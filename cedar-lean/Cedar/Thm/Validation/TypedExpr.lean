@@ -44,71 +44,90 @@ inductive UnaryApp.WellTyped (e : TypedExpr) (ty : CedarType) : UnaryOp → Prop
   | not
     (h₁ : e.typeOf.isBool)
     (h₂ : ty.isBool) :
-    UnaryApp.WellTyped e ty .not
+    WellTyped e ty .not
   | neg
     (h₁ : e.typeOf.isInt)
     (h₂ : ty.isInt) :
-    UnaryApp.WellTyped e ty .neg
+    WellTyped e ty .neg
   | isEmpty
     (h₁ : e.typeOf.isSet)
     (h₂ : ty.isBool) :
-    UnaryApp.WellTyped e ty .isEmpty
+    WellTyped e ty .isEmpty
   | like (p : Pattern)
     (h₁ : e.typeOf.isString)
     (h₂ : ty.isBool) :
-    UnaryApp.WellTyped e ty (.like p)
+    WellTyped e ty (.like p)
 
-inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
-  | lit_wt (p : Prim) (ty : CedarType)
-    (h : InstanceOfType (.prim p) ty) :
-    WellTyped env (.lit p ty)
-  | var_wt (v : Var) (ty : CedarType)
-    (h : Var.WellTyped env v ty) :
-    WellTyped env (.var v ty)
-  | ite_wt (ce : TypedExpr) (te : TypedExpr) (ee : TypedExpr)
-    (h₁ : WellTyped env ce)
-    (h₂ : WellTyped env te)
-    (h₃ : WellTyped env ee)
-    (h₄ : ce.typeOf.isBool)
-    (h₅ : te.typeOf = ee.typeOf) :
-    WellTyped env (.ite ce te ee te.typeOf)
-  | and_wt (l : TypedExpr) (r : TypedExpr)
-    (h₁ : WellTyped env l)
-    (h₂ : WellTyped env r)
-    (h₃ : l.typeOf.isBool ∧ r.typeOf.isBool) :
-    WellTyped env (.and l r l.typeOf)
-  | or_wt (l : TypedExpr) (r : TypedExpr)
-    (h₁ : WellTyped env l)
-    (h₂ : WellTyped env r)
-    (h₃ : l.typeOf.isBool ∧ r.typeOf.isBool) :
-    WellTyped env (.or l r l.typeOf)
-  | unaryApp_wt (op : UnaryOp) (e : TypedExpr) (ty : CedarType)
-    (h₁ : WellTyped env e)
-    (h₂ : UnaryApp.WellTyped e ty op) :
-    WellTyped env (.unaryApp op e ty)
-  | binaryApp_wt (op : BinaryOp) (l : TypedExpr) (r : TypedExpr) (ty : CedarType)
-    (h₁ : WellTyped env l)
-    (h₂ : WellTyped env r) :
-    WellTyped env (.binaryApp op l r ty)
-  | set_wt (s : List TypedExpr) (ety : CedarType)
-    (h₁ : ∀ e, e ∈ s → WellTyped env e)
-    (h₂ : ∀ e, e ∈ s → e.typeOf = ety) :
-    WellTyped env (.set s (.set et))
-  | record_wt (m : List (Attr × TypedExpr)) (rty : RecordType)
-    (h₁ : ∀ a e, (a, e) ∈ m → WellTyped env e)
-    (h₂ : ∀ a e, (a, e) ∈ m → (a, e.typeOf) ∈ rty.kvs.map λ (a, qt) ↦ (a, qt.getType)) :
-    WellTyped env (.record m (.record rty))
-  | getAttr_entity_wt (e : TypedExpr) (a : Attr) (ety : EntityType) (rty : RecordType) (ty : CedarType)
-    (h₁ : WellTyped env e)
-    (h₂ : e.typeOf = .entity ety)
-    (h₃ : env.ets.attrs? ety = .some rty)
-    (h₄ : ((rty.find? a).map Qualified.getType) = .some ty) :
-    WellTyped env (.getAttr e a ty)
-  | getAttr_record_wt (e : TypedExpr) (a : Attr) (rty : RecordType) (ty : CedarType)
-    (h₁ : WellTyped env e)
-    (h₂ : e.typeOf = .record rty)
-    (h₃ : ((rty.find? a).map λ qt ↦ qt.getType) = .some ty) :
-    WellTyped env (.getAttr e a ty)
+mutual
+
+def ITEWellTyped (env : Environment) (c t e: TypedExpr) (ty : CedarType) : Prop :=
+  TypedExpr.WellTyped env c ∧
+  match c.typeOf with
+  | .bool .tt => TypedExpr.WellTyped env t ∧ t.typeOf = ty
+  | .bool .ff => TypedExpr.WellTyped env e ∧ e.typeOf = ty
+  | .bool .anyBool =>
+    TypedExpr.WellTyped env t ∧
+    TypedExpr.WellTyped env e ∧
+    (t.typeOf ⊔ e.typeOf) = .some ty
+  | _ => False
+termination_by 1 + (sizeOf e) + (sizeOf c) + (sizeOf t)
+decreasing_by
+  all_goals
+    omega
+
+
+def AndWellTyped (env : Environment) (l r: TypedExpr) (ty : CedarType) : Prop :=
+  TypedExpr.WellTyped env l ∧
+  match l.typeOf, r.typeOf with
+  | .bool .ff, _ => True
+  | .bool bty₁, .bool .tt => TypedExpr.WellTyped env r ∧ ty = .bool bty₁
+  | .bool bty₁, .bool bty₂ => TypedExpr.WellTyped env r ∧ ty = .bool bty₂
+  | _, _ => False
+termination_by 1 + (sizeOf l) + (sizeOf r)
+
+def OrWellTyped (env : Environment) (l r: TypedExpr) (ty : CedarType) : Prop :=
+  TypedExpr.WellTyped env l ∧
+  match l.typeOf, r.typeOf with
+  | .bool .tt, _ => True
+  | .bool bty₁, .bool .ff => TypedExpr.WellTyped env r ∧ ty = .bool bty₁
+  | .bool bty₁, .bool bty₂ => TypedExpr.WellTyped env r ∧ ty = .bool bty₂
+  | _, _ => False
+termination_by 1 + (sizeOf l) + (sizeOf r)
+
+def EqWellTyped (ty₁ ty₂ : TypedExpr) (ty : CedarType) : Prop :=
+  match ty₁.toExpr, ty₂.toExpr with
+  | .lit p₁, .lit p₂ => if p₁ == p₂ then ty = .bool .tt else ty = .bool .ff
+  | _, _ =>
+    match ty₁.typeOf ⊔ ty₂.typeOf with
+    | .some _ => ty = .bool .anyBool
+    | .none   =>
+    match ty₁.typeOf, ty₂.typeOf with
+    | .entity _, .entity _ => ty = .bool .ff
+    | _, _                 => False
+
+def BinaryApp.WellTyped (env : Environment) (op : BinaryOp) (l r: TypedExpr) (ty : CedarType) : Prop :=
+  TypedExpr.WellTyped env l ∧ TypedExpr.WellTyped env r ∧
+  match op, l.typeOf, r.typeOf with
+  | .eq, _, _ₜ => EqWellTyped l r ty
+  | _, _, _ => sorry
+
+def TypedExpr.WellTyped (env : Environment) (e : TypedExpr) : Prop :=
+  match e with
+  | .lit p ty => InstanceOfType (.prim p) ty
+  | .var v ty => Var.WellTyped env v ty
+  | .ite c e t ty => ITEWellTyped env c e t ty
+  | .and l r ty => AndWellTyped env l r ty
+  | .or l r ty => OrWellTyped env l r ty
+  | .unaryApp op e ty => TypedExpr.WellTyped env e ∧ UnaryApp.WellTyped e ty op
+  | _ => False
+termination_by sizeOf e
+decreasing_by
+  all_goals
+    simp_wf
+    have : sizeOf ty > 0 := by
+      cases ty <;> simp <;> omega
+    omega
+end
 
 theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
@@ -116,14 +135,12 @@ theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {re
   ∃ v, EvaluatesTo ty.toExpr request entities v ∧ InstanceOfType v ty.typeOf := by
   intro h₀ h₁
   cases ty <;> simp [EvaluatesTo, TypedExpr.toExpr, TypedExpr.typeOf, evaluate]
-  case lit p =>
-    cases h₁
-    rename_i h₂
-    exact h₂
+  case lit ty =>
+    simp only [TypedExpr.WellTyped] at h₁
+    exact h₁
   case var v t =>
-    cases h₁
-    rename_i h₂
-    cases h₂ <;> simp [evaluate]
+    simp only [TypedExpr.WellTyped] at h₁
+    cases h₁ <;> simp [evaluate]
     · rename_i et heq
       replace ⟨ h₀, _⟩ := h₀
       simp only [InstanceOfRequestType] at h₀
@@ -146,39 +163,25 @@ theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {re
       replace ⟨ _, ⟨_, ⟨_, h₀⟩ ⟩ ⟩ := h₀
       rw [heq]
       exact h₀
-  case ite ce te ee =>
+  case ite cond te ee ty =>
+    simp only [TypedExpr.WellTyped, ITEWellTyped] at h₁
+    replace ⟨h₁, h₂⟩ := h₁
+    replace h₁ := well_typed_expr_cannot_go_wrong h₀ h₁
     cases h₁
-    rename_i cond h₃ h₄ h₅ h₆ h₇
-    have ⟨ b, ⟨ h₈, h₉⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₃
-    simp only [EvaluatesTo] at h₈
-    rcases h₈ with (hₑ | hₑ₁ | hₐ | hₒ)
-    · simp [hₑ, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
-      exists vc
-    · simp [hₑ₁, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
-      exists vc
-    · simp [hₐ, Result.as]
-      have ⟨vc, ⟨ _, hᵢ⟩⟩  := well_typed_expr_cannot_go_wrong h₀ h₅
-      exists vc
-    · simp [CedarType.isBool] at h₄
-      split at h₄
-      case _ bty heq =>
-        rw [heq] at h₉
-        have h₈ := instance_of_bool_is_bool h₉
-        cases h₈
-        rename_i bv hb
-        simp [hₒ, Result.as, hb, Coe.coe, Value.asBool]
-        cases bv <;> simp
-        · rw [h₇]
-          exact well_typed_expr_cannot_go_wrong h₀ h₆
-        · exact well_typed_expr_cannot_go_wrong h₀ h₅
-      case _ => cases h₄
+    rename_i vᵢ hᵢ
+    replace ⟨hᵢ, hᵢₜ⟩ := hᵢ
+    split at h₂
+    case _ heq =>
+      simp only [EvaluatesTo] at hᵢ
+      rw [heq] at hᵢₜ
+      cases hᵢₜ
+      case _ b h₃ =>
+        simp only [InstanceOfBoolType] at h₃
+        sorry
+    sorry
+    sorry
+    sorry
   case and a b t =>
-    cases h₁
-    rename_i h₁ h₂ h₃
-    replace ⟨h₃, h₄⟩ := h₃
-    -- need something like a is bool then a is a Bool
     sorry
   case or a b t => sorry
   case unaryApp op expr t => sorry
@@ -202,21 +205,23 @@ theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilit
     case _ =>
       intro h₃ _
       rw [← h₃]
-      exact TypedExpr.WellTyped.lit_wt (.bool true) (.bool .tt) true_is_instance_of_tt
+      simp only [TypedExpr.WellTyped]
+      exact true_is_instance_of_tt
     case _ =>
       intro h₃ _
       rw [← h₃]
-      exact TypedExpr.WellTyped.lit_wt (.bool false) (.bool .ff) false_is_instance_of_ff
+      simp only [TypedExpr.WellTyped]
+      exact false_is_instance_of_ff
     case _ =>
       intro h₃ _
       rw [← h₃]
-      rename_i i _
-      exact TypedExpr.WellTyped.lit_wt (.int i) (.int) InstanceOfType.instance_of_int
+      simp only [TypedExpr.WellTyped]
+      exact InstanceOfType.instance_of_int
     case _ =>
       intro h₃ _
       rw [← h₃]
-      rename_i s _
-      exact TypedExpr.WellTyped.lit_wt (.string s) (.string) InstanceOfType.instance_of_string
+      simp only [TypedExpr.WellTyped]
+      exact InstanceOfType.instance_of_string
     case _ =>
       intro h₃
       rename_i uid
@@ -225,9 +230,10 @@ theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilit
         simp at h₃
         have ⟨ h₃, _ ⟩ := h₃
         rw [← h₃]
+        simp only [TypedExpr.WellTyped]
         have h₄ : InstanceOfEntityType uid uid.ty := by
           simp only [InstanceOfEntityType]
-        exact TypedExpr.WellTyped.lit_wt (.entityUID uid) (.entity uid.ty) (InstanceOfType.instance_of_entity uid uid.ty h₄)
+        exact InstanceOfType.instance_of_entity uid uid.ty h₄
       case _ =>
         cases h₃
   case _ => sorry
