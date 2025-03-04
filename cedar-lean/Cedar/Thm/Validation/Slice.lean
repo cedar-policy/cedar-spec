@@ -293,7 +293,19 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
     checked_eval_entity_reachable hc hr ht hl hrt he (.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
-  exact map_find_mapm_value hs₂ hi
+  have hmk := map_find_mapm_value hs₂ hi
+  rename_i eds
+  have hsb : eds.SortedBy Prod.fst := by
+    -- TODO: is sorted by `fst` because `fst` came from set elements
+    sorry
+  have hwf : (Map.mk eds).WellFormed := by
+    rw [Map.wf_iff_sorted]
+    simp [Map.toList, Map.kvs]
+    exact hsb
+  replace hwf : Map.mk eds = Map.make eds := by
+    simpa [Map.WellFormed, Map.toList, Map.kvs] using hwf
+  rw [hwf] at hmk
+  simp [hmk]
 
 theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request n)

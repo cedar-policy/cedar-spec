@@ -29,31 +29,30 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem map_find_mapm_value {α β : Type} [LT α] [DecidableLT α] [BEq α] {ks : Set α} {k : α} {kvs : List (α × β)} {fn : α → Option β}
-  (h₁ : List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks.elts = some kvs)
+theorem map_find_mapm_value {α β : Type} [BEq α] [LawfulBEq α] {kvs : List (α × β)} {ks : List α} {fn : α → Option β} {k: α}
+  (h₁ : List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks = some kvs)
   (h₂ : k ∈ ks)
-  : (Map.make kvs).find? k = fn k
+  : (Map.mk kvs).find? k = fn k
 := by
-  cases h₃ : ks.elts
-  case nil =>
-    have hcontra : List.Mem k [] := by
-      simp only [Membership.mem, h₃] at h₂
-      exact h₂
-    contradiction
-  case cons h t =>
-    simp [h₃] at h₁
-    cases h₄ : ((fn h).bind λ v => some (h, v)) <;> simp [h₄] at h₁
-    cases h₅ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) t) <;> simp [h₅] at h₁
+  simp only [Map.find?, Map.kvs]
+  cases h₂
+  case head l =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn k <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) l) <;> simp [ht₁ , Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
     subst h₁
-    simp only [Membership.mem, h₃] at h₂
-    cases h₂
-    case head =>
-      cases h₆ : (fn k) <;> simp [h₆] at h₄
-      subst h₄
-      sorry
-    case tail h₂ =>
-      symm at h₅
-      sorry
+    simp
+  case tail h t h₂  =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn h <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) t) <;> simp only [ht₁, Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    subst h₁
+    simp only [List.find?]
+    cases h₃ : (h == k)
+    · simp only
+      exact map_find_mapm_value ht₁ h₂
+    · simp only [beq_iff_eq] at h₃
+      simp [h₃, ←hf]
 
 theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {l' : List (α × γ)} {f : α → Option (α × γ)} {e: α}
   (h₁ : List.mapM f l = some l')
