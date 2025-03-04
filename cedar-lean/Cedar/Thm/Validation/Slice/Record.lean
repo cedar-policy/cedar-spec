@@ -41,30 +41,30 @@ theorem record_value_contains_evaluated_attrs
     simp only [he₁, Except.bind_err, reduceCtorEq, Except.bind_ok, Except.ok.injEq, Value.record.injEq] at he
   rw [←he] at hfv
   rename_i rvs
-  rw [List.mapM₂, List.attach₂] at he₁
-  rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
-  rw [List.mapM_ok_iff_forall₂] at he₁
-  simp only [Map.make, Map.find?, Map.kvs] at *
-  split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
-  subst hfv
-  rename_i a v hfv
-  have hfv' := List.find?_some hfv
-  simp only [beq_iff_eq] at hfv'
-  subst hfv'
   replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs := by
     simp only [List.forallᵥ_def]
+    rw [List.mapM₂, List.attach₂] at he₁
+    rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
+    rw [List.mapM_ok_iff_forall₂] at he₁
     apply List.Forall₂.imp _ he₁
     intro x y h
     simp only [bindAttr] at h
     cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at h
     simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
-  simp only [List.forallᵥ_def] at he₁
-  have ⟨(a', x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, v) (List.mem_of_find?_eq_some hfv)
-  simp only at he₃ he₄
+  have hfv : List.find? (λ x => x.fst == a) (List.canonicalize Prod.fst rvs) = some (a, av) := by
+    simp only [Map.find?] at hfv
+    split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
+    subst hfv
+    rename_i a' _ hfv
+    have ha : a' = a := by
+      simpa using List.find?_some hfv
+    subst ha
+    exact hfv
+  have ⟨(_, x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
   subst he₃
   exists x
-  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, and_self]
+  simp only [List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₄, Map.make, Map.find?, and_self]
 
 theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
@@ -95,19 +95,15 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
     have he' := Map.make_mem_list_mem (Map.find?_mem_toList hfx)
     replace hfat' := List.forall₂_implies_all_left hfat
     have ⟨ atx, _, haty ⟩ := hfat' (a, x) he'
-    have ⟨_, _, hf'', ht''⟩ := find_make_xs_find_make_txs hfat hfx
-    have haty' := haty
-    unfold AttrExprHasAttrType at haty'
-    have ⟨haty₁, _, haty₂⟩ := haty ; clear haty'
-    subst haty₁
+    have ⟨_, _, _, ht''⟩ := find_make_xs_find_make_txs hfat hfx
+    rename_i tx _ _
+    have ⟨ ha, htx ⟩ : a = atx.fst ∧ tx = atx.snd := by
+      simpa [AttrExprHasAttrType, ht''] using haty
+    subst ha htx
     exists atx.snd
-    simp only [ht'', Except.ok.injEq, Prod.mk.injEq] at haty₂
-    simp only [haty]
-    simp [←haty₂, ht'', hf'']
 
-  unfold AttrExprHasAttrType at het
-  simp only [Prod.mk.injEq, true_and, exists_and_left] at het
-  replace ⟨_, het ⟩ := het
+  replace ⟨_, het⟩ : ∃ c', typeOf x c env = Except.ok (atx, c') := by
+    simpa [AttrExprHasAttrType] using het
 
   have hl' : TypedExpr.AtLevel atx n nmax := by
     cases hl
