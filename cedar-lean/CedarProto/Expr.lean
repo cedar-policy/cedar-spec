@@ -491,6 +491,12 @@ def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BPars
     | "isLoopback" => pure $ .call .isLoopback es
     | "isMulticast" => pure $ .call .isMulticast es
     | "isInRange" => pure $ .call .isInRange es
+    | "datetime" => pure $ .call .datetime es
+    | "duration" => pure $ .call .duration es
+    | "offset" => pure $ .call .offset es
+    | "durationSince" => pure $ .call .durationSince es
+    | "toDate" => pure $ .call .toDate es
+    | "toTime" => pure $ .call .toTime es
     | xfn => throw s!"mergeName: unknown extension function {xfn}"
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 

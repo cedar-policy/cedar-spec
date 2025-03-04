@@ -162,6 +162,8 @@ partial def toCedarType : ProtoType → Except String CedarType
   | .ext n => match n.id with -- ignoring n.path because currently no extension types have nonempty namespaces
     | "ipaddr" => .ok (.ext .ipAddr)
     | "decimal" => .ok (.ext .decimal)
+    | "datetime" => .ok (.ext .datetime)
+    | "duration" => .ok (.ext .duration)
     | _ => .error s!"unknown extension type name: {n.toName}"
 
 end ProtoType
