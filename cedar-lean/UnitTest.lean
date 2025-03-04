@@ -19,4 +19,5 @@ import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Main
 import UnitTest.Proto
+import UnitTest.TPE
 import UnitTest.Run

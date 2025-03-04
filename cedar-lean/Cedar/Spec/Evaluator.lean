@@ -86,9 +86,9 @@ def getAttr (v : Value) (a : Attr) (es : Entities) : Result Value := do
   let r ← attrsOf v es.attrs
   r.findOrErr a attrDoesNotExist
 
-def bindAttr (a : Attr) (res : Result Value) : Result (Attr × Value) := do
+def bindAttr [Monad m] (a : Attr) (res : m α) : m (Attr × α) := do
   let v ← res
-  .ok (a, v)
+  pure (a, v)
 
 def evaluate (x : Expr) (req : Request) (es : Entities) : Result Value :=
   match x with

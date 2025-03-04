@@ -168,10 +168,10 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     have h₂ : ∀ x ∈ tl,
     (do
       let v ← evaluate (substituteAction request.action x.snd) request entities
-      Except.ok (x.fst, v)) =
+      pure (x.fst, v)) =
     (do
       let v ← evaluate x.snd request entities
-      Except.ok (x.fst, v))
+      pure (x.fst, v))
     := by
       intro x hx
       replace (a, x) := x
