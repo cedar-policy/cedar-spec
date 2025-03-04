@@ -47,7 +47,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
       rw [Set.mem_mapUnion_iff_mem_exists]
       exists tv
       constructor
-      · exact map_find_then_value he₂
+      · exact Map.find?_some_implies_in_values he₂
       · exact in_val_then_val_slice he₃
     have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄

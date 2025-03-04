@@ -48,7 +48,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
       rename_i v a path ha hv
       exists v
       constructor
-      · exact map_find_then_value ha
+      · exact Map.find?_some_implies_in_values ha
       · exact in_val_then_val_slice hv
     have hr' : ReachableIn entities ed.sliceEUIDs euid' (n' + 1) :=
       ReachableIn.in_start he₄

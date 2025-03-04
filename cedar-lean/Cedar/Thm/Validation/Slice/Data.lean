@@ -29,11 +29,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem map_find_then_value {α β : Type} [BEq α] {m : Map α β} {k : α} {v : β}
-  (hf : m.find? k = some v)
-  : v ∈ m.values
-:= by sorry
-
 theorem map_find_mapm_value {α β : Type} [LT α] [DecidableLT α] [BEq α] {ks : Set α} {k : α} {kvs : List (α × β)} {fn : α → Option β}
   (h₁ : List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks.elts = some kvs)
   (h₂ : k ∈ ks)
