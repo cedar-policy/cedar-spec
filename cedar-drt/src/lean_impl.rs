@@ -227,12 +227,12 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> TestResult<TestResponse> {
-        let auth_request = AuthorizationRequestMsg {
+        let auth_request = AuthorizationRequest {
             request,
             policies,
             entities,
         };
-        let auth_request_proto = proto::AuthorizationRequestMsg::from(&auth_request);
+        let auth_request_proto = proto::AuthorizationRequest::from(&auth_request);
         let buf = auth_request_proto.encode_to_vec();
         let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
@@ -336,16 +336,16 @@ impl LeanDefinitionalEngine {
         expected: Option<Value>,
     ) -> TestResult<bool> {
         let expected_as_expr: Option<Expr> = expected.map(|v| v.into());
-        let request: String = serde_json::to_string(&EvaluationRequest {
+        let req = EvaluationRequest {
             request,
             entities,
             expr,
             expected: expected_as_expr.as_ref(),
-        })
-        .expect("failed to serialize request, expression, or entities");
-        let cstring = CString::new(request).expect("`CString::new` failed");
+        };
+        let req_proto = proto::EvaluationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { evaluateDRT(req) };
         // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
@@ -380,12 +380,12 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> TestResult<TestValidationResult> {
-        let val_request = ValidationRequestMsg {
+        let val_request = ValidationRequest {
             schema,
             policies,
             mode: cedar_policy_validator::ValidationMode::default(),
         };
-        let val_request_proto = proto::ValidationRequestMsg::from(&val_request);
+        let val_request_proto = proto::ValidationRequest::from(&val_request);
         let buf = val_request_proto.encode_to_vec();
         let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
@@ -400,11 +400,13 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         request: &ast::Request,
     ) -> TestResult<TestValidationResult> {
-        let request: String = serde_json::to_string(&RequestValidationRequest { schema, request })
-            .expect("failed to serialize request");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let req = RequestValidationRequest { schema, request };
+        let req_proto = proto::RequestValidationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let response = unsafe { validateRequestDRT(req) };
+        // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
@@ -414,11 +416,13 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
-            .expect("failed to serialize request");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let req = EntityValidationRequest { schema, entities };
+        let req_proto = proto::EntityValidationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let response = unsafe { validateEntitiesDRT(req) };
+        // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }

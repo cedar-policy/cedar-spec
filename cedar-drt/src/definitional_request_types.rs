@@ -25,15 +25,15 @@ pub mod proto {
     include!(concat!(env!("OUT_DIR"), "/cedar_drt.rs"));
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct AuthorizationRequestMsg<'a> {
+#[derive(Clone, Debug)]
+pub struct AuthorizationRequest<'a> {
     pub request: &'a ast::Request,
     pub policies: &'a ast::PolicySet,
     pub entities: &'a Entities,
 }
 
-impl From<&AuthorizationRequestMsg<'_>> for proto::AuthorizationRequestMsg {
-    fn from(v: &AuthorizationRequestMsg<'_>) -> Self {
+impl From<&AuthorizationRequest<'_>> for proto::AuthorizationRequest {
+    fn from(v: &AuthorizationRequest<'_>) -> Self {
         Self {
             request: Some(cedar_policy::proto::models::Request::from(v.request)),
             policies: Some(cedar_policy::proto::models::PolicySet::from(v.policies)),
@@ -42,17 +42,17 @@ impl From<&AuthorizationRequestMsg<'_>> for proto::AuthorizationRequestMsg {
     }
 }
 
-// Converting `AuthorizationRequestMsg` from proto to non-proto structures is
+// Converting `AuthorizationRequest` from proto to non-proto structures is
 // only required for some roundtrip tests
 #[derive(Clone, Debug)]
-pub struct OwnedAuthorizationRequestMsg {
+pub struct OwnedAuthorizationRequest {
     pub request: ast::Request,
     pub policies: ast::PolicySet,
     pub entities: Entities,
 }
 
-impl From<proto::AuthorizationRequestMsg> for OwnedAuthorizationRequestMsg {
-    fn from(v: proto::AuthorizationRequestMsg) -> Self {
+impl From<proto::AuthorizationRequest> for OwnedAuthorizationRequest {
+    fn from(v: proto::AuthorizationRequest) -> Self {
         Self {
             request: ast::Request::from(&v.request.unwrap_or_default()),
             policies: ast::PolicySet::try_from(&v.policies.unwrap_or_default())
@@ -62,15 +62,15 @@ impl From<proto::AuthorizationRequestMsg> for OwnedAuthorizationRequestMsg {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct ValidationRequestMsg<'a> {
+#[derive(Clone, Debug)]
+pub struct ValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
     pub policies: &'a ast::PolicySet,
     pub mode: ValidationMode,
 }
 
-impl From<&ValidationRequestMsg<'_>> for proto::ValidationRequestMsg {
-    fn from(v: &ValidationRequestMsg<'_>) -> Self {
+impl From<&ValidationRequest<'_>> for proto::ValidationRequest {
+    fn from(v: &ValidationRequest<'_>) -> Self {
         Self {
             schema: Some(cedar_policy::proto::models::Schema::from(v.schema)),
             policies: Some(cedar_policy::proto::models::PolicySet::from(v.policies)),
@@ -79,14 +79,7 @@ impl From<&ValidationRequestMsg<'_>> for proto::ValidationRequestMsg {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct AuthorizationRequest<'a> {
-    pub request: &'a ast::Request,
-    pub policies: &'a ast::PolicySet,
-    pub entities: &'a Entities,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct EvaluationRequest<'a> {
     pub request: &'a ast::Request,
     pub entities: &'a Entities,
@@ -94,7 +87,18 @@ pub struct EvaluationRequest<'a> {
     pub expected: Option<&'a ast::Expr>,
 }
 
-#[derive(Debug, Serialize)]
+impl From<&EvaluationRequest<'_>> for proto::EvaluationRequest {
+    fn from(v: &EvaluationRequest<'_>) -> Self {
+        Self {
+            expr: Some(cedar_policy::proto::models::Expr::from(v.expr)),
+            request: Some(cedar_policy::proto::models::Request::from(v.request)),
+            entities: Some(cedar_policy::proto::models::Entities::from(v.entities)),
+            expected: v.expected.map(cedar_policy::proto::models::Expr::from),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Clone)]
 pub struct PartialEvaluationRequest<'a> {
     pub request: &'a ast::Request,
     pub entities: &'a Entities,
@@ -102,28 +106,39 @@ pub struct PartialEvaluationRequest<'a> {
     pub expected: Option<ExprOrValue>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct PartialAuthorizationRequest<'a> {
     pub request: &'a ast::Request,
     pub entities: &'a Entities,
     pub policies: &'a ast::PolicySet,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ValidationRequest<'a> {
-    pub schema: &'a ValidatorSchema,
-    pub policies: &'a ast::PolicySet,
-    pub mode: ValidationMode,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone)]
 pub struct RequestValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
     pub request: &'a ast::Request,
 }
 
-#[derive(Debug, Serialize)]
+impl From<&RequestValidationRequest<'_>> for proto::RequestValidationRequest {
+    fn from(v: &RequestValidationRequest<'_>) -> Self {
+        Self {
+            schema: Some(cedar_policy::proto::models::Schema::from(v.schema)),
+            request: Some(cedar_policy::proto::models::Request::from(v.request)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct EntityValidationRequest<'a> {
     pub schema: &'a ValidatorSchema,
     pub entities: &'a Entities,
+}
+
+impl From<&EntityValidationRequest<'_>> for proto::EntityValidationRequest {
+    fn from(v: &EntityValidationRequest<'_>) -> Self {
+        Self {
+            schema: Some(cedar_policy::proto::models::Schema::from(v.schema)),
+            entities: Some(cedar_policy::proto::models::Entities::from(v.entities)),
+        }
+    }
 }

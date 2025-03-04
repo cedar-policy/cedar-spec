@@ -22,7 +22,7 @@ use serde::Serialize;
 
 use crate::arbitrary::Arbitrary;
 use crate::arbitrary::Unstructured;
-use cedar_drt::{AuthorizationRequestMsg, OwnedAuthorizationRequestMsg};
+use cedar_drt::{AuthorizationRequest, OwnedAuthorizationRequest};
 use cedar_drt_inner::{fuzz_target, schemas::Equiv};
 use cedar_policy::proto;
 use cedar_policy_core::{
@@ -97,7 +97,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     let s_policy: ast::StaticPolicy = input.policy.into();
     let mut policies: ast::PolicySet = ast::PolicySet::new();
     policies.add(s_policy.into()).expect("Failed to add policy");
-    roundtrip_authz_request_msg(AuthorizationRequestMsg {
+    roundtrip_authz_request_msg(AuthorizationRequest {
         request: &input.request.into(),
         policies: &policies,
         entities: &input.entities,
@@ -105,19 +105,19 @@ fuzz_target!(|input: FuzzTargetInput| {
     roundtrip_schema(input.schema);
 });
 
-fn roundtrip_authz_request_msg(auth_request: AuthorizationRequestMsg) {
+fn roundtrip_authz_request_msg(auth_request: AuthorizationRequest) {
     // AST -> Protobuf
-    let auth_request_proto = cedar_drt::proto::AuthorizationRequestMsg::from(&auth_request);
+    let auth_request_proto = cedar_drt::proto::AuthorizationRequest::from(&auth_request);
 
     // Protobuf -> Bytes
     let buf = auth_request_proto.encode_to_vec();
 
     // Bytes -> Protobuf
-    let roundtripped_proto = cedar_drt::proto::AuthorizationRequestMsg::decode(&buf[..])
-        .expect("Failed to deserialize AuthorizationRequestMsg from proto");
+    let roundtripped_proto = cedar_drt::proto::AuthorizationRequest::decode(&buf[..])
+        .expect("Failed to deserialize AuthorizationRequest from proto");
 
     // Protobuf -> AST
-    let roundtripped = OwnedAuthorizationRequestMsg::from(roundtripped_proto);
+    let roundtripped = OwnedAuthorizationRequest::from(roundtripped_proto);
 
     // Checking request equality (ignores loc field)
     assert_eq!(
