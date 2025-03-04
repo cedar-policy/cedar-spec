@@ -31,7 +31,7 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem record_value_contains_evaluated_attrs
+theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs : Map Attr Value} {a : Attr} {av : Value} {request : Request} {entities : Entities}
   (he : evaluate (.record rxs) request entities = .ok (.record rvs))
   (hfv : rvs.find? a = some av) :
   ∃ x, (Map.make rxs).find? a = some x ∧ evaluate x request entities = .ok av
@@ -39,9 +39,8 @@ theorem record_value_contains_evaluated_attrs
   simp only [evaluate] at he
   cases he₁ : rxs.mapM₂ fun x => bindAttr x.1.fst (evaluate x.1.snd request entities) <;>
     simp only [he₁, Except.bind_err, reduceCtorEq, Except.bind_ok, Except.ok.injEq, Value.record.injEq] at he
-  rw [←he] at hfv
-  rename_i rvs
-  replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs := by
+  rename_i rvs'
+  replace he₁ : List.Forallᵥ (λ x y => evaluate x request entities = Except.ok y) rxs rvs' := by
     simp only [List.forallᵥ_def]
     rw [List.mapM₂, List.attach₂] at he₁
     rw [List.mapM_pmap_subtype λ (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)] at he₁
@@ -52,14 +51,12 @@ theorem record_value_contains_evaluated_attrs
     cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at h
     simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
-  have hfv : List.find? (λ x => x.fst == a) (List.canonicalize Prod.fst rvs) = some (a, av) := by
+  have hfv : List.find? (λ x => x.fst == a) (List.canonicalize Prod.fst rvs') = some (a, av) := by
     simp only [Map.find?] at hfv
     split at hfv <;> simp only [Option.some.injEq, reduceCtorEq] at hfv
     subst hfv
     rename_i a' _ hfv
-    have ha : a' = a := by
-      simpa using List.find?_some hfv
-    subst ha
+    rw [←he, (by simpa using List.find?_some hfv : a' = a)] at hfv
     exact hfv
   have ⟨(_, x), he₂, he₃, he₄⟩ := List.forall₂_implies_all_right he₁ (a, av) (List.mem_of_find?_eq_some hfv)
   subst he₃
