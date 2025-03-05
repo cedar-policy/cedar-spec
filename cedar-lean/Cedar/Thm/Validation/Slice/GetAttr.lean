@@ -61,7 +61,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n nmax)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)

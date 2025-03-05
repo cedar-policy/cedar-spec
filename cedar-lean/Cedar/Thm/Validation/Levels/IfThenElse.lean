@@ -34,12 +34,11 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hn : nmax ≥ n)
-  (hs : slice = entities.sliceAtLevel request nmax)
+  (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n nmax)
+  (hl : TypedExpr.AtLevel tx n)
   (ihc : TypedAtLevelIsSound c)
   (iht : TypedAtLevelIsSound t)
   (ihe : TypedAtLevelIsSound e)
@@ -51,10 +50,10 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
     rw [htx] at hl
     cases hl
     rename_i hl₁ hl₂ hl₃
-    specialize ihc (by omega) hs hc hr h₆ hl₁
+    specialize ihc hs hc hr h₆ hl₁
     split at h₈
     · replace ⟨h₇, h₈, h₉⟩ := h₈
-      specialize ihe hn hs hc hr h₇ hl₃
+      specialize ihe hs hc hr h₇ hl₃
       subst h₉
       replace h₁₄ := instance_of_ff_is_false h₁₄
       subst h₁₄
@@ -84,10 +83,10 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
       simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
       subst h₁₃
       simp only [GuardedCapabilitiesInvariant, ihc, h₁₅, forall_const] at hgc
-      specialize iht hn hs (capability_union_invariant hc hgc) hr h₇ hl₂
+      specialize iht hs (capability_union_invariant hc hgc) hr h₇ hl₂
       simp [iht]
     · replace ⟨h₇, h₈, h₉, h₁₀⟩ := h₈
-      specialize ihe hn hs hc hr h₈ hl₃
+      specialize ihe hs hc hr h₈ hl₃
       simp only [ihc, ihe, evaluate]
       cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
       simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
@@ -99,5 +98,5 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
       case false => simp
       case true =>
         simp only [GuardedCapabilitiesInvariant, ihc, h₁₄, forall_const] at hgc
-        specialize iht hn hs (capability_union_invariant hc hgc) hr h₇ hl₂
+        specialize iht hs (capability_union_invariant hc hgc) hr h₇ hl₂
         simp [iht]

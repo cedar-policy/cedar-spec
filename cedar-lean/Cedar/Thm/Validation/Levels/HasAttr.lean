@@ -20,11 +20,10 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExpr} {ty : CedarType} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hn : nmax ≥ n)
-  (hs : slice = entities.sliceAtLevel request nmax)
+  (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : TypedExpr.AtLevel (tx₁.hasAttr a ty) n nmax)
+  (hl : TypedExpr.AtLevel (tx₁.hasAttr a ty) n)
   (ht : typeOf e c₀ env = Except.ok (tx₁, c₁))
   (hety : tx₁.typeOf = CedarType.entity ety)
   (ihe : TypedAtLevelIsSound e)
@@ -38,24 +37,24 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
   case hasAttrRecord hnety _ =>
     specialize hnety euid.ty
     contradiction
-  rename_i n hel₁ _ hl₁
+  rename_i n hel₁ hl₁ _
   simp [evaluate]
-  specialize ihe hn hs hc hr ht (check_level_succ hl₁)
+  have hl₁' := entity_access_at_level_then_at_level (by omega) hl₁
+  specialize ihe hs hc hr ht hl₁'
   rw [←ihe]
   unfold EvaluatesTo at he
   rcases he with he | he | he | he <;> simp [he]
-  replace hl₁ : TypedExpr.AtLevel tx₁ (nmax - 1) nmax :=
-    check_level_greater (by omega) hl₁
-  rw [(by simp at hn ; omega : nmax = nmax - 1 + 1)] at hs
+  -- replace hl₁ : TypedExpr.AtLevel tx₁ (nmax - 1) nmax :=
+    -- check_level_greater (by omega) hl₁
+  -- rw [(by simp at hn ; omega : nmax = nmax - 1 + 1)] at hs
   have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ hel₁ he hs
   simp [hfeq, hasAttr, attrsOf, Entities.attrsOrEmpty]
 
 theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hn : nmax ≥ n)
-  (hs : slice = entities.sliceAtLevel request nmax)
+  (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : TypedExpr.AtLevel (ty₁.hasAttr a tx.typeOf) n nmax)
+  (hl : TypedExpr.AtLevel (ty₁.hasAttr a tx.typeOf) n)
   (ht : typeOf e c₀ env = Except.ok (ty₁, c₁'))
   (hrty : ty₁.typeOf = CedarType.record rty)
   (ihe : TypedAtLevelIsSound e)
@@ -66,10 +65,10 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
   replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
   subst h₁₄
   cases hl
-  case hasAttr hety _ =>
+  case hasAttr hety =>
     simp [hety] at hrty
   rename_i hl
-  have ih := ihe hn hs hc hr ht hl
+  have ih := ihe hs hc hr ht hl
   simp [evaluate, ←ih]
   cases he : evaluate e request entities <;> simp [he]
   simp [hasAttr]
@@ -80,12 +79,11 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
   simp [attrsOf]
 
 theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hn : nmax ≥ n)
-  (hs : slice = entities.sliceAtLevel request nmax)
+  (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.hasAttr a) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n nmax)
+  (hl : TypedExpr.AtLevel tx n)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.hasAttr e a) request entities = evaluate (.hasAttr e a) request slice
 := by
@@ -94,7 +92,7 @@ theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : A
   cases h₆
   case _ hety =>
     replace ⟨ ety, hety ⟩ := hety
-    exact level_based_slicing_is_sound_has_attr_entity hn hs hc hr hl ht hety ihe
+    exact level_based_slicing_is_sound_has_attr_entity hs hc hr hl ht hety ihe
   case _ hrty =>
     replace ⟨ rty, hrty ⟩ := hrty
-    exact level_based_slicing_is_sound_has_attr_record hn hs hc hr hl ht hrty ihe
+    exact level_based_slicing_is_sound_has_attr_record hs hc hr hl ht hrty ihe

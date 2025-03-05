@@ -67,7 +67,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
-  (hl : TypedExpr.AtLevel tx n nmax)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
   (hel : ¬ TypedExpr.EntityLitViaPath tx path)
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
@@ -102,7 +102,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   replace ⟨_, het⟩ : ∃ c', typeOf x c env = Except.ok (atx, c') := by
     simpa [AttrExprHasAttrType] using het
 
-  have hl' : TypedExpr.AtLevel atx n nmax := by
+  have hl' : TypedExpr.EntityAccessAtLevel atx n nmax := by
     cases hl
     rename_i hl
     exact hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))

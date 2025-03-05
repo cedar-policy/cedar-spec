@@ -28,12 +28,11 @@ open Cedar.Spec
 open Cedar.Validation
 
 theorem level_based_slicing_is_sound_set {xs : List Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
-  (hn : nmax ≥ n)
-  (hs : slice = entities.sliceAtLevel request nmax)
+  (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.set xs) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n nmax)
+  (hl : TypedExpr.AtLevel tx n)
   (ih : ∀ x ∈ xs, TypedAtLevelIsSound x) :
   evaluate (.set xs) request entities = evaluate (.set xs) request slice
 := by
@@ -45,7 +44,7 @@ theorem level_based_slicing_is_sound_set {xs : List Expr} {n : Nat} {c₀ c₁: 
     intros x hx
     replace ⟨ tx, _, htxs, htx, _ ⟩ := ht x hx
     specialize hl tx htxs
-    exact ih x hx hn hs hc hr htx hl
+    exact ih x hx hs hc hr htx hl
 
   simp only [evaluate, List.mapM₁, List.attach, List.attachWith]
   simp only [List.mapM_pmap_subtype (λ x : Expr => evaluate x request entities) xs]
