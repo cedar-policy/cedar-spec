@@ -69,18 +69,6 @@ test = false
 doc = false
 
 [[bin]]
-name = "partial-eval"
-path = "fuzz_targets/partial-eval.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "partial-auth"
-path = "fuzz_targets/partial-auth.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false

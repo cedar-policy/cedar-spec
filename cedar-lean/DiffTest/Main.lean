@@ -18,8 +18,6 @@ import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
 import Cedar.Validation
-import DiffTest.Util
-import DiffTest.Parser
 import CedarProto
 import Protobuf
 
@@ -38,7 +36,7 @@ structure Timed (α : Type) where
   duration : Nat
 deriving Lean.ToJson
 
-def runAndTime (f : Unit -> α) : BaseIO (Timed α) := do
+def runAndTime (f : Unit → α) : BaseIO (Timed α) := do
   let start ← IO.monoNanosNow
   let result := f ()
   let stop ← IO.monoNanosNow
@@ -62,7 +60,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export isAuthorizedDRT] unsafe def isAuthorizedDRT (req: ByteArray) : String :=
-    let result: ParseResult (Timed Response) :=
+    let result: Except String (Timed Response) :=
       match (@Message.interpret? AuthorizationRequest) req with
       | .error e =>
         .error s!"isAuthorizedDRT: failed to parse input: {e}"
@@ -77,7 +75,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validateDRT] unsafe def validateDRT (req : ByteArray) : String :=
-    let result: ParseResult (Timed ValidationResult) :=
+    let result: Except String (Timed ValidationResult) :=
       match (@Message.interpret? ValidationRequest) req with
       | .error e =>
         .error s!"validateDRT: failed to parse input: {e}"
@@ -89,27 +87,34 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
 /--
   `req`: binary protobuf for an `EvaluationRequest`
 
-  returns a string containing JSON
+  returns the evaluation result itself (which may be `.error`) along with the
+  `expected` in the request (which may be `none`, indicating the evaluation is
+  expected to produce an error, or `expected` was not provided in the Protobuf
+  input)
+-/
+@[export evaluate] unsafe def evaluateReq (req : ByteArray) : Except String (Timed (Result Value) × Option Value) :=
+  match (@Message.interpret? EvaluationRequest) req with
+    | .error e => .error s!"evaluateReq: failed to parse input: {e}"
+    | .ok v => do
+      let result := unsafeBaseIO $ runAndTime λ () => evaluate v.expr v.request v.entities
+      .ok (result, v.expected)
+
+/--
+  `req`: binary protobuf for an `EvaluationRequest`
+
+  returns a string containing JSON, indicating whether the Lean evaluation
+  result matches the `expected` in the request (where `expected = none`
+  indicates the evaluation is expected to produce an error)
 -/
 @[export evaluateDRT] unsafe def evaluateDRT (req : ByteArray) : String :=
-  let result : ParseResult (Timed Bool) :=
-    match (@Message.interpret? EvaluationRequest) req with
-    | .error e => .error s!"evaluateDRT: failed to parse input: {e}"
-    | .ok v => do
-      let result := runAndTime (λ () => evaluate v.expr v.request v.entities)
-      let { data, duration } := unsafeBaseIO result
-      let data := match data, v.expected with
+  let result : Except String (Timed Bool) := do
+    let ({ data, duration }, expected) ← evaluateReq req
+      let data := match data, expected with
         | .error _, .none => true
         | .ok v₁, .some v₂ => v₁ == v₂
         | _, _ => false
       .ok { data, duration }
   toString (Lean.toJson result)
-
-@[export partialAuthorizeDRT] unsafe def partialAuthorizeDRT (req : String) : String :=
-  s!"partialAuthorizeDRT: not supported {req}"
-
-@[export partialEvaluateDRT] unsafe def partialEvaluateDRT (req : String) : String :=
-  s!"partialEvaluateDRT: not supported {req}"
 
 /--
   `req`: binary protobuf for an `EntityValidationRequest`
@@ -117,7 +122,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validateEntitiesDRT] unsafe def validateEntitiesDRT (req : ByteArray) : String :=
-  let result : ParseResult (Timed EntityValidationResult) :=
+  let result : Except String (Timed EntityValidationResult) :=
     match (@Message.interpret? EntityValidationRequest) req with
     | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
     | .ok v => do
@@ -134,7 +139,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string containing JSON
 -/
 @[export validateRequestDRT] unsafe def validateRequestDRT (req : ByteArray) : String :=
-  let result : ParseResult (Timed RequestValidationResult) :=
+  let result : Except String (Timed RequestValidationResult) :=
     match (@Message.interpret? RequestValidationRequest) req with
     | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
     | .ok v => do

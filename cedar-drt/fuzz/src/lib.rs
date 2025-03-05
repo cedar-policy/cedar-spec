@@ -46,64 +46,6 @@ pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
 pub const RUST_ENT_VALIDATION_MSG: &str = "rust_entity_validation (ns) : ";
 pub const RUST_REQ_VALIDATION_MSG: &str = "rust_request_validation (ns) : ";
 
-/// Compare the behavior of the partial evaluator in `cedar-policy` against a custom Cedar
-/// implementation. Panics if the two do not agree. `expr` is the expression to
-/// evaluate and `request` and `entities` are used to populate the evaluator.
-pub fn run_pe_test(
-    custom_impl: &impl CedarTestImplementation,
-    request: ast::Request,
-    expr: &ast::Expr,
-    entities: &Entities,
-    enable_extensions: bool,
-) {
-    let exts = if enable_extensions {
-        Extensions::all_available()
-    } else {
-        Extensions::none()
-    };
-
-    let eval = Evaluator::new(request.clone(), entities, exts);
-    use cedar_policy_core::ast::PartialValue;
-    use cedar_testing::cedar_test_impl::ExprOrValue;
-    use log::debug;
-    let expected = match eval.partial_interpret(expr, &std::collections::HashMap::default()) {
-        Ok(PartialValue::Value(v)) => Some(ExprOrValue::value(v)),
-        Ok(PartialValue::Residual(r)) => Some(ExprOrValue::Expr(r)),
-        Err(_) => None,
-    };
-    debug!("Expected: {expected:?}");
-
-    let definitional_res = custom_impl.partial_evaluate(
-        &request,
-        entities,
-        expr,
-        enable_extensions,
-        expected.clone(),
-    );
-    match definitional_res {
-        TestResult::Failure(err) => {
-            // TODO(#175): Ignore cases where the definitional code returned an error due to
-            // an unknown extension function.
-            if err.contains("unknown extension function") {
-                return;
-            }
-            // No other errors are expected
-            panic!("Unexpected error for {request}\nExpression: {expr}\nError: {err}");
-        }
-        TestResult::Success(response) => {
-            // The definitional interpreter response should be `true`
-            assert!(
-                response,
-                "Incorrect evaluation result for {request}\nExpression: {expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
-                match expected {
-                    None => "error".to_string(),
-                    Some(e_or_v) => e_or_v.to_string()
-                }
-            )
-        }
-    }
-}
-
 /// Compare the behavior of the evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
 /// evaluate and `request` and `entities` are used to populate the evaluator.

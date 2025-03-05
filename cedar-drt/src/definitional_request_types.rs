@@ -16,9 +16,7 @@
 
 pub use cedar_policy_core::*;
 pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
-use cedar_testing::cedar_test_impl::ExprOrValue;
 pub use entities::Entities;
-use serde::Serialize;
 
 pub mod proto {
     #![allow(missing_docs)]
@@ -96,21 +94,6 @@ impl From<&EvaluationRequest<'_>> for proto::EvaluationRequest {
             expected: v.expected.map(cedar_policy::proto::models::Expr::from),
         }
     }
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PartialEvaluationRequest<'a> {
-    pub request: &'a ast::Request,
-    pub entities: &'a Entities,
-    pub expr: &'a ast::Expr,
-    pub expected: Option<ExprOrValue>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PartialAuthorizationRequest<'a> {
-    pub request: &'a ast::Request,
-    pub entities: &'a Entities,
-    pub policies: &'a ast::PolicySet,
 }
 
 #[derive(Debug, Clone)]
