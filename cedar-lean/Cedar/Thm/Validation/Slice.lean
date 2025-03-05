@@ -266,6 +266,25 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
       rename_i ed_slice _
       exists ed_slice
 
+theorem slice_at_level_inner_well_formed
+  (hs : Entities.sliceAtLevel.sliceAtLevel entities work n = some slice) :
+  slice.WellFormed
+:= by
+  match n with
+  | 0 =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel, Option.some.injEq] at hs
+    subst slice
+    exact Set.empty_wf
+  | n + 1 =>
+    simp only [Entities.sliceAtLevel.sliceAtLevel, Option.some.injEq] at hs
+    cases hs₁ : List.mapM (Map.find? entities) work.elts <;>
+      simp only [hs₁, Option.map_eq_map, Option.bind_eq_bind, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at hs
+    rename_i eds
+    cases hs₂ : List.mapM (fun ed : EntityData => Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n) eds <;>
+      simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at hs
+    subst slice
+    simp [Union.union, Set.union, Set.make_wf]
+
 /--
 If an expression checks at level `n` and then evaluates to an entity, then that
 entity must be in a slice at `n + 1`.
@@ -293,19 +312,15 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
     checked_eval_entity_reachable hc hr ht hl hrt he (.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
-  have hmk := map_find_mapm_value hs₂ hi
   rename_i eds
-  have hsb : eds.SortedBy Prod.fst := by
-    -- TODO: is sorted by `fst` because `fst` came from set elements
-    sorry
-  have hwf : (Map.mk eds).WellFormed := by
-    rw [Map.wf_iff_sorted]
-    simp [Map.toList, Map.kvs]
-    exact hsb
-  replace hwf : Map.mk eds = Map.make eds := by
+  replace hmake : Map.mk eds = Map.make eds := by
+    have hsorted := eids.wf_iff_sorted.mp (slice_at_level_inner_well_formed hs₁)
+    have hsbfst := mapm_key_id_sorted_by_key hs₂ hsorted
+    have hwf : (Map.mk eds).WellFormed := by
+      simpa [Map.wf_iff_sorted, Map.toList, Map.kvs] using hsbfst
     simpa [Map.WellFormed, Map.toList, Map.kvs] using hwf
-  rw [hwf] at hmk
-  simp [hmk]
+  have hmk := map_find_mapm_value hs₂ hi
+  simpa [hmake] using hmk
 
 theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request n)
