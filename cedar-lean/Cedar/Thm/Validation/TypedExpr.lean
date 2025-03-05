@@ -15,6 +15,7 @@
 -/
 import Cedar.Validation.TypedExpr
 import Cedar.Thm.Validation.TypeChecker
+import Cedar.Thm.Validation.Subtyping
 
 /-!
 This file contains useful definitions and lemmas about well-typedness of `TypedExpr`
@@ -68,7 +69,8 @@ def ITEWellTyped (env : Environment) (c t e: TypedExpr) (ty : CedarType) : Prop 
   | .bool .anyBool =>
     TypedExpr.WellTyped env t ∧
     TypedExpr.WellTyped env e ∧
-    (t.typeOf ⊔ e.typeOf) = .some ty
+    IsSubtype t.typeOf ty ∧
+    IsSubtype e.typeOf ty
   | _ => False
 termination_by 1 + (sizeOf e) + (sizeOf c) + (sizeOf t)
 decreasing_by
@@ -97,13 +99,8 @@ termination_by 1 + (sizeOf l) + (sizeOf r)
 def EqWellTyped (ty₁ ty₂ : TypedExpr) (ty : CedarType) : Prop :=
   match ty₁.toExpr, ty₂.toExpr with
   | .lit p₁, .lit p₂ => if p₁ == p₂ then ty = .bool .tt else ty = .bool .ff
-  | _, _ =>
-    match ty₁.typeOf ⊔ ty₂.typeOf with
-    | .some _ => ty = .bool .anyBool
-    | .none   =>
-    match ty₁.typeOf, ty₂.typeOf with
-    | .entity _, .entity _ => ty = .bool .ff
-    | _, _                 => False
+  | _, _ => (IsSubtype ty₁.typeOf ty ∧ IsSubtype ty₂.typeOf ty) ∨
+    ((ty₁.typeOf.isEntity ∧ ty₂.typeOf.isEntity) → ty = .bool .ff)
 
 def BinaryApp.WellTyped (env : Environment) (op : BinaryOp) (l r: TypedExpr) (ty : CedarType) : Prop :=
   TypedExpr.WellTyped env l ∧ TypedExpr.WellTyped env r ∧
