@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 import Cedar.Validation.TypedExpr
-import Cedar.Thm.Validation.TypeChecker
 import Cedar.Thm.Validation.Subtyping
 
 /-!
@@ -81,7 +80,7 @@ decreasing_by
 def AndWellTyped (env : Environment) (l r: TypedExpr) (ty : CedarType) : Prop :=
   TypedExpr.WellTyped env l ∧
   match l.typeOf, r.typeOf with
-  | .bool .ff, _ => True
+  | .bool .ff, _ => ty = .bool .ff
   | .bool bty₁, .bool .tt => TypedExpr.WellTyped env r ∧ ty = .bool bty₁
   | .bool bty₁, .bool bty₂ => TypedExpr.WellTyped env r ∧ ty = .bool bty₂
   | _, _ => False
@@ -179,7 +178,72 @@ theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {re
     sorry
     sorry
   case and a b t =>
-    sorry
+    simp only [TypedExpr.WellTyped, AndWellTyped] at h₁
+    replace ⟨h₁, h₂⟩ := h₁
+    split at h₂
+    case _ ty₁ ty₂ h₃ =>
+      have hₐ := well_typed_expr_cannot_go_wrong h₀ h₁
+      cases hₐ
+      case _ v₁ h₄ =>
+        replace ⟨h₄, h₅⟩ := h₄
+        rw [h₃] at h₅
+        cases h₅
+        case _ bᵥ h₅ =>
+          simp only [InstanceOfBoolType] at h₅
+          split at h₅
+          case _ heq => cases heq
+          case _ =>
+            simp only [EvaluatesTo] at h₄
+            cases h₄
+            case _ h₆ =>
+              rw [h₆]
+              exists false
+              rw [h₂]
+              simp only [false_is_instance_of_ff, and_true]
+              simp only [Result.as]
+              simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false]
+            case _ h₆ =>
+              cases h₆
+              case _ h₆ =>
+                rw [h₆]
+                exists false
+                rw [h₂]
+                simp only [false_is_instance_of_ff, and_true]
+                simp only [Result.as]
+                simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true]
+              case _ h₆ =>
+                cases h₆
+                case _ h₆ =>
+                  rw [h₆]
+                  exists false
+                  rw [h₂]
+                  simp only [false_is_instance_of_ff, and_true]
+                  simp only [Result.as]
+                  simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true]
+                case _ h₆ =>
+                  rw [h₆]
+                  exists false
+                  rw [h₂]
+                  simp only [false_is_instance_of_ff, and_true]
+                  simp only [Result.as]
+                  simp only [Coe.coe, Value.asBool]
+                  simp only [Except.bind_ok, ↓reduceIte, reduceCtorEq, or_true]
+          case _ heq => cases heq
+          case _ => cases h₅
+    case _ x y bty h₃ h₄ h₅ =>
+      sorry
+    case _ x y bty h₃ h₄ h₅ =>
+      sorry
+    case _ =>
+      cases h₂
+
+
+
+
+
+
+
+
   case or a b t => sorry
   case unaryApp op expr t => sorry
   case binaryApp op a b t => sorry
