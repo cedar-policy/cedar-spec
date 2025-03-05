@@ -266,7 +266,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
       rename_i ed_slice _
       exists ed_slice
 
-theorem slice_at_level_inner_well_formed
+theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set EntityUID} {n : Nat}
   (hs : Entities.sliceAtLevel.sliceAtLevel entities work n = some slice) :
   slice.WellFormed
 := by

@@ -371,6 +371,38 @@ theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableE
   specialize hf (k, v) hc
   simp only [not_true_eq_false] at hf
 
+theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+  (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
+:= by
+  cases h₁ : m.kvs
+  case nil =>
+    intros
+    have hm : m = Map.mk [] := by
+      rw [(by simp : m = Map.mk m.kvs), h₁]
+    subst m
+    simp [Map.find?, List.find?]
+  case cons head tail =>
+    intro hi
+    have hm : m = Map.mk (head :: tail) := by
+      rw [(by simp : m = Map.mk m.kvs), h₁]
+    subst m
+    simp only [List.mem_cons, not_or, ne_eq] at hi
+    simp only [Map.find?, List.find?]
+    have hh : head.fst ≠ k := by
+      intro hh
+      apply (hi head.snd).left
+      simp [←hh]
+    replace hh : (head.fst == k) = false := by
+      simp [hh]
+    simp only [hh]
+    have hi₂ : ∀ v, (k, v) ∉ tail := by simp [hi]
+    have ih := all_absent_find?_none hi₂
+    simpa [Map.find?, Map.kvs] using ih
+
+theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+  m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
+:= Iff.intro find?_none_all_absent all_absent_find?_none
+
 theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by
