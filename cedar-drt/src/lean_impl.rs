@@ -22,14 +22,12 @@
 
 use core::panic;
 use std::collections::HashMap;
-use std::ffi::CString;
 use std::sync::Once;
 
 use crate::definitional_request_types::*;
 use cedar_policy::ffi;
 use cedar_policy_core::ast::{Expr, Value};
 pub use cedar_policy_core::*;
-use cedar_testing::cedar_test_impl::partial::FlatPartialResponse;
 use cedar_testing::cedar_test_impl::*;
 pub use lean_sys::init::lean_initialize;
 pub use lean_sys::lean_object;
@@ -56,8 +54,6 @@ extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateDRT(req: *mut lean_object) -> *mut lean_object;
     fn evaluateDRT(req: *mut lean_object) -> *mut lean_object;
-    fn partialEvaluateDRT(req: *mut lean_object) -> *mut lean_object;
-    fn partialAuthorizeDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateRequestDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateEntitiesDRT(req: *mut lean_object) -> *mut lean_object;
     fn initialize_DiffTest_Main(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
@@ -117,9 +113,7 @@ enum ValidationResponseInner {
 
 type AuthorizationResponse = ResultDef<TimedDef<AuthorizationResponseInner>>;
 type EvaluationResponse = ResultDef<TimedDef<bool>>;
-type PartialEvaluationResponse = ResultDef<TimedDef<bool>>;
 type ValidationResponse = ResultDef<TimedDef<ValidationResponseInner>>;
-type PartialAuthorizationResponse = ResultDef<TimedDef<FlatPartialResponse>>;
 
 #[derive(Default)]
 pub struct LeanDefinitionalEngine {}
@@ -227,12 +221,12 @@ impl LeanDefinitionalEngine {
         policies: &ast::PolicySet,
         entities: &Entities,
     ) -> TestResult<TestResponse> {
-        let auth_request = AuthorizationRequestMsg {
+        let auth_request = AuthorizationRequest {
             request,
             policies,
             entities,
         };
-        let auth_request_proto = proto::AuthorizationRequestMsg::from(&auth_request);
+        let auth_request_proto = proto::AuthorizationRequest::from(&auth_request);
         let buf = auth_request_proto.encode_to_vec();
         let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
@@ -254,78 +248,6 @@ impl LeanDefinitionalEngine {
         }
     }
 
-    fn deserialize_partial_evaluation_response(response_string: String) -> TestResult<bool> {
-        use log::debug;
-        debug!("Response: `{response_string}`");
-        let resp: PartialEvaluationResponse =
-            serde_json::from_str(&response_string).expect("could not deserialize json");
-        debug!("resp: `{resp:?}`");
-        match resp {
-            PartialEvaluationResponse::Ok(resp) => {
-                info!("{}{}", LEAN_PE_MSG, resp.duration);
-                TestResult::Success(resp.data)
-            }
-            PartialEvaluationResponse::Error(err) => TestResult::Failure(err),
-        }
-    }
-
-    fn deserialize_partial_authorization_response(
-        response_string: String,
-    ) -> TestResult<FlatPartialResponse> {
-        let resp: PartialAuthorizationResponse =
-            serde_json::from_str(&response_string).expect("could not deserialize json");
-        match resp {
-            PartialAuthorizationResponse::Ok(resp) => {
-                info!("{}{}", LEAN_PA_MSG, resp.duration);
-                TestResult::Success(resp.data)
-            }
-            PartialAuthorizationResponse::Error(err) => TestResult::Failure(err),
-        }
-    }
-
-    pub fn partial_authorize(
-        &self,
-        request: &ast::Request,
-        entities: &Entities,
-        policies: &ast::PolicySet,
-    ) -> TestResult<FlatPartialResponse> {
-        let request: String = serde_json::to_string(&PartialAuthorizationRequest {
-            request,
-            entities,
-            policies,
-        })
-        .expect("Failed to serialize request");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
-        let response = unsafe { partialAuthorizeDRT(req) };
-        let response_string = lean_obj_p_to_rust_string(response);
-        Self::deserialize_partial_authorization_response(response_string)
-    }
-
-    pub fn partial_evaluate(
-        &self,
-        request: &ast::Request,
-        entities: &Entities,
-        expr: &Expr,
-        expected: Option<ExprOrValue>,
-    ) -> TestResult<bool> {
-        let request: String = serde_json::to_string(&PartialEvaluationRequest {
-            request,
-            entities,
-            expr,
-            expected,
-        })
-        .expect("Failed to serialize request");
-        use log::debug;
-        debug!("Request JSON: `{}`", request);
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
-        let response = unsafe { partialEvaluateDRT(req) };
-        let response_string = lean_obj_p_to_rust_string(response);
-        debug!("response string: {response_string}");
-        Self::deserialize_partial_evaluation_response(response_string)
-    }
-
     /// Ask the definitional engine whether the input expression evaluates to the
     /// expected result. If `expected` is none, then evaluation should produce an error.
     pub fn evaluate(
@@ -336,16 +258,16 @@ impl LeanDefinitionalEngine {
         expected: Option<Value>,
     ) -> TestResult<bool> {
         let expected_as_expr: Option<Expr> = expected.map(|v| v.into());
-        let request: String = serde_json::to_string(&EvaluationRequest {
+        let req = EvaluationRequest {
             request,
             entities,
             expr,
             expected: expected_as_expr.as_ref(),
-        })
-        .expect("failed to serialize request, expression, or entities");
-        let cstring = CString::new(request).expect("`CString::new` failed");
+        };
+        let req_proto = proto::EvaluationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
         let response = unsafe { evaluateDRT(req) };
         // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
@@ -380,12 +302,12 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         policies: &ast::PolicySet,
     ) -> TestResult<TestValidationResult> {
-        let val_request = ValidationRequestMsg {
+        let val_request = ValidationRequest {
             schema,
             policies,
             mode: cedar_policy_validator::ValidationMode::default(),
         };
-        let val_request_proto = proto::ValidationRequestMsg::from(&val_request);
+        let val_request_proto = proto::ValidationRequest::from(&val_request);
         let buf = val_request_proto.encode_to_vec();
         let req = buf_to_lean_obj(&buf);
         // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
@@ -400,11 +322,13 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         request: &ast::Request,
     ) -> TestResult<TestValidationResult> {
-        let request: String = serde_json::to_string(&RequestValidationRequest { schema, request })
-            .expect("failed to serialize request");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let req = RequestValidationRequest { schema, request };
+        let req_proto = proto::RequestValidationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let response = unsafe { validateRequestDRT(req) };
+        // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
@@ -414,11 +338,13 @@ impl LeanDefinitionalEngine {
         schema: &ValidatorSchema,
         entities: &Entities,
     ) -> TestResult<TestValidationResult> {
-        let request: String = serde_json::to_string(&EntityValidationRequest { schema, entities })
-            .expect("failed to serialize request");
-        let cstring = CString::new(request).expect("CString::new failed");
-        let req = unsafe { lean_mk_string(cstring.as_ptr() as *const u8) };
+        let req = EntityValidationRequest { schema, entities };
+        let req_proto = proto::EntityValidationRequest::from(&req);
+        let buf = req_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
         let response = unsafe { validateEntitiesDRT(req) };
+        // req can no longer be assumed to exist
         let response_string = lean_obj_p_to_rust_string(response);
         Self::deserialize_validation_response(response_string)
     }
@@ -438,30 +364,6 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
         entities: &Entities,
     ) -> TestResult<TestResponse> {
         self.is_authorized(request, policies, entities)
-    }
-
-    fn partial_is_authorized(
-        &self,
-        request: &ast::Request,
-        entities: &Entities,
-        policies: &ast::PolicySet,
-    ) -> TestResult<cedar_testing::cedar_test_impl::partial::FlatPartialResponse> {
-        self.partial_authorize(request, entities, policies)
-    }
-
-    fn partial_evaluate(
-        &self,
-        request: &ast::Request,
-        entities: &Entities,
-        expr: &Expr,
-        enable_extensions: bool,
-        expected: Option<ExprOrValue>,
-    ) -> TestResult<bool> {
-        assert!(
-            enable_extensions,
-            "Lean definitional interpreter expects extensions to be enabled"
-        );
-        self.partial_evaluate(request, entities, expr, expected)
     }
 
     fn interpret(
