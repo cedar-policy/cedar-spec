@@ -62,9 +62,6 @@ def Entities.tagsOrEmpty (es : Entities) (uid : EntityUID) : Map Tag Value :=
   | some d => d.tags
   | none   => Map.empty
 
-def Entities.remove (es : Entities) (uid : EntityUID) : Entities :=
-  es.filter (λ uid' _ => uid == uid')
-
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq, Inhabited for EntityData
