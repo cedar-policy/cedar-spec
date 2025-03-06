@@ -32,7 +32,7 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     typeOf x₁ c env = .ok (tx₁, c₁) ∧
     tx₁.typeOf = .bool bty₁ ∧
     if bty₁ = BoolType.tt
-    then tx = (.or tx₁ tx₁ (.bool BoolType.tt)) ∧ c' = ∅
+    then tx = tx₁ ∧ c' = ∅
     else ∃ bty tx₂ bty₂ c₂,
       tx = (.or tx₁ tx₂ (.bool bty)) ∧
       typeOf x₂ c env = .ok (tx₂, c₂) ∧
@@ -118,9 +118,10 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     have h₇ := instance_of_tt_is_true ih₁₃
     simp at h₇ ; subst h₇
     simp [EvaluatesTo] at ih₁₂
+    rw [h₅]
+    exists (.prim (.bool true))
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-    try exact type_is_inhabited (CedarType.bool BoolType.tt)
     exact true_is_instance_of_tt
   case isFalse =>
     have ⟨bty, tx₂, bty₂, rc₂, h₅', h₇, h₈, h₉⟩ := h₆

@@ -49,6 +49,7 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
     intro x y h
     simp only [bindAttr] at h
     cases hx : evaluate x.snd request entities <;> simp only [hx, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at h
+    simp only [pure, Except.pure, Except.ok.injEq] at h
     simp only [←h, and_self]
   replace he₁ := List.canonicalize_preserves_forallᵥ _ _ _ he₁
   have hfv : List.find? (λ x => x.fst == a) (List.canonicalize Prod.fst rvs') = some (a, av) := by

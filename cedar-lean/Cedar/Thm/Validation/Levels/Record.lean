@@ -79,4 +79,4 @@ theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat
   cases hl
   rename_i hlatxs
   have h := level_based_slicing_is_sound_record_attrs hs hc hr hatxs hlatxs ih
-  simp [h, evaluate, bindAttr]
+  simp only [h, evaluate, bindAttr, pure, Except.pure]

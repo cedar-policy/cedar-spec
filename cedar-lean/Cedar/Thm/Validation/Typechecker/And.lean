@@ -32,7 +32,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     typeOf x₁ c env = .ok (tx₁, c₁) ∧
     tx₁.typeOf = .bool bty₁ ∧
     if bty₁ = BoolType.ff
-    then tx = (.and tx₁ tx₁ (.bool BoolType.ff)) ∧ c' = ∅
+    then tx = tx₁ ∧ c' = ∅
     else ∃ bty tx₂ bty₂ c₂,
       tx = (.and tx₁ tx₂ (.bool bty)) ∧
       typeOf x₂ (c ∪ c₁) env = .ok (tx₂, c₂) ∧
@@ -98,15 +98,16 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   case isTrue h₇ =>
     subst h₇
     have ⟨hty, hc⟩ := h₆
-    rw [hty, hc]
+    subst hty hc
     apply And.intro empty_guarded_capabilities_invariant
     have h₇ := instance_of_ff_is_false ih₁₃
     simp at h₇ ; subst h₇
     simp [EvaluatesTo] at ih₁₂
+    rw [h₅]
+    exists (.prim (.bool false))
+    apply (And.intro · false_is_instance_of_ff)
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
-    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-    try exact type_is_inhabited (CedarType.bool BoolType.ff)
-    exact false_is_instance_of_ff
+    simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool]
   case isFalse h₇ =>
     replace ⟨bty, tx₂, bty₂, rc₂, htx, htx₂, hty₂, h₆⟩ := h₆
     split at h₆ <;> have ⟨hbty, hc⟩ := h₆ <;> subst bty c₂ tx

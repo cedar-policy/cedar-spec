@@ -53,8 +53,7 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
     subst tx bty
     replace hv₁ := instance_of_ff_is_false hv₁
     subst v₁
-    cases hl ; rename_i hl₁
-    specialize ih₁ hs hc hr htx₁ (by assumption)
+    specialize ih₁ hs hc hr htx₁ hl
     simp only [evaluate, ←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]

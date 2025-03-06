@@ -55,9 +55,7 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     subst v₁
     unfold EvaluatesTo at he₁
     simp [evaluate]
-    cases hl
-    rename_i hl₁ hl₂
-    specialize ih₁ hs hc hr htx₁ hl₁
+    specialize ih₁ hs hc hr htx₁ hl
     rw [←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
     simp [he₁, Result.as, Coe.coe, Value.asBool]
