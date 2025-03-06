@@ -52,22 +52,30 @@ theorem type_of_unary_inversion {op : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabi
     simp [h₁, hty₁]
   }
 
-theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment}
-  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (tx, c₂)) :
+theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
+  (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
-  ∃ tx₁ bty c₁',
-    tx = .unaryApp .not tx₁ (.bool (.not bty)) ∧
-    typeOf x₁ c₁ env = Except.ok (tx₁, c₁') ∧
-    tx₁.typeOf = .bool bty
+  ∃ bty c₁',
+    ty.typeOf = .bool bty.not ∧
+    (typeOf x₁ c₁ env).typeOf = Except.ok (.bool bty, c₁')
 := by
-  have ⟨ hc, tx₁, _, c₁', h₂, ⟨ _, bty, h₄, htx₁⟩  ⟩ := type_of_unary_inversion h₁
-  subst h₂ h₄ hc
-  simp only [true_and, exists_and_left, exists_and_right]
-  exists tx₁, bty
-  simp only [and_self, true_and]
-  constructor
-  · exists c₁'
-  · exact htx₁
+  simp [typeOf] at h₁
+  cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
+  case ok res =>
+    have ⟨ty₁, c₁'⟩ := res
+    simp [typeOfUnaryApp] at h₁
+    split at h₁ <;> try contradiction
+    case h_1 _ ty₁ bty _ h'₁ =>
+      simp [ok] at h₁
+      apply And.intro
+      · simp [h₁]
+      · exists bty, c₁'
+        have ⟨ hl₁, _ ⟩ := h₁
+        rw [←hl₁]
+        simp only [TypedExpr.typeOf]
+        simp [ResultType.typeOf, Except.map, h'₁]
+
+
 
 theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -77,11 +85,12 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₅, tx₁, bty, c₁', h₆, ⟨ h₄, h₈ ⟩⟩ := type_of_not_inversion h₃
+  have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
   subst h₅; rw [h₆]
+  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   apply And.intro empty_guarded_capabilities_invariant
   have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄ -- IH
-  rw [h₈] at h₇
+  rw [hl₄] at h₇
   simp [EvaluatesTo] at h₆
   simp [EvaluatesTo, evaluate]
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
