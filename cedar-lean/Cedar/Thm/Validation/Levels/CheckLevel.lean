@@ -124,7 +124,6 @@ inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
     AtLevel (.call xfn args ty) n
 end
 
-mutual
 
 theorem entity_access_at_level_succ {tx : TypedExpr} {n n' : Nat}
   (h₁ : TypedExpr.EntityAccessAtLevel tx n n' path) :
@@ -168,6 +167,8 @@ theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {path : 
     | exact entity_access_at_level_succ (by assumption)
     | exact entity_access_at_level_then_at_level (by assumption)
 termination_by tx
+
+mutual
 
 theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List Attr} :
   (TypedExpr.EntityAccessAtLevel tx n nmax path) ↔ (checkEntityAccessLevel tx n nmax path)
