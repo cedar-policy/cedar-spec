@@ -27,126 +27,6 @@ open Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-inductive TypedExpr.EntityLitViaPath : TypedExpr → List Attr → Prop where
-  | entity_lit {euid : EntityUID} {ty : CedarType} {path : List Attr}:
-    EntityLitViaPath (.lit (.entityUID euid) ty) path
-  | ite_true {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₂ : EntityLitViaPath x₂ path) :
-    EntityLitViaPath (.ite x₁ x₂ x₃ ty) path
-  | ite_false {x₁ x₂ x₃ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₃ : EntityLitViaPath x₃ path) :
-    EntityLitViaPath (.ite x₁ x₂ x₃ ty) path
-  | get_attr {x₁ : TypedExpr} {a : Attr} {path : List Attr} {ty : CedarType}
-    (hx : EntityLitViaPath x₁ (a :: path)) :
-    EntityLitViaPath (.getAttr x₁ a ty) path
-  | get_tag {x₁ x₂ : TypedExpr} {path : List Attr} {ty : CedarType}
-    (hx₁ : EntityLitViaPath x₁ path) :
-    EntityLitViaPath (.binaryApp .getTag x₁ x₂ ty) path
-  | record {attrs : List (Attr × TypedExpr)} {ty : CedarType} {a : Attr} {path : List Attr} {tx : TypedExpr}
-    (hx₁ : (Map.make attrs).find? a = some tx)
-    (hx₂ : EntityLitViaPath tx path) :
-    EntityLitViaPath (.record attrs ty) (a :: path)
-
-theorem not_entity_lit_spec (tx : TypedExpr) :
-  (notEntityLit tx = true) ↔ (¬ TypedExpr.EntityLitViaPath tx [])
-:= not_entity_lit_spec' tx []
-where
-  not_entity_lit_spec' (tx : TypedExpr) (path : List Attr) :
-    (notEntityLit.notEntityLit' tx path = true) ↔ (¬ TypedExpr.EntityLitViaPath tx path)
-  := by
-    cases tx <;> try (
-      simp [notEntityLit.notEntityLit']
-      intros h₁
-      cases h₁
-    )
-    case lit p _ =>
-      cases p <;> simp [notEntityLit.notEntityLit']
-      case entityUID => constructor
-      all_goals {
-        intro h₁
-        cases h₁
-      }
-    case ite tx₁ tx₂ tx₃ _ =>
-      have ih₁ := not_entity_lit_spec' tx₁
-      have ih₂ := not_entity_lit_spec' tx₂
-      have ih₃ := not_entity_lit_spec' tx₃
-      simp only [ih₁, ih₂, ih₃, notEntityLit.notEntityLit', Bool.and_eq_true]
-      constructor
-      · intro ⟨hx₁, hx₂⟩ hite
-        cases hite <;> contradiction
-      · intro hite
-        constructor <;> (
-          intro h₁
-          apply hite
-        )
-        case left => exact .ite_true h₁
-        case right => exact .ite_false h₁
-    case binaryApp op tx₁ tx₂ _ =>
-      cases op <;> (
-        simp [notEntityLit.notEntityLit']
-        try ( intro h₁ ; cases h₁ )
-      )
-      have ih₁ := not_entity_lit_spec' tx₁
-      have ih₂ := not_entity_lit_spec' tx₂
-      simp [ih₁, ih₂]
-      constructor
-      · intros h₁ h₂
-        cases h₂
-        contradiction
-      · intros h₁ h₂
-        apply h₁
-        exact .get_tag h₂
-
-    case getAttr tx₁ _ _ =>
-      simp only [notEntityLit.notEntityLit']
-      have ih₁ := not_entity_lit_spec' tx₁
-      simp only [ih₁]
-      constructor
-      · intros h₁ h₂
-        cases h₂
-        contradiction
-      · intros h₁ h₂
-        apply h₁
-        exact .get_attr h₂
-
-    case record attrs ty =>
-      cases path <;> simp [notEntityLit.notEntityLit']
-      case nil =>
-        intro hel
-        cases hel
-      case cons a path =>
-        constructor
-        · intros h₁ h₂
-          cases h₂
-          rename_i tx hi hl
-          split at h₁ <;> (
-            rename_i hf
-            simp only [hf, Option.some.injEq, reduceCtorEq] at hi
-          )
-          subst hi
-          rename_i tx'
-          have : sizeOf tx' < 1 + sizeOf attrs := by
-            replace hf := Map.make_mem_list_mem (Map.find?_mem_toList hf)
-            replace hf := List.sizeOf_lt_of_mem hf
-            rw [Prod.mk.sizeOf_spec a tx'] at hf
-            omega
-          have ih := not_entity_lit_spec' tx'
-          rw [ih] at h₁
-          contradiction
-        · intro h₁
-          split <;> try rfl
-          rename_i tx' hf
-          have : sizeOf tx' < 1 + sizeOf attrs := by
-            replace hf := Map.make_mem_list_mem (Map.find?_mem_toList hf)
-            replace hf := List.sizeOf_lt_of_mem hf
-            rw [Prod.mk.sizeOf_spec a tx'] at hf
-            omega
-          have ih := not_entity_lit_spec' tx'
-          rw [ih]
-          intros h₃
-          apply h₁
-          constructor <;> assumption
-
 def DereferencingBinaryOp : BinaryOp → Prop
   | .mem | .hasTag | .getTag => True
   | _ => False
@@ -244,10 +124,187 @@ inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
     AtLevel (.call xfn args ty) n
 end
 
-theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
-  (TypedExpr.AtLevel tx n) ↔ (checkLevel tx n nmax = true)
+mutual
+
+theorem entity_access_at_level_succ {tx : TypedExpr} {n n' : Nat}
+  (h₁ : TypedExpr.EntityAccessAtLevel tx n n' path) :
+  TypedExpr.EntityAccessAtLevel tx (n + 1) n' path
 := by
-  stop
+  cases h₁
+  case record tx attrs _ ha _ _ _ _ =>
+    apply TypedExpr.EntityAccessAtLevel.record
+    · assumption
+    · assumption
+    · rename_i path hf _ hl
+      have : sizeOf tx < sizeOf attrs := by
+        have h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
+        rw [Prod.mk.sizeOf_spec ha tx] at h₁
+        omega
+      exact entity_access_at_level_succ hl
+
+  case getAttrRecord h₁ h₂ =>
+    have h₃ := entity_access_at_level_succ h₂
+    apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
+  all_goals
+    constructor <;> first
+    | assumption
+    | exact entity_access_at_level_succ (by assumption)
+termination_by tx
+
+theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {path : List Attr}
+  (h₁ : TypedExpr.EntityAccessAtLevel tx n (n + 1) path) :
+  TypedExpr.AtLevel tx (n + 1)
+:= by
+  cases h₁
+  case getAttrRecord =>
+    apply TypedExpr.AtLevel.getAttrRecord
+    · apply entity_access_at_level_then_at_level
+      assumption
+    · assumption
+  all_goals
+    constructor <;>
+    first
+    | assumption
+    | exact entity_access_at_level_succ (by assumption)
+    | exact entity_access_at_level_then_at_level (by assumption)
+termination_by tx
+
+theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List Attr} :
+  (TypedExpr.EntityAccessAtLevel tx n nmax path) ↔ (checkEntityAccessLevel tx n nmax path)
+:= by
+  cases tx
+  case var =>
+    simp [checkEntityAccessLevel]
+    constructor
+  case ite tx₁ tx₂ tx₃ _ =>
+    have ih₁ := @level_spec tx₁
+    have ih₂ := @entity_access_level_spec tx₂
+    have ih₃ := @entity_access_level_spec tx₃
+    simp [checkEntityAccessLevel]
+    rw [←ih₁, ←ih₂, ←ih₃]
+    apply Iff.intro
+    · intro hl; cases hl
+      and_intros <;> assumption
+    · intro ⟨⟨h₁, h₂⟩, h₃⟩
+      constructor <;> assumption
+  case binaryApp op tx₁ tx₂ _ =>
+    cases op
+    case getTag =>
+      have ih₁ := @entity_access_level_spec tx₁
+      have ih₂ := @level_spec tx₂
+      simp [checkEntityAccessLevel]
+      rw [←ih₁, ←ih₂]
+      apply Iff.intro
+      · intro hl; cases hl
+        and_intros <;> first
+          | assumption
+          | simp only [Nat.zero_lt_succ]
+      · intro ⟨ ⟨h₁, h₂⟩, h₃ ⟩
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
+        subst n
+        constructor <;> assumption
+    all_goals
+      simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+      intro hc
+      cases hc
+  case getAttr tx₁ a ty =>
+    simp [checkEntityAccessLevel]
+    split
+    · have ih₁ := @entity_access_level_spec tx₁
+      simp [←ih₁]
+      apply Iff.intro
+      · intro hl
+        cases hl
+        · apply And.intro
+          · simp only [Nat.zero_lt_succ]
+          · simp only [Nat.add_one_sub_one]
+            assumption
+        · rename_i h₂ h₁ _
+          simp [h₂] at h₁
+      · intro ⟨h₁, h₂⟩
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
+        subst n
+        apply TypedExpr.EntityAccessAtLevel.getAttr
+        · simp at h₂
+          assumption
+        · assumption
+    · have ih₁ := @entity_access_level_spec tx₁
+      simp [←ih₁]
+      apply Iff.intro
+      · intro hl
+        cases hl
+        · rename_i h₁ _ _ h₂ _
+          simp [h₂] at h₁
+        · assumption
+      · intro hl
+        apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
+  case record atxs _ =>
+    cases path
+    case nil =>
+      simp [checkEntityAccessLevel]
+      intro hc
+      cases hc
+    case cons =>
+      simp [checkEntityAccessLevel]
+      split <;> simp
+      · apply Iff.intro
+        · intro hl
+          cases hl
+          rename_i tx h₁ tx' h₃ h₄ h₅
+          rw [h₁] at h₄
+          simp at h₄
+          subst tx
+          and_intros
+          · have : sizeOf tx' < 1 + sizeOf atxs := by
+              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ h₁
+              rw [Prod.mk.sizeOf_spec _ tx'] at h₁
+              omega
+            have ih := @entity_access_level_spec tx'
+            rw [←ih]
+            assumption
+          · intros
+            rename_i a tx h₂
+            have : sizeOf tx < 1 + sizeOf atxs := by
+              have h₄ := List.sizeOf_lt_of_mem h₂
+              rw [Prod.mk.sizeOf_spec a tx] at h₄
+              omega
+            have ih := @level_spec tx
+            rw [←ih]
+            specialize h₃ (a, tx) h₂
+            simpa using h₃
+        · intro ⟨ h₁, h₂ ⟩
+          constructor
+          · intro atx hatx
+            specialize h₂ atx.fst atx.snd hatx
+            have : sizeOf atx.snd < 1 + sizeOf atxs := by
+              have h₄ := List.sizeOf_lt_of_mem hatx
+              rw [Prod.mk.sizeOf_spec _ atx.snd] at h₄
+              omega
+            have ih := @level_spec atx.snd
+            rw [ih]
+            assumption
+          · assumption
+          · rename_i a _ tx hf
+            have : sizeOf tx < 1 + sizeOf atxs := by
+              replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
+              rw [Prod.mk.sizeOf_spec _ tx] at h₁
+              omega
+            have ih := @entity_access_level_spec tx
+            rw [ih]
+            assumption
+      · intro hc
+        cases hc
+        rename_i h₁ _  _ h₂ _
+        simp [h₁] at h₂
+  all_goals
+    simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+    intro hc
+    cases hc
+termination_by tx
+
+theorem level_spec {tx : TypedExpr} {n : Nat}:
+  (TypedExpr.AtLevel tx n) ↔ (checkLevel tx n = true)
+:= by
   cases tx
   case lit =>
     simp [checkLevel]
@@ -261,10 +318,10 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
     have ih₃ := @level_spec tx₃
     simp [checkLevel]
     rw [←ih₁, ←ih₂, ←ih₃]
-    constructor
+    apply Iff.intro
     · intros h
       cases h
-      (constructor <;> try constructor) <;> assumption
+      and_intros <;> assumption
     · intro ⟨⟨h₁, h₂⟩, h₃⟩
       constructor <;> assumption
 
@@ -273,7 +330,7 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
     have ih₂ := @level_spec tx₂
     simp [checkLevel]
     rw [←ih₁, ←ih₂]
-    constructor
+    apply Iff.intro
     · intro h
       cases h
       constructor <;> assumption
@@ -284,7 +341,7 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
     have ih₁ := @level_spec tx₁
     simp [checkLevel]
     rw [←ih₁]
-    constructor
+    apply Iff.intro
     · intro h
       cases h
       assumption
@@ -295,58 +352,56 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
   case binaryApp op tx₁ tx₂ _ =>
     cases op
     case getTag | hasTag | mem =>
-      have ih₁ := @level_spec tx₁
+      have ih₁ := @entity_access_level_spec tx₁
       have ih₂ := @level_spec tx₂
       simp [checkLevel]
-      rw [←ih₁, ←ih₂, not_entity_lit_spec]
-      constructor
+      rw [←ih₁, ←ih₂]
+      apply Iff.intro
       · intro h
         cases h
         rename_i h₁ h₂ h₃
-        (constructor <;> try constructor <;> try constructor) <;> (
+        and_intros <;> (
           try simp
           try assumption
         )
         rename_i hop _ _
         simp [DereferencingBinaryOp] at hop
-      · intro ⟨ ⟨ ⟨ h₁, h₂⟩, h₃ ⟩ , h₄⟩
-        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
+      · intro ⟨ ⟨ h₁, h₂⟩, h₃ ⟩
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
         subst n
         constructor <;> assumption
     all_goals
       have ih₁ := @level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp [checkLevel]
+      simp only [checkLevel, Bool.and_eq_true]
       rw [←ih₁, ←ih₂]
-      constructor
+      apply Iff.intro
       · intro h
         cases h
-        rename_i h₁ h₂
-        simp [h₁, h₂]
+        apply And.intro <;> assumption
       · intro ⟨ h₁, h₂ ⟩
-        constructor <;> (
-          try simp [DereferencingBinaryOp]
-          try assumption
-        )
+        constructor <;> first
+        | simp only [DereferencingBinaryOp, not_false_eq_true]
+        | assumption
 
   case getAttr tx₁ a _  | hasAttr tx₁ a _  =>
     simp [checkLevel]
     split
-    · constructor
+    · apply Iff.intro
       · intro h
         cases h <;> simp [*] at *
         rename_i n _ _ _ _
-        have ih₁ := @level_spec tx₁
-        rw [←ih₁, not_entity_lit_spec]
-        constructor <;> assumption
-      · have ih₁ := @level_spec tx₁
+        have ih₁ := @entity_access_level_spec tx₁
+        rw [←ih₁]
+        assumption
+      · have ih₁ := @entity_access_level_spec tx₁
         simp
-        rw [←ih₁, not_entity_lit_spec]
-        intro h₁ h₂ h₃
-        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₂]
+        rw [←ih₁]
+        intro h₁ h₂
+        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
         subst n
         constructor <;> assumption
-    · constructor
+    · apply Iff.intro
       · intro h
         cases h <;> simp [*] at *
         have ih₁ := @level_spec tx₁
@@ -359,7 +414,7 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
 
   case call | set =>
     simp [checkLevel]
-    constructor
+    apply Iff.intro
     · intro h₁ tx h₂
       have ih := @level_spec tx
       cases h₁
@@ -377,7 +432,7 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
 
   case record attrs _ =>
     simp [checkLevel]
-    constructor
+    apply Iff.intro
     · intro h₁ a tx h₂
       cases h₁
       rename_i h₃
@@ -403,127 +458,4 @@ theorem level_spec {tx : TypedExpr} {n nmax : Nat}:
       exact h₁
 termination_by tx
 
-
-theorem check_level_succ {tx : TypedExpr} {n : Nat}
-  (h₁ : TypedExpr.AtLevel tx n) :
-  TypedExpr.AtLevel tx (n + 1)
-:= by
-  stop
-  cases h₁
-  case call htx | set htx =>
-    constructor
-    intro tx hi
-    have _ := List.sizeOf_lt_of_mem hi
-    apply check_level_succ
-    exact htx tx hi
-  case record attrs _ ha =>
-    constructor
-    intro atx hi
-    have : sizeOf atx.snd < sizeOf attrs := by
-      have h₂ := List.sizeOf_lt_of_mem hi
-      rw [Prod.mk.sizeOf_spec] at h₂
-      omega
-    apply check_level_succ
-    exact ha atx hi
-  case getAttrRecord h₁ h₂ =>
-    have h₃ := check_level_succ h₂
-    apply TypedExpr.AtLevel.getAttrRecord <;> assumption
-  case hasAttrRecord h₁ h₂ =>
-    have h₃ := check_level_succ h₂
-    apply TypedExpr.AtLevel.hasAttrRecord <;> assumption
-  all_goals
-    constructor <;> (
-      try apply check_level_succ
-      try assumption
-    )
-
-
-theorem check_level_greater {tx : TypedExpr} {n n' : Nat}
-  (hn : n ≤ n')
-  (h₁ : TypedExpr.AtLevel tx n) :
-  TypedExpr.AtLevel tx n'
-:= Nat.le.rec h₁ (λ _ ih => check_level_succ ih) hn
-
-theorem entity_access_at_level_tail {tx : TypedExpr} {n n' : Nat} {attr : Attr} {path : List Attr}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx n n' (attr :: path)) :
-  TypedExpr.EntityAccessAtLevel tx n n' path
-:= by
-  stop
-  cases h₁
-  case lit =>
-    constructor <;> assumption
-  case var =>
-    constructor <;> assumption
-  case ite =>
-    constructor
-    · assumption
-    · apply entity_access_at_level_tail
-      assumption
-    · apply entity_access_at_level_tail
-      assumption
-  case getAttr =>
-    constructor
-    · assumption
-    · apply entity_access_at_level_tail
-      assumption
-    · assumption
-  case getTag =>
-    constructor
-    · assumption
-    · apply entity_access_at_level_tail
-      assumption
-    · assumption
-  case getAttrRecord =>
-    constructor
-    · apply entity_access_at_level_tail
-      · rename_i h₁
-
-      · sorry
-    · assumption
-  case record =>
-    sorry
-termination_by tx
-
-theorem entity_access_at_level_succ {tx : TypedExpr} {n n' : Nat}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx n n' path) :
-  TypedExpr.EntityAccessAtLevel tx (n + 1) n' path
-:= by
-  cases h₁
-  case record tx attrs _ ha _ _ _ _ =>
-    apply TypedExpr.EntityAccessAtLevel.record
-    · assumption
-    · assumption
-    · rename_i path hf _ hl
-      have : sizeOf tx < sizeOf attrs := by
-        have h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
-        rw [Prod.mk.sizeOf_spec ha tx] at h₁
-        omega
-      exact entity_access_at_level_succ hl
-
-  case getAttrRecord h₁ h₂ =>
-    have h₃ := entity_access_at_level_succ h₂
-    apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
-  all_goals
-    constructor <;> (
-      try apply entity_access_at_level_succ
-      try assumption
-    )
-termination_by tx
-
-theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {path : List Attr}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx n (n + 1) path) :
-  TypedExpr.AtLevel tx (n + 1)
-:= by
-  cases h₁
-  case getAttrRecord =>
-    apply TypedExpr.AtLevel.getAttrRecord
-    · apply entity_access_at_level_then_at_level
-      assumption
-    · assumption
-  all_goals
-    constructor <;>
-    first
-    | assumption
-    | apply entity_access_at_level_succ <;> assumption
-    | apply entity_access_at_level_then_at_level <;> assumption
-termination_by tx
+end

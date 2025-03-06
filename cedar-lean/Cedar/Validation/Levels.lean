@@ -32,75 +32,88 @@ namespace Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-def notEntityLit (tx : TypedExpr) : Bool :=
-  notEntityLit' tx []
-where
-  notEntityLit' (tx : TypedExpr) (path : List Attr) : Bool :=
-    match tx, path with
-    | .lit (.entityUID _) _, _ => false
-    | .ite _ x₂ x₃ _, _ =>
-      notEntityLit' x₂ path && notEntityLit' x₃ path
-    | .getAttr x₁ a _, _=>
-      notEntityLit' x₁ (a :: path)
-    | .binaryApp .getTag x₁ _ _, _ =>
-      notEntityLit' x₁ path
-    | .record axs ty, (a :: path) =>
-      match h₁ : (Map.make axs).find? a with
-      | some tx' =>
-        have : sizeOf tx' < sizeOf axs := by
-          replace h₁ := Map.make_mem_list_mem (Map.find?_mem_toList h₁)
-          replace h₁ := List.sizeOf_lt_of_mem h₁
-          rw [Prod.mk.sizeOf_spec a tx'] at h₁
-          omega
-        notEntityLit' tx' path
-      | none => true
-    | _, _ => true
-  termination_by tx
+mutual
 
-def checkLevel (tx : TypedExpr) (l lmax : Nat) : Bool :=
+def checkEntityAccessLevel (tx : TypedExpr) (n nmax : Nat) (path : List Attr) : Bool :=
+  match tx, path with
+  | .var _ _, _ => true
+  | .ite tx₁ tx₂ tx₃ _, _ =>
+    checkLevel tx₁ nmax &&
+    checkEntityAccessLevel tx₂ n nmax path &&
+    checkEntityAccessLevel tx₃ n nmax path
+  | .getAttr x₁ a _, _ =>
+    match x₁.typeOf with
+    | .entity _ =>
+      n > 0 &&
+      checkEntityAccessLevel x₁ (n - 1) nmax []
+    | _ =>
+      checkEntityAccessLevel x₁ n nmax (a :: path)
+  | .binaryApp .getTag x₁ x₂ _, _ =>
+    n > 0 &&
+    checkEntityAccessLevel x₁ (n - 1) nmax [] &&
+    checkLevel x₂ nmax
+  | .record axs _, (a :: path) =>
+    match h₁ : (Map.make axs).find? a with
+    | some tx' =>
+      have : sizeOf tx' < sizeOf axs := by
+        replace h₁ := Map.make_mem_list_mem (Map.find?_mem_toList h₁)
+        replace h₁ := List.sizeOf_lt_of_mem h₁
+        rw [Prod.mk.sizeOf_spec a tx'] at h₁
+        omega
+      checkEntityAccessLevel tx' n nmax path &&
+      axs.attach.all λ e =>
+        have : sizeOf e.val.snd < 1 + sizeOf axs := by
+          have h₁ := List.sizeOf_lt_of_mem e.property
+          rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
+          omega
+        checkLevel e.val.snd nmax
+    | none => false
+  | _, _ => false
+
+def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   match tx with
   | .lit _ _ => true
   | .var _ _ => true
   | .ite x₁ x₂ x₃ _ =>
-    checkLevel x₁ lmax lmax &&
-    checkLevel x₂ l lmax &&
-    checkLevel x₃ l lmax
+    checkLevel x₁ n &&
+    checkLevel x₂ n &&
+    checkLevel x₃ n
   | .unaryApp _ x₁ _ =>
-    checkLevel x₁ l lmax
+    checkLevel x₁ n
   | .binaryApp .mem x₁ x₂ _
   | .binaryApp .getTag x₁ x₂ _
   | .binaryApp .hasTag x₁ x₂ _ =>
-    notEntityLit x₁ &&
-    l > 0 &&
-    checkLevel x₁ (l - 1) lmax &&
-    checkLevel x₂ lmax lmax
+    n > 0 &&
+    checkEntityAccessLevel x₁ (n - 1) n [] &&
+    checkLevel x₂ n
   | .and x₁ x₂ _
   | .or x₁ x₂ _
   | .binaryApp _ x₁ x₂ _ =>
-    checkLevel x₁ l lmax &&
-    checkLevel x₂ l lmax
+    checkLevel x₁ n &&
+    checkLevel x₂ n
   | .hasAttr x₁ _ _
   | .getAttr x₁ _ _ =>
     match x₁.typeOf with
     | .entity _ =>
-      notEntityLit x₁ &&
-      l > 0 &&
-      checkLevel x₁ (l - 1) lmax
-    | _ => checkLevel x₁ l lmax
+      n > 0 &&
+      checkEntityAccessLevel x₁ (n - 1) n []
+    | _ => checkLevel x₁ n
   | .call _ xs _
   | .set xs _ =>
     xs.attach.all λ e =>
       have := List.sizeOf_lt_of_mem e.property
-      checkLevel e l lmax
+      checkLevel e n
   | .record axs _ =>
     axs.attach.all λ e =>
       have : sizeOf e.val.snd < 1 + sizeOf axs := by
         have h₁ := List.sizeOf_lt_of_mem e.property
         rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
         omega
-      checkLevel e.val.snd l lmax
+      checkLevel e.val.snd n
+
+ end
 
 def typecheckAtLevel (policy : Policy) (env : Environment) (n : Nat) : Bool :=
   match typeOf policy.toExpr ∅ env with
-  | .ok (tx, _) => checkLevel tx n n
+  | .ok (tx, _) => checkLevel tx n
   | _           => false
