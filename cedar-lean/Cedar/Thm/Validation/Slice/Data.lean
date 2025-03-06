@@ -65,7 +65,7 @@ theorem mapm_key_id_sorted_by_key {α β : Type} [LT α] [BEq α] [LawfulBEq α]
     exact List.SortedBy.cons_cons hlt hs
 
 theorem map_find_mapm_value {α β : Type} [BEq α] [LawfulBEq α] {kvs : List (α × β)} {ks : List α} {fn : α → Option β} {k: α}
-  (h₁ : List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks = some kvs)
+  (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₂ : k ∈ ks)
   : (Map.mk kvs).find? k = fn k
 := by
@@ -89,39 +89,8 @@ theorem map_find_mapm_value {α β : Type} [BEq α] [LawfulBEq α] {kvs : List (
     · simp only [beq_iff_eq] at h₃
       simp [h₃, ←hf]
 
-theorem mapm_pair_lookup  {α γ : Type} [BEq α] [LawfulBEq α] {l : List α} {l' : List (α × γ)} {f : α → Option (α × γ)} {e: α}
-  (h₁ : List.mapM f l = some l')
-  (h₂ : e ∈ l)
-  (hf : ∀ e, match f e with
-    | some e' => e'.fst = e
-    | none => True)
-  : ∃ e', f e = some e' ∧  l'.lookup e'.fst = some e'.snd
-:= by
-  cases l
-  case nil => contradiction
-  case cons h t =>
-    cases h₃ : f h <;>
-    cases h₄ : List.mapM f t <;>
-    simp only [h₃, h₄, List.mapM_cons, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.some.injEq, reduceCtorEq] at h₁
-    subst h₁
-    simp only [List.mem_cons] at h₂
-    cases h₂
-    case _ h₂ =>
-      simp [h₂, h₃, List.lookup]
-    case _ h₂ =>
-      have ⟨ e'', ih₁, ih₂ ⟩ := mapm_pair_lookup h₄ h₂ hf
-      have fh₁ := hf h ; rw [h₃] at fh₁ ; subst fh₁
-      have fh₂ := hf e ; rw [ih₁] at fh₂ ; subst fh₂
-      simp only [ih₁,ih₂, Option.some.injEq, List.lookup, exists_eq_left']
-      split
-      · rename_i h₅
-        simp only [beq_iff_eq] at h₅
-        simp only [←h₅, ih₁, Option.some.injEq] at h₃
-        rw [h₃]
-      · simp
-
-theorem mapm_none_find_none' {α γ : Type} [BEq α] [LT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
-  (hm : List.mapM (fun e => (f e).bind fun v => some (e, v)) l = some l')
+theorem not_in_list_not_in_mapm_list {α γ : Type} [BEq α] [LT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
+  (hm : l.mapM (λ e => do (e, ← f e)) = some l')
   (hl : e ∉ l) :
   ∀ v, (e, v) ∉ l'
 := by
@@ -141,19 +110,10 @@ theorem mapm_none_find_none' {α γ : Type} [BEq α] [LT α] [DecidableLT α] {l
       exact hl (List.Mem.head _)
     case tail tail' ht' =>
       replace hl : e ∉ tail := (hl $ List.Mem.tail _ ·)
-      exact mapm_none_find_none' hm₂ hl _ ht'
-
-theorem map_not_in_list_then_not_in_map  [DecidableEq α] [LT α] [StrictLT α ] [DecidableLT α] {l : List (α × β)}
-  (hl : ∀ v, (k, v) ∉ l) :
-  (Map.make l).find? k = none
-:= by
-  rw [Map.find?_none_iff_all_absent]
-  simp only [Map.kvs, Map.make]
-  intro v hl'
-  exact hl v (List.in_canonicalize_in_list hl')
+      exact not_in_list_not_in_mapm_list hm₂ hl _ ht'
 
 theorem mapm_none_find_none {α γ : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
-  (h₂ : l.mapM (λ e => (f e).bind (λ e' => (e, e'))) = some l')
+  (h₂ : l.mapM (λ e => do (e, ← f e)) = some l')
   (h₁ : f e = none) :
   (Map.make l').find? e = none
 := by
@@ -162,4 +122,7 @@ theorem mapm_none_find_none {α γ : Type} [DecidableEq α] [LT α] [StrictLT α
     have ⟨ _, _, h₄ ⟩ := List.mapM_some_implies_all_some h₂ e h₃
     simp [h₁] at h₄
   case neg =>
-    exact map_not_in_list_then_not_in_map (mapm_none_find_none' h₂ h₃)
+    simp only [Map.find?_none_iff_all_absent, Map.kvs, Map.make]
+    intro v hl'
+    have h₄ := List.in_canonicalize_in_list hl'
+    exact not_in_list_not_in_mapm_list h₂ h₃ v h₄
