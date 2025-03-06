@@ -76,7 +76,6 @@ decreasing_by
   all_goals
     omega
 
-
 def AndWellTyped (env : Environment) (l r: TypedExpr) (ty : CedarType) : Prop :=
   TypedExpr.WellTyped env l ∧
   match l.typeOf, r.typeOf with
@@ -104,7 +103,7 @@ def EqWellTyped (ty₁ ty₂ : TypedExpr) (ty : CedarType) : Prop :=
 def BinaryApp.WellTyped (env : Environment) (op : BinaryOp) (l r: TypedExpr) (ty : CedarType) : Prop :=
   TypedExpr.WellTyped env l ∧ TypedExpr.WellTyped env r ∧
   match op, l.typeOf, r.typeOf with
-  | .eq, _, _ₜ => EqWellTyped l r ty
+  | .eq, _, _ => EqWellTyped l r ty
   | _, _, _ => sorry
 
 def TypedExpr.WellTyped (env : Environment) (e : TypedExpr) : Prop :=
@@ -128,177 +127,80 @@ end
 theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
-  ∃ v, EvaluatesTo ty.toExpr request entities v ∧ InstanceOfType v ty.typeOf := by
-  intro h₀ h₁
-  cases ty <;> simp [EvaluatesTo, TypedExpr.toExpr, TypedExpr.typeOf, evaluate]
-  case lit ty =>
-    simp only [TypedExpr.WellTyped] at h₁
-    exact h₁
-  case var v t =>
-    simp only [TypedExpr.WellTyped] at h₁
-    cases h₁ <;> simp [evaluate]
-    · rename_i et heq
-      replace ⟨ h₀, _⟩ := h₀
-      simp only [InstanceOfRequestType] at h₀
-      replace ⟨ h₀, _⟩ := h₀
-      rw [heq]
-      exact InstanceOfType.instance_of_entity request.principal env.reqty.principal h₀
-    · rename_i et heq
-      replace ⟨ h₀, _⟩ := h₀
-      simp only [InstanceOfRequestType] at h₀
-      replace ⟨ _, ⟨_, ⟨h₀, _⟩ ⟩ ⟩ := h₀
-      rw [heq]
-      exact InstanceOfType.instance_of_entity request.resource env.reqty.resource h₀
-    · rename_i et heq
-      replace ⟨ h₀, _⟩ := h₀
-      replace ⟨ _, ⟨h₀, ⟨_, _⟩ ⟩ ⟩ := h₀
-      rw [heq, h₀]
-      exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty rfl
-    · rename_i rt heq
-      replace ⟨ h₀, _⟩ := h₀
-      replace ⟨ _, ⟨_, ⟨_, h₀⟩ ⟩ ⟩ := h₀
-      rw [heq]
-      exact h₀
-  case ite cond te ee ty =>
-    simp only [TypedExpr.WellTyped, ITEWellTyped] at h₁
-    replace ⟨h₁, h₂⟩ := h₁
-    replace h₁ := well_typed_expr_cannot_go_wrong h₀ h₁
-    cases h₁
-    rename_i vᵢ hᵢ
-    replace ⟨hᵢ, hᵢₜ⟩ := hᵢ
-    split at h₂
-    case _ heq =>
-      simp only [EvaluatesTo] at hᵢ
-      rw [heq] at hᵢₜ
-      cases hᵢₜ
-      case _ b h₃ =>
-        simp only [InstanceOfBoolType] at h₃
-        sorry
-    sorry
-    sorry
-    sorry
-  case and a b t =>
-    simp only [TypedExpr.WellTyped, AndWellTyped] at h₁
-    replace ⟨h₁, h₂⟩ := h₁
-    split at h₂
-    case _ ty₁ ty₂ h₃ =>
-      have hₐ := well_typed_expr_cannot_go_wrong h₀ h₁
-      cases hₐ
-      case _ v₁ h₄ =>
-        replace ⟨h₄, h₅⟩ := h₄
-        rw [h₃] at h₅
-        cases h₅
-        case _ bᵥ h₅ =>
-          simp only [InstanceOfBoolType] at h₅
-          split at h₅
-          case _ heq => cases heq
-          case _ =>
-            simp only [EvaluatesTo] at h₄
-            cases h₄
-            case _ h₆ =>
-              rw [h₆]
-              exists false
-              rw [h₂]
-              simp only [false_is_instance_of_ff, and_true]
-              simp only [Result.as]
-              simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false]
-            case _ h₆ =>
-              cases h₆
-              case _ h₆ =>
-                rw [h₆]
-                exists false
-                rw [h₂]
-                simp only [false_is_instance_of_ff, and_true]
-                simp only [Result.as]
-                simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true]
-              case _ h₆ =>
-                cases h₆
-                case _ h₆ =>
-                  rw [h₆]
-                  exists false
-                  rw [h₂]
-                  simp only [false_is_instance_of_ff, and_true]
-                  simp only [Result.as]
-                  simp only [Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true]
-                case _ h₆ =>
-                  rw [h₆]
-                  exists false
-                  rw [h₂]
-                  simp only [false_is_instance_of_ff, and_true]
-                  simp only [Result.as]
-                  simp only [Coe.coe, Value.asBool]
-                  simp only [Except.bind_ok, ↓reduceIte, reduceCtorEq, or_true]
-          case _ heq => cases heq
-          case _ => cases h₅
-    case _ x y bty h₃ h₄ h₅ =>
-      sorry
-    case _ x y bty h₃ h₄ h₅ =>
-      sorry
-    case _ =>
-      cases h₂
-
-
-
-
-
-
-
-
-  case or a b t => sorry
-  case unaryApp op expr t => sorry
-  case binaryApp op a b t => sorry
-  case getAttr expr attr t => sorry
-  case hasAttr expr attr t => sorry
-  case set ls t => sorry
-  case record m t => sorry
-  case call fn args t => sorry
-
+  ∃ v, EvaluatesTo ty.toExpr request entities v ∧ InstanceOfType v ty.typeOf := sorry
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (ty, c₂) →
   TypedExpr.WellTyped env ty := by
-  cases e <;> simp only [typeOf] <;> intro h₁ h₂
+  cases e <;> simp only [typeOf] <;> intro h₁
   case lit =>
     simp only [typeOfLit]
     split <;> simp [ok]
     case _ =>
-      intro h₃ _
-      rw [← h₃]
+      intro h₂ _
+      rw [← h₂]
       simp only [TypedExpr.WellTyped]
       exact true_is_instance_of_tt
     case _ =>
-      intro h₃ _
-      rw [← h₃]
+      intro h₂ _
+      rw [← h₂]
       simp only [TypedExpr.WellTyped]
       exact false_is_instance_of_ff
     case _ =>
-      intro h₃ _
-      rw [← h₃]
+      intro h₂ _
+      rw [← h₂]
       simp only [TypedExpr.WellTyped]
       exact InstanceOfType.instance_of_int
     case _ =>
-      intro h₃ _
-      rw [← h₃]
+      intro h₂ _
+      rw [← h₂]
       simp only [TypedExpr.WellTyped]
       exact InstanceOfType.instance_of_string
     case _ =>
-      intro h₃
+      intro h₂
       rename_i uid
-      split at h₃
+      split at h₂
       case _ =>
-        simp at h₃
-        have ⟨ h₃, _ ⟩ := h₃
-        rw [← h₃]
+        simp at h₂
+        have ⟨ h₂, _ ⟩ := h₂
+        rw [← h₂]
         simp only [TypedExpr.WellTyped]
         have h₄ : InstanceOfEntityType uid uid.ty := by
           simp only [InstanceOfEntityType]
         exact InstanceOfType.instance_of_entity uid uid.ty h₄
       case _ =>
-        cases h₃
+        cases h₂
   case _ => sorry
-  case _ => sorry
+  case ite c t eₑ =>
+    intro h₂
+    simp only [typeOfIf] at h₂
+    generalize h₃ : typeOf c c₁ env = cᵣ
+    cases cᵣ
+    case _ =>
+      rw [h₃] at h₂
+      simp only [Except.bind_err, reduceCtorEq] at h₂
+    case _ tuple =>
+      replace ⟨tc, _⟩ := tuple
+      have h₄ := type_of_generate_well_typed_typed_expr h₁ h₃
+      rw [h₃] at h₂
+      simp only [Except.bind_ok] at h₂
+      split at h₂
+      case _ c₃ _ h₅ =>
+        generalize h₆ : typeOf t (c₁ ∪ c₃) env = tᵣ
+        cases tᵣ <;> rw [h₆] at h₂
+        case _ =>
+          simp only [Except.bind_err, reduceCtorEq] at h₂
+        case _ tuple₁ =>
+          replace ⟨ty₁, _⟩ := tuple₁
+          simp only [ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at h₂
+          replace ⟨h₂, _⟩ := h₂
+          rw [h₂] at h₆
+          exact type_of_generate_well_typed_typed_expr h₁ h₆
+      case _ =>
+        exact type_of_generate_well_typed_typed_expr h₁ h₂
+      sorry
+      sorry
   case _ => sorry
   case _ => sorry
   case _ => sorry
