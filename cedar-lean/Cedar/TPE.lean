@@ -14,8 +14,6 @@
  limitations under the License.
 -/
 
-import Cedar.Data
-import Cedar.Spec
-import Cedar.Thm
-import Cedar.Validation
-import Cedar.TPE
+import Cedar.TPE.Input
+import Cedar.TPE.Residual
+import Cedar.TPE.Evaluator
