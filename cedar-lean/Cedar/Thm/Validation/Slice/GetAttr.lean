@@ -61,8 +61,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate (e.getAttr a) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
@@ -75,7 +74,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
   rw [htx] at hl
   have ⟨ hgc, v, he', hi ⟩ := type_of_is_sound hc hr ht'
   cases hl
-  case getAttr v₁' ety n hel hety hl =>
+  case getAttr v₁' ety n hety hl =>
     have ⟨euid', hv⟩ : ∃ euid', v = Value.prim (Prim.entityUID euid') := by
       rw [hety] at hi
       have ⟨ euid', hety, hv⟩ := instance_of_entity_type_is_entity hi
@@ -100,7 +99,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
     have ⟨ ed, hed, hed' ⟩ := entities_attrs_then_find? he₂
     subst attrs
     have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
-    have ih := ih hc hr ht' hl hel he₁ (.euid euid') hf'
+    have ih := ih hc hr ht' hl he₁ (.euid euid') hf'
     have ha' : Value.EuidViaPath (Value.record ed.attrs) (a :: path) euid := .record hv ha
     apply reachable_attr_step ih hed ha'
 
@@ -122,10 +121,4 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
       rename_i v hv
       subst he
       have ha' : Value.EuidViaPath (Value.record attrs) (a :: path) euid := .record hv ha
-      have hrt' : ¬ TypedExpr.EntityLitViaPath tx' (a :: path) := by
-        rw [htx] at hel
-        intros hel'
-        apply hel
-        constructor
-        assumption
-      exact ih hc hr ht' hl hrt' he₁ ha' hf
+      exact ih hc hr ht' hl he₁ ha' hf

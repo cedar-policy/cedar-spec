@@ -153,33 +153,31 @@ def DereferencingBinaryOp : BinaryOp → Prop
 
 mutual
 
-inductive TypedExpr.EntityAccessAtLevel : TypedExpr → Nat → Nat → Prop where
-  | lit (p : Prim) (ty : CedarType) (n nmax : Nat) :
-    EntityAccessAtLevel (.lit p ty) n nmax
-  | var (v : Var) (ty : CedarType) (n nmax : Nat) :
-    EntityAccessAtLevel  (.var v ty) n nmax
-  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n nmax : Nat)
+inductive TypedExpr.EntityAccessAtLevel : TypedExpr → Nat → Nat → List Attr → Prop where
+  | var (v : Var) (ty : CedarType) (n nmax : Nat) (path : List Attr):
+    EntityAccessAtLevel  (.var v ty) n nmax path
+  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n nmax : Nat) (path : List Attr)
     (hl₁ : AtLevel tx₁ nmax)
-    (hl₂ : EntityAccessAtLevel tx₂ n nmax)
-    (hl₃ : EntityAccessAtLevel tx₃ n nmax) :
-    EntityAccessAtLevel (.ite tx₁ tx₂ tx₃ ty) n nmax
-  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n nmax)
+    (hl₂ : EntityAccessAtLevel tx₂ n nmax path)
+    (hl₃ : EntityAccessAtLevel tx₃ n nmax path) :
+    EntityAccessAtLevel (.ite tx₁ tx₂ tx₃ ty) n nmax path
+  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat) (path : List Attr)
+    (hl₁ : EntityAccessAtLevel tx₁ n nmax [])
     (hl₂ : AtLevel tx₂ nmax) :
-    EntityAccessAtLevel (.binaryApp .getTag tx₁ tx₂ ty) (n + 1) nmax
-  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n nmax : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n nmax)
+    EntityAccessAtLevel (.binaryApp .getTag tx₁ tx₂ ty) (n + 1) nmax path
+  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n nmax : Nat) {path : List Attr}
+    (hl₁ : EntityAccessAtLevel tx₁ n nmax [])
     (hty : tx₁.typeOf = .entity ety) :
-    EntityAccessAtLevel (.getAttr tx₁ a ty) (n + 1) nmax
-  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n nmax : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ n nmax)
+    EntityAccessAtLevel (.getAttr tx₁ a ty) (n + 1) nmax path
+  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n nmax : Nat) {path : List Attr}
+    (hl₁ : EntityAccessAtLevel tx₁ n nmax (a :: path))
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    EntityAccessAtLevel (.getAttr tx₁ a ty) n nmax
-  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (n nmax : Nat)
-    (hl : ∀ atx ∈ attrs, EntityAccessAtLevel atx.snd n nmax) :
-    EntityAccessAtLevel (.record attrs ty) n nmax
+    EntityAccessAtLevel (.getAttr tx₁ a ty) n nmax path
+  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (n nmax : Nat) {a : Attr} {path : List Attr}
+    (hl₁ : ∀ atx ∈ attrs, AtLevel atx.snd nmax)
+    (hf : (Map.make attrs).find? a = some tx)
+    (hl₂ : EntityAccessAtLevel tx n nmax path) :
+    EntityAccessAtLevel (.record attrs ty) n nmax (a :: path)
 
 inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
   | lit (p : Prim) (ty : CedarType) (n : Nat) :
@@ -203,18 +201,15 @@ inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
     (hl₁ : AtLevel tx₁ n) :
     AtLevel (.unaryApp op tx₁ ty) n
   | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1))
+    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1) [])
     (hl₂ : AtLevel tx₂ (n + 1)) :
     AtLevel (.binaryApp .mem tx₁ tx₂ ty) (n + 1)
   | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1))
+    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1) [])
     (hl₂ : AtLevel tx₂ (n + 1)) :
     AtLevel (.binaryApp .getTag tx₁ tx₂ ty) (n + 1)
   | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1))
+    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1) [])
     (hl₂ : AtLevel tx₂ (n + 1)) :
     AtLevel (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1)
   | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
@@ -223,13 +218,11 @@ inductive TypedExpr.AtLevel : TypedExpr → Nat → Prop where
     (hl₂ : AtLevel tx₂ n) :
     AtLevel (.binaryApp op tx₁ tx₂ ty) n
   | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1))
+    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1) [])
     (hty : tx₁.typeOf = .entity ety) :
     AtLevel (.getAttr tx₁ a ty) (n + 1)
   | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
-    (he : ¬ EntityLitViaPath tx₁ [])
-    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1))
+    (hl₁ : EntityAccessAtLevel tx₁ n (n + 1) [])
     (hty : tx₁.typeOf = .entity ety) :
     AtLevel (.hasAttr tx₁ a ty) (n + 1)
   | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
@@ -451,20 +444,62 @@ theorem check_level_greater {tx : TypedExpr} {n n' : Nat}
   TypedExpr.AtLevel tx n'
 := Nat.le.rec h₁ (λ _ ih => check_level_succ ih) hn
 
+theorem entity_access_at_level_tail {tx : TypedExpr} {n n' : Nat} {attr : Attr} {path : List Attr}
+  (h₁ : TypedExpr.EntityAccessAtLevel tx n n' (attr :: path)) :
+  TypedExpr.EntityAccessAtLevel tx n n' path
+:= by
+  stop
+  cases h₁
+  case lit =>
+    constructor <;> assumption
+  case var =>
+    constructor <;> assumption
+  case ite =>
+    constructor
+    · assumption
+    · apply entity_access_at_level_tail
+      assumption
+    · apply entity_access_at_level_tail
+      assumption
+  case getAttr =>
+    constructor
+    · assumption
+    · apply entity_access_at_level_tail
+      assumption
+    · assumption
+  case getTag =>
+    constructor
+    · assumption
+    · apply entity_access_at_level_tail
+      assumption
+    · assumption
+  case getAttrRecord =>
+    constructor
+    · apply entity_access_at_level_tail
+      · rename_i h₁
+
+      · sorry
+    · assumption
+  case record =>
+    sorry
+termination_by tx
+
 theorem entity_access_at_level_succ {tx : TypedExpr} {n n' : Nat}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx n n') :
-  TypedExpr.EntityAccessAtLevel tx (n + 1) n'
+  (h₁ : TypedExpr.EntityAccessAtLevel tx n n' path) :
+  TypedExpr.EntityAccessAtLevel tx (n + 1) n' path
 := by
   cases h₁
-  case record attrs _ ha =>
-    constructor
-    intro atx hi
-    have : sizeOf atx.snd < sizeOf attrs := by
-      have h₂ := List.sizeOf_lt_of_mem hi
-      rw [Prod.mk.sizeOf_spec] at h₂
-      omega
-    apply entity_access_at_level_succ
-    exact ha atx hi
+  case record tx attrs _ ha _ _ _ _ =>
+    apply TypedExpr.EntityAccessAtLevel.record
+    · assumption
+    · assumption
+    · rename_i path hf _ hl
+      have : sizeOf tx < sizeOf attrs := by
+        have h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ hf
+        rw [Prod.mk.sizeOf_spec ha tx] at h₁
+        omega
+      exact entity_access_at_level_succ hl
+
   case getAttrRecord h₁ h₂ =>
     have h₃ := entity_access_at_level_succ h₂
     apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
@@ -473,40 +508,22 @@ theorem entity_access_at_level_succ {tx : TypedExpr} {n n' : Nat}
       try apply entity_access_at_level_succ
       try assumption
     )
+termination_by tx
 
-theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx n (n + 1)) :
+theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {path : List Attr}
+  (h₁ : TypedExpr.EntityAccessAtLevel tx n (n + 1) path) :
   TypedExpr.AtLevel tx (n + 1)
 := by
   cases h₁
-  case getTag =>
-    apply TypedExpr.AtLevel.getTag
-    · assumption
-    · rename_i hl _
-      exact (entity_access_at_level_succ hl)
-    · assumption
-  case getAttr =>
-    apply TypedExpr.AtLevel.getAttr
-    · assumption
-    · rename_i hl
-      exact (entity_access_at_level_succ hl)
-    · assumption
   case getAttrRecord =>
     apply TypedExpr.AtLevel.getAttrRecord
-    · rename_i hl
-      exact entity_access_at_level_then_at_level hl
+    · apply entity_access_at_level_then_at_level
+      assumption
     · assumption
-  case record attrs ty hl =>
-    apply TypedExpr.AtLevel.record
-    intro atx hatx
-    have : sizeOf atx.snd < sizeOf (TypedExpr.record attrs ty) := by
-      have h₂ := List.sizeOf_lt_of_mem hatx
-      rw [Prod.mk.sizeOf_spec] at h₂
-      simp ; omega
-    exact entity_access_at_level_then_at_level (hl atx hatx)
   all_goals
     constructor <;>
     first
     | assumption
+    | apply entity_access_at_level_succ <;> assumption
     | apply entity_access_at_level_then_at_level <;> assumption
 termination_by tx

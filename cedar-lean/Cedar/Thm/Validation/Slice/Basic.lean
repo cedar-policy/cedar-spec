@@ -53,8 +53,7 @@ def CheckedEvalEntityReachable (e : Expr) :=
     CapabilitiesInvariant c request entities →
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf e c env = .ok (tx, c') →
-    TypedExpr.EntityAccessAtLevel tx n nmax →
-    ¬ TypedExpr.EntityLitViaPath tx path →
+    TypedExpr.EntityAccessAtLevel tx n nmax path →
     evaluate e request entities = .ok v →
     Value.EuidViaPath v path euid →
     entities.contains euid →

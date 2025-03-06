@@ -60,7 +60,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp .getTag e₁ e₂) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate (.binaryApp .getTag e₁ e₂) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (ih₁ : CheckedEvalEntityReachable e₁) :
@@ -76,7 +76,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   have ⟨hc', ety, ty, tx₁, tx₂, c₁', c₂', htx₁, hty₁, htx₂, hty₂, ht, htx, hc₁⟩ := type_of_getTag_inversion ht
   subst htx hc'
   cases hl
-  rename_i hrt₁ hl₁ hl₂
+  rename_i hl₁ hl₂
   simp only [getTag] at he
   cases he₃ : entities.tags euid' <;> simp only [he₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at he
   simp only [Map.findOrErr] at he
@@ -88,7 +88,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   subst hed'
   have hf' : entities.contains euid' := by simp [Map.contains, Option.isSome, hed]
 
-  have ih := ih₁ hc hr htx₁ hl₁ hrt₁ he₁ (.euid euid') hf'
+  have ih := ih₁ hc hr htx₁ hl₁ he₁ (.euid euid') hf'
   exact reachable_tag_step ih hed hv ha
 
 theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
@@ -115,7 +115,7 @@ theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp op e₁ e₂) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate (.binaryApp op e₁ e₂) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (ih₁ : CheckedEvalEntityReachable e₁) :

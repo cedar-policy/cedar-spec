@@ -67,8 +67,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
@@ -102,14 +101,17 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   replace ⟨_, het⟩ : ∃ c', typeOf x c env = Except.ok (atx, c') := by
     simpa [AttrExprHasAttrType] using het
 
-  have hl' : TypedExpr.EntityAccessAtLevel atx n nmax := by
+  have hl' : TypedExpr.EntityAccessAtLevel atx n nmax path' := by
     cases hl
-    rename_i hl
-    exact hl (a, atx) (Map.make_mem_list_mem (Map.find?_mem_toList hfatx))
+    rename_i hl _ _
+    have := Map.find?_mem_toList hfatx
+    have := Map.make_mem_list_mem this
+    have := hl (a, atx) this
+    simp at this
+    rename_i h₁ _  _ _
+    rw [h₁] at hfatx
+    simp at hfatx
+    subst atx
+    assumption
 
-  have hel' : ¬ TypedExpr.EntityLitViaPath atx path' := by
-    intro hel'
-    apply hel
-    exact .record hfatx hel'
-
-  exact ih a x hfx hc hr het hl' hel' hex hv hf
+  exact ih a x hfx hc hr het hl' hex hv hf

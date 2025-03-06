@@ -39,15 +39,12 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
     contradiction
   rename_i n hel₁ hl₁ _
   simp [evaluate]
-  have hl₁' := entity_access_at_level_then_at_level (by omega) hl₁
+  have hl₁' := entity_access_at_level_then_at_level hl₁
   specialize ihe hs hc hr ht hl₁'
   rw [←ihe]
   unfold EvaluatesTo at he
   rcases he with he | he | he | he <;> simp [he]
-  -- replace hl₁ : TypedExpr.AtLevel tx₁ (nmax - 1) nmax :=
-    -- check_level_greater (by omega) hl₁
-  -- rw [(by simp at hn ; omega : nmax = nmax - 1 + 1)] at hs
-  have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ hel₁ he hs
+  have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ he hs
   simp [hfeq, hasAttr, attrsOf, Entities.attrsOrEmpty]
 
 theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}

@@ -36,10 +36,10 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem non_entity_lit_not_euid_via_path {p : Prim} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
+theorem non_entity_lit_not_euid_via_path {p : Prim} {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (ht : typeOf (.lit p) c env = .ok (tx, c'))
   (he : evaluate (.lit p) request entities = .ok v)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path) :
+  (hel : TypedExpr.EntityAccessAtLevel tx n nmax path) :
   ¬ Value.EuidViaPath v path euid
 := by
   intro ha
@@ -47,7 +47,7 @@ theorem non_entity_lit_not_euid_via_path {p : Prim} {c c' : Capabilities} {tx : 
   case entityUID =>
     replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
     rw [←ht] at hel
-    exact hel (by constructor)
+    cases hel
   all_goals
     simp only [evaluate, Except.ok.injEq] at he
     subst he
@@ -141,8 +141,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate e request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid) :
@@ -151,7 +150,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   cases e
   case lit =>
     exfalso
-    exact non_entity_lit_not_euid_via_path ht he hel ha
+    exact non_entity_lit_not_euid_via_path ht he hl ha
 
   case var =>
     exact var_entity_reachable he ha hf
@@ -159,7 +158,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   case ite e₁ e₂ e₃ =>
     have ih₂ := @checked_eval_entity_reachable e₂
     have ih₃ := @checked_eval_entity_reachable e₃
-    exact checked_eval_entity_reachable_ite hc hr ht hl hel he ha hf ih₂ ih₃
+    exact checked_eval_entity_reachable_ite hc hr ht hl he ha hf ih₂ ih₃
 
   case and =>
     exfalso
@@ -179,7 +178,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
 
   case getAttr e _ =>
     have ih := @checked_eval_entity_reachable e
-    exact checked_eval_entity_reachable_get_attr hc hr ht hl hel he ha hf ih
+    exact checked_eval_entity_reachable_get_attr hc hr ht hl he ha hf ih
 
   case hasAttr e a =>
     exfalso
@@ -199,7 +198,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
         simp only [Expr.record.sizeOf_spec, gt_iff_lt]
         omega
       exact @checked_eval_entity_reachable x
-    exact checked_eval_entity_reachable_record hc hr ht hl hel he ha hf ih
+    exact checked_eval_entity_reachable_record hc hr ht hl he ha hf ih
 
   case call xfn args =>
     exfalso
@@ -293,8 +292,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
@@ -309,7 +307,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   subst hs
   have hf₁ : Map.contains entities euid := by simp [Map.contains, hf]
   have hw : ReachableIn entities request.sliceEUIDs euid (n + 1) :=
-    checked_eval_entity_reachable hc hr ht hl hrt he (.euid euid) hf₁
+    checked_eval_entity_reachable hc hr ht hl he (.euid euid) hf₁
   have hi := slice_contains_reachable hw hs₁
   rw [←hf]
   rename_i eds
@@ -340,8 +338,7 @@ theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : 
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hrt : ¬ TypedExpr.EntityLitViaPath tx [])
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
   entities.find? euid = slice.find? euid
@@ -350,5 +347,5 @@ theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : 
   case none =>
     simp [not_entities_then_not_slice hs hfe]
   case some =>
-    have h₇ := checked_eval_entity_in_slice hc hr ht hl hrt he hfe hs
+    have h₇ := checked_eval_entity_in_slice hc hr ht hl he hfe hs
     simp [h₇]

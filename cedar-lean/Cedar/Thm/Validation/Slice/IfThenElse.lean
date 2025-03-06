@@ -35,8 +35,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite e₁ e₂ e₃) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx n nmax)
-  (hel : ¬ TypedExpr.EntityLitViaPath tx path)
+  (hl : TypedExpr.EntityAccessAtLevel tx n nmax path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
@@ -50,14 +49,6 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   rw [htx] at hl
   cases hl
   rename_i hl₁ hl₂ hl₃
-
-  rw [htx] at hel
-  have hel₂ : ¬ TypedExpr.EntityLitViaPath tx₂ path := by
-    intros hel₂
-    exact hel (.ite_true hel₂)
-  have hel₃ : ¬ TypedExpr.EntityLitViaPath tx₃ path := by
-    intros hel₃
-    exact hel (.ite_false hel₃)
 
   simp only [evaluate] at he
   cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
@@ -84,7 +75,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
     replace hgc : CapabilitiesInvariant c₁ request entities := by
       simp only [he₁', GuardedCapabilitiesInvariant, forall_const] at hgc
       exact hgc
-    exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ hel₂ he ha hf
+    exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha hf
   case isFalse hb =>
     replace hb : b = false := by
       cases b <;> simp only [Bool.true_eq_false] <;> contradiction
@@ -94,4 +85,4 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
       rw [hty₁] at hi₁
       have := instance_of_tt_is_true hi₁
       contradiction
-    exact ih₃ hc hr htx₃ hl₃ hel₃ he ha hf
+    exact ih₃ hc hr htx₃ hl₃ he ha hf
