@@ -75,8 +75,6 @@ theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
         simp only [TypedExpr.typeOf]
         simp [ResultType.typeOf, Except.map, h'₁]
 
-
-
 theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
