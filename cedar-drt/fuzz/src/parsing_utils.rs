@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-use cedar_policy_core::ast::{
-    ActionConstraint, AnyId, Effect, Expr, PolicySet, PrincipalConstraint, ResourceConstraint,
-    Template,
-};
+use cedar_policy_core::ast::{AnyId, PolicySet, Template};
 use cedar_policy_core::parser::err::{ParseError, ParseErrors, ToASTErrorKind};
 use smol_str::SmolStr;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -66,51 +63,44 @@ pub fn check_for_internal_errors(errs: ParseErrors) {
     )
 }
 
-// Represents the aspects of a template that are preserved through conversions
+// Exposes only the aspects of a template that are preserved through conversions
 // to different representations.
 #[derive(Eq, Debug)]
 struct PreservedTemplate<'a> {
-    effect: Effect,
-    principal_constraint: &'a PrincipalConstraint,
-    action_constraint: &'a ActionConstraint,
-    resource_constraint: &'a ResourceConstraint,
+    template: &'a Template,
     annotations: BTreeMap<&'a AnyId, &'a SmolStr>,
-    non_scope_constraints: &'a Expr,
 }
 
 impl<'a> PartialEq for PreservedTemplate<'a> {
     fn eq(&self, other: &Self) -> bool {
-        self.effect == other.effect
-            && self.principal_constraint == other.principal_constraint
-            && self.action_constraint == other.action_constraint
-            && self.resource_constraint == other.resource_constraint
+        self.template.effect() == other.template.effect()
+            && self.template.principal_constraint() == other.template.principal_constraint()
+            && self.template.action_constraint() == other.template.action_constraint()
+            && self.template.resource_constraint() == other.template.resource_constraint()
             && self.annotations == other.annotations
             && self
-                .non_scope_constraints
-                .eq_shape(other.non_scope_constraints)
+                .template
+                .non_scope_constraints()
+                .eq_shape(other.template.non_scope_constraints())
     }
 }
 
 impl<'a> Hash for PreservedTemplate<'a> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.effect.hash(hasher);
-        self.principal_constraint.hash(hasher);
-        self.action_constraint.hash(hasher);
-        self.resource_constraint.hash(hasher);
+        self.template.effect().hash(hasher);
+        self.template.principal_constraint().hash(hasher);
+        self.template.action_constraint().hash(hasher);
+        self.template.resource_constraint().hash(hasher);
+        self.template.non_scope_constraints().hash_shape(hasher);
         self.annotations.hash(hasher);
-        self.non_scope_constraints.hash_shape(hasher);
     }
 }
 
 impl<'a> From<&'a Template> for PreservedTemplate<'a> {
     fn from(value: &'a Template) -> Self {
         PreservedTemplate {
-            effect: value.effect(),
-            principal_constraint: value.principal_constraint(),
-            action_constraint: value.action_constraint(),
-            resource_constraint: value.resource_constraint(),
+            template: value,
             annotations: value.annotations().map(|(k, v)| (k, &v.val)).collect(),
-            non_scope_constraints: value.non_scope_constraints(),
         }
     }
 }
