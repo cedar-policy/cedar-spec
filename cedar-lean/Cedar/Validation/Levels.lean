@@ -34,6 +34,24 @@ open Cedar.Spec
 
 mutual
 
+/--
+Check that an expression is valid as the argument to an entity dereferencing
+expression at a level. This functions assumes that `tx` either evaluates to an
+entity value or to a record value containing a entity value via `path`.
+
+Note that this function intentionally returns `false` for entity literals at any
+level. This is necessary because entity literals are not one of the "roots" used
+by the slicing algorithm.
+
+This functions takes two additional arguments not required by `checkLevel`
+
+- `nmax` specifies the maximum level allowed for any expression. E.g., for an
+  `.ite` expression, the maximum level permissible for the guard is independent
+  of any `.getAttr` expressions it might be nested inside of.
+- `path` is a sequence of attributes specifying an access path through a record
+  value, eventually reaching an attribute that has an entity value. This allows
+  allows more permissive level checking on record attributes that aren't accessed.
+-/
 def checkEntityAccessLevel (tx : TypedExpr) (n nmax : Nat) (path : List Attr) : Bool :=
   match tx, path with
   | .var _ _, _ => true
@@ -56,20 +74,22 @@ def checkEntityAccessLevel (tx : TypedExpr) (n nmax : Nat) (path : List Attr) : 
     match h₁ : (Map.make axs).find? a with
     | some tx' =>
       have : sizeOf tx' < sizeOf axs := by
-        replace h₁ := Map.make_mem_list_mem (Map.find?_mem_toList h₁)
-        replace h₁ := List.sizeOf_lt_of_mem h₁
+        replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ h₁
         rw [Prod.mk.sizeOf_spec a tx'] at h₁
         omega
       checkEntityAccessLevel tx' n nmax path &&
-      axs.attach.all λ e =>
-        have : sizeOf e.val.snd < 1 + sizeOf axs := by
-          have h₁ := List.sizeOf_lt_of_mem e.property
-          rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
-          omega
+      axs.attach₂.all λ e =>
         checkLevel e.val.snd nmax
     | none => false
   | _, _ => false
 
+
+/--
+Main entry point for level checking an expression. For most expressions, this is
+a simple recursive traversal of the AST. For entity dereferencing expressions,
+it calls to `checkEntityAccessLevel` which ensures that expression is valid
+specifically in an entity access position
+-/
 def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   match tx with
   | .lit _ _ => true
@@ -104,11 +124,7 @@ def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
       have := List.sizeOf_lt_of_mem e.property
       checkLevel e n
   | .record axs _ =>
-    axs.attach.all λ e =>
-      have : sizeOf e.val.snd < 1 + sizeOf axs := by
-        have h₁ := List.sizeOf_lt_of_mem e.property
-        rw [Prod.mk.sizeOf_spec e.val.fst e.val.snd] at h₁
-        omega
+    axs.attach₂.all λ e =>
       checkLevel e.val.snd n
 
  end

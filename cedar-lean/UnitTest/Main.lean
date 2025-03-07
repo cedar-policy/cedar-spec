@@ -21,6 +21,7 @@ import UnitTest.IPAddr
 import UnitTest.Proto
 import UnitTest.Wildcard
 import UnitTest.TPE
+import UnitTest.Levels
 
 open UnitTest
 
@@ -31,7 +32,8 @@ def tests :=
   Wildcard.tests ++
   Proto.tests ++
   CedarProto.tests ++
-  TPE.tests
+  TPE.tests ++
+  Levels.tests
 
 def main : IO UInt32 := do
   TestSuite.runAll tests

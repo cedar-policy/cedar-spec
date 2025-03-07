@@ -175,13 +175,13 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
 := by
   cases tx
   case var =>
-    simp [checkEntityAccessLevel]
+    simp only [checkEntityAccessLevel, iff_true]
     constructor
   case ite tx₁ tx₂ tx₃ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @entity_access_level_spec tx₂
     have ih₃ := @entity_access_level_spec tx₃
-    simp [checkEntityAccessLevel]
+    simp only [checkEntityAccessLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂, ←ih₃]
     apply Iff.intro
     · intro hl; cases hl
@@ -193,7 +193,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
     case getTag =>
       have ih₁ := @entity_access_level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp [checkEntityAccessLevel]
+      simp only [checkEntityAccessLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
       rw [←ih₁, ←ih₂]
       apply Iff.intro
       · intro hl; cases hl
@@ -209,10 +209,10 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
       intro hc
       cases hc
   case getAttr tx₁ a ty =>
-    simp [checkEntityAccessLevel]
+    simp only [checkEntityAccessLevel]
     split
     · have ih₁ := @entity_access_level_spec tx₁
-      simp [←ih₁]
+      simp only [←ih₁, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
       apply Iff.intro
       · intro hl
         cases hl
@@ -226,34 +226,33 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
         have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
         subst n
         apply TypedExpr.EntityAccessAtLevel.getAttr
-        · simp at h₂
-          assumption
+        · simpa using h₂
         · assumption
     · have ih₁ := @entity_access_level_spec tx₁
-      simp [←ih₁]
+      rw [←ih₁]
       apply Iff.intro
       · intro hl
         cases hl
         · rename_i h₁ _ _ h₂ _
-          simp [h₂] at h₁
+          simp only [h₂, CedarType.entity.injEq, imp_false, forall_eq'] at h₁
         · assumption
       · intro hl
         apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
   case record atxs _ =>
     cases path
     case nil =>
-      simp [checkEntityAccessLevel]
+      simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
       intro hc
       cases hc
     case cons =>
-      simp [checkEntityAccessLevel]
-      split <;> simp
+      simp only [checkEntityAccessLevel]
+      split <;> simp only [iff_false, Bool.and_eq_true, Bool.false_eq_true, List.all_eq_true, Subtype.forall, Prod.forall]
       · apply Iff.intro
         · intro hl
           cases hl
           rename_i tx h₁ tx' h₃ h₄ h₅
-          rw [h₁] at h₄
-          simp at h₄
+          replace h₄ : tx = tx' := by
+            simpa [h₁] using h₄
           subst tx
           and_intros
           · have : sizeOf tx' < 1 + sizeOf atxs := by
@@ -261,29 +260,27 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
               rw [Prod.mk.sizeOf_spec _ tx'] at h₁
               omega
             have ih := @entity_access_level_spec tx'
-            rw [←ih]
-            assumption
+            exact ih.mp h₅
           · intros
-            rename_i a tx h₂
-            have : sizeOf tx < 1 + sizeOf atxs := by
-              have h₄ := List.sizeOf_lt_of_mem h₂
-              rw [Prod.mk.sizeOf_spec a tx] at h₄
-              omega
+            rename_i a tx _ h₂
+            replace h₂ : (a, tx) ∈ atxs := by
+              simpa [List.attach₂] using h₂
             have ih := @level_spec tx
-            rw [←ih]
-            specialize h₃ (a, tx) h₂
-            simpa using h₃
+            exact ih.mp (h₃ _ h₂)
         · intro ⟨ h₁, h₂ ⟩
           constructor
           · intro atx hatx
-            specialize h₂ atx.fst atx.snd hatx
-            have : sizeOf atx.snd < 1 + sizeOf atxs := by
+            have hSizeOf : sizeOf atx.snd < 1 + sizeOf atxs := by
               have h₄ := List.sizeOf_lt_of_mem hatx
               rw [Prod.mk.sizeOf_spec _ atx.snd] at h₄
               omega
+            replace h₂ : checkLevel atx.snd nmax = true := by
+              specialize h₂ atx.fst atx.snd hSizeOf
+              replace h₂ : atx ∈ atxs → checkLevel atx.snd nmax = true := by
+                simpa [List.attach₂] using h₂
+              exact h₂ hatx
             have ih := @level_spec atx.snd
-            rw [ih]
-            assumption
+            exact ih.mpr h₂
           · assumption
           · rename_i a _ tx hf
             have : sizeOf tx < 1 + sizeOf atxs := by
@@ -291,8 +288,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {n nmax : Nat} {path : List At
               rw [Prod.mk.sizeOf_spec _ tx] at h₁
               omega
             have ih := @entity_access_level_spec tx
-            rw [ih]
-            assumption
+            exact ih.mpr h₁
       · intro hc
         cases hc
         rename_i h₁ _  _ h₂ _
@@ -308,16 +304,16 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
 := by
   cases tx
   case lit =>
-    simp [checkLevel]
+    simp only [checkLevel, iff_true]
     constructor
   case var =>
-    simp [checkLevel]
+    simp only [checkLevel, iff_true]
     constructor
   case ite tx₁ tx₂ tx₃ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @level_spec tx₂
     have ih₃ := @level_spec tx₃
-    simp [checkLevel]
+    simp only [checkLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂, ←ih₃]
     apply Iff.intro
     · intros h
@@ -329,7 +325,7 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
   case or tx₁ tx₂ _ | and tx₁ tx₂ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @level_spec tx₂
-    simp [checkLevel]
+    simp only [checkLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂]
     apply Iff.intro
     · intro h
@@ -340,7 +336,7 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
 
   case unaryApp op tx₁ _ =>
     have ih₁ := @level_spec tx₁
-    simp [checkLevel]
+    simp only [checkLevel]
     rw [←ih₁]
     apply Iff.intro
     · intro h
@@ -355,16 +351,15 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
     case getTag | hasTag | mem =>
       have ih₁ := @entity_access_level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp [checkLevel]
+      simp only [checkLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
       rw [←ih₁, ←ih₂]
       apply Iff.intro
       · intro h
         cases h
         rename_i h₁ h₂ h₃
-        and_intros <;> (
-          try simp
-          try assumption
-        )
+        and_intros <;> first
+        | assumption
+        | simp only [Nat.zero_lt_succ]
         rename_i hop _ _
         simp [DereferencingBinaryOp] at hop
       · intro ⟨ ⟨ h₁, h₂⟩, h₃ ⟩
@@ -382,39 +377,41 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
         apply And.intro <;> assumption
       · intro ⟨ h₁, h₂ ⟩
         constructor <;> first
-        | simp only [DereferencingBinaryOp, not_false_eq_true]
         | assumption
+        | simp only [DereferencingBinaryOp, not_false_eq_true]
 
   case getAttr tx₁ a _  | hasAttr tx₁ a _  =>
-    simp [checkLevel]
-    split
-    · apply Iff.intro
-      · intro h
-        cases h <;> simp [*] at *
-        rename_i n _ _ _ _
+    simp only [checkLevel, gt_iff_lt]
+    split <;> (rename_i hety ; apply Iff.intro)
+    · intro h
+      cases h
+      · simp only [Nat.zero_lt_succ, decide_true, Bool.true_and]
         have ih₁ := @entity_access_level_spec tx₁
         rw [←ih₁]
         assumption
-      · have ih₁ := @entity_access_level_spec tx₁
-        simp
-        rw [←ih₁]
-        intro h₁ h₂
-        have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
-        subst n
-        constructor <;> assumption
-    · apply Iff.intro
-      · intro h
-        cases h <;> simp [*] at *
-        have ih₁ := @level_spec tx₁
+      · rename_i hnety _
+        simp [hety] at hnety
+    · have ih₁ := @entity_access_level_spec tx₁
+      simp only [Bool.and_eq_true, decide_eq_true_eq, and_imp]
+      rw [←ih₁]
+      intro h₁ h₂
+      have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
+      subst n
+      constructor <;> assumption
+    · intro h
+      cases h
+      · rename_i hety'
+        simp [hety'] at hety
+      · have ih₁ := @level_spec tx₁
         rw [←ih₁]
         assumption
-      · intro h
-        have ih₁ := @level_spec tx₁
-        rw [←ih₁] at h
-        constructor <;> assumption
+    · intro h
+      have ih₁ := @level_spec tx₁
+      rw [←ih₁] at h
+      constructor <;> assumption
 
   case call | set =>
-    simp [checkLevel]
+    simp only [checkLevel, List.all_eq_true, List.mem_attach, forall_const, Subtype.forall]
     apply Iff.intro
     · intro h₁ tx h₂
       have ih := @level_spec tx
@@ -432,31 +429,30 @@ theorem level_spec {tx : TypedExpr} {n : Nat}:
       exact h₁ tx h₂
 
   case record attrs _ =>
-    simp [checkLevel]
+    simp only [checkLevel, List.all_eq_true, Subtype.forall, Prod.forall]
     apply Iff.intro
-    · intro h₁ a tx h₂
+    · intro h₁ a tx h₂ h₃
+      replace h₃ : (a, tx) ∈ attrs :=
+        by simpa [List.attach₂] using h₃
       cases h₁
-      rename_i h₃
-      specialize h₃ (a, tx) h₂
-      simp at h₃
-      have : sizeOf tx < 1 + sizeOf attrs := by
-        have h₄ := List.sizeOf_lt_of_mem h₂
-        rw [Prod.mk.sizeOf_spec a tx] at h₄
-        omega
+      rename_i h₄
+      specialize h₄ (a, tx) h₃
       have ih := @level_spec tx
-      rw [←ih]
-      exact h₃
+      exact ih.mp h₄
     · intro h₁
       constructor
       intro atx h₂
-      specialize h₁ atx.fst atx.snd h₂
-      have : sizeOf atx.snd < 1 + sizeOf attrs := by
+      have hSizeOf : sizeOf atx.snd < 1 + sizeOf attrs := by
         have h₄ := List.sizeOf_lt_of_mem h₂
         rw [Prod.mk.sizeOf_spec atx.fst atx.snd] at h₄
         omega
+      replace h₁ : checkLevel atx.snd n := by
+        specialize h₁ atx.fst atx.snd hSizeOf
+        replace h₁ : atx ∈ attrs → checkLevel atx.snd n= true := by
+          simpa [List.attach₂] using h₁
+        exact h₁ h₂
       have ih := @level_spec atx.snd
-      rw [ih]
-      exact h₁
+      exact ih.mpr h₁
 termination_by tx
 
 end
