@@ -35,16 +35,16 @@ enum ESTParseError {
 // then converting CST to AST) gives the same result of parsing via EST (parsing
 // to CST, converting CST to EST, and then converting EST to AST).
 fuzz_target!(|src: String| {
-    // text -> cst
+    // text -> CST
     if let Ok(cst_node) = cedar_policy_core::parser::text_to_cst::parse_policies(&src) {
-        // cst -> ast
+        // CST -> AST
         match cst_node.to_policyset() {
             Ok(ast_from_cst) => {
                 cst_node
                     .clone()
                     .node
                     .expect("AST construction should fail for missing CST node");
-                // cst -> est -> ast
+                // CST -> EST -> AST
                 let ast_from_est_result: Result<_, ESTParseError> = cst_node
                     .try_into()
                     .map_err(|e: parser::err::ParseErrors| e.into())

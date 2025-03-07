@@ -75,6 +75,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "policy-set-roundtrip"
+path = "fuzz_targets/policy-set-roundtrip.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "formatter"
 path = "fuzz_targets/formatter.rs"
 test = false
