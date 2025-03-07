@@ -39,6 +39,10 @@ Check that an expression is valid as the argument to an entity dereferencing
 expression at a level. This functions assumes that `tx` either evaluates to an
 entity value or to a record value containing a entity value via `path`.
 
+Note that this function intentionally returns `false` for entity literals at any
+level. This is necessary because entity literals are not one of the "roots" used
+by the slicing algorithm.
+
 This functions takes two additional arguments not required by `checkLevel`
 
 - `nmax` specifies the maximum level allowed for any expression. E.g., for an
