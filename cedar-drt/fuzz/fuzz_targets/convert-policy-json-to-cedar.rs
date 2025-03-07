@@ -30,6 +30,7 @@ enum ESTParseError {
 }
 
 fuzz_target!(|est_json_str: String| {
+    // JSON -> est -> ast
     // Attempt to deserialize an est policy set from the specified json string
     // Then, convert the est policy set to an ast policy set
     let ast_from_est_result = serde_json::from_str::<serde_json::Value>(&est_json_str)
@@ -39,8 +40,10 @@ fuzz_target!(|est_json_str: String| {
             cedar_policy_core::ast::PolicySet::try_from(est).map_err(ESTParseError::from)
         });
     if let Ok(ast_from_est) = ast_from_est_result {
+        // ast -> text
         // Convert the ast policy set to Cedar text, removing linked policies
         let text = ast_from_est.all_templates().join("\n");
+        // text -> cst -> ast
         // Parse an ast policy set from the Cedar text
         let ast_from_cedar = cedar_policy_core::parser::parse_policyset(&text);
         match ast_from_cedar {
