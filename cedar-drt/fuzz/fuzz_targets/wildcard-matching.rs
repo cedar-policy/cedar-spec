@@ -20,6 +20,8 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{Pattern, PatternElem};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Result, Unstructured};
 use regex::{escape, Regex};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeStruct;
 
 /// Input expected by this fuzz target:
 /// A pattern and a string that matches it
@@ -29,6 +31,24 @@ struct FuzzTargetInput {
     pub pattern: Vec<PatternElem>,
     /// generated string
     pub string: String,
+}
+
+impl Serialize for FuzzTargetInput {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("FuzzTargetInput", 2)?;
+
+        let pattern: Vec<String> = self.pattern.iter().map(|e| match e {
+            PatternElem::Char(c) => c.to_string(),
+            PatternElem::Wildcard => "*".to_string(),
+        }).collect();
+
+        state.serialize_field("pattern", &pattern)?;
+        state.serialize_field("string", &self.string)?;
+        state.end()
+    }
 }
 
 /// A wrapper struct for valid characters:
