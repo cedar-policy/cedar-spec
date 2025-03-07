@@ -33,11 +33,16 @@ use cedar_policy_generators::{
     settings::ABACSettings,
 };
 
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
+    #[serde(skip)]
     request: ABACRequest,
     policy: ABACPolicy,
+    #[serde(skip)]
     entities: Entities,
+    #[serde(skip)]
     schema: cedar_policy_validator::ValidatorSchema,
 }
 
