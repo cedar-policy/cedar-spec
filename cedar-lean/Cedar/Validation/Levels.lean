@@ -41,10 +41,10 @@ entity value or to a record value containing a entity value via `path`.
 
 This functions takes two additional arguments not required by `checkLevel`
 
-* `nmax` specifies the maximum level allowed for any expression. E.g., for an
+- `nmax` specifies the maximum level allowed for any expression. E.g., for an
   `.ite` expression, the maximum level permissible for the guard is independent
   of any `.getAttr` expressions it might be nested inside of.
-* `path` is a sequence of attributes specifying an access path through a record
+- `path` is a sequence of attributes specifying an access path through a record
   value, eventually reaching an attribute that has an entity value. This allows
   allows more permissive level checking on record attributes that aren't accessed.
 -/
