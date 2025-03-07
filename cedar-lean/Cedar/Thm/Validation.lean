@@ -21,6 +21,7 @@ import Cedar.Thm.Validation.Levels
 import Cedar.Thm.Validation.Slice
 import Cedar.Thm.Validation.Validator
 import Cedar.Thm.Validation.RequestEntityValidation
+import Cedar.Thm.Validation.Levels
 
 /-!
 This file contains the top-level correctness properties for the Cedar validator.
