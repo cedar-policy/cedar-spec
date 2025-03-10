@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Validation.Typechecker
+import Cedar.Validation.Levels
 
 /-! This file defines the Cedar validator. -/
 
@@ -94,6 +95,7 @@ def Schema.environment? (schema : Schema) (principal resource : EntityType) (act
 
 inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
+  | levelError (pid : PolicyID)
   | impossiblePolicy (pid : PolicyID)
 
 abbrev ValidationResult := Except ValidationError Unit
@@ -155,12 +157,24 @@ def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationErr
     else .error (.typeError policy.id (.unexpectedType ty.typeOf))
   | .error e => .error (.typeError policy.id e)
 
-def allFalse (tys : List CedarType) : Bool :=
-  tys.all (· == .bool .ff)
+def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do
+  let tx ← typecheckPolicy policy env
+  if checkLevel tx level then
+    .ok tx
+  else
+    .error (.levelError policy.id)
+
+def allFalse (txs : List TypedExpr) : Bool :=
+  txs.all (TypedExpr.typeOf · == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
 def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) : ValidationResult := do
   let policyTypes ← envs.mapM (typecheckPolicy policy)
+  if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
+
+/-- Check a policy with a level under multiple environments. -/
+def typecheckPolicyWithLevelWithEnvironments (policy : Policy) (level : Nat) (envs : List Environment) : ValidationResult := do
+  let policyTypes ← envs.mapM (typecheckPolicyWithLevel policy level)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
 /--
@@ -169,6 +183,13 @@ none are guaranteed to be false under all possible environments.
 -/
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
   policies.forM (typecheckPolicyWithEnvironments · schema.environments)
+
+/--
+Analyze a set of policies to check that all are boolean-typed, and that
+none are guaranteed to be false under all possible environments.
+-/
+def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
+  policies.forM (typecheckPolicyWithLevelWithEnvironments · level schema.environments)
 
 ----- Derivations -----
 
@@ -187,6 +208,7 @@ def validationErrorToJson : ValidationError → Lean.Json
   | .typeError _ (.extensionErr _) => "extensionErr"
   | .typeError _ .emptySetErr => "emptySetErr"
   | .typeError _ (.incompatibleSetTypes _) => "incompatibleSetTypes"
+  | .levelError _ => "levelError"
   | .impossiblePolicy _ => "impossiblePolicy"
 
 instance : Lean.ToJson ValidationError where
