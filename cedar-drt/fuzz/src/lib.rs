@@ -19,6 +19,8 @@ mod parsing_utils;
 mod prt;
 
 use cedar_policy_validator::ValidationError;
+use cedar_policy_validator::ValidationResult;
+use cedar_testing::cedar_test_impl::TestValidationResult;
 pub use dump::*;
 pub use parsing_utils::*;
 pub use prt::*;
@@ -185,59 +187,8 @@ pub fn run_val_test(
     let validator = Validator::new(schema.clone());
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
-
     let definitional_res = custom_impl.validate(&schema, policies, mode);
-
-    match definitional_res {
-        TestResult::Failure(err) => {
-            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
-            // an unknown extension function.
-            if !err.contains("unknown extension function")
-                && !err.contains("unknown extension type")
-            {
-                panic!(
-                    "Unexpected error\nPolicies:\n{}\nSchema:\n{:?}\nError: {err}",
-                    &policies, schema
-                );
-            }
-        }
-        TestResult::Success(definitional_res) => {
-            if rust_res.validation_passed() {
-                // If `cedar-policy` does not return an error, then the spec should not return an error.
-                // This implies type soundness of the `cedar-policy` validator since type soundness of the
-                // spec is formally proven.
-                //
-                // In particular, we have proven that if the spec validator does not return an error (B),
-                // then there are no authorization-time errors modulo some restrictions (C). So (B) ==> (C).
-                // DRT checks that if the `cedar-policy` validator does not return an error (A), then neither
-                // does the spec validator (B). So (A) ==> (B). By transitivity then, (A) ==> (C).
-                assert!(
-                    definitional_res.validation_passed(),
-                    "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                    &policies,
-                    schema,
-                    rust_res,
-                    definitional_res,
-                );
-            } else {
-                // If `cedar-policy` returns an error, then only check the spec response
-                // if the validation comparison mode is `AgreeOnAll`.
-                match custom_impl.validation_comparison_mode() {
-                    ValidationComparisonMode::AgreeOnAll => {
-                        assert!(
-                            !definitional_res.validation_passed(),
-                            "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                            &policies,
-                            schema,
-                            rust_res,
-                            definitional_res,
-                        );
-                    }
-                    ValidationComparisonMode::AgreeOnValid => {} // ignore
-                };
-            }
-        }
-    }
+    compare_validation_results(policies, &schema, custom_impl.validation_comparison_mode(), rust_res, definitional_res);
 }
 
 pub fn run_level_val_test(
@@ -250,9 +201,11 @@ pub fn run_level_val_test(
     let validator = Validator::new(schema.clone());
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate_with_level(policies, mode, level as u32));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
-
     let definitional_res = custom_impl.validate_with_level(&schema, policies, mode, level);
+    compare_validation_results(policies, &schema, custom_impl.validation_comparison_mode(), rust_res, definitional_res);
+}
 
+fn compare_validation_results(policies: &ast::PolicySet, schema: &ValidatorSchema, comparison_mode : ValidationComparisonMode, rust_res: ValidationResult, definitional_res : TestResult<TestValidationResult>) {
     match definitional_res {
         TestResult::Failure(err) => {
             if !err.contains("unknown extension function")
@@ -283,20 +236,9 @@ pub fn run_level_val_test(
                     definitional_res,
                 );
             } else {
-                if rust_res.validation_errors().any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))  {
-                        assert!(
-                            definitional_res.errors.contains(&"levelError".to_string()),
-                            "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                            &policies,
-                            schema,
-                            rust_res,
-                            definitional_res,
-                        )
-                }
-
                 // If `cedar-policy` returns an error, then only check the spec response
                 // if the validation comparison mode is `AgreeOnAll`.
-                match custom_impl.validation_comparison_mode() {
+                match comparison_mode {
                     ValidationComparisonMode::AgreeOnAll => {
                         assert!(
                             !definitional_res.validation_passed(),
@@ -309,6 +251,18 @@ pub fn run_level_val_test(
                     }
                     ValidationComparisonMode::AgreeOnValid => {} // ignore
                 };
+                // We can enforce a stronger condition for level validation. The
+                // Rust result should always exactly match the Lean.
+                if rust_res.validation_errors().any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))  {
+                    assert!(
+                        definitional_res.errors.contains(&"levelError".to_string()),
+                        "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                        &policies,
+                        schema,
+                        rust_res,
+                        definitional_res,
+                    )
+                }
             }
         }
     }
