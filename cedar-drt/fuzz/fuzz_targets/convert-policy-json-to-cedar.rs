@@ -17,7 +17,6 @@
 #![no_main]
 use cedar_drt_inner::*;
 use cedar_policy_core::est::PolicySetFromJsonError;
-use itertools::Itertools;
 use thiserror::Error;
 
 #[derive(miette::Diagnostic, Error, Debug)]
