@@ -127,15 +127,15 @@ pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> Str
     let mut res = String::new();
     let mut iter = policy_set.all_templates();
     if let Some(template) = iter.next() {
-        fmt(template, &mut res).unwrap();
+        to_cedar_text(template, &mut res).unwrap();
         for template in iter {
-            fmt(template, &mut res).unwrap();
+            to_cedar_text(template, &mut res).unwrap();
         }
     }
     res
 }
 
-fn fmt(template: &Template, f: &mut String) -> std::fmt::Result {
+fn to_cedar_text(template: &Template, f: &mut String) -> std::fmt::Result {
     for (k, v) in template.annotations() {
         writeln!(f, "@{}(\"{}\")", k, v.val.escape_debug())?
     }
