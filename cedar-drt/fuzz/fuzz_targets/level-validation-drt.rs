@@ -56,7 +56,11 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let hierarchy = schema.arbitrary_hierarchy(u)?;
         let policy = schema.arbitrary_policy(&hierarchy, u)?;
         let level = u.int_in_range(0..=SETTINGS.max_depth + 1)?;
-        Ok(Self { schema, policy, level })
+        Ok(Self {
+            schema,
+            policy,
+            level,
+        })
     }
 
     fn try_size_hint(
@@ -77,6 +81,12 @@ fuzz_target!(|input: FuzzTargetInput| {
         let policy: ast::StaticPolicy = input.policy.into();
         policyset.add_static(policy).unwrap();
 
-        run_level_val_test(&def_impl, schema, &policyset, ValidationMode::Strict, input.level as i32);
+        run_level_val_test(
+            &def_impl,
+            schema,
+            &policyset,
+            ValidationMode::Strict,
+            input.level as i32,
+        );
     }
 });

@@ -188,7 +188,13 @@ pub fn run_val_test(
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
     let definitional_res = custom_impl.validate(&schema, policies, mode);
-    compare_validation_results(policies, &schema, custom_impl.validation_comparison_mode(), rust_res, definitional_res);
+    compare_validation_results(
+        policies,
+        &schema,
+        custom_impl.validation_comparison_mode(),
+        rust_res,
+        definitional_res,
+    );
 }
 
 pub fn run_level_val_test(
@@ -199,13 +205,26 @@ pub fn run_level_val_test(
     level: i32,
 ) {
     let validator = Validator::new(schema.clone());
-    let (rust_res, rust_validation_dur) = time_function(|| validator.validate_with_level(policies, mode, level as u32));
+    let (rust_res, rust_validation_dur) =
+        time_function(|| validator.validate_with_level(policies, mode, level as u32));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
     let definitional_res = custom_impl.validate_with_level(&schema, policies, mode, level);
-    compare_validation_results(policies, &schema, custom_impl.validation_comparison_mode(), rust_res, definitional_res);
+    compare_validation_results(
+        policies,
+        &schema,
+        custom_impl.validation_comparison_mode(),
+        rust_res,
+        definitional_res,
+    );
 }
 
-fn compare_validation_results(policies: &ast::PolicySet, schema: &ValidatorSchema, comparison_mode : ValidationComparisonMode, rust_res: ValidationResult, definitional_res : TestResult<TestValidationResult>) {
+fn compare_validation_results(
+    policies: &ast::PolicySet,
+    schema: &ValidatorSchema,
+    comparison_mode: ValidationComparisonMode,
+    rust_res: ValidationResult,
+    definitional_res: TestResult<TestValidationResult>,
+) {
     match definitional_res {
         TestResult::Failure(err) => {
             if !err.contains("unknown extension function")
@@ -253,7 +272,10 @@ fn compare_validation_results(policies: &ast::PolicySet, schema: &ValidatorSchem
                 };
                 // We can enforce a stronger condition for level validation. The
                 // Rust result should always exactly match the Lean.
-                if rust_res.validation_errors().any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))  {
+                if rust_res
+                    .validation_errors()
+                    .any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))
+                {
                     assert!(
                         definitional_res.errors.contains(&"levelError".to_string()),
                         "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
@@ -267,7 +289,6 @@ fn compare_validation_results(policies: &ast::PolicySet, schema: &ValidatorSchem
         }
     }
 }
-
 
 pub fn run_req_val_test(
     custom_impl: &impl CedarTestImplementation,
