@@ -100,6 +100,7 @@ inductive ValidationError where
 
 abbrev ValidationResult := Except ValidationError Unit
 
+/-
 def mapOnVars (f : Var → Expr) : Expr → Expr
   | .lit l => .lit l
   | .var var => f var
@@ -146,15 +147,16 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
     | .action => .lit (.entityUID uid)
     | _ => .var var
   mapOnVars f expr
+-/
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
-  let expr := substituteAction env.reqty.action policy.toExpr
-  match typeOf expr ∅ env with
-  | .ok (ty, _) =>
-    if ty.typeOf ⊑ .bool .anyBool
-    then .ok ty.typeOf
-    else .error (.typeError policy.id (.unexpectedType ty.typeOf))
+def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError TypedExpr :=
+  -- let expr := substituteAction env.reqty.action policy.toExpr
+  match typeOf policy.toExpr ∅ env with
+  | .ok (tx, _) =>
+    if tx.typeOf ⊑ .bool .anyBool
+    then .ok tx
+    else .error (.typeError policy.id (.unexpectedType tx.typeOf))
   | .error e => .error (.typeError policy.id e)
 
 def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do

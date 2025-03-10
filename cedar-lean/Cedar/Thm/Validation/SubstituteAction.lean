@@ -20,11 +20,13 @@ import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Data
 
+/-
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
+
 
 def SubstituteActionPreservesEvaluation (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   evaluate (substituteAction request.action expr) request entities = evaluate expr request entities
@@ -276,3 +278,5 @@ theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request)
     exact @substitute_action_preserves_evaluation_call xfn xs request entities ih
 
 end Cedar.Thm
+
+-/

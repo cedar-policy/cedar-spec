@@ -48,22 +48,25 @@ theorem action_matches_env (env : Environment) (request : Request) (entities : E
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : TypedExpr) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  typecheckPolicy policy env = .ok ty →
+  typecheckPolicy policy env = .ok tx →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₁ h₂
   simp only [typecheckPolicy] at h₂
-  cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
-  simp only [List.empty_eq, h₃, reduceCtorEq] at h₂
-  split at h₂ <;> simp only [Except.ok.injEq, reduceCtorEq] at h₂
-  rename_i cp ht
+  -- cases h₃ : typeOf (substituteAction env.reqty.action policy.toExpr) [] env <;>
+  -- simp only [List.empty_eq, h₃, reduceCtorEq] at h₂
+  split at h₂ <;> try simp only [reduceCtorEq] at h₂
+  split at h₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₂
+  subst h₂
+  rename_i tx _ h₃ ht
   have hc := empty_capabilities_invariant request entities
   have ⟨_, v, h₄, h₅⟩ := type_of_is_sound hc h₁ h₃
-  have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst.typeOf h₅ ht
+  have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v tx.typeOf h₅ ht
   subst h₆
   exists b
+/-
   simp only [EvaluatesTo] at *
   cases h₄ with
   | inl h₁ =>
@@ -93,6 +96,7 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : Ce
         rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
         rw [action_matches_env]
         repeat assumption
+ -/
 
 theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
   (∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →

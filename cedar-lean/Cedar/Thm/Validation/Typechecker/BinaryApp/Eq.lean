@@ -30,8 +30,8 @@ open Cedar.Validation
 theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.binaryApp .eq x₁ x₂) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
-  match x₁, x₂ with
-  | .lit p₁, .lit p₂ =>
+  match (asLit x₁ env), (asLit x₂ env) with
+  | .some p₁, .some p₂ =>
     if p₁ = p₂ then ty.typeOf = (.bool .tt) else ty.typeOf = (.bool .ff)
   | _, _ =>
     ∃ ty₁ c₁ ty₂ c₂,
@@ -43,15 +43,23 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
         ty.typeOf = (.bool .ff) ∧
         ∃ ety₁ ety₂, ty₁.typeOf = .entity ety₁ ∧ ty₂.typeOf = .entity ety₂
 := by
-  simp [typeOf] at h₁ ; rename_i h₁'
-  cases h₂ : typeOf x₁ c env <;> simp [h₂] at h₁
-  cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
+  simp only [typeOf] at h₁
+  cases h₂ : typeOf x₁ c env <;> simp only [h₂, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
+  cases h₃ : typeOf x₂ c env <;> simp only [h₃, Except.bind_ok, Except.bind_err, reduceCtorEq] at h₁
   simp only [typeOfBinaryApp, typeOfEq, beq_iff_eq, ok, List.empty_eq, err] at h₁
   rename_i tc₁ tc₂
   split at h₁
-  case h_1 p₁ p₂ =>
-    split at h₁ <;> simp at h₁ <;> simp [←h₁] <;>
-    rename_i h₄ <;> simp [h₄, TypedExpr.typeOf]
+  case h_1 hp₁ hp₂ =>
+    simp only [hp₁, hp₂, List.empty_eq]
+    simp only [Function.comp_apply] at h₁
+    split at h₁ <;> (
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h₁
+      rename_i hp
+      first
+      | have hbty : ty.typeOf = .bool .ff := by simp only [←h₁, TypedExpr.typeOf]
+      | have hbty : ty.typeOf = .bool .tt := by simp only [←h₁, TypedExpr.typeOf]
+      simp only [h₁.right, hp, hbty, ↓reduceIte, and_self]
+    )
   case h_2 h₄ =>
     split at h₁
     case h_1 h₅ =>
@@ -59,37 +67,27 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
       simp only [imp_false, List.empty_eq, CedarType.bool.injEq, Except.ok.injEq,
         exists_and_left, exists_and_right, true_and]
-      split
-      case h_1 p₁ p₂ _ =>
-        specialize h₄ p₁ p₂ ; simp at h₄
-      case h_2 =>
-        exists tc₁.fst
-        constructor
-        · exists tc₁.snd
-        · exists tc₂.fst
-          constructor
-          · exists tc₂.snd
-          · rw [h₅]
-            simp [TypedExpr.typeOf]
+      exists tc₁.fst
+      apply And.intro (by exists tc₁.snd)
+      exists tc₂.fst
+      apply And.intro (by exists tc₂.snd)
+      simp only [h₅]
+      simp only [TypedExpr.typeOf]
     case h_2 h₅ =>
       split at h₁ <;> simp only [Function.comp_apply, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₁
       replace ⟨h₁, h₁''⟩ := h₁ ; subst ty c'
       simp only [List.empty_eq, CedarType.bool.injEq, reduceCtorEq, if_false_left, and_true,
         Except.ok.injEq, exists_and_left, exists_and_right, true_and]
-      split
-      case h_1 p₁ p₂ _ =>
-        specialize h₄ p₁ p₂ ; simp at h₄
-      case h_2 ety₁ ety₂ _ true_is_instance_of_tt _ _ _ _ =>
-        exists tc₁.fst
-        constructor
-        · exists tc₁.snd
-        · exists tc₂.fst
-          constructor
-          · exists tc₂.snd
-          · rw [h₅]; simp [TypedExpr.typeOf]
-            constructor
-            · exists ety₁
-            · exists ety₂
+      exists tc₁.fst
+      apply And.intro (by exists tc₁.snd)
+      exists tc₂.fst
+      apply And.intro (by exists tc₂.snd)
+      simp only [h₅]
+      rename_i hety₁ hety₂
+      and_intros
+      · simp only [TypedExpr.typeOf]
+      · simp only [hety₁, CedarType.entity.injEq, exists_eq']
+      · simp only [hety₂, CedarType.entity.injEq, exists_eq']
 
 theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
   (h₁ : InstanceOfType v₁ (CedarType.entity ety₁))
@@ -106,6 +104,14 @@ theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : E
   subst h₄ h₅
   contradiction
 
+theorem as_lit_implies_lit_or_action {env : Environment} {x : Expr} {p : Prim}
+  (hp : asLit x env = .some p) :
+  (x = .var .action ∧ p = .entityUID env.reqty.action) ∨ x = .lit p
+:= by
+  simp only [asLit] at hp
+  split at hp <;> simp only [reduceCtorEq, Option.some.injEq] at hp <;>
+    simp only [hp, reduceCtorEq, and_self, or_true, or_false]
+
 theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
@@ -121,16 +127,41 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   split at hty
   case h_1 =>
     split at hty <;> rw [hty]
-    case isTrue heq _ _ =>
-      subst heq
-      simp [EvaluatesTo, evaluate, apply₂]
+    case isTrue hp₁ hp₂ hpeq =>
+      subst hpeq
+      have he : evaluate (.binaryApp BinaryOp.eq x₁ x₂) request entities = .ok true := by
+        simp [evaluate]
+        replace hp₁ := as_lit_implies_lit_or_action hp₁
+        replace hp₂ := as_lit_implies_lit_or_action hp₂
+        have hact : request.action = env.reqty.action := h₂.left.right.left
+        cases hp₁ <;> cases hp₂ <;> (
+          rename_i p hp₁ hp₂
+          try replace ⟨ hp₁, hp₁' ⟩ := hp₁
+          try replace ⟨ hp₂, hp₂' ⟩ := hp₂
+          try subst p
+          subst x₁ x₂
+          simp only [evaluate, hact, apply₂, Except.bind_ok, beq_self_eq_true]
+        )
+      simp [EvaluatesTo, he]
       exact true_is_instance_of_tt
-    case isFalse p₁ p₂ heq _ =>
-      simp [EvaluatesTo, evaluate, apply₂]
-      cases h₃ : Value.prim p₁ == Value.prim p₂ <;>
-      simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq, Value.prim.injEq] at h₃
-      case false => exact false_is_instance_of_ff
-      case true  => contradiction
+    case isFalse hp₁ hp₂ hpeq =>
+      have he : evaluate (.binaryApp BinaryOp.eq x₁ x₂) request entities = .ok false := by
+        simp [evaluate]
+        replace hp₁ := as_lit_implies_lit_or_action hp₁
+        replace hp₂ := as_lit_implies_lit_or_action hp₂
+        have hact : request.action = env.reqty.action := h₂.left.right.left
+        cases hp₁ <;> cases hp₂ <;> (
+          rename_i p₁ p₂ hp₁ hp₂
+          try replace ⟨ hp₁, hp₁' ⟩ := hp₁
+          try replace ⟨ hp₂, hp₂' ⟩ := hp₂
+          try subst p₁
+          try subst p₂
+          subst x₁ x₂
+          simp [evaluate, hpeq, hact, apply₂, Except.bind_ok, beq_self_eq_true]
+          try simp at hpeq
+        )
+      simp [EvaluatesTo, he]
+      exact false_is_instance_of_ff
   case h_2 =>
     replace ⟨ty₁, c₁', ty₂, c₂', ht₁, ht₂, hty⟩ := hty
     specialize ih₁ h₁ h₂ ht₁ ; replace ⟨_, v₁, ih₁⟩ := ih₁

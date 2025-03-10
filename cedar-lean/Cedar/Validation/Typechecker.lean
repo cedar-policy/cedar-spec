@@ -130,10 +130,18 @@ def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
   | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
   | _, _                   => err (.unexpectedType ty.typeOf)
 
-def typeOfEq (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) : ResultType :=
+def asLit : Expr → Environment → Option Prim
+  | .lit p =>
+    λ _ => .some p
+  | .var .action =>
+    λ env => .some (.entityUID env.reqty.action)
+  | _ =>
+    λ _ => .none
+
+def typeOfEq (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (env : Environment): ResultType :=
   let ok := ok ∘ TypedExpr.binaryApp .eq ty₁ ty₂
-  match x₁, x₂ with
-  | .lit p₁, .lit p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
+  match (asLit x₁ env), (asLit x₂ env) with
+  | .some p₁, .some p₂ => if p₁ == p₂ then ok (.bool .tt) else ok (.bool .ff)
   | _, _ =>
     match ty₁.typeOf ⊔ ty₂.typeOf with
     | .some _ => ok (.bool .anyBool)
@@ -142,24 +150,25 @@ def typeOfEq (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) : ResultType :=
     | .entity _, .entity _ => ok (.bool .ff)
     | _, _                 => err (.lubErr ty₁.typeOf ty₂.typeOf)
 
-def entityUID? : Expr → Option EntityUID
-  | .lit (.entityUID uid) => .some uid
-  | _                     => .none
+def entityUID? (e : Expr) (env : Environment) : Option EntityUID :=
+  match asLit e env with
+  | .some (.entityUID uid) => .some uid
+  | _                      => .none
 
-def entityUIDs? : Expr → Option (List EntityUID)
-  | .set xs => xs.mapM entityUID?
-  | _       => .none
+def entityUIDs? : Expr → Environment → Option (List EntityUID)
+  | .set xs => λ env => xs.mapM (entityUID? · env)
+  | _       => λ _ => .none
 
-def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
-  let uid ← entityUID? x
-  if acts.contains uid then .some uid else .none
+def actionUID? (x : Expr) (env : Environment) : Option EntityUID := do
+  let uid ← entityUID? x env
+  if env.acts.contains uid then .some uid else .none
 
 def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
   acts.keys.any (EntityUID.ty · == ety)
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
 def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
-  match actionUID? x₁ env.acts, entityUID? x₂ with
+  match actionUID? x₁ env, entityUID? x₂ env with
   | .some uid₁, .some uid₂ =>
     if env.acts.descendentOf uid₁ uid₂
     then .tt
@@ -171,7 +180,7 @@ def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
 
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type (.set ety₂)
 def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
-  match actionUID? x₁ env.acts, entityUIDs? x₂ with
+  match actionUID? x₁ env, entityUIDs? x₂ env with
   | .some uid₁, .some uids =>
     if uids.any (env.acts.descendentOf uid₁ ·)
     then .tt
@@ -207,7 +216,7 @@ def ifLubThenBool (ty₁ ty₂ : CedarType) : Except TypeError (CedarType × Cap
 def typeOfBinaryApp (op₂ : BinaryOp) (ty₁ ty₂ : TypedExpr) (x₁ x₂ : Expr) (c : Capabilities) (env : Environment) : ResultType :=
   let ok ty (c := ∅) := ok (TypedExpr.binaryApp op₂ ty₁ ty₂ ty) c
   match op₂, ty₁.typeOf, ty₂.typeOf with
-  | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂
+  | .eq, _, _                               => typeOfEq ty₁ ty₂ x₁ x₂ env
   | .mem, .entity ety₁, .entity ety₂        => ok (.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
   | .mem, .entity ety₁, .set (.entity ety₂) => ok (.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
   | .hasTag, .entity ety₁, .string          => do
