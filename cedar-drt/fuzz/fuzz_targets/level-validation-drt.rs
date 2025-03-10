@@ -18,16 +18,14 @@
 use cedar_drt::*;
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
-use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
+use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings, size_hint_utils::size_hint_for_range};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
-use serde::Serialize;
 
 /// Input expected by this fuzz target
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
-    #[serde(skip)]
     pub schema: Schema,
     /// generated policy
     pub policy: ABACPolicy,
@@ -68,7 +66,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            size_hint_for_range(0, SETTINGS.max_depth + 1),
         ]))
     }
 }

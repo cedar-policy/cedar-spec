@@ -61,6 +61,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     ) -> arbitrary::Result<(usize, Option<usize>), arbitrary::MaxRecursionReached> {
         Ok(arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth)?,
+            HierarchyGenerator::size_hint(depth),
             Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
         ]))
     }

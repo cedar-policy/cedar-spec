@@ -227,6 +227,8 @@ fn compare_validation_results(
 ) {
     match definitional_res {
         TestResult::Failure(err) => {
+            // TODO(#175): For now, ignore cases where the Lean code returned an error due to
+            // an unknown extension function.
             if !err.contains("unknown extension function")
                 && !err.contains("unknown extension type")
             {
