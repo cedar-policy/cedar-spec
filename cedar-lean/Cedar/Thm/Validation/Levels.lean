@@ -14,10 +14,4 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.Types
-import Cedar.Validation.TypedExpr
-import Cedar.Validation.Subtyping
-import Cedar.Validation.Typechecker
-import Cedar.Validation.Validator
-import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.Levels
+import Cedar.Thm.Validation.Levels.CheckLevel
