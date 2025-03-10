@@ -24,11 +24,10 @@ use cedar_policy_generators::{
 };
 use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use serde::Serialize;
 use similar_asserts::SimpleDiff;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct Input {
     pub schema: json_schema::Fragment<ast::InternalName>,
 }
