@@ -148,13 +148,13 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   mapOnVars f expr
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
+def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError TypedExpr :=
   let expr := substituteAction env.reqty.action policy.toExpr
   match typeOf expr ∅ env with
-  | .ok (ty, _) =>
-    if ty.typeOf ⊑ .bool .anyBool
-    then .ok ty.typeOf
-    else .error (.typeError policy.id (.unexpectedType ty.typeOf))
+  | .ok (tx, _) =>
+    if tx.typeOf ⊑ .bool .anyBool
+    then .ok tx
+    else .error (.typeError policy.id (.unexpectedType tx.typeOf))
   | .error e => .error (.typeError policy.id e)
 
 def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do
