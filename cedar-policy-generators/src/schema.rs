@@ -350,8 +350,8 @@ fn schematype_to_type(
             json_schema::TypeVariant::Extension { name } => match name.as_ref() {
                 "ipaddr" => Type::ipaddr(),
                 "decimal" => Type::decimal(),
-                "datetime" => Type::decimal(),
-                "duration" => Type::decimal(),
+                "datetime" => Type::datetime(),
+                "duration" => Type::duration(),
                 _ => panic!("unrecognized extension type: {name:?}"),
             },
         },
