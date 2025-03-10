@@ -17,7 +17,9 @@
 #![no_main]
 use cedar_drt::initialize_log;
 use cedar_drt_inner::*;
-use cedar_policy_generators::{abac::ABACPolicy, schema::Schema, settings::ABACSettings};
+use cedar_policy_generators::{
+    policy_set::GeneratedPolicySet, schema::Schema, settings::ABACSettings,
+};
 use itertools::Itertools;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
@@ -26,7 +28,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 struct FuzzTargetInput {
     // the generated policies
-    policies: Vec<ABACPolicy>,
+    policy_set: GeneratedPolicySet,
 }
 
 // settings for this fuzz target
@@ -49,23 +51,12 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        // Select the number of policies
-        let len = u.int_in_range(0..=5)?;
-        let mut policies: Vec<ABACPolicy> = Vec::with_capacity(len);
-        for _ in 0..len {
-            policies.push(schema.arbitrary_policy(&hierarchy, u)?);
-        }
-        Ok(Self { policies })
+        let policy_set = GeneratedPolicySet::arbitrary_for_hierarchy(&schema, &hierarchy, u)?;
+        Ok(Self { policy_set })
     }
 
     fn size_hint(_depth: usize) -> (usize, Option<usize>) {
         (0, None)
-    }
-}
-
-impl Into<cedar_policy_core::ast::PolicySet> for FuzzTargetInput {
-    fn into(self) -> cedar_policy_core::ast::PolicySet {
-        todo!()
     }
 }
 
@@ -75,14 +66,13 @@ impl Into<cedar_policy_core::ast::PolicySet> for FuzzTargetInput {
 fn round_trip_ast(
     policy_set: &cedar_policy_core::ast::PolicySet,
 ) -> cedar_policy_core::ast::PolicySet {
-    // Convert the ast policy set to Cedar text, removing linked policies
     // AST --> text
-    let text = policy_set.all_templates().join("\n");
+    let text = policy_set_to_text(policy_set);
     // text --> CST --> AST
     cedar_policy_core::parser::parse_policyset(&text).unwrap_or_else(|err| {
         panic!(
-            "Failed to round-trip AST: {:?}\nPretty printed form: {}\nParse error: {:?}\n",
-            policy_set, policy_set, err
+            "Failed to round-trip AST:\n{:?}\nPretty printed form:\n{}\nParse error: {:?}\n",
+            policy_set, text, err
         )
     })
 }
@@ -119,7 +109,7 @@ fn round_trip_est(
 
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
-    let p: cedar_policy_core::ast::PolicySet = input.into();
+    let p: cedar_policy_core::ast::PolicySet = input.policy_set.into();
 
     debug!("Running on policy set: {:?}", p);
 

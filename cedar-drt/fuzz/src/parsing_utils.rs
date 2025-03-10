@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 use cedar_policy_core::ast::{AnyId, PolicySet, Template};
 use cedar_policy_core::parser::err::{ParseError, ParseErrors, ToASTErrorKind};
 use smol_str::SmolStr;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 
 // Check that two policies are equivalent, ignoring policy ids and source
@@ -120,4 +120,32 @@ pub fn check_policy_set_equivalence(set1: &PolicySet, set2: &PolicySet) {
         .collect::<HashSet<PreservedTemplate>>();
     // Check that the sets are the same size
     assert_eq!(t1, t2);
+}
+
+/// Converts an ast policy set to Cedar text, removing linked policies.
+pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> String {
+    let mut res = String::new();
+    let mut iter = policy_set.all_templates();
+    if let Some(template) = iter.next() {
+        fmt(template, &mut res).unwrap();
+        for template in iter {
+            fmt(template, &mut res).unwrap();
+        }
+    }
+    res
+}
+
+fn fmt(template: &Template, f: &mut String) -> std::fmt::Result {
+    for (k, v) in template.annotations() {
+        writeln!(f, "@{}(\"{}\")", k, v.val.escape_debug())?
+    }
+    write!(
+        f,
+        "{}(\n  {},\n  {},\n  {}\n) when {{\n  {}\n}};",
+        template.effect(),
+        template.principal_constraint(),
+        template.action_constraint(),
+        template.resource_constraint(),
+        template.non_scope_constraints()
+    )
 }

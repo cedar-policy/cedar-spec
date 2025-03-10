@@ -41,8 +41,7 @@ fuzz_target!(|est_json_str: String| {
         });
     if let Ok(ast_from_est) = ast_from_est_result {
         // AST -> text
-        // Convert the ast policy set to Cedar text, removing linked policies
-        let text = ast_from_est.all_templates().join("\n");
+        let text = policy_set_to_text(&ast_from_est);
         // text -> CST -> AST
         // Parse an ast policy set from the Cedar text
         let ast_from_cedar = cedar_policy_core::parser::parse_policyset(&text);
