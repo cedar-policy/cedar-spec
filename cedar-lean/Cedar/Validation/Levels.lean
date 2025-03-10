@@ -52,26 +52,24 @@ This functions takes two additional arguments not required by `checkLevel`
   value, eventually reaching an attribute that has an entity value. This allows
   allows more permissive level checking on record attributes that aren't accessed.
 -/
-def checkEntityAccessLevel (tx : TypedExpr) (env : Environment) (n nmax : Nat) (path : List Attr) : Bool :=
+def checkEntityAccessLevel (tx : TypedExpr) (n nmax : Nat) (path : List Attr) : Bool :=
   match tx, path with
   | .var _ _, _ => true
-  | .lit (.entityUID euid) _, _ =>
-    euid == env.reqty.action
   | .ite tx₁ tx₂ tx₃ _, _ =>
-    checkLevel tx₁ env nmax &&
-    checkEntityAccessLevel tx₂ env n nmax path &&
-    checkEntityAccessLevel tx₃ env n nmax path
+    checkLevel tx₁ nmax &&
+    checkEntityAccessLevel tx₂ n nmax path &&
+    checkEntityAccessLevel tx₃ n nmax path
   | .getAttr x₁ a _, _ =>
     match x₁.typeOf with
     | .entity _ =>
       n > 0 &&
-      checkEntityAccessLevel x₁ env (n - 1) nmax []
+      checkEntityAccessLevel x₁ (n - 1) nmax []
     | _ =>
-      checkEntityAccessLevel x₁ env n nmax (a :: path)
+      checkEntityAccessLevel x₁ n nmax (a :: path)
   | .binaryApp .getTag x₁ x₂ _, _ =>
     n > 0 &&
-    checkEntityAccessLevel x₁ env (n - 1) nmax [] &&
-    checkLevel x₂ env nmax
+    checkEntityAccessLevel x₁ (n - 1) nmax [] &&
+    checkLevel x₂ nmax
   | .record axs _, (a :: path) =>
     match h₁ : (Map.make axs).find? a with
     | some tx' =>
@@ -79,9 +77,9 @@ def checkEntityAccessLevel (tx : TypedExpr) (env : Environment) (n nmax : Nat) (
         replace h₁ := List.sizeOf_lt_of_mem ∘ Map.make_mem_list_mem ∘ Map.find?_mem_toList $ h₁
         rw [Prod.mk.sizeOf_spec a tx'] at h₁
         omega
-      checkEntityAccessLevel tx' env n nmax path &&
+      checkEntityAccessLevel tx' n nmax path &&
       axs.attach₂.all λ e =>
-        checkLevel e.val.snd env nmax
+        checkLevel e.val.snd nmax
     | none => false
   | _, _ => false
 
@@ -92,46 +90,46 @@ a simple recursive traversal of the AST. For entity dereferencing expressions,
 it calls to `checkEntityAccessLevel` which ensures that expression is valid
 specifically in an entity access position
 -/
-def checkLevel (tx : TypedExpr) (env : Environment) (n : Nat) : Bool :=
+def checkLevel (tx : TypedExpr) (n : Nat) : Bool :=
   match tx with
   | .lit _ _ => true
   | .var _ _ => true
   | .ite x₁ x₂ x₃ _ =>
-    checkLevel x₁ env n &&
-    checkLevel x₂ env n &&
-    checkLevel x₃ env n
+    checkLevel x₁ n &&
+    checkLevel x₂ n &&
+    checkLevel x₃ n
   | .unaryApp _ x₁ _ =>
-    checkLevel x₁ env n
+    checkLevel x₁ n
   | .binaryApp .mem x₁ x₂ _
   | .binaryApp .getTag x₁ x₂ _
   | .binaryApp .hasTag x₁ x₂ _ =>
     n > 0 &&
-    checkEntityAccessLevel x₁ env (n - 1) n [] &&
-    checkLevel x₂ env n
+    checkEntityAccessLevel x₁ (n - 1) n [] &&
+    checkLevel x₂ n
   | .and x₁ x₂ _
   | .or x₁ x₂ _
   | .binaryApp _ x₁ x₂ _ =>
-    checkLevel x₁ env n &&
-    checkLevel x₂ env n
+    checkLevel x₁ n &&
+    checkLevel x₂ n
   | .hasAttr x₁ _ _
   | .getAttr x₁ _ _ =>
     match x₁.typeOf with
     | .entity _ =>
       n > 0 &&
-      checkEntityAccessLevel x₁ env (n - 1) n []
-    | _ => checkLevel x₁ env n
+      checkEntityAccessLevel x₁ (n - 1) n []
+    | _ => checkLevel x₁ n
   | .call _ xs _
   | .set xs _ =>
     xs.attach.all λ e =>
       have := List.sizeOf_lt_of_mem e.property
-      checkLevel e env n
+      checkLevel e n
   | .record axs _ =>
     axs.attach₂.all λ e =>
-      checkLevel e.val.snd env n
+      checkLevel e.val.snd n
 
  end
 
 def typecheckAtLevel (policy : Policy) (env : Environment) (n : Nat) : Bool :=
   match typeOf policy.toExpr ∅ env with
-  | .ok (tx, _) => checkLevel tx env n
+  | .ok (tx, _) => checkLevel tx n
   | _           => false
