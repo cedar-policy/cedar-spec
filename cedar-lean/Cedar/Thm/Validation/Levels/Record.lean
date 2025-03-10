@@ -38,7 +38,7 @@ theorem level_based_slicing_is_sound_record_attrs {rxs : List (Attr × Expr)} {n
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : List.Forall₂ (AttrExprHasAttrType c env) rxs atxs)
-  (hl : ∀ atx ∈ atxs, TypedExpr.AtLevel atx.snd n)
+  (hl : ∀ atx ∈ atxs, TypedExpr.AtLevel atx.snd env n)
   (ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd)
   :
   (rxs.mapM₂ λ x => do
@@ -70,7 +70,7 @@ theorem level_based_slicing_is_sound_record {rxs : List (Attr × Expr)} {n : Nat
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.record rxs) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx env n)
   (ih : ∀ x ∈ rxs, TypedAtLevelIsSound x.snd) :
   evaluate (.record rxs) request entities = evaluate (.record rxs) request slice
 := by

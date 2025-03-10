@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Validation.Typechecker
+import Cedar.Validation.Levels
 
 /-! This file defines the Cedar validator. -/
 
@@ -94,6 +95,7 @@ def Schema.environment? (schema : Schema) (principal resource : EntityType) (act
 
 inductive ValidationError where
   | typeError (pid : PolicyID) (error : TypeError)
+  | levelError (pid : PolicyID)
   | impossiblePolicy (pid : PolicyID)
 
 abbrev ValidationResult := Except ValidationError Unit
@@ -146,17 +148,24 @@ def substituteAction (uid : EntityUID) (expr : Expr) : Expr :=
   mapOnVars f expr
 
 /-- Check that a policy is Boolean-typed. -/
-def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError CedarType :=
+def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationError TypedExpr :=
   let expr := substituteAction env.reqty.action policy.toExpr
   match typeOf expr ∅ env with
-  | .ok (ty, _) =>
-    if ty.typeOf ⊑ .bool .anyBool
-    then .ok ty.typeOf
-    else .error (.typeError policy.id (.unexpectedType ty.typeOf))
+  | .ok (tx, _) =>
+    if tx.typeOf ⊑ .bool .anyBool
+    then .ok tx
+    else .error (.typeError policy.id (.unexpectedType tx.typeOf))
   | .error e => .error (.typeError policy.id e)
 
-def allFalse (tys : List CedarType) : Bool :=
-  tys.all (· == .bool .ff)
+def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do
+  let tx ← typecheckPolicy policy env
+  if checkLevel tx env level then
+    .ok tx
+  else
+    .error (.levelError policy.id)
+
+def allFalse (txs : List TypedExpr) : Bool :=
+  txs.all (TypedExpr.typeOf · == .bool .ff)
 
 /-- Check a policy under multiple environments. -/
 def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) : ValidationResult := do
@@ -187,6 +196,7 @@ def validationErrorToJson : ValidationError → Lean.Json
   | .typeError _ (.extensionErr _) => "extensionErr"
   | .typeError _ .emptySetErr => "emptySetErr"
   | .typeError _ (.incompatibleSetTypes _) => "incompatibleSetTypes"
+  | .levelError _ => "levelError"
   | .impossiblePolicy _ => "impossiblePolicy"
 
 instance : Lean.ToJson ValidationError where

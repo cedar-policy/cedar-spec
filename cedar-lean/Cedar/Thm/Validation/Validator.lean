@@ -48,9 +48,9 @@ theorem action_matches_env (env : Environment) (request : Request) (entities : E
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : TypedExpr) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  typecheckPolicy policy env = .ok ty →
+  typecheckPolicy policy env = .ok tx →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₁ h₂

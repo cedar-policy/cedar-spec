@@ -38,7 +38,7 @@ theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Cap
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx n)
+  (hl : TypedExpr.AtLevel tx env n)
   (ihc : TypedAtLevelIsSound c)
   (iht : TypedAtLevelIsSound t)
   (ihe : TypedAtLevelIsSound e)
