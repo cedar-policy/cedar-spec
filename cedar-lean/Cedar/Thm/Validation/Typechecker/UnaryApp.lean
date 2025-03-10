@@ -26,32 +26,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_unary_inversion {op : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
-  (h₁ : typeOf (Expr.unaryApp op x₁) c₁ env = Except.ok (tx, c₂)) :
-  c₂ = ∅ ∧
-  ∃ tx₁ ty c₁',
-    tx = .unaryApp op tx₁ ty ∧
-    typeOf x₁ c₁ env = Except.ok (tx₁, c₁') ∧
-    match op with
-    | .not => ∃ bty, ty = .bool bty.not ∧ tx₁.typeOf = .bool bty
-    | .neg => tx₁.typeOf = .int ∧ ty = .int
-    | .isEmpty => ty = .bool .anyBool ∧ ∃ ty₀, tx₁.typeOf = .set ty₀
-    | .like _ => ty = .bool .anyBool ∧ tx₁.typeOf = .string
-    | .is ety₀  => ∃ ety₁, ty = .bool (if ety₀ = ety₁ then .tt else .ff) ∧ tx₁.typeOf = .entity ety₁
-:= by
-  cases h₂ : typeOf x₁ c₁ env <;> simp only [h₂, typeOf, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
-  rename_i res ; have ⟨ty₁, c₁'⟩ := res
-  simp only [typeOfUnaryApp, Function.comp_apply] at h₁
-  split at h₁ <;> try contradiction
-  all_goals {
-    simp only [ok, Except.ok.injEq, Prod.mk.injEq] at h₁
-    replace ⟨ h₁, hc ⟩ := h₁
-    simp only [hc, List.empty_eq, true_and]
-    exists ty₁
-    rename_i hty₁ _
-    simp [h₁, hty₁]
-  }
-
 theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂)) :
   c₂ = ∅ ∧
@@ -74,6 +48,7 @@ theorem type_of_not_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : En
         rw [←hl₁]
         simp only [TypedExpr.typeOf]
         simp [ResultType.typeOf, Except.map, h'₁]
+
 
 theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)

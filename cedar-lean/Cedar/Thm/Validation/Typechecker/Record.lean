@@ -28,21 +28,22 @@ open Cedar.Spec
 open Cedar.Validation
 
 def AttrValueHasAttrType (av : Attr × Value) (aqty : Attr × QualifiedType) : Prop :=
-  av.fst = aqty.fst ∧ InstanceOfType av.snd aqty.snd.getType
+  av.fst = aqty.fst ∧ InstanceOfType av.snd (Qualified.getType aqty.snd)
 
-def AttrExprHasAttrType (c : Capabilities) (env : Environment) (ax : Attr × Expr) (atx : Attr × TypedExpr) : Prop :=
-  ax.fst = atx.fst ∧
-  ∃ c', (typeOf ax.snd c env) = Except.ok (atx.snd, c')
+def AttrExprHasAttrType (c : Capabilities) (env : Environment) (ax : Attr × Expr) (aqty : Attr × QualifiedType) : Prop :=
+  ∃ ty' c',
+    aqty = (ax.fst, .required ty') ∧
+    (typeOf ax.snd c env).typeOf = Except.ok (ty', c')
 
-theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabilities} {env : Environment} {rtx : List (Attr × TypedExpr)}
-  (h₁ : axs.mapM (λ x => (typeOf x.snd c env).map (λ (ty, _) => (x.fst, ty))) = Except.ok rtx) :
-  List.Forall₂ (AttrExprHasAttrType c env) axs rtx
+theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabilities} {env : Environment} {rty : List (Attr × TypedExpr)}
+  (h₁ : axs.mapM (λ x => (typeOf x.snd c env).map (λ (ty, _) => (x.fst, ty))) = Except.ok rty) :
+  List.Forall₂ (AttrExprHasAttrType c env) axs (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) rty)
 := by
   cases axs
   case nil =>
     simp [pure, Except.pure] at h₁ ; subst h₁ ; apply List.Forall₂.nil
   case cons hd tl =>
-    cases rtx
+    cases rty
     case nil =>
       simp [←List.mapM'_eq_mapM] at h₁
       cases h₂ : Except.map (fun x => (hd.fst, x.fst)) (typeOf hd.snd c env) <;> simp [h₂] at h₁
@@ -61,6 +62,8 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         rename_i _ r _
         simp [AttrExprHasAttrType]
         exists r.snd
+        rename_i h₃
+        simp [h₃, ResultType.typeOf, Except.map]
       }
       {
         apply type_of_record_inversion_forall
@@ -70,22 +73,24 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
         simp only [h₁]
       }
 
-theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
-  (h₁ : typeOf (Expr.record axs) c env = Except.ok (tx, c')) :
+theorem type_of_record_inversion {axs : List (Attr × Expr)} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
+  (h₁ : typeOf (Expr.record axs) c env = Except.ok (ty, c')) :
   c' = ∅ ∧
-  ∃ (atxs : List (Attr × TypedExpr)),
-    tx = .record atxs (.record (Map.make (atxs.map λ (a, tx) => (a, .required tx.typeOf)))) ∧
-    List.Forall₂ (AttrExprHasAttrType c env) axs atxs
+  ∃ (rty : List (Attr × QualifiedType)),
+    ty.typeOf = .record (Map.make rty) ∧
+    List.Forall₂ (AttrExprHasAttrType c env) axs rty
 := by
   simp [typeOf, ok] at h₁
   cases h₂ : axs.mapM₂ fun x => Except.map (fun x_1 => (x.1.fst, x_1.fst)) (typeOf x.1.snd c env) <;> simp [h₂] at h₁
   rename_i rty
   simp [h₁]
-  exists rty
-  simp [←h₁]
-  simp [List.mapM₂, List.attach₂] at h₂
-  simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env))] at h₂
-  exact type_of_record_inversion_forall h₂
+  exists (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) rty) ; simp [←h₁]
+  constructor
+  case left => simp [TypedExpr.typeOf]
+  case right =>
+    simp [List.mapM₂, List.attach₂] at h₂
+    simp [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x₁ : (TypedExpr × Capabilities) => (x.fst, x₁.fst)) (typeOf x.snd c env))] at h₂
+    exact type_of_record_inversion_forall h₂
 
 theorem mk_vals_instance_of_mk_types₁ {a : Attr} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
   (h₁ : List.Forall₂ AttrValueHasAttrType avs rty)
@@ -105,13 +110,13 @@ theorem mk_vals_instance_of_mk_types₁ {a : Attr} {avs : List (Attr × Value)} 
     simp [Map.contains, Map.find?, Map.kvs, h₆] at h₇
     exact h₇
 
-theorem mk_vals_instance_of_mk_types₂ {a : Attr} {v : Value} {qty : QualifiedType} {avs : List (Attr × Value)} {rtx : List (Attr × QualifiedType)}
-  (h₁ : List.Forall₂ AttrValueHasAttrType avs rtx)
+theorem mk_vals_instance_of_mk_types₂ {a : Attr} {v : Value} {qty : QualifiedType} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
+  (h₁ : List.Forall₂ AttrValueHasAttrType avs rty)
   (h₂ : Map.find? (Map.mk avs) a = some v)
-  (h₃ : (Map.mk rtx).find? a = some qty) :
+  (h₃ : Map.find? (Map.mk rty) a = some qty) :
   InstanceOfType v (Qualified.getType qty)
 := by
-  cases avs <;> cases rtx <;> cases h₁
+  cases avs <;> cases rty <;> cases h₁
   case nil =>
     simp [Map.find?, List.find?] at h₂
   case cons ahd atl rhd rtl h₄ h₅ =>
@@ -120,27 +125,27 @@ theorem mk_vals_instance_of_mk_types₂ {a : Attr} {v : Value} {qty : QualifiedT
     have ⟨hl₄, hr₄⟩ := h₄ ; simp [hl₄] at *
     cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ h₃
     case true =>
-      rw [←h₂, ←h₃]
+      subst h₂ h₃
       exact hr₄
     case false =>
       apply @mk_vals_instance_of_mk_types₂ a v qty atl rtl h₅ <;>
       simp [Map.find?, Map.kvs, h₂, h₃]
 
-theorem mk_vals_instance_of_mk_types₃ {a : Attr} {qty : QualifiedType} {avs : List (Attr × Value)} {rtx : List (Attr × QualifiedType)}
-  (h₁ : List.Forall₂ AttrValueHasAttrType avs rtx)
-  (h₂ : (Map.mk rtx).find? a = some qty) :
+theorem mk_vals_instance_of_mk_types₃ {a : Attr} {qty : QualifiedType} {avs : List (Attr × Value)} {rty : List (Attr × QualifiedType)}
+  (h₁ : List.Forall₂ AttrValueHasAttrType avs rty)
+  (h₂ : Map.find? (Map.mk rty) a = some qty)  :
   Map.contains (Map.mk avs) a = true
 := by
-  cases avs <;> cases rtx <;> cases h₁
+  cases avs <;> cases rty <;> cases h₁
   case nil =>
     simp [Map.find?, List.find?] at h₂
   case cons ahd atl rhd rtl h₄ h₅ =>
     simp [Map.contains, Map.find?, List.find?]
     simp [Map.find?, List.find?] at h₂
     simp [AttrValueHasAttrType] at h₄
-    have ⟨h₄, _⟩ := h₄ ; simp [h₄]
-    cases h₆ : rhd.fst == a <;> simp [h₆] at h₂ ⊢
-    cases h₇ : rtl.find? λ (a', _) => a' == a <;> simp [h₇] at h₂
+    have ⟨h₄, _⟩ := h₄ ; simp [h₄] at *
+    cases h₆ : rhd.fst == a <;> simp [h₆] at *
+    cases h₇ : List.find? (fun x => x.fst == a) rtl <;> simp [h₇] at h₂
     have h₈ := @mk_vals_instance_of_mk_types₃ a qty atl rtl h₅
     simp [Map.find?, List.find?, Map.kvs, h₇, h₂, Map.contains] at h₈
     exact h₈
@@ -160,73 +165,39 @@ theorem mk_vals_instance_of_mk_types {avs : List (Attr × Value)} {rty : List (A
     intro a qty h₂ _
     exact mk_vals_instance_of_mk_types₃ h₁ h₂
 
-theorem find_mk_xs_find_mk_txs {axs : List (Attr × Expr)} {atxs : List (Attr × TypedExpr)}
-  (h₁ : List.Forall₂ (AttrExprHasAttrType c env) axs atxs)
-  (h₂ : (Map.mk axs).find? a = some x) :
-  ∃ tx c', (Map.mk atxs).find? a = some tx ∧ typeOf x c env = .ok (tx, c')
-:= by
-  cases axs <;> cases atxs <;> cases h₁
-  case nil =>
-    simp [Map.find?, List.find?] at h₂
-  case cons axh axt atxh athl h₄ h₅ =>
-    simp [Map.contains, Map.find?, List.find?]
-    simp [Map.find?, List.find?] at h₂
-    simp [AttrExprHasAttrType] at h₄
-    replace ⟨h₄, _, h₆⟩ := h₄ ; rw [←h₄]
-    cases h₇ : axh.fst == a <;> simp [h₇] at h₂ ⊢
-    · cases h₈ : axt.find? λ (a', _) => a' == a <;> simp [h₈] at h₂
-      subst h₂
-      rename_i ax
-      have h₉ := @find_mk_xs_find_mk_txs c env a ax.snd axt athl h₅
-      simp [h₈, Map.find?, List.find?, Map.kvs, Map.contains] at h₉
-      exact h₉
-    · subst h₂
-      simp [h₆]
-
-theorem find_make_xs_find_make_txs {axs : List (Attr × Expr)} {atxs : List (Attr × TypedExpr)}
-  (h₁ : List.Forall₂ (AttrExprHasAttrType c env) axs atxs)
-  (h₂ : (Map.make axs).find? a = some x) :
-  ∃ tx c', (Map.make atxs).find? a = some tx ∧ typeOf x c env = .ok (tx, c')
-:= by
-  apply @find_mk_xs_find_mk_txs _ _ _ _ (List.canonicalize Prod.fst axs)
-  · let p := fun (x :  Expr) (tx : TypedExpr) =>
-      ∃ c', (typeOf x c env) = Except.ok (tx, c')
-    have h₆ := List.canonicalize_preserves_forallᵥ p axs atxs
-    simp [p, List.Forallᵥ] at h₆
-    apply h₆ h₁
-  · simp only [Map.make] at h₂
-    exact h₂
-
-theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rhd : Attr × TypedExpr} {vhd : Attr × Value}
+theorem head_of_vals_instance_of_head_of_types {xhd : Attr × Expr} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rhd : Attr × QualifiedType} {vhd : Attr × Value}
   (h₁ : TypeOfIsSound xhd.snd)
   (h₂ : CapabilitiesInvariant c₁ request entities)
   (h₃ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₄ : AttrExprHasAttrType c₁ env xhd rhd)
   (h₅ : bindAttr xhd.fst (evaluate xhd.snd request entities) = Except.ok vhd) :
-  AttrValueHasAttrType vhd (rhd.fst, .required rhd.snd.typeOf)
+  AttrValueHasAttrType vhd rhd
 := by
   simp [TypeOfIsSound] at h₁
-  replace ⟨h₄, _, h₆⟩ := h₄ ; rw [←h₄]
+  have ⟨ty', c', h₄, h₆⟩ := h₄ ; subst h₄
+  split_type_of h₆ ; rename_i h₆ hl₆ hr₆
   specialize h₁ h₂ h₃ h₆
   have ⟨_, v, h₁, h₇⟩ := h₁
   simp [bindAttr] at h₅
   cases h₈ : evaluate xhd.snd request entities <;> simp [h₈] at h₅
   simp [EvaluatesTo, h₈] at h₁ ; subst h₁ h₅
-  simp [AttrValueHasAttrType, Qualified.getType, h₇, h₆]
+  simp only [true_and, AttrValueHasAttrType, Qualified.getType, h₇, hl₆]
+  rw [←hl₆]
+  exact h₇
 
-theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rtx : List (Attr × TypedExpr)} {avs : List (Attr × Value)}
+theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rty : List (Attr × QualifiedType)} {avs : List (Attr × Value)}
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rtx)
+  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rty)
   (h₄ : (axs.mapM fun x => bindAttr x.fst (evaluate x.snd request entities)) = Except.ok avs) :
-  List.Forall₂ AttrValueHasAttrType avs (rtx.map λ (a, tx) => (a, .required tx.typeOf))
+  List.Forall₂ AttrValueHasAttrType avs rty
 := by
   cases h₃
   case nil =>
     simp [←List.mapM'_eq_mapM, pure, Except.pure] at h₄
     subst h₄
-    simp [List.map_nil]
+    simp only [List.Forall₂.nil]
   case cons xhd rhd xtl rtl h₅ h₆ =>
     simp [List.mapM'_eq_mapM, pure, Except.pure] at h₄
     cases h₇ : bindAttr xhd.fst (evaluate xhd.snd request entities) <;> simp [h₇] at h₄
@@ -243,26 +214,26 @@ theorem vals_instance_of_types {axs : List (Attr × Expr)} {c₁ : Capabilities}
       intro ax h₉ ; apply ih ; simp [h₉]
     }
 
-theorem type_of_record_is_sound_ok {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rtx : List (Attr × TypedExpr)} {avs : List (Attr × Value)}
+theorem type_of_record_is_sound_ok {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rty : List (Attr × QualifiedType)} {avs : List (Attr × Value)}
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rtx)
+  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rty)
   (h₄ : (axs.mapM fun x => bindAttr x.fst (evaluate x.snd request entities)) = Except.ok avs) :
-  InstanceOfType (Value.record (Map.make avs)) (CedarType.record (Map.make (rtx.map λ (a, tx) => (a, .required tx.typeOf))))
+  InstanceOfType (Value.record (Map.make avs)) (CedarType.record (Map.make rty))
 := by
   apply mk_vals_instance_of_mk_types
   let p := fun (v : Value) (qty : QualifiedType) => InstanceOfType v qty.getType
   have h₅ := vals_instance_of_types ih h₁ h₂ h₃ h₄
-  have h₆ := List.canonicalize_preserves_forallᵥ p avs (rtx.map λ (a, tx) => (a, .required tx.typeOf))
+  have h₆ := List.canonicalize_preserves_forallᵥ p avs rty
   simp [List.Forallᵥ] at h₆
   exact h₆ h₅
 
-theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rtx : List (Attr × TypedExpr)} {err : Error}
+theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabilities} {env : Environment} {request : Request} {entities : Entities} {rty : List (Attr × QualifiedType)} {err : Error}
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rtx)
+  (h₃ : List.Forall₂ (AttrExprHasAttrType c₁ env) axs rty)
   (h₄ : (axs.mapM fun x => bindAttr x.fst (evaluate x.snd request entities)) = Except.error err) :
   err = Error.entityDoesNotExist ∨ err = Error.extensionError ∨ err = Error.arithBoundsError
 := by
@@ -280,7 +251,8 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
       subst h₄ h₅
       specialize ih hd
       simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih
-      replace ⟨h₄, c', hh₃⟩ := hh₃
+      have ⟨ty', c', _, hh₃⟩ := hh₃
+      split_type_of hh₃ ; rename_i hh₃ hhl₃ hhr₃
       specialize ih h₁ h₂ hh₃
       have ⟨_, v, ih, _⟩ := ih
       simp [EvaluatesTo, h₆] at ih
@@ -295,16 +267,16 @@ theorem type_of_record_is_sound_err {axs : List (Attr × Expr)} {c₁ : Capabili
         (by simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype, h₅])
 
 
-theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr} {request : Request} {entities : Entities}
+theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : typeOf (Expr.record axs) c₁ env = Except.ok (tx, c₂))
+  (h₃ : typeOf (Expr.record axs) c₁ env = Except.ok (ty, c₂))
   (ih : ∀ (axᵢ : Attr × Expr), axᵢ ∈ axs → TypeOfIsSound axᵢ.snd) :
   GuardedCapabilitiesInvariant (Expr.record axs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.record axs) request entities v ∧ InstanceOfType v tx.typeOf
+  ∃ v, EvaluatesTo (Expr.record axs) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₆, rty, h₄, h₅⟩ := type_of_record_inversion h₃
-  subst h₆ h₄
+  have ⟨h₆, rty, h₅, h₄⟩ := type_of_record_inversion h₃
+  subst h₆ ; rw [h₅]
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate]
   simp only [do_ok, do_error]
@@ -313,11 +285,9 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   rw [List.mapM_pmap_subtype f]
   cases h₅ : (axs.mapM f) <;> simp [h₅]
   case error err =>
-    rename_i h₄
     simp [type_is_inhabited]
     exact type_of_record_is_sound_err ih h₁ h₂ h₄ h₅
   case ok avs =>
-    rename_i h₄
     exact type_of_record_is_sound_ok ih h₁ h₂ h₄ h₅
 
 end Cedar.Thm

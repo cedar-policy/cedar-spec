@@ -113,16 +113,15 @@ theorem type_of_set_tail
         subst h₆
         exists ty'
 
-theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
-  (h₁ : typeOf (Expr.set xs) c env = Except.ok (tx, c')) :
+theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {sty : TypedExpr}
+  (h₁ : typeOf (Expr.set xs) c env = Except.ok (sty, c')) :
   c' = ∅ ∧
-  ∃ txs ty,
-    tx = (.set txs (.set ty)) ∧
-    ∀ xᵢ ∈ xs,
-      ∃ txᵢ cᵢ,
-        txᵢ ∈ txs ∧
-        typeOf xᵢ c env = Except.ok (txᵢ, cᵢ) ∧
-        (txᵢ.typeOf ⊔ ty) = .some ty
+  ∃ ty,
+    sty.typeOf = .set ty ∧
+    ∀ xᵢ, xᵢ ∈ xs →
+      ∃ tyᵢ cᵢ,
+        (typeOf xᵢ c env).typeOf = Except.ok (tyᵢ, cᵢ) ∧
+        (tyᵢ ⊔ ty) = .some ty
 := by
   simp [typeOf] at h₁
   cases h₂ : List.mapM₁ xs fun x => justType (typeOf x.val c env) <;>
@@ -135,7 +134,7 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
   have ⟨hl₁, hr₁⟩ := h₁
   subst hl₁ hr₁
   simp only [List.empty_eq, true_and]
-  exists (hd :: tl), ty
+  exists ty
   apply And.intro ; case left => simp [TypedExpr.typeOf]
   intro x h₄
   cases h₄
@@ -151,26 +150,19 @@ theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : Envi
     simp only [justType, Except.map] at h₅
     split at h₅ <;> simp at h₅
     rename_i res h₇
-    exists hdty, res.snd
-    and_intros
-    · simp
+    exists hdty.typeOf, res.snd
+    apply And.intro
     · simp [←h₅, h₇, ResultType.typeOf, Except.map]
     · exact foldlM_of_lub_is_LUB h₃
   case tail xhd xtl h₄ =>
     have ⟨ty', h₅, h₆⟩ := type_of_set_tail h₂ h₃ h₄
-    have h₇ := @type_of_set_inversion xtl c ∅ env (.set tl ty'.set) h₅
-    simp only [List.empty_eq, exists_and_right, true_and] at h₇
-    replace ⟨ txs, ty, h₇, h₈ ⟩ := h₇
-    simp only [TypedExpr.set.injEq, CedarType.set.injEq] at h₇
-    replace ⟨ h₇, h₉ ⟩ := h₇
-    subst h₇ h₉
-    specialize h₈ x h₄
-    replace ⟨txᵢ, c₁, htl, htxᵢ, hlub ⟩ := h₈
-    exists txᵢ, c₁
-    and_intros
-    · exact List.Mem.tail _ htl
-    · exact htxᵢ
-    · exact lub_trans hlub h₆
+    have h₇ := @type_of_set_inversion xtl c ∅ env (.set tl ty'.set)
+    simp only [h₅, List.empty_eq, TypedExpr.typeOf, CedarType.set.injEq, exists_and_right, exists_eq_left', true_and, true_implies] at h₇
+    specialize h₇ x h₄
+    have ⟨tyᵢ, ⟨c₁, h₇⟩, h₈⟩ := h₇
+    exists tyᵢ, c₁
+    simp only [true_and, h₇]
+    exact lub_trans h₈ h₆
 
 theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → TypeOfIsSound xᵢ) :
@@ -181,8 +173,8 @@ theorem list_is_sound_implies_tail_is_sound {hd : Expr} {tl : List Expr}
   simp [h₂]
 
 theorem list_is_typed_implies_tail_is_typed {hd : Expr} {tl : List Expr} {c₁ : Capabilities} {env : Environment} {ty : CedarType}
-  (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → ∃ txᵢ cᵢ, (typeOf xᵢ c₁ env) = Except.ok (txᵢ, cᵢ) ∧ (txᵢ.typeOf ⊔ ty) = some ty) :
-  ∀ (xᵢ : Expr), xᵢ ∈ tl → ∃ txᵢ cᵢ, typeOf xᵢ c₁ env = Except.ok (txᵢ, cᵢ) ∧ (txᵢ.typeOf ⊔ ty) = some ty
+  (h₁ : ∀ (xᵢ : Expr), xᵢ ∈ hd :: tl → ∃ tyᵢ cᵢ, (typeOf xᵢ c₁ env).typeOf = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty) :
+  ∀ (xᵢ : Expr), xᵢ ∈ tl → ∃ tyᵢ cᵢ, (typeOf xᵢ c₁ env).typeOf = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty
 := by
   intro xᵢ h₂
   apply h₁
@@ -192,7 +184,7 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₄ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ txᵢ cᵢ, (typeOf xᵢ c₁ env) = Except.ok (txᵢ, cᵢ) ∧ (txᵢ.typeOf ⊔ ty) = some ty)
+  (h₄ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, (typeOf xᵢ c₁ env).typeOf = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
   (h₅ : (xs.mapM fun x => evaluate x request entities) = Except.error err) :
   err = Error.entityDoesNotExist ∨
   err = Error.extensionError ∨
@@ -207,6 +199,7 @@ theorem type_of_set_is_sound_err {xs : List Expr} {c₁ : Capabilities} {env : E
     have h₄ := h₄ hd
     simp only [h₆, List.mem_cons, true_or, forall_const] at h₄
     have ⟨tyᵢ, cᵢ, h₇, _⟩ := h₄
+    split_type_of h₇ ; rename_i h₇ hl₇ _
     have h₉ := ih hd ; simp [h₆, TypeOfIsSound] at h₉
     specialize (h₉ h₁ h₂ h₇) ; have ⟨_, v, h₉⟩ := h₉
     simp [EvaluatesTo] at h₉
@@ -229,7 +222,7 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ)
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-  (h₃ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ txᵢ cᵢ, (typeOf xᵢ c₁ env) = Except.ok (txᵢ, cᵢ) ∧ (txᵢ.typeOf ⊔ ty) = some ty)
+  (h₃ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ tyᵢ cᵢ, (typeOf xᵢ c₁ env).typeOf = Except.ok (tyᵢ, cᵢ) ∧ (tyᵢ ⊔ ty) = some ty)
   (h₄ : (xs.mapM fun x => evaluate x request entities) = Except.ok vs)
   (h₅ : v ∈ vs):
   InstanceOfType v ty
@@ -255,12 +248,14 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
       have ⟨tyᵢ, cᵢ, h₃, h₆⟩ := h₃
       specialize ih hd
       simp [TypeOfIsSound] at ih
+      split_type_of h₃ ; rename_i h₃ hl₃ _
       specialize ih h₁ h₂ h₃
       have ⟨_, v', ihl, ihr⟩ := ih
       simp [EvaluatesTo] at ihl
       rcases ihl with ihl | ihl | ihl | ihl <;>
       simp [ihl] at h₇
       subst h₇
+      rw [hl₃] at ihr
       exact instance_of_lub_left h₆ ihr
     case tail h₉ =>
       apply @type_of_set_is_sound_ok
@@ -279,15 +274,11 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   GuardedCapabilitiesInvariant (Expr.set xs) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType v sty.typeOf
 := by
-  have ⟨h₆, txs, ty, h₄, h₅⟩ := type_of_set_inversion h₃
+  have ⟨h₆, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ ; rw [h₄]
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def,
     List.mapM_pmap_subtype (evaluate · request entities)]
-  replace h₅ : ∀ xᵢ ∈ xs, ∃ tx c', typeOf xᵢ c₁ env = .ok (tx, c') ∧ (tx.typeOf ⊔ ty) = some ty := by
-    intros x h₁
-    replace ⟨txᵢ, cᵢ, h₅⟩ := h₅ x h₁
-    simp [h₅]
   cases h₆ : xs.mapM fun x => evaluate x request entities <;>
   simp [h₆]
   case error err =>

@@ -35,28 +35,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_binaryApp_inversion {op₂ : BinaryOp} {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
-  (htx : typeOf (Expr.binaryApp op₂ x₁ x₂) c env = Except.ok (tx, c')) :
-  ∃ tx₁ c₁ tx₂ c₂,
-    typeOf x₁ c env = Except.ok (tx₁, c₁) ∧
-    typeOf x₂ c env = Except.ok (tx₂, c₂) ∧
-    ∃ ty, tx = .binaryApp op₂ tx₁ tx₂ ty
-:= by
-  simp only [typeOf] at htx
-  cases htx₁ : typeOf x₁ c env <;> simp only [htx₁, Except.bind_err, reduceCtorEq] at htx
-  cases htx₂ : typeOf x₂ c env <;> simp only [htx₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at htx
-  rename_i r₁ r₂
-  simp [typeOfBinaryApp, typeOfEq, ifLubThenBool, typeOfGetTag, typeOfHasTag, ok, err] at htx
-  (split at htx <;> try split at htx <;> try split at htx <;> try split at htx) <;> try simp at htx
-  all_goals
-    have ⟨ htx, _ ⟩ := htx
-    rw [←htx]
-    exists r₁.fst, r₁.snd, r₂.fst, r₂.snd
-    and_intros
-    · rfl
-    · rfl
-    · simp only [TypedExpr.binaryApp.injEq, true_and, exists_eq']
-
 theorem type_of_binaryApp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)

@@ -26,55 +26,6 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_call_args_inversion {xs : List Expr} {txs : List TypedExpr} {c : Capabilities} {env : Environment}
-  (htxs : (xs.mapM₁ λ x => justType (typeOf x.val c env)) = Except.ok txs) :
-  List.Forall₂ (λ xᵢ txᵢ => ∃ cᵢ, typeOf xᵢ c env = Except.ok (txᵢ, cᵢ)) xs txs
-:=
-match xs with
-| [] => by
-  replace htxs : txs = [] :=
-    by simpa [List.mapM₁, pure, Except.pure] using htxs
-  subst htxs
-  constructor
-| x :: xs => by
-  simp only [List.mapM₁, List.attach, List.attachWith, List.pmap_cons, List.mapM_cons, bind_pure_comp] at htxs
-  cases htx : justType (typeOf x c env) <;> simp only [htx, Except.bind_err, reduceCtorEq] at htxs
-  simp only [justType, Except.map] at htx
-  split at htx <;> simp only [reduceCtorEq, Except.ok.injEq] at htx
-  subst htx
-  simp only [List.mapM_pmap_subtype (fun x => justType (typeOf x c env))] at htxs
-  cases htxs' : List.mapM (fun x => justType (typeOf x c env)) xs <;>
-    simp only [htxs', Except.map_error, Except.map_ok, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at htxs
-  subst txs
-  constructor
-  · rename_i r _ _
-    exists r.snd
-  · have ih := @type_of_call_args_inversion xs
-    simp [ih, htxs', List.mapM₁]
-
-theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
-  (htx : typeOf (Expr.call xfn xs) c env = Except.ok (tx, c')) :
-  ∃ txs,
-    (∃ ty, tx = .call xfn txs ty) ∧
-    List.Forall₂ (λ xᵢ txᵢ => ∃ cᵢ, typeOf xᵢ c env = .ok (txᵢ, cᵢ)) xs txs
-:= by
-  simp only [typeOf, typeOfCall] at htx
-  cases htx₁ : xs.mapM₁ fun x => justType (typeOf x.val c env) <;> simp only [htx₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at htx
-  rename_i txs
-  exists txs
-  and_intros
-  · split at htx <;>
-    (first
-    | contradiction
-    | cases htx₁ : typeOfConstructor Ext.Decimal.decimal xs (CedarType.ext ExtType.decimal) <;> simp only [htx₁] at htx
-    | cases htx₁ : typeOfConstructor Ext.IPAddr.ip xs (CedarType.ext ExtType.ipAddr) <;> simp only [htx₁] at htx
-    | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.parse xs (.ext .datetime) <;> simp only [htx₁] at htx
-    | cases htx₁ : typeOfConstructor Cedar.Spec.Ext.Datetime.Duration.parse xs (.ext .duration) <;> simp only [htx₁] at htx
-    | skip) <;>
-    simp only [ok, err, Except.ok.injEq, Prod.mk.injEq, Except.bind_ok, Except.bind_err, reduceCtorEq] at htx <;>
-    simp [←htx]
-  · exact type_of_call_args_inversion htx₁
-
 theorem type_of_call_decimal_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .decimal xs) c env = Except.ok (ty, c')) :
   ty.typeOf = .ext .decimal ∧

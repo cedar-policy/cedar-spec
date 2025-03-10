@@ -26,48 +26,30 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem hasAttrInRecord_has_empty_or_singleton_capabilities {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {rty : RecordType} {ty₁ : CedarType} :
-  hasAttrInRecord rty x₁ a c₁ b = Except.ok (ty₁, c₂) →
-  c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ (.attr a)
-:= by
-  intro h₁
-  simp [hasAttrInRecord] at h₁
-  split at h₁ <;>
-  (try split at h₁) <;>
-  simp [ok, err] at h₁ <;>
-  simp [h₁]
-
-theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr}
-  (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (tx, c₂)) :
+theorem type_of_hasAttr_inversion {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr}
+  (h₁ : typeOf (Expr.hasAttr x₁ a) c₁ env = Except.ok (e', c₂)) :
   (c₂ = ∅ ∨ c₂ = Capabilities.singleton x₁ (.attr a)) ∧
-  ∃ tx₁ c₁',
-    typeOf x₁ c₁ env = .ok (tx₁, c₁') ∧
-    tx = .hasAttr tx₁ a tx.typeOf ∧
-    ((∃ ety, tx₁.typeOf = .entity ety) ∨
-     (∃ rty, tx₁.typeOf = .record rty))
+  ∃ c₁',
+    (∃ ety, (typeOf x₁ c₁ env).typeOf = Except.ok (.entity ety, c₁')) ∨
+    (∃ rty, (typeOf x₁ c₁ env).typeOf = Except.ok (.record rty, c₁'))
 := by
-  simp [typeOf] at h₁
+  simp [typeOf, typeOfHasAttr] at h₁
   cases h₂ : typeOf x₁ c₁ env <;> simp [h₂] at h₁
   case ok res =>
     have ⟨ty₁, c₁'⟩ := res
-    simp [typeOfHasAttr, bind, Except.bind] at h₁
-    split at h₁ <;> try contradiction
-    · simp
-      split at h₁ <;> simp [ok] at h₁
-      rename_i heq₁ _ _ heq₂
-      simp [heq₁, ←h₁]
-      simp [TypedExpr.typeOf]
-      apply hasAttrInRecord_has_empty_or_singleton_capabilities heq₂
-    · split at h₁
-      · split at h₁ <;> simp [ok] at h₁
-        rename_i heq₁ _ _ _ _ _ heq₃
-        simp [heq₁, ←h₁]
-        simp [TypedExpr.typeOf]
-        apply hasAttrInRecord_has_empty_or_singleton_capabilities heq₃
-      · split at h₁ <;> simp [ok, err] at h₁
-        rename_i heq₁ _ _ heq₃
-        simp [heq₁, ←h₁]
-        simp [TypedExpr.typeOf]
+    simp only [ResultType.typeOf, Except.map]
+    simp at h₁
+    split at h₁
+    <;> simp [err, ok, hasAttrInRecord] at h₁
+    <;> rename_i heq
+    <;> rw [heq]
+    <;> split at h₁
+    <;> try split at h₁
+    <;> try split at h₁
+    all_goals {
+      simp [ok] at h₁
+      try simp [h₁]
+    }
 
 theorem type_of_hasAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁' : Capabilities} {env : Environment} {rty : RecordType} {request : Request} {entities : Entities} {v₁ : Value}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -190,7 +172,7 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   GuardedCapabilitiesInvariant (Expr.hasAttr x₁ a) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.hasAttr x₁ a) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨h₅, ty₁, c₁', hty₁, hty, h₄⟩ := type_of_hasAttr_inversion h₃
+  have ⟨h₅, c₁', h₄⟩ := type_of_hasAttr_inversion h₃
   apply And.intro
   case left =>
     simp [GuardedCapabilitiesInvariant, CapabilitiesInvariant]
@@ -203,15 +185,17 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo, h₆]
   case right =>
     rcases h₄ with ⟨ety, h₄⟩ | ⟨rty, h₄⟩ <;>
-    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ hty₁  <;>
+    split_type_of h₄ <;> rename_i h₄ hl₄ hr₄ <;>
+    have ⟨_, v₁, h₆, h₇⟩ := ih h₁ h₂ h₄  <;>
     simp [EvaluatesTo] at h₆ <;>
     simp [EvaluatesTo, evaluate] <;>
-    rw [h₄] at h₇ <;>
+    rw [hl₄] at h₇ <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
     <;> try exact type_is_inhabited ty.typeOf
-    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
+    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hl₄, hr₄, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
-    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
+    · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hl₄, hr₄, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_records h₁ h₃ h₈ h₆ h₇
+
 
 end Cedar.Thm
