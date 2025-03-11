@@ -151,8 +151,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   WellTyped env (.getAttr x₁ attr ty)
 | hasAttr_record (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
   (h₀ : WellTyped env x₁)
-  (h₁ : ∃ rty, x₁.typeOf = .record rty)
-  (h₂ : ∃ bty, ty = .bool bty) :
+  (h₁ : ∃ rty, x₁.typeOf = .record rty ∧ if rty.contains attr then (ty = .bool .tt ∨ ty = .bool .anyBool) else ty = .bool .ff) :
   WellTyped env (.hasAttr x₁ attr ty)
 | hasAttr_entity (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
   (h₀ : WellTyped env x₁)
@@ -204,18 +203,22 @@ theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {re
     · simp [TypedExpr.toExpr, evaluate, heq, Result.as]
       simp at h₆
       exact h₆
-  case hasAttr_record x₁ attr ty h₂ h₃ h₄ =>
-    have ⟨rty, h₃⟩ := h₃
+  case hasAttr_record x₁ attr ty h₂ h₃ =>
+    have ⟨rty, h₃, h₄⟩ := h₃
     have hᵢ₁ := well_typed_expr_cannot_go_wrong h₀ h₂
     split <;> split at hᵢ₁
     case _ v₁ heq₁ _ v₂ heq₂ =>
       simp [h₃] at hᵢ₁
-      have ⟨r, hᵢ₁⟩ := instance_of_record_type_is_record hᵢ₁
-      simp [TypedExpr.toExpr, evaluate, heq₂, hasAttr, hᵢ₁, attrsOf] at heq₁
+      cases hᵢ₁
+      rename_i r h₅ h₆ h₇
+      simp [TypedExpr.toExpr, evaluate, heq₂, hasAttr, attrsOf] at heq₁
       simp [TypedExpr.typeOf]
       rw [←heq₁]
-      cases h₄
-      rename_i bty₁ heq₃
+      split at h₄
+      case _ heq₃ =>
+
+
+
 
       -- stuck: InstanceOfType (Value.prim (Prim.bool (r.contains attr))) (CedarType.bool bty)
       sorry
