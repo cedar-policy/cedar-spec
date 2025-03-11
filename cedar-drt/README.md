@@ -31,16 +31,11 @@ The table below lists all available fuzz targets, including which component of t
 | [`roundtrip-entities`](fuzz/fuzz_targets/roundtrip-entities.rs) | Entity parser | PBT | Test round trip property for entity data. parse-entity-json ∘ serialize-entity == id for entities |
 | [`roundtrip-entities-bytes`](fuzz/fuzz_targets/roundtrip-entities.rs) | Entity parser | PBT | Test the same round trip property for entity data, starting from an arbitrary string instead of generating the entities data structure |
 |  |  |  |  |
-| [`partial-eval`](fuzz/fuzz_targets/partial-eval.rs) | Partial evaluator | PBT | Test that residual policies with unknowns substituted are equivalent to original policies with unknowns replaced |
 | [`simple-parser`](fuzz/fuzz_targets/simple-parser.rs) |  Parser | PBT | Test that parsing doesn't crash with random input strings |
 | [`validation-pbt`](fuzz/fuzz_targets/validation-pbt.rs) | Validator | PBT | Test that validated policies do not result in type errors |
 | [`validation-pbt-type-directed`](fuzz/fuzz_targets/validation-pbt-type-directed.rs) | Validator | PBT | Test that validated policies do not result in type errors using (mostly) well-typed inputs |
 | [`entity-manifest-drt-type-directed`](fuzz/fuzz_targets/entity-slicing-pbt-type-directed.rs) | Entity Slicing | DRT | Test that entity slicing produces the same authorization response as without it. |
 | [`wildcard-matching`](fuzz/fuzz_targets/wildcard-matching.rs) | String matching algorithm used for the `like` operator | PBT | Test algorithm against a regex-based implementation |
-## Logging
-
-If the fuzz targets are compiled with the `log` features, then they will log their entire corpus to the file pointed at in the `LOGFILE` environment variable.
-The sampling rate can be controlled by the `RATE` environment variable, which defaults to 100% if not set.
 
 ## Generating corpus tests
 

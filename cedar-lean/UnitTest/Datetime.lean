@@ -115,11 +115,14 @@ def testsForValidDurationStrings :=
     testValidDuration "1d" 86400000,
     testValidDuration "12s340ms" 12340,
     testValidDuration "1s234ms" 1234,
+    testValidDuration "-1ms" (-1),
     testValidDuration "-1s" (-1000),
     testValidDuration "-4s200ms" (-4200),
     testValidDuration "-9s876ms" (-9876),
     testValidDuration "106751d23h47m16s854ms" 9223297516854,
     testValidDuration "-106751d23h47m16s854ms" (-9223297516854),
+    testValidDuration "-9223372036854775808ms" (-9223372036854775808), -- min Int64 value
+    testValidDuration "9223372036854775807ms" (9223372036854775807),   -- max Int64 value
     testValidDuration "1d2h3m4s5ms" 87304005,
     testValidDuration "2d12h" 177120000,
     testValidDuration "3m30s" 210000,

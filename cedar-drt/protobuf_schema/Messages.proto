@@ -15,6 +15,12 @@ message ValidationRequest {
     cedar_policy_validator.ValidationMode mode = 3;
 }
 
+message LevelValidationRequest {
+    cedar_policy_validator.Schema schema = 1;
+    cedar_policy_core.PolicySet policies = 2;
+    int32 level = 3;
+}
+
 message EvaluationRequest {
     cedar_policy_core.Expr expr = 1;
     cedar_policy_core.Request request = 2;

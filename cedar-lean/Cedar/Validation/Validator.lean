@@ -172,12 +172,24 @@ def typecheckPolicyWithEnvironments (policy : Policy) (envs : List Environment) 
   let policyTypes ← envs.mapM (typecheckPolicy policy)
   if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
 
+/-- Check a policy with a level under multiple environments. -/
+def typecheckPolicyWithLevelWithEnvironments (policy : Policy) (level : Nat) (envs : List Environment) : ValidationResult := do
+  let policyTypes ← envs.mapM (typecheckPolicyWithLevel policy level)
+  if allFalse policyTypes then .error (.impossiblePolicy policy.id) else .ok ()
+
 /--
 Analyze a set of policies to check that all are boolean-typed, and that
 none are guaranteed to be false under all possible environments.
 -/
 def validate (policies : Policies) (schema : Schema) : ValidationResult :=
   policies.forM (typecheckPolicyWithEnvironments · schema.environments)
+
+/--
+Analyze a set of policies to check that all are boolean-typed, and that
+none are guaranteed to be false under all possible environments.
+-/
+def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
+  policies.forM (typecheckPolicyWithLevelWithEnvironments · level schema.environments)
 
 ----- Derivations -----
 
