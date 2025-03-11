@@ -76,7 +76,7 @@ def schema : Schema :=
 
 def levelCheckExpr (e : Expr) (env : Environment) (n : Nat) : Except String Bool :=
   match typeOf e ∅ env with
-  | .ok (tx, _) => pure $ checkLevel tx n
+  | .ok (tx, _) => pure $ tx.checkLevel env n
   | _           => .error "Typechecking failed, but all tests cases should be well typed"
 
 private def testLevelCheck (msg : String) (e : Expr) (n : Nat) : List (TestCase IO) :=
@@ -109,6 +109,7 @@ def levelZero :=
     testLevelCheck "lit" (.lit (.string "foo")),
     testLevelCheck "var" principal,
     testLevelCheck "entityUID" euidLit,
+    testLevelCheck "action entityUID" (.lit (.entityUID Action)),
     testLevelCheck "record" recordLit,
     testLevelCheck "getAttr on record lit attr" recordAccessLit,
     testLevelCheck "getAttr on record var attr" recordAccessVar,
@@ -123,6 +124,7 @@ def levelOne :=
     testLevelCheck "getAttr on var" (.getAttr principal "manager"),
     testLevelCheck "hasAttr on var" (.hasAttr principal "manager"),
     testLevelCheck "mem on var" (.binaryApp .mem principal euidLit),
+    testLevelCheck "mem on action" (.binaryApp .mem (.lit (.entityUID Action)) (.lit (.entityUID Action))),
     testLevelCheck "getTag and hasTag on var" (.and (.binaryApp .hasTag principal (.lit (.string "foo"))) (.binaryApp .getTag principal (.lit (.string "foo")))),
     testLevelCheck "getAttr on var through record" (.getAttr recordAccessVar "manager"),
     testLevelCheck "getAttr on var through record (other attrs contains deref)" (.getAttr (.getAttr (.record [("foo", principal), ("bar", .getAttr principal "isAdmin")]) "foo") "manager"),
