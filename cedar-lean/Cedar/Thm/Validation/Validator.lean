@@ -48,9 +48,9 @@ theorem action_matches_env (env : Environment) (request : Request) (entities : E
   obtain ⟨ ⟨ _, h₁, _, _ ⟩ , _ , _⟩ := h₀
   exact h₁
 
-theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (ty : CedarType) (request : Request) (entities : Entities) :
+theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : TypedExpr) (request : Request) (entities : Entities) :
   RequestAndEntitiesMatchEnvironment env request entities →
-  typecheckPolicy policy env = .ok ty →
+  typecheckPolicy policy env = .ok tx →
   ∃ b : Bool, EvaluatesTo policy.toExpr request entities b
 := by
   intro h₁ h₂
@@ -109,7 +109,7 @@ theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : Li
     rw [List.mapM_ok_iff_forall₂] at h₃
     have h₄ := List.forall₂_implies_all_left h₃
     specialize h₄ env h₀
-    obtain ⟨ty, ⟨_, h₅⟩⟩ := h₄
-    exact typecheck_policy_is_sound policy env ty request entities h₁ h₅
+    obtain ⟨tx, ⟨_, h₅⟩⟩ := h₄
+    exact typecheck_policy_is_sound policy env tx request entities h₁ h₅
 
 end Cedar.Thm

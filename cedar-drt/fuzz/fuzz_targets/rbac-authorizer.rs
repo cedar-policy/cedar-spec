@@ -22,15 +22,14 @@ use cedar_policy_core::entities::Entities;
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::parser;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
-use serde::Serialize;
 
-#[derive(Arbitrary, Debug, Serialize)]
+#[derive(Arbitrary, Debug)]
 pub struct AuthorizerInputAbstractEvaluator {
     /// Set of AbstractPolicy objects
     policies: Vec<AbstractPolicy>,
 }
 
-#[derive(Arbitrary, Debug, PartialEq, Eq, Clone, Serialize)]
+#[derive(Arbitrary, Debug, PartialEq, Eq, Clone)]
 enum AbstractPolicy {
     /// Permit policy that evaluates 'true'
     PermitTrue,

@@ -17,25 +17,27 @@
 #![no_main]
 use cedar_drt::*;
 use cedar_drt_inner::*;
-use cedar_policy_core::extensions::Extensions;
+use cedar_policy_core::ast;
 use cedar_policy_generators::{
-    hierarchy::Hierarchy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    abac::ABACPolicy, hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
+    size_hint_utils::size_hint_for_range,
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use log::{debug, info};
 
 /// Input expected by this fuzz target
 #[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
     pub schema: Schema,
-    /// generated hierarchy
-    pub hierarchy: Hierarchy,
+    /// generated policy
+    pub policy: ABACPolicy,
+    /// Level to validate the policy at
+    pub level: usize,
 }
 
 /// settings for this fuzz target
 const SETTINGS: ABACSettings = ABACSettings {
-    match_types: false,
+    match_types: true,
     enable_extensions: true,
     max_depth: 7,
     max_width: 7,
@@ -52,7 +54,13 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: Schema = Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        Ok(Self { schema, hierarchy })
+        let policy = schema.arbitrary_policy(&hierarchy, u)?;
+        let level = u.int_in_range(0..=SETTINGS.max_depth + 1)?;
+        Ok(Self {
+            schema,
+            policy,
+            level,
+        })
     }
 
     fn try_size_hint(
@@ -61,22 +69,26 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         Ok(arbitrary::size_hint::and_all(&[
             Schema::arbitrary_size_hint(depth)?,
             HierarchyGenerator::size_hint(depth),
+            Schema::arbitrary_policy_size_hint(&SETTINGS, depth),
+            size_hint_for_range(0, SETTINGS.max_depth + 1),
         ]))
     }
 }
 
 fuzz_target!(|input: FuzzTargetInput| {
-    initialize_log();
     let def_impl = LeanDefinitionalEngine::new();
 
-    // generate a schema
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
-        debug!("Schema: {:?}", schema);
-        if let Ok(entities) = Entities::try_from(input.hierarchy) {
-            let (_, total_dur) = time_function(|| {
-                run_ent_val_test(&def_impl, schema, entities, Extensions::all_available())
-            });
-            info!("{}{}", TOTAL_MSG, total_dur.as_nanos());
-        }
+        let mut policyset = ast::PolicySet::new();
+        let policy: ast::StaticPolicy = input.policy.into();
+        policyset.add_static(policy).unwrap();
+
+        run_level_val_test(
+            &def_impl,
+            schema,
+            &policyset,
+            ValidationMode::Strict,
+            input.level as i32,
+        );
     }
 });
