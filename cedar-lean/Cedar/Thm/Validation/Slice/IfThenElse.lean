@@ -35,7 +35,7 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.ite e₁ e₂ e₃) c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx env n nmax path)
+  (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate (.ite e₁ e₂ e₃) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)

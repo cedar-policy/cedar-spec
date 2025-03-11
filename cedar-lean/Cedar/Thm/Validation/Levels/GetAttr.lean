@@ -39,7 +39,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : TypedExpr.AtLevel (tx₁.getAttr a ty) env n)
+  (hl : (tx₁.getAttr a ty).AtLevel env n)
   (ht : typeOf e c₀ env = Except.ok (tx₁, c₁))
   (hety : tx₁.typeOf = CedarType.entity ety)
   (ihe : TypedAtLevelIsSound e)
@@ -53,7 +53,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   case getAttrRecord hnety _ =>
     specialize hnety euid.ty
     contradiction
-  rename_i n hel₁ hl₁
+  rename_i n hel₁ hl₁ _
   simp only [evaluate]
   have hl₁' := entity_access_at_level_then_at_level hl₁
   specialize ihe hs hc hr ht hl₁'
@@ -67,7 +67,7 @@ theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : TypedExpr.AtLevel (ty₁.getAttr a tx.typeOf) env n)
+  (hl : (ty₁.getAttr a tx.typeOf).AtLevel env n)
   (ht : typeOf e c₀ env = Except.ok (ty₁, c₁'))
   (hrty : ty₁.typeOf = CedarType.record rty)
   (ihe : TypedAtLevelIsSound e)
@@ -78,7 +78,7 @@ theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr}
   replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
   subst h₁₄
   cases hl
-  case getAttr hety _ =>
+  case getAttr hety =>
     simp [hety] at hrty
   rename_i hl
   have ih := ihe hs hc hr ht hl
@@ -96,7 +96,7 @@ theorem level_based_slicing_is_sound_get_attr {e : Expr} {tx : TypedExpr} {a : A
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (e.getAttr a) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx env n)
+  (hl : tx.AtLevel env n)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.getAttr e a) request entities = evaluate (.getAttr e a) request slice
 := by

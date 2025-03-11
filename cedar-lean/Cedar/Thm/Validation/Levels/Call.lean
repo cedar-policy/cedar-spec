@@ -32,7 +32,7 @@ theorem level_based_slicing_is_sound_call {xs : List Expr} {n : Nat} {c₀ c₁:
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.call xfn xs) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx env n)
+  (hl : tx.AtLevel env n)
   (ih : ∀ x ∈ xs, TypedAtLevelIsSound x) :
   evaluate (.call xfn xs) request entities = evaluate (.call xfn xs) request slice
 := by

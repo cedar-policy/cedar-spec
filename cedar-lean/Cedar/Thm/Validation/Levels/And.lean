@@ -39,7 +39,7 @@ theorem level_based_slicing_is_sound_and {e₁ e₂ : Expr} {n : Nat} {c₀ c₁
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.and e₁ e₂) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx env n)
+  (hl : tx.AtLevel env n)
   (ih₁ : TypedAtLevelIsSound e₁)
   (ih₂ : TypedAtLevelIsSound e₂)
   : evaluate (.and e₁ e₂) request entities = evaluate (.and e₁ e₂) request slice

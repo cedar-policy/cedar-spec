@@ -31,5 +31,5 @@ def TypedAtLevelIsSound (e : Expr) : Prop := ∀ {n : Nat} {tx : TypedExpr} {c c
   CapabilitiesInvariant c request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c env = Except.ok (tx, c₁) →
-  TypedExpr.AtLevel tx env n →
+  tx.AtLevel env n →
   evaluate e request entities = evaluate e request slice

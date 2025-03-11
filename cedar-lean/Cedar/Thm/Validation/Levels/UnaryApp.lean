@@ -37,7 +37,7 @@ theorem level_based_slicing_is_sound_unary_app {op : UnaryOp} {e : Expr} {n : Na
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.unaryApp op e) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx env n)
+  (hl : tx.AtLevel env n)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.unaryApp op e) request entities = evaluate (.unaryApp op e) request slice
 := by

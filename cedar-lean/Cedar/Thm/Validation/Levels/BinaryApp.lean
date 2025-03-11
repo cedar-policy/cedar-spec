@@ -51,7 +51,7 @@ theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : Enti
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e₁ c₀ env = Except.ok (tx₁, c₁))
-  (hl : TypedExpr.EntityAccessAtLevel tx₁ env n (n + 1) [])
+  (hl : tx₁.EntityAccessAtLevel env n (n + 1) [])
   (he : evaluate e₁ request entities = .ok (Value.prim (Prim.entityUID euid₁)))
   (hs : some slice = entities.sliceAtLevel request (n + 1))
   : inₑ euid₁ euid₂ entities = inₑ euid₁ euid₂ slice
@@ -66,7 +66,7 @@ theorem level_based_slicing_is_sound_binary_app {op : BinaryOp} {e₁ e₂ : Exp
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.binaryApp op e₁ e₂) c₀ env = Except.ok (tx, c₁))
-  (hl : TypedExpr.AtLevel tx env n)
+  (hl : tx.AtLevel env n)
   (ihe₁ : TypedAtLevelIsSound e₁)
   (ihe₂ : TypedAtLevelIsSound e₂)
   : evaluate (.binaryApp op e₁ e₂) request entities = evaluate (.binaryApp op e₁ e₂) request slice

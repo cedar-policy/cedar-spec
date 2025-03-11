@@ -40,7 +40,7 @@ theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capa
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf (.lit p) c env = .ok (tx, c'))
   (he : evaluate (.lit p) request entities = .ok v)
-  (hel : TypedExpr.EntityAccessAtLevel tx env n nmax path)
+  (hel : tx.EntityAccessAtLevel env n nmax path)
   (ha : Value.EuidViaPath v path euid) :
   request.action = euid
 := by
@@ -146,7 +146,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx env n nmax path)
+  (hl : tx.EntityAccessAtLevel env n nmax path)
   (he : evaluate e request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid) :
@@ -299,7 +299,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx env n nmax [])
+  (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hf : entities.find? euid = some ed)
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
@@ -345,7 +345,7 @@ theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : 
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
   (ht : typeOf e c env = .ok (tx, c'))
-  (hl : TypedExpr.EntityAccessAtLevel tx env n nmax [])
+  (hl : tx.EntityAccessAtLevel env n nmax [])
   (he : evaluate e request entities = .ok (Value.prim (Prim.entityUID euid)))
   (hs : slice = Entities.sliceAtLevel entities request (n + 1)) :
   entities.find? euid = slice.find? euid

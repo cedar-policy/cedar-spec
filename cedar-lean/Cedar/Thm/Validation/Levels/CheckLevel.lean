@@ -31,105 +31,121 @@ def DereferencingBinaryOp : BinaryOp → Prop
   | .mem | .hasTag | .getTag => True
   | _ => False
 
+end Cedar.Thm
+
+namespace Cedar.Validation
+
+open Cedar.Validation
+open Cedar.Data
+open Cedar.Spec
+open Cedar.Thm
+
 mutual
 
-inductive TypedExpr.EntityAccessAtLevel : TypedExpr → Environment → Nat → Nat → List Attr → Prop where
-  | var (v : Var) (ty : CedarType) (env : Environment) (n nmax : Nat) (path : List Attr) :
-    EntityAccessAtLevel  (.var v ty) env n nmax path
-  | action (ty : CedarType) (env : Environment) (n nmax : Nat) (path : List Attr) :
-    EntityAccessAtLevel  (.lit (.entityUID env.reqty.action) ty) env n nmax path
-  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (env : Environment) (n nmax : Nat) (path : List Attr)
-    (hl₁ : AtLevel tx₁ env nmax)
-    (hl₂ : EntityAccessAtLevel tx₂ env n nmax path)
-    (hl₃ : EntityAccessAtLevel tx₃ env n nmax path) :
-    EntityAccessAtLevel (.ite tx₁ tx₂ tx₃ ty) env n nmax path
-  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n nmax : Nat) (path : List Attr)
-    (hl₁ : EntityAccessAtLevel tx₁ env n nmax [])
-    (hl₂ : AtLevel tx₂ env nmax) :
-    EntityAccessAtLevel (.binaryApp .getTag tx₁ tx₂ ty) env (n + 1) nmax path
-  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (env : Environment) {ety : EntityType} (n nmax : Nat) {path : List Attr}
-    (hl₁ : EntityAccessAtLevel tx₁ env n nmax [])
+inductive TypedExpr.EntityAccessAtLevel (env : Environment) : TypedExpr → Nat → Nat → List Attr → Prop where
+  | var (v : Var) (ty : CedarType) (n nmax : Nat) (path : List Attr) :
+    EntityAccessAtLevel env (.var v ty) n nmax path
+  | action (ty : CedarType) (n nmax : Nat) (path : List Attr) :
+    EntityAccessAtLevel env (.lit (.entityUID env.reqty.action) ty) n nmax path
+  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType)  (n nmax : Nat) (path : List Attr)
+    (hl₁ : AtLevel env tx₁ nmax)
+    (hl₂ : tx₂.EntityAccessAtLevel env n nmax path)
+    (hl₃ : tx₃.EntityAccessAtLevel env n nmax path) :
+    EntityAccessAtLevel env (.ite tx₁ tx₂ tx₃ ty) n nmax path
+  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n nmax : Nat) (path : List Attr)
+    (hl₁ : tx₁.EntityAccessAtLevel env n nmax [])
+    (hl₂ : tx₂.AtLevel env nmax) :
+    EntityAccessAtLevel env (.binaryApp .getTag tx₁ tx₂ ty) (n + 1) nmax path
+  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (ety : EntityType) (n nmax : Nat) {path : List Attr}
+    (hl₁ : tx₁.EntityAccessAtLevel env n nmax [])
     (hty : tx₁.typeOf = .entity ety) :
-    EntityAccessAtLevel (.getAttr tx₁ a ty) env (n + 1) nmax path
-  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (env : Environment) (n nmax : Nat) {path : List Attr}
-    (hl₁ : EntityAccessAtLevel tx₁ env n nmax (a :: path))
+    EntityAccessAtLevel env (.getAttr tx₁ a ty) (n + 1) nmax path
+  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n nmax : Nat) {path : List Attr}
+    (hl₁ : tx₁.EntityAccessAtLevel env n nmax (a :: path))
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    EntityAccessAtLevel (.getAttr tx₁ a ty) env n nmax path
-  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (env : Environment) (n nmax : Nat) {a : Attr} {path : List Attr}
-    (hl₁ : ∀ atx ∈ attrs, AtLevel atx.snd env nmax)
+    EntityAccessAtLevel env (.getAttr tx₁ a ty) n nmax path
+  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (n nmax : Nat) {a : Attr} {path : List Attr}
+    (hl₁ : ∀ atx ∈ attrs, atx.snd.AtLevel env nmax)
     (hf : (Map.make attrs).find? a = some tx)
-    (hl₂ : EntityAccessAtLevel tx env n nmax path) :
-    EntityAccessAtLevel (.record attrs ty) env n nmax (a :: path)
+    (hl₂ : tx.EntityAccessAtLevel env n nmax path) :
+    EntityAccessAtLevel env (.record attrs ty) n nmax (a :: path)
 
-inductive TypedExpr.AtLevel : TypedExpr → Environment → Nat → Prop where
-  | lit (p : Prim) (ty : CedarType) (env : Environment) (n : Nat) :
-    AtLevel (.lit p ty) env n
-  | var (v : Var) (ty : CedarType) (env : Environment) (n : Nat) :
-    AtLevel (.var v ty) env n
-  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n)
-    (hl₂ : AtLevel tx₂ env n)
-    (hl₃ : AtLevel tx₃ env n) :
-    AtLevel (.ite tx₁ tx₂ tx₃ ty) env n
-  | and (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n)
-    (hl₂ : AtLevel tx₂ env n) :
-    AtLevel (.and tx₁ tx₂ ty) env n
-  | or (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n)
-    (hl₂ : AtLevel tx₂ env n) :
-    AtLevel (.or tx₁ tx₂ ty) env n
-  | unaryApp (op : UnaryOp) (tx₁ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n) :
-    AtLevel (.unaryApp op tx₁ ty) env n
-  | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ env n (n + 1) [])
-    (hl₂ : AtLevel tx₂ (env : Environment) (n + 1)) :
-    AtLevel (.binaryApp .mem tx₁ tx₂ ty) (env : Environment) (n + 1)
-  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ env n (n + 1) [])
-    (hl₂ : AtLevel tx₂ (env : Environment) (n + 1)) :
-    AtLevel (.binaryApp .getTag tx₁ tx₂ ty) (env : Environment) (n + 1)
-  | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ env n (n + 1) [])
-    (hl₂ : AtLevel tx₂ (env : Environment) (n + 1)) :
-    AtLevel (.binaryApp .hasTag tx₁ tx₂ ty) (env : Environment) (n + 1)
-  | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
+inductive TypedExpr.AtLevel (env : Environment) : TypedExpr → Nat → Prop where
+  | lit (p : Prim) (ty : CedarType) (n : Nat) :
+    AtLevel env (.lit p ty) n
+  | var (v : Var) (ty : CedarType) (n : Nat) :
+    AtLevel env (.var v ty) n
+  | ite (tx₁ tx₂ tx₃ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
+    (hl₂ : tx₂.AtLevel env n)
+    (hl₃ : tx₃.AtLevel env n) :
+    AtLevel env (.ite tx₁ tx₂ tx₃ ty) n
+  | and (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
+    (hl₂ : tx₂.AtLevel env n) :
+    AtLevel env (.and tx₁ tx₂ ty) n
+  | or (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
+    (hl₂ : tx₂.AtLevel env n) :
+    AtLevel env (.or tx₁ tx₂ ty) n
+  | unaryApp (op : UnaryOp) (tx₁ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : AtLevel env tx₁ n) :
+    AtLevel env (.unaryApp op tx₁ ty) n
+  | mem (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
+    (hl₂ : tx₂.AtLevel env (n + 1)) :
+    AtLevel env (.binaryApp .mem tx₁ tx₂ ty) (n + 1)
+  | getTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
+    (hl₂ : tx₂.AtLevel env (n + 1)) :
+    AtLevel env (.binaryApp .getTag tx₁ tx₂ ty) (n + 1)
+  | hasTag (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
+    (hl₂ : tx₂.AtLevel env (n + 1)) :
+    AtLevel env (.binaryApp .hasTag tx₁ tx₂ ty) (n + 1)
+  | binaryApp (op : BinaryOp) (tx₁ tx₂ : TypedExpr) (ty : CedarType) (n : Nat)
     (hop : ¬ DereferencingBinaryOp op)
-    (hl₁ : AtLevel tx₁ env n)
-    (hl₂ : AtLevel tx₂ env n) :
-    AtLevel (.binaryApp op tx₁ tx₂ ty) env n
-  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (env : Environment) (n : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ env n (n + 1) [])
+    (hl₁ : tx₁.AtLevel env n)
+    (hl₂ : tx₂.AtLevel env n) :
+    AtLevel env (.binaryApp op tx₁ tx₂ ty) n
+  | getAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
     (hty : tx₁.typeOf = .entity ety) :
-    AtLevel (.getAttr tx₁ a ty) (env : Environment) (n + 1)
-  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (env : Environment) (n : Nat)
-    (hl₁ : EntityAccessAtLevel tx₁ env n (n + 1) [])
+    AtLevel env (.getAttr tx₁ a ty) (n + 1)
+  | hasAttr (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) {ety : EntityType} (n : Nat)
+    (hl₁ : tx₁.EntityAccessAtLevel env n (n + 1) [])
     (hty : tx₁.typeOf = .entity ety) :
-    AtLevel (.hasAttr tx₁ a ty) (env : Environment) (n + 1)
-  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n)
+    AtLevel env (.hasAttr tx₁ a ty) (n + 1)
+  | getAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    AtLevel (.getAttr tx₁ a ty) env n
-  | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl₁ : AtLevel tx₁ env n)
+    AtLevel env (.getAttr tx₁ a ty) n
+  | hasAttrRecord (tx₁ : TypedExpr) (a : Attr) (ty : CedarType) (n : Nat)
+    (hl₁ : tx₁.AtLevel env n)
     (hty : ∀ ety, tx₁.typeOf ≠ .entity ety) :
-    AtLevel (.hasAttr tx₁ a ty) env n
-  | set (txs : List TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl : ∀ tx ∈ txs, AtLevel tx env n) :
-    AtLevel (.set txs ty) env n
-  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl : ∀ atx ∈ attrs, AtLevel atx.snd env n) :
-    AtLevel (.record attrs ty) env n
-  | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType) (env : Environment) (n : Nat)
-    (hl : ∀ tx ∈ args, AtLevel tx env n) :
-    AtLevel (.call xfn args ty) env n
+    AtLevel env (.hasAttr tx₁ a ty) n
+  | set (txs : List TypedExpr) (ty : CedarType) (n : Nat)
+    (hl : ∀ tx ∈ txs, tx.AtLevel env n) :
+    AtLevel env (.set txs ty) n
+  | record (attrs : List (Attr × TypedExpr)) (ty : CedarType) (n : Nat)
+    (hl : ∀ atx ∈ attrs, atx.snd.AtLevel env n) :
+    AtLevel env (.record attrs ty) n
+  | call (xfn : ExtFun) (args : List TypedExpr) (ty : CedarType) (n : Nat)
+    (hl : ∀ tx ∈ args, tx.AtLevel env n) :
+    AtLevel env (.call xfn args ty) n
 end
 
+end Cedar.Validation
+
+namespace Cedar.Thm
+
+open Cedar.Validation
+open Cedar.Data
+open Cedar.Spec
 
 theorem entity_access_at_level_succ {tx : TypedExpr} {env : Environment} {n n' : Nat}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx env n n' path) :
-  TypedExpr.EntityAccessAtLevel tx env (n + 1) n' path
+  (h₁ : tx.EntityAccessAtLevel env n n' path) :
+  tx.EntityAccessAtLevel env (n + 1) n' path
 := by
   cases h₁
   case record tx attrs _ ha _ _ _ _ =>
@@ -153,8 +169,8 @@ theorem entity_access_at_level_succ {tx : TypedExpr} {env : Environment} {n n' :
 termination_by tx
 
 theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {env : Environment} {path : List Attr}
-  (h₁ : TypedExpr.EntityAccessAtLevel tx env n (n + 1) path) :
-  TypedExpr.AtLevel tx env (n + 1)
+  (h₁ : tx.EntityAccessAtLevel env n (n + 1) path) :
+  tx.AtLevel env (n + 1)
 := by
   cases h₁
   case getAttrRecord =>
@@ -173,16 +189,16 @@ termination_by tx
 mutual
 
 theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : Nat} {path : List Attr} :
-  (TypedExpr.EntityAccessAtLevel tx env n nmax path) ↔ (checkEntityAccessLevel tx env n nmax path)
+  (tx.EntityAccessAtLevel env n nmax path) ↔ (tx.checkEntityAccessLevel env n nmax path)
 := by
   cases tx
   case var =>
-    simp only [checkEntityAccessLevel, iff_true]
+    simp only [TypedExpr.checkEntityAccessLevel, iff_true]
     constructor
   case lit p _ =>
     cases p
     case entityUID =>
-      simp only [checkEntityAccessLevel, beq_iff_eq]
+      simp only [TypedExpr.checkEntityAccessLevel, beq_iff_eq]
       apply Iff.intro
       · intro hl ; cases hl
         rfl
@@ -190,14 +206,14 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
         subst hl
         constructor
     all_goals
-      simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+      simp only [TypedExpr.checkEntityAccessLevel, Bool.false_eq_true, iff_false]
       intro hc
       cases hc
   case ite tx₁ tx₂ tx₃ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @entity_access_level_spec tx₂
     have ih₃ := @entity_access_level_spec tx₃
-    simp only [checkEntityAccessLevel, Bool.and_eq_true]
+    simp only [TypedExpr.checkEntityAccessLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂, ←ih₃]
     apply Iff.intro
     · intro hl; cases hl
@@ -209,7 +225,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
     case getTag =>
       have ih₁ := @entity_access_level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp only [checkEntityAccessLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
+      simp only [TypedExpr.checkEntityAccessLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
       rw [←ih₁, ←ih₂]
       apply Iff.intro
       · intro hl; cases hl
@@ -221,11 +237,11 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
         subst n
         constructor <;> assumption
     all_goals
-      simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+      simp only [TypedExpr.checkEntityAccessLevel, Bool.false_eq_true, iff_false]
       intro hc
       cases hc
   case getAttr tx₁ a ty =>
-    simp only [checkEntityAccessLevel]
+    simp only [TypedExpr.checkEntityAccessLevel]
     split
     · have ih₁ := @entity_access_level_spec tx₁
       simp only [←ih₁, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
@@ -257,11 +273,11 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
   case record atxs _ =>
     cases path
     case nil =>
-      simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+      simp only [TypedExpr.checkEntityAccessLevel, Bool.false_eq_true, iff_false]
       intro hc
       cases hc
     case cons =>
-      simp only [checkEntityAccessLevel]
+      simp only [TypedExpr.checkEntityAccessLevel]
       split <;> simp only [iff_false, Bool.and_eq_true, Bool.false_eq_true, List.all_eq_true, Subtype.forall, Prod.forall]
       · apply Iff.intro
         · intro hl
@@ -290,9 +306,9 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
               have h₄ := List.sizeOf_lt_of_mem hatx
               rw [Prod.mk.sizeOf_spec _ atx.snd] at h₄
               omega
-            replace h₂ : checkLevel atx.snd env nmax = true := by
+            replace h₂ : atx.snd.checkLevel env nmax = true := by
               specialize h₂ atx.fst atx.snd hSizeOf
-              replace h₂ : atx ∈ atxs → checkLevel atx.snd env nmax = true := by
+              replace h₂ : atx ∈ atxs → atx.snd.checkLevel env nmax = true := by
                 simpa [List.attach₂] using h₂
               exact h₂ hatx
             have ih := @level_spec atx.snd
@@ -307,29 +323,29 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : Environment} {n nmax : 
             exact ih.mpr h₁
       · intro hc
         cases hc
-        rename_i h₁ _  _ h₂ _
+        rename_i h₁ _ _ h₂ _
         simp [h₁] at h₂
   all_goals
-    simp only [checkEntityAccessLevel, Bool.false_eq_true, iff_false]
+    simp only [TypedExpr.checkEntityAccessLevel, Bool.false_eq_true, iff_false]
     intro hc
     cases hc
 termination_by tx
 
 theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
-  (TypedExpr.AtLevel tx env n) ↔ (checkLevel tx env n = true)
+  (tx.AtLevel env n) ↔ (tx.checkLevel env n = true)
 := by
   cases tx
   case lit =>
-    simp only [checkLevel, iff_true]
+    simp only [TypedExpr.checkLevel, iff_true]
     constructor
   case var =>
-    simp only [checkLevel, iff_true]
+    simp only [TypedExpr.checkLevel, iff_true]
     constructor
   case ite tx₁ tx₂ tx₃ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @level_spec tx₂
     have ih₃ := @level_spec tx₃
-    simp only [checkLevel, Bool.and_eq_true]
+    simp only [TypedExpr.checkLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂, ←ih₃]
     apply Iff.intro
     · intros h
@@ -341,7 +357,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
   case or tx₁ tx₂ _ | and tx₁ tx₂ _ =>
     have ih₁ := @level_spec tx₁
     have ih₂ := @level_spec tx₂
-    simp only [checkLevel, Bool.and_eq_true]
+    simp only [TypedExpr.checkLevel, Bool.and_eq_true]
     rw [←ih₁, ←ih₂]
     apply Iff.intro
     · intro h
@@ -352,7 +368,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
 
   case unaryApp op tx₁ _ =>
     have ih₁ := @level_spec tx₁
-    simp only [checkLevel]
+    simp only [TypedExpr.checkLevel]
     rw [←ih₁]
     apply Iff.intro
     · intro h
@@ -367,7 +383,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
     case getTag | hasTag | mem =>
       have ih₁ := @entity_access_level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp only [checkLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
+      simp only [TypedExpr.checkLevel, gt_iff_lt, Bool.and_eq_true, decide_eq_true_eq]
       rw [←ih₁, ←ih₂]
       apply Iff.intro
       · intro h
@@ -385,7 +401,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
     all_goals
       have ih₁ := @level_spec tx₁
       have ih₂ := @level_spec tx₂
-      simp only [checkLevel, Bool.and_eq_true]
+      simp only [TypedExpr.checkLevel, Bool.and_eq_true]
       rw [←ih₁, ←ih₂]
       apply Iff.intro
       · intro h
@@ -396,8 +412,8 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
         | assumption
         | simp only [DereferencingBinaryOp, not_false_eq_true]
 
-  case getAttr tx₁ a _  | hasAttr tx₁ a _  =>
-    simp only [checkLevel, gt_iff_lt]
+  case getAttr tx₁ a _ | hasAttr tx₁ a _ =>
+    simp only [TypedExpr.checkLevel, gt_iff_lt]
     split <;> (rename_i hety ; apply Iff.intro)
     · intro h
       cases h
@@ -416,7 +432,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
       constructor <;> assumption
     · intro h
       cases h
-      · rename_i hety' _
+      · rename_i hety'
         simp [hety'] at hety
       · have ih₁ := @level_spec tx₁
         rw [←ih₁]
@@ -427,7 +443,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
       constructor <;> assumption
 
   case call | set =>
-    simp only [checkLevel, List.all_eq_true, List.mem_attach, forall_const, Subtype.forall]
+    simp only [TypedExpr.checkLevel, List.all_eq_true, List.mem_attach, forall_const, Subtype.forall]
     apply Iff.intro
     · intro h₁ tx h₂
       have ih := @level_spec tx
@@ -445,7 +461,7 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
       exact h₁ tx h₂
 
   case record attrs _ =>
-    simp only [checkLevel, List.all_eq_true, Subtype.forall, Prod.forall]
+    simp only [TypedExpr.checkLevel, List.all_eq_true, Subtype.forall, Prod.forall]
     apply Iff.intro
     · intro h₁ a tx h₂ h₃
       replace h₃ : (a, tx) ∈ attrs :=
@@ -462,9 +478,9 @@ theorem level_spec {tx : TypedExpr} {env : Environment} {n : Nat}:
         have h₄ := List.sizeOf_lt_of_mem h₂
         rw [Prod.mk.sizeOf_spec atx.fst atx.snd] at h₄
         omega
-      replace h₁ : checkLevel atx.snd env n := by
+      replace h₁ : atx.snd.checkLevel env n := by
         specialize h₁ atx.fst atx.snd hSizeOf
-        replace h₁ : atx ∈ attrs → checkLevel atx.snd env n= true := by
+        replace h₁ : atx ∈ attrs → atx.snd.checkLevel env n= true := by
           simpa [List.attach₂] using h₁
         exact h₁ h₂
       have ih := @level_spec atx.snd
