@@ -19,6 +19,8 @@ import Cedar.Data
 import Cedar.Validation
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
+import Cedar.Thm.Validation.Validator
+import Cedar.Thm.Validation.RequestEntityValidation
 
 import Cedar.Thm.Validation.Levels.Basic
 import Cedar.Thm.Validation.Levels.CheckLevel
@@ -106,17 +108,85 @@ theorem level_based_slicing_is_sound_expr {e : Expr} {n : Nat} {tx : TypedExpr} 
     exact level_based_slicing_is_sound_record hs hc hr ht hl ih
 termination_by e
 
-theorem level_based_slicing_is_sound {p : Policy} {n : Nat} {env : Environment} {request : Request} {entities slice : Entities}
+theorem typecheck_policy_with_level_is_sound {p : Policy} {tx : TypedExpr} {n : Nat} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (htl : typecheckAtLevel p env n = true) :
+  (htl : typecheckPolicyWithLevel p n env = .ok tx) :
   evaluate p.toExpr request entities = evaluate p.toExpr request slice
 := by
-  simp only [typecheckAtLevel] at htl
-  cases ht : typeOf p.toExpr ∅ env <;> (
-    rw [ht] at htl
-    simp only [Bool.false_eq_true] at htl
-  )
-  rw [←level_spec] at htl
+  simp only [typecheckPolicyWithLevel, typecheckPolicy] at htl
+  split at htl <;> try contradiction
+  rename_i tx' _ htx'
+  cases htl₁ : tx'.typeOf ⊑ .bool .anyBool  <;> simp only [htl₁, Bool.false_eq_true, ↓reduceIte, Except.bind_err, Except.bind_ok, reduceCtorEq] at htl
+  split at htl <;> simp only [reduceCtorEq, Except.ok.injEq] at htl
+  subst htl
+  rename_i htl'
+  have subst_action_preserves_entities := (@substitute_action_preserves_evaluation · · entities)
+  have subst_action_preserves_slice := (@substitute_action_preserves_evaluation · · slice)
+  rw [←subst_action_preserves_slice, ←subst_action_preserves_entities, action_matches_env hr]
+  rw [←level_spec] at htl'
   have hc := empty_capabilities_invariant request entities
-  exact level_based_slicing_is_sound_expr hs hc hr ht htl
+  exact level_based_slicing_is_sound_expr hs hc hr htx' htl'
+
+theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs : List Environment} {n : Nat} {request : Request} {entities slice : Entities}
+  (hs : slice = entities.sliceAtLevel request n)
+  (he : ∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities)
+  (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :
+  evaluate p.toExpr request entities = evaluate p.toExpr request slice
+:= by
+  simp only [typecheckPolicyWithLevelWithEnvironments] at htl
+  cases htl₁: List.mapM (typecheckPolicyWithLevel p n) envs <;> simp [htl₁] at htl
+  have ⟨env, ⟨he₁, hr⟩⟩ := he
+  rw [List.mapM_ok_iff_forall₂] at htl₁
+  replace htl₁ := List.forall₂_implies_all_left htl₁
+  specialize htl₁ env he₁
+  replace ⟨tx, ⟨_, htl₁⟩⟩ := htl₁
+  exact typecheck_policy_with_level_is_sound hs hr htl₁
+
+def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
+  policies.forM (typecheckPolicyWithLevelWithEnvironments · level schema.environments)
+
+theorem satisfied_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities} (effect : Effect)
+  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
+  satisfiedPolicies effect ps r₁ es₁ = satisfiedPolicies effect ps r₂ es₂
+:= by
+  simp only [satisfiedPolicies]
+  replace heq : ∀ p ∈ ps, satisfiedWithEffect effect p r₁ es₁ = satisfiedWithEffect effect p r₂ es₂ := by
+    intro p hp
+    specialize heq p hp
+    simp only [heq, satisfiedWithEffect, satisfied]
+  rw [List.filterMap_congr heq]
+
+theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
+  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
+  errorPolicies ps r₁ es₁ = errorPolicies ps r₂ es₂
+:= by
+  simp only [errorPolicies]
+  replace heq : ∀ p ∈ ps, errored p r₁ es₁ = errored p r₂ es₂ := by
+    intro p hp
+    specialize heq p hp
+    simp [heq, errored, hasError]
+  rw [List.filterMap_congr heq]
+
+theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
+  (hr : validateRequest schema request = .ok ())
+  (he : validateEntities schema entities = .ok ())
+  (hs : slice = entities.sliceAtLevel request n)
+  (htl : validateWithLevel ps schema n = .ok ()) :
+  isAuthorized request entities ps = isAuthorized request slice ps
+:= by
+  simp only [validateWithLevel] at htl
+  replace htl := List.forM_ok_implies_all_ok _ _ htl
+  have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he
+  clear hr he
+  simp [RequestAndEntitiesMatchSchema] at hre
+  have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request slice := by
+    intro p hp
+    specialize htl p hp
+    exact typecheck_policy_at_level_with_environments_is_sound hs hre htl
+  simp only [isAuthorized]
+  rw [
+    satisfied_policies_congr_evaluate .permit hsound,
+    satisfied_policies_congr_evaluate .forbid hsound,
+    error_policies_congr_evaluate hsound
+  ]
