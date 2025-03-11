@@ -138,7 +138,7 @@ instance : Coe Int64 Duration where
 
 def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
-def MILLISECONDS_PER_HOUR: Int := 360000
+def MILLISECONDS_PER_HOUR: Int := 3600000
 def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
@@ -231,5 +231,20 @@ def toTime (datetime: Datetime) : Duration :=
        if rem == 0
        then rem
        else (rem + millisPerDayI64)
+
+def Duration.toMilliseconds (duration: Duration) : Int64 :=
+  duration.val
+
+def Duration.toSeconds (duration: Duration) : Int64 :=
+  duration.toMilliseconds / 1000
+
+def Duration.toMinutes (duration: Duration) : Int64 :=
+  duration.toSeconds / 60
+
+def Duration.toHours (duration: Duration) : Int64 :=
+  duration.toMinutes / 60
+
+def Duration.toDays (duration: Duration) : Int64 :=
+  duration.toHours / 24
 
 end Datetime

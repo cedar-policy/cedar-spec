@@ -111,7 +111,7 @@ def testsForValidDurationStrings :=
     testValidDuration "1ms" 1,
     testValidDuration "1s" 1000,
     testValidDuration "1m" 60000,
-    testValidDuration "1h" 360000,
+    testValidDuration "1h" 3600000,
     testValidDuration "1d" 86400000,
     testValidDuration "12s340ms" 12340,
     testValidDuration "1s234ms" 1234,
@@ -119,20 +119,20 @@ def testsForValidDurationStrings :=
     testValidDuration "-1s" (-1000),
     testValidDuration "-4s200ms" (-4200),
     testValidDuration "-9s876ms" (-9876),
-    testValidDuration "106751d23h47m16s854ms" 9223297516854,
-    testValidDuration "-106751d23h47m16s854ms" (-9223297516854),
+    testValidDuration "106751d23h47m16s854ms" 9223372036854,
+    testValidDuration "-106751d23h47m16s854ms" (-9223372036854),
     testValidDuration "-9223372036854775808ms" (-9223372036854775808), -- min Int64 value
     testValidDuration "9223372036854775807ms" (9223372036854775807),   -- max Int64 value
-    testValidDuration "1d2h3m4s5ms" 87304005,
-    testValidDuration "2d12h" 177120000,
+    testValidDuration "1d2h3m4s5ms" 93784005,
+    testValidDuration "2d12h" 216000000,
     testValidDuration "3m30s" 210000,
-    testValidDuration "1h30m45s" 2205000,
-    testValidDuration "2d5h20m" 175800000,
-    testValidDuration "-1d12h" (-90720000),
-    testValidDuration "-3h45m" (-3780000),
+    testValidDuration "1h30m45s" 5445000,
+    testValidDuration "2d5h20m" 192000000,
+    testValidDuration "-1d12h" (-129600000),
+    testValidDuration "-3h45m" (-13500000),
     testValidDuration "1d1ms" 86400001,
     testValidDuration "59m59s999ms" 3599999,
-    testValidDuration "23h59m59s999ms" 11879999,
+    testValidDuration "23h59m59s999ms" 86399999,
     testValidDuration "0d0h0m0s0ms" 0
   ]
 
@@ -213,9 +213,102 @@ def testsForToTime :=
     testToTime "1969-12-31T12:00:00Z" 43200000
   ]
 
+private def testToMilliseconds (str : String) (dur : Int64) : TestCase IO :=
+  test s!"toMilliseconds {str} = {dur}" ⟨λ _ => checkEq (Duration.toMilliseconds (Duration.parse str).get!) dur⟩
+
+def testsForToMilliseconds :=
+  suite "toMilliseconds tests"
+  [
+    testToMilliseconds "0ms" 0,
+    testToMilliseconds "1ms" 1,
+    testToMilliseconds "1000ms" 1000,
+    testToMilliseconds "-0ms" 0,
+    testToMilliseconds "-1ms" (-1 : Int64),
+    testToMilliseconds "1s" 1000,
+    testToMilliseconds "1m" 60000,
+    testToMilliseconds "1h" 3600000,
+    testToMilliseconds "1d" 86400000,
+    testToMilliseconds "-9223372036854775808ms" (-9223372036854775808 : Int64),
+    testToMilliseconds "9223372036854775807ms" 9223372036854775807,
+  ]
+
+private def testToSeconds (str : String) (dur : Int64) : TestCase IO :=
+  test s!"toSeconds {str} = {dur}" ⟨λ _ => checkEq (Duration.toSeconds (Duration.parse str).get!) dur⟩
+
+def testsForToSeconds :=
+  suite "toSeconds tests"
+  [
+    testToSeconds "0ms" 0,
+    testToSeconds "999ms" 0,
+    testToSeconds "1000ms" 1,
+    testToSeconds "1001ms" 1,
+    testToSeconds "-0ms" 0,
+    testToSeconds "-999ms" (0 : Int64),
+    testToSeconds "-1000ms" (-1 : Int64),
+    testToSeconds "1s" 1,
+    testToSeconds "1m" 60,
+    testToSeconds "1h" 3600,
+    testToSeconds "1d" 86400,
+  ]
+
+private def testToMinutes (str : String) (dur : Int64) : TestCase IO :=
+  test s!"toMinutes {str} = {dur}" ⟨λ _ => checkEq (Duration.toMinutes (Duration.parse str).get!) dur⟩
+
+def testsForToMinutes :=
+  suite "toMinutes tests"
+  [
+    testToMinutes "0ms" 0,
+    testToMinutes "59999ms" 0,
+    testToMinutes "60000ms" 1,
+    testToMinutes "59s" 0,
+    testToMinutes "60s" 1,
+    testToMinutes "61s" 1,
+    testToMinutes "-59999ms" 0,
+    testToMinutes "-60000ms" (-1 : Int64),
+    testToMinutes "1m" 1,
+    testToMinutes "1h" 60,
+    testToMinutes "1d" 1440,
+  ]
+
+private def testToHours (str : String) (dur : Int64) : TestCase IO :=
+  test s!"toHours {str} = {dur}" ⟨λ _ => checkEq (Duration.toHours (Duration.parse str).get!) dur⟩
+
+def testsForToHours :=
+  suite "toHours tests"
+  [
+    testToHours "0ms" 0,
+    testToHours "3599999ms" 0,
+    testToHours "3600000ms" 1,
+    testToHours "59m" 0,
+    testToHours "60m" 1,
+    testToHours "61m" 1,
+    testToHours "-3599999ms" 0,
+    testToHours "-3600000ms" (-1 : Int64),
+    testToHours "1h" 1,
+    testToHours "1d" 24,
+  ]
+
+private def testToDays (str : String) (dur : Int64) : TestCase IO :=
+  test s!"toDays {str} = {dur}" ⟨λ _ => checkEq (Duration.toDays (Duration.parse str).get!) dur⟩
+
+def testsForToDays :=
+  suite "toDays tests"
+  [
+    testToDays "0ms" 0,
+    testToDays "86399999ms" 0,
+    testToDays "86400000ms" 1,
+    testToDays "23h" 0,
+    testToDays "24h" 1,
+    testToDays "25h" 1,
+    testToDays "-86399999ms" 0,
+    testToDays "-86400000ms" (-1 : Int64),
+    testToDays "1d" 1,
+  ]
+
 def tests := [testsForValidDatetimeStrings, testsForInvalidDatetimeStrings,
               testsForValidDurationStrings, testsForInvalidDurationStrings,
-              testsForOffset, testsForDurationSince, testsForToDate, testsForToTime]
+              testsForOffset, testsForDurationSince, testsForToDate, testsForToTime,
+              testsForToMilliseconds, testsForToSeconds, testsForToMinutes, testsForToHours, testsForToDays]
 
 -- Uncomment for interactive debugging
 -- #eval TestSuite.runAll tests

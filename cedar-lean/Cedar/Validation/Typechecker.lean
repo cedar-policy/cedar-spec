@@ -328,6 +328,11 @@ def typeOfCall (xfn : ExtFun) (tys : List TypedExpr) (xs : List Expr) : ResultTy
   | .durationSince, [.ext .datetime, .ext .datetime]    => ok (.ext .duration)
   | .toDate, [.ext .datetime]                           => ok (.ext .datetime)
   | .toTime, [.ext .datetime]                           => ok (.ext .duration)
+  | .toMilliseconds, [.ext .duration]                   => ok .int
+  | .toSeconds, [.ext .duration]                        => ok .int
+  | .toMinutes, [.ext .duration]                        => ok .int
+  | .toHours, [.ext .duration]                          => ok .int
+  | .toDays , [.ext .duration]                          => ok .int
   | _, _                                                => err (.extensionErr xs)
 
 
