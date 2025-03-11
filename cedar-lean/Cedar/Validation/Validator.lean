@@ -159,7 +159,7 @@ def typecheckPolicy (policy : Policy) (env : Environment) : Except ValidationErr
 
 def typecheckPolicyWithLevel (policy : Policy) (level : Nat) (env : Environment) : Except ValidationError TypedExpr := do
   let tx ← typecheckPolicy policy env
-  if checkLevel tx level then
+  if tx.checkLevel env level then
     .ok tx
   else
     .error (.levelError policy.id)
