@@ -149,7 +149,7 @@ def duration? (i: Int) : Option Duration :=
 def Duration.neg? (d : Duration) : Option Duration :=
   d.val.neg?
 
-def durationUnits? (n: Nat) (suffix: String) : Option Int :=
+def durationUnits? (n: Int) (suffix: String) : Option Int :=
   match Int64.ofInt? n with
   | none => none
   | some i =>
@@ -173,7 +173,7 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def parseUnit? (str : String) (suffix : String) : Option (Int × String) :=
+def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (Int × String) :=
   if str.endsWith suffix
   then
     let newStr := str.dropRight suffix.length
@@ -182,30 +182,28 @@ def parseUnit? (str : String) (suffix : String) : Option (Int × String) :=
     if digits.isEmpty
     then none
     else do
-      let units ← durationUnits? (← String.toNat? (String.mk digits)) suffix
+      let nUnsignedUnits ← String.toNat? (String.mk digits)
+      let units ← if isNegative
+        then durationUnits? (Int.negOfNat nUnsignedUnits) suffix
+        else durationUnits? (Int.ofNat nUnsignedUnits) suffix
       some (units, newStr.dropRight digits.length)
   else
     some (0, str)
 
-def parseUnsignedDuration? (str : String) : Option Duration := do
+def parseDuration? (isNegative : Bool) (str : String) : Option Duration := do
   if str.isEmpty then failure
-  let (milliseconds, restStr) ← parseUnit? str "ms"
-  let (seconds, restStr) ← parseUnit? restStr "s"
-  let (minutes, restStr) ← parseUnit? restStr "m"
-  let (hours, restStr) ← parseUnit? restStr "h"
-  let (days, restStr) ← parseUnit? restStr "d"
+  let (milliseconds, restStr) ← parseUnit? isNegative str "ms"
+  let (seconds, restStr) ← parseUnit? isNegative restStr "s"
+  let (minutes, restStr) ← parseUnit? isNegative restStr "m"
+  let (hours, restStr) ← parseUnit? isNegative restStr "h"
+  let (days, restStr) ← parseUnit? isNegative restStr "d"
   if restStr.isEmpty
   then duration? (days + hours + minutes + seconds + milliseconds)
   else none
 
 def Duration.parse (str : String) : Option Duration :=
   let (isNegative, restStr) := isNegativeDuration str
-  match parseUnsignedDuration? restStr with
-  | some duration =>
-    if isNegative
-    then duration.neg?
-    else some duration
-  | none => none
+  parseDuration? isNegative restStr
 
 deriving instance Repr for Duration
 
