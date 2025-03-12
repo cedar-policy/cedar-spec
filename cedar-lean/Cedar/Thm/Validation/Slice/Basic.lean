@@ -21,7 +21,6 @@ import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Levels.CheckLevel
-import Cedar.Thm.Validation.Slice.Data
 
 namespace Cedar.Thm
 

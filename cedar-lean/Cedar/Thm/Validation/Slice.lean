@@ -21,8 +21,8 @@ import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Levels.CheckLevel
+import Cedar.Thm.Validation.Validator
 
-import Cedar.Thm.Validation.Slice.Data
 import Cedar.Thm.Validation.Slice.Basic
 import Cedar.Thm.Validation.Slice.BinaryApp
 import Cedar.Thm.Validation.Slice.GetAttr
@@ -52,7 +52,7 @@ theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capa
     simp only [evaluate, Except.ok.injEq] at he
     subst v
     cases ha
-    exact hr.left.right.left
+    exact action_matches_env hr
   all_goals
     simp only [evaluate, Except.ok.injEq] at he
     subst he
@@ -62,16 +62,15 @@ theorem and_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : Li
   (he : evaluate (.and e₁ e₂) request entities = .ok v) :
   ¬ Value.EuidViaPath v path euid
 := by
+  have he' := and_produces_bool_or_error e₁ e₂ request entities
+  split at he' <;>
+    first
+    | contradiction
+    | rename_i he''
+      simp only [he'', Except.ok.injEq, reduceCtorEq] at he
+  subst v
   intro ha
-  simp only [evaluate] at he
-  cases he₁ :  Result.as Bool (evaluate e₁ request entities) <;>
-    simp only [he₁, bind_pure_comp, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  split at he
-  · injections he
-    subst he ; cases ha
-  · cases he₂ : Result.as Bool (evaluate e₂ request entities) <;>
-      simp only [he₂, Except.map_error, reduceCtorEq, Except.map_ok, Except.ok.injEq] at he
-    subst he ; cases ha
+  cases ha
 
 theorem or_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
   (he : evaluate (.or e₁ e₂) request entities = .ok v) :
@@ -291,10 +290,66 @@ theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set
     subst slice
     simp [Union.union, Set.union, Set.make_wf]
 
-/--
-If an expression checks at level `n` and then evaluates to an entity, then that
-entity must be in a slice at `n + 1`.
--/
+theorem mapm_key_id_sorted_by_key {α β : Type} [LT α] [BEq α] [LawfulBEq α] {kvs : List (α × β)} {ks : List α} {fn : α → Option β}
+  (hm : List.mapM (λ k => (fn k).bind λ v => (some (k, v))) ks = some kvs)
+  (hs : ks.SortedBy id)
+  : kvs.SortedBy Prod.fst
+:= by
+  cases hs
+  case nil =>
+    have _ : kvs = [] := by simpa using hm
+    subst kvs
+    constructor
+  case cons_nil head =>
+    have ⟨_, _⟩ : ∃ kv, kvs = [kv] := by
+      cases hm₁ : fn head <;>
+      simp only [hm₁, List.mapM_cons, List.mapM_nil, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+      simp [←hm]
+    subst kvs
+    constructor
+  case cons_cons head₀ head₁ tail hlt hs =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
+    cases hm₁ : (fn head₀) <;> simp only [hm₁, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₂ : (fn head₁) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₃ : (List.mapM (fun k => (fn k).bind fun v => some (k, v)) tail) <;> simp only [hm₃, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    rename_i v₀ v₁ kvs'
+    subst kvs
+
+    replace hlt : (head₀, v₀).fst < (head₁, v₁).fst := by
+      simpa using hlt
+
+    replace hs : List.SortedBy Prod.fst ((head₁, v₁) :: kvs') := by
+      have hm₄ : List.mapM (fun k => (fn k).bind fun v => some (k, v)) (head₁ :: tail) = some ((head₁, v₁) :: kvs') := by
+        simp [hm₂, hm₃]
+      exact mapm_key_id_sorted_by_key hm₄ hs
+
+    exact List.SortedBy.cons_cons hlt hs
+
+theorem map_find_mapm_value {α β : Type} [BEq α] [LawfulBEq α] {kvs : List (α × β)} {ks : List α} {fn : α → Option β} {k: α}
+  (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
+  (h₂ : k ∈ ks)
+  : (Map.mk kvs).find? k = fn k
+:= by
+  simp only [Map.find?, Map.kvs]
+  cases h₂
+  case head l =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn k <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) l) <;> simp [ht₁ , Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    subst h₁
+    simp
+  case tail h t h₂  =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn h <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (List.mapM (λ k => (fn k).bind λ v => some (k, v)) t) <;> simp only [ht₁, Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    subst h₁
+    simp only [List.find?]
+    cases h₃ : (h == k)
+    · simp only
+      exact map_find_mapm_value ht₁ h₂
+    · simp only [beq_iff_eq] at h₃
+      simp [h₃, ←hf]
+
 theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities} {ed : EntityData}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
@@ -327,6 +382,44 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   have hmk := map_find_mapm_value hs₂ hi
   simpa [hmake] using hmk
 
+theorem not_in_list_not_in_mapm_list {α γ : Type} [BEq α] [LT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
+  (hm : l.mapM (λ e => do (e, ← f e)) = some l')
+  (hl : e ∉ l) :
+  ∀ v, (e, v) ∉ l'
+:= by
+  intro v hl'
+  cases l
+  case nil =>
+    have : l' = [] := by simpa using hm
+    subst l'
+    cases hl'
+  case cons head tail =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
+    cases hm₁ : f head <;> simp only [hm₁, Option.none_bind, Option.some_bind, reduceCtorEq] at hm
+    cases hm₂ : (List.mapM (fun e => (f e).bind fun v => some (e, v)) tail) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    subst l'
+    cases hl'
+    case head =>
+      exact hl (List.Mem.head _)
+    case tail tail' ht' =>
+      replace hl : e ∉ tail := (hl $ List.Mem.tail _ ·)
+      exact not_in_list_not_in_mapm_list hm₂ hl _ ht'
+
+theorem mapm_none_find_none {α γ : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {l : List α} {l' : List (α × γ)} {f : α → Option γ} {e: α}
+  (h₂ : l.mapM (λ e => do (e, ← f e)) = some l')
+  (h₁ : f e = none) :
+  (Map.make l').find? e = none
+:= by
+  by_cases h₃ : e ∈ l
+  case pos =>
+    have ⟨ _, _, h₄ ⟩ := List.mapM_some_implies_all_some h₂ e h₃
+    simp [h₁] at h₄
+  case neg =>
+    simp only [Map.find?_none_iff_all_absent, Map.kvs, Map.make]
+    intro v hl'
+    have h₄ := List.in_canonicalize_in_list hl'
+    exact not_in_list_not_in_mapm_list h₂ h₃ v h₄
+
 theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUID} {entities slice : Entities}
   (hs : some slice = Entities.sliceAtLevel entities request n)
   (hse : entities.find? uid = none)
@@ -341,6 +434,10 @@ theorem not_entities_then_not_slice {n: Nat} {request : Request} {uid : EntityUI
   subst hs
   exact mapm_none_find_none hs₂ hse
 
+/--
+If an expression checks at level `n` and then evaluates to an entity, then the
+data for that entity in the slice will be hte same as in the original entities.
+-/
 theorem checked_eval_entity_find_entities_eq_find_slice  {n nmax : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {slice entities : Entities}
   (hc : CapabilitiesInvariant c request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
