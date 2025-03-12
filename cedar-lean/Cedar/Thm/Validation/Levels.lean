@@ -17,6 +17,7 @@
 import Cedar.Spec
 import Cedar.Data
 import Cedar.Validation
+import Cedar.Thm.Authorization.Authorizer
 import Cedar.Thm.Validation.Typechecker
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Validator
@@ -146,28 +147,6 @@ theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs 
   replace ⟨_, htl⟩ := htl
   exact typecheck_policy_with_level_is_sound hs hr htl
 
-theorem satisfied_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities} (effect : Effect)
-  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
-  satisfiedPolicies effect ps r₁ es₁ = satisfiedPolicies effect ps r₂ es₂
-:= by
-  simp only [satisfiedPolicies]
-  replace heq : ∀ p ∈ ps, satisfiedWithEffect effect p r₁ es₁ = satisfiedWithEffect effect p r₂ es₂ := by
-    intro p hp
-    specialize heq p hp
-    simp only [heq, satisfiedWithEffect, satisfied]
-  rw [List.filterMap_congr heq]
-
-theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
-  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
-  errorPolicies ps r₁ es₁ = errorPolicies ps r₂ es₂
-:= by
-  simp only [errorPolicies]
-  replace heq : ∀ p ∈ ps, errored p r₁ es₁ = errored p r₂ es₂ := by
-    intro p hp
-    specialize heq p hp
-    simp [heq, errored, hasError]
-  rw [List.filterMap_congr heq]
-
 theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
   (hr : validateRequest schema request = .ok ())
   (he : validateEntities schema entities = .ok ())
@@ -180,9 +159,4 @@ theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat}
     replace htl := List.forM_ok_implies_all_ok _ _ htl
     intro p hp
     exact typecheck_policy_at_level_with_environments_is_sound hs hre (htl p hp)
-  simp only [isAuthorized]
-  rw [
-    satisfied_policies_congr_evaluate .permit hsound,
-    satisfied_policies_congr_evaluate .forbid hsound,
-    error_policies_congr_evaluate hsound
-  ]
+  exact is_authorized_congr_evaluate hsound
