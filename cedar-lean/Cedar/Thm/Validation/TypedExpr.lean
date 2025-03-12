@@ -185,10 +185,10 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
       cases res₁
       · simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
       · rename_i v₁
-        have hᵢ₁₁ := typechecked_is_well_typed h₀ h₃ hᵢ₁
-        simp only [heq] at hᵢ₁₁
-        have ⟨b, hᵢ₁₁⟩ := instance_of_bool_is_bool hᵢ₁₁
-        simp only [hᵢ₁₁] at hᵢ₁
+        have hᵢ₁' := typechecked_is_well_typed h₀ h₃ hᵢ₁
+        simp only [heq] at hᵢ₁'
+        have ⟨b, hᵢ₁'⟩ := instance_of_bool_is_bool hᵢ₁'
+        simp only [hᵢ₁'] at hᵢ₁
         simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
         cases b <;> simp at h₂ <;> simp [TypedExpr.typeOf] <;> have ⟨h₇₁, h₇₂⟩ := h₇
         · have hᵢ₂ := typechecked_is_well_typed h₀ h₆ h₂
@@ -198,6 +198,22 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
           simp only [h₇₂] at hᵢ₃
           exact hᵢ₃
     · cases h₄
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
