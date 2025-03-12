@@ -275,4 +275,9 @@ theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request)
       exact @substitute_action_preserves_evaluation xᵢ request entities
     exact @substitute_action_preserves_evaluation_call xfn xs request entities ih
 
+theorem substitute_action_preserves_evaluates_to {expr : Expr} {request : Request} {entities : Entities} {v : Value}:
+  EvaluatesTo (substituteAction request.action expr) request entities v ↔
+  EvaluatesTo expr request entities v
+:= by simp only [EvaluatesTo, substitute_action_preserves_evaluation]
+
 end Cedar.Thm
