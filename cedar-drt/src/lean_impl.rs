@@ -53,6 +53,7 @@ use std::str::FromStr;
 extern "C" {
     fn isAuthorizedDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateDRT(req: *mut lean_object) -> *mut lean_object;
+    fn levelValidateDRT(req: *mut lean_object) -> *mut lean_object;
     fn evaluateDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateRequestDRT(req: *mut lean_object) -> *mut lean_object;
     fn validateEntitiesDRT(req: *mut lean_object) -> *mut lean_object;
@@ -317,6 +318,27 @@ impl LeanDefinitionalEngine {
         Self::deserialize_validation_response(response_string)
     }
 
+    pub fn validate_with_level(
+        &self,
+        schema: &ValidatorSchema,
+        policies: &ast::PolicySet,
+        level: i32,
+    ) -> TestResult<TestValidationResult> {
+        let level_val_request = LevelValidationRequest {
+            schema,
+            policies,
+            level,
+        };
+        let level_val_request_proto = proto::LevelValidationRequest::from(&level_val_request);
+        let buf = level_val_request_proto.encode_to_vec();
+        let req = buf_to_lean_obj(&buf);
+        // Lean will decrement the reference count when we pass this object: https://github.com/leanprover/lean4/blob/master/src/include/lean/lean.h
+        let response = unsafe { levelValidateDRT(req) };
+        // req can no longer be assumed to exist
+        let response_string = lean_obj_p_to_rust_string(response);
+        Self::deserialize_validation_response(response_string)
+    }
+
     pub fn validate_request(
         &self,
         schema: &ValidatorSchema,
@@ -356,6 +378,24 @@ impl Drop for LeanDefinitionalEngine {
     }
 }
 
+impl LeanDefinitionalEngine {
+    // We do not perform differential testing on validation warnings like
+    // `impossiblePolicy`, so we drop them here. We could extend differential
+    // testing to include warning (see #254).
+    fn filter_warnings(
+        validation_result: TestResult<TestValidationResult>,
+    ) -> TestResult<TestValidationResult> {
+        validation_result.map(|res| {
+            let errors = res
+                .errors
+                .into_iter()
+                .filter(|x| x != "impossiblePolicy")
+                .collect();
+            TestValidationResult { errors, ..res }
+        })
+    }
+}
+
 impl CedarTestImplementation for LeanDefinitionalEngine {
     fn is_authorized(
         &self,
@@ -392,18 +432,22 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
             ValidationMode::Strict,
             "Lean definitional validator only supports `Strict` mode"
         );
-        let result = self.validate(schema, policies);
-        result.map(|res| {
-            // `impossiblePolicy` is considered a warning rather than an error,
-            // so it's safe to drop here (although this means it can't be used
-            // for differential testing, see #254)
-            let errors = res
-                .errors
-                .into_iter()
-                .filter(|x| x != "impossiblePolicy")
-                .collect();
-            TestValidationResult { errors, ..res }
-        })
+        Self::filter_warnings(self.validate(schema, policies))
+    }
+
+    fn validate_with_level(
+        &self,
+        schema: &ValidatorSchema,
+        policies: &ast::PolicySet,
+        mode: ValidationMode,
+        level: i32,
+    ) -> TestResult<TestValidationResult> {
+        assert_eq!(
+            mode,
+            ValidationMode::Strict,
+            "Lean definitional validator only supports `Strict` mode"
+        );
+        Self::filter_warnings(self.validate_with_level(schema, policies, level))
     }
 
     fn validate_entities(
