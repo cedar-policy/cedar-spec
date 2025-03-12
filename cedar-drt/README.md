@@ -22,7 +22,8 @@ The table below lists all available fuzz targets, including which component of t
 | [`formatter`](fuzz/fuzz_targets/formatter.rs) | Policy formatter, Pretty printer, Parser | PBT | Test round trip property: parse ∘ format ∘ pretty-print == id for ASTs |
 | [`formatter-bytes`](fuzz/fuzz_targets/formatter-bytes.rs) | Policy formatter, Parser | PBT | The same as `formatter`, but we start with an arbitrary string instead of pretty-printing a policy AST |
 | [`json-schema-roundtrip`](fuzz/fuzz_targets/json-schema-roundtrip.rs) | Schema parser | PBT | Test round trip property: parse ∘ pretty-print ∘ parse-json ∘ print-json == id for schemas
-| [`roundtrip`](fuzz/fuzz_targets/roundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for ASTs |
+| [`roundtrip`](fuzz/fuzz_targets/roundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for policy ASTs |
+| [`policy-set-roundtrip`](fuzz/fuzz_targets/policy-setroundtrip.rs) | Pretty printer, Parser, Conversion to JSON | PBT | Test round trip property: parse ∘ pretty-print == deserialize ∘ serialize == id for a policy set ASTs
 | [`schema-roundtrip`](fuzz/fuzz_targets/schema-roundtrip.rs) | Schema parser | PBT | Test round trip property: parse ∘ pretty-print == id for schemas
 | [`convert-schema-json-to-human`](fuzz/fuzz_targets/convert-schema-json-to-human.rs) | Schema parser | PBT | Test we can convert all human schemas to equivalent JSON. parse == parse-json ∘ print-json ∘ parse 
 | [`convert-schema-human-to-json`](fuzz/fuzz_targets/convert-schema-human-to-json.rs) | Schema parser | PBT | Test we can convert all JSON schemas to an equivalent human format schema. parse-json == parse ∘ pretty-print ∘ parse-json

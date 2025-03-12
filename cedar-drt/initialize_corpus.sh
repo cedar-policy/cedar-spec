@@ -40,6 +40,14 @@ fi
 initialize_corpus() {
   corpus_dir="./fuzz/corpus/$1/"
   mkdir -p "$corpus_dir"
+
+  # Copy over seeds
+  seed_dir="./fuzz/seeds/$1"
+  if test -d $seed_dir; then
+    echo "Copying seeds for fuzz target $1"
+    cp -r "$seed_dir"/. "$corpus_dir"
+  fi
+
   case "$1" in
   simple-parser|formatter-bytes|convert-policy-cedar-to-json)
     for f in ../cedar/**/*.cedar; do

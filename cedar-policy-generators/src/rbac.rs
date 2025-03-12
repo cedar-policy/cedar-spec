@@ -174,6 +174,7 @@ impl RBACPolicy {
     ) -> arbitrary::Result<Self> {
         Ok(Self(GeneratedPolicy::arbitrary_for_hierarchy(
             fixed_id_opt,
+            None,
             hierarchy,
             allow_slots,
             Expr::val(true),
