@@ -20,7 +20,7 @@ import Cedar.Validation
 
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Slice.Basic
+import Cedar.Thm.Validation.Slice.Reachable.Basic
 
 namespace Cedar.Thm
 

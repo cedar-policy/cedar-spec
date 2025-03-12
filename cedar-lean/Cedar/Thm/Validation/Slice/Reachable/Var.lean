@@ -22,7 +22,7 @@ import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data.MapUnion
 import Cedar.Thm.Validation.Levels.CheckLevel
 
-import Cedar.Thm.Validation.Slice.Basic
+import Cedar.Thm.Validation.Slice.Reachable.Basic
 
 namespace Cedar.Thm
 

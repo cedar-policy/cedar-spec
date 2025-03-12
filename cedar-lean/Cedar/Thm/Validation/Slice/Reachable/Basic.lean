@@ -47,27 +47,6 @@ inductive Value.EuidViaPath : Value → List Attr → EntityUID → Prop where
     (hv : EuidViaPath v path euid) :
     EuidViaPath (.record attrs)  (a :: path) euid
 
-def CheckedEvalEntityReachable (e : Expr) :=
-  ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
-    CapabilitiesInvariant c request entities →
-    RequestAndEntitiesMatchEnvironment env request entities →
-    typeOf e c env = .ok (tx, c') →
-    tx.EntityAccessAtLevel env n nmax path →
-    evaluate e request entities = .ok v →
-    Value.EuidViaPath v path euid →
-    entities.contains euid →
-    ReachableIn entities request.sliceEUIDs euid (n + 1)
-
-theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}
-  (hr : ReachableIn entities start euid n)
-  : ReachableIn entities start euid (n + 1)
-:= by
-  cases hr
-  case in_start hi =>
-    exact ReachableIn.in_start hi
-  case step euid' hf hi hr =>
-    exact ReachableIn.step euid' hi hf (reachable_succ hr)
-
 theorem in_val_then_val_slice
   (hv : Value.EuidViaPath v path euid)
   : euid ∈ v.sliceEUIDs
@@ -90,6 +69,27 @@ theorem in_val_then_val_slice
       exact ha
     · simp [ih]
   case set | ext => cases hv
+
+def CheckedEvalEntityReachable (e : Expr) :=
+  ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
+    CapabilitiesInvariant c request entities →
+    RequestAndEntitiesMatchEnvironment env request entities →
+    typeOf e c env = .ok (tx, c') →
+    tx.EntityAccessAtLevel env n nmax path →
+    evaluate e request entities = .ok v →
+    Value.EuidViaPath v path euid →
+    entities.contains euid →
+    ReachableIn entities request.sliceEUIDs euid (n + 1)
+
+theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {entities : Entities}
+  (hr : ReachableIn entities start euid n)
+  : ReachableIn entities start euid (n + 1)
+:= by
+  cases hr
+  case in_start hi =>
+    exact ReachableIn.in_start hi
+  case step euid' hf hi hr =>
+    exact ReachableIn.step euid' hi hf (reachable_succ hr)
 
 theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} {uid : EntityUID}
   (he : entities.attrs uid = .ok attrs)
