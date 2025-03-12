@@ -168,78 +168,36 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : ∃ rty, ty = .record rty ∧ rty = Map.make (m.map (λ (a, ty) => (a, .required ty.typeOf)))):
   WellTyped env (.record m ty)
 
-theorem well_typed_expr_cannot_go_wrong {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
-  match evaluate ty.toExpr request entities with
-  | .ok v => InstanceOfType v ty.typeOf
-  | .error err => err != .typeError
+  evaluate ty.toExpr request entities = .ok v →
+  InstanceOfType v ty.typeOf
 := by
-  intro h₀ h₁
+  intro h₀ h₁ h₂
   cases h₁
-  case and_left_tt x₁ x₂ ty h₂ h₃ h₄ h₅ =>
-    have h₆ := well_typed_expr_cannot_go_wrong h₀ h₂
-    have h₇ := well_typed_expr_cannot_go_wrong h₀ h₄
-    split at h₆ <;> rename_i heq
-    · rw [h₃] at h₆
-      have h₆ := instance_of_tt_is_true h₆
-      simp [h₆] at heq
-      simp [TypedExpr.toExpr, evaluate, heq, Result.as, Coe.coe, Value.asBool]
-      have ⟨bty, h₅⟩ := h₅
-      split at h₇ <;> rename_i heq₁
-      · rw [h₅] at h₇
-        have ⟨b, h₇₁⟩ := instance_of_bool_is_bool h₇
-        rw [h₇₁] at heq₁
-        simp [heq₁, h₅]
-        have h₈ : (TypedExpr.and x₁ x₂ (.bool bty)).typeOf = .bool bty
-        := by
-          simp [TypedExpr.typeOf]
-        simp [h₈]
-        rw [h₇₁] at h₇
-        exact h₇
-      · simp [heq₁]
-        simp at h₇
-        exact h₇
-    · simp [TypedExpr.toExpr, evaluate, heq, Result.as]
-      simp at h₆
-      exact h₆
-  case hasAttr_record x₁ attr ty h₂ h₃ =>
-    have ⟨rty, h₃, h₄⟩ := h₃
-    have hᵢ₁ := well_typed_expr_cannot_go_wrong h₀ h₂
-    split <;> split at hᵢ₁
-    case _ v₁ heq₁ _ v₂ heq₂ =>
-      simp [h₃] at hᵢ₁
-      cases hᵢ₁
-      rename_i r h₅ h₆ h₇
-      simp [TypedExpr.toExpr, evaluate, heq₂, hasAttr, attrsOf] at heq₁
-      simp [TypedExpr.typeOf]
-      rw [←heq₁]
-      split at h₄
-      case _ heq₃ =>
-
-
-
-
-      -- stuck: InstanceOfType (Value.prim (Prim.bool (r.contains attr))) (CedarType.bool bty)
-      sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+  case ite condExpr thenExpr elseExpr ty h₃ h₄ h₅ h₆ h₇ =>
+    simp [TypedExpr.toExpr, evaluate] at h₂
+    simp [CedarType.isBool] at h₄
+    split at h₄
+    · rename_i heq
+      generalize hᵢ₁ : evaluate condExpr.toExpr request entities = res₁
+      cases res₁
+      · simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+      · rename_i v₁
+        have hᵢ₁₁ := typechecked_is_well_typed h₀ h₃ hᵢ₁
+        simp only [heq] at hᵢ₁₁
+        have ⟨b, hᵢ₁₁⟩ := instance_of_bool_is_bool hᵢ₁₁
+        simp only [hᵢ₁₁] at hᵢ₁
+        simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
+        cases b <;> simp at h₂ <;> simp [TypedExpr.typeOf] <;> have ⟨h₇₁, h₇₂⟩ := h₇
+        · have hᵢ₂ := typechecked_is_well_typed h₀ h₆ h₂
+          simp only [← h₇₁, h₇₂] at hᵢ₂
+          exact hᵢ₂
+        · have hᵢ₃ := typechecked_is_well_typed h₀ h₅ h₂
+          simp only [h₇₂] at hᵢ₃
+          exact hᵢ₃
+    · cases h₄
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
