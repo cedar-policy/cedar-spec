@@ -134,17 +134,17 @@ theorem typecheck_policy_at_level_with_environments_is_sound {p : Policy} {envs 
   (htl : typecheckPolicyWithLevelWithEnvironments p n envs = .ok ()) :
   evaluate p.toExpr request entities = evaluate p.toExpr request slice
 := by
-  simp only [typecheckPolicyWithLevelWithEnvironments] at htl
-  cases htl₁: List.mapM (typecheckPolicyWithLevel p n) envs <;> simp [htl₁] at htl
+  replace htl : ∀ x ∈ envs, ∃ tx, typecheckPolicyWithLevel p n x = .ok tx := by
+    cases htl₁ : List.mapM (typecheckPolicyWithLevel p n) envs <;>
+    simp only [htl₁, typecheckPolicyWithLevelWithEnvironments, Except.bind_err, reduceCtorEq] at htl
+    replace htl₁ := List.forall₂_implies_all_left ∘ List.mapM_ok_iff_forall₂.mp $ htl₁
+    intro env he
+    specialize htl₁ env he
+    simp only [htl₁.imp, and_imp, imp_self, implies_true]
   have ⟨env, ⟨he₁, hr⟩⟩ := he
-  rw [List.mapM_ok_iff_forall₂] at htl₁
-  replace htl₁ := List.forall₂_implies_all_left htl₁
-  specialize htl₁ env he₁
-  replace ⟨tx, ⟨_, htl₁⟩⟩ := htl₁
-  exact typecheck_policy_with_level_is_sound hs hr htl₁
-
-def validateWithLevel (policies : Policies) (schema : Schema) (level : Nat) : ValidationResult :=
-  policies.forM (typecheckPolicyWithLevelWithEnvironments · level schema.environments)
+  specialize htl env he₁
+  replace ⟨_, htl⟩ := htl
+  exact typecheck_policy_with_level_is_sound hs hr htl
 
 theorem satisfied_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities} (effect : Effect)
   (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
@@ -175,15 +175,11 @@ theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat}
   (htl : validateWithLevel ps schema n = .ok ()) :
   isAuthorized request entities ps = isAuthorized request slice ps
 := by
-  simp only [validateWithLevel] at htl
-  replace htl := List.forM_ok_implies_all_ok _ _ htl
-  have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he
-  clear hr he
-  simp [RequestAndEntitiesMatchSchema] at hre
   have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request slice := by
+    have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he
+    replace htl := List.forM_ok_implies_all_ok _ _ htl
     intro p hp
-    specialize htl p hp
-    exact typecheck_policy_at_level_with_environments_is_sound hs hre htl
+    exact typecheck_policy_at_level_with_environments_is_sound hs hre (htl p hp)
   simp only [isAuthorized]
   rw [
     satisfied_policies_congr_evaluate .permit hsound,
