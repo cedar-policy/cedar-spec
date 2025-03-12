@@ -104,6 +104,10 @@ def CedarType.isSet : CedarType → Bool
   | .set _ => true
   | _ => false
 
+def CedarType.isRecord : CedarType → Bool
+  | .record _ => true
+  | _ => false
+
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType

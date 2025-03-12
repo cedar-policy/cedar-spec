@@ -62,22 +62,28 @@ theorem do_ok {res : Except ε α} {f : α → β} :
   ∃ a, res = .ok a ∧ f a = b
 := by cases res <;> simp
 
-inductive ExceptEqₒ [DecidableEq α] : Except ε α → Except ε α → Prop
-| both_ok (x₁ x₂ : α) (h : x₁ = x₂) :
-  ExceptEqₒ (.ok x₁) (.ok x₂)
-| both_err (e₁ e₂ : ε) :
-  ExceptEqₒ (.error e₁) (.error e₂)
-
-theorem to_option_p [DecidableEq α] {res₁ : Except ε α} {res₂ : Except ε α} :
-  res₁.toOption = res₂.toOption → ExceptEqₒ res₁ res₂
+theorem to_option_left_ok {v : α} {res₁ res₂ : Except ε α} :
+  res₁.toOption = res₂.toOption → res₁ = .ok v → res₂ = .ok v
 := by
-  intro h
-  simp only [Except.toOption] at h
-  split at h <;> split at h
-  · case _ x₁ _ x₂ =>
-    simp only [Option.some.injEq] at h
-    exact ExceptEqₒ.both_ok x₁ x₂ h
-  · case _ => cases h
-  · case _ => cases h
-  · case _ e₁ _ e₂ =>
-      exact ExceptEqₒ.both_err e₁ e₂
+  intro h₀ h₁
+  simp [Except.toOption] at h₀
+  repeat split at h₀
+  · simp only [Except.ok.injEq]
+    simp only [Option.some.injEq] at h₀
+    simp only [Except.ok.injEq] at h₁
+    simp only [← h₀]; exact h₁
+  · cases h₀
+  · cases h₁
+
+theorem to_option_left_err {err₁: ε} {res₁ res₂ : Except ε α} :
+  res₁.toOption = res₂.toOption → res₁ = .error err₁ → ∃ err₂, res₂ = .error err₂
+:= by
+  intro h₀ h₁
+  simp [Except.toOption] at h₀
+  repeat split at h₀
+  · cases h₁
+  · cases h₁
+  · split at h₀
+    · cases h₀
+    · simp only [Except.error.injEq] at h₁
+      simp only [Except.error.injEq, exists_eq']

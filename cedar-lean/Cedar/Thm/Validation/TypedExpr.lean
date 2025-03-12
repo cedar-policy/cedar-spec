@@ -100,38 +100,18 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₃ : WellTyped env elseExpr)
   (h₄ : thenExpr.typeOf = elseExpr.typeOf ∧ thenExpr.typeOf = ty) :
   WellTyped env (.ite condExpr thenExpr elseExpr ty)
-| and_left_ff (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
+| and (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
   (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .ff) :
-  WellTyped env (.and x₁ x₂ (.bool ff))
-| and_left_tt (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
+  (h₁ : WellTyped env x₂)
+  (h₂ : x₁.typeOf.isBool ∧ x₂.typeOf.isBool)
+  (h₃ : ty = .bool .anyBool) :
+  WellTyped env (.and x₁ x₂ ty)
+| or (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
   (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .tt)
-  (h₂ : WellTyped env x₂)
-  (h₃ : ∃ bty, x₂.typeOf = .bool bty) :
-  WellTyped env (.and x₁ x₂ x₂.typeOf)
-| and_left_anyBool (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .anyBool)
-  (h₂ : WellTyped env x₂)
-  (h₃ : ∃ bty, x₂.typeOf = .bool bty) :
-  WellTyped env (.and x₁ x₂ (.bool anyBool))
-| or_left_tt (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .tt) :
-  WellTyped env (.and x₁ x₂ (.bool tt))
-| or_left_ff (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .ff)
-  (h₂ : WellTyped env x₂)
-  (h₃ : ∃ bty, x₂.typeOf = .bool bty) :
-  WellTyped env (.and x₁ x₂ x₂.typeOf)
-| or_left_anyBool (x₁ : TypedExpr) (x₂ : TypedExpr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : x₁.typeOf = .bool .anyBool)
-  (h₂ : WellTyped env x₂)
-  (h₃ : ∃ bty, x₂.typeOf = .bool bty) :
-  WellTyped env (.and x₁ x₂ (.bool anyBool))
+  (h₁ : WellTyped env x₂)
+  (h₂ : x₁.typeOf.isBool ∧ x₂.typeOf.isBool)
+  (h₃ : ty = .bool .anyBool) :
+  WellTyped env (.or x₁ x₂ ty)
 | unaryApp (x₁ : TypedExpr) (op₁ : UnaryOp) (ty : CedarType)
   (h₀ : WellTyped env x₁)
   (h₁ : UnaryApp.WellTyped x₁ ty op₁) :
@@ -141,22 +121,10 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : WellTyped env x₂)
   (h₂ : BinaryApp.WellTyped x₁ x₂ ty env op₂) :
   WellTyped env (.binaryApp op₂ x₁ x₂ ty)
-| getAttr_record (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
+| hasAttr (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
   (h₀ : WellTyped env x₁)
-  (h₁ : ∃ rty, x₁.typeOf = .record rty ∧ (rty.find? attr).map Qualified.getType = .some ty) :
-  WellTyped env (.getAttr x₁ attr ty)
-| getAttr_entity (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : ∃ ety, x₁.typeOf = .entity ety ∧ (∃ rty, env.ets.attrs? ety = .some rty ∧ (rty.find? attr).map Qualified.getType = .some ty)) :
-  WellTyped env (.getAttr x₁ attr ty)
-| hasAttr_record (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : ∃ rty, x₁.typeOf = .record rty ∧ if rty.contains attr then (ty = .bool .tt ∨ ty = .bool .anyBool) else ty = .bool .ff) :
-  WellTyped env (.hasAttr x₁ attr ty)
-| hasAttr_entity (x₁ : TypedExpr) (attr : Attr) (ty : CedarType)
-  (h₀ : WellTyped env x₁)
-  (h₁ : ∃ ety, x₁.typeOf = .entity ety)
-  (h₂ : ∃ bty, ty = .bool bty) :
+  (h₁ : x₁.typeOf.isEntity ∨ x₁.typeOf.isRecord)
+  (h₂ : ty = .bool .anyBool) :
   WellTyped env (.hasAttr x₁ attr ty)
 | set (ls : List TypedExpr) (ty : CedarType)
   (h₀ : ∀ x, x ∈ ls → WellTyped env x)
@@ -198,6 +166,21 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
           simp only [h₇₂] at hᵢ₃
           exact hᵢ₃
     · cases h₄
+  case and x₁ x₂ ty h₃ h₄ h₅ h₆ =>
+    simp [TypedExpr.toExpr, evaluate] at h₂
+    rcases h₅ with ⟨h₅₁, h₅₂⟩
+    rcases is_bool_implies_exists_bool h₅₁ with ⟨bty₁, h₅₁⟩
+    rcases is_bool_implies_exists_bool h₅₂ with ⟨bty₂, h₅₂⟩
+    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+    cases res₁ <;> simp [hᵢ₁, Result.as, Coe.coe, Value.asBool] at h₂
+    have hᵢ₁' := typechecked_is_well_typed h₀ h₃ hᵢ₁
+    simp [h₅₁] at hᵢ₁'
+    rcases instance_of_bool_is_bool hᵢ₁' with ⟨b₁, hᵢ₁'⟩
+    simp [hᵢ₁'] at h₂
+    cases b₁ <;> simp at h₂ <;> simp [TypedExpr.typeOf, h₆]
+    · rw [← h₂] ; exact bool_is_instance_of_anyBool false
+    · -- repeat on x₂
+      sorry
   case _ => sorry
   case _ => sorry
   case _ => sorry
@@ -206,14 +189,37 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
   case _ => sorry
   case _ => sorry
   case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+
+theorem well_typed_bool {v : Value} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+  RequestAndEntitiesMatchEnvironment env request entities →
+  TypedExpr.WellTyped env ty →
+  ty.typeOf.isBool →
+  evaluate ty.toExpr request entities = .ok v →
+  ∃ b : Bool, v = b
+:= by
+  intro h₀ h₁ h₂ h₃
+  have h₄ := typechecked_is_well_typed h₀ h₁ h₃
+  rcases is_bool_implies_exists_bool h₂ with ⟨bty, h₂⟩
+  simp only [h₂] at h₄
+  exact instance_of_bool_is_bool h₄
+
+theorem well_typed_record {v : Value} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+  RequestAndEntitiesMatchEnvironment env request entities →
+  TypedExpr.WellTyped env ty →
+  ty.typeOf.isRecord →
+  evaluate ty.toExpr request entities = .ok v →
+  ∃ m, v = .record m
+:= by
+  intro h₀ h₁ h₂ h₃
+  have h₄ := typechecked_is_well_typed h₀ h₁ h₃
+  simp [CedarType.isRecord] at h₂
+  split at h₂
+  case _ heq =>
+    simp [heq] at h₄
+    cases h₄
+    rename_i r _ _ _
+    exists r
+  case _ => cases h₂
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
