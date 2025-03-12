@@ -45,9 +45,7 @@ initialize_corpus() {
   seed_dir="./fuzz/seeds/$1"
   if test -d $seed_dir; then
     echo "Copying seeds for fuzz target $1"
-    for f in "$seed_dir/"*; do
-      cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
-    done
+    cp -r "$seed_dir"/. "$corpus_dir"
   fi
 
   case "$1" in

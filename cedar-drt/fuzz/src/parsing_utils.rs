@@ -65,6 +65,7 @@ pub fn check_for_internal_errors(errs: ParseErrors) {
 
 // Exposes only the aspects of a template that are preserved through conversions
 // to different representations.
+// In particular, policy ids and source locations are not exposed.
 #[derive(Eq, Debug)]
 struct PreservedTemplate<'a> {
     template: &'a Template,
@@ -107,6 +108,7 @@ impl<'a> From<&'a Template> for PreservedTemplate<'a> {
 
 // Checks that the static policies and templates in the specified
 // sets are equivalent, ignoring policy ids and source locations.
+// Ignores links in the policy sets when determining equivalence.
 // Panics if the two sets are not equivalent.
 pub fn check_policy_set_equivalence(set1: &PolicySet, set2: &PolicySet) {
     // Convert templates in each set to preserved templates
@@ -130,12 +132,13 @@ pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> Str
         to_cedar_text(template, &mut res).unwrap();
         for template in iter {
             to_cedar_text(template, &mut res).unwrap();
+            writeln!(&mut res).unwrap();
         }
     }
     res
 }
 
-fn to_cedar_text(template: &Template, f: &mut String) -> std::fmt::Result {
+fn to_cedar_text(template: &Template, f: &mut impl std::fmt::Write) -> std::fmt::Result {
     for (k, v) in template.annotations() {
         writeln!(f, "@{}(\"{}\")", k, v.val.escape_debug())?
     }
