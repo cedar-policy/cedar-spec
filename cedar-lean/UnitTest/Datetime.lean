@@ -32,11 +32,8 @@ def testsForValidDatetimeStrings :=
     testValidDatetime "2022-10-10" 1665360000000,
     testValidDatetime "1969-12-31" (-86400000 : Int),
     testValidDatetime "1969-12-31T23:59:59Z" (-1000 : Int),
-    -- Commented out tests following this comment are impacted by a bug we
-    -- encountered in Lean. Enable them when the bug has been fixed. More
-    -- details in https://github.com/cedar-policy/cedar-spec/issues/525
-    -- testValidDatetime "1969-12-31T23:59:59.001Z" (-999 : Int),
-    -- testValidDatetime "1969-12-31T23:59:59.999Z" (-1 : Int),
+    testValidDatetime "1969-12-31T23:59:59.001Z" (-999 : Int),
+    testValidDatetime "1969-12-31T23:59:59.999Z" (-1 : Int),
     testValidDatetime "2024-10-15" 1728950400000,
     testValidDatetime "2024-10-15T11:38:02Z" 1728992282000,
     testValidDatetime "2024-10-15T11:38:02.101Z" 1728992282101,
@@ -76,6 +73,9 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "0001-01-01T01:01:01.0001Z" "four digits for ms",
     testInvalidDatetime "0001-01-01T01:01:01.001+01" "two digits for offset",
     testInvalidDatetime "0001-01-01T01:01:01.001+001" "three digits for offset",
+    testInvalidDatetime "0001-01-01T01:01:01.001+00001" "six digits for offset",
+    testInvalidDatetime "0001-01-01T01:01:01.001+00:01" "offset with colon",
+    testInvalidDatetime "0001-01-01T01:01:01.001+00:00:01" "six offset with colon",
     testInvalidDatetime "-0001-01-01" "negative year",
     testInvalidDatetime "1111-1x-20" "invalid month",
     testInvalidDatetime "1111-Jul-20" "abbreviated month",
