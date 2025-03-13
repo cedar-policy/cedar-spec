@@ -83,7 +83,7 @@ def dateContainsLeapSeconds (str: String) : Bool :=
 /--
   Workaround an issue in the datetime library by checking that the year, month,
   day, hour, minute, and second components of the datetime string are not longer
-  than expected.
+  than expected.  https://github.com/leanprover/lean4/issues/7478
 -/
 def checkComponentLen (str : String) : Bool :=
   match str.split (· == 'T') with
