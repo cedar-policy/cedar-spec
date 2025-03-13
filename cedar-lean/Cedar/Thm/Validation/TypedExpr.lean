@@ -282,4 +282,59 @@ theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilit
   TypedExpr.WellTyped env ty
 := by
   sorry
+
+theorem type_lifting_preserves_expr (x : TypedExpr):
+  x.toExpr = x.liftBoolTypes.toExpr
+:= by
+  cases x <;> simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes]
+  case ite a b c _ =>
+    simp only [type_lifting_preserves_expr a, type_lifting_preserves_expr b, type_lifting_preserves_expr c]
+  case and a b _ =>
+    simp only [type_lifting_preserves_expr a, type_lifting_preserves_expr b]
+  case or a b _ =>
+    simp only [type_lifting_preserves_expr a, type_lifting_preserves_expr b]
+  case unaryApp a _ =>
+    simp only [type_lifting_preserves_expr a]
+  case binaryApp a b _ =>
+    simp only [type_lifting_preserves_expr a, type_lifting_preserves_expr b]
+  case getAttr a _ _ =>
+    simp only [type_lifting_preserves_expr a]
+  case hasAttr a _ _ =>
+    simp only [type_lifting_preserves_expr a]
+  case set s _ =>
+    simp only [List.map₁_eq_map, List.map_map, Expr.set.injEq, List.map_inj_left,
+      Function.comp_apply]
+    exact λ x _ => type_lifting_preserves_expr x
+  case record m _ =>
+    have : m.attach₂.map (λ x => (x.1.fst, x.1.snd.liftBoolTypes))  = m.map λ x : Attr × TypedExpr => (x.fst, x.snd.liftBoolTypes) := by
+      exact List.map_attach₂ λ x : Attr × TypedExpr => (x.fst, x.snd.liftBoolTypes)
+    rw [this]
+    have : ∀ m : List (Attr × TypedExpr), (m.map₁ λ x => (x.1.fst, x.1.snd.toExpr)) = m.map λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr) := by
+      exact List.map₁_eq_map λ x : Attr × TypedExpr => (x.fst, x.snd.toExpr)
+    simp only [this, List.map_map, Expr.record.injEq, List.map_inj_left, Function.comp_apply,
+      Prod.mk.injEq, true_and, Prod.forall]
+    exact λ _ x _ => type_lifting_preserves_expr x
+  case call args _ =>
+    simp only [List.map₁_eq_map, List.map_map, Expr.call.injEq, List.map_inj_left,
+      Function.comp_apply, true_and]
+    exact λ x _ => type_lifting_preserves_expr x
+  termination_by x
+  decreasing_by
+    all_goals simp_wf <;> try omega
+    case _ h =>
+      have := List.sizeOf_lt_of_mem h
+      omega
+    case _ h =>
+      have := List.sizeOf_lt_of_mem h
+      simp only [Prod.mk.sizeOf_spec] at this
+      omega
+    case _ h =>
+      have := List.sizeOf_lt_of_mem h
+      omega
+
+theorem type_lifting_preserves_evaluation_results {x : TypedExpr} {request : Request} {entities : Entities} :
+  evaluate x.toExpr request entities = evaluate x.liftBoolTypes.toExpr request entities
+ := by
+ simp only [type_lifting_preserves_expr x]
+
 end Cedar.Thm

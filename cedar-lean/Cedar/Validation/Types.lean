@@ -112,14 +112,14 @@ def CedarType.isRecord : CedarType → Bool
   | .record _ => true
   | _ => false
 
-def CedarType.liftBoolType : CedarType → CedarType
+def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
-  | .set s => .set s.liftBoolType
+  | .set s => .set s.liftBoolTypes
   | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
     (k,
     match qt with
-    | .optional ty => .optional ty.liftBoolType
-    | .required ty => .required ty.liftBoolType)))
+    | .optional ty => .optional ty.liftBoolTypes
+    | .required ty => .required ty.liftBoolTypes)))
   | ty => ty
 decreasing_by
   all_goals
