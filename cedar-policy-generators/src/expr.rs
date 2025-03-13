@@ -1188,17 +1188,12 @@ impl<'a> ExprGenerator<'a> {
                     if max_depth == 0 || u.len() < 10 {
                         // no recursion allowed, so, just call the constructor
                         // Invariant (MethodStyleArgs), Function Style, no worries
-                        let constructor = self
-                            .ext_funcs
-                            .arbitrary_constructor_for_type(target_type, u)?;
-                        let args = vec![ast::Expr::val(match target_type {
-                            Type::IPAddr => self.constant_pool.arbitrary_ip_str(u)?,
-                            Type::Decimal => self.constant_pool.arbitrary_decimal_str(u)?,
-                            Type::DateTime => self.constant_pool.arbitrary_datetime_str(u)?,
-                            Type::Duration => self.constant_pool.arbitrary_duration_str(u)?,
-                            _ => unreachable!("ty is deemed to be an extension type"),
-                        })];
-                        Ok(ast::Expr::call_extension_fn(constructor.name.clone(), args))
+                        self.arbitrary_ext_constructor_call_for_type(
+                            target_type,
+                            ast::Expr::val,
+                            ast::Expr::call_extension_fn,
+                            u,
+                        )
                     } else {
                         let type_name: UnreservedId = match target_type {
                             Type::IPAddr => "ipaddr".parse::<UnreservedId>().unwrap(),
@@ -1849,6 +1844,60 @@ impl<'a> ExprGenerator<'a> {
         }
     }
 
+    /// Generate a call for an extension constructor producing `target_type`.
+    /// This functions is used to produce either `AttrValue`
+    /// extension constructors, or `Expr` extension constructors, by passing `mk_str`
+    /// and `mk_ext` functions that build string literals and extension function
+    /// calls for these types.
+    fn arbitrary_ext_constructor_call_for_type<E>(
+        &self,
+        target_type: &Type,
+        mk_str: fn(SmolStr) -> E,
+        mk_ext: fn(ast::Name, Vec<E>) -> E,
+        u: &mut Unstructured<'_>,
+    ) -> Result<E> {
+        let func = self
+            .ext_funcs
+            .arbitrary_constructor_for_type(target_type, u)?;
+        assert_eq!(&func.return_ty, target_type);
+        assert!(
+            func.name.is_unqualified(),
+            "Expected that all extension functions would be unqualified, but {func_name} is not.",
+            func_name = func.name
+        );
+        let name_as_ref = func.name.basename_as_ref().as_ref();
+        let args = match name_as_ref {
+            "ip" => vec![mk_str(self.constant_pool.arbitrary_ip_str(u)?)],
+            "decimal" => vec![mk_str(self.constant_pool.arbitrary_decimal_str(u)?)],
+            "datetime" => vec![mk_str(self.constant_pool.arbitrary_datetime_str(u)?)],
+            "offset" => {
+                let base_datetime_str = self.constant_pool.arbitrary_datetime_str(u)?;
+                let offset_duration_str = self.constant_pool.arbitrary_duration_str(u)?;
+                vec![
+                    mk_ext(
+                        ast::Name::parse_unqualified_name("datetime")
+                            .expect("should be a valid identifier"),
+                        vec![mk_str(base_datetime_str)],
+                    ),
+                    mk_ext(
+                        ast::Name::parse_unqualified_name("duration")
+                            .expect("should be a valid identifier"),
+                        vec![mk_str(offset_duration_str)],
+                    ),
+                ]
+            }
+            "duration" => vec![mk_str(self.constant_pool.arbitrary_duration_str(u)?)],
+            _ => unreachable!("unhandled extension constructor {name_as_ref}"),
+        };
+        assert_eq!(
+            args.len(),
+            func.parameter_types.len(),
+            "Generated wrong number of args for {name_as_ref} extension constructor"
+        );
+
+        Ok(mk_ext(func.name.clone(), args))
+    }
+
     /// get an AttrValue of the given type which conforms to this schema
     ///
     /// If `hierarchy` is present, any literal UIDs included in the AttrValue
@@ -1889,37 +1938,12 @@ impl<'a> ExprGenerator<'a> {
                 if max_depth == 0 {
                     return Err(Error::TooDeep);
                 }
-                let func = self
-                    .ext_funcs
-                    .arbitrary_constructor_for_type(target_type, u)?;
-                assert_eq!(&func.return_ty, target_type);
-                let args = func
-                    .parameter_types
-                    .iter()
-                    .map(|_| match target_type {
-                        Type::IPAddr => self
-                            .constant_pool
-                            .arbitrary_ip_str(u)
-                            .map(AttrValue::StringLit),
-                        Type::Decimal => self
-                            .constant_pool
-                            .arbitrary_decimal_str(u)
-                            .map(AttrValue::StringLit),
-                        Type::DateTime => self
-                            .constant_pool
-                            .arbitrary_datetime_str(u)
-                            .map(AttrValue::StringLit),
-                        Type::Duration => self
-                            .constant_pool
-                            .arbitrary_duration_str(u)
-                            .map(AttrValue::StringLit),
-                        _ => unreachable!("target_type should only be one of these two"),
-                    })
-                    .collect::<Result<_>>()?;
-                Ok(AttrValue::ExtFuncCall {
-                    fn_name: func.name.clone(),
-                    args,
-                })
+                self.arbitrary_ext_constructor_call_for_type(
+                    target_type,
+                    AttrValue::StringLit,
+                    |fn_name, args| AttrValue::ExtFuncCall { fn_name, args },
+                    u,
+                )
             }
             Type::Set(target_element_ty) => {
                 // the only valid Set-typed attribute value is a set literal

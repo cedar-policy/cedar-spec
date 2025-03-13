@@ -515,7 +515,7 @@ impl AvailableExtensionFunctions {
                 AvailableExtensionFunction {
                     name: Name::parse_unqualified_name("offset")
                         .expect("should be a valid identifier"),
-                    is_constructor: false,
+                    is_constructor: true,
                     parameter_types: vec![Type::datetime(), Type::duration()],
                     return_ty: Type::datetime(),
                 },
