@@ -1845,9 +1845,9 @@ impl<'a> ExprGenerator<'a> {
     }
 
     /// Generate a call for an extension constructor producing `target_type`.
-    /// This functions is used to generically produce either `AttrValue`
-    /// extensions constructors `Expr` extension constructor by passing `mk_str`
-    /// and `mk_ext` function to build string literals and extension function
+    /// This functions is used to produce either `AttrValue`
+    /// extension constructors, or `Expr` extension constructors, by passing `mk_str`
+    /// and `mk_ext` functions that build string literals and extension function
     /// calls for these types.
     fn arbitrary_ext_constructor_call_for_type<E>(
         &self,
