@@ -68,11 +68,11 @@ namespace Datetime
 
 def MAX_OFFSET_SECONDS: Nat := 86400
 
-def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
-def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
-def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
-def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxx")
-def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
+def DateOnly : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd")
+def DateUTC : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss'Z'")
+def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+def DateWithOffset : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ssxx")
+def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSSxx")
 
 def datetime? (i: Int) : Option Datetime :=
   Int64.ofInt? i
@@ -80,8 +80,33 @@ def datetime? (i: Int) : Option Datetime :=
 def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
 
+/--
+  Workaround an issue in the datetime library by checking that the year, month,
+  day, hour, minute, and second components of the datetime string are not longer
+  than expected.  https://github.com/leanprover/lean4/issues/7478
+-/
+def checkComponentLen (str : String) : Bool :=
+  match str.split (· == 'T') with
+  | [date] => checkDateComponentLen date
+  | [date, timeMsOffset] => checkDateComponentLen date && checkTimeMsOffsetComponentLen timeMsOffset
+  | _ => false
+  where
+    checkDateComponentLen (str : String) : Bool :=
+      match str.split (· == '-') with
+      | [year, month, day] => year.length == 4 && month.length == 2 && day.length == 2
+      | _ => false
+    checkTimeMsOffsetComponentLen (str : String) : Bool :=
+      match str.split (λ c => c == '.' || c == '+' || c == '-' || c == 'Z') with
+      | time :: _ => checkTimeLen time
+      | _ => false
+    checkTimeLen (str : String) : Bool :=
+      match str.split (· == ':') with
+      | [h, m, s] => h.length == 2 && m.length == 2 && s.length == 2
+      | _ => false
+
 def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
+  if !checkComponentLen str then failure
   let val :=
     DateOnly.parse str <|>
     DateUTC.parse str <|>
