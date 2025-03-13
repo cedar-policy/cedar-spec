@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-use cedar_policy_core::ast::{AnyId, Template};
+use cedar_policy_core::ast::{AnyId, PolicySet, Template};
 use cedar_policy_core::parser::err::{ParseError, ParseErrors, ToASTErrorKind};
 use smol_str::SmolStr;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write;
+use std::hash::{Hash, Hasher};
 
 // Check that two policies are equivalent, ignoring policy ids and source
 // locations.  Panic if the two policies are not the same.
@@ -59,5 +60,95 @@ pub fn check_for_internal_errors(errs: ParseErrors) {
         )),
         "Parse errors included unexpected internal errors: {:?}",
         miette::Report::new(errs).wrap_err("unexpected internal error")
+    )
+}
+
+// Exposes only the aspects of a template that are preserved through conversions
+// to different representations.
+// In particular, policy ids and source locations are not exposed.
+#[derive(Eq, Debug)]
+struct PreservedTemplate<'a> {
+    template: &'a Template,
+    annotations: BTreeMap<&'a AnyId, &'a SmolStr>,
+}
+
+impl<'a> PartialEq for PreservedTemplate<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.template.effect() == other.template.effect()
+            && self.template.principal_constraint() == other.template.principal_constraint()
+            && self.template.action_constraint() == other.template.action_constraint()
+            && self.template.resource_constraint() == other.template.resource_constraint()
+            && self.annotations == other.annotations
+            && self
+                .template
+                .non_scope_constraints()
+                .eq_shape(other.template.non_scope_constraints())
+    }
+}
+
+impl<'a> Hash for PreservedTemplate<'a> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.template.effect().hash(hasher);
+        self.template.principal_constraint().hash(hasher);
+        self.template.action_constraint().hash(hasher);
+        self.template.resource_constraint().hash(hasher);
+        self.template.non_scope_constraints().hash_shape(hasher);
+        self.annotations.hash(hasher);
+    }
+}
+
+impl<'a> From<&'a Template> for PreservedTemplate<'a> {
+    fn from(value: &'a Template) -> Self {
+        PreservedTemplate {
+            template: value,
+            annotations: value.annotations().map(|(k, v)| (k, &v.val)).collect(),
+        }
+    }
+}
+
+// Checks that the static policies and templates in the specified
+// sets are equivalent, ignoring policy ids and source locations.
+// Ignores links in the policy sets when determining equivalence.
+// Panics if the two sets are not equivalent.
+pub fn check_policy_set_equivalence(set1: &PolicySet, set2: &PolicySet) {
+    // Convert templates in each set to preserved templates
+    let t1 = set1
+        .all_templates()
+        .map(PreservedTemplate::from)
+        .collect::<HashSet<PreservedTemplate>>();
+    let t2 = set2
+        .all_templates()
+        .map(PreservedTemplate::from)
+        .collect::<HashSet<PreservedTemplate>>();
+    // Check that the sets are the same size
+    assert_eq!(t1, t2);
+}
+
+/// Converts an ast policy set to Cedar text, removing linked policies.
+pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> String {
+    let mut res = String::new();
+    let mut iter = policy_set.all_templates();
+    if let Some(template) = iter.next() {
+        to_cedar_text(template, &mut res).unwrap();
+        for template in iter {
+            to_cedar_text(template, &mut res).unwrap();
+            writeln!(&mut res).unwrap();
+        }
+    }
+    res
+}
+
+fn to_cedar_text(template: &Template, f: &mut impl std::fmt::Write) -> std::fmt::Result {
+    for (k, v) in template.annotations() {
+        writeln!(f, "@{}(\"{}\")", k, v.val.escape_debug())?
+    }
+    write!(
+        f,
+        "{}(\n  {},\n  {},\n  {}\n) when {{\n  {}\n}};",
+        template.effect(),
+        template.principal_constraint(),
+        template.action_constraint(),
+        template.resource_constraint(),
+        template.non_scope_constraints()
     )
 }
