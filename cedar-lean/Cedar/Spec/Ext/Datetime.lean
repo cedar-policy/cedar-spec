@@ -68,11 +68,11 @@ namespace Datetime
 
 def MAX_OFFSET_SECONDS: Nat := 86400
 
-def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
-def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
-def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
-def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxx")
-def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
+def DateOnly : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd")
+def DateUTC : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss'Z'")
+def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+def DateWithOffset : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ssxx")
+def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSSxx")
 
 def datetime? (i: Int) : Option Datetime :=
   Int64.ofInt? i
