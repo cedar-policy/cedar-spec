@@ -153,4 +153,30 @@ def TypedExpr.toExpr : TypedExpr → Expr
       omega
     e.toExpr)
 
+def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
+  | .lit p ty => .lit p ty.liftBoolTypes
+  | .var v ty =>  .var v ty.liftBoolTypes
+  | .ite cond thenExpr elseExpr ty => .ite cond.liftBoolTypes thenExpr.liftBoolTypes elseExpr.liftBoolTypes ty.liftBoolTypes
+  | .and a b ty => .and a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
+  | .or a b ty => .or a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
+  | .unaryApp op expr ty => .unaryApp op expr.liftBoolTypes ty.liftBoolTypes
+  | .binaryApp op a b ty => .binaryApp op a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
+  | .getAttr expr attr ty => .getAttr expr.liftBoolTypes attr ty.liftBoolTypes
+  | .hasAttr expr attr ty => .hasAttr expr.liftBoolTypes attr ty.liftBoolTypes
+  | .set ls ty => .set (ls.map₁ (λ ⟨e, h₁⟩  =>
+    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
+      have := List.sizeOf_lt_of_mem h₁
+      omega
+    e.liftBoolTypes)) ty.liftBoolTypes
+  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), h₁⟩  =>
+    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
+      simp only at h₁
+      omega
+    (a, e.liftBoolTypes))) ty.liftBoolTypes
+  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, h₁⟩  =>
+    have _ : sizeOf e < 1 + sizeOf args + sizeOf ty := by
+      have := List.sizeOf_lt_of_mem h₁
+      omega
+    e.liftBoolTypes)) ty.liftBoolTypes
+
 end Cedar.Validation

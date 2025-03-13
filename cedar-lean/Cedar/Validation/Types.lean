@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Thm.Data
 
 namespace Cedar.Validation
 open Cedar.Data
@@ -32,6 +33,9 @@ def BoolType.not : BoolType → BoolType
   | .anyBool => .anyBool
   | .tt => .ff
   | .ff => .tt
+
+def BoolType.lift : BoolType → BoolType
+  | _ => .anyBool
 
 inductive ExtType where
   | ipAddr
@@ -83,6 +87,49 @@ deriving Repr
 
 instance : Inhabited CedarType where
   default := .int
+
+def CedarType.isBool : CedarType → Bool
+  | .bool _ => true
+  | _ => false
+
+def CedarType.isInt : CedarType → Bool
+  | .int => true
+  | _ => false
+
+def CedarType.isString : CedarType → Bool
+  | .string => true
+  | _ => false
+
+def CedarType.isEntity : CedarType → Bool
+  | .entity _ => true
+  | _ => false
+
+def CedarType.isSet : CedarType → Bool
+  | .set _ => true
+  | _ => false
+
+def CedarType.isRecord : CedarType → Bool
+  | .record _ => true
+  | _ => false
+
+def CedarType.liftBoolTypes : CedarType → CedarType
+  | .bool bty => .bool bty.lift
+  | .set s => .set s.liftBoolTypes
+  | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
+    (k,
+    match qt with
+    | .optional ty => .optional ty.liftBoolTypes
+    | .required ty => .required ty.liftBoolTypes)))
+  | ty => ty
+decreasing_by
+  all_goals
+    simp_wf
+  <;> have := Map.sizeOf_lt_of_kvs m
+  <;> rename_i h₁
+  <;> have h₂ := Map.sizeOf_lt_of_value h₁
+  <;> simp at h₂
+  <;> omega
+
 
 abbrev QualifiedType := Qualified CedarType
 
