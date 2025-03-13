@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Thm.Data
 
 namespace Cedar.Validation
 open Cedar.Data
@@ -32,6 +33,9 @@ def BoolType.not : BoolType → BoolType
   | .anyBool => .anyBool
   | .tt => .ff
   | .ff => .tt
+
+def BoolType.lift : BoolType → BoolType
+  | _ => .anyBool
 
 inductive ExtType where
   | ipAddr
@@ -107,6 +111,25 @@ def CedarType.isSet : CedarType → Bool
 def CedarType.isRecord : CedarType → Bool
   | .record _ => true
   | _ => false
+
+def CedarType.liftBoolType : CedarType → CedarType
+  | .bool bty => .bool bty.lift
+  | .set s => .set s.liftBoolType
+  | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
+    (k,
+    match qt with
+    | .optional ty => .optional ty.liftBoolType
+    | .required ty => .required ty.liftBoolType)))
+  | ty => ty
+decreasing_by
+  all_goals
+    simp_wf
+  <;> have := Map.sizeOf_lt_of_kvs m
+  <;> rename_i h₁
+  <;> have h₂ := Map.sizeOf_lt_of_value h₁
+  <;> simp at h₂
+  <;> omega
+
 
 abbrev QualifiedType := Qualified CedarType
 
