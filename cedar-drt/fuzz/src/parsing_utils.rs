@@ -72,7 +72,7 @@ struct PreservedTemplate<'a> {
     annotations: BTreeMap<&'a AnyId, &'a SmolStr>,
 }
 
-impl<'a> PartialEq for PreservedTemplate<'a> {
+impl PartialEq for PreservedTemplate<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.template.effect() == other.template.effect()
             && self.template.principal_constraint() == other.template.principal_constraint()
@@ -86,7 +86,7 @@ impl<'a> PartialEq for PreservedTemplate<'a> {
     }
 }
 
-impl<'a> Hash for PreservedTemplate<'a> {
+impl Hash for PreservedTemplate<'_> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.template.effect().hash(hasher);
         self.template.principal_constraint().hash(hasher);
@@ -131,8 +131,8 @@ pub fn policy_set_to_text(policy_set: &cedar_policy_core::ast::PolicySet) -> Str
     if let Some(template) = iter.next() {
         to_cedar_text(template, &mut res).unwrap();
         for template in iter {
-            to_cedar_text(template, &mut res).unwrap();
             writeln!(&mut res).unwrap();
+            to_cedar_text(template, &mut res).unwrap();
         }
     }
     res
