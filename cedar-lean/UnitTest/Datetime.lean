@@ -108,8 +108,9 @@ def testsForInvalidDatetimeStrings :=
     testInvalidDatetime "2024-01-01T00:00:00.001➕0000" "sign `-` is an emoji",
     testInvalidDatetime "2024-01-01T00:00:00.001+00000" "offset is 5 digits",
     testInvalidDatetime "2024-01-01T00:00:00.001-00000" "offset is 5 digits",
-    testInvalidDatetime "2016-12-31T00:00:00+2400" "invalid offset range",
-    testInvalidDatetime "2016-12-31T00:00:00+9999" "invalid offset range",
+    testInvalidDatetime "2016-01-01T00:00:00+2400" "invalid offset hour range",
+    testInvalidDatetime "2016-01-01T00:00:00+0060" "invalid offset minute range",
+    testInvalidDatetime "2016-01-01T00:00:00+9999" "invalid offset hour and minute range",
   ]
 
 -- Note: The instances below are only used for tests.
