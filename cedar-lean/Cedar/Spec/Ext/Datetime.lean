@@ -81,19 +81,20 @@ def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
 
 /--
-  Check that the seconds for the timezone offset are in bounds (<60). We
+  Check that the minutes for the timezone offset are in bounds (<60). We
   separately check that the whole offset is less than `MAX_OFFSET_SECONDS` which
-  ensures that the hour component is in bounds.
+  ensures that the hour component is in bounds. The timezone offset does not
+  have a seconds component.
 -/
-def tzOffsetSecondsLt60 (str : String) : Bool :=
+def tzOffsetMinsLt60 (str : String) : Bool :=
   -- Short string is `DateOnly`, so no offset
   str.length <= 10 ||
   -- Ends in `Z` is either `DateUTC` or `DateUTCWithMillis`, so no offset
   str.endsWith "Z" ||
-  -- `DateWithOffset` or `DateWithOffsetAndMillis` offset is last 4 chars are offset.
-  -- Seconds component is last two chars.
+  -- `DateWithOffset` or `DateWithOffsetAndMillis` offset is last 4 chars.
+  -- Minutes component is last two chars.
   match (str.takeRight 2).toNat? with
-  | .some secondOffset => secondOffset < 60
+  | .some minsOffset => minsOffset < 60
   | .none => false
 
 /--
@@ -123,7 +124,7 @@ def checkComponentLen (str : String) : Bool :=
 def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
   if !checkComponentLen str then failure
-  if !tzOffsetSecondsLt60 str then failure
+  if !tzOffsetMinsLt60 str then failure
   let val :=
     DateOnly.parse str <|>
     DateUTC.parse str <|>
