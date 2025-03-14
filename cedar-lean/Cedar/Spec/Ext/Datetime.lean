@@ -68,11 +68,11 @@ namespace Datetime
 
 def MAX_OFFSET_SECONDS: Nat := 86400
 
-def DateOnly : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd")
-def DateUTC : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss'Z'")
-def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'")
-def DateWithOffset : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ssxx")
-def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("uuuu-MM-dd'T'HH:mm:ss.SSSxx")
+def DateOnly : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd")
+def DateUTC : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss'Z'")
+def DateUTCWithMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+def DateWithOffset : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ssxx")
+def DateWithOffsetAndMillis : Std.Time.GenericFormat .any := datespec("yyyy-MM-dd'T'HH:mm:ss.SSSxx")
 
 def datetime? (i: Int) : Option Datetime :=
   Int64.ofInt? i
@@ -80,8 +80,51 @@ def datetime? (i: Int) : Option Datetime :=
 def dateContainsLeapSeconds (str: String) : Bool :=
   str.length >= 20 && str.get? ⟨17⟩ == some '6' && str.get? ⟨18⟩ == some '0'
 
+/--
+  Check that the minutes for the timezone offset are in bounds (<60). We
+  separately check that the whole offset is less than `MAX_OFFSET_SECONDS` which
+  ensures that the hour component is in bounds. The timezone offset does not
+  have a seconds component.
+-/
+def tzOffsetMinsLt60 (str : String) : Bool :=
+  -- Short string is `DateOnly`, so no offset
+  str.length <= 10 ||
+  -- Ends in `Z` is either `DateUTC` or `DateUTCWithMillis`, so no offset
+  str.endsWith "Z" ||
+  -- `DateWithOffset` or `DateWithOffsetAndMillis` offset is last 4 chars.
+  -- Minutes component is last two chars.
+  match (str.takeRight 2).toNat? with
+  | .some minsOffset => minsOffset < 60
+  | .none => false
+
+/--
+  Workaround an issue in the datetime library by checking that the year, month,
+  day, hour, minute, and second components of the datetime string are not longer
+  than expected.  https://github.com/leanprover/lean4/issues/7478
+-/
+def checkComponentLen (str : String) : Bool :=
+  match str.split (· == 'T') with
+  | [date] => checkDateComponentLen date
+  | [date, timeMsOffset] => checkDateComponentLen date && checkTimeMsOffsetComponentLen timeMsOffset
+  | _ => false
+  where
+    checkDateComponentLen (str : String) : Bool :=
+      match str.split (· == '-') with
+      | [year, month, day] => year.length == 4 && month.length == 2 && day.length == 2
+      | _ => false
+    checkTimeMsOffsetComponentLen (str : String) : Bool :=
+      match str.split (λ c => c == '.' || c == '+' || c == '-' || c == 'Z') with
+      | time :: _ => checkTimeLen time
+      | _ => false
+    checkTimeLen (str : String) : Bool :=
+      match str.split (· == ':') with
+      | [h, m, s] => h.length == 2 && m.length == 2 && s.length == 2
+      | _ => false
+
 def parse (str: String) : Option Datetime := do
   if dateContainsLeapSeconds str then failure
+  if !checkComponentLen str then failure
+  if !tzOffsetMinsLt60 str then failure
   let val :=
     DateOnly.parse str <|>
     DateUTC.parse str <|>
@@ -138,7 +181,7 @@ instance : Coe Int64 Duration where
 
 def MILLISECONDS_PER_SECOND: Int := 1000
 def MILLISECONDS_PER_MINUTE: Int := 60000
-def MILLISECONDS_PER_HOUR: Int := 360000
+def MILLISECONDS_PER_HOUR: Int := 3600000
 def MILLISECONDS_PER_DAY: Int := 86400000
 
 ----- Definitions -----
@@ -149,7 +192,7 @@ def duration? (i: Int) : Option Duration :=
 def Duration.neg? (d : Duration) : Option Duration :=
   d.val.neg?
 
-def durationUnits? (n: Nat) (suffix: String) : Option Int :=
+def durationUnits? (n: Int) (suffix: String) : Option Int :=
   match Int64.ofInt? n with
   | none => none
   | some i =>
@@ -173,7 +216,7 @@ def isNegativeDuration (str: String) : Bool × String :=
   | '-' => (true, str.drop 1)
   | _   => (false, str)
 
-def parseUnit? (str : String) (suffix : String) : Option (Int × String) :=
+def parseUnit? (isNegative : Bool) (str : String) (suffix : String) : Option (Int × String) :=
   if str.endsWith suffix
   then
     let newStr := str.dropRight suffix.length
@@ -182,30 +225,28 @@ def parseUnit? (str : String) (suffix : String) : Option (Int × String) :=
     if digits.isEmpty
     then none
     else do
-      let units ← durationUnits? (← String.toNat? (String.mk digits)) suffix
+      let nUnsignedUnits ← String.toNat? (String.mk digits)
+      let units ← if isNegative
+        then durationUnits? (Int.negOfNat nUnsignedUnits) suffix
+        else durationUnits? (Int.ofNat nUnsignedUnits) suffix
       some (units, newStr.dropRight digits.length)
   else
     some (0, str)
 
-def parseUnsignedDuration? (str : String) : Option Duration := do
+def parseDuration? (isNegative : Bool) (str : String) : Option Duration := do
   if str.isEmpty then failure
-  let (milliseconds, restStr) ← parseUnit? str "ms"
-  let (seconds, restStr) ← parseUnit? restStr "s"
-  let (minutes, restStr) ← parseUnit? restStr "m"
-  let (hours, restStr) ← parseUnit? restStr "h"
-  let (days, restStr) ← parseUnit? restStr "d"
+  let (milliseconds, restStr) ← parseUnit? isNegative str "ms"
+  let (seconds, restStr) ← parseUnit? isNegative restStr "s"
+  let (minutes, restStr) ← parseUnit? isNegative restStr "m"
+  let (hours, restStr) ← parseUnit? isNegative restStr "h"
+  let (days, restStr) ← parseUnit? isNegative restStr "d"
   if restStr.isEmpty
   then duration? (days + hours + minutes + seconds + milliseconds)
   else none
 
 def Duration.parse (str : String) : Option Duration :=
   let (isNegative, restStr) := isNegativeDuration str
-  match parseUnsignedDuration? restStr with
-  | some duration =>
-    if isNegative
-    then duration.neg?
-    else some duration
-  | none => none
+  parseDuration? isNegative restStr
 
 deriving instance Repr for Duration
 
@@ -233,5 +274,20 @@ def toTime (datetime: Datetime) : Duration :=
        if rem == 0
        then rem
        else (rem + millisPerDayI64)
+
+def Duration.toMilliseconds (duration: Duration) : Int64 :=
+  duration.val
+
+def Duration.toSeconds (duration: Duration) : Int64 :=
+  duration.toMilliseconds / 1000
+
+def Duration.toMinutes (duration: Duration) : Int64 :=
+  duration.toSeconds / 60
+
+def Duration.toHours (duration: Duration) : Int64 :=
+  duration.toMinutes / 60
+
+def Duration.toDays (duration: Duration) : Int64 :=
+  duration.toHours / 24
 
 end Datetime

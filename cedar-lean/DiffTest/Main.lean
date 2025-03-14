@@ -85,6 +85,21 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     toString (Lean.toJson result)
 
 /--
+  `req`: binary protobuf for a `LevelValidationRequest`
+
+  returns a string containing JSON
+-/
+@[export levelValidateDRT] unsafe def levelValidateDRT (req : ByteArray) : String :=
+    let result: Except String (Timed ValidationResult) :=
+      match (@Message.interpret? LevelValidationRequest) req with
+      | .error e =>
+        .error s!"levelValidateDRT: failed to parse input: {e}"
+      | .ok v =>
+        let result := runAndTime (λ () => validateWithLevel v.policies v.schema v.level)
+        .ok (unsafeBaseIO result)
+    toString (Lean.toJson result)
+
+/--
   `req`: binary protobuf for an `EvaluationRequest`
 
   returns the evaluation result itself (which may be `.error`) along with the

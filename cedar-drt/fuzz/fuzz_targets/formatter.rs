@@ -30,14 +30,13 @@ use log::debug;
 use logos::Logos;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use serde::Serialize;
 use similar_asserts::SimpleDiff;
 use smol_str::SmolStr;
 use std::collections::HashMap;
 use uuid::Builder;
 
 // A thin wrapper for policy
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     // the generated policy
     policy: ABACPolicy,

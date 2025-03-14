@@ -78,6 +78,23 @@ impl From<&ValidationRequest<'_>> for proto::ValidationRequest {
 }
 
 #[derive(Clone, Debug)]
+pub struct LevelValidationRequest<'a> {
+    pub schema: &'a ValidatorSchema,
+    pub policies: &'a ast::PolicySet,
+    pub level: i32,
+}
+
+impl From<&LevelValidationRequest<'_>> for proto::LevelValidationRequest {
+    fn from(v: &LevelValidationRequest<'_>) -> Self {
+        Self {
+            schema: Some(cedar_policy::proto::models::Schema::from(v.schema)),
+            policies: Some(cedar_policy::proto::models::PolicySet::from(v.policies)),
+            level: v.level,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct EvaluationRequest<'a> {
     pub request: &'a ast::Request,
     pub entities: &'a Entities,

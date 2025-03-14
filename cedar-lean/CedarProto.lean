@@ -35,4 +35,5 @@ import CedarProto.Schema
 import CedarProto.TemplateBody
 import CedarProto.Type
 import CedarProto.ValidationRequest
+import CedarProto.LevelValidationRequest
 import CedarProto.Value

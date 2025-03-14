@@ -350,8 +350,8 @@ fn schematype_to_type(
             json_schema::TypeVariant::Extension { name } => match name.as_ref() {
                 "ipaddr" => Type::ipaddr(),
                 "decimal" => Type::decimal(),
-                "datetime" => Type::decimal(),
-                "duration" => Type::decimal(),
+                "datetime" => Type::datetime(),
+                "duration" => Type::duration(),
                 _ => panic!("unrecognized extension type: {name:?}"),
             },
         },
@@ -1467,6 +1467,24 @@ impl Schema {
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
         let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
+        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
+        Ok(ABACPolicy(GeneratedPolicy::new(
+            id,
+            u.arbitrary()?,
+            effect,
+            principal_constraint,
+            action_constraint,
+            resource_constraint,
+            conjunction,
+        )))
+    }
+
+    /// Generates arbitrary non-scope constraints
+    pub fn arbitrary_abac_constraints(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
         let mut abac_constraints = Vec::new();
         let mut exprgenerator = self.exprgenerator(Some(hierarchy));
         u.arbitrary_loop(Some(0), Some(self.settings.max_depth as u32), |u| {
@@ -1485,15 +1503,13 @@ impl Schema {
         for constraint in abac_constraints {
             conjunction = ast::Expr::and(conjunction, constraint);
         }
-        Ok(ABACPolicy(GeneratedPolicy::new(
-            id,
-            u.arbitrary()?,
-            effect,
-            principal_constraint,
-            action_constraint,
-            resource_constraint,
-            conjunction,
-        )))
+        Ok(conjunction)
+    }
+
+    /// Size hint for [`Self::arbitrary_abac_constraints()`].
+    pub fn arbitrary_abac_constraints_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        // not sure how to count the arbitrary_loop() call
+        (1, None)
     }
 
     /// size hint for arbitrary_policy()
@@ -1507,7 +1523,7 @@ impl Schema {
             Self::arbitrary_principal_constraint_size_hint(depth),
             Self::arbitrary_action_constraint_size_hint(depth),
             Self::arbitrary_resource_constraint_size_hint(depth),
-            (1, None), // not sure how to count the arbitrary_loop() call
+            Self::arbitrary_abac_constraints_size_hint(depth),
         ])
     }
 
@@ -1533,6 +1549,7 @@ impl Schema {
             )
         }
     }
+
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
@@ -1577,7 +1594,8 @@ impl Schema {
         )
     }
 
-    fn arbitrary_action_constraint(
+    /// Generates an arbitrary action constraint.
+    pub fn arbitrary_action_constraint(
         &self,
         u: &mut Unstructured<'_>,
         max_list_length: Option<u32>,
@@ -1604,7 +1622,9 @@ impl Schema {
             })
         }
     }
-    fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
+
+    /// Size hint for [`Self::arbitrary_action_constraint()`].
+    pub fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[

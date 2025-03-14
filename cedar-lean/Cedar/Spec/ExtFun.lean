@@ -43,6 +43,11 @@ inductive ExtFun where
   | durationSince
   | toDate
   | toTime
+  | toMilliseconds
+  | toSeconds
+  | toMinutes
+  | toHours
+  | toDays
 
 def res {α} [Coe α Ext] : Option α → Result Value
   | some v => .ok v
@@ -73,6 +78,11 @@ def call : ExtFun → List Value → Result Value
     [.ext (.datetime d₁), .ext (.datetime d₂)]  => res (d₁.durationSince d₂)
   | .toDate, [.ext (.datetime dt)]              => res (dt.toDate)
   | .toTime, [.ext (.datetime dt)]              => .ok dt.toTime
+  | .toMilliseconds, [.ext (.duration dur)]     => .ok dur.toMilliseconds
+  | .toSeconds, [.ext (.duration dur)]          => .ok dur.toSeconds
+  | .toMinutes, [.ext (.duration dur)]          => .ok dur.toMinutes
+  | .toHours, [.ext (.duration dur)]            => .ok dur.toHours
+  | .toDays , [.ext (.duration dur)]            => .ok dur.toDays
   | _, _                                        => .error .typeError
 
 ----- Derivations -----
