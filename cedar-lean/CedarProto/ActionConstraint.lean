@@ -58,8 +58,8 @@ instance : Inhabited ActionScope.In where
 @[inline]
 def mergeEuids (result : ActionScope.In) (e2 : Array EntityUID) : ActionScope.In :=
   match result with
-    | .actionInAny e1 => .actionInAny (e1 ++ e2.toList)
-    | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+  | .actionInAny e1 => .actionInAny (e1 ++ e2.toList)
+  | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
 
 @[inline]
 def merge (x1 x2 : ActionScope.In) : ActionScope.In :=
@@ -71,12 +71,12 @@ def merge (x1 x2 : ActionScope.In) : ActionScope.In :=
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.In) := do
   match t.fieldNum with
-    | 1 =>
-      let x : Repeated EntityUID ← Field.guardedParse t
-      pure (pure $ mergeEuids · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Repeated EntityUID ← Field.guardedParse t
+    pureMergeFn (mergeEuids · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ActionScope.In := {
   parseField := parseField
@@ -105,7 +105,7 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.Eq) := do
   match t.fieldNum with
     | 1 =>
       let x : EntityUID ← Field.guardedParse t
-      pure (pure $ mergeEuid · x)
+      pureMergeFn (mergeEuid · x)
     | _ =>
       t.wireType.skip
       pure ignore
@@ -121,25 +121,27 @@ namespace ActionScope
 @[inline]
 def mergeAny (_ : ActionScope) (x : Proto.ActionScope.Any) : ActionScope :=
   match x with
-    | .any => .actionScope (Scope.any)
+  | .any => .actionScope (Scope.any)
 
 @[inline]
 def mergeIn (result : ActionScope) (x : Proto.ActionScope.In) : ActionScope :=
-  have e2 := match x with
+  have e2 :=
+    match x with
     | .actionInAny e => e
-    | _ => panic!("Proto.ActionScope.In expected to have constructor .actionInAny")
+    | _              => panic!("Proto.ActionScope.In expected to have constructor .actionInAny")
   match result with
-    | .actionInAny e1 => .actionInAny (e1 ++ e2)
-    | _ => .actionInAny e2
+  | .actionInAny e1 => .actionInAny (e1 ++ e2)
+  | _ => .actionInAny e2
 
 @[inline]
 def mergeEq (result : ActionScope) (x : Proto.ActionScope.Eq) : ActionScope :=
-  have e2 := match x with
+  have e2 :=
+    match x with
     | .actionScope (.eq e) => e
-    | _ => panic!("Proto.ActionScope.Eq expected to have constructor .actionScope .eq")
+    | _                    => panic!("Proto.ActionScope.Eq expected to have constructor .actionScope .eq")
   match result with
-    | .actionScope (.eq e1) => .actionScope (.eq (Field.merge e1 e2))
-    | _ => .actionScope (.eq e2)
+  | .actionScope (.eq e1) => .actionScope (.eq (Field.merge e1 e2))
+  | _                     => .actionScope (.eq e2)
 
 @[inline]
 def merge (x1 x2 : ActionScope) : ActionScope :=
@@ -155,18 +157,18 @@ def merge (x1 x2 : ActionScope) : ActionScope :=
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope) := do
   match t.fieldNum with
-    | 1 =>
-      let x : Proto.ActionScope.Any ← Field.guardedParse t
-      pure (pure $ mergeAny · x)
-    | 2 =>
-      let x : Proto.ActionScope.In ← Field.guardedParse t
-      pure (pure $ mergeIn · x)
-    | 3 =>
-      let x : Proto.ActionScope.Eq ← Field.guardedParse t
-      pure (pure $ mergeEq · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Proto.ActionScope.Any ← Field.guardedParse t
+    pureMergeFn (mergeAny · x)
+  | 2 =>
+    let x : Proto.ActionScope.In ← Field.guardedParse t
+    pureMergeFn (mergeIn · x)
+  | 3 =>
+    let x : Proto.ActionScope.Eq ← Field.guardedParse t
+    pureMergeFn (mergeEq · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message ActionScope := {
   parseField := parseField

@@ -37,4 +37,4 @@ For example, for a struct with fields `name` and `value`,
 def parseFieldElement {α β} [Field β] (t : Tag) (f : α → β) (g : α → β → α) : BParsec (MergeFn α) := do
   let x : β ← Field.guardedParse t
   let merge result x := g result (Field.merge (f result) x)
-  pure (pure $ merge · x)
+  pureMergeFn (merge · x)
