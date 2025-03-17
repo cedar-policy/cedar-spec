@@ -97,7 +97,9 @@ fuzz_target!(|input: FuzzTargetInput| {
             // 1, which involves calls to `datetime` and `offset`.
             return;
         }
-        _ => panic!("Should be able to serialize entities to JSON"),
+        Err(err) => {
+            panic!("Should be able to serialize entities to JSON, instead got error: {err}")
+        }
     };
 
     let eparser: EntityJsonParser<'_, '_, NoEntitiesSchema> = EntityJsonParser::new(
