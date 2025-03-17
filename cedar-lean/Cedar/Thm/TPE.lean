@@ -30,6 +30,86 @@ open Cedar.Validation
 open Cedar.Thm.TPE
 open Cedar.Thm
 
+theorem partialEvaluate_value
+  {x : TypedExpr}
+  {req₁ : Request}
+  {es₁ : Entities}
+  {req₂ : PartialRequest}
+  {es₂ : PartialEntities}
+  {env : Environment}
+  {v : Value}
+  {ty : CedarType} :
+  TypedExpr.WellTyped env x →
+  IsConsistent env req₁ es₁ req₂ es₂ →
+  TPE.evaluate x req₂ es₂ = .val v ty →
+  Spec.evaluate x.toExpr req₁ es₁ = .ok v
+:= by
+  intro h₀ h₁ h₂
+  cases x <;> simp [TPE.evaluate] at h₂
+  case lit p _ =>
+    simp [TypedExpr.toExpr, Spec.evaluate]
+    rcases h₂ with ⟨h₂, _⟩
+    exact h₂
+  case var _ => sorry
+  case ite cond thenExpr elseExpr _ =>
+    simp [TPE.ite] at h₂
+    split at h₂
+    case _ heq =>
+      cases h₀
+      rename_i hᵢ₁ _ hᵢ₂ hᵢ₃ _
+      have hᵢ₁' := partialEvaluate_value hᵢ₁ h₁ heq
+      simp [TypedExpr.toExpr, Spec.evaluate]
+      split at h₂
+      case isTrue heq₁ =>
+        simp [hᵢ₁', heq₁, Result.as, Coe.coe, Value.asBool]
+        exact partialEvaluate_value hᵢ₂ h₁ h₂
+      case isFalse heq₁ =>
+         simp [hᵢ₁', heq₁, Result.as, Coe.coe, Value.asBool]
+         exact partialEvaluate_value hᵢ₃ h₁ h₂
+    case _ heq => cases h₂
+    case _ => cases h₂
+  case and a b _ =>
+    simp [TPE.and] at h₂
+    split at h₂
+    case _ heq =>
+      cases h₀
+      rename_i hᵢ₁ hᵢ₂ _ _
+      have hᵢ₁' := partialEvaluate_value hᵢ₁ h₁ heq
+      have hᵢ₂' := partialEvaluate_value hᵢ₂ h₁ h₂
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₁', Result.as, Coe.coe, Value.asBool, hᵢ₂']
+      sorry
+    case _ heq =>
+      cases h₀
+      rename_i hᵢ₁ hᵢ₂ _ _
+      have hᵢ₁' := partialEvaluate_value hᵢ₁ h₁ heq
+      simp at h₂
+      rcases h₂ with ⟨h₂, _⟩
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₁', Result.as, Coe.coe, Value.asBool]
+      exact h₂
+    case _ heq => cases h₂
+    case _ heq _ _ _ => sorry
+    case _ => cases h₂
+  case or => sorry
+  case unaryApp => sorry
+  case binaryApp => sorry
+  case hasAttr => sorry
+  case getAttr => sorry
+  case set ls _ =>
+    simp [TypedExpr.toExpr, Spec.evaluate]
+    simp [TPE.set] at h₂
+    split at h₂
+    case _ heq =>
+      simp at h₂
+      rcases h₂ with ⟨h₂, _⟩
+      
+      sorry
+    case _ heq =>
+      split at h₂
+      case _ heq₁ => cases h₂
+      case _ => cases h₂
+  case record => sorry
+  case call => sorry
+
 theorem partialEvaluate_is_sound
   {x : TypedExpr}
   {req₁ : Request}
@@ -181,7 +261,27 @@ theorem partialEvaluate_is_sound
               simp [heq₂, Residual.evaluate] at hᵢ₁₂'
               simp [hᵢ₁₂] at hᵢ₁₂'
             · simp [Residual.evaluate, hᵢ₁₂', hᵢ₁₂, Spec.hasAttr, Spec.attrsOf]
-  case set => sorry
+  case set ls _ =>
+    simp [TypedExpr.toExpr, Spec.evaluate]
+    rw [List.map₁_eq_map, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁) (List.map TypedExpr.toExpr ls), List.mapM_map]
+    generalize hᵢ : (ls.mapM λ x => Spec.evaluate x.toExpr req₁ es₁) = res₁
+    cases res₁
+    case error => sorry
+    case ok =>
+      simp [hᵢ, TPE.evaluate, TPE.set]
+      split
+      case _ a _ xs heq =>
+        rw [List.map₁_eq_map λ x => TPE.evaluate x req₂ es₂, List.mapM_map] at heq
+        rw [List.mapM_some_iff_forall₂] at heq
+        simp [Residual.asValue] at heq
+        rw [List.mapM_ok_iff_forall₂] at hᵢ
+        sorry
+      case _ heq =>
+        split
+        case _ => sorry
+        case _ =>
+          simp [Residual.evaluate]
+          sorry
   case record => sorry
   case call => sorry
 
