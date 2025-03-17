@@ -1191,7 +1191,7 @@ impl<'a> ExprGenerator<'a> {
                         self.arbitrary_ext_constructor_call_for_type(
                             target_type,
                             ast::Expr::val,
-                            ast::Expr::call_extension_fn,
+                            |fn_name, arg| ast::Expr::call_extension_fn(fn_name, vec![arg]),
                             u,
                         )
                     } else {
@@ -1853,7 +1853,7 @@ impl<'a> ExprGenerator<'a> {
         &self,
         target_type: &Type,
         mk_str: fn(SmolStr) -> E,
-        mk_ext: fn(ast::Name, Vec<E>) -> E,
+        mk_ext: fn(ast::Name, E) -> E,
         u: &mut Unstructured<'_>,
     ) -> Result<E> {
         let func = self
@@ -1866,36 +1866,20 @@ impl<'a> ExprGenerator<'a> {
             func_name = func.name
         );
         let name_as_ref = func.name.basename_as_ref().as_ref();
-        let args = match name_as_ref {
-            "ip" => vec![mk_str(self.constant_pool.arbitrary_ip_str(u)?)],
-            "decimal" => vec![mk_str(self.constant_pool.arbitrary_decimal_str(u)?)],
-            "datetime" => vec![mk_str(self.constant_pool.arbitrary_datetime_str(u)?)],
-            "offset" => {
-                let base_datetime_str = self.constant_pool.arbitrary_datetime_str(u)?;
-                let offset_duration_str = self.constant_pool.arbitrary_duration_str(u)?;
-                vec![
-                    mk_ext(
-                        ast::Name::parse_unqualified_name("datetime")
-                            .expect("should be a valid identifier"),
-                        vec![mk_str(base_datetime_str)],
-                    ),
-                    mk_ext(
-                        ast::Name::parse_unqualified_name("duration")
-                            .expect("should be a valid identifier"),
-                        vec![mk_str(offset_duration_str)],
-                    ),
-                ]
-            }
-            "duration" => vec![mk_str(self.constant_pool.arbitrary_duration_str(u)?)],
+        let arg = match name_as_ref {
+            "ip" => mk_str(self.constant_pool.arbitrary_ip_str(u)?),
+            "decimal" => mk_str(self.constant_pool.arbitrary_decimal_str(u)?),
+            "datetime" => mk_str(self.constant_pool.arbitrary_datetime_str(u)?),
+            "duration" => mk_str(self.constant_pool.arbitrary_duration_str(u)?),
             _ => unreachable!("unhandled extension constructor {name_as_ref}"),
         };
         assert_eq!(
-            args.len(),
+            1,
             func.parameter_types.len(),
             "Generated wrong number of args for {name_as_ref} extension constructor"
         );
 
-        Ok(mk_ext(func.name.clone(), args))
+        Ok(mk_ext(func.name.clone(), arg))
     }
 
     /// get an AttrValue of the given type which conforms to this schema
@@ -1941,7 +1925,10 @@ impl<'a> ExprGenerator<'a> {
                 self.arbitrary_ext_constructor_call_for_type(
                     target_type,
                     AttrValue::StringLit,
-                    |fn_name, args| AttrValue::ExtFuncCall { fn_name, args },
+                    |fn_name, arg| AttrValue::ExtFuncCall {
+                        fn_name,
+                        args: vec![arg],
+                    },
                     u,
                 )
             }
