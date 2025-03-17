@@ -28,24 +28,20 @@ use cedar_policy_generators::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::{debug, info};
-use serde::Serialize;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, policy, and 8 associated requests
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FuzzTargetInput {
     /// generated schema
-    #[serde(skip)]
     pub schema: Schema,
     /// generated hierarchy
-    #[serde(skip)]
     pub hierarchy: Hierarchy,
     /// generated policy
     pub policy: ABACPolicy,
     /// the requests to try for this hierarchy and policy. We try 8 requests per
     /// policy/hierarchy
-    #[serde(skip)]
     pub requests: [ABACRequest; 8],
 }
 
@@ -65,8 +61,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because the diff tester ignores unknown extension function errors thrown by Lean
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

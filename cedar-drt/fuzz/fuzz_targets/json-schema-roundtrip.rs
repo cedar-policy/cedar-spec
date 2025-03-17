@@ -23,10 +23,9 @@ use cedar_policy_generators::{
 };
 use cedar_policy_validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
-use serde::Serialize;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct Input {
     pub schema: json_schema::Fragment<ast::InternalName>,
 }
@@ -47,8 +46,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for Input {

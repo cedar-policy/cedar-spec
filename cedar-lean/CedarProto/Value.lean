@@ -43,6 +43,18 @@ private def extExprToValue (xfn : ExtFun) (args : List Expr) : Except String Val
   | .ip, [.lit (.string s)] => match Spec.Ext.IPAddr.ip s with
     | .some v => .ok $ .ext (.ipaddr v)
     | .none => .error s!"exprToValue: failed to parse ip {s}"
+  | .datetime, [.lit (.string s)] => match Spec.Ext.Datetime.parse s with
+    | .some v => .ok $ .ext (.datetime v)
+    | .none => .error s!"exprToValue: failed to parse datetime {s}"
+  | .duration, [.lit (.string s)] => match Spec.Ext.Datetime.Duration.parse s with
+    | .some v => .ok $ .ext (.duration v)
+    | .none => .error s!"exprToValue: failed to parse duration {s}"
+  | .offset, [.call xfn₁ args₁, .call xfn₂ args₂] => do
+    let arg₁ ← extExprToValue xfn₁ args₁
+    let arg₂ ← extExprToValue xfn₂ args₂
+    match arg₁, arg₂ with
+    | .ext (.datetime dt), .ext (.duration dr) => .ok ∘ .ext ∘ .datetime $ dt.val + dr.val
+    | _, _ => .error s!"exprToValue: unexpected argument to datetime offset\n{repr (Expr.call xfn args)}"
   | _, _ => .error s!"exprToValue: unexpected extension value\n{repr (Expr.call xfn args)}"
 
 partial def exprToValue : Expr → Except String Value

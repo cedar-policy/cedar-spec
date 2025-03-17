@@ -30,14 +30,13 @@ use log::debug;
 use logos::Logos;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use serde::Serialize;
 use similar_asserts::SimpleDiff;
 use smol_str::SmolStr;
 use std::collections::HashMap;
 use uuid::Builder;
 
 // A thin wrapper for policy
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     // the generated policy
     policy: ABACPolicy,
@@ -59,8 +58,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

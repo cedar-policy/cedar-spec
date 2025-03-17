@@ -59,3 +59,6 @@ pub mod size_hint_utils;
 
 /// This module contains various generator settings
 pub mod settings;
+
+/// This module contains code for generating sets of templates and static policies
+pub mod policy_set;

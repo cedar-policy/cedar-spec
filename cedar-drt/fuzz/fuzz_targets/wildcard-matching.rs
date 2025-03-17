@@ -20,11 +20,10 @@ use cedar_drt_inner::fuzz_target;
 use cedar_policy_core::ast::{Pattern, PatternElem};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Result, Unstructured};
 use regex::{escape, Regex};
-use serde::Serialize;
 
 /// Input expected by this fuzz target:
 /// A pattern and a string that matches it
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     /// generated pattern
     pub pattern: Vec<PatternElem>,

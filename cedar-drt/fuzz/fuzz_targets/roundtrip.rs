@@ -26,11 +26,10 @@ use cedar_policy_generators::{
 };
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use serde::Serialize;
 use std::sync::Arc;
 
 // A thin wrapper for policy
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     // the generated policy
     policy: ABACPolicy,
@@ -50,8 +49,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT.
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

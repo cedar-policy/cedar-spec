@@ -30,24 +30,20 @@ use cedar_policy_validator::entity_manifest::{compute_entity_manifest, EntityMan
 use cedar_policy_validator::{ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use serde::Serialize;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, schema, and 8 associated policies
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     /// generated schema
-    #[serde(skip)]
     pub schema: Schema,
     /// generated hierarchy
-    #[serde(skip)]
     pub hierarchy: Hierarchy,
     /// the policy which we will see if it validates
     pub policy: ABACPolicy,
     /// the requests to try, if the policy validates.
     /// We try 8 requests per validated policy.
-    #[serde(skip)]
     pub requests: [ABACRequest; 8],
 }
 
@@ -64,8 +60,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT
-    enable_datetime_extension: true,
 };
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {

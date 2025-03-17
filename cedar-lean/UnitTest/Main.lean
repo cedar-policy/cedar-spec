@@ -20,6 +20,8 @@ import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Proto
 import UnitTest.Wildcard
+import UnitTest.TPE
+import UnitTest.Levels
 
 open UnitTest
 
@@ -29,7 +31,9 @@ def tests :=
   IPAddr.tests ++
   Wildcard.tests ++
   Proto.tests ++
-  CedarProto.tests
+  CedarProto.tests ++
+  TPE.tests ++
+  Levels.tests
 
 def main : IO UInt32 := do
   TestSuite.runAll tests

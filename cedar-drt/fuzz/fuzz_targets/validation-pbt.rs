@@ -31,24 +31,20 @@ use cedar_policy_generators::{
 use cedar_policy_validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use serde::Serialize;
 use std::convert::TryFrom;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, schema, and 8 associated policies
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct FuzzTargetInput {
     /// generated schema
-    #[serde(skip)]
     pub schema: Schema,
     /// generated hierarchy
-    #[serde(skip)]
     pub hierarchy: Hierarchy,
     /// the policy which we will see if it validates
     pub policy: ABACPolicy,
     /// the requests to try, if the policy validates.
     /// We try 8 requests per validated policy.
-    #[serde(skip)]
     pub requests: [ABACRequest; 8],
 }
 
@@ -65,8 +61,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_unknowns: false,
     enable_action_in_constraints: true,
     enable_unspecified_apply_spec: true,
-    // It's Ok to enable this flag because this target is PBT.
-    enable_datetime_extension: true,
 };
 
 const LOG_FILENAME_GENERATION_START: &str = "./logs/01_generation_start.txt";
@@ -162,7 +156,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
             Err(Error::OtherArbitrary(_)) => {
                 checkpoint(LOG_FILENAME_ERR_OTHER.to_string() + "_" + doing_what)
             }
-            Ok(_) | Err(Error::DatetimeExtensionsDisabled) => (),
+            Ok(_) => (),
         }
     }
     res

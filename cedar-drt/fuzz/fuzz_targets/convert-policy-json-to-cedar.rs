@@ -15,10 +15,9 @@
  */
 
 #![no_main]
-use thiserror::Error;
-
 use cedar_drt_inner::*;
-use cedar_policy_core::{ast::PolicyID, est::FromJsonError};
+use cedar_policy_core::est::PolicySetFromJsonError;
+use thiserror::Error;
 
 #[derive(miette::Diagnostic, Error, Debug)]
 enum ESTParseError {
@@ -26,29 +25,33 @@ enum ESTParseError {
     JSONToEST(#[from] serde_json::error::Error),
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ESTToAST(#[from] FromJsonError),
+    ESTToAST(#[from] PolicySetFromJsonError),
 }
 
 fuzz_target!(|est_json_str: String| {
-    if let Ok(ast_from_est) = serde_json::from_str::<serde_json::Value>(&est_json_str)
-        .and_then(|val| serde_json::from_value::<cedar_policy_core::est::Policy>(val))
+    // JSON -> EST -> AST
+    // Attempt to deserialize an est policy set from the specified json string
+    // Then, convert the est policy set to an ast policy set
+    let ast_from_est_result = serde_json::from_str::<serde_json::Value>(&est_json_str)
+        .and_then(|val| serde_json::from_value::<cedar_policy_core::est::PolicySet>(val))
         .map_err(ESTParseError::from)
         .and_then(|est| {
-            est.try_into_ast_template(Some(PolicyID::from_string("policy0")))
-                .map_err(ESTParseError::from)
-        })
-    {
-        let ast_from_cedar =
-            cedar_policy_core::parser::parse_policy_or_template(None, &ast_from_est.to_string());
-
+            cedar_policy_core::ast::PolicySet::try_from(est).map_err(ESTParseError::from)
+        });
+    if let Ok(ast_from_est) = ast_from_est_result {
+        // AST -> text
+        let text = policy_set_to_text(&ast_from_est);
+        // text -> CST -> AST
+        // Parse an ast policy set from the Cedar text
+        let ast_from_cedar = cedar_policy_core::parser::parse_policyset(&text);
         match ast_from_cedar {
             Ok(ast_from_cedar) => {
-                check_policy_equivalence(&ast_from_est, &ast_from_cedar);
+                check_policy_set_equivalence(&ast_from_est, &ast_from_cedar);
             }
 
             Err(e) => {
                 println!("{:?}", miette::Report::new(e));
-                panic!("Policy parsed from est to ast but did not roundtrip ast->text->ast");
+                panic!("Policy set parsed from est to ast but did not roundtrip ast->text->ast");
             }
         }
     }

@@ -17,7 +17,6 @@
 mod definitional_request_types;
 mod lean_impl;
 mod logger;
-pub mod utils;
 
 pub use definitional_request_types::*;
 pub use lean_impl::*;

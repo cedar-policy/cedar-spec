@@ -487,20 +487,25 @@ namespace Proto.ExprKind.ExtensionFunctionApp
 @[inline]
 def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BParsec ExprKind.ExtensionFunctionApp :=
   match result with
-  | .call _ es =>
-    match xfn.id with
-    | "decimal"           => pure $ .call .decimal es
-    | "lessThan"          => pure $ .call .lessThan es
-    | "lessThanOrEqual"   => pure $ .call .lessThanOrEqual es
-    | "greaterThan"       => pure $ .call .greaterThan es
-    | "greaterThanOrEqual"=> pure $ .call .greaterThanOrEqual es
-    | "ip"                => pure $ .call .ip es
-    | "isIpv4"            => pure $ .call .isIpv4 es
-    | "isIpv6"            => pure $ .call .isIpv6 es
-    | "isLoopback"        => pure $ .call .isLoopback es
-    | "isMulticast"       => pure $ .call .isMulticast es
-    | "isInRange"         => pure $ .call .isInRange es
-    | xfn                 => throw s!"mergeName: unknown extension function {xfn}"
+  | .call _ es => match xfn.id with
+    | "decimal" => pure $ .call .decimal es
+    | "lessThan" => pure $ .call .lessThan es
+    | "lessThanOrEqual" => pure $ .call .lessThanOrEqual es
+    | "greaterThan" => pure $ .call .greaterThan es
+    | "greaterThanOrEqual" => pure $ .call .greaterThanOrEqual es
+    | "ip" => pure $ .call .ip es
+    | "isIpv4" => pure $ .call .isIpv4 es
+    | "isIpv6" => pure $ .call .isIpv6 es
+    | "isLoopback" => pure $ .call .isLoopback es
+    | "isMulticast" => pure $ .call .isMulticast es
+    | "isInRange" => pure $ .call .isInRange es
+    | "datetime" => pure $ .call .datetime es
+    | "duration" => pure $ .call .duration es
+    | "offset" => pure $ .call .offset es
+    | "durationSince" => pure $ .call .durationSince es
+    | "toDate" => pure $ .call .toDate es
+    | "toTime" => pure $ .call .toTime es
+    | xfn => throw s!"mergeName: unknown extension function {xfn}"
   | _ => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
 
 @[inline]

@@ -18,6 +18,9 @@ mod dump;
 mod parsing_utils;
 mod prt;
 
+use cedar_policy_validator::ValidationError;
+use cedar_policy_validator::ValidationResult;
+use cedar_testing::cedar_test_impl::TestValidationResult;
 pub use dump::*;
 pub use parsing_utils::*;
 pub use prt::*;
@@ -45,64 +48,6 @@ pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
 pub const RUST_VALIDATION_MSG: &str = "rust_validation (ns) : ";
 pub const RUST_ENT_VALIDATION_MSG: &str = "rust_entity_validation (ns) : ";
 pub const RUST_REQ_VALIDATION_MSG: &str = "rust_request_validation (ns) : ";
-
-/// Compare the behavior of the partial evaluator in `cedar-policy` against a custom Cedar
-/// implementation. Panics if the two do not agree. `expr` is the expression to
-/// evaluate and `request` and `entities` are used to populate the evaluator.
-pub fn run_pe_test(
-    custom_impl: &impl CedarTestImplementation,
-    request: ast::Request,
-    expr: &ast::Expr,
-    entities: &Entities,
-    enable_extensions: bool,
-) {
-    let exts = if enable_extensions {
-        Extensions::all_available()
-    } else {
-        Extensions::none()
-    };
-
-    let eval = Evaluator::new(request.clone(), entities, exts);
-    use cedar_policy_core::ast::PartialValue;
-    use cedar_testing::cedar_test_impl::ExprOrValue;
-    use log::debug;
-    let expected = match eval.partial_interpret(expr, &std::collections::HashMap::default()) {
-        Ok(PartialValue::Value(v)) => Some(ExprOrValue::value(v)),
-        Ok(PartialValue::Residual(r)) => Some(ExprOrValue::Expr(r)),
-        Err(_) => None,
-    };
-    debug!("Expected: {expected:?}");
-
-    let definitional_res = custom_impl.partial_evaluate(
-        &request,
-        entities,
-        expr,
-        enable_extensions,
-        expected.clone(),
-    );
-    match definitional_res {
-        TestResult::Failure(err) => {
-            // TODO(#175): Ignore cases where the definitional code returned an error due to
-            // an unknown extension function.
-            if err.contains("unknown extension function") {
-                return;
-            }
-            // No other errors are expected
-            panic!("Unexpected error for {request}\nExpression: {expr}\nError: {err}");
-        }
-        TestResult::Success(response) => {
-            // The definitional interpreter response should be `true`
-            assert!(
-                response,
-                "Incorrect evaluation result for {request}\nExpression: {expr}\nEntities:\n{entities}\nExpected value:\n{:?}\n",
-                match expected {
-                    None => "error".to_string(),
-                    Some(e_or_v) => e_or_v.to_string()
-                }
-            )
-        }
-    }
-}
 
 /// Compare the behavior of the evaluator in `cedar-policy` against a custom Cedar
 /// implementation. Panics if the two do not agree. `expr` is the expression to
@@ -242,9 +187,44 @@ pub fn run_val_test(
     let validator = Validator::new(schema.clone());
     let (rust_res, rust_validation_dur) = time_function(|| validator.validate(policies, mode));
     info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
-
     let definitional_res = custom_impl.validate(&schema, policies, mode);
+    compare_validation_results(
+        policies,
+        &schema,
+        custom_impl.validation_comparison_mode(),
+        rust_res,
+        definitional_res,
+    );
+}
 
+pub fn run_level_val_test(
+    custom_impl: &impl CedarTestImplementation,
+    schema: ValidatorSchema,
+    policies: &ast::PolicySet,
+    mode: ValidationMode,
+    level: i32,
+) {
+    let validator = Validator::new(schema.clone());
+    let (rust_res, rust_validation_dur) =
+        time_function(|| validator.validate_with_level(policies, mode, level as u32));
+    info!("{}{}", RUST_VALIDATION_MSG, rust_validation_dur.as_nanos());
+    let definitional_res = custom_impl.validate_with_level(&schema, policies, mode, level);
+    compare_validation_results(
+        policies,
+        &schema,
+        custom_impl.validation_comparison_mode(),
+        rust_res,
+        definitional_res,
+    );
+}
+
+fn compare_validation_results(
+    policies: &ast::PolicySet,
+    schema: &ValidatorSchema,
+    comparison_mode: ValidationComparisonMode,
+    rust_res: ValidationResult,
+    definitional_res: TestResult<TestValidationResult>,
+) {
     match definitional_res {
         TestResult::Failure(err) => {
             // TODO(#175): For now, ignore cases where the Lean code returned an error due to
@@ -279,7 +259,7 @@ pub fn run_val_test(
             } else {
                 // If `cedar-policy` returns an error, then only check the spec response
                 // if the validation comparison mode is `AgreeOnAll`.
-                match custom_impl.validation_comparison_mode() {
+                match comparison_mode {
                     ValidationComparisonMode::AgreeOnAll => {
                         assert!(
                             !definitional_res.validation_passed(),
@@ -292,6 +272,21 @@ pub fn run_val_test(
                     }
                     ValidationComparisonMode::AgreeOnValid => {} // ignore
                 };
+                // We can enforce a stronger condition for level validation. The
+                // Rust result should always exactly match the Lean.
+                if rust_res
+                    .validation_errors()
+                    .any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))
+                {
+                    assert!(
+                        definitional_res.errors.contains(&"levelError".to_string()),
+                        "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
+                        &policies,
+                        schema,
+                        rust_res,
+                        definitional_res,
+                    )
+                }
             }
         }
     }
@@ -315,10 +310,9 @@ pub fn run_req_val_test(
     });
     info!("{}{}", RUST_REQ_VALIDATION_MSG, rust_auth_dur.as_nanos());
 
-    let definitional_res = custom_impl.validate_request(&schema, &request);
-    match definitional_res {
-        TestResult::Failure(_) => {
-            panic!("request validation test: failed to parse");
+    match custom_impl.validate_request(&schema, &request) {
+        TestResult::Failure(e) => {
+            panic!("failed to execute request validation: {e}");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
@@ -354,10 +348,9 @@ pub fn run_ent_val_test(
         )
     });
     info!("{}{}", RUST_ENT_VALIDATION_MSG, rust_auth_dur.as_nanos());
-    let definitional_res = custom_impl.validate_entities(&schema, &entities);
-    match definitional_res {
-        TestResult::Failure(_) => {
-            panic!("entity validation test: failed to parse");
+    match custom_impl.validate_entities(&schema, &entities) {
+        TestResult::Failure(e) => {
+            panic!("failed to execute entity validation: {e}");
         }
         TestResult::Success(definitional_res) => {
             if rust_res.is_ok() {
