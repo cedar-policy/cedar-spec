@@ -89,6 +89,14 @@ fuzz_target!(|input: FuzzTargetInput| {
             // attribute `__entity`, `__expr`, or `__extn`
             return;
         }
+        Err(EntitiesError::Serialization(JsonSerializationError::ExtnCall2OrMoreArguments(
+            err,
+        ))) if err.to_string().contains("offset") => {
+            // Serializing to JSON is expected to fail when there's a record
+            // attribute of type `datetime` and it represents a time before AD
+            // 1, which involves calls to `datetime` and `offset`.
+            return;
+        }
         _ => panic!("Should be able to serialize entities to JSON"),
     };
 
