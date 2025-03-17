@@ -245,8 +245,8 @@ end Proto
 
 def Expr.merge (e1 : Expr) (e2 : Expr) : Expr :=
   match e1, e2 with
-  | .lit p1, .lit p2        => .lit (Field.merge p1 p2)
-  | .var v1, .var v2        => .var (Field.merge v1 v2)
+  | .lit p1, .lit p2 => .lit (Field.merge p1 p2)
+  | .var v1, .var v2 => .var (Field.merge v1 v2)
   | .ite cond1 then1 else1, .ite cond2 then2 else2 =>
     .ite (merge cond1 cond2) (merge then1 then2) (merge else1 else2)
   | .and left1 right1, .and left2 right2 =>
@@ -261,10 +261,10 @@ def Expr.merge (e1 : Expr) (e2 : Expr) : Expr :=
     .getAttr (merge e1 e2) (Field.merge a1 a2)
   | .hasAttr e1 a1, .hasAttr e2 a2 =>
     .hasAttr (merge e1 e2) (Field.merge a1 a2)
-  | .set es1, .set es2      => .set (es1 ++ es2)
-  | .record m1, .record m2  => .record (m1 ++ m2)
+  | .set es1, .set es2 => .set (es1 ++ es2)
+  | .record m1, .record m2 => .record (m1 ++ m2)
   | .call _ args1, .call fn2 args2 => .call fn2 (args1 ++ args2)
-  | _, _                   => e2
+  | _, _ => e2
 
 namespace Proto.ExprKind.If
 
@@ -447,18 +447,18 @@ def mergeOp (result : ExprKind.BinaryApp) (x : Op) : ExprKind.BinaryApp :=
   match result with
   | .binaryApp _ left right =>
     match x with
-    | .eq         => .binaryApp .eq left right
-    | .less       => .binaryApp .less left right
-    | .lesseq     => .binaryApp .lessEq left right
-    | .add        => .binaryApp .add left right
-    | .sub        => .binaryApp .sub left right
-    | .mul        => .binaryApp .mul left right
-    | .in         => .binaryApp .mem left right
-    | .contains   => .binaryApp .contains left right
-    | .containsAll=> .binaryApp .containsAll left right
-    | .containsAny=> .binaryApp .containsAny left right
-    | .getTag     => .binaryApp .getTag left right
-    | .hasTag     => .binaryApp .hasTag left right
+    | .eq          => .binaryApp .eq left right
+    | .less        => .binaryApp .less left right
+    | .lesseq      => .binaryApp .lessEq left right
+    | .add         => .binaryApp .add left right
+    | .sub         => .binaryApp .sub left right
+    | .mul         => .binaryApp .mul left right
+    | .in          => .binaryApp .mem left right
+    | .contains    => .binaryApp .contains left right
+    | .containsAll => .binaryApp .containsAll left right
+    | .containsAny => .binaryApp .containsAny left right
+    | .getTag      => .binaryApp .getTag left right
+    | .hasTag      => .binaryApp .hasTag left right
   | _ => panic!("Expected ExprKind.BinaryApp to have constructor .binaryApp")
 
 @[inline]

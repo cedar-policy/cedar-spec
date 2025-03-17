@@ -63,14 +63,13 @@ def parseField (t : Proto.Tag) : BParsec (MergeFn PolicySet) := do
     pure ignore
 
 instance : Message PolicySet := {
-  parseField := fun t => do
+  parseField (t : Proto.Tag) := do
     match t.fieldNum with
     | 1 => parseFieldElement t templates (update templates)
     | 2 => parseFieldElement t links (update links)
-    | _ =>
-      let _ ← t.wireType.skip
-      pure ignore,
-  merge := fun x y => {
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
     templates := Field.merge x.templates y.templates,
     links     := Field.merge x.links     y.links
   }
@@ -80,8 +79,8 @@ def toPolicies : PolicySet → Spec.Policies
   | { templates, links } =>
     let templates := Data.Map.make templates.toList
     match link? templates (links.toList.map Prod.snd) with
-    | .ok policies  => policies
-    | .error e      => panic!(s!"toPolicies: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}")
+    | .ok policies => policies
+    | .error e     => panic!(s!"toPolicies: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}")
 
 end PolicySet
 
