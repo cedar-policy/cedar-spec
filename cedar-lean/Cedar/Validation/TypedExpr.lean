@@ -136,22 +136,16 @@ def TypedExpr.toExpr : TypedExpr → Expr
   | binaryApp op a b _ => Expr.binaryApp op a.toExpr b.toExpr
   | getAttr expr attr _ => Expr.getAttr expr.toExpr attr
   | hasAttr expr attr _ => Expr.hasAttr expr.toExpr attr
-  | set ls ty => Expr.set $ ls.map₁ (λ ⟨e, h₁⟩  =>
-    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
-      have := List.sizeOf_lt_of_mem h₁
-      omega
-    e.toExpr)
-  | record ls ty => Expr.record $ ls.map₁ (λ ⟨(a, e), h₁⟩  =>
-    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
-      have := Map.sizeOf_lt_of_value h₁
-      simp only [Map.mk.sizeOf_spec] at this
-      omega
-    (a, e.toExpr))
-  | call xfn args ty => Expr.call xfn $ args.map₁ (λ ⟨e, h₁⟩ =>
-    have _ : sizeOf e < 1 + sizeOf args + sizeOf ty := by
-      have := List.sizeOf_lt_of_mem h₁
-      omega
-    e.toExpr)
+  | set ls _ => Expr.set $ ls.map₁ (λ ⟨e, _⟩  => e.toExpr)
+  | record ls _ => Expr.record $ ls.attach₂.map (λ ⟨(a, e), _⟩  => (a, e.toExpr))
+  | call xfn args _ => Expr.call xfn $ args.map₁ (λ ⟨e, _⟩ => e.toExpr)
+decreasing_by
+  all_goals (simp_wf ; try omega)
+  all_goals
+    rename_i h
+    try simp at h
+    try replace h := List.sizeOf_lt_of_mem h
+    omega
 
 def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .lit p ty => .lit p ty.liftBoolTypes
@@ -163,20 +157,15 @@ def TypedExpr.liftBoolTypes : TypedExpr → TypedExpr
   | .binaryApp op a b ty => .binaryApp op a.liftBoolTypes b.liftBoolTypes ty.liftBoolTypes
   | .getAttr expr attr ty => .getAttr expr.liftBoolTypes attr ty.liftBoolTypes
   | .hasAttr expr attr ty => .hasAttr expr.liftBoolTypes attr ty.liftBoolTypes
-  | .set ls ty => .set (ls.map₁ (λ ⟨e, h₁⟩  =>
-    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
-      have := List.sizeOf_lt_of_mem h₁
-      omega
-    e.liftBoolTypes)) ty.liftBoolTypes
-  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), h₁⟩  =>
-    have _ : sizeOf e < 1 + sizeOf ls + sizeOf ty := by
-      simp only at h₁
-      omega
-    (a, e.liftBoolTypes))) ty.liftBoolTypes
-  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, h₁⟩  =>
-    have _ : sizeOf e < 1 + sizeOf args + sizeOf ty := by
-      have := List.sizeOf_lt_of_mem h₁
-      omega
-    e.liftBoolTypes)) ty.liftBoolTypes
+  | .set ls ty => .set (ls.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes
+  | .record ls ty => .record (ls.attach₂.map (λ ⟨(a, e), _⟩ => (a, e.liftBoolTypes))) ty.liftBoolTypes
+  | .call xfn args ty => .call xfn (args.map₁ (λ ⟨e, _⟩ => e.liftBoolTypes)) ty.liftBoolTypes
+decreasing_by
+  all_goals (simp_wf ; try omega)
+  all_goals
+    rename_i h
+    try simp at h
+    try replace h := List.sizeOf_lt_of_mem h
+    omega
 
 end Cedar.Validation
