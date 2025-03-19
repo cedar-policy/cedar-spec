@@ -50,16 +50,16 @@ inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
 inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | not {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .bool .anyBool) :
-    WellTyped .not x₁ (.bool anyBool)
+    WellTyped .not x₁ (.bool .anyBool)
   | neg {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .int) :
     WellTyped .neg x₁ .int
   | isEmpty {x₁ : TypedExpr} {eltTy : CedarType}
     (h₁ : x₁.typeOf = .set eltTy) :
-    WellTyped .isEmpty x₁ (.bool anyBool)
+    WellTyped .isEmpty x₁ (.bool .anyBool)
   | like {x₁ : TypedExpr} {p : Pattern}
     (h₁ : x₁.typeOf = .string) :
-    WellTyped (.like p) x₁ (.bool anyBool)
+    WellTyped (.like p) x₁ (.bool .anyBool)
 
 inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
   | eq {x₁ x₂ : TypedExpr}
@@ -137,19 +137,19 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | lessThan {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.ext .decimal)
+    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
   | lessThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.ext .decimal)
+    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
   | greaterThan {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.ext .decimal)
+    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
   | greaterThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.ext .decimal)
+    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
   | ip {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .string) :
     WellTyped .ip [x₁] (.ext .ipAddr)
@@ -195,7 +195,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : Prim.WellTyped env p ty) :
   WellTyped env (.lit p ty)
 | var {v : Var} {ty : CedarType}
-  (h₁ : Var.WellTyped env var ty) :
+  (h₁ : Var.WellTyped env v ty) :
   WellTyped env (.var v ty)
 | ite {x₁ x₂ x₃ : TypedExpr}
   (h₁ : WellTyped env x₁)
@@ -265,9 +265,39 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
   InstanceOfType v ty.typeOf
 := by
   intro h₀ h₁ h₂
-  cases h₁
+  cases h₁ <;> try simp only [TypedExpr.toExpr, evaluate] at h₂
+  case lit p ty h₃ =>
+    cases h₃ <;>
+    simp only [TypedExpr.typeOf] <;>
+    simp only [Except.ok.injEq] at h₂ <;>
+    rw [←h₂]
+    case bool => simp only [bool_is_instance_of_anyBool]
+    case int => exact InstanceOfType.instance_of_int
+    case string => exact InstanceOfType.instance_of_string
+    case entityUID uid h =>
+      have : InstanceOfEntityType uid uid.ty := by rfl
+      exact InstanceOfType.instance_of_entity uid uid.ty this
+  case var h₃ =>
+    cases h₃ <;>
+    simp only [TypedExpr.typeOf] <;>
+    simp only [TypedExpr.toExpr, evaluate, Except.ok.injEq] at h₂ <;>
+    rw [←h₂] <;>
+    simp only [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
+    case principal =>
+      rcases h₀ with ⟨⟨h₀, _, _, _⟩, _, _⟩
+      exact InstanceOfType.instance_of_entity request.principal env.reqty.principal h₀
+    case resource =>
+      rcases h₀ with ⟨⟨_, _, h₀, _⟩, _, _⟩
+      exact InstanceOfType.instance_of_entity request.resource env.reqty.resource h₀
+    case action =>
+      rcases h₀ with ⟨⟨_, h₀, _, _⟩, _, _⟩
+      simp only [h₀]
+      have : InstanceOfEntityType env.reqty.action env.reqty.action.ty := by rfl
+      exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
+    case context =>
+      rcases h₀ with ⟨⟨_, _, _, h₀⟩, _, _⟩
+      exact h₀
   case ite x₁ x₂ x₃ h₃ h₄ h₅ h₆ h₇ =>
-    simp [TypedExpr.toExpr, evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
     case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
@@ -290,30 +320,194 @@ theorem typechecked_is_well_typed {v : Value} {env : Environment} {ty : TypedExp
         have hᵢ₃ := typechecked_is_well_typed h₀ h₄ h₂
         exact hᵢ₃
   case and x₁ x₂ h₃ h₄ h₅ h₆ =>
-    simp [TypedExpr.toExpr, evaluate] at h₂
+    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+    cases res₁
+    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case ok =>
+      have hᵢ₁' := typechecked_is_well_typed h₀ h₃ hᵢ₁
+      simp only [h₅] at hᵢ₁'
+      have ⟨b, hᵢ₁'⟩ := instance_of_anyBool_is_bool hᵢ₁'
+      simp only [hᵢ₁'] at hᵢ₁
+      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
+      simp only [TypedExpr.typeOf]
+      cases b <;> simp at h₂
+      case false =>
+        rw [←h₂]
+        simp only [bool_is_instance_of_anyBool]
+      case true =>
+        generalize hᵢ₂ : evaluate x₂.toExpr request entities = res₂
+        cases res₂
+        case error =>
+          simp only [hᵢ₂, Except.map_error, reduceCtorEq] at h₂
+        case ok =>
+          simp only [hᵢ₂] at h₂
+          have hᵢ₂' := typechecked_is_well_typed h₀ h₄ hᵢ₂
+          simp only [h₆] at hᵢ₂'
+          have ⟨_, hᵢ₂'⟩ := instance_of_anyBool_is_bool hᵢ₂'
+          simp only [hᵢ₂', Except.map_ok, Except.ok.injEq] at h₂
+          rw [←h₂]
+          simp only [bool_is_instance_of_anyBool]
+  case or x₁ x₂ h₃ h₄ h₅ h₆ =>
+    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+    cases res₁
+    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case ok =>
+      have hᵢ₁' := typechecked_is_well_typed h₀ h₃ hᵢ₁
+      simp only [h₅] at hᵢ₁'
+      have ⟨b, hᵢ₁'⟩ := instance_of_anyBool_is_bool hᵢ₁'
+      simp only [hᵢ₁'] at hᵢ₁
+      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
+      simp only [TypedExpr.typeOf]
+      cases b <;> simp at h₂
+      case true =>
+        rw [←h₂]
+        simp only [bool_is_instance_of_anyBool]
+      case false =>
+        generalize hᵢ₂ : evaluate x₂.toExpr request entities = res₂
+        cases res₂
+        case error =>
+          simp only [hᵢ₂, Except.map_error, reduceCtorEq] at h₂
+        case ok =>
+          simp only [hᵢ₂] at h₂
+          have hᵢ₂' := typechecked_is_well_typed h₀ h₄ hᵢ₂
+          simp only [h₆] at hᵢ₂'
+          have ⟨_, hᵢ₂'⟩ := instance_of_anyBool_is_bool hᵢ₂'
+          simp only [hᵢ₂', Except.map_ok, Except.ok.injEq] at h₂
+          rw [←h₂]
+          simp only [bool_is_instance_of_anyBool]
+  case unaryApp op x₁ ty hᵢ h₃ =>
+    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+    cases res₁
+    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case ok v =>
+      simp only [hᵢ₁, apply₁, Except.bind_ok] at h₂
+      split at h₂ <;> cases h₃ <;> simp only [TypedExpr.typeOf]
+      · simp only [Except.ok.injEq] at h₂
+        rw [←h₂]
+        simp only [bool_is_instance_of_anyBool]
+      · simp only [intOrErr] at h₂
+        split at h₂
+        · simp only [Except.ok.injEq] at h₂
+          rw [←h₂]
+          exact InstanceOfType.instance_of_int
+        · cases h₂
+      · simp only [Except.ok.injEq] at h₂
+        rw [←h₂]
+        simp only [bool_is_instance_of_anyBool]
+      · simp only [Except.ok.injEq] at h₂
+        rw [←h₂]
+        simp only [bool_is_instance_of_anyBool]
+      · cases h₂
+      · cases h₂
+      · cases h₂
+      · cases h₂
+  case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ h₃ =>
+    generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
+    generalize hᵢ₂' : evaluate x₂.toExpr request entities = res₂
+    cases res₁ <;> cases res₂ <;> simp [hᵢ₁', hᵢ₂'] at h₂
+    -- case ok.ok
+    rename_i v₁ v₂
+    simp only [apply₂] at h₂
+    simp only [TypedExpr.typeOf]
+    split at h₂ <;>
+    cases h₃ <;>
+    try cases h₂ <;>
+    try simp only [bool_is_instance_of_anyBool]
+    · sorry
+    · sorry
+    · sorry
+    · sorry
+    · sorry
+    · sorry
+  case hasAttr_entity ety x₁ attr hᵢ h₃ =>
+    generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
+    cases res₁ <;> simp [hᵢ'] at h₂
+    simp only [hasAttr] at h₂
     sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+  case hasAttr_record => sorry
+  case getAttr_entity => sorry
+  case getAttr_record => sorry
+  case set => sorry
+  case record => sorry
+  case call xfn args ty h₃ h₄ => sorry
+    /-
+    generalize hᵢ : ((args.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities) = res₁
+    cases res₁ <;> simp [hᵢ] at h₂
+    simp only [call, res, gt_iff_lt, ge_iff_le] at h₂
+    simp only [TypedExpr.typeOf]
+    split at h₂ <;>
+    cases h₄
+    case _ v _=>
+      sorry
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ => sorry
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ =>
+      simp only [Except.ok.injEq] at h₂
+      rw [←h₂]
+      simp only [bool_is_instance_of_anyBool]
+    case _ => sorry
+    case _ => sorry
+    case _ => sorry
+    case _ => sorry
+    case _ => sorry
+    case _ => sorry
+    case _ => sorry
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+    case _ => cases h₂
+  -/
+
 
 theorem well_typed_bool {v : Value} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
   ty.typeOf.isBool →
   evaluate ty.toExpr request entities = .ok v →
   ∃ b : Bool, v = b
 := by
-  intro h₀ h₁ h₂ h₃
-  have h₄ := typechecked_is_well_typed h₀ h₁ h₃
   sorry
 
 theorem type_of_generate_well_typed_typed_expr {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
