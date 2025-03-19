@@ -27,12 +27,10 @@ open Cedar.Spec
 open Cedar.Data
 
 inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
-  | principal { ety : EntityType }
-    (h₁ : env.reqty.principal = ety) :
-    WellTyped env .principal (.entity ety)
-  | resource { ety : EntityType }
-    (h₁ : env.reqty.resource = ety) :
-    WellTyped env .resource (.entity ety)
+  | principal :
+    WellTyped env .principal (.entity env.reqty.principal)
+  | resource :
+    WellTyped env .resource (.entity env.reqty.resource)
   | action :
     WellTyped env .action (.entity env.reqty.action.ty)
   | context:
