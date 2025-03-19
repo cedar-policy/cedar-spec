@@ -34,7 +34,7 @@ inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
   | string (s : String) :
     WellTyped env (.string s) .string
   | entityUID (uid : EntityUID)
-    (h₁ : env.ets.isValidEntityUID uid):
+    (h₁ : env.ets.isValidEntityUID uid || env.acts.contains uid) :
     WellTyped env (.entityUID uid) (.entity uid.ty)
 
 inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
