@@ -15,16 +15,16 @@
 -/
 import Cedar.Validation.TypedExpr
 import Cedar.Thm
+import Cedar.Spec.Ext
 
 /-!
 This file contains useful definitions and lemmas about well-typedness of `TypedExpr`
 -/
 
-namespace Cedar.Thm
+namespace Cedar.Spec
 
 open Cedar.Validation
-open Cedar.Spec
-open Cedar.Data
+open Cedar.Spec.Ext
 
 inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
   | bool (b : Bool) :
@@ -131,9 +131,9 @@ inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → Ty
     WellTyped env .getTag x₁ x₂ ty
 
 inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
-  | decimal {x₁ : TypedExpr}
-    (h₁ : x₁.typeOf = .string) :
-    WellTyped .decimal [x₁] (.ext .decimal)
+  | decimal {s₁ : String} {d₁ : Decimal}
+    (h₁ : d₁ = Decimal.decimal s₁) :
+    WellTyped .decimal [.lit (.string s₁) .string] (.ext .decimal)
   | lessThan {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
@@ -150,9 +150,9 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
     WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
-  | ip {x₁ : TypedExpr}
-    (h₁ : x₁.typeOf = .string) :
-    WellTyped .ip [x₁] (.ext .ipAddr)
+  | ip {s₁ : String} {ip₁ : IPAddr}
+    (h₁ : ip₁ =  IPAddr.ip s₁) :
+    WellTyped .ip [.lit (.string s₁) .string] (.ext .ipAddr)
   | isIpv4 {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .ipAddr) :
     WellTyped .isIpv4 [x₁] (.bool .anyBool)
@@ -169,12 +169,12 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
     (h₁ : x₁.typeOf = .ext .ipAddr)
     (h₂ : x₂.typeOf = .ext .ipAddr):
     WellTyped .isInRange [x₁, x₂] (.bool .anyBool)
-  | datetime {x₁ : TypedExpr}
-    (h₁ : x₁.typeOf = .string) :
-    WellTyped .datetime [x₁] (.ext .datetime)
-  | duration {x₁ : TypedExpr}
-    (h₁ : x₁.typeOf = .string) :
-    WellTyped .duration [x₁] (.ext .duration)
+  | datetime {s₁ : String} {d₁ : Datetime}
+    (h₁ : d₁ =  Datetime.parse s₁) :
+    WellTyped .datetime [.lit (.string s₁) .string] (.ext .datetime)
+  | duration {s₁ : String} {d₁ : Duration}
+    (h₁ : d₁ =  Datetime.Duration.parse s₁) :
+    WellTyped .duration [.lit (.string s₁) .string] (.ext .duration)
   | offset {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .datetime)
     (h₂ : x₂.typeOf = .ext .duration):
@@ -190,12 +190,20 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
     (h₁ : x₁.typeOf = .ext .datetime) :
     WellTyped .toTime [x₁] (.ext .duration)
 
+end Cedar.Spec
+
+namespace Cedar.Thm
+
+open Cedar.Validation
+open Cedar.Spec
+open Cedar.Data
+
 inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
 | lit {p : Prim} {ty : CedarType}
-  (h₁ : Prim.WellTyped env p ty) :
+  (h₁ : p.WellTyped env ty) :
   WellTyped env (.lit p ty)
 | var {v : Var} {ty : CedarType}
-  (h₁ : Var.WellTyped env v ty) :
+  (h₁ : v.WellTyped env ty) :
   WellTyped env (.var v ty)
 | ite {x₁ x₂ x₃ : TypedExpr}
   (h₁ : WellTyped env x₁)
@@ -218,12 +226,12 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   WellTyped env (.or x₁ x₂ (.bool .anyBool))
 | unaryApp {op₁ : UnaryOp} {x₁ : TypedExpr}  {ty : CedarType}
   (h₁ : WellTyped env x₁)
-  (h₂ : UnaryOp.WellTyped op₁ x₁ ty) :
+  (h₂ : op₁.WellTyped x₁ ty) :
   WellTyped env (.unaryApp op₁ x₁ ty)
 | binaryApp {op₂ : BinaryOp} {x₁ x₂: TypedExpr}  {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : WellTyped env x₂)
-  (h₃ : BinaryOp.WellTyped env op₂ x₁ x₂ ty) :
+  (h₃ : op₂.WellTyped env x₁ x₂ ty) :
   WellTyped env (.binaryApp op₂ x₁ x₂ ty)
 | hasAttr_entity {ety : EntityType} {x₁ : TypedExpr} {attr : Attr}
   (h₁ : WellTyped env x₁)
@@ -255,7 +263,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   WellTyped env (.record m (.record rty))
 | call {xfn : ExtFun} {args : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
-  (h₂ : ExtFun.WellTyped xfn args ty) :
+  (h₂ : xfn.WellTyped args ty) :
   WellTyped env (.call xfn args ty)
 
 end Cedar.Thm
