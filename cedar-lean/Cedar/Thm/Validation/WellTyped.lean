@@ -26,6 +26,17 @@ open Cedar.Validation
 open Cedar.Spec
 open Cedar.Data
 
+inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
+  | bool (b : Bool) :
+    WellTyped env (.bool b) (.bool .anyBool)
+  | int (i : Int64) :
+    WellTyped env (.int i) .int
+  | string (s : String) :
+    WellTyped env (.string s) .string
+  | entityUID (uid : EntityUID)
+    (h₁ : env.ets.isValidEntityUID uid):
+    WellTyped env (.entityUID uid) (.entity uid.ty)
+
 inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
   | principal :
     WellTyped env .principal (.entity env.reqty.principal)
@@ -181,7 +192,7 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
 
 inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
 | lit {p : Prim} {ty : CedarType}
-  (h₁ : InstanceOfType (.prim p) ty) :
+  (h₁ : Prim.WellTyped env p ty) :
   WellTyped env (.lit p ty)
 | var {v : Var} {ty : CedarType}
   (h₁ : Var.WellTyped env var ty) :
@@ -241,7 +252,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
   -- should we require well-formedness of `m` and then rewrite h₁ using quantifiers?
   (h₂ : rty = Map.make (m.map (λ (a, ty) => (a, .required ty.typeOf)))) :
-  WellTyped env (.record m ty)
+  WellTyped env (.record m (.record rty))
 | call {xfn : ExtFun} {args : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
   (h₂ : ExtFun.WellTyped xfn args ty) :
