@@ -92,8 +92,8 @@ fuzz_target!(|input: FuzzTargetInput| {
         Err(EntitiesError::Serialization(JsonSerializationError::ExtnCall2OrMoreArguments(
             err,
         ))) if err.to_string().contains("offset") => {
-	    // Serializing to JSON is expected to fail when there's a record
-	    // attribute of type `datetime`, which involves calls to `offset`.
+            // Serializing to JSON is expected to fail when there's a record
+            // attribute of type `datetime`, which involves calls to `offset`.
             // This is because years before AD 1 cannot be constructed using the
             // `datetime` function, of which the valid inputs span from AD 1 to
             // year 9999.
