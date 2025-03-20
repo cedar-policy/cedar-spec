@@ -258,9 +258,10 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
   case getAttr_entity x₁ attr ty hᵢ ht h₃ h₄ =>
     have hᵢ' := @well_typed_is_sound x₁
     exact well_typed_is_sound_get_attr_entity h₀ hᵢ' hᵢ ht h₃ h₄ h₂
-  case getAttr_record x₁ _ _ _ _ _ =>
-    sorry
-  case set => sorry
+  case getAttr_record rty x₁ attr ty hᵢ ht h₃ =>
+    have hᵢ' := @well_typed_is_sound x₁
+    exact well_typed_is_sound_get_attr_record h₀ hᵢ' hᵢ ht h₃ h₂
+  case set ls ty h₃ h₄ => sorry
   case record => sorry
   case call xfn args ty h₃ h₄ => sorry
     /-

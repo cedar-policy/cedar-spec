@@ -55,7 +55,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
   simp only [InstanceOfEntityType] at het
   simp only [RequestAndEntitiesMatchEnvironment, InstanceOfEntitySchema] at h₁
   rcases h₁ with ⟨_, h₁, _⟩
-  simp [getAttr, attrsOf, Entities.attrs, Data.Map.findOrErr] at h₇
+  simp only [getAttr, attrsOf, Entities.attrs, Data.Map.findOrErr, bind_assoc, Except.bind_ok] at h₇
   rename_i uid _ _
   split at h₇
   · simp only [Except.bind_ok] at h₇
@@ -81,4 +81,43 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
       exact h₈
     · cases h₇
   · simp only [Except.bind_err, reduceCtorEq] at h₇
+
+theorem well_typed_is_sound_get_attr_record
+{v : Value}
+{env : Environment}
+{request : Request}
+{entities : Entities}
+{rty : RecordType}
+{x₁ : TypedExpr}
+{attr : Attr}
+{ty : CedarType}
+(h₁ : RequestAndEntitiesMatchEnvironment env request entities)
+(h₂ : WellTypedIsSound x₁)
+(h₃ : TypedExpr.WellTyped env x₁)
+(h₄ : x₁.typeOf = CedarType.record rty)
+(h₅ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
+(h₆ : (do
+  let v₁ ← evaluate x₁.toExpr request entities
+  getAttr v₁ attr entities) = Except.ok v) :
+InstanceOfType v (x₁.getAttr attr ty).typeOf
+:= by
+  simp only [WellTypedIsSound] at h₂
+  generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
+  cases res₁ <;> simp [hᵢ'] at h₆
+  replace h₂ := h₂ h₁ h₃ hᵢ'
+  simp only [h₄] at h₂
+  cases h₂
+  rename_i h₇ _
+  simp only [getAttr, attrsOf, Data.Map.findOrErr, Except.bind_ok] at h₆
+  split at h₆
+  · rename_i v₁ heq
+    have h₇ := λ qty => h₇ attr v₁ qty heq
+    simp only [Option.map_eq_some'] at h₅
+    rcases h₅ with ⟨qty, h₅₁, h₅₂⟩
+    have h₇ := h₇ qty h₅₁
+    simp only [Except.ok.injEq] at h₆
+    simp [TypedExpr.typeOf, ←h₆, ←h₅₂]
+    exact h₇
+  · cases h₆
+
 end Cedar.Thm
