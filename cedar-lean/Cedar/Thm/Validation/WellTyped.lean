@@ -182,12 +182,66 @@ theorem well_typed_is_sound {v : Value} {env : Environment} {ty : TypedExpr} {re
     cases h₃ <;>
     try cases h₂ <;>
     try simp only [bool_is_instance_of_anyBool]
-    · sorry
-    · sorry
-    · sorry
-    · sorry
-    · sorry
-    · sorry
+    · simp only [intOrErr] at h₂
+      split at h₂
+      · simp only [Except.ok.injEq] at h₂
+        simp [←h₂]
+        exact InstanceOfType.instance_of_int
+      · cases h₂
+    · simp only [intOrErr] at h₂
+      split at h₂
+      · simp only [Except.ok.injEq] at h₂
+        simp [←h₂]
+        exact InstanceOfType.instance_of_int
+      · cases h₂
+    · simp only [intOrErr] at h₂
+      split at h₂
+      · simp only [Except.ok.injEq] at h₂
+        simp [←h₂]
+        exact InstanceOfType.instance_of_int
+      · cases h₂
+    · have hᵢ₂' := well_typed_is_sound h₀ hᵢ₂ hᵢ₂'
+      rename_i h₂
+      simp only [h₂] at hᵢ₂'
+      cases hᵢ₂'
+    · simp only [inₛ, do_ok] at h₂
+      rcases h₂ with ⟨_, _, h₂⟩
+      simp only [← h₂, bool_is_instance_of_anyBool]
+    · rename_i uid₁ tag _ _ _ h₃
+      simp only [getTag, Data.Map.findOrErr] at h₂
+      generalize hᵢ : entities.tags uid₁ = res₁
+      cases res₁ <;> rw [hᵢ] at h₂
+      case error => simp only [Except.bind_err, reduceCtorEq] at h₂
+      case ok =>
+        simp only [Except.bind_ok] at h₂
+        split at h₂
+        · rename_i ht₁ _ _ _ v₁ heq
+          simp only [Except.ok.injEq] at h₂
+          subst h₂
+          have hᵢ₁' := well_typed_is_sound h₀ hᵢ₁ hᵢ₁'
+          simp only [ht₁] at hᵢ₁'
+          cases hᵢ₁'
+          rename_i ht₁
+          simp only [InstanceOfEntityType] at ht₁
+          simp only [ht₁] at h₃
+          simp only [RequestAndEntitiesMatchEnvironment] at h₀
+          rcases h₀ with ⟨_, h₀, _⟩
+          simp only [InstanceOfEntitySchema] at h₀
+          simp only [Entities.tags, do_ok, Data.Map.findOrErr] at hᵢ
+          split at hᵢ
+          · simp only [Except.ok.injEq, exists_eq_left'] at hᵢ
+            rename_i entry heq₁
+            have ⟨entry₁, ⟨h₄, _, _, _, h₅⟩⟩ := h₀ uid₁ entry heq₁
+            simp [InstanceOfEntityTags] at h₅
+            simp [EntitySchema.tags?] at h₃
+            rcases h₃ with ⟨_, h₃₁, h₃₂⟩
+            simp only [h₄, Option.some.injEq] at h₃₁
+            simp only [← h₃₁] at h₃₂
+            simp only [h₃₂] at h₅
+            simp only [←hᵢ] at heq
+            exact h₅ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+          · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
+        · cases h₂
   case hasAttr_entity ety x₁ attr hᵢ h₃ =>
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
     cases res₁ <;> simp [hᵢ'] at h₂
