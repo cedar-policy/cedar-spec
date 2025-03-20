@@ -275,6 +275,49 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
-:= by sorry
+:= by
+  intro h₁ h₂ h₃
+  cases e
+  case lit p =>
+    simp only [typeOf, typeOfLit, List.empty_eq, Function.comp_apply, Bool.or_eq_true, ok] at h₃
+    split at h₃ <;> try simp at h₃ ; rcases h₃ with ⟨h₃, _⟩
+    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool true)
+    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool false)
+    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+      rename_i i _
+      exact TypedExpr.WellTyped.lit (Prim.WellTyped.int i)
+    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+      rename_i s _
+      exact TypedExpr.WellTyped.lit (Prim.WellTyped.string s)
+    · split at h₃
+      · simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃
+        rcases h₃ with ⟨h₃, _⟩
+        simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+        rename_i uid h₄ _
+        sorry
+        --exact TypedExpr.WellTyped.lit (Prim.WellTyped.entityUID uid h₄)
+      · cases h₃
+  case var v =>
+    simp only [typeOf, typeOfVar, List.empty_eq, Function.comp_apply, ok] at h₃
+    split at h₃ <;>
+    simp at h₃ <;>
+    rcases h₃ with ⟨h₃, _⟩ <;>
+    simp [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+    · exact TypedExpr.WellTyped.var (Var.WellTyped.principal)
+    · exact TypedExpr.WellTyped.var (Var.WellTyped.action)
+    · exact TypedExpr.WellTyped.var (Var.WellTyped.resource)
+    · sorry
+  case ite => sorry
+  case and => sorry
+  case or => sorry
+  case unaryApp => sorry
+  case binaryApp => sorry
+  case getAttr => sorry
+  case hasAttr => sorry
+  case set => sorry
+  case record => sorry
+  case call => sorry
 
 end Cedar.Thm
