@@ -266,4 +266,11 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₂ : xfn.WellTyped args ty) :
   WellTyped env (.call xfn args ty)
 
+def WellTypedIsSound (x₁ : TypedExpr) : Prop :=
+  ∀ {v : Value} {env : Environment} {request : Request} {entities : Entities},
+  RequestAndEntitiesMatchEnvironment env request entities →
+  TypedExpr.WellTyped env x₁ →
+  evaluate x₁.toExpr request entities = .ok v →
+  InstanceOfType v x₁.typeOf
+
 end Cedar.Thm

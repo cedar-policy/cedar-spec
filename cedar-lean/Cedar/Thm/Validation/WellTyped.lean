@@ -16,6 +16,7 @@
 
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
+import Cedar.Thm.Validation.WellTyped.GetAttr
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -27,7 +28,7 @@ open Cedar.Thm
 open Cedar.Validation
 open Cedar.Spec
 
-theorem well_typed_is_sound {v : Value} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
   evaluate ty.toExpr request entities = .ok v →
@@ -242,14 +243,23 @@ theorem well_typed_is_sound {v : Value} {env : Environment} {ty : TypedExpr} {re
             exact h₅ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
           · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
         · cases h₂
-  case hasAttr_entity ety x₁ attr hᵢ h₃ =>
+  case hasAttr_entity x₁ _ _ _ =>
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
     cases res₁ <;> simp [hᵢ'] at h₂
-    simp only [hasAttr] at h₂
+    simp only [hasAttr, do_ok] at h₂
+    rcases h₂ with ⟨_, _, h₂⟩
+    simp only [← h₂, TypedExpr.typeOf, bool_is_instance_of_anyBool]
+  case hasAttr_record x₁ _ _ _ =>
+    generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
+    cases res₁ <;> simp [hᵢ'] at h₂
+    simp only [hasAttr, do_ok] at h₂
+    rcases h₂ with ⟨_, _, h₂⟩
+    simp only [← h₂, TypedExpr.typeOf, bool_is_instance_of_anyBool]
+  case getAttr_entity x₁ attr ty hᵢ ht h₃ h₄ =>
+    have hᵢ' := @well_typed_is_sound x₁
+    exact well_typed_is_sound_get_attr_entity h₀ hᵢ' hᵢ ht h₃ h₄ h₂
+  case getAttr_record x₁ _ _ _ _ _ =>
     sorry
-  case hasAttr_record => sorry
-  case getAttr_entity => sorry
-  case getAttr_record => sorry
   case set => sorry
   case record => sorry
   case call xfn args ty h₃ h₄ => sorry
