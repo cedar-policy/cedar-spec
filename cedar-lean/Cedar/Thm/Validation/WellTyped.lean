@@ -19,6 +19,7 @@ import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.GetAttr
 import Cedar.Thm.Validation.WellTyped.Call
 import Cedar.Thm.Validation.WellTyped.Set
+import Cedar.Thm.Validation.WellTyped.Record
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -263,9 +264,51 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
   case getAttr_record rty x₁ attr ty hᵢ ht h₃ =>
     have hᵢ' := @well_typed_is_sound x₁
     exact well_typed_is_sound_get_attr_record h₀ hᵢ' hᵢ ht h₃ h₂
-  case set ls ty h₃ h₄ => sorry
-  case record rty m => sorry
+  case set ls ty h₃ h₄ =>
+    have ih : ∀ x, x ∈ ls → WellTypedIsSound x := by
+      intro xᵢ _
+      exact @well_typed_is_sound xᵢ
+    exact well_typed_is_sound_set h₀ ih h₃ h₄ h₂
+  case record m rty h₃ h₄ =>
+    have ih : ∀ a x, (a, x) ∈ m → WellTypedIsSound x := by
+      intro a x _
+      exact @well_typed_is_sound x
+    exact well_typed_is_sound_record h₀ ih h₃ h₄ h₂
   case call xfn args ty h₃ h₄ => exact well_typed_is_sound_call h₄ h₂
+termination_by ty
+decreasing_by
+  all_goals simp_wf
+  case _ h _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ _ _ _ _ =>
+    simp [h] ; omega
+  case _  h _ _ _ _ _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ _ _ _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ _ _ _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  =>
+    simp [h] ; omega
+  case _ h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ _ _ _ =>
+    simp [h] ; omega
+  case _ h _ hᵢ _ _ _ =>
+    simp [h]
+    have := List.sizeOf_lt_of_mem hᵢ
+    omega
+  case _ h _ hᵢ _ _ _ =>
+    simp [h]
+    replace hᵢ := List.sizeOf_snd_lt_sizeOf_list hᵢ
+    simp only at hᵢ
+    omega
 
 theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
