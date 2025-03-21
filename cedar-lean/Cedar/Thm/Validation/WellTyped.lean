@@ -17,6 +17,7 @@
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.GetAttr
+import Cedar.Thm.Validation.WellTyped.Call
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -263,77 +264,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
     exact well_typed_is_sound_get_attr_record h₀ hᵢ' hᵢ ht h₃ h₂
   case set ls ty h₃ h₄ => sorry
   case record => sorry
-  case call xfn args ty h₃ h₄ => sorry
-    /-
-    generalize hᵢ : ((args.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities) = res₁
-    cases res₁ <;> simp [hᵢ] at h₂
-    simp only [call, res, gt_iff_lt, ge_iff_le] at h₂
-    simp only [TypedExpr.typeOf]
-    split at h₂ <;>
-    cases h₄
-    case _ v _=>
-      sorry
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ => sorry
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ =>
-      simp only [Except.ok.injEq] at h₂
-      rw [←h₂]
-      simp only [bool_is_instance_of_anyBool]
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => sorry
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-    case _ => cases h₂
-  -/
+  case call xfn args ty h₃ h₄ => exact well_typed_is_sound_call h₄ h₂
 
 theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
