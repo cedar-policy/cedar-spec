@@ -18,6 +18,7 @@ import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.GetAttr
 import Cedar.Thm.Validation.WellTyped.Call
+import Cedar.Thm.Validation.WellTyped.Set
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -263,7 +264,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
     have hᵢ' := @well_typed_is_sound x₁
     exact well_typed_is_sound_get_attr_record h₀ hᵢ' hᵢ ht h₃ h₂
   case set ls ty h₃ h₄ => sorry
-  case record => sorry
+  case record rty m h₃ h₄ => sorry
   case call xfn args ty h₃ h₄ => exact well_typed_is_sound_call h₄ h₂
 
 theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
