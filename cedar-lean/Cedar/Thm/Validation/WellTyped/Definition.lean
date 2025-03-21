@@ -256,11 +256,10 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : ∀ x, x ∈ ls → WellTyped env x)
   (h₂ : ∀ x, x ∈ ls → x.typeOf = ty) :
   WellTyped env (.set ls (.set ty))
-| record {rty : RecordType} {m : List (Attr × TypedExpr)}
+| record {m : List (Attr × TypedExpr)} {rty : List (Attr × QualifiedType)}
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
-  -- should we require well-formedness of `m` and then rewrite h₁ using quantifiers?
-  (h₂ : rty = Map.make (m.map (λ (a, ty) => (a, .required ty.typeOf)))) :
-  WellTyped env (.record m (.record rty))
+  (h₂ : List.Forall₂ (λ x y => x.fst = y.fst ∧ x.snd.typeOf = y.snd.getType) m rty) :
+  WellTyped env (.record m (.record (Map.make rty)))
 | call {xfn : ExtFun} {args : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
   (h₂ : xfn.WellTyped args ty) :
