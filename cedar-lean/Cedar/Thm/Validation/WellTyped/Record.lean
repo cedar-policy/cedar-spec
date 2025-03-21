@@ -17,7 +17,7 @@
 import Cedar.Validation.TypedExpr
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm
+import Cedar.Thm.Validation
 import Cedar.Spec
 
 namespace Cedar.Thm
