@@ -16,6 +16,8 @@
 
 import Cedar.Validation.TypedExpr
 import Cedar.Spec
+import Cedar.Thm.Validation
+import Cedar.Thm.Validation.Typechecker.Record
 
 /-!
 This file contains theorems related to `TypedExpr.liftBoolTypes`
@@ -82,5 +84,26 @@ theorem type_lifting_preserves_evaluation_results {x : TypedExpr} {request : Req
   evaluate x.toExpr request entities = evaluate x.liftBoolTypes.toExpr request entities
  := by
  simp only [type_lifting_preserves_expr x]
+
+theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
+  InstanceOfType v ty →
+  InstanceOfType v ty.liftBoolTypes
+:= by
+  intro h₁
+  induction h₁ <;> simp only [CedarType.liftBoolTypes]
+  case instance_of_bool =>
+    simp only [BoolType.lift, bool_is_instance_of_anyBool]
+  case instance_of_int =>
+    exact InstanceOfType.instance_of_int
+  case instance_of_string =>
+    exact InstanceOfType.instance_of_string
+  case instance_of_entity e ety h =>
+    exact InstanceOfType.instance_of_entity e ety h
+  case instance_of_set s tyᵢ _ hᵢ =>
+    exact InstanceOfType.instance_of_set s tyᵢ.liftBoolTypes hᵢ
+  case instance_of_record r rty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ =>
+    sorry
+  case instance_of_ext x xty hᵢ =>
+    exact InstanceOfType.instance_of_ext x xty hᵢ
 
 end Cedar.Thm
