@@ -40,14 +40,12 @@ theorem well_typed_is_sound_get_attr_entity
 (h₄ : x₁.typeOf = CedarType.entity ety)
 (h₅ : env.ets.attrs? ety = some rty)
 (h₆ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
-(h₇ : (do
-  let v₁ ← evaluate x₁.toExpr request entities
-  getAttr v₁ attr entities) = Except.ok v) :
+(h₇ : evaluate (x₁.toExpr.getAttr attr) request entities = Except.ok v) :
 InstanceOfType v (x₁.getAttr attr ty).typeOf
 := by
   simp only [WellTypedIsSound] at h₂
   generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
-  cases res₁ <;> simp [hᵢ'] at h₇
+  cases res₁ <;> simp [evaluate, hᵢ'] at h₇
   replace h₂ := h₂ h₁ h₃ hᵢ'
   simp only [h₄] at h₂
   cases h₂
@@ -96,14 +94,12 @@ theorem well_typed_is_sound_get_attr_record
 (h₃ : TypedExpr.WellTyped env x₁)
 (h₄ : x₁.typeOf = CedarType.record rty)
 (h₅ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
-(h₆ : (do
-  let v₁ ← evaluate x₁.toExpr request entities
-  getAttr v₁ attr entities) = Except.ok v) :
+(h₆ : evaluate (x₁.toExpr.getAttr attr) request entities = Except.ok v) :
 InstanceOfType v (x₁.getAttr attr ty).typeOf
 := by
   simp only [WellTypedIsSound] at h₂
   generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
-  cases res₁ <;> simp [hᵢ'] at h₆
+  cases res₁ <;> simp [evaluate, hᵢ'] at h₆
   replace h₂ := h₂ h₁ h₃ hᵢ'
   simp only [h₄] at h₂
   cases h₂

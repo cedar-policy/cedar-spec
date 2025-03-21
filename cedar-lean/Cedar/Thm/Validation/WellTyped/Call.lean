@@ -33,12 +33,11 @@ theorem well_typed_is_sound_call
 {args : List TypedExpr}
 {ty : CedarType}
 (h₁ : xfn.WellTyped args ty)
-(h₂ : (do
-  let vs ← (args.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities
-  call xfn vs) = Except.ok v) :
+(h₂ : evaluate (Expr.call xfn (args.map₁ λ x => x.val.toExpr)) request entities = Except.ok v) :
 InstanceOfType v (TypedExpr.call xfn args ty).typeOf
 := by
   generalize hᵢ : ((args.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities) = res₁
+  simp only [evaluate] at h₂
   cases res₁ <;> simp [hᵢ] at h₂
   simp only [call, res, gt_iff_lt, ge_iff_le] at h₂
   simp only [TypedExpr.typeOf]

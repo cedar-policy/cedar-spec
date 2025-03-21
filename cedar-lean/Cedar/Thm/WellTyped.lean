@@ -38,8 +38,9 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
   InstanceOfType v ty.typeOf
 := by
   intro h₀ h₁ h₂
-  cases h₁ <;> try simp only [TypedExpr.toExpr, evaluate] at h₂
+  cases h₁ <;> try simp only [TypedExpr.toExpr] at h₂
   case lit p ty h₃ =>
+    simp only [evaluate] at h₂
     cases h₃ <;>
     simp only [TypedExpr.typeOf] <;>
     simp only [Except.ok.injEq] at h₂ <;>
@@ -71,6 +72,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
       rcases h₀ with ⟨⟨_, _, _, h₀⟩, _, _⟩
       exact h₀
   case ite x₁ x₂ x₃ h₃ h₄ h₅ h₆ h₇ =>
+    simp only [evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
     case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
@@ -93,6 +95,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
         have hᵢ₃ := well_typed_is_sound h₀ h₄ h₂
         exact hᵢ₃
   case and x₁ x₂ h₃ h₄ h₅ h₆ =>
+    simp only [evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
     case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
@@ -121,6 +124,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
           rw [←h₂]
           simp only [bool_is_instance_of_anyBool]
   case or x₁ x₂ h₃ h₄ h₅ h₆ =>
+    simp only [evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
     case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
@@ -149,6 +153,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
           rw [←h₂]
           simp only [bool_is_instance_of_anyBool]
   case unaryApp op x₁ ty hᵢ h₃ =>
+    simp only [evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
     case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
@@ -175,6 +180,7 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
       · cases h₂
       · cases h₂
   case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ h₃ =>
+    simp only [evaluate] at h₂
     generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
     generalize hᵢ₂' : evaluate x₂.toExpr request entities = res₂
     cases res₁ <;> cases res₂ <;> simp [hᵢ₁', hᵢ₂'] at h₂
@@ -247,12 +253,14 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
           · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
         · cases h₂
   case hasAttr_entity x₁ _ _ _ =>
+    simp only [evaluate] at h₂
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
     cases res₁ <;> simp [hᵢ'] at h₂
     simp only [hasAttr, do_ok] at h₂
     rcases h₂ with ⟨_, _, h₂⟩
     simp only [← h₂, TypedExpr.typeOf, bool_is_instance_of_anyBool]
   case hasAttr_record x₁ _ _ _ =>
+    simp only [evaluate] at h₂
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
     cases res₁ <;> simp [hᵢ'] at h₂
     simp only [hasAttr, do_ok] at h₂

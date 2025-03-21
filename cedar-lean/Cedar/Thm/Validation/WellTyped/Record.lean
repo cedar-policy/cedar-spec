@@ -17,7 +17,6 @@
 import Cedar.Validation.TypedExpr
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm.Validation
 import Cedar.Spec
 
 namespace Cedar.Thm
@@ -93,14 +92,10 @@ theorem well_typed_is_sound_record
 (h₂ : ∀ (k : Attr) (v : TypedExpr), (k, v) ∈ m → WellTypedIsSound v)
 (h₃ : ∀ (k : Attr) (v : TypedExpr), (k, v) ∈ m → TypedExpr.WellTyped env v)
 (h₄ : List.Forall₂ (λ x y => x.fst = y.fst ∧ x.snd.typeOf = Qualified.getType y.snd) m rty)
-(h₅ : (do
-  let avs ←
-  (List.map (λ x => (x.1.fst, x.1.snd.toExpr)) m.attach₂).mapM₂ λ x =>
-  bindAttr x.1.fst (evaluate x.1.snd request entities)
-  Except.ok (Value.record (Data.Map.make avs))) = Except.ok v) :
+(h₅ : evaluate (Expr.record (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) m.attach₂)) request entities = Except.ok v) :
 InstanceOfType v (TypedExpr.record m (CedarType.record (Data.Map.make rty))).typeOf
 := by
-  simp only [do_ok] at h₅
+  simp only [evaluate, do_ok] at h₅
   obtain ⟨r, h₅₁, h₅₂⟩ := h₅
   subst h₅₂
   rw [List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))] at h₅₁

@@ -36,12 +36,10 @@ theorem well_typed_is_sound_set
 (h₂ : ∀ (x : TypedExpr), x ∈ ls → WellTypedIsSound x)
 (h₃ : ∀ (x : TypedExpr), x ∈ ls → TypedExpr.WellTyped env x)
 (h₄ : ∀ (x : TypedExpr), x ∈ ls → x.typeOf = ty)
-(h₅ : (do
-  let vs ← (ls.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities
-  Except.ok (Value.set (Data.Set.make vs))) = Except.ok v)
+(h₅ : evaluate (Expr.set (ls.map₁ λ x => x.val.toExpr)) request entities = Except.ok v)
 : InstanceOfType v (TypedExpr.set ls ty.set).typeOf
 := by
-  simp only [do_ok] at h₅
+  simp only [evaluate, do_ok] at h₅
   rcases h₅ with ⟨v₁, h₅₁, h₅₂⟩
   subst h₅₂
   rw [List.map₁_eq_map, List.mapM₁_eq_mapM (λ x => evaluate x request entities)] at h₅₁
