@@ -20,6 +20,7 @@ import Cedar.Thm.Validation.WellTyped.GetAttr
 import Cedar.Thm.Validation.WellTyped.Call
 import Cedar.Thm.Validation.WellTyped.Set
 import Cedar.Thm.Validation.WellTyped.Record
+import Cedar.Thm.Validation.WellTyped.LitVar
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -39,38 +40,8 @@ theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {r
 := by
   intro h₀ h₁ h₂
   cases h₁ <;> try simp only [TypedExpr.toExpr] at h₂
-  case lit p ty h₃ =>
-    simp only [evaluate] at h₂
-    cases h₃ <;>
-    simp only [TypedExpr.typeOf] <;>
-    simp only [Except.ok.injEq] at h₂ <;>
-    rw [←h₂]
-    case bool => simp only [bool_is_instance_of_anyBool]
-    case int => exact InstanceOfType.instance_of_int
-    case string => exact InstanceOfType.instance_of_string
-    case entityUID uid h =>
-      have : InstanceOfEntityType uid uid.ty := by rfl
-      exact InstanceOfType.instance_of_entity uid uid.ty this
-  case var h₃ =>
-    cases h₃ <;>
-    simp only [TypedExpr.typeOf] <;>
-    simp only [TypedExpr.toExpr, evaluate, Except.ok.injEq] at h₂ <;>
-    rw [←h₂] <;>
-    simp only [RequestAndEntitiesMatchEnvironment, InstanceOfRequestType] at h₀
-    case principal =>
-      rcases h₀ with ⟨⟨h₀, _, _, _⟩, _, _⟩
-      exact InstanceOfType.instance_of_entity request.principal env.reqty.principal h₀
-    case resource =>
-      rcases h₀ with ⟨⟨_, _, h₀, _⟩, _, _⟩
-      exact InstanceOfType.instance_of_entity request.resource env.reqty.resource h₀
-    case action =>
-      rcases h₀ with ⟨⟨_, h₀, _, _⟩, _, _⟩
-      simp only [h₀]
-      have : InstanceOfEntityType env.reqty.action env.reqty.action.ty := by rfl
-      exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
-    case context =>
-      rcases h₀ with ⟨⟨_, _, _, h₀⟩, _, _⟩
-      exact h₀
+  case lit p ty h₃ => exact well_typed_is_sound_lit h₃ h₂
+  case var var ty h₃ => exact well_typed_is_sound_var h₀ h₃ h₂
   case ite x₁ x₂ x₃ h₃ h₄ h₅ h₆ h₇ =>
     simp only [evaluate] at h₂
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
@@ -327,36 +298,9 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
   intro h₁ h₂ h₃
   cases e
   case lit p =>
-    simp only [typeOf, typeOfLit, List.empty_eq, Function.comp_apply, Bool.or_eq_true, ok] at h₃
-    split at h₃ <;> try simp at h₃ ; rcases h₃ with ⟨h₃, _⟩
-    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
-      exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool true)
-    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
-      exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool false)
-    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-      rename_i i _
-      exact TypedExpr.WellTyped.lit (Prim.WellTyped.int i)
-    · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-      rename_i s _
-      exact TypedExpr.WellTyped.lit (Prim.WellTyped.string s)
-    · split at h₃
-      · simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃
-        rcases h₃ with ⟨h₃, _⟩
-        simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-        rename_i uid h₄ _
-        sorry
-        --exact TypedExpr.WellTyped.lit (Prim.WellTyped.entityUID uid h₄)
-      · cases h₃
+    exact typechecked_is_well_typed_after_lifting_lit h₁ h₂ h₃
   case var v =>
-    simp only [typeOf, typeOfVar, List.empty_eq, Function.comp_apply, ok] at h₃
-    split at h₃ <;>
-    simp at h₃ <;>
-    rcases h₃ with ⟨h₃, _⟩ <;>
-    simp [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    · exact TypedExpr.WellTyped.var (Var.WellTyped.principal)
-    · exact TypedExpr.WellTyped.var (Var.WellTyped.action)
-    · exact TypedExpr.WellTyped.var (Var.WellTyped.resource)
-    · sorry
+    exact typechecked_is_well_typed_after_lifting_var h₁ h₂ h₃
   case ite => sorry
   case and => sorry
   case or => sorry
