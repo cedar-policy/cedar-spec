@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 import Cedar.Validation.TypedExpr
-import Cedar.Thm
 import Cedar.Spec.Ext
+import Cedar.Thm.Validation
 
 /-!
-This file contains useful definitions and lemmas about well-typedness of `TypedExpr`
+This file contains well-typedness definitions of `TypedExpr`
 -/
 
 namespace Cedar.Spec
@@ -34,7 +34,7 @@ inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
   | string (s : String) :
     WellTyped env (.string s) .string
   | entityUID (uid : EntityUID)
-    (h₁ : env.ets.isValidEntityUID uid || env.acts.contains uid) :
+    (h₁ : env.ets.isValidEntityUID uid ∨ env.acts.contains uid) :
     WellTyped env (.entityUID uid) (.entity uid.ty)
 
 inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
@@ -45,7 +45,7 @@ inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
   | action :
     WellTyped env .action (.entity env.reqty.action.ty)
   | context:
-    WellTyped env .context (.record env.reqty.context)
+    WellTyped env .context (CedarType.liftBoolTypes (.record env.reqty.context))
 
 inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | not {x₁ : TypedExpr}
@@ -256,14 +256,20 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   (h₁ : ∀ x, x ∈ ls → WellTyped env x)
   (h₂ : ∀ x, x ∈ ls → x.typeOf = ty) :
   WellTyped env (.set ls (.set ty))
-| record {rty : RecordType} {m : List (Attr × TypedExpr)}
+| record {m : List (Attr × TypedExpr)} {rty : List (Attr × QualifiedType)}
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
-  -- should we require well-formedness of `m` and then rewrite h₁ using quantifiers?
-  (h₂ : rty = Map.make (m.map (λ (a, ty) => (a, .required ty.typeOf)))) :
-  WellTyped env (.record m (.record rty))
+  (h₂ : List.Forall₂ (λ x y => x.fst = y.fst ∧ x.snd.typeOf = y.snd.getType) m rty) :
+  WellTyped env (.record m (.record (Map.make rty)))
 | call {xfn : ExtFun} {args : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ args → WellTyped env x)
   (h₂ : xfn.WellTyped args ty) :
   WellTyped env (.call xfn args ty)
+
+def WellTypedIsSound (x₁ : TypedExpr) : Prop :=
+  ∀ {v : Value} {env : Environment} {request : Request} {entities : Entities},
+  RequestAndEntitiesMatchEnvironment env request entities →
+  TypedExpr.WellTyped env x₁ →
+  evaluate x₁.toExpr request entities = .ok v →
+  InstanceOfType v x₁.typeOf
 
 end Cedar.Thm

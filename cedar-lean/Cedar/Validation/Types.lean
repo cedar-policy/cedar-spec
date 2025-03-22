@@ -88,14 +88,20 @@ deriving Repr
 instance : Inhabited CedarType where
   default := .int
 
+abbrev QualifiedType := Qualified CedarType
+
+abbrev RecordType := Map Attr QualifiedType
+
+mutual
+def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
+  | .optional ty => .optional ty.liftBoolTypes
+  | .required ty => .required ty.liftBoolTypes
+
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
   | .set s => .set s.liftBoolTypes
   | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
-    (k,
-    match qt with
-    | .optional ty => .optional ty.liftBoolTypes
-    | .required ty => .required ty.liftBoolTypes)))
+    (k, QualifiedType.liftBoolTypes qt)))
   | ty => ty
 decreasing_by
   all_goals simp_wf
@@ -105,10 +111,7 @@ decreasing_by
     have h₂ := Map.sizeOf_lt_of_value h₁
     simp at h₂
     omega
-
-abbrev QualifiedType := Qualified CedarType
-
-abbrev RecordType := Map Attr QualifiedType
+end
 
 structure StandardSchemaEntry where
   ancestors : Cedar.Data.Set EntityType

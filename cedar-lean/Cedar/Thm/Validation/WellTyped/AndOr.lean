@@ -13,10 +13,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-
-import Cedar.Thm.Data
-import Cedar.Thm.Authorization
-import Cedar.Thm.PolicySlice
-import Cedar.Thm.Typechecking
+import Cedar.Validation.TypedExpr
+import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation
-import Cedar.Thm.WellTyped
+import Cedar.Spec
+
+namespace Cedar.Thm
+
+open Cedar.Validation
+open Cedar.Thm
+open Cedar.Spec
+
+end Cedar.Thm
