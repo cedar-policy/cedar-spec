@@ -27,34 +27,29 @@ open Cedar.Spec
 
 theorem well_typed_is_sound_set
 {v : Value}
-{env : Environment}
 {request : Request}
 {entities : Entities}
 {ls : List TypedExpr}
 {ty : CedarType}
-(h₁ : RequestAndEntitiesMatchEnvironment env request entities)
-(h₂ : ∀ (x : TypedExpr), x ∈ ls → WellTypedIsSound x)
-(h₃ : ∀ (x : TypedExpr), x ∈ ls → TypedExpr.WellTyped env x)
-(h₄ : ∀ (x : TypedExpr), x ∈ ls → x.typeOf = ty)
-(h₅ : evaluate (Expr.set (ls.map₁ λ x => x.val.toExpr)) request entities = Except.ok v)
+(h₁ : ∀ (x : TypedExpr), x ∈ ls → ∀ (v : Value), evaluate x.toExpr request entities = Except.ok v → InstanceOfType v x.typeOf)
+(h₂ : ∀ (x : TypedExpr), x ∈ ls → x.typeOf = ty)
+(h₃ : evaluate (Expr.set (ls.map₁ λ x => x.val.toExpr)) request entities = Except.ok v)
 : InstanceOfType v (TypedExpr.set ls ty.set).typeOf
 := by
-  simp only [evaluate, do_ok] at h₅
-  rcases h₅ with ⟨v₁, h₅₁, h₅₂⟩
-  subst h₅₂
-  rw [List.map₁_eq_map, List.mapM₁_eq_mapM (λ x => evaluate x request entities)] at h₅₁
-  simp only [List.mapM_map, List.mapM_ok_iff_forall₂] at h₅₁
-  have h₆ := List.forall₂_implies_all_right h₅₁
+  simp only [evaluate, do_ok] at h₃
+  obtain ⟨v₁, h₃₁, h₃₂⟩ := h₃
+  subst h₃₂
+  rw [List.map₁_eq_map, List.mapM₁_eq_mapM (λ x => evaluate x request entities)] at h₃₁
+  simp only [List.mapM_map, List.mapM_ok_iff_forall₂] at h₃₁
+  have h₄ := List.forall₂_implies_all_right h₃₁
   simp only [TypedExpr.typeOf]
-  simp only [WellTypedIsSound] at h₂
   have hₛ : ∀ v, v ∈ (Data.Set.make v₁) → InstanceOfType v ty := by
     intro v h
     rw [←Data.Set.make_mem] at h
-    obtain ⟨x, hₓ₁, hₓ₂⟩ := h₆ v h
-    have h' := h₃ x hₓ₁
-    have h₂' := h₂ x hₓ₁ h₁ (h₃ x hₓ₁) hₓ₂
-    rw [h₄ x hₓ₁] at h₂'
-    exact h₂'
+    obtain ⟨x, hₓ₁, hₓ₂⟩ := h₄ v h
+    have h' := h₁ x hₓ₁ v hₓ₂
+    rw [h₂ x hₓ₁] at h'
+    exact h'
   exact InstanceOfType.instance_of_set (Data.Set.make v₁) ty hₛ
 
 end Cedar.Thm

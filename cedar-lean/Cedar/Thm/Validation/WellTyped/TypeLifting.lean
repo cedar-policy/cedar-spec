@@ -18,6 +18,7 @@ import Cedar.Validation.TypedExpr
 import Cedar.Spec
 import Cedar.Thm.Validation
 import Cedar.Thm.Validation.Typechecker.Record
+import Cedar.Thm.Data
 
 /-!
 This file contains theorems related to `TypedExpr.liftBoolTypes`
@@ -102,7 +103,20 @@ theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
   case instance_of_set s tyᵢ _ hᵢ =>
     exact InstanceOfType.instance_of_set s tyᵢ.liftBoolTypes hᵢ
   case instance_of_record r rty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ =>
-    sorry
+    apply InstanceOfType.instance_of_record
+    case h₁ =>
+      intro k h₂
+      replace hᵢ₁ := hᵢ₁ k h₂
+      simp only [List.map₁_eq_map
+          (fun (x : Attr × QualifiedType) => (x.fst, QualifiedType.liftBoolTypes x.snd))]
+      simp [Data.Map.contains, Data.Map.find?, Data.Map.make, Data.Map.kvs]
+      sorry
+    case h₂ =>
+      intro k v qty h₂
+      replace hᵢ₄ := λ qty => hᵢ₄ k v qty h₂
+      sorry
+    case h₃ =>
+      sorry
   case instance_of_ext x xty hᵢ =>
     exact InstanceOfType.instance_of_ext x xty hᵢ
 

@@ -18,9 +18,9 @@ import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.WellTyped.GetAttr
 import Cedar.Thm.Validation.WellTyped.Call
-import Cedar.Thm.Validation.WellTyped.Set
 import Cedar.Thm.Validation.WellTyped.Record
 import Cedar.Thm.Validation.WellTyped.LitVar
+import Cedar.Thm.Validation.WellTyped.Set
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
@@ -32,262 +32,223 @@ open Cedar.Thm
 open Cedar.Validation
 open Cedar.Spec
 
-theorem well_typed_is_sound {ty : TypedExpr}  {v : Value} {env : Environment} {request : Request} {entities : Entities} :
+theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
   evaluate ty.toExpr request entities = .ok v →
   InstanceOfType v ty.typeOf
 := by
-  intro h₀ h₁ h₂
-  cases h₁ <;> try simp only [TypedExpr.toExpr] at h₂
-  case lit p ty h₃ => exact well_typed_is_sound_lit h₃ h₂
-  case var var ty h₃ => exact well_typed_is_sound_var h₀ h₃ h₂
-  case ite x₁ x₂ x₃ h₃ h₄ h₅ h₆ h₇ =>
-    simp only [evaluate] at h₂
-    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+  intro h₁ h₂ h₃
+  induction h₂ generalizing v <;> simp only [TypedExpr.toExpr] at h₃
+  case lit p ty h₄ =>
+    exact well_typed_is_sound_lit h₄ h₃
+  case var var ty h₄ =>
+    exact well_typed_is_sound_var h₁ h₄ h₃
+  case ite x₁ x₂ x₃ _ _ _ h₄ h₅ hᵢ₁ hᵢ₂ hᵢ₃ =>
+    simp only [evaluate] at h₃
+    generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
     cases res₁
-    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₃
     case ok =>
       rename_i v₁
-      have hᵢ₁' := well_typed_is_sound h₀ h₃ hᵢ₁
-      simp only [h₆] at hᵢ₁'
-      have ⟨b, hᵢ₁'⟩ := instance_of_anyBool_is_bool hᵢ₁'
-      simp only [hᵢ₁'] at hᵢ₁
-      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
-      have : (TypedExpr.ite x₁ x₂ x₃ x₂.typeOf).typeOf = x₂.typeOf := by
+      specialize hᵢ₁ hᵢ₁'
+      simp only [h₄] at hᵢ₁
+      clear h₄
+      replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
+      simp only [hᵢ₁] at hᵢ₁'
+      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₃
+      have h : (TypedExpr.ite x₁ x₂ x₃ x₂.typeOf).typeOf = x₂.typeOf := by
         simp only [TypedExpr.typeOf]
-      simp only [this]
-      cases b <;> simp at h₂
+      rw [h]
+      clear h
+      cases b <;> simp [hᵢ₁'] at h₃
       case false =>
-        have hᵢ₂ := well_typed_is_sound h₀ h₅ h₂
-        rw [←h₇] at hᵢ₂
-        exact hᵢ₂
+        rw [h₅]
+        exact hᵢ₃ h₃
       case true =>
-        have hᵢ₃ := well_typed_is_sound h₀ h₄ h₂
-        exact hᵢ₃
-  case and x₁ x₂ h₃ h₄ h₅ h₆ =>
-    simp only [evaluate] at h₂
-    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+        exact hᵢ₂ h₃
+  case and x₁ x₂ _ _ h₄ h₅ hᵢ₁ hᵢ₂ =>
+    simp only [evaluate] at h₃
+    generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
     cases res₁
-    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₃
     case ok =>
-      have hᵢ₁' := well_typed_is_sound h₀ h₃ hᵢ₁
-      simp only [h₅] at hᵢ₁'
-      have ⟨b, hᵢ₁'⟩ := instance_of_anyBool_is_bool hᵢ₁'
-      simp only [hᵢ₁'] at hᵢ₁
-      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
+      specialize hᵢ₁ hᵢ₁'
+      simp only [h₄] at hᵢ₁
+      clear h₄
+      replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
+      simp only [hᵢ₁] at hᵢ₁'
+      simp only [Result.as, hᵢ₁', Coe.coe, Value.asBool, Except.bind_ok] at h₃
       simp only [TypedExpr.typeOf]
-      cases b <;> simp at h₂
+      cases b <;> simp at h₃
       case false =>
-        rw [←h₂]
+        rw [←h₃]
         simp only [bool_is_instance_of_anyBool]
       case true =>
-        generalize hᵢ₂ : evaluate x₂.toExpr request entities = res₂
+        generalize hᵢ₂' : evaluate x₂.toExpr request entities = res₂
         cases res₂
         case error =>
-          simp only [hᵢ₂, Except.map_error, reduceCtorEq] at h₂
+          simp only [hᵢ₂', Except.map_error, reduceCtorEq] at h₃
         case ok =>
-          simp only [hᵢ₂] at h₂
-          have hᵢ₂' := well_typed_is_sound h₀ h₄ hᵢ₂
-          simp only [h₆] at hᵢ₂'
-          have ⟨_, hᵢ₂'⟩ := instance_of_anyBool_is_bool hᵢ₂'
-          simp only [hᵢ₂', Except.map_ok, Except.ok.injEq] at h₂
-          rw [←h₂]
-          simp only [bool_is_instance_of_anyBool]
-  case or x₁ x₂ h₃ h₄ h₅ h₆ =>
-    simp only [evaluate] at h₂
-    generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
+          simp only [hᵢ₂'] at h₃
+          specialize hᵢ₂ hᵢ₂'
+          simp only [h₅] at hᵢ₂
+          clear h₅
+          replace ⟨_, hᵢ₂⟩ := instance_of_anyBool_is_bool hᵢ₂
+          simp only [hᵢ₂, Except.map_ok, Except.ok.injEq] at h₃
+          simp only [←h₃, bool_is_instance_of_anyBool]
+  case or x₁ x₂ _ _ h₄ h₅ hᵢ₁ hᵢ₂ =>
+    simp only [evaluate] at h₃
+    generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
     cases res₁
-    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case error => simp only [Result.as, hᵢ₁', Except.bind_err, reduceCtorEq] at h₃
     case ok =>
-      have hᵢ₁' := well_typed_is_sound h₀ h₃ hᵢ₁
-      simp only [h₅] at hᵢ₁'
-      have ⟨b, hᵢ₁'⟩ := instance_of_anyBool_is_bool hᵢ₁'
-      simp only [hᵢ₁'] at hᵢ₁
-      simp only [Result.as, hᵢ₁, Coe.coe, Value.asBool, Except.bind_ok] at h₂
+      specialize hᵢ₁ hᵢ₁'
+      simp only [h₄] at hᵢ₁
+      clear h₄
+      replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
+      simp only [hᵢ₁] at hᵢ₁'
+      simp only [Result.as, hᵢ₁', Coe.coe, Value.asBool, Except.bind_ok] at h₃
       simp only [TypedExpr.typeOf]
-      cases b <;> simp at h₂
-      case true =>
-        rw [←h₂]
-        simp only [bool_is_instance_of_anyBool]
+      cases b <;> simp at h₃
       case false =>
-        generalize hᵢ₂ : evaluate x₂.toExpr request entities = res₂
+        generalize hᵢ₂' : evaluate x₂.toExpr request entities = res₂
         cases res₂
         case error =>
-          simp only [hᵢ₂, Except.map_error, reduceCtorEq] at h₂
+          simp only [hᵢ₂', Except.map_error, reduceCtorEq] at h₃
         case ok =>
-          simp only [hᵢ₂] at h₂
-          have hᵢ₂' := well_typed_is_sound h₀ h₄ hᵢ₂
-          simp only [h₆] at hᵢ₂'
-          have ⟨_, hᵢ₂'⟩ := instance_of_anyBool_is_bool hᵢ₂'
-          simp only [hᵢ₂', Except.map_ok, Except.ok.injEq] at h₂
-          rw [←h₂]
-          simp only [bool_is_instance_of_anyBool]
-  case unaryApp op x₁ ty hᵢ h₃ =>
-    simp only [evaluate] at h₂
+          simp only [hᵢ₂'] at h₃
+          specialize hᵢ₂ hᵢ₂'
+          simp only [h₅] at hᵢ₂
+          clear h₅
+          replace ⟨_, hᵢ₂⟩ := instance_of_anyBool_is_bool hᵢ₂
+          simp only [hᵢ₂, Except.map_ok, Except.ok.injEq] at h₃
+          simp only [←h₃, bool_is_instance_of_anyBool]
+      case true =>
+        rw [←h₃]
+        simp only [bool_is_instance_of_anyBool]
+  case unaryApp op₁ x₁ ty _ h₄ hᵢ =>
+    simp only [evaluate] at h₃
     generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
     cases res₁
-    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₂
+    case error => simp only [Result.as, hᵢ₁, Except.bind_err, reduceCtorEq] at h₃
     case ok v =>
-      simp only [hᵢ₁, apply₁, Except.bind_ok] at h₂
-      split at h₂ <;> cases h₃ <;> simp only [TypedExpr.typeOf]
-      · simp only [Except.ok.injEq] at h₂
-        rw [←h₂]
-        simp only [bool_is_instance_of_anyBool]
-      · simp only [intOrErr] at h₂
-        split at h₂
-        · simp only [Except.ok.injEq] at h₂
-          rw [←h₂]
+      simp only [hᵢ₁, apply₁, Except.bind_ok] at h₃
+      split at h₃ <;> cases h₄ <;> simp only [TypedExpr.typeOf]
+      · simp only [Except.ok.injEq] at h₃
+        simp only [←h₃, bool_is_instance_of_anyBool]
+      · simp only [intOrErr] at h₃
+        split at h₃
+        · simp only [Except.ok.injEq] at h₃
+          rw [←h₃]
           exact InstanceOfType.instance_of_int
-        · cases h₂
-      · simp only [Except.ok.injEq] at h₂
-        rw [←h₂]
-        simp only [bool_is_instance_of_anyBool]
-      · simp only [Except.ok.injEq] at h₂
-        rw [←h₂]
-        simp only [bool_is_instance_of_anyBool]
-      · cases h₂
-      · cases h₂
-      · cases h₂
-      · cases h₂
-  case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ h₃ =>
-    simp only [evaluate] at h₂
+        · cases h₃
+      · simp only [Except.ok.injEq] at h₃
+        simp only [←h₃, bool_is_instance_of_anyBool]
+      · simp only [Except.ok.injEq] at h₃
+        simp only [←h₃, bool_is_instance_of_anyBool]
+      · cases h₃
+      · cases h₃
+      · cases h₃
+      · cases h₃
+  case binaryApp op₂ x₁ x₂ ty _ _ h₄ hᵢ₁ hᵢ₂ =>
+    simp only [evaluate] at h₃
     generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
     generalize hᵢ₂' : evaluate x₂.toExpr request entities = res₂
-    cases res₁ <;> cases res₂ <;> simp [hᵢ₁', hᵢ₂'] at h₂
+    cases res₁ <;> cases res₂ <;> simp [hᵢ₁', hᵢ₂'] at h₃
     -- case ok.ok
     rename_i v₁ v₂
-    simp only [apply₂] at h₂
+    simp only [apply₂] at h₃
     simp only [TypedExpr.typeOf]
-    split at h₂ <;>
-    cases h₃ <;>
-    try cases h₂ <;>
+    split at h₃ <;>
+    cases h₄ <;>
+    try cases h₃ <;>
     try simp only [bool_is_instance_of_anyBool]
-    · simp only [intOrErr] at h₂
-      split at h₂
-      · simp only [Except.ok.injEq] at h₂
-        simp [←h₂]
+    · simp only [intOrErr] at h₃
+      split at h₃
+      · simp only [Except.ok.injEq] at h₃
+        simp [←h₃]
         exact InstanceOfType.instance_of_int
-      · cases h₂
-    · simp only [intOrErr] at h₂
-      split at h₂
-      · simp only [Except.ok.injEq] at h₂
-        simp [←h₂]
+      · cases h₃
+    · simp only [intOrErr] at h₃
+      split at h₃
+      · simp only [Except.ok.injEq] at h₃
+        simp [←h₃]
         exact InstanceOfType.instance_of_int
-      · cases h₂
-    · simp only [intOrErr] at h₂
-      split at h₂
-      · simp only [Except.ok.injEq] at h₂
-        simp [←h₂]
+      · cases h₃
+    · simp only [intOrErr] at h₃
+      split at h₃
+      · simp only [Except.ok.injEq] at h₃
+        simp [←h₃]
         exact InstanceOfType.instance_of_int
-      · cases h₂
-    · have hᵢ₂' := well_typed_is_sound h₀ hᵢ₂ hᵢ₂'
+      · cases h₃
+    · specialize hᵢ₂ hᵢ₂'
       rename_i h₂
-      simp only [h₂] at hᵢ₂'
-      cases hᵢ₂'
-    · simp only [inₛ, do_ok] at h₂
-      rcases h₂ with ⟨_, _, h₂⟩
-      simp only [← h₂, bool_is_instance_of_anyBool]
-    · rename_i uid₁ tag _ _ _ h₃
-      simp only [getTag, Data.Map.findOrErr] at h₂
+      simp only [h₂] at hᵢ₂
+      cases hᵢ₂
+    · simp only [inₛ, do_ok] at h₃
+      rcases h₃ with ⟨_, _, h₃⟩
+      simp only [← h₃, bool_is_instance_of_anyBool]
+    · rename_i uid₁ tag _ _ _ h₄
+      simp only [getTag, Data.Map.findOrErr] at h₃
       generalize hᵢ : entities.tags uid₁ = res₁
-      cases res₁ <;> rw [hᵢ] at h₂
-      case error => simp only [Except.bind_err, reduceCtorEq] at h₂
+      cases res₁ <;> rw [hᵢ] at h₃
+      case error => simp only [Except.bind_err, reduceCtorEq] at h₃
       case ok =>
-        simp only [Except.bind_ok] at h₂
-        split at h₂
+        simp only [Except.bind_ok] at h₃
+        split at h₃
         · rename_i ht₁ _ _ _ v₁ heq
-          simp only [Except.ok.injEq] at h₂
-          subst h₂
-          have hᵢ₁' := well_typed_is_sound h₀ hᵢ₁ hᵢ₁'
-          simp only [ht₁] at hᵢ₁'
-          cases hᵢ₁'
+          simp only [Except.ok.injEq] at h₃
+          subst h₃
+          specialize hᵢ₁ hᵢ₁'
+          simp only [ht₁] at hᵢ₁
+          cases hᵢ₁
           rename_i ht₁
           simp only [InstanceOfEntityType] at ht₁
-          simp only [ht₁] at h₃
-          simp only [RequestAndEntitiesMatchEnvironment] at h₀
-          rcases h₀ with ⟨_, h₀, _⟩
-          simp only [InstanceOfEntitySchema] at h₀
+          simp only [ht₁] at h₄
+          simp only [RequestAndEntitiesMatchEnvironment] at h₁
+          rcases h₁ with ⟨_, h₁, _⟩
+          simp only [InstanceOfEntitySchema] at h₁
           simp only [Entities.tags, do_ok, Data.Map.findOrErr] at hᵢ
           split at hᵢ
           · simp only [Except.ok.injEq, exists_eq_left'] at hᵢ
             rename_i entry heq₁
-            have ⟨entry₁, ⟨h₄, _, _, _, h₅⟩⟩ := h₀ uid₁ entry heq₁
-            simp [InstanceOfEntityTags] at h₅
-            simp [EntitySchema.tags?] at h₃
-            rcases h₃ with ⟨_, h₃₁, h₃₂⟩
-            simp only [h₄, Option.some.injEq] at h₃₁
+            specialize h₁ uid₁ entry heq₁
+            replace ⟨entry₁, ⟨h₅, _, _, _, h₆⟩⟩ := h₁
+            simp [InstanceOfEntityTags] at h₆
+            simp [EntitySchema.tags?] at h₄
+            rcases h₄ with ⟨_, h₃₁, h₃₂⟩
+            simp only [h₅, Option.some.injEq] at h₃₁
             simp only [← h₃₁] at h₃₂
-            simp only [h₃₂] at h₅
+            simp only [h₃₂] at h₆
             simp only [←hᵢ] at heq
-            exact h₅ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+            exact h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
           · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
-        · cases h₂
-  case hasAttr_entity x₁ _ _ _ =>
-    simp only [evaluate] at h₂
+        · cases h₃
+  case hasAttr_entity x₁ _ _ _ _ =>
+    simp only [evaluate] at h₃
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
-    cases res₁ <;> simp [hᵢ'] at h₂
-    simp only [hasAttr, do_ok] at h₂
-    rcases h₂ with ⟨_, _, h₂⟩
-    simp only [← h₂, TypedExpr.typeOf, bool_is_instance_of_anyBool]
-  case hasAttr_record x₁ _ _ _ =>
-    simp only [evaluate] at h₂
+    cases res₁ <;> simp [hᵢ'] at h₃
+    simp only [hasAttr, do_ok] at h₃
+    rcases h₃ with ⟨_, _, h₃⟩
+    simp only [← h₃, TypedExpr.typeOf, bool_is_instance_of_anyBool]
+  case hasAttr_record x₁ _ _ _ _ =>
+    simp only [evaluate] at h₃
     generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
-    cases res₁ <;> simp [hᵢ'] at h₂
-    simp only [hasAttr, do_ok] at h₂
-    rcases h₂ with ⟨_, _, h₂⟩
-    simp only [← h₂, TypedExpr.typeOf, bool_is_instance_of_anyBool]
-  case getAttr_entity x₁ attr ty hᵢ ht h₃ h₄ =>
-    have hᵢ' := @well_typed_is_sound x₁
-    exact well_typed_is_sound_get_attr_entity h₀ hᵢ' hᵢ ht h₃ h₄ h₂
-  case getAttr_record rty x₁ attr ty hᵢ ht h₃ =>
-    have hᵢ' := @well_typed_is_sound x₁
-    exact well_typed_is_sound_get_attr_record h₀ hᵢ' hᵢ ht h₃ h₂
-  case set ls ty h₃ h₄ =>
-    have ih : ∀ x, x ∈ ls → WellTypedIsSound x := by
-      intro xᵢ _
-      exact @well_typed_is_sound xᵢ
-    exact well_typed_is_sound_set h₀ ih h₃ h₄ h₂
-  case record m rty h₃ h₄ =>
-    have ih : ∀ a x, (a, x) ∈ m → WellTypedIsSound x := by
-      intro a x _
-      exact @well_typed_is_sound x
-    exact well_typed_is_sound_record h₀ ih h₃ h₄ h₂
-  case call xfn args ty h₃ h₄ => exact well_typed_is_sound_call h₄ h₂
-termination_by ty
-decreasing_by
-  all_goals simp_wf
-  case _ h _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ _ _ _ _ =>
-    simp [h] ; omega
-  case _  h _ _ _ _ _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ _ _ _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ _ _ _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  =>
-    simp [h] ; omega
-  case _ h _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ _ _ _ =>
-    simp [h] ; omega
-  case _ h _ hᵢ _ _ _ =>
-    simp [h]
-    have := List.sizeOf_lt_of_mem hᵢ
-    omega
-  case _ h _ hᵢ _ _ _ =>
-    simp [h]
-    replace hᵢ := List.sizeOf_snd_lt_sizeOf_list hᵢ
-    simp only at hᵢ
-    omega
+    cases res₁ <;> simp [hᵢ'] at h₃
+    simp only [hasAttr, do_ok] at h₃
+    rcases h₃ with ⟨_, _, h₃⟩
+    simp only [← h₃, TypedExpr.typeOf, bool_is_instance_of_anyBool]
+  case getAttr_entity h₄ h₅ h₆ hᵢ =>
+    exact well_typed_is_sound_get_attr_entity h₁ hᵢ h₄ h₅ h₆ h₃
+  case getAttr_record h₄ h₅ hᵢ=>
+    exact well_typed_is_sound_get_attr_record hᵢ h₄ h₅ h₃
+  case set ls ty _ h₄ hᵢ =>
+    exact well_typed_is_sound_set hᵢ h₄ h₃
+  case record m rty _ h₄ hᵢ =>
+    exact well_typed_is_sound_record hᵢ h₄ h₃
+  case call xfn args ty _ h₄ _ =>
+    exact well_typed_is_sound_call h₄ h₃
 
 theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
