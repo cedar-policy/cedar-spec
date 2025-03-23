@@ -97,20 +97,15 @@ def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
   | .optional ty => .optional ty.liftBoolTypes
   | .required ty => .required ty.liftBoolTypes
 
+def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr × QualifiedType)
+  | [] => []
+  | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
+
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
   | .set s => .set s.liftBoolTypes
-  | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
-    (k, QualifiedType.liftBoolTypes qt)))
+  | .record (.mk m) => .record (.mk (CedarType.liftBoolTypesRecord m))
   | ty => ty
-decreasing_by
-  all_goals simp_wf
-  all_goals
-    have := Map.sizeOf_lt_of_kvs m
-    rename_i h₁
-    have h₂ := Map.sizeOf_lt_of_value h₁
-    simp at h₂
-    omega
 end
 
 structure StandardSchemaEntry where
