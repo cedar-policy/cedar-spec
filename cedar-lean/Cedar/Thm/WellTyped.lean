@@ -262,7 +262,68 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
     exact typechecked_is_well_typed_after_lifting_lit h₁ h₂ h₃
   case var v =>
     exact typechecked_is_well_typed_after_lifting_var h₁ h₂ h₃
-  case ite => sorry
+  case ite cond thenExpr elseExpr =>
+    simp [typeOf] at h₃
+    generalize heq : typeOf cond c₁ env = res₁
+    cases res₁
+    case error => simp [heq] at h₃
+    case ok =>
+      simp [heq] at h₃
+      simp [typeOfIf] at h₃
+      split at h₃
+      case _ ty₁ _ heq₁ =>
+        generalize heq₂ : typeOf thenExpr (c₁ ∪ ty₁.snd) env = res₂
+        cases res₂
+        case error =>
+          simp [heq₂] at h₃
+        case ok =>
+          simp [heq₂, ok] at h₃
+          -- capabilities...
+          sorry
+      case _ heq₁ =>
+        exact typechecked_is_well_typed_after_lifting h₁ h₂ h₃
+      case _ ty₁ _ heq₁ =>
+        generalize heq₂ : typeOf thenExpr (c₁ ∪ ty₁.snd) env = res₂
+        cases res₂
+        case error => simp [heq₂] at h₃
+        case ok =>
+          simp [heq₂] at h₃
+          generalize heq₃ : typeOf elseExpr c₁ env = res₃
+          cases res₃
+          case error => simp [heq₃] at h₃
+          case ok =>
+            simp [heq₃] at h₃
+            split at h₃
+            case _ ty₂ ty₃ _ ty' heq₄ =>
+              simp [ok] at h₃
+              rcases h₃ with ⟨h₃, _⟩
+              symm at h₃
+              subst h₃
+              have hᵢ₁ := typechecked_is_well_typed_after_lifting h₁ h₂ heq
+              have hᵢ₂ : TypedExpr.WellTyped env ty₂.fst.liftBoolTypes := by
+                -- capabilities
+                sorry
+              have hᵢ₃ := typechecked_is_well_typed_after_lifting h₁ h₂ heq₃
+              simp [TypedExpr.liftBoolTypes]
+              have hᵢ : ty'.liftBoolTypes = ty₂.fst.liftBoolTypes.typeOf := by
+                have hᵢ' := lub_left_subty heq₄
+                replace hᵢ' := lifted_type_is_top hᵢ'
+                simp [type_of_after_lifted_is_lifted]
+                symm
+                exact hᵢ'
+              simp [hᵢ]
+              have hᵢ₄ : ty₂.fst.liftBoolTypes.typeOf = ty₃.fst.liftBoolTypes.typeOf := by
+                have hᵢ₄₁ := lub_left_subty heq₄
+                simp [@lub_comm ty₂.fst.typeOf] at heq₄
+                have hᵢ₄₂ := lub_left_subty heq₄
+                replace hᵢ₄₁ := lifted_type_is_top hᵢ₄₁
+                replace hᵢ₄₂ := lifted_type_is_top hᵢ₄₂
+                simp [type_of_after_lifted_is_lifted, hᵢ₄₁, hᵢ₄₂]
+              have hᵢ₅ : ty₁.fst.liftBoolTypes.typeOf = (.bool .anyBool) := by
+                simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+              exact TypedExpr.WellTyped.ite hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₅ hᵢ₄
+            case _ => simp [err] at h₃
+      case _ => simp [err] at h₃
   case and => sorry
   case or => sorry
   case unaryApp => sorry

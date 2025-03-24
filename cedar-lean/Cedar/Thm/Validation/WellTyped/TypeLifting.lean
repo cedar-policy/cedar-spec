@@ -30,7 +30,12 @@ namespace Cedar.Thm
 open Cedar.Validation
 open Cedar.Spec
 
-theorem type_lifting_preserves_expr (x : TypedExpr):
+theorem type_of_after_lifted_is_lifted (x : TypedExpr) :
+  x.liftBoolTypes.typeOf = x.typeOf.liftBoolTypes
+:= by
+  cases x <;> simp only [TypedExpr.liftBoolTypes, TypedExpr.typeOf]
+
+theorem type_lifting_preserves_expr (x : TypedExpr) :
   x.toExpr = x.liftBoolTypes.toExpr
 := by
   cases x <;> simp only [TypedExpr.toExpr, TypedExpr.liftBoolTypes]
@@ -177,7 +182,7 @@ theorem lifted_type_is_lifted (ty : CedarType) :
 end
 
 theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
-  Lifted ty₁ ty₂ → subty ty₁ ty₂
+  Lifted ty₁ ty₂ → ty₁ ⊑ ty₂
 := by
   intro h
   induction h
@@ -240,61 +245,77 @@ theorem lifted_type_is_super_type {ty₁ ty₂ : CedarType} :
           simp [h, hᵢ₁, heq₁]
       case _ => cases hᵢ₂
     case _ => cases hᵢ₁
+mutual
 
-  /-
-  unfold CedarType.liftBoolTypes
-  split <;> unfold lub?
-  case _ =>
-    simp only [lubBool, BoolType.lift, Option.some.injEq, CedarType.bool.injEq, ite_eq_right_iff,
-      imp_self]
-  case _ =>
-    simp only [lifted_type_is_super_type, Option.bind_some_fun]
-  case _ m =>
-    simp only [do_some]
-    induction m
-    case nil =>
-      simp only [CedarType.liftBoolTypesRecord, lubRecordType, Option.some.injEq, List.nil_eq,
-        CedarType.record.injEq, Data.Map.mk.injEq, and_self, exists_eq]
-    case cons hᵢ =>
-      simp at hᵢ
-      simp
-      unfold lubRecordType
-      split
-      case _ heq _ =>
-        simp only [reduceCtorEq] at heq
-      case _ head tail _ _ k₁ v₁ _ k₂ v₂ _ h₁ h₂ =>
-        simp [CedarType.liftBoolTypesRecord] at h₂
-        rcases h₂ with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
-        simp only [List.cons.injEq] at h₁
-        rcases h₁ with ⟨h₁₁, h₁₂⟩
-        have h : head = (head.fst, head.snd) := by rfl
-        rw [h] at h₁₁
-        clear h
-        simp at h₁₁
-        rcases h₁₁ with ⟨h₁₃, h₁₄⟩
-        have h : lubQualifiedType v₁ v₂ = v₂ := by
-          unfold lubQualifiedType
-          split
-          case _ ty₁ ty₂ =>
-            simp [h₁₄] at h₂₂
-            simp [QualifiedType.liftBoolTypes] at h₂₂
-            rw [←h₂₂]
-            simp only [lifted_type_is_super_type, Option.bind_some_fun]
-          case _ ty₁ ty₂ =>
-            simp [h₁₄] at h₂₂
-            simp [QualifiedType.liftBoolTypes] at h₂₂
-            rw [←h₂₂]
-            simp only [lifted_type_is_super_type, Option.bind_some_fun]
-          case _ => sorry
-        rw [←h₂₁, ←h₁₃]
-        simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte, h, ← h₁₂, ← h₂₃, hᵢ,
-          Option.bind_some_fun, Option.some.injEq]
-        rw [←h₂₂]
-        simp only [CedarType.liftBoolTypesRecord]
-      case _ h => sorry
-  case _ =>
-    sorry
--/
+theorem lifted_record_type_is_top {r₁ r₂ : List (Attr × Qualified CedarType)} :
+  IsLubOfRecordTypes r₂ r₁ r₂ →
+  CedarType.liftBoolTypesRecord r₁ = CedarType.liftBoolTypesRecord r₂
+:= by
+  intro h
+  cases h
+  case nil => simp
+  case cons h₁ h₂ =>
+    simp [CedarType.liftBoolTypesRecord]
+    simp [lifted_record_type_is_top h₂]
+    unfold lubQualifiedType at h₁
+    split at h₁
+    case _ ty₁ ty₂ =>
+      simp only [do_some] at h₁
+      rcases h₁ with ⟨a, h₁₁, h₁₂⟩
+      simp at h₁₂
+      simp [h₁₂] at h₁₁
+      simp [QualifiedType.liftBoolTypes]
+      have : ty₁ ⊑ ty₂ := by
+        simp [subty, h₁₁]
+      exact lifted_type_is_top this
+    case _ ty₁ ty₂ =>
+      simp only [do_some] at h₁
+      rcases h₁ with ⟨a, h₁₁, h₁₂⟩
+      simp at h₁₂
+      simp [h₁₂] at h₁₁
+      simp [QualifiedType.liftBoolTypes]
+      have : ty₁ ⊑ ty₂ := by
+        simp [subty, h₁₁]
+      exact lifted_type_is_top this
+    case _ => cases h₁
+
+theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
+  ty₁ ⊑ ty₂ →
+  ty₁.liftBoolTypes = ty₂.liftBoolTypes
+:= by
+  intro h
+  simp [subty] at h
+  split at h
+  case _ ty heq =>
+    unfold lub? at heq
+    split at heq
+    case _ =>
+      simp [CedarType.liftBoolTypes, BoolType.lift]
+    case _ =>
+      simp at h
+      simp only [do_some] at heq
+      rcases heq with ⟨_, h₁, h₂⟩
+      simp [CedarType.liftBoolTypes]
+      simp [h] at h₂
+      simp [h₂] at h₁
+      apply lifted_type_is_top
+      simp [subty, h₁]
+    case _ =>
+      simp at h
+      simp only [do_some] at heq
+      rcases heq with ⟨_, h₁, h₂⟩
+      simp [h] at h₂
+      simp [h₂] at h₁
+      simp [CedarType.liftBoolTypes]
+      exact lifted_record_type_is_top (lubRecordType_is_lub_of_record_types h₁)
+    case _ =>
+      split at heq
+      case _ h =>
+        simp [h]
+      case _ =>
+        cases heq
+  case _ => cases h
+end
 
 theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
   InstanceOfType v ty →
