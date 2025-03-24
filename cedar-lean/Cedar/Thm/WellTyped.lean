@@ -251,17 +251,18 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
     exact well_typed_is_sound_call h₄ h₃
 
 theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  CapabilitiesInvariant c₁ request entities →
+  --CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
 := by
-  intro h₁ h₂ h₃
+  --intro h₁ h₂ h₃
+  intro h₂ h₃
   cases e
   case lit p =>
-    exact typechecked_is_well_typed_after_lifting_lit h₁ h₂ h₃
+    exact typechecked_is_well_typed_after_lifting_lit h₂ h₃
   case var v =>
-    exact typechecked_is_well_typed_after_lifting_var h₁ h₂ h₃
+    exact typechecked_is_well_typed_after_lifting_var h₂ h₃
   case ite cond thenExpr elseExpr =>
     simp [typeOf] at h₃
     generalize heq : typeOf cond c₁ env = res₁
@@ -278,10 +279,11 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
           simp [heq₂] at h₃
         case ok =>
           simp [heq₂, ok] at h₃
-          -- capabilities...
-          sorry
+          rcases h₃ with ⟨h₃, _⟩
+          subst h₃
+          exact typechecked_is_well_typed_after_lifting h₂ heq₂
       case _ heq₁ =>
-        exact typechecked_is_well_typed_after_lifting h₁ h₂ h₃
+        exact typechecked_is_well_typed_after_lifting h₂ h₃
       case _ ty₁ _ heq₁ =>
         generalize heq₂ : typeOf thenExpr (c₁ ∪ ty₁.snd) env = res₂
         cases res₂
@@ -299,11 +301,6 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
               rcases h₃ with ⟨h₃, _⟩
               symm at h₃
               subst h₃
-              have hᵢ₁ := typechecked_is_well_typed_after_lifting h₁ h₂ heq
-              have hᵢ₂ : TypedExpr.WellTyped env ty₂.fst.liftBoolTypes := by
-                -- capabilities
-                sorry
-              have hᵢ₃ := typechecked_is_well_typed_after_lifting h₁ h₂ heq₃
               simp [TypedExpr.liftBoolTypes]
               have hᵢ : ty'.liftBoolTypes = ty₂.fst.liftBoolTypes.typeOf := by
                 have hᵢ' := lub_left_subty heq₄
@@ -321,10 +318,46 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
                 simp [type_of_after_lifted_is_lifted, hᵢ₄₁, hᵢ₄₂]
               have hᵢ₅ : ty₁.fst.liftBoolTypes.typeOf = (.bool .anyBool) := by
                 simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
-              exact TypedExpr.WellTyped.ite hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₅ hᵢ₄
+              exact TypedExpr.WellTyped.ite
+                (typechecked_is_well_typed_after_lifting h₂ heq)
+                (typechecked_is_well_typed_after_lifting h₂ heq₂)
+                (typechecked_is_well_typed_after_lifting h₂ heq₃) hᵢ₅ hᵢ₄
             case _ => simp [err] at h₃
       case _ => simp [err] at h₃
-  case and => sorry
+  case and x₁ x₂ =>
+    simp [typeOf] at h₃
+    generalize hₓ₁ : typeOf x₁ c₁ env = res₁
+    cases res₁
+    case error =>
+      simp only [hₓ₁, Except.bind_err, reduceCtorEq] at h₃
+    case ok ty₁ =>
+      simp only [hₓ₁, Except.bind_ok] at h₃
+      simp only [typeOfAnd, List.empty_eq] at h₃
+      split at h₃
+      case _ heq =>
+        simp [ok] at h₃
+        rcases h₃ with ⟨h₃, _⟩
+        subst h₃
+        apply typechecked_is_well_typed_after_lifting h₂ hₓ₁
+      case _ heq =>
+        generalize hₓ₂ : typeOf x₂ (c₁ ∪ ty₁.snd) env = res₂
+        cases res₂
+        case error =>
+          simp only [hₓ₂, Except.bind_err, reduceCtorEq] at h₃
+        case ok ty₂ =>
+          simp only [hₓ₂, Except.bind_ok] at h₃
+          split at h₃
+          case _ =>
+            simp [ok] at h₃
+            rcases h₃ with ⟨h₃, _⟩
+            subst h₃
+            simp [TypedExpr.liftBoolTypes]
+            have hᵢ₂ := typechecked_is_well_typed_after_lifting h₂ hₓ₂
+            sorry
+          case _ => sorry
+          case _ => sorry
+          case _ => simp [err] at h₃
+      case _ => simp [err] at h₃
   case or => sorry
   case unaryApp => sorry
   case binaryApp => sorry

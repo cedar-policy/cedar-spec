@@ -26,12 +26,13 @@ open Cedar.Thm
 open Cedar.Spec
 
 theorem typechecked_is_well_typed_after_lifting_lit {p : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  CapabilitiesInvariant c₁ request entities →
+  --CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf (Expr.lit p) c₁ env = Except.ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
 := by
-  intro h₁ h₂ h₃
+  --intro h₁ h₂ h₃
+  intro h₂ h₃
   simp only [typeOf, typeOfLit, List.empty_eq, Function.comp_apply, Bool.or_eq_true, ok] at h₃
   split at h₃ <;> try simp at h₃ ; rcases h₃ with ⟨h₃, _⟩
   · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
@@ -53,12 +54,13 @@ theorem typechecked_is_well_typed_after_lifting_lit {p : Prim} {c₁ c₂ : Capa
     · cases h₃
 
 theorem typechecked_is_well_typed_after_lifting_var {v : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  CapabilitiesInvariant c₁ request entities →
+  --CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf (Expr.var v) c₁ env = Except.ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
 := by
-  intro h₁ h₂ h₃
+  --intro h₁ h₂ h₃
+  intro h₂ h₃
   simp only [typeOf, typeOfVar] at h₃
   split at h₃ <;>
   simp only [List.empty_eq, Function.comp_apply] at h₃ <;>
