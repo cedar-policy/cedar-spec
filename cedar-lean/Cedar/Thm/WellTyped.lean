@@ -346,22 +346,104 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
           simp only [hₓ₂, Except.bind_err, reduceCtorEq] at h₃
         case ok ty₂ =>
           simp only [hₓ₂, Except.bind_ok] at h₃
-          split at h₃
-          case _ =>
+          split at h₃ <;> try
+          {
+            rename_i heq₁
             simp [ok] at h₃
             rcases h₃ with ⟨h₃, _⟩
             subst h₃
-            simp [TypedExpr.liftBoolTypes]
-            have hᵢ₂ := typechecked_is_well_typed_after_lifting h₂ hₓ₂
-            sorry
-          case _ => sorry
-          case _ => sorry
+            simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+            apply TypedExpr.WellTyped.and
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₁
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₂
+            · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, BoolType.lift]
+            · simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+          }
           case _ => simp [err] at h₃
       case _ => simp [err] at h₃
-  case or => sorry
+  case or x₁ x₂ =>
+    simp [typeOf] at h₃
+    generalize hₓ₁ : typeOf x₁ c₁ env = res₁
+    cases res₁
+    case error =>
+      simp only [hₓ₁, Except.bind_err, reduceCtorEq] at h₃
+    case ok ty₁ =>
+      simp only [hₓ₁, Except.bind_ok] at h₃
+      simp only [typeOfOr, List.empty_eq] at h₃
+      split at h₃
+      case _ heq =>
+        simp [ok] at h₃
+        rcases h₃ with ⟨h₃, _⟩
+        subst h₃
+        apply typechecked_is_well_typed_after_lifting h₂ hₓ₁
+      case _ heq =>
+        generalize hₓ₂ : typeOf x₂ c₁ env = res₂
+        cases res₂
+        case error =>
+          simp only [hₓ₂, Except.bind_err, reduceCtorEq] at h₃
+        case ok ty₂ =>
+          simp only [hₓ₂, Except.bind_ok] at h₃
+          split at h₃
+          case _ heq₁ =>
+            simp [ok] at h₃
+            rcases h₃ with ⟨h₃, _⟩
+            subst h₃
+            simp [TypedExpr.liftBoolTypes, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+            apply TypedExpr.WellTyped.or
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₁
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₂
+            · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, BoolType.lift]
+            · simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+          case _ => simp [err] at h₃
+      case _ heq =>
+        generalize hₓ₂ : typeOf x₂ c₁ env = res₂
+        cases res₂
+        case error =>
+          simp only [hₓ₂, Except.bind_err, reduceCtorEq] at h₃
+        case ok =>
+          simp only [hₓ₂, Except.bind_ok] at h₃
+          split at h₃ <;> try {
+            rename_i heq₁
+            simp [ok] at h₃
+            rcases h₃ with ⟨h₃, _⟩
+            subst h₃
+            simp [TypedExpr.liftBoolTypes, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+            apply TypedExpr.WellTyped.or
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₁
+            · exact typechecked_is_well_typed_after_lifting h₂ hₓ₂
+            · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes, BoolType.lift]
+            · simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+          }
+          case _ => simp [err] at h₃
+      case _ => simp [err] at h₃
   case unaryApp => sorry
   case binaryApp => sorry
-  case getAttr => sorry
+  case getAttr x₁ attr =>
+    simp [typeOf] at h₃
+    generalize hᵢ : typeOf x₁ c₁ env = res₁
+    cases res₁
+    case error => simp [hᵢ] at h₃
+    case ok tc =>
+      simp [hᵢ, typeOfGetAttr] at h₃
+      split at h₃
+      case _ rty heq =>
+        simp [ok, do_ok] at h₃
+        rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+        subst h₃₂
+        simp [TypedExpr.liftBoolTypes]
+        apply @TypedExpr.WellTyped.getAttr_record _ (.mk (CedarType.liftBoolTypesRecord rty.1))
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+        · simp only [Option.map_eq_some']
+          simp [getAttrInRecord] at h₃₁
+          split at h₃₁
+          case _ heq₁ =>
+            sorry
+          case _ =>
+            sorry
+          case _ => simp [err] at h₃₁
+      case _ => sorry
+      case _ => simp [err] at h₃
   case hasAttr => sorry
   case set => sorry
   case record => sorry
