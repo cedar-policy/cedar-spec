@@ -330,4 +330,13 @@ theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
     simp [h'] at heq
     exact @instance_of_lub_left v ty.liftBoolTypes ty ty.liftBoolTypes heq h
   case _ => cases h'
+
+theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
+  Data.Map.mk (CedarType.liftBoolTypesRecord rty.1) = rty.mapOnValues QualifiedType.liftBoolTypes
+:= by
+  simp [Data.Map.mapOnValues, Data.Map.kvs]
+  induction rty.1 <;> simp [CedarType.liftBoolTypesRecord]
+  rename_i hᵢ
+  exact hᵢ
+
 end Cedar.Thm

@@ -244,7 +244,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
 | getAttr_entity {ety : EntityType} {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .entity ety)
-  (h₃ : env.ets.attrs? ety = .some rty)
+  (h₃ : (env.ets.attrs? ety).map RecordType.liftBoolTypes = .some rty)
   (h₄ : (rty.find? attr).map Qualified.getType = .some ty) :
   WellTyped env (.getAttr x₁ attr ty)
 | getAttr_record {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {ty : CedarType}

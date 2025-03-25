@@ -15,6 +15,7 @@
 -/
 import Cedar.Validation.TypedExpr
 import Cedar.Thm.Validation.WellTyped.Definition
+import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation
 import Cedar.Spec
 
@@ -37,7 +38,7 @@ theorem well_typed_is_sound_get_attr_entity
 (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
 (h₂ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
 (h₄ : x₁.typeOf = CedarType.entity ety)
-(h₅ : env.ets.attrs? ety = some rty)
+(h₅ : (env.ets.attrs? ety).map RecordType.liftBoolTypes = some rty)
 (h₆ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
 (h₇ : evaluate (x₁.toExpr.getAttr attr) request entities = Except.ok v) :
 InstanceOfType v (x₁.getAttr attr ty).typeOf
@@ -63,18 +64,23 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
       cases h₁₂
       rename_i h₈ _
       simp only [EntitySchema.attrs?, Option.map_eq_some'] at h₅
-      rcases h₅ with ⟨a, h₅₁, h₅₂⟩
+      rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
       simp [←het] at h₁₁
       simp only [h₁₁, Option.some.injEq] at h₅₁
-      simp only [← h₅₁] at h₅₂
+      simp only [← h₅₁] at h₅₃
       have h₈ := λ qty => h₈ attr v₁ qty heq₁
       simp only [h₅₂] at h₈
       simp only [Option.map_eq_some'] at h₆
       rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
+      simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
+      sorry
+      -- subtype stuff
+      /-
       have h₈ := h₈ qty h₆₁
       simp only [h₆₂] at h₈
       simp [TypedExpr.typeOf, ←h₇]
       exact h₈
+      -/
     · cases h₇
   · simp only [Except.bind_err, reduceCtorEq] at h₇
 

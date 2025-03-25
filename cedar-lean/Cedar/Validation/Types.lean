@@ -101,6 +101,9 @@ def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr
   | [] => []
   | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
 
+def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
+  .mk (CedarType.liftBoolTypesRecord rty.1)
+
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
   | .set s => .set s.liftBoolTypes
