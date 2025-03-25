@@ -68,7 +68,9 @@ def merge (x : PrincipalScopeTemplate) (y : PrincipalScopeTemplate) : PrincipalS
   have ⟨ sc2 ⟩ := y
   .principalScope (ScopeTemplate.merge sc1 sc2)
 
-instance : Field PrincipalScopeTemplate := Field.fromInterField .principalScope merge
+instance : Field PrincipalScopeTemplate := Field.fromInterField
+  (λ (st : ScopeTemplate) => .principalScope $ st.withSlot "?principal")
+  merge
 
 end PrincipalScopeTemplate
 
@@ -82,17 +84,22 @@ def merge (x : ResourceScopeTemplate) (y : ResourceScopeTemplate) : ResourceScop
   let ⟨ sc2 ⟩ := y
   .resourceScope (ScopeTemplate.merge sc1 sc2)
 
-instance : Field ResourceScopeTemplate := Field.fromInterField .resourceScope merge
+instance : Field ResourceScopeTemplate := Field.fromInterField
+  (λ (st : ScopeTemplate) => .resourceScope $ st.withSlot "?resource")
+  merge
 
 end ResourceScopeTemplate
 
--- Note that Cedar.Spec.Template is defined as
--- structure Template where
---   effect : Effect
---   principalScope : PrincipalScopeTemplate
---   actionScope : ActionScope
---   resourceScope : ResourceScopeTemplate
---   condition : Conditions
+namespace Proto
+
+/-- Exactly like `Cedar.Spec.Template` except that it carries the `id` -/
+structure Template where
+  id : String
+  effect : Effect
+  principalScope : PrincipalScopeTemplate
+  actionScope : ActionScope
+  resourceScope : ResourceScopeTemplate
+  condition : Conditions
 
 -- Forbid is the default for Rust protobuf, but Lean auto-derives `permit` as
 -- the default. We use a manual derivation here to resolve the discrepancy.
@@ -101,76 +108,30 @@ deriving instance Inhabited for Template -- must come after the Inhabited Effect
 
 namespace Template
 
-@[inline]
-def mergeEffect (result : Template) (x : Effect) : Template :=
-  {result with
-    effect := Field.merge result.effect x
-  }
+instance : Message Template where
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t id (update id)
+    | 4 => parseFieldElement t effect (update effect)
+    | 5 => parseFieldElement t principalScope (update principalScope)
+    | 6 => parseFieldElement t actionScope (update actionScope)
+    | 7 => parseFieldElement t resourceScope (update resourceScope)
+    | 8 => parseFieldElement t condition (update condition)
+    | _ => let _ ← t.wireType.skip ; pure ignore
 
-@[inline]
-def mergePrincipalScope (result : Template) (x : ScopeTemplate) : Template :=
-  have ⟨ result_st ⟩ := result.principalScope
-  {result with
-    principalScope := .principalScope $ ScopeTemplate.merge result_st (x.withSlot "?principal")
-  }
-
-@[inline]
-def mergeActionScope (result : Template) (x : ActionScope) : Template :=
-  {result with
-    actionScope := Field.merge result.actionScope x
-  }
-
-@[inline]
-def mergeResourceScope (result : Template) (x : ScopeTemplate) : Template :=
-  have ⟨ result_st ⟩ := result.resourceScope
-  {result with
-    resourceScope := .resourceScope $ ScopeTemplate.merge result_st (x.withSlot "?resource")
-  }
-
-@[inline]
-def mergeConditions (result : Template) (x : Conditions) : Template :=
-  {result with
-    condition := Field.merge result.condition x
-  }
-
-@[inline]
-def merge (x y : Template) : Template :=
-  {
-    effect := Field.merge x.effect y.effect
+  merge x y := {
+    id             := Field.merge x.id             y.id
+    effect         := Field.merge x.effect         y.effect
     principalScope := Field.merge x.principalScope y.principalScope
-    actionScope := Field.merge x.actionScope y.actionScope
-    resourceScope := Field.merge x.resourceScope y.resourceScope
-    condition := Field.merge x.condition y.condition
+    actionScope    := Field.merge x.actionScope    y.actionScope
+    resourceScope  := Field.merge x.resourceScope  y.resourceScope
+    condition      := Field.merge x.condition      y.condition
   }
 
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn Template) := do
-  match t.fieldNum with
-    -- NOTE: Doesn't look like id gets utilized in this message
-  | 4 =>
-    let x : Effect ← Field.guardedParse t
-    pureMergeFn (mergeEffect · x)
-  | 5 =>
-    let x : ScopeTemplate ← Field.guardedParse t
-    pureMergeFn (mergePrincipalScope · x)
-  | 6 =>
-    let x : ActionScope ← Field.guardedParse t
-    pureMergeFn (mergeActionScope · x)
-  | 7 =>
-    let x : ScopeTemplate ← Field.guardedParse t
-    pureMergeFn (mergeResourceScope · x)
-  | 8 =>
-    let x : Conditions ← Field.guardedParse t
-    pureMergeFn (mergeConditions · x)
-  | _ =>
-    t.wireType.skip
-    pure ignore
-
-instance : Message Template := {
-  parseField := parseField
-  merge := merge
-}
+def toIdAndTemplate : Proto.Template → String × Spec.Template
+  | { id, effect, principalScope, actionScope, resourceScope, condition } =>
+    (id, { effect, principalScope, actionScope, resourceScope, condition })
 
 end Template
-
+end Proto
 end Cedar.Spec
