@@ -243,7 +243,7 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
     exact well_typed_is_sound_get_attr_entity h₁ hᵢ h₄ h₅ h₆ h₃
   case getAttr_record h₄ h₅ hᵢ=>
     exact well_typed_is_sound_get_attr_record hᵢ h₄ h₅ h₃
-  case set ls ty _ h₄ hᵢ =>
+  case set ls ty _ h₄ _ hᵢ =>
     exact well_typed_is_sound_set hᵢ h₄ h₃
   case record m rty _ h₄ hᵢ =>
     exact well_typed_is_sound_record hᵢ h₄ h₃

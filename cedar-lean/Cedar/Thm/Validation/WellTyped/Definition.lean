@@ -254,7 +254,8 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   WellTyped env (.getAttr x₁ attr ty)
 | set {ls : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ ls → WellTyped env x)
-  (h₂ : ∀ x, x ∈ ls → x.typeOf = ty) :
+  (h₂ : ∀ x, x ∈ ls → x.typeOf = ty)
+  (h₃ : ls != []) :
   WellTyped env (.set ls (.set ty))
 | record {m : List (Attr × TypedExpr)} {rty : List (Attr × QualifiedType)}
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
