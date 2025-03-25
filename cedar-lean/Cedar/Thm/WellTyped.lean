@@ -417,7 +417,52 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
           }
           case _ => simp [err] at h₃
       case _ => simp [err] at h₃
-  case unaryApp => sorry
+  case unaryApp op₁ x₁ =>
+    simp [typeOf] at h₃
+    generalize hᵢ : typeOf x₁ c₁ env = res₁
+    cases res₁
+    case error => simp [hᵢ] at h₃
+    case ok ty₁ =>
+      simp [ok, hᵢ, typeOfUnaryApp] at h₃
+      split at h₃ <;> try simp at h₃
+      case _ =>
+        rcases h₃ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+        apply TypedExpr.WellTyped.unaryApp
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · rename_i h₃ _
+          constructor
+          simp [type_of_after_lifted_is_lifted, h₃, CedarType.liftBoolTypes, BoolType.lift]
+      case _ =>
+        rcases h₃ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+        apply TypedExpr.WellTyped.unaryApp
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · rename_i h₃ _
+          constructor
+          simp [type_of_after_lifted_is_lifted, h₃, CedarType.liftBoolTypes]
+      case _ heq =>
+        rcases h₃ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+        apply TypedExpr.WellTyped.unaryApp
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · rename_i elmTy _
+          apply @UnaryOp.WellTyped.isEmpty _ elmTy.liftBoolTypes
+          simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+      case _ =>
+        rcases h₃ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+        apply TypedExpr.WellTyped.unaryApp
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · rename_i heq _
+          constructor
+          simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+      case _ => sorry
+      case _ => sorry
   case binaryApp => sorry
   case getAttr x₁ attr =>
     simp [typeOf] at h₃
