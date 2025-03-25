@@ -1295,4 +1295,18 @@ theorem mem_pmap_subtype
 := by
   induction as <;> simp [*]
 
+theorem map_mem {α β} {f : α → β} {xs : List α} :
+  ∀ x, x ∈ xs.map f → (∃ y, y ∈ xs ∧ x = f y)
+:= by
+  intro x h
+  induction xs
+  case nil => simp at h
+  case cons head tail hᵢ =>
+    simp at h
+    rcases h with h₁ | h₂
+    · exists head
+      simp only [mem_cons, true_or, h₁, and_self]
+    · rcases h₂ with ⟨a, h₂, h₃⟩
+      exists a
+      simp only [mem_cons, h₂, or_true, h₃, and_self]
 end List

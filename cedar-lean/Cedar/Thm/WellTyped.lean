@@ -566,9 +566,34 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
       subst h₃
       simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
       apply TypedExpr.WellTyped.record
-      · sorry
+      · intro k v h
+        simp only [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))] at h
+        simp [List.mapM_ok_iff_forall₂] at hᵢ
+        replace hᵢ := List.forall₂_implies_all_right hᵢ
+        replace h := List.map_mem (k, v) h
+        rcases h with ⟨y, h₁, h₂⟩
+        simp at h₂
+        rcases h₂ with ⟨h₂₁, h₂₂⟩
+        replace hᵢ := hᵢ y h₁
+        subst h₂₂
+        rcases hᵢ with ⟨_, ht, hᵢ⟩
+        rename_i ty
+        simp [Except.map] at hᵢ
+        split at hᵢ
+        case _ => cases hᵢ
+        case _ heq =>
+          simp at hᵢ
+          have h₃ : y = (y.fst, y.snd) := by rfl
+          rw [h₃] at hᵢ
+          simp at hᵢ
+          rcases hᵢ with ⟨_, hᵢ⟩
+          rw [←hᵢ]
+          -- termination proof...
+          --exact typechecked_is_well_typed_after_lifting h₂ heq
+          sorry
       · sorry
   case call xfn args =>
     exact typechecked_is_well_typed_after_lifting_call h₂ h₃
+termination_by e
 
 end Cedar.Thm
