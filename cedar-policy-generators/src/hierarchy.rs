@@ -177,7 +177,7 @@ impl Hierarchy {
         } else {
             // generate a UID that (probably) doesn't exist, but, still is schema-compatible
             let choices = schema
-                .map(|schema| schema.get_uid_choices(typename))
+                .map(|schema| schema.get_uid_enum_choices(typename))
                 .unwrap_or_else(|| vec![]);
             generate_uid_with_type(typename.clone(), &choices, u)
         }
@@ -423,7 +423,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                 let (name, uid_choices) = match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => (
                         name.qualify_with(schema.namespace()),
-                        schema.get_uid_choices(name),
+                        schema.get_uid_enum_choices(name),
                     ),
                     HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), vec![]),
                 };

@@ -707,7 +707,7 @@ fn bind_type(
 
 impl Schema {
     /// Get valid UID choices if `ty` is an enumerated entity type otherwise return an empty vector
-    pub fn get_uid_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
+    pub fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Vec<SmolStr> {
         if let Some(json_schema::EntityType {
             kind: json_schema::EntityTypeKind::Enum { choices },
             ..
