@@ -25,55 +25,6 @@ open Cedar.Validation
 open Cedar.Thm
 open Cedar.Spec
 
-theorem typechecked_is_well_typed_after_lifting_lit {p : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  --CapabilitiesInvariant c₁ request entities →
-  RequestAndEntitiesMatchEnvironment env request entities →
-  typeOf (Expr.lit p) c₁ env = Except.ok (ty, c₂) →
-  TypedExpr.WellTyped env ty.liftBoolTypes
-:= by
-  --intro h₁ h₂ h₃
-  intro h₂ h₃
-  simp only [typeOf, typeOfLit, List.empty_eq, Function.comp_apply, Bool.or_eq_true, ok] at h₃
-  split at h₃ <;> try simp at h₃ ; rcases h₃ with ⟨h₃, _⟩
-  · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
-    exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool true)
-  · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
-    exact TypedExpr.WellTyped.lit (Prim.WellTyped.bool false)
-  · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    rename_i i _
-    exact TypedExpr.WellTyped.lit (Prim.WellTyped.int i)
-  · simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    rename_i s _
-    exact TypedExpr.WellTyped.lit (Prim.WellTyped.string s)
-  · split at h₃
-    · simp only [Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃
-      rcases h₃ with ⟨h₃, _⟩
-      simp only [← h₃, TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-      rename_i uid h₄ _
-      exact TypedExpr.WellTyped.lit (Prim.WellTyped.entityUID uid h₄)
-    · cases h₃
-
-theorem typechecked_is_well_typed_after_lifting_var {v : Var} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
-  --CapabilitiesInvariant c₁ request entities →
-  RequestAndEntitiesMatchEnvironment env request entities →
-  typeOf (Expr.var v) c₁ env = Except.ok (ty, c₂) →
-  TypedExpr.WellTyped env ty.liftBoolTypes
-:= by
-  --intro h₁ h₂ h₃
-  intro h₂ h₃
-  simp only [typeOf, typeOfVar] at h₃
-  split at h₃ <;>
-  simp only [List.empty_eq, Function.comp_apply] at h₃ <;>
-  rcases h₃ with ⟨h₃, _⟩
-  · simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    exact TypedExpr.WellTyped.var (Var.WellTyped.principal)
-  · simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    exact TypedExpr.WellTyped.var (Var.WellTyped.action)
-  · simp only [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-    exact TypedExpr.WellTyped.var (Var.WellTyped.resource)
-  · simp only [TypedExpr.liftBoolTypes]
-    exact TypedExpr.WellTyped.var (Var.WellTyped.context)
-
 theorem well_typed_is_sound_lit
 {v : Value}
 {env : Environment}
