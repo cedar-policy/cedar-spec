@@ -1977,7 +1977,6 @@ mod tests {
         enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
         enable_unknowns: false,
-        enable_unspecified_apply_spec: true,
         enable_action_in_constraints: true,
     };
 

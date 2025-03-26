@@ -111,14 +111,9 @@ impl Hierarchy {
         }
     }
 
-    /// Generate an arbitrary uid based on the hierarchy. If `request_field`
-    /// is `Some(var)` then the generated uid may be unspecified with eid `var`.
-    /// Otherwise, the uid is guaranteed to be specified.
-    pub fn arbitrary_uid(
-        &self,
-        u: &mut Unstructured<'_>,
-        request_field: Option<ast::Var>,
-    ) -> Result<EntityUID> {
+    /// Generate an arbitrary uid based on the hierarchy (or, with small
+    /// probability, not based on the hierarchy).
+    pub fn arbitrary_uid(&self, u: &mut Unstructured<'_>) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
         if u.ratio::<u8>(9, 10)? {
             let uid = u
@@ -126,12 +121,19 @@ impl Hierarchy {
                 .map_err(|e| while_doing("getting an arbitrary uid".into(), e))?;
             Ok(uid.clone())
         } else {
-            match request_field {
-                Some(_) => {
-                    let uid: EntityUID = u.arbitrary()?;
-                    Ok(uid)
-                }
-                None => arbitrary_specified_uid(u).map_err(Into::into),
+            // flip a coin to determine if we at least use an entity _type_
+            // that exists
+            if u.ratio::<u8>(1, 2)? {
+                let typename = u
+                    .choose(&self.entity_types)
+                    .map_err(|e| while_doing("getting an arbitrary entity type".into(), e))?;
+                Ok(EntityUID::from_components(
+                    typename.clone(),
+                    u.arbitrary()?,
+                    None,
+                ))
+            } else {
+                Ok(u.arbitrary()?)
             }
         }
     }
@@ -143,7 +145,10 @@ impl Hierarchy {
                 // exists case
                 size_hint_for_choose(None),
                 // not-exists case; both branches should lead to a similar cost
-                <EntityUID as Arbitrary>::size_hint(depth),
+                arbitrary::size_hint::and(
+                    size_hint_for_ratio(1, 2),
+                    <EntityUID as Arbitrary>::size_hint(depth),
+                ),
             ),
         )
     }
@@ -376,16 +381,6 @@ pub enum AttributesMode {
     // supported in schema-based mode. If you want arbitrary attributes without
     // a schema, consider first generating an arbitrary schema and then using
     // schema-based mode.
-}
-
-/// Helper function to generate an arbitrary UID (but not Unspecified), without
-/// regard to an existing schema or hierarchy
-pub(crate) fn arbitrary_specified_uid(u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
-    Ok(ast::EntityUID::from_components(
-        u.arbitrary::<ast::EntityType>()?,
-        u.arbitrary::<ast::Eid>()?,
-        None,
-    ))
 }
 
 /// Helper function that generates a new UID with the given type.
