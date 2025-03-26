@@ -36,7 +36,7 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
   (he : evaluate (.record rxs) request entities = .ok v)
   (ha : Value.EuidViaPath v path euid)
   (hf : entities.contains euid)
-  (ih : forall a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x) :
+  (ih : ∀ a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x) :
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   have ⟨ hc', rtxs, htx, hfat ⟩ := type_of_record_inversion ht

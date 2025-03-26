@@ -47,16 +47,18 @@ theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capa
 := by
   cases p
   case entityUID =>
-    replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
-    rw [←ht] at hel
-    cases hel
-    simp only [evaluate, Except.ok.injEq] at he
-    subst v
-    cases ha
-    exact action_matches_env hr
+    replace he : euid = env.reqty.action := by
+      replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
+      rw [←ht] at hel
+      cases hel
+      simp only [evaluate, Except.ok.injEq] at he
+      rw [←he] at ha
+      cases ha
+      rfl
+    simp only [action_matches_env hr, he]
   all_goals
     simp only [evaluate, Except.ok.injEq] at he
-    subst he
+    rw [←he] at ha
     cases ha
 
 theorem and_not_euid_via_path {e₁ e₂: Expr} {entities : Entities} {path : List Attr}
@@ -98,7 +100,10 @@ theorem unary_not_euid_via_path {op : UnaryOp} {e₁ : Expr} {entities : Entitie
     simp only [he₁, intOrErr, apply₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
   (split at he <;> try split at he) <;>
   try simp only [reduceCtorEq] at he
-  all_goals { injections he ; subst he ; cases ha }
+  all_goals
+    simp only [Except.ok.injEq] at he
+    rw [←he] at ha
+    cases ha
 
 theorem has_attr_not_euid_via_path {e₁ : Expr} {a : Attr} {entities : Entities} {path : List Attr}
   (he : evaluate (.hasAttr e₁ a) request entities = .ok v) :
@@ -136,7 +141,9 @@ theorem call_not_euid_via_path {xfn : ExtFun} {xs : List Expr} {entities : Entit
   (split at he <;> try split at he) <;>
   simp only [Except.ok.injEq, reduceCtorEq] at he
 
-  all_goals { subst he ; cases ha }
+  all_goals
+    rw [←he] at ha
+    cases ha
 
 /--
 If an expression checks at level `n` and then evaluates an entity (or a record
@@ -196,7 +203,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
     exact set_not_euid_via_path he ha
 
   case record rxs =>
-    have ih : forall a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x := by
+    have ih : ∀ a x, (Map.make rxs).find? a = some x → CheckedEvalEntityReachable x := by
       intros a x hfx
       have : sizeOf x < sizeOf (Expr.record rxs) := by
         replace he := Map.make_mem_list_mem (Map.find?_mem_toList hfx)

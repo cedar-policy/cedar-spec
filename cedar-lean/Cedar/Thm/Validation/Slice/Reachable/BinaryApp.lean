@@ -108,7 +108,8 @@ theorem binary_op_not_euid_via_path {op : BinaryOp} {e₁ e₂: Expr} {entities 
     cases ha
   | rename_i vs
     cases he₃ : Set.mapOrErr Value.asEntityUID vs Error.typeError <;> simp only [he₃, Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
-    subst he ; cases ha
+    rw [←he] at ha
+    cases ha
 
 theorem checked_eval_entity_reachable_binary {op : BinaryOp} {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)

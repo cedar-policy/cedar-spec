@@ -33,70 +33,54 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem level_based_slicing_is_sound_if {c t e : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
+theorem level_based_slicing_is_sound_if {x₁ x₂ x₃ : Expr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (ht : typeOf (.ite c t e) c₀ env = Except.ok (tx, c₁))
+  (htx : typeOf (.ite x₁ x₂ x₃) c₀ env = Except.ok (tx, c₁))
   (hl : tx.AtLevel env n)
-  (ihc : TypedAtLevelIsSound c)
-  (iht : TypedAtLevelIsSound t)
-  (ihe : TypedAtLevelIsSound e)
-  : evaluate (.ite c t e) request entities = evaluate (.ite c t e) request slice
+  (ih₁ : TypedAtLevelIsSound x₁)
+  (ih₂ : TypedAtLevelIsSound x₂)
+  (ih₃ : TypedAtLevelIsSound x₃)
+  : evaluate (.ite x₁ x₂ x₃) request entities = evaluate (.ite x₁ x₂ x₃) request slice
 := by
-    have ⟨ty₁, bty₁, c₁, ty₂, c₂, ty₃, c₃, htx, h₆, h₇, h₈ ⟩ := type_of_ite_inversion ht
-    have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc hr h₆
-    rw [h₇] at h₁₄
+    replace ⟨tx₁, bty₁, c₁, tx₂, c₂, tx₃, c₃, htx, htx₁, hty₁, htx₂₃ ⟩ := type_of_ite_inversion htx
+    have ⟨ hgc, v₁, he₁, hv₁ ⟩ := type_of_is_sound hc hr htx₁
+    rw [hty₁] at hv₁
     rw [htx] at hl
     cases hl
     rename_i hl₁ hl₂ hl₃
-    specialize ihc hs hc hr h₆ hl₁
-    split at h₈
-    · replace ⟨h₇, h₈, h₉⟩ := h₈
-      specialize ihe hs hc hr h₇ hl₃
-      subst h₉
-      replace h₁₄ := instance_of_ff_is_false h₁₄
-      subst h₁₄
-      simp only [evaluate]
-      rw [ihc, ihe]
-      cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
-      simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
-      subst h₁₂
-      rename_i h₁₅
-      simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
-      subst h₁₃
-      simp
-    · replace ⟨h₇, h₈, h₉⟩ := h₈
-      subst h₉
-      replace h₁₄ := instance_of_tt_is_true h₁₄
-      subst h₁₄
-      simp only [evaluate]
-      rw [ihc]
-      cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
-      simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
-      subst h₁₂
-      rename_i h₁₅
-      simp only [EvaluatesTo, ihc, h₁₅, reduceCtorEq, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, false_or] at h₁₃
-      subst h₁₃
-      simp only [GuardedCapabilitiesInvariant, ihc, h₁₅, forall_const] at hgc
-      specialize iht hs (capability_union_invariant hc hgc) hr h₇ hl₂
-      simp [iht]
-    · replace ⟨h₇, h₈, h₉, h₁₀⟩ := h₈
-      specialize ihe hs hc hr h₈ hl₃
-      simp only [ihc, ihe, evaluate]
-      cases h₁₂ : Result.as Bool (evaluate c request slice) <;> simp only [Except.bind_err, Except.bind_ok]
-      simp only [Result.as, Coe.coe, Value.asBool] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq] at h₁₂
-      split at h₁₂ <;> try simp only [reduceCtorEq, Except.ok.injEq] at h₁₂
-      subst h₁₂
-      rename_i h₁₄
-      rename_i b ; cases b
+    specialize ih₁ hs hc hr htx₁ hl₁
+    simp only [ih₁, evaluate]
+    cases he₁' : Result.as Bool (evaluate x₁ request slice) <;> simp only [Except.bind_err, Except.bind_ok]
+    rename_i b
+    replace he₁' : evaluate x₁ request slice = .ok (.prim (.bool b)) := by
+      simp only [Result.as, Coe.coe, Value.asBool] at he₁'
+      split at he₁' <;> try simp only [reduceCtorEq] at he₁'
+      split at he₁' <;> try simp only [reduceCtorEq, Except.ok.injEq] at he₁'
+      subst he₁'
+      rename_i he₁'
+      simp [he₁']
+    split at htx₂₃
+    · replace he₁ : b = false := by
+        simpa [ih₁, he₁', instance_of_ff_is_false hv₁, EvaluatesTo] using he₁
+      subst he₁
+      specialize ih₃ hs hc hr htx₂₃.left hl₃
+      simp [ih₃]
+    · replace he₁ : b = true := by
+        simpa [ih₁, he₁', instance_of_tt_is_true hv₁, EvaluatesTo] using he₁
+      subst he₁
+      replace hgc : CapabilitiesInvariant c₁ request entities := by
+        simpa [GuardedCapabilitiesInvariant, ih₁, he₁'] using hgc
+      specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂₃.left hl₂
+      simp [ih₂]
+    · replace ⟨htx₂, htx₃, _, _⟩ := htx₂₃
+      specialize ih₃ hs hc hr htx₃ hl₃
+      simp only [ih₁, ih₃, evaluate]
+      cases b
       case false => simp
       case true =>
-        simp only [GuardedCapabilitiesInvariant, ihc, h₁₄, forall_const] at hgc
-        specialize iht hs (capability_union_invariant hc hgc) hr h₇ hl₂
-        simp [iht]
+        replace hgc : CapabilitiesInvariant c₁ request entities := by
+          simpa [GuardedCapabilitiesInvariant, ih₁, he₁'] using hgc
+        specialize ih₂ hs (capability_union_invariant hc hgc) hr htx₂ hl₂
+        simp [ih₂]

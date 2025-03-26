@@ -45,7 +45,7 @@ theorem not_dereferencing_apply₂_invariant_entities {op : BinaryOp} {entities 
       rename_i p₁ p₂
       cases p₁ <;> cases p₂
     ) <;>
-    simp
+    simp only
 
 theorem level_based_slicing_is_sound_inₑ {e₁ : Expr} {euid₁ euid₂ : EntityUID} {n : Nat} {c₀ c₁ : Capabilities} {entities slice : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)
