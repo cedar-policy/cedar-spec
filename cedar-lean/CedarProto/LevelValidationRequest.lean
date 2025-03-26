@@ -28,64 +28,40 @@ open Proto
 
 namespace Cedar.Validation.Proto
 
+structure Level where
+  level : Nat
+deriving Inhabited, DecidableEq, Repr
+
+private def Level.fromInt32 : Proto.Int32 → Level
+  | .ofNat n => { level := n }
+  | .negSucc _ => panic!("Can't validate with a negative level!")
+
+private def Level.merge (x y : Level) :=
+  Level.fromInt32 $ Field.merge (Int.ofNat x.level) (Int.ofNat y.level)
+
+instance : Field Level := Field.fromInterField Level.fromInt32 Level.merge
+
 structure LevelValidationRequest where
   schema : Validation.Schema
   policies : Spec.Policies
-  level: Nat
+  level : Level
 deriving Inhabited, DecidableEq, Repr
 
 namespace LevelValidationRequest
 
-@[inline]
-def mergeSchema (result : LevelValidationRequest) (x : Validation.Schema) : LevelValidationRequest :=
-  {result with
-    schema := Field.merge result.schema x
+instance : Message LevelValidationRequest where
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t schema (update schema)
+    | 2 => parseFieldElement t policies (update policies)
+    | 3 => parseFieldElement t level (update level)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    schema   := Field.merge x.schema   y.schema
+    policies := Field.merge x.policies y.policies
+    level    := Field.merge x.level    y.level
   }
-
-@[inline]
-def mergePolicies (result : LevelValidationRequest) (x : Spec.Policies) : LevelValidationRequest :=
-  {result with
-    policies := Field.merge result.policies x
-  }
-
-@[inline]
-def mergeLevel (result : LevelValidationRequest) (x : Proto.Int32) : LevelValidationRequest :=
-  have i : Int := x
-  {result with
-    level :=
-      match i with
-      | Int.ofNat n  => n
-      | Int.negSucc  _ => panic! "Can't validate with a negative level!"
-  }
-
-@[inline]
-def merge (x y : LevelValidationRequest) : LevelValidationRequest :=
-  {
-    schema := Field.merge x.schema y.schema
-    policies := x.policies ++ y.policies
-    level := y.level
-  }
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn LevelValidationRequest) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Validation.Schema ← Field.guardedParse t
-      pure (pure $ mergeSchema · x)
-    | 2 =>
-      let x : Spec.Policies ← Field.guardedParse t
-      pure (pure $ mergePolicies · x)
-    | 3 =>
-      let x : Proto.Int32 ← Field.guardedParse t
-      pure (pure $ mergeLevel · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message LevelValidationRequest := {
-  parseField := parseField
-  merge := merge
-}
 
 end LevelValidationRequest
 

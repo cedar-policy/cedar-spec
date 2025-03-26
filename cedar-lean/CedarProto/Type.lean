@@ -68,8 +68,8 @@ namespace Qualified
 def mergeType (result : Qualified α) (x : α) : Qualified α :=
   -- Replace the type information, keep the qualified constructor
   match result with
-    | .required _ => .required x
-    | .optional _ => .optional x
+  | .required _ => .required x
+  | .optional _ => .optional x
 
 @[inline]
 def mergeIsRequired (result : Qualified α) (required : Bool) : Qualified α :=
@@ -173,49 +173,49 @@ mutual
 partial def QualifiedProtoType.parseField (t : Tag) : BParsec (MergeFn (Qualified ProtoType)) := do
   have : Message ProtoType := { parseField := ProtoType.parseField, merge := ProtoType.merge}
   match t.fieldNum with
-    | 1 =>
-      let x : ProtoType ← Field.guardedParse t
-      pure (pure $ Qualified.mergeType · x)
-    | 2 =>
-      let x : Bool ← Field.guardedParse t
-      pure (pure $ Qualified.mergeIsRequired · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : ProtoType ← Field.guardedParse t
+    pureMergeFn (Qualified.mergeType · x)
+  | 2 =>
+    let x : Bool ← Field.guardedParse t
+    pureMergeFn (Qualified.mergeIsRequired · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
   have : Message ProtoType := { parseField := ProtoType.parseField, merge := ProtoType.merge }
   have : Message (Qualified ProtoType) := { parseField := QualifiedProtoType.parseField, merge := Qualified.merge }
   match t.fieldNum with
-    | 1 =>
-      let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
-      pure (pure $ RecordType.mergeAttrs · x.toList)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
+    pureMergeFn (RecordType.mergeAttrs · x.toList)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 partial def ProtoType.parseField (t : Tag) : BParsec (MergeFn ProtoType) := do
   have : Message ProtoType := { parseField := ProtoType.parseField, merge := ProtoType.merge }
   have : Message RecordType := { parseField := RecordType.parseField, merge := RecordType.merge }
   match t.fieldNum with
-    | 1 =>
-      let x : PrimType ← Field.guardedParse t
-      pure (pure $ ProtoType.mergePrim · x)
-    | 2 =>
-      let x : ProtoType ← Field.guardedParse t
-      pure (pure $ ProtoType.mergeSet · x)
-    | 3 =>
-      let x : Spec.Proto.Name ← Field.guardedParse t
-      pure (pure $ ProtoType.mergeEntity · x)
-    | 4 =>
-      let x : RecordType ← Field.guardedParse t
-      pure (pure $ ProtoType.mergeRecord · x)
-    | 5 =>
-      let x : Spec.Proto.Name ← Field.guardedParse t
-      pure (pure $ ProtoType.mergeExt · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : PrimType ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergePrim · x)
+  | 2 =>
+    let x : ProtoType ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergeSet · x)
+  | 3 =>
+    let x : Spec.Proto.Name ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergeEntity · x)
+  | 4 =>
+    let x : RecordType ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergeRecord · x)
+  | 5 =>
+    let x : Spec.Proto.Name ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergeExt · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 end
 

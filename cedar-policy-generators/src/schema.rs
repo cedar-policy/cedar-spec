@@ -91,23 +91,12 @@ fn arbitrary_attrspec<N: From<ast::Name>>(
             attributes: attr_names
                 .into_iter()
                 .map(|attr| {
-                    let mut ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
+                    let ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
                         settings,
                         entity_types,
                         settings.max_depth,
                         u,
                     )?;
-                    if !settings.enable_extensions {
-                        // can't have extension types. regenerate until morale improves
-                        while ty.ty.is_extension().expect("DRT does not generate schema type using type defs, so `is_extension` should be `Some`") {
-                            ty = arbitrary_typeofattribute_with_bounded_depth::<N>(
-                                settings,
-                                entity_types,
-                                settings.max_depth,
-                                u,
-                            )?;
-                        }
-                    }
                     Ok((AsRef::<str>::as_ref(&attr).into(), ty))
                 })
                 .collect::<Result<_>>()?,
@@ -184,72 +173,76 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
     max_depth: usize,
     u: &mut Unstructured<'_>,
 ) -> Result<json_schema::Type<N>> {
-    Ok(json_schema::Type::Type {
-        ty: uniform!(
+    let set = |u: &mut Unstructured<'_>| -> Result<json_schema::TypeVariant<N>> {
+        if max_depth == 0 {
+            // can't recurse; we arbitrarily choose Set<Long> in this case
+            Ok(json_schema::TypeVariant::Set {
+                element: Box::new(json_schema::Type::Type {
+                    ty: json_schema::TypeVariant::Long,
+                    loc: None,
+                }),
+            })
+        } else {
+            Ok(json_schema::TypeVariant::Set {
+                element: Box::new(arbitrary_schematype_with_bounded_depth(
+                    settings,
+                    entity_types,
+                    max_depth - 1,
+                    u,
+                )?),
+            })
+        }
+    };
+
+    let record = |u: &mut Unstructured<'_>| -> Result<json_schema::TypeVariant<N>> {
+        if max_depth == 0 {
+            // can't recurse; use empty-record
+            Ok(json_schema::TypeVariant::Record(json_schema::RecordType {
+                attributes: BTreeMap::new(),
+                additional_attributes: if settings.enable_additional_attributes {
+                    u.arbitrary()?
+                } else {
+                    false
+                },
+            }))
+        } else {
+            Ok(json_schema::TypeVariant::Record(json_schema::RecordType {
+                attributes: {
+                    let attr_names: HashSet<String> = u
+                        .arbitrary()
+                        .map_err(|e| while_doing("generating attribute names".into(), e))?;
+                    attr_names
+                        .into_iter()
+                        .map(|attr_name| {
+                            Ok((
+                                attr_name.into(),
+                                arbitrary_typeofattribute_with_bounded_depth(
+                                    settings,
+                                    entity_types,
+                                    max_depth - 1,
+                                    u,
+                                )?,
+                            ))
+                        })
+                        .collect::<Result<BTreeMap<_, _>>>()?
+                },
+                additional_attributes: if settings.enable_additional_attributes {
+                    u.arbitrary()?
+                } else {
+                    false
+                },
+            }))
+        }
+    };
+
+    let ty = if settings.enable_extensions {
+        uniform!(
             u,
             json_schema::TypeVariant::String,
             json_schema::TypeVariant::Long,
             json_schema::TypeVariant::Boolean,
-            {
-                if max_depth == 0 {
-                    // can't recurse; we arbitrarily choose Set<Long> in this case
-                    json_schema::TypeVariant::Set {
-                        element: Box::new(json_schema::Type::Type {
-                            ty: json_schema::TypeVariant::Long,
-                            loc: None,
-                        }),
-                    }
-                } else {
-                    json_schema::TypeVariant::Set {
-                        element: Box::new(arbitrary_schematype_with_bounded_depth(
-                            settings,
-                            entity_types,
-                            max_depth - 1,
-                            u,
-                        )?),
-                    }
-                }
-            },
-            {
-                if max_depth == 0 {
-                    // can't recurse; use empty-record
-                    json_schema::TypeVariant::Record(json_schema::RecordType {
-                        attributes: BTreeMap::new(),
-                        additional_attributes: if settings.enable_additional_attributes {
-                            u.arbitrary()?
-                        } else {
-                            false
-                        },
-                    })
-                } else {
-                    json_schema::TypeVariant::Record(json_schema::RecordType {
-                        attributes: {
-                            let attr_names: HashSet<String> = u
-                                .arbitrary()
-                                .map_err(|e| while_doing("generating attribute names".into(), e))?;
-                            attr_names
-                                .into_iter()
-                                .map(|attr_name| {
-                                    Ok((
-                                        attr_name.into(),
-                                        arbitrary_typeofattribute_with_bounded_depth(
-                                            settings,
-                                            entity_types,
-                                            max_depth - 1,
-                                            u,
-                                        )?,
-                                    ))
-                                })
-                                .collect::<Result<BTreeMap<_, _>>>()?
-                        },
-                        additional_attributes: if settings.enable_additional_attributes {
-                            u.arbitrary()?
-                        } else {
-                            false
-                        },
-                    })
-                }
-            },
+            set(u)?,
+            record(u)?,
             entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?),
             json_schema::TypeVariant::Extension {
                 name: "ipaddr".parse().unwrap(),
@@ -263,9 +256,20 @@ pub fn arbitrary_schematype_with_bounded_depth<N: From<ast::Name>>(
             json_schema::TypeVariant::Extension {
                 name: "duration".parse().unwrap(),
             }
-        ),
-        loc: None,
-    })
+        )
+    } else {
+        uniform!(
+            u,
+            json_schema::TypeVariant::String,
+            json_schema::TypeVariant::Long,
+            json_schema::TypeVariant::Boolean,
+            set(u)?,
+            record(u)?,
+            entity_type_name_to_schema_type_variant::<N>(u.choose(entity_types)?)
+        )
+    };
+
+    Ok(json_schema::Type::Type { ty, loc: None })
 }
 
 /// Convert an [`ast::EntityType`] into the corresponding
@@ -1467,6 +1471,24 @@ impl Schema {
         let principal_constraint = self.arbitrary_principal_constraint(hierarchy, u)?;
         let action_constraint = self.arbitrary_action_constraint(u, Some(3))?;
         let resource_constraint = self.arbitrary_resource_constraint(hierarchy, u)?;
+        let conjunction = self.arbitrary_abac_constraints(hierarchy, u)?;
+        Ok(ABACPolicy(GeneratedPolicy::new(
+            id,
+            u.arbitrary()?,
+            effect,
+            principal_constraint,
+            action_constraint,
+            resource_constraint,
+            conjunction,
+        )))
+    }
+
+    /// Generates arbitrary non-scope constraints
+    pub fn arbitrary_abac_constraints(
+        &self,
+        hierarchy: &Hierarchy,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
         let mut abac_constraints = Vec::new();
         let mut exprgenerator = self.exprgenerator(Some(hierarchy));
         u.arbitrary_loop(Some(0), Some(self.settings.max_depth as u32), |u| {
@@ -1485,15 +1507,13 @@ impl Schema {
         for constraint in abac_constraints {
             conjunction = ast::Expr::and(conjunction, constraint);
         }
-        Ok(ABACPolicy(GeneratedPolicy::new(
-            id,
-            u.arbitrary()?,
-            effect,
-            principal_constraint,
-            action_constraint,
-            resource_constraint,
-            conjunction,
-        )))
+        Ok(conjunction)
+    }
+
+    /// Size hint for [`Self::arbitrary_abac_constraints()`].
+    pub fn arbitrary_abac_constraints_size_hint(_depth: usize) -> (usize, Option<usize>) {
+        // not sure how to count the arbitrary_loop() call
+        (1, None)
     }
 
     /// size hint for arbitrary_policy()
@@ -1507,7 +1527,7 @@ impl Schema {
             Self::arbitrary_principal_constraint_size_hint(depth),
             Self::arbitrary_action_constraint_size_hint(depth),
             Self::arbitrary_resource_constraint_size_hint(depth),
-            (1, None), // not sure how to count the arbitrary_loop() call
+            Self::arbitrary_abac_constraints_size_hint(depth),
         ])
     }
 
@@ -1533,6 +1553,7 @@ impl Schema {
             )
         }
     }
+
     fn arbitrary_principal_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
@@ -1577,7 +1598,8 @@ impl Schema {
         )
     }
 
-    fn arbitrary_action_constraint(
+    /// Generates an arbitrary action constraint.
+    pub fn arbitrary_action_constraint(
         &self,
         u: &mut Unstructured<'_>,
         max_list_length: Option<u32>,
@@ -1604,7 +1626,9 @@ impl Schema {
             })
         }
     }
-    fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
+
+    /// Size hint for [`Self::arbitrary_action_constraint()`].
+    pub fn arbitrary_action_constraint_size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and(
             size_hint_for_range(1, 10),
             arbitrary::size_hint::or_all(&[
@@ -1953,7 +1977,6 @@ mod tests {
         enable_action_groups_and_attrs: true,
         enable_arbitrary_func_call: false,
         enable_unknowns: false,
-        enable_unspecified_apply_spec: true,
         enable_action_in_constraints: true,
     };
 

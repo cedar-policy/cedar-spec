@@ -62,7 +62,7 @@ def parseField (t : Tag) : BParsec (MergeFn HardCodeStruct) := do
   match t.fieldNum with
     | 6 =>
       let x : Packed UInt32 ← Field.guardedParse t
-      pure (pure $ merge_6 · x)
+      pureMergeFn (merge_6 · x)
     | _ =>
       t.wireType.skip
       pure ignore
