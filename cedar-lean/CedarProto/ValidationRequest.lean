@@ -39,42 +39,17 @@ deriving Inhabited, DecidableEq, Repr
 
 namespace ValidationRequest
 
-@[inline]
-def mergeSchema (result : ValidationRequest) (x : Validation.Schema) : ValidationRequest :=
-  {result with
-    schema := Field.merge result.schema x
+instance : Message ValidationRequest where
+  parseField (t : Proto.Tag) := do
+    match t.fieldNum with
+    | 1 => parseFieldElement t schema (update schema)
+    | 2 => parseFieldElement t policies (update policies)
+    | _ => let _ ← t.wireType.skip ; pure ignore
+
+  merge x y := {
+    schema   := Field.merge x.schema   y.schema
+    policies := Field.merge x.policies y.policies
   }
-
-@[inline]
-def mergePolicies (result : ValidationRequest) (x : Spec.Policies) : ValidationRequest :=
-  {result with
-    policies := Field.merge result.policies x
-  }
-
-@[inline]
-def merge (x y : ValidationRequest) : ValidationRequest :=
-  {
-    schema := Field.merge x.schema y.schema
-    policies := x.policies ++ y.policies
-  }
-
-@[inline]
-def parseField (t : Tag) : BParsec (MergeFn ValidationRequest) := do
-  match t.fieldNum with
-    | 1 =>
-      let x : Validation.Schema ← Field.guardedParse t
-      pureMergeFn (mergeSchema · x)
-    | 2 =>
-      let x : Spec.Policies ← Field.guardedParse t
-      pureMergeFn (mergePolicies · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
-
-instance : Message ValidationRequest := {
-  parseField := parseField
-  merge := merge
-}
 
 end ValidationRequest
 

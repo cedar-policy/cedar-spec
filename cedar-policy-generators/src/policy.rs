@@ -320,7 +320,7 @@ impl PrincipalOrResourceConstraint {
                 )
             } else {
                 // 32% Eq, 16% In, 16% Is, 16% IsIn
-                let uid = hierarchy.arbitrary_uid(u, None)?;
+                let uid = hierarchy.arbitrary_uid(u)?;
                 gen!(u,
                     2 => Ok(Self::Eq(uid)),
                     1 => Ok(Self::In(uid)),
@@ -417,13 +417,13 @@ impl ActionConstraint {
         if u.ratio(1, 10)? {
             Ok(Self::NoConstraint)
         } else if u.ratio(1, 3)? {
-            Ok(Self::Eq(hierarchy.arbitrary_uid(u, None)?))
+            Ok(Self::Eq(hierarchy.arbitrary_uid(u)?))
         } else if u.ratio(1, 2)? {
-            Ok(Self::In(hierarchy.arbitrary_uid(u, None)?))
+            Ok(Self::In(hierarchy.arbitrary_uid(u)?))
         } else {
             let mut uids = vec![];
             u.arbitrary_loop(Some(0), max_list_length, |u| {
-                uids.push(hierarchy.arbitrary_uid(u, None)?);
+                uids.push(hierarchy.arbitrary_uid(u)?);
                 Ok(std::ops::ControlFlow::Continue(()))
             })?;
             Ok(Self::InList(uids))
@@ -478,7 +478,7 @@ impl GeneratedLinkedPolicy {
         u: &mut Unstructured<'_>,
     ) -> Result<Option<EntityUID>> {
         if prc.has_slot() {
-            Ok(Some(hierarchy.arbitrary_uid(u, None)?))
+            Ok(Some(hierarchy.arbitrary_uid(u)?))
         } else {
             Ok(None)
         }
