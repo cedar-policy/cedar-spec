@@ -28,39 +28,11 @@ open Proto
 namespace Cedar.Spec.Proto
 
 structure PolicySet where
-  templates : Proto.Map String Template
-  links     : Proto.Map String TemplateLinkedPolicy
+  templates : Repeated Template
+  links     : Repeated TemplateLinkedPolicy
 deriving Inhabited
 
 namespace PolicySet
-
-@[inline]
-def mergeTemplates (result : PolicySet) (x : Proto.Map String Template) : PolicySet :=
-  { result with
-    templates := result.templates ++ x }
-
-@[inline]
-def mergeLinks (result : PolicySet) (x : Proto.Map String TemplateLinkedPolicy) : PolicySet :=
-  { result with
-    links := result.links ++ x }
-
-@[inline]
-def merge (x y : PolicySet) : PolicySet :=
-  { templates := x.templates ++ y.templates,
-    links     := x.links     ++ y.links }
-
-@[inline]
-def parseField (t : Proto.Tag) : BParsec (MergeFn PolicySet) := do
-  match t.fieldNum with
-  | 1 =>
-    let x : Proto.Map String Template ← Field.guardedParse t
-    pureMergeFn (mergeTemplates · x)
-  | 2 =>
-    let x : Proto.Map String TemplateLinkedPolicy ← Field.guardedParse t
-    pureMergeFn (mergeLinks · x)
-  | _ =>
-    t.wireType.skip
-    pure ignore
 
 instance : Message PolicySet := {
   parseField (t : Proto.Tag) := do
@@ -77,8 +49,8 @@ instance : Message PolicySet := {
 
 def toPolicies : PolicySet → Spec.Policies
   | { templates, links } =>
-    let templates := Data.Map.make templates.toList
-    match link? templates (links.toList.map Prod.snd) with
+    let templates := Data.Map.make $ templates.toList.map Template.toIdAndTemplate
+    match link? templates links.toList with
     | .ok policies => policies
     | .error e     => panic!(s!"toPolicies: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}")
 
