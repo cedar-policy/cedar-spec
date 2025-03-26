@@ -33,8 +33,12 @@ For example, for a struct with fields `name` and `value`,
      | 2 => parseFieldElement t value (update value)
      | _ => let _ ← t.wireType.skip ; pure ignore
 ```
+
+Note that `β` is the type of the field, while `α` is the type of the entire struct
 -/
 def parseFieldElement {α β} [Field β] (t : Tag) (f : α → β) (g : α → β → α) : BParsec (MergeFn α) := do
   let x : β ← Field.guardedParse t
-  let merge result x := g result (Field.merge (f result) x)
+  let merge (result : α) (x : β) :=
+     let old : β := f result
+     g result (Field.merge old x)
   pureMergeFn (merge · x)
