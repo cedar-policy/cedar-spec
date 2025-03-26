@@ -95,7 +95,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
       | .error e =>
         .error s!"levelValidateDRT: failed to parse input: {e}"
       | .ok v =>
-        let result := runAndTime (λ () => validateWithLevel v.policies v.schema v.level)
+        let result := runAndTime (λ () => validateWithLevel v.policies v.schema v.level.level)
         .ok (unsafeBaseIO result)
     toString (Lean.toJson result)
 
