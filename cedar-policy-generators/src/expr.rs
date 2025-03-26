@@ -2553,7 +2553,7 @@ impl<'a> ExprGenerator<'a> {
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {
             None => generate_uid_with_type(ty.clone(), &self.schema.get_uid_choices(ty), u),
-            Some(hierarchy) => hierarchy.arbitrary_uid_with_type(ty, u),
+            Some(hierarchy) => hierarchy.arbitrary_uid_with_type(Some(self.schema), ty, u),
         }
     }
     /// size hint for arbitrary_uid_with_type()

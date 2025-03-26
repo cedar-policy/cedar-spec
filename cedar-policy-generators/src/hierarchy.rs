@@ -153,9 +153,13 @@ impl Hierarchy {
         )
     }
 
-    /// generate an arbitrary uid based on the hierarchy, with the given typename
+    /// generate an arbitrary uid based on the hierarchy and schema, with the given typename.
+    ///
+    /// Schema is used in order to ensure that if it's an enum entity type, we
+    /// pick one of the valid EIDs for that type.
     pub fn arbitrary_uid_with_type(
         &self,
+        schema: Option<&Schema>,
         typename: &ast::EntityType,
         u: &mut Unstructured<'_>,
     ) -> Result<EntityUID> {
@@ -171,11 +175,11 @@ impl Hierarchy {
             )?;
             Ok(uid.clone())
         } else {
-            Ok(EntityUID::from_components(
-                typename.clone(),
-                u.arbitrary()?,
-                None,
-            ))
+            // generate a UID that (probably) doesn't exist, but, still is schema-compatible
+            let choices = schema
+                .map(|schema| schema.get_uid_choices(typename))
+                .unwrap_or_else(|| vec![]);
+            generate_uid_with_type(typename.clone(), &choices, u)
         }
     }
     /// size hint for arbitrary_uid_with_type()
@@ -395,10 +399,7 @@ pub(crate) fn generate_uid_with_type(
     let eid = if choices.is_empty() {
         u.arbitrary()?
     } else {
-        gen!(u,
-         4 => Eid::new(u.choose(choices)?.to_owned()),
-         1 => u.arbitrary()?
-        )
+        Eid::new(u.choose(choices)?.to_owned())
     };
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
