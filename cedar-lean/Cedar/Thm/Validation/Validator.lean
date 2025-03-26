@@ -39,7 +39,7 @@ def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entitie
   ∃ env ∈ schema.environments,
   RequestAndEntitiesMatchEnvironment env request entities
 
-theorem action_matches_env (env : Environment) (request : Request) (entities : Entities) :
+theorem action_matches_env {env : Environment} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   request.action = env.reqty.action
 := by
@@ -64,35 +64,8 @@ theorem typecheck_policy_is_sound (policy : Policy) (env : Environment) (tx : Ty
   have ⟨b, h₆⟩ := instance_of_type_bool_is_bool v cp.fst.typeOf h₅ ht
   subst h₆
   exists b
-  simp only [EvaluatesTo] at *
-  cases h₄ with
-  | inl h₁ =>
-    left
-    rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
-    rw [action_matches_env]
-    repeat assumption
-  | inr h₁ => cases h₁ with
-    | inl h₂ =>
-      right
-      left
-      rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
-      rw [action_matches_env]
-      repeat assumption
-    | inr h₂ => cases h₂ with
-      | inl h₃ =>
-        right
-        right
-        left
-        rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
-        rw [action_matches_env]
-        repeat assumption
-      | inr h₃ =>
-        right
-        right
-        right
-        rw [← substitute_action_preserves_evaluation policy.toExpr request entities]
-        rw [action_matches_env]
-        repeat assumption
+  rw [←substitute_action_preserves_evaluates_to, action_matches_env h₁]
+  exact h₄
 
 theorem typecheck_policy_with_environments_is_sound (policy : Policy) (envs : List Environment) (request : Request) (entities : Entities) :
   (∃ env ∈ envs, RequestAndEntitiesMatchEnvironment env request entities) →
