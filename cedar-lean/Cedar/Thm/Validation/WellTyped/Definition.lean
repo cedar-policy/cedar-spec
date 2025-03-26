@@ -60,18 +60,28 @@ inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | like {x₁ : TypedExpr} {p : Pattern}
     (h₁ : x₁.typeOf = .string) :
     WellTyped (.like p) x₁ (.bool .anyBool)
+  | is {ety₁ ety₂ : EntityType}
+    (h₁ : x₁.typeOf = .entity ety₂) :
+    WellTyped (.is ety₁) x₁ (.bool .anyBool)
 
 inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
+  | eq_lit {p₁ p₂ : Prim} {ty₁ ty₂ : CedarType} :
+    -- do we need hypothesis like `InstanceOfType (.prim p₁) ty₁`?
+    WellTyped env .eq (.lit p₁ ty₁) (.lit p₂ ty₂) (.bool .anyBool)
+  | eq_entity {ety₁ ety₂ : EntityType} {x₁ x₂ : TypedExpr}
+    (h₁ : x₁.typeOf = .entity ety₁)
+    (h₂ : x₂.typeOf = .entity ety₂) :
+    WellTyped env .eq x₁ x₂ (.bool .anyBool)
   | eq {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = x₂.typeOf) :
     WellTyped env .eq x₁ x₂ (.bool .anyBool)
   | memₑ {x₁ x₂ : TypedExpr} {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₁)
-    (h₂ : x₂.typeOf = .entity ety₁) :
+    (h₂ : x₂.typeOf = .entity ety₂) :
     WellTyped env .mem x₁ x₂ (.bool .anyBool)
   | memₛ {x₁ x₂ : TypedExpr} {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₁)
-    (h₂ : x₂.typeOf = .set (.entity ety₁)) :
+    (h₂ : x₂.typeOf = .set (.entity ety₂)) :
     WellTyped env .mem x₁ x₂ (.bool .anyBool)
   | less_int {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .int)
@@ -124,11 +134,11 @@ inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → Ty
     (h₁ : x₁.typeOf = .entity ety)
     (h₂ : x₂.typeOf = .string) :
     WellTyped env .hasTag x₁ x₂ (.bool .anyBool)
-  | getTag {x₁ x₂ : TypedExpr} {ety : EntityType}
+  | getTag {x₁ x₂ : TypedExpr} {ety : EntityType} {ty : CedarType}
     (h₁ : x₁.typeOf = .entity ety)
     (h₂ : x₂.typeOf = .string)
     (h₃ : env.ets.tags? ety = .some (.some ty)) :
-    WellTyped env .getTag x₁ x₂ ty
+    WellTyped env .getTag x₁ x₂ ty.liftBoolTypes
 
 inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | decimal {s₁ : String} {d₁ : Decimal}

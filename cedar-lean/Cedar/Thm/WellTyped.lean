@@ -147,6 +147,10 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
         simp only [←h₃, bool_is_instance_of_anyBool]
       · simp only [Except.ok.injEq] at h₃
         simp only [←h₃, bool_is_instance_of_anyBool]
+      · simp at h₃
+        subst h₃
+        simp only [bool_is_instance_of_anyBool]
+      · cases h₃
       · cases h₃
       · cases h₃
       · cases h₃
@@ -189,7 +193,7 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
     · simp only [inₛ, do_ok] at h₃
       rcases h₃ with ⟨_, _, h₃⟩
       simp only [← h₃, bool_is_instance_of_anyBool]
-    · rename_i uid₁ tag _ _ _ h₄
+    · rename_i uid₁ tag _ _ h₄ _ _
       simp only [getTag, Data.Map.findOrErr] at h₃
       generalize hᵢ : entities.tags uid₁ = res₁
       cases res₁ <;> rw [hᵢ] at h₃
@@ -222,7 +226,9 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
             simp only [← h₃₁] at h₃₂
             simp only [h₃₂] at h₆
             simp only [←hᵢ] at heq
-            exact h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+            have := h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+            -- subtype stuff
+            sorry
           · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
         · cases h₃
   case hasAttr_entity x₁ _ _ _ _ =>
@@ -461,9 +467,339 @@ theorem typechecked_is_well_typed_after_lifting {e : Expr} {c₁ c₂ : Capabili
         · rename_i heq _
           constructor
           simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
-      case _ => sorry
-      case _ => sorry
-  case binaryApp => sorry
+      case _ =>
+        rcases h₃ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+        apply TypedExpr.WellTyped.unaryApp
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ
+        · rename_i ety₁ ety₂ heq _
+          apply @UnaryOp.WellTyped.is _ ety₁ ety₂
+          simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+      case _ => simp [err] at h₃
+  case binaryApp op₂ x₁ x₂ =>
+    simp [typeOf] at h₃
+    generalize hᵢ₁ : typeOf x₁ c₁ env = res₁
+    generalize hᵢ₂ : typeOf x₂ c₁ env = res₂
+    cases res₁ <;> cases res₂ <;> simp [hᵢ₁, hᵢ₂] at h₃
+    rename_i tc₁ tc₂
+    simp [typeOfBinaryApp] at h₃
+    split at h₃
+    case _ =>
+      simp [typeOfEq] at h₃
+      split at h₃
+      case _ p₁ p₂ =>
+        split at h₃
+        case _ =>
+          simp [ok] at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          subst h₃
+          simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+          constructor
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+          · apply BinaryOp.WellTyped.eq
+            rename_i heq _
+            simp [heq] at hᵢ₁
+            simp [hᵢ₂] at hᵢ₁
+            symm at hᵢ₁
+            simp only [hᵢ₁]
+        case _ =>
+          simp [ok] at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          subst h₃
+          simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+          constructor
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+          · -- requires cross-product of hᵢ₁ and hᵢ₂ after splitting
+            sorry
+      case _ =>
+        split at h₃
+        case _ heq =>
+          simp [ok] at h₃
+          rcases h₃ with ⟨h₃, _⟩
+          subst h₃
+          simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+          constructor
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+          ·
+            --simp [type_of_after_lifted_is_lifted]
+            -- subtype stuff
+            sorry
+        case _ =>
+          split at h₃
+          case _ ety₁ ety₂ heq₁ heq₂ =>
+            simp [ok] at h₃
+            rcases h₃ with ⟨h₃, _⟩
+            subst h₃
+            simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+            constructor
+            · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+            · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+            · apply @BinaryOp.WellTyped.eq_entity _ ety₁ ety₂ <;>
+              simp [type_of_after_lifted_is_lifted]
+              · simp [heq₁, CedarType.liftBoolTypes]
+              · simp [heq₂, CedarType.liftBoolTypes]
+          case _ => simp [err] at h₃
+    case _ ety₁ ety₂ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply @BinaryOp.WellTyped.memₑ _ _ _ ety₁ ety₂ <;>
+        simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ ety₁ ety₂ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply @BinaryOp.WellTyped.memₛ _ _ _ ety₁ ety₂ <;>
+        simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ ety heq₁ heq₂ =>
+      simp [ok, do_ok] at h₃
+      rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+      subst h₃₂
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · simp [typeOfHasTag] at h₃₁
+        split at h₃₁
+        case _ =>
+          simp [ok] at h₃₁
+          rcases h₃₁ with ⟨h₃₁, _⟩
+          subst h₃₁
+          simp [CedarType.liftBoolTypes, BoolType.lift]
+          apply @BinaryOp.WellTyped.hasTag _ _ _ ety  <;>
+          simp [type_of_after_lifted_is_lifted]
+          · simp [heq₁, CedarType.liftBoolTypes]
+          · simp [heq₂, CedarType.liftBoolTypes]
+        case _ =>
+          split at h₃₁ <;> {
+            simp [ok] at h₃₁
+            rcases h₃₁ with ⟨h₃₁, _⟩
+            subst h₃₁
+            simp [CedarType.liftBoolTypes, BoolType.lift]
+            apply @BinaryOp.WellTyped.hasTag _ _ _ ety  <;>
+            simp [type_of_after_lifted_is_lifted]
+            · simp [heq₁, CedarType.liftBoolTypes]
+            · simp [heq₂, CedarType.liftBoolTypes]
+          }
+        case _ =>
+          split at h₃₁
+          case _ =>
+            simp [ok] at h₃₁
+            rcases h₃₁ with ⟨h₃₁, _⟩
+            subst h₃₁
+            simp [CedarType.liftBoolTypes, BoolType.lift]
+            apply @BinaryOp.WellTyped.hasTag _ _ _ ety  <;>
+            simp [type_of_after_lifted_is_lifted]
+            · simp [heq₁, CedarType.liftBoolTypes]
+            · simp [heq₂, CedarType.liftBoolTypes]
+          case _ => simp [err] at h₃₁
+    case _ ety heq₁ heq₂ =>
+      simp [ok, do_ok] at h₃
+      rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+      subst h₃₂
+      simp [typeOfGetTag] at h₃₁
+      split at h₃₁
+      case _ => simp [err] at h₃₁
+      case _ ty' heq₃ =>
+        split at h₃₁
+        case _ =>
+          simp [ok] at h₃₁
+          rcases h₃₁ with ⟨h₃₁, _⟩
+          simp [TypedExpr.liftBoolTypes]
+          subst h₃₁
+          constructor
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+          · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+          · apply @BinaryOp.WellTyped.getTag _ _ _ ety ty' <;>
+            try simp [type_of_after_lifted_is_lifted]
+            · simp [heq₁, CedarType.liftBoolTypes]
+            · simp [heq₂, CedarType.liftBoolTypes]
+            · exact heq₃
+        case _ => simp [err] at h₃₁
+      case _ => simp [err] at h₃₁
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · constructor <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply BinaryOp.WellTyped.less_datetime <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply BinaryOp.WellTyped.less_duration <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · constructor <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply BinaryOp.WellTyped.lessEq_datetime <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · apply BinaryOp.WellTyped.lessEq_duration <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · constructor <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · constructor <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq₁ heq₂ =>
+      simp [ok] at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes, BoolType.lift]
+      constructor
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+      · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+      · constructor <;> simp [type_of_after_lifted_is_lifted]
+        · simp [heq₁, CedarType.liftBoolTypes]
+        · simp [heq₂, CedarType.liftBoolTypes]
+    case _ heq =>
+      simp [ok, do_ok] at h₃
+      rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+      subst h₃₂
+      simp [TypedExpr.liftBoolTypes]
+      simp [ifLubThenBool] at h₃₁
+      split at h₃₁
+      case _ =>
+        simp [ok] at h₃₁
+        rcases h₃₁ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [CedarType.liftBoolTypes, BoolType.lift]
+        constructor
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+        · constructor
+          simp [type_of_after_lifted_is_lifted]
+          simp [heq, CedarType.liftBoolTypes]
+          -- subtype stuff
+          sorry
+      case _ => simp [err] at h₃₁
+    case _ =>
+      simp [ok, do_ok] at h₃
+      rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+      subst h₃₂
+      simp [TypedExpr.liftBoolTypes]
+      simp [ifLubThenBool] at h₃₁
+      split at h₃₁
+      case _ ty' heq₃ =>
+        simp [ok] at h₃₁
+        rcases h₃₁ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [CedarType.liftBoolTypes, BoolType.lift]
+        constructor
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+        · apply @BinaryOp.WellTyped.containsAll _ _ _ ty'.liftBoolTypes
+          simp [type_of_after_lifted_is_lifted]
+          -- subtype stuff
+          sorry
+          simp [type_of_after_lifted_is_lifted]
+          -- subtype stuff
+          sorry
+      case _ => simp [err] at h₃₁
+    case _ =>
+      simp [ok, do_ok] at h₃
+      rcases h₃ with ⟨a, h₃₁, h₃₂⟩
+      subst h₃₂
+      simp [TypedExpr.liftBoolTypes]
+      simp [ifLubThenBool] at h₃₁
+      split at h₃₁
+      case _ ty' heq₃ =>
+        simp [ok] at h₃₁
+        rcases h₃₁ with ⟨h₃₁, _⟩
+        subst h₃₁
+        simp [CedarType.liftBoolTypes, BoolType.lift]
+        constructor
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₁
+        · exact typechecked_is_well_typed_after_lifting h₂ hᵢ₂
+        · apply @BinaryOp.WellTyped.containsAny _ _ _ ty'.liftBoolTypes
+          simp [type_of_after_lifted_is_lifted]
+          -- subtype stuff
+          sorry
+          simp [type_of_after_lifted_is_lifted]
+          -- subtype stuff
+          sorry
+      case _ => simp [err] at h₃₁
+    case _ => simp [err] at h₃
   case getAttr x₁ attr =>
     simp [typeOf] at h₃
     generalize hᵢ : typeOf x₁ c₁ env = res₁
