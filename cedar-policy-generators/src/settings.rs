@@ -83,10 +83,6 @@ pub struct ABACSettings {
     /// Flag to enable/disable generating unknowns, exercising partial evaluation
     pub enable_unknowns: bool,
 
-    /// Flag to enable/disable unspecified entities where actions can apply
-    /// Enabling it causes `ActionType::applies_to` to match `Some(ApplySpec {resource_types: Some(_), principal_types: Some(_), context: _})`
-    pub enable_unspecified_apply_spec: bool,
-
     /// Flag to enable/disable action constraints in forms of `in` operations
     pub enable_action_in_constraints: bool,
 }

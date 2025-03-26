@@ -17,7 +17,7 @@
 use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, Type, UnknownPool};
 use crate::collections::HashMap;
 use crate::err::{while_doing, Error, Result};
-use crate::hierarchy::{arbitrary_specified_uid, generate_uid_with_type, Hierarchy};
+use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema::{
     attrs_from_attrs_or_context, entity_type_name_to_schema_type, lookup_common_type,
     uid_for_action_name, Schema,
@@ -1095,9 +1095,7 @@ impl<'a> ExprGenerator<'a> {
                         // UID literal, that exists
                         11 => Ok(ast::Expr::val(self.generate_uid(u)?)),
                         // UID literal, that doesn't exist
-                        2 => Ok(ast::Expr::val(
-                            arbitrary_specified_uid(u)?,
-                        )),
+                        2 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?)),
                         // `principal`
                         6 => Ok(ast::Expr::var(ast::Var::Principal)),
                         // `action`
@@ -1734,9 +1732,8 @@ impl<'a> ExprGenerator<'a> {
                 // UID literal, that exists
                 3 => Ok(ast::Expr::val(self.generate_uid(u)?)),
                 // UID literal, that doesn't exist
-                1 => Ok(ast::Expr::val(
-                    arbitrary_specified_uid(u)?,
-                )))
+                1 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?))
+                )
             }
             Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
                 unimplemented!("constant expression of type ipaddr or decimal")
@@ -2469,9 +2466,8 @@ impl<'a> ExprGenerator<'a> {
             self.constant_pool.arbitrary_string_constant(u)?,
         )),
         20 => Ok(ast::Expr::val(self.generate_uid(u)?)),
-        4 => Ok(ast::Expr::val(
-            arbitrary_specified_uid(u)?,
-        )))
+        4 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?))
+        )
     }
 
     /// get a UID of a type declared in the schema -- may be a principal,
