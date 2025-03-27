@@ -1532,6 +1532,68 @@ theorem typechecked_is_well_typed_after_lifting_set
       exact lifted_type_is_top heq
   · simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true]
 
+theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
+  Data.Map.mk
+    (CedarType.liftBoolTypesRecord
+      (List.canonicalize Prod.fst (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys))) =
+  Data.Map.make
+    (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf))
+      (List.map (fun x => (x.fst, x.snd.liftBoolTypes)) tys))
+:= by
+  have : (List.canonicalize Prod.fst (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys)) = (Data.Map.make (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys)).1 := by
+    simp only [Data.Map.make]
+  simp [this]
+  clear this
+  simp only [lift_bool_types_record_eq_map_on_values]
+  rw [Data.Map.mapOnValues_eq_make_map QualifiedType.liftBoolTypes]
+  simp [Data.Map.toList, Data.Map.kvs]
+  · sorry
+  · simp only [Data.Map.make_wf]
+
+theorem typechecked_is_well_typed_after_lifting_record
+{c₁ c₂ : Capabilities}
+{env : Environment}
+{ty : TypedExpr}
+{request : Request}
+{entities : Entities}
+{axs : List (Attr × Expr)}
+(h₁ : RequestAndEntitiesMatchEnvironment env request entities)
+(hᵢ₁ : ∀ (a₁ : Attr) (x₁ : Expr),
+  sizeOf (a₁, x₁).snd < 1 + sizeOf axs →
+    ∀ {c₂ : Capabilities} {ty : TypedExpr},
+      RequestAndEntitiesMatchEnvironment env request entities →
+        typeOf x₁ c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes) :
+  typeOf (Expr.record axs) c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes
+:= by
+  intro h₃
+  simp [typeOf, List.mapM₂, List.attach₂] at h₃
+  rw [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env))] at h₃
+  generalize hᵢ : List.mapM (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env)) axs = res
+  cases res <;> simp [hᵢ, ok] at h₃
+  rename_i tys
+  rcases h₃ with ⟨h₃, _⟩
+  subst h₃
+  simp only [TypedExpr.liftBoolTypes]
+  constructor
+  · intro k v h₂
+    simp [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))] at h₂
+    rcases h₂ with ⟨a₁, x₁, h₂, h₃, h₆⟩
+    simp [List.mapM_ok_iff_forall₂] at hᵢ
+    rcases List.forall₂_implies_all_right hᵢ (a₁, x₁) h₂ with ⟨ax, h₄, h₅⟩
+    simp [Except.map] at h₅
+    split at h₅ <;> simp at h₅
+    rename_i heq
+    rcases h₅ with ⟨_, h₅⟩
+    replace hᵢ₁ := hᵢ₁ ax.fst ax.snd
+    simp at hᵢ₁
+    replace hᵢ₁ := hᵢ₁ (List.sizeOf_snd_lt_sizeOf_list h₄) h₁ heq
+    subst h₆
+    subst h₅
+    exact hᵢ₁
+  · simp only [List.map_attach₂ (fun (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes))]
+    exact record_lifting_make
+
+
 theorem typechecked_is_well_typed_after_lifting
 {e : Expr}
 {c₁ c₂ : Capabilities}
@@ -1565,7 +1627,8 @@ theorem typechecked_is_well_typed_after_lifting
     exact typechecked_is_well_typed_after_lifting_get_attr h₁ hᵢ
   case _ hᵢ =>
     exact typechecked_is_well_typed_after_lifting_set h₁ hᵢ
-  case _ => sorry
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_record h₁ hᵢ
   case _ hᵢ =>
     exact typechecked_is_well_typed_after_lifting_call h₁ hᵢ
 end Cedar.Thm
