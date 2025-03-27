@@ -1448,6 +1448,72 @@ theorem typechecked_is_well_typed_after_lifting_call
       constructor
       simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
 
+theorem typechecked_is_well_typed_after_lifting_set
+{c₁ c₂ : Capabilities}
+{env : Environment}
+{ty : TypedExpr}
+{request : Request}
+{entities : Entities}
+{xs : List Expr}
+(h₁ : RequestAndEntitiesMatchEnvironment env request entities)
+(hᵢ₁ : ∀ (x₁ : Expr),
+  x₁ ∈ xs →
+    ∀ {c₂ : Capabilities} {ty : TypedExpr},
+      RequestAndEntitiesMatchEnvironment env request entities →
+        typeOf x₁ c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes) :
+  typeOf (Expr.set xs) c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes
+:= by
+  intro h₃
+  simp [typeOf, List.mapM₁_eq_mapM fun x => justType (typeOf x c₁ env)] at h₃
+  generalize hᵢ : List.mapM (fun x => justType (typeOf x c₁ env)) xs = res₁
+  cases res₁ <;> simp only [hᵢ, Except.bind_err, reduceCtorEq] at h₃
+  rename_i tys
+  simp [List.mapM_ok_iff_forall₂] at hᵢ
+  simp [typeOfSet] at h₃
+  split at h₃ <;> simp [err] at h₃
+  split at h₃ <;> simp [ok] at h₃
+  rcases h₃ with ⟨h₃, _⟩
+  subst h₃
+  simp [TypedExpr.liftBoolTypes, List.map₁_eq_map, CedarType.liftBoolTypes]
+  constructor
+  · rename_i hd _ _ _ heq _
+    simp only [List.mem_cons, List.mem_map, forall_eq_or_imp, forall_exists_index, and_imp,
+      forall_apply_eq_imp_iff₂]
+    cases hᵢ
+    rename_i e es heq₁ _
+    simp [justType, Except.map] at heq₁
+    split at heq₁ <;> simp at heq₁
+    rename_i heq₃ _ _ heq₂
+    apply And.intro
+    · have ht₁ : e ∈ e :: es := by
+        simp only [List.mem_cons, true_or]
+      subst heq₁
+      exact hᵢ₁ e ht₁ h₁ heq₂
+    · replace heq₃ := List.forall₂_implies_all_right heq₃
+      intro y h₃
+      rcases heq₃ y h₃ with ⟨e', h₄, h₅⟩
+      simp [justType, Except.map] at h₅
+      split at h₅ <;> simp at h₅
+      rename_i heq₄
+      have ht₂ : e' ∈ e :: es := by
+        simp only [List.mem_cons, h₄, or_true]
+      subst h₅
+      exact hᵢ₁ e' ht₂ h₁ heq₄
+  · rename_i hd _ _ _ heq _
+    simp only [List.mem_cons, List.mem_map, forall_eq_or_imp, type_of_after_lifted_is_lifted,
+      forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+    apply And.intro
+    · unfold List.foldlM at heq
+      split at heq
+      · simp at heq
+        subst heq
+        rfl
+      · rename_i a _ _
+        generalize h₃ : (hd.typeOf ⊔ a) = res
+        cases res <;> simp [h₃] at heq
+        sorry
+    · sorry
+  · simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true]
 
 theorem typechecked_is_well_typed_after_lifting
 {e : Expr}
@@ -1480,7 +1546,8 @@ theorem typechecked_is_well_typed_after_lifting
     exact typechecked_is_well_typed_after_lifting_has_attr h₁ hᵢ
   case _ hᵢ =>
     exact typechecked_is_well_typed_after_lifting_get_attr h₁ hᵢ
-  case _ => sorry
+  case _ hᵢ =>
+    exact typechecked_is_well_typed_after_lifting_set h₁ hᵢ
   case _ => sorry
   case _ hᵢ =>
     exact typechecked_is_well_typed_after_lifting_call h₁ hᵢ
