@@ -1448,6 +1448,27 @@ theorem typechecked_is_well_typed_after_lifting_call
       constructor
       simp [type_of_after_lifted_is_lifted, h₂, CedarType.liftBoolTypes]
 
+theorem foldM_lub_some {x y: CedarType} {xs : List CedarType} :
+  List.foldlM lub? x xs = some y →
+  ∀ t ∈ xs, t ⊑ y
+:= by
+  induction xs generalizing x
+  case nil =>
+    simp
+  case cons head tail hᵢ =>
+    intro h
+    simp at h
+    generalize heq : (x ⊔ head) = res
+    cases res <;> simp [heq] at h
+    rename_i val
+    simp only [List.mem_cons, forall_eq_or_imp]
+    apply And.intro
+    · have heq₁ := foldlM_of_lub_is_LUB h
+      simp [lub_comm] at heq
+      have heq₂ := lub_lub_fixed heq heq₁
+      simp only [subty, heq₂, decide_true]
+    · exact hᵢ h
+
 theorem typechecked_is_well_typed_after_lifting_set
 {c₁ c₂ : Capabilities}
 {env : Environment}
@@ -1503,16 +1524,12 @@ theorem typechecked_is_well_typed_after_lifting_set
     simp only [List.mem_cons, List.mem_map, forall_eq_or_imp, type_of_after_lifted_is_lifted,
       forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
     apply And.intro
-    · unfold List.foldlM at heq
-      split at heq
-      · simp at heq
-        subst heq
-        rfl
-      · rename_i a _ _
-        generalize h₃ : (hd.typeOf ⊔ a) = res
-        cases res <;> simp [h₃] at heq
-        sorry
-    · sorry
+    · exact lifted_type_lub (foldlM_of_lub_is_LUB heq)
+    · replace heq := foldM_lub_some heq
+      intro a h₃
+      simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at heq
+      replace heq := heq a h₃
+      exact lifted_type_is_top heq
   · simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true]
 
 theorem typechecked_is_well_typed_after_lifting
