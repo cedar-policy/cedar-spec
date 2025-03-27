@@ -64,15 +64,9 @@ theorem checked_eval_entity_reachable_record {rxs : List (Attr × Expr)} {n : Na
 
   have hl' : atx.EntityAccessAtLevel env n nmax path' := by
     cases hl
-    rename_i hl _ _
-    have := Map.find?_mem_toList hfatx
-    have := Map.make_mem_list_mem this
-    have := hl (a, atx) this
-    simp at this
-    rename_i h₁ _  _ _
-    rw [h₁] at hfatx
-    simp at hfatx
-    subst atx
-    assumption
+    rename_i atx' _ hfatx' hl
+    have hatx : atx' = atx := by
+      simpa [hfatx'] using hfatx
+    simpa [hatx] using hl
 
   exact ih a x hfx hc hr het hl' hex hv hf
