@@ -58,9 +58,8 @@ theorem level_based_slicing_is_sound_if {x₁ x₂ x₃ : Expr} {n : Nat} {c₀ 
       simp only [Result.as, Coe.coe, Value.asBool] at he₁'
       split at he₁' <;> try simp only [reduceCtorEq] at he₁'
       split at he₁' <;> try simp only [reduceCtorEq, Except.ok.injEq] at he₁'
-      subst he₁'
-      rename_i he₁'
-      simp [he₁']
+      rw [←he₁']
+      assumption
     split at htx₂₃
     · replace he₁ : b = false := by
         simpa [ih₁, he₁', instance_of_ff_is_false hv₁, EvaluatesTo] using he₁

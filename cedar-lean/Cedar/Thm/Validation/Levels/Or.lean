@@ -54,7 +54,7 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     replace hv₁ := instance_of_tt_is_true hv₁
     subst v₁
     unfold EvaluatesTo at he₁
-    simp [evaluate]
+    simp only [evaluate]
     specialize ih₁ hs hc hr htx₁ hl
     rw [←ih₁]
     rcases he₁ with he₁ | he₁ | he₁ | he₁ <;>
@@ -66,5 +66,5 @@ theorem level_based_slicing_is_sound_or {e₁ e₂ : Expr} {n : Nat} {c₀ c₁:
     rename_i hl₁ hl₂
     specialize ih₁ hs hc hr htx₁ hl₁
     specialize ih₂ hs hc hr htx₂ hl₂
-    simp [evaluate]
+    simp only [evaluate]
     rw [ih₁, ih₂]

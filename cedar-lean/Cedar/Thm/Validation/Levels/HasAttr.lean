@@ -38,12 +38,12 @@ theorem level_based_slicing_is_sound_has_attr_entity {e : Expr} {tx₁: TypedExp
     specialize hnety euid.ty
     contradiction
   rename_i n hel₁ hl₁ _
-  simp [evaluate]
+  simp only [evaluate]
   have hl₁' := entity_access_at_level_then_at_level hl₁
   specialize ihe hs hc hr ht hl₁'
   rw [←ihe]
   unfold EvaluatesTo at he
-  rcases he with he | he | he | he <;> simp [he]
+  rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
   have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ he hs
   simp [hfeq, hasAttr, attrsOf, Entities.attrsOrEmpty]
 
@@ -51,29 +51,27 @@ theorem level_based_slicing_is_sound_has_attr_record {e : Expr} {tx : TypedExpr}
   (hs : slice = entities.sliceAtLevel request n)
   (hc : CapabilitiesInvariant c₀ request entities)
   (hr : RequestAndEntitiesMatchEnvironment env request entities)
-  (hl : (ty₁.hasAttr a tx.typeOf).AtLevel env n)
-  (ht : typeOf e c₀ env = Except.ok (ty₁, c₁'))
-  (hrty : ty₁.typeOf = CedarType.record rty)
+  (hl : (tx.hasAttr a ty).AtLevel env n)
+  (htx : typeOf e c₀ env = Except.ok (tx, c₁'))
+  (hrty : tx.typeOf = CedarType.record rty)
   (ihe : TypedAtLevelIsSound e)
   : evaluate (.hasAttr e a) request entities = evaluate (.hasAttr e a) request slice
 := by
-  have ⟨ hgc, v, h₁₃, h₁₄ ⟩ := type_of_is_sound hc hr ht
-  rw [hrty] at h₁₄
-  replace ⟨ euid, h₁₄⟩ := instance_of_record_type_is_record h₁₄
-  subst h₁₄
   cases hl
   case hasAttr hety =>
     simp [hety] at hrty
   rename_i hl
-  have ih := ihe hs hc hr ht hl
-  simp [evaluate, ←ih]
-  cases he : evaluate e request entities <;> simp [he]
-  simp [hasAttr]
+  have ih := ihe hs hc hr htx hl
+  simp only [evaluate, ←ih]
+  cases he₁ : evaluate e request entities <;> simp only [Except.bind_err, Except.bind_ok]
   rename_i v
-  unfold EvaluatesTo at h₁₃
-  simp [he] at h₁₃
-  subst h₁₃
-  simp [attrsOf]
+  have ⟨avs, he⟩ : ∃ avs, v = .record avs := by
+    have ⟨ _, _, he, hty⟩ := type_of_is_sound hc hr htx
+    rw [hrty] at hty
+    have ⟨avs, hv⟩ := instance_of_record_type_is_record hty
+    exists avs
+    simpa [EvaluatesTo, hv, he₁] using he
+  simp [he, hasAttr, attrsOf]
 
 theorem level_based_slicing_is_sound_has_attr {e : Expr} {tx : TypedExpr} {a : Attr} {n : Nat} {c₀ c₁: Capabilities} {env : Environment} {request : Request} {entities slice : Entities}
   (hs : slice = entities.sliceAtLevel request n)
