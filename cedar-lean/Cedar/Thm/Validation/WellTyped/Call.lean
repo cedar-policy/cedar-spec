@@ -113,86 +113,14 @@ InstanceOfType v (TypedExpr.call xfn args ty).typeOf
     have : InstanceOfExtType (Ext.duration dt.toTime) .duration := by
       simp only [InstanceOfExtType]
     exact InstanceOfType.instance_of_ext (Ext.duration dt.toTime) .duration this
-
-theorem typechecked_is_well_typed_after_lifting_call
-{c₁ c₂ : Capabilities}
-{env : Environment}
-{ty : TypedExpr}
-{request : Request}
-{entities : Entities}
-{xfn : ExtFun}
-{args : List Expr}
-(h₂ : RequestAndEntitiesMatchEnvironment env request entities)
-(h₃ : typeOf (Expr.call xfn args) c₁ env = Except.ok (ty, c₂)) :
-TypedExpr.WellTyped env ty.liftBoolTypes
-:= by
-    simp [typeOf] at h₃
-    simp [List.mapM₁_eq_mapM (λ x => justType (typeOf x c₁ env))] at h₃
-    generalize hᵢ : List.mapM (fun x => justType (typeOf x c₁ env)) args = res₁
-    cases res₁
-    case error => simp [hᵢ] at h₃
-    case ok ls =>
-      simp [hᵢ] at h₃
-      simp [List.mapM_ok_iff_forall₂] at hᵢ
-      simp [typeOfCall] at h₃
-      split at h₃ <;>
-      try simp [ok, do_ok] at h₃ <;>
-      rcases h₃ with ⟨_, h₃₁, h₃₂⟩ <;>
-      subst h₃₂ <;>
-      simp [TypedExpr.liftBoolTypes]
-      · apply TypedExpr.WellTyped.call
-        · simp [List.map₁_eq_map]
-          intro a h
-          rcases List.forall₂_implies_all_right hᵢ a h with ⟨_, _, h₄⟩
-          simp [justType, Except.map] at h₄
-          split at h₄
-          case _ => cases h₄
-          case _ e _ _ v heq =>
-            simp at h₄
-            have : v = (v.fst, v.snd) := by rfl
-            rw [this, h₄] at heq
-            --exact typechecked_is_well_typed_after_lifting h₂ heq
-            sorry
-        · simp [typeOfConstructor] at h₃₁
-          split at h₃₁
-          · split at h₃₁
-            · rename_i heq
-              simp [ok] at h₃₁
-              rcases h₃₁ with ⟨h₃₁, _⟩
-              subst h₃₁
-              simp [CedarType.liftBoolTypes, List.map₁_eq_map]
-              cases hᵢ
-              · rename_i heq₁
-                cases heq₁
-                rename_i heq₂
-                simp [typeOf, typeOfLit, ok, justType, Except.map] at heq₂
-                subst heq₂
-                simp [TypedExpr.liftBoolTypes, CedarType.liftBoolTypes]
-                symm at heq
-                exact ExtFun.WellTyped.decimal heq
-            · simp [err] at h₃₁
-          · simp [err] at h₃₁
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-      · sorry
-
+  case _ =>
+    exact InstanceOfType.instance_of_int
+  case _ =>
+    exact InstanceOfType.instance_of_int
+  case _ =>
+    exact InstanceOfType.instance_of_int
+  case _ =>
+    exact InstanceOfType.instance_of_int
+  case _ =>
+    exact InstanceOfType.instance_of_int
 end Cedar.Thm

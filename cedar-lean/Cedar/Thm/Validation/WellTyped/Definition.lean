@@ -151,15 +151,15 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | lessThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .lessThanOrEqual [x₁, x₂] (.bool .anyBool)
   | greaterThan {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .greaterThan [x₁, x₂] (.bool .anyBool)
   | greaterThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .greaterThanOrEqual [x₁, x₂] (.bool .anyBool)
   | ip {s₁ : String} {ip₁ : IPAddr}
     (h₁ : ip₁ =  IPAddr.ip s₁) :
     WellTyped .ip [.lit (.string s₁) .string] (.ext .ipAddr)
@@ -199,6 +199,21 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | toTime {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .datetime) :
     WellTyped .toTime [x₁] (.ext .duration)
+  | toMilliseconds {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toMilliseconds [x₁] .int
+  | toSeconds {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toSeconds [x₁] .int
+  | toMinutes {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toMinutes [x₁] .int
+  | toHours {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toHours [x₁] .int
+  | toDays {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toDays [x₁] .int
 
 end Cedar.Spec
 
