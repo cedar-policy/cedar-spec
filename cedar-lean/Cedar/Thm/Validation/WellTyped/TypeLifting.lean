@@ -317,6 +317,18 @@ theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
   case _ => cases h
 end
 
+theorem lifted_type_lub {ty₁ ty₂ ty : CedarType} :
+  (ty₁ ⊔ ty₂) = .some ty →
+  ty₁.liftBoolTypes = ty₂.liftBoolTypes
+:= by
+  intro h
+  have h₁ := lub_left_subty h
+  simp [@lub_comm ty₁] at h
+  have h₂ := lub_left_subty h
+  replace h₁ := lifted_type_is_top h₁
+  replace h₂ := lifted_type_is_top h₂
+  simp only [h₁, h₂]
+
 theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
   InstanceOfType v ty →
   InstanceOfType v ty.liftBoolTypes
