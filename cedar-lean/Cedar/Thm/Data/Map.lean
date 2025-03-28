@@ -399,6 +399,40 @@ theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq 
   rw [← find?_mapOnValues]
   simp [Option.map, h₁]
 
+theorem find?_compose {α β γ} [DecidableEq α] (f : β → γ) {k : α} {x : α × β} {xs : List (α × β)} :
+  List.find? ((fun x => x.fst == k) ∘ fun x => (x.fst, f x.snd)) xs = some x →
+  List.find? (fun x => x.fst == k) xs = some x
+:= by
+  induction xs
+  case nil =>
+    simp
+  case cons head tail h =>
+    simp [List.find?]
+    intro h₁
+    split at h₁
+    case _ heq =>
+      exact h₁
+    case _ heq =>
+      exact h h₁
+
+theorem find?_mapOnValues_some_reverse {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : γ} :
+  (m.mapOnValues f).find? k = .some v →
+  (∃ v', m.find? k = .some v' ∧ v = f v')
+:= by
+  intro h
+  simp [find?, kvs, mapOnValues] at h
+  split at h <;> simp at h
+  case _ heq =>
+    subst h
+    simp [Option.map] at heq
+    split at heq <;> simp at heq
+    case _ y heq₁ =>
+      exists y.snd
+      simp [find?, kvs, find?_compose f heq₁]
+      rcases heq with ⟨_, heq⟩
+      subst heq
+      rfl
+
 theorem find?_mapOnValues_none {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} :
   m.find? k = .none →
   (m.mapOnValues f).find? k = .none

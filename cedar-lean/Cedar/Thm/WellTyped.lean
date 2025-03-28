@@ -226,9 +226,8 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
             simp only [← h₃₁] at h₃₂
             simp only [h₃₂] at h₆
             simp only [←hᵢ] at heq
-            have := h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
-            -- subtype stuff
-            sorry
+            specialize h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+            exact type_lifting_preserves_instance_of_type h₆
           · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
         · cases h₃
   case hasAttr_entity x₁ _ _ _ _ =>
@@ -1528,7 +1527,7 @@ theorem typechecked_is_well_typed_after_lifting_set
     · replace heq := foldM_lub_some heq
       intro a h₃
       simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at heq
-      replace heq := heq a h₃
+      specialize heq a h₃
       exact lifted_type_is_top heq
   · simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true]
 
@@ -1584,9 +1583,7 @@ theorem typechecked_is_well_typed_after_lifting_record
     split at h₅ <;> simp at h₅
     rename_i heq
     rcases h₅ with ⟨_, h₅⟩
-    replace hᵢ₁ := hᵢ₁ ax.fst ax.snd
-    simp at hᵢ₁
-    replace hᵢ₁ := hᵢ₁ (List.sizeOf_snd_lt_sizeOf_list h₄) h₁ heq
+    specialize hᵢ₁ ax.fst ax.snd (List.sizeOf_snd_lt_sizeOf_list h₄) h₁ heq
     subst h₆
     subst h₅
     exact hᵢ₁
