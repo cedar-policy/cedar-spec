@@ -1539,14 +1539,35 @@ theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
     (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf))
       (List.map (fun x => (x.fst, x.snd.liftBoolTypes)) tys))
 := by
-  have : (List.canonicalize Prod.fst (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys)) = (Data.Map.make (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) tys)).1 := by
+  have : (List.canonicalize Prod.fst (List.map (λ x => (x.fst, Qualified.required x.snd.typeOf)) tys)) =
+         (Data.Map.make (List.map (λ x => (x.fst, Qualified.required x.snd.typeOf)) tys)).1 := by
     simp only [Data.Map.make]
-  simp [this]
-  clear this
+  rw [this]
   simp only [lift_bool_types_record_eq_map_on_values]
   rw [Data.Map.mapOnValues_eq_make_map QualifiedType.liftBoolTypes]
-  simp [Data.Map.toList, Data.Map.kvs]
-  · sorry
+  simp only [Data.Map.toList, Data.Map.kvs, List.map_map]
+  · simp only [Data.Map.make, Data.Map.mk.injEq]
+    have : (λ (x : Attr × TypedExpr) => (x.fst, Qualified.required x.snd.typeOf)) =
+           (Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) := by
+      unfold Prod.map
+      simp only [id_eq]
+    simp only [this, List.canonicalize_of_map_fst, List.map_map]
+    have : ((λ (kv : Attr × QualifiedType) => (kv.fst, kv.snd.liftBoolTypes)) ∘ Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) =
+           (Prod.map id (λ (tx : TypedExpr) => QualifiedType.liftBoolTypes (Qualified.required tx.typeOf))) := by
+      unfold Prod.map
+      simp only [id_eq]
+      apply funext
+      intros
+      simp only [Function.comp_apply]
+    simp only [this, List.canonicalize_of_map_fst]
+    have : (Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) ∘ (λ (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes)) =
+           (Prod.map id (λ (tx : TypedExpr) => QualifiedType.liftBoolTypes (Qualified.required tx.typeOf))) := by
+      unfold Prod.map
+      simp only [id_eq]
+      apply funext
+      intro (_, tx)
+      simp only [Function.comp_apply, type_of_after_lifted_is_lifted, QualifiedType.liftBoolTypes]
+    simp only [List.canonicalize_idempotent, this, List.canonicalize_of_map_fst]
   · simp only [Data.Map.make_wf]
 
 theorem typechecked_is_well_typed_after_lifting_record
