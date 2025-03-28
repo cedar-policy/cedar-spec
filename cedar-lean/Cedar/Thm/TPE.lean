@@ -41,7 +41,30 @@ theorem partialEvaluate_value
   TPE.evaluate x req₂ es₂ = .val v ty →
   Spec.evaluate x.toExpr req₁ es₁ = .ok v
 := by
-  sorry
+  intro h₁ h₂ h₃
+  induction h₁ generalizing v ty
+  case ite x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ hᵢ₇ hᵢ₈ =>
+    simp [TypedExpr.toExpr]
+    simp [TPE.evaluate, TPE.ite] at h₃
+    generalize h₁ᵢ : TPE.evaluate x₁ req₂ es₂ = res₁
+    split at h₃ <;> try simp at h₃
+    rename_i b _ heq
+    cases b <;> simp at h₃ <;> simp [Spec.evaluate, hᵢ₆ heq, Result.as, Coe.coe, Value.asBool]
+    · exact hᵢ₈ h₃
+    · exact hᵢ₇ h₃
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
 
 theorem partialEvaluate_is_sound
   {x : TypedExpr}
