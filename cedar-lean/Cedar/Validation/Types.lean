@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Spec
+import Cedar.Thm.Data
 
 namespace Cedar.Validation
 open Cedar.Data
@@ -32,6 +33,9 @@ def BoolType.not : BoolType → BoolType
   | .anyBool => .anyBool
   | .tt => .ff
   | .ff => .tt
+
+def BoolType.lift : BoolType → BoolType
+  | _ => .anyBool
 
 inductive ExtType where
   | ipAddr
@@ -111,6 +115,25 @@ def CedarType.isRecord : CedarType → Bool
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
+
+mutual
+def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
+  | .optional ty => .optional ty.liftBoolTypes
+  | .required ty => .required ty.liftBoolTypes
+
+def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr × QualifiedType)
+  | [] => []
+  | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
+
+def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
+  .mk (CedarType.liftBoolTypesRecord rty.1)
+
+def CedarType.liftBoolTypes : CedarType → CedarType
+  | .bool bty => .bool bty.lift
+  | .set s => .set s.liftBoolTypes
+  | .record (.mk m) => .record (.mk (CedarType.liftBoolTypesRecord m))
+  | ty => ty
+end
 
 structure StandardSchemaEntry where
   ancestors : Cedar.Data.Set EntityType

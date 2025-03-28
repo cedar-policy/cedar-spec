@@ -47,7 +47,6 @@ const SETTINGS: ABACSettings = ABACSettings {
     enable_arbitrary_func_call: true,
     enable_unknowns: false,
     enable_action_in_constraints: true,
-    enable_unspecified_apply_spec: true,
 };
 
 impl<'a> Arbitrary<'a> for Input {

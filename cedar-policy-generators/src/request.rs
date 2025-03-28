@@ -44,9 +44,9 @@ impl Request {
         u: &mut Unstructured<'_>,
     ) -> arbitrary::Result<Self> {
         Ok(Self {
-            principal: hierarchy.arbitrary_uid(u, Some(ast::Var::Principal))?,
-            action: hierarchy.arbitrary_uid(u, Some(ast::Var::Action))?,
-            resource: hierarchy.arbitrary_uid(u, Some(ast::Var::Resource))?,
+            principal: hierarchy.arbitrary_uid(u)?,
+            action: hierarchy.arbitrary_uid(u)?,
+            resource: hierarchy.arbitrary_uid(u)?,
             context: ast::Context::from_pairs(context, Extensions::all_available())
                 .map_err(Error::ContextError)?,
         })

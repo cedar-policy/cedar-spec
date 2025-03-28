@@ -30,7 +30,7 @@ structure Request where
   principal : EntityUID
   action : EntityUID
   resource : EntityUID
-  context : Expr
+  context : Proto.Map String Expr
 deriving Repr, Inhabited
 
 namespace Request
@@ -58,11 +58,9 @@ def toRequest : Request → Except String Spec.Request
       principal
       action
       resource
-      context := ← match context with
-        | .record pairs => do
-          let pairs ← pairs.mapM λ (k,v) => do .ok (k, ← Spec.Value.exprToValue v)
-          .ok $ Data.Map.make pairs
-        | _ => panic!("expected context to be a record")
+      context := ← do
+        let pairs ← context.mapM λ (k,v) => do .ok (k, ← Spec.Value.exprToValue v)
+        .ok $ Data.Map.make pairs.toList
     }
 
 end Request

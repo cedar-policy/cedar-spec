@@ -48,36 +48,38 @@ def mergeSlot (result : EntityUIDOrSlot) (x : Proto.EntityReferenceSlot) : Entit
   -- For enums, if result is already of the same type, then we don't do anything
   -- otherwise, we construct a default object of the new type.
   match x with
-    | .slot => match result with
-      | .slot _ => result
-      | .entityUID _ => .slot default
+  | .slot =>
+    match result with
+    | .slot _      => result
+    | .entityUID _ => .slot default
 
 @[inline]
 def mergeEuid (result : EntityUIDOrSlot) (x : EntityUID) : EntityUIDOrSlot :=
   match result with
-    | .entityUID e => .entityUID (Field.merge e x)
-    | .slot _ => .entityUID x
+  | .entityUID e => .entityUID (Field.merge e x)
+  | .slot _      => .entityUID x
 
 @[inline]
 def merge (x : EntityUIDOrSlot) (y : EntityUIDOrSlot) : EntityUIDOrSlot :=
   match y with
-    | .entityUID e2 => mergeEuid x e2
-    | .slot s2 => match x with
-      | .entityUID _ => y
-      | .slot s1 => .slot (Field.merge s1 s2)
+  | .entityUID e2 => mergeEuid x e2
+  | .slot s2      =>
+    match x with
+    | .entityUID _ => y
+    | .slot s1     => .slot (Field.merge s1 s2)
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn EntityUIDOrSlot) := do
   match t.fieldNum with
-    | 1 =>
-      let x : Proto.EntityReferenceSlot ← Field.guardedParse t
-      pure (pure $ mergeSlot · x)
-    | 2 =>
-      let x : EntityUID ← Field.guardedParse t
-      pure (pure $ mergeEuid · x)
-    | _ =>
-      t.wireType.skip
-      pure ignore
+  | 1 =>
+    let x : Proto.EntityReferenceSlot ← Field.guardedParse t
+    pureMergeFn (mergeSlot · x)
+  | 2 =>
+    let x : EntityUID ← Field.guardedParse t
+    pureMergeFn (mergeEuid · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
 
 instance : Message EntityUIDOrSlot := {
   parseField := parseField
@@ -87,8 +89,8 @@ instance : Message EntityUIDOrSlot := {
 @[inline]
 def withSlot (x : EntityUIDOrSlot) (s : SlotID) : EntityUIDOrSlot :=
   match x with
-    | .entityUID x => .entityUID x
-    | .slot _ => .slot s
+  | .entityUID x => .entityUID x
+  | .slot _      => .slot s
 
 end EntityUIDOrSlot
 
