@@ -36,12 +36,13 @@ theorem partial_evaluate_value
   {env : Environment}
   {v : Value}
   {ty : CedarType} :
+  RequestAndEntitiesMatchEnvironment env req₁ es₁ →
   TypedExpr.WellTyped env x →
   IsConsistent env req₁ es₁ req₂ es₂ →
   TPE.evaluate x req₂ es₂ = .val v ty →
   Spec.evaluate x.toExpr req₁ es₁ = .ok v
 := by
-  intro h₁ h₂ h₃
+  intro h₀ h₁ h₂ h₃
   induction h₁ generalizing v ty
   case ite x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ hᵢ₇ hᵢ₈ =>
     simp [TypedExpr.toExpr]
@@ -52,8 +53,34 @@ theorem partial_evaluate_value
     cases b <;> simp at h₃ <;> simp [Spec.evaluate, hᵢ₆ heq, Result.as, Coe.coe, Value.asBool]
     · exact hᵢ₈ h₃
     · exact hᵢ₇ h₃
-  case _ => sorry
-  case _ => sorry
+  case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    simp [TypedExpr.toExpr]
+    simp [TPE.evaluate, TPE.and] at h₃
+    generalize h₁ᵢ : TPE.evaluate x₁ req₂ es₂ = res₁
+    split at h₃ <;> try simp at h₃
+    case _ heq =>
+      specialize hᵢ₅ heq
+      specialize hᵢ₆ h₃
+      simp [Spec.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool, hᵢ₆]
+      replace hᵢ₆ := well_typed_is_sound h₀ hᵢ₂ hᵢ₆
+      simp [hᵢ₄] at hᵢ₆
+      rcases instance_of_anyBool_is_bool hᵢ₆ with ⟨b, hᵢ₆⟩
+      simp only [hᵢ₆, Except.map_ok]
+    case _ heq =>
+      specialize hᵢ₅ heq
+      simp [Spec.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool]
+      exact h₃.left
+    case _ heq _ _ _ =>
+      specialize hᵢ₅ h₃
+      have h₄ := well_typed_is_sound h₀ hᵢ₁ hᵢ₅
+      simp [hᵢ₃] at h₄
+      rcases instance_of_anyBool_is_bool h₄ with ⟨b, h₄⟩
+      simp [Spec.evaluate, hᵢ₅, Result.as, Coe.coe, h₄, Value.asBool]
+      specialize hᵢ₆ heq
+      simp only [hᵢ₆, Except.map_ok, Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq,
+        Bool.true_eq, imp_self]
+  case or x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    sorry
   case _ => sorry
   case _ => sorry
   case _ => sorry
@@ -79,6 +106,41 @@ theorem partial_evaluate_is_sound
   IsConsistent env req₁ es₁ req₂ es₂ →
   (Spec.evaluate x.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate x req₂ es₂) req₁ es₁).toOption
 := by
-  sorry
-
+  intro h₁ h₂ h₃ h₄
+  induction h₁
+  case ite x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ hᵢ₇ hᵢ₈ =>
+    simp [TypedExpr.toExpr, TPE.evaluate, TPE.ite]
+    generalize h₅ : TPE.evaluate x₁ req₂ es₂ = res₁
+    split
+    case _ =>
+      have h₆ := partial_evaluate_value h₂ hᵢ₁ h₄ h₅
+      split
+      case isTrue heq =>
+        simp [Spec.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
+        exact hᵢ₇
+      case isFalse heq =>
+        simp [Spec.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
+        exact hᵢ₈
+    case _ =>
+      simp [h₅, Residual.evaluate] at hᵢ₆
+      rcases to_option_right_err hᵢ₆ with ⟨_, h₆⟩
+      simp [Spec.evaluate, h₆, Result.as, Residual.evaluate, Except.toOption]
+    case _ =>
+      simp [←h₅]
+      -- "main" case: residual is essentially input expr
+      -- essentially proving by case splitting and using induction lemmas
+      sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
 end Cedar.Thm

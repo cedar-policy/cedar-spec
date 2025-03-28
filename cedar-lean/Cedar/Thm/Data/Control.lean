@@ -75,15 +75,18 @@ theorem to_option_left_ok {v : α} {res₁ res₂ : Except ε α} :
   · cases h₀
   · cases h₁
 
-theorem to_option_left_err {err₁: ε} {res₁ res₂ : Except ε α} :
-  res₁.toOption = res₂.toOption → res₁ = .error err₁ → ∃ err₂, res₂ = .error err₂
+theorem to_option_left_err {err₁: ε} {res₂ : Except ε α} :
+  (Except.error err₁).toOption = res₂.toOption → ∃ err₂, res₂ = .error err₂
 := by
-  intro h₀ h₁
-  simp [Except.toOption] at h₀
-  repeat split at h₀
-  · cases h₁
-  · cases h₁
-  · split at h₀
-    · cases h₀
-    · simp only [Except.error.injEq] at h₁
-      simp only [Except.error.injEq, exists_eq']
+  intro h
+  simp [Except.toOption] at h
+  repeat split at h
+  · cases h
+  · simp only [Except.error.injEq, exists_eq']
+
+theorem to_option_right_err {err₂: ε} {res₁ : Except ε α} :
+  res₁.toOption = (Except.error err₂).toOption → ∃ err₁, res₁ = .error err₁
+:= by
+  intro h
+  symm at h
+  exact to_option_left_err h
