@@ -125,16 +125,6 @@ def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (
 
 ----- Theorems -----
 
-theorem is_bool_implies_exists_bool {ty : CedarType} :
-  ty.isBool → ∃ bty, ty = .bool bty
-:= by
-  intro h
-  simp only [CedarType.isBool] at h
-  split at h
-  · rename_i bty
-    exists bty
-  · cases h
-
 theorem false_is_instance_of_ff :
   InstanceOfType (Value.prim (Prim.bool false)) (CedarType.bool BoolType.ff)
 := by

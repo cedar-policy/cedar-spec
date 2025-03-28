@@ -25,7 +25,6 @@ namespace Cedar.Thm
 open Cedar.TPE
 open Cedar.Spec
 open Cedar.Validation
-open Cedar.Thm.TPE
 open Cedar.Thm
 
 theorem partialEvaluate_value

@@ -18,7 +18,7 @@ import Cedar.TPE.Input
 import Cedar.Spec
 import Cedar.Validation
 
-namespace Cedar.Thm.TPE
+namespace Cedar.Thm
 
 open Cedar.TPE
 open Cedar.Spec
@@ -28,4 +28,4 @@ def PartialRequestAndEntitiesMatchEnvironment (env : Environment) (request : Par
 
 def IsConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Prop := sorry
 
-end Cedar.Thm.TPE
+end Cedar.Thm
