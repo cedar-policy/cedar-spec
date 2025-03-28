@@ -27,7 +27,7 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
-theorem partialEvaluate_value
+theorem partial_evaluate_value
   {x : TypedExpr}
   {req₁ : Request}
   {es₁ : Entities}
@@ -66,7 +66,7 @@ theorem partialEvaluate_value
   case _ => sorry
   case _ => sorry
 
-theorem partialEvaluate_is_sound
+theorem partial_evaluate_is_sound
   {x : TypedExpr}
   {req₁ : Request}
   {es₁ : Entities}
