@@ -782,21 +782,22 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
   typeOf (x₁.getAttr attr) c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes
 := by
   intro h₃
-  simp [typeOf] at h₃
+  simp only [typeOf] at h₃
   generalize hᵢ : typeOf x₁ c₁ env = res₁
   cases res₁
   case error => simp [hᵢ] at h₃
   case ok tc =>
-    simp [hᵢ, typeOfGetAttr] at h₃
+    simp only [hᵢ, typeOfGetAttr, Except.bind_ok] at h₃
     split at h₃
     case _ rty heq =>
       simp [ok, do_ok] at h₃
       rcases h₃ with ⟨a, h₃₁, h₃₂⟩
       subst h₃₂
-      simp [TypedExpr.liftBoolTypes]
+      simp only [TypedExpr.liftBoolTypes]
       apply @TypedExpr.WellTyped.getAttr_record _ (.mk (CedarType.liftBoolTypesRecord rty.1))
       · exact hᵢ₁ h₁ hᵢ
-      · simp [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+      · simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes,
+        RecordType.liftBoolTypes]
       · exact typechecked_is_well_typed_after_lifting_get_attr_in_record h₃₁
     case _ ety heq =>
       split at h₃
@@ -829,14 +830,14 @@ theorem typechecked_is_well_typed_after_lifting_call_arg
         typeOf x₁ c₁ env = Except.ok (ty, c₂) → TypedExpr.WellTyped env ty.liftBoolTypes) :
   ∀ (x : TypedExpr), (x ∈ tys.map₁ fun x => x.val.liftBoolTypes) → TypedExpr.WellTyped env x
 := by
-  simp [List.map₁_eq_map]
+  simp only [List.map₁_eq_map, List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro a h
   rcases List.forall₂_implies_all_right hᵢ a h with ⟨_, h₅, h₄⟩
-  simp [justType, Except.map] at h₄
+  simp only [justType, Except.map] at h₄
   split at h₄
   case _ => cases h₄
   case _ e _ v heq =>
-    simp at h₄
+    simp only [Except.ok.injEq] at h₄
     have : v = (v.fst, v.snd) := by rfl
     rw [this, h₄] at heq
     exact hᵢ₁ e h₅ h₁ heq

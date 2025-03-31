@@ -107,7 +107,7 @@ def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
 def CedarType.liftBoolTypes : CedarType → CedarType
   | .bool bty => .bool bty.lift
   | .set s => .set s.liftBoolTypes
-  | .record (.mk m) => .record (.mk (CedarType.liftBoolTypesRecord m))
+  | .record rty => .record (RecordType.liftBoolTypes rty)
   | ty => ty
 end
 
