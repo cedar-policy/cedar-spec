@@ -66,9 +66,9 @@ def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
 -- because this function is called after validation, which already ensures it
 def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
+    instanceOfEntityType principal env.reqty.principal env.ets.entityTypeMembers?) &&
   (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
+    instanceOfEntityType resource env.reqty.resource env.ets.entityTypeMembers?) &&
   (partialIsValid req.context λ m =>
     instanceOfType (.record m) (.record env.reqty.context) env.ets)
 
