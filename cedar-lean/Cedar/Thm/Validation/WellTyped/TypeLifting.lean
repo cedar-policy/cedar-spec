@@ -14,11 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.TypedExpr
 import Cedar.Spec
+import Cedar.Validation
 import Cedar.Thm.Validation
-import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data
 
 /-!
@@ -156,6 +154,7 @@ theorem lifted_type_is_lifted (ty : CedarType) :
     have := lifted_type_is_lifted ty'
     exact Lifted.set this
   case record rty =>
+    simp only [RecordType.liftBoolTypes]
     unfold CedarType.liftBoolTypesRecord
     split
     case _ heq =>
@@ -306,7 +305,8 @@ theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
       rcases heq with ⟨_, h₁, h₂⟩
       simp [h] at h₂
       simp [h₂] at h₁
-      simp [CedarType.liftBoolTypes]
+      simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes, CedarType.record.injEq,
+        Data.Map.mk.injEq]
       exact lifted_record_type_is_top (lubRecordType_is_lub_of_record_types h₁)
     case _ =>
       split at heq
