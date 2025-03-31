@@ -17,6 +17,10 @@
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 
+/-!
+This file contains expression-kind-specific lemmas of the theorem `typechecked_is_well_typed_after_lifting`
+-/
+
 namespace Cedar.Thm
 
 open Cedar.Thm

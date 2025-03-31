@@ -17,6 +17,10 @@
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
 
+/-!
+This file contains expression-kind-specific lemmas of the theorem `well_typed_is_sound`
+-/
+
 namespace Cedar.Thm
 
 open Cedar.Thm

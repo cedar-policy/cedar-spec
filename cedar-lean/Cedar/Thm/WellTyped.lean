@@ -27,6 +27,8 @@ open Cedar.Thm
 open Cedar.Validation
 open Cedar.Spec
 
+/-- Successful evaluation of a well-typed expression should produce a value
+of corresponding type. -/
 theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {request : Request} {entities : Entities} :
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
@@ -64,6 +66,8 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
   case call xfn args ty _ h₄ _ =>
     exact well_typed_is_sound_call h₄ h₃
 
+/-- The type checker should produce a typed expression, which after type
+lifting, is well-typed. -/
 theorem typechecked_is_well_typed_after_lifting
 {e : Expr}
 {c₁ c₂ : Capabilities}

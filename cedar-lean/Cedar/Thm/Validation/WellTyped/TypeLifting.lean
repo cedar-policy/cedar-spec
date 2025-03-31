@@ -14,11 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.TypedExpr
 import Cedar.Spec
+import Cedar.Validation
 import Cedar.Thm.Validation
-import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data
 
 /-!
