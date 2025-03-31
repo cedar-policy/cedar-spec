@@ -390,7 +390,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
       simp only [Option.map_eq_some'] at h₆
       rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
       simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
-      replace ⟨qty', h₆₁, h₆₃⟩ := Data.Map.find?_mapOnValues_some_reverse QualifiedType.liftBoolTypes h₆₁
+      replace ⟨qty', h₆₁, h₆₃⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes h₆₁
       simp [←h₅₃] at h₆₁
       specialize h₈ qty' h₆₁
       simp [TypedExpr.typeOf]
