@@ -40,10 +40,8 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
-      simp only [EntityData.sliceEUIDs]
-      rw [Set.mem_union_iff_mem_or]
-      right
-      rw [Set.mem_mapUnion_iff_mem_exists]
+      suffices h : ∃ v ∈ ed.tags.values, euid' ∈ v.sliceEUIDs by
+        simp [h, EntityData.sliceEUIDs, Set.mem_union_iff_mem_or, Set.mem_mapUnion_iff_mem_exists]
       exists tv
       constructor
       · exact Map.find?_some_implies_in_values he₂

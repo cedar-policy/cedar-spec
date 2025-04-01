@@ -56,18 +56,18 @@ theorem in_val_then_val_slice
     cases hv
     simp [Value.sliceEUIDs, Set.mem_singleton]
   case record attrs =>
+    suffices h : ∃ kv ∈ attrs.kvs, euid ∈ kv.snd.sliceEUIDs by
+      unfold Value.sliceEUIDs List.attach₃
+      simpa [
+        Set.mem_mapUnion_iff_mem_exists,
+        List.mapUnion_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1
+      ] using h
     cases hv
-    rename_i v a path' ha hv
-    have ih := in_val_then_val_slice hv
-    unfold Value.sliceEUIDs List.attach₃
-    simp only [List.mapUnion_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1]
-    rw [Set.mem_mapUnion_iff_mem_exists]
+    rename_i v a _ ha hv
     exists (a, v)
-    constructor
-    · replace ha := Map.find?_mem_toList ha
-      unfold Map.toList at ha
-      exact ha
-    · simp [ih]
+    and_intros
+    · exact Map.find?_mem_toList ha
+    · exact in_val_then_val_slice hv
   case set | ext => cases hv
 
 def CheckedEvalEntityReachable (e : Expr) :=

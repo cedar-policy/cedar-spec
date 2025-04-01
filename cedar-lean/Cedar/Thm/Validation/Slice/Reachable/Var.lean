@@ -41,13 +41,12 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
     cases var <;> simp only [evaluate, Except.ok.injEq] at he <;> subst he <;> cases ha
     case principal | action | resource => simp [hf]
     case context v a path hf' hv =>
-      right
-      unfold Value.sliceEUIDs List.attach₃
-      simp only [List.mapUnion_pmap_subtype  (λ e : (Attr × Value) => e.snd.sliceEUIDs) request.4.1, Set.mem_mapUnion_iff_mem_exists, List.mem_map, Prod.exists]
-      exists a, v
+      suffices h : ∃ kv ∈ request.context.kvs, euid ∈ kv.snd.sliceEUIDs by
+        unfold Value.sliceEUIDs List.attach₃
+        right
+        simpa [List.mapUnion_pmap_subtype  (·.snd.sliceEUIDs) request.context.kvs, Set.mem_mapUnion_iff_mem_exists] using h
+      exists (a, v)
       constructor
-      · replace hf' := Map.find?_mem_toList hf'
-        unfold Map.toList at hf'
-        exact hf'
+      · exact Map.find?_mem_toList hf'
       · exact in_val_then_val_slice hv
   exact ReachableIn.in_start hi
