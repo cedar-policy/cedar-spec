@@ -52,8 +52,8 @@ theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt :=
   constructor <;> intro h₁
   · simp only [h₁]
   · cases i₁ ; cases i₂ ; rename_i i₁ i₂
-    simp [UInt64.toInt64]
-    simp only [toInt, BitVec.toInt_inj, Int64.toBitVec, UInt64.toBitVec_inj] at h₁
+    apply Int64.toBitVec.inj
+    simp only [toInt, BitVec.toInt_inj] at h₁
     exact h₁
 
 theorem lt_def_toInt {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
