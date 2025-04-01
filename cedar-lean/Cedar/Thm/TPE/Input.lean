@@ -26,18 +26,6 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
-/-
--- We do not check if `req`'s action is valid (i.e, if it's contained in `env`)
--- because this function is called after validation, which already ensures it
-def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
-  (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
-  (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
-  (partialIsValid req.context λ m =>
-    instanceOfType (.record m) (.record env.reqty.context) env.ets)
--/
-
 inductive PartialIsValid {α} : (α → Prop) → Option α -> Prop
   | some (p : α → Prop) (x : α)
     (h : p x) :
@@ -60,42 +48,10 @@ theorem partial_is_valid_rfl (f : α → Bool) (p : α → Prop) (o : Option α)
 
 def PartialRequestMatchesEnvironment (env : Environment) (request : PartialRequest) : Prop :=
   PartialIsValid (InstanceOfEntityType · env.reqty.principal) request.principal.asEntityUID ∧
+  request.action = env.reqty.action ∧
   PartialIsValid (InstanceOfEntityType · env.reqty.resource) request.resource.asEntityUID ∧
   PartialIsValid (InstanceOfType · (.record env.reqty.context)) request.context
 
-/-
-∀ uid data, entities.find? uid = some data →
-    ∃ entry, ets.find? uid.ty = some entry ∧
-      IsValidEntityEID entry uid.eid ∧
-      InstanceOfType data.attrs (.record entry.attrs) ∧
-      (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
-      InstanceOfEntityTags data entry
--/
-/-
-def entitiesIsValid (env : Environment) (es : PartialEntities) : Bool :=
-  (es.toList.all entityIsValid) && (env.acts.toList.all instanceOfActionSchema)
-where
-  entityIsValid p :=
-    let (uid, ⟨attrs, ancestors, tags⟩) := p
-    match env.ets.find? uid.ty with
-    | .some entry =>
-      entry.isValidEntityEID uid.eid &&
-      (partialIsValid ancestors λ ancestors =>
-        ancestors.all (λ ancestor =>
-        entry.ancestors.contains ancestor.ty &&
-        instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)) &&
-      (partialIsValid attrs (instanceOfType · (.record entry.attrs) env.ets)) &&
-      (partialIsValid tags λ tags =>
-        match entry.tags? with
-        | .some tty => tags.values.all (instanceOfType · tty env.ets)
-        | .none     => tags == Map.empty)
-    | .none       => false
-  instanceOfActionSchema p :=
-    let (uid, entry) := p
-    match es.find? uid with
-    | .some entry₁ => entry.ancestors == entry₁.ancestors
-    | _            => false
--/
 def PartialEntitiesMatchEnvironment (env : Environment) (entities: PartialEntities) : Prop :=
   ∀ uid data, entities.find? uid = some data →
     ∃ entry, env.ets.find? uid.ty = some entry ∧
@@ -104,48 +60,154 @@ def PartialEntitiesMatchEnvironment (env : Environment) (entities: PartialEntiti
       PartialIsValid (λ ancestors => ∀ ancestor, ancestor ∈ ancestors → ancestor.ty ∈ entry.ancestors) data.ancestors ∧
       PartialIsValid (InstanceOfEntityTags · entry) data.tags
 
-def PartialRequestAndEntitiesMatchEnvironment (env : Environment) (request : PartialRequest) (entities : PartialEntities) : Prop := sorry
+def PartialRequestAndEntitiesMatchEnvironment (env : Environment) (request : PartialRequest) (entities : PartialEntities) : Prop :=
+  PartialRequestMatchesEnvironment env request ∧ PartialEntitiesMatchEnvironment env entities
 
-def IsConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Prop := sorry
+def RequestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Prop :=
+  PartialIsValid (· = req₁.principal) req₂.principal.asEntityUID ∧
+  req₁.action = req₂.action ∧
+  PartialIsValid (· = req₁.resource) req₂.resource.asEntityUID  ∧
+  PartialIsValid (· = req₁.context) req₂.context
+
+def EntitiesAreConsistent (es₁ : Entities) (es₂ : PartialEntities) : Prop :=
+   ∀ a e₂, (a, e₂) ∈ es₂.kvs → (∃ a e₁, (a, e₁) ∈ es₁.kvs ∧
+    PartialIsValid (· = e₁.attrs) e₂.attrs ∧
+    PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
+    PartialIsValid (· = e₁.tags) e₂.tags)
+
+/- should have a better name like `abstracts`.
+Also note that `isConsistent` is a much stronger check that ensures both
+partial and concrete parts are validated.
+-/
+def IsConsistent (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Prop :=
+  RequestIsConsistent req₁ req₂ ∧ EntitiesAreConsistent es₁ es₂
 
 theorem partial_request_matches_environment (env : Environment) (request : PartialRequest) :
   requestIsValid env request → PartialRequestMatchesEnvironment env request
 := by
   intro h₁
   simp [requestIsValid] at h₁
-  rcases h₁ with ⟨⟨h₁, h₂⟩, h₃⟩
+  rcases h₁ with ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩
   simp [PartialRequestMatchesEnvironment]
   apply And.intro
-  · exact partial_is_valid_rfl
-      (fun x =>
-    instanceOfEntityType x env.reqty.principal env.ets.entityTypeMembers?)
-      (fun x => InstanceOfEntityType x env.reqty.principal)
-      request.principal.asEntityUID
-      (λ x => @instance_of_entity_type_refl x env.reqty.principal env.ets.entityTypeMembers?) h₁
-  · apply And.intro
-    · exact partial_is_valid_rfl
-        (fun x =>
-      instanceOfEntityType x env.reqty.resource env.ets.entityTypeMembers?)
-        (fun x => InstanceOfEntityType x env.reqty.resource)
-        request.resource.asEntityUID
-        (λ x => @instance_of_entity_type_refl x env.reqty.resource env.ets.entityTypeMembers?) h₂
-    · have h₄ := partial_is_valid_rfl
-        (fun x => instanceOfType (Value.record x) (CedarType.record env.reqty.context) env.ets)
-        (fun x => InstanceOfType x (CedarType.record env.reqty.context))
-        request.context
-        (λ x => @instance_of_type_refl (Value.record x) (CedarType.record env.reqty.context) env.ets) h₃
-      simp [Option.bind]
-      split
-      · constructor
-      · rename_i heq
-        rw [heq] at h₄
-        simp only
-        cases h₄
-        rename_i heq
-        constructor
-        exact heq
+  exact partial_is_valid_rfl
+    (fun x =>
+  instanceOfEntityType x env.reqty.principal env.ets.entityTypeMembers?)
+    (fun x => InstanceOfEntityType x env.reqty.principal)
+    request.principal.asEntityUID
+    (λ x => @instance_of_entity_type_refl x env.reqty.principal env.ets.entityTypeMembers?) h₁
+  apply And.intro
+  exact h₂
+  apply And.intro
+  exact partial_is_valid_rfl
+    (fun x =>
+  instanceOfEntityType x env.reqty.resource env.ets.entityTypeMembers?)
+    (fun x => InstanceOfEntityType x env.reqty.resource)
+    request.resource.asEntityUID
+    (λ x => @instance_of_entity_type_refl x env.reqty.resource env.ets.entityTypeMembers?) h₃
+  replace h₄ := partial_is_valid_rfl
+    (fun x => instanceOfType (Value.record x) (CedarType.record env.reqty.context) env.ets)
+    (fun x => InstanceOfType x (CedarType.record env.reqty.context))
+    request.context
+    (λ x => @instance_of_type_refl (Value.record x) (CedarType.record env.reqty.context) env.ets) h₄
+  simp [Option.bind]
+  split
+  · constructor
+  · rename_i heq
+    rw [heq] at h₄
+    simp only
+    cases h₄
+    rename_i heq
+    constructor
+    exact heq
 
 theorem partial_entities_match_environment (env : Environment) (entities : PartialEntities) :
   entitiesIsValid env entities → PartialEntitiesMatchEnvironment env entities
-:= by sorry
+:= by
+  intro h₁
+  simp [entitiesIsValid] at h₁
+  rcases h₁ with ⟨h₁, _⟩
+  simp [PartialEntitiesMatchEnvironment]
+  intro uid data h₂
+  specialize h₁ uid data (Data.Map.find?_mem_toList h₂)
+  simp [entitiesIsValid.entityIsValid] at h₁
+  split at h₁
+  case _ entry heq =>
+    exists entry
+    simp only [Bool.and_eq_true] at h₁
+    rcases h₁ with ⟨⟨⟨h₃, h₄⟩, h₅⟩, h₆⟩
+    apply And.intro
+    exact heq
+    apply And.intro
+    simp [IsValidEntityEID]
+    simp [EntitySchemaEntry.isValidEntityEID] at h₃
+    split at h₃
+    · simp only
+    · simp only
+      simp [Data.Set.contains_prop_bool_equiv] at h₃
+      exact h₃
+    apply And.intro
+    simp [Option.bind]
+    split
+    case _ => constructor
+    case _ m heq =>
+      simp only
+      constructor
+      simp only [heq] at h₅
+      have h₇ := partial_is_valid_rfl
+        (fun x => instanceOfType (Value.record x) (CedarType.record entry.attrs) env.ets)
+        (fun x => InstanceOfType x (CedarType.record entry.attrs))
+        (.some m)
+        (λ x => @instance_of_type_refl (Value.record x) (CedarType.record entry.attrs) env.ets) h₅
+      cases h₇
+      rename_i h₇
+      exact h₇
+    apply And.intro
+    have : (∀ (x : Data.Set EntityUID),
+      Data.Set.all
+          (fun ancestor =>
+            entry.ancestors.contains ancestor.ty &&
+              instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)
+          x =
+        true →
+      ∀ (ancestor : EntityUID), ancestor ∈ x → ancestor.ty ∈ entry.ancestors) := by
+      intro ancestors h ancestor hᵢ
+      simp [Data.Set.all] at h
+      specialize h ancestor hᵢ
+      rcases h with ⟨h, _⟩
+      simp [Data.Set.contains_prop_bool_equiv] at h
+      exact h
+    have h₇ := partial_is_valid_rfl
+      (fun ancestors => Data.Set.all
+        (fun ancestor =>
+          entry.ancestors.contains ancestor.ty && instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?)
+          ancestors)
+      (fun ancestors => ∀ (ancestor : EntityUID), ancestor ∈ ancestors → ancestor.ty ∈ entry.ancestors) data.ancestors this h₄
+    exact h₇
+    have : (∀ (x : Data.Map Tag Value),
+    (match entry.tags? with
+        | some tty => x.values.all fun x => instanceOfType x tty env.ets
+        | none => x == Data.Map.empty) =
+        true →
+      InstanceOfEntityTags x entry) := by
+      intro tags h
+      simp [InstanceOfEntityTags]
+      split
+      case _ heq =>
+        simp [heq] at h
+        intro v hᵢ
+        specialize h v hᵢ
+        exact instance_of_type_refl h
+      case _ heq =>
+        simp [heq] at h
+        exact h
+    have h₇ := partial_is_valid_rfl
+      (fun tags =>
+        match entry.tags? with
+        | some tty => tags.values.all fun x => instanceOfType x tty env.ets
+        | none => tags == Data.Map.empty)
+      (fun x => InstanceOfEntityTags x entry) data.tags this h₆
+    exact h₇
+  case _ => cases h₁
+
 end Cedar.Thm

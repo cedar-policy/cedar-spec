@@ -37,8 +37,12 @@ theorem partial_evaluate_is_sound
   {env : Environment} :
   TypedExpr.WellTyped env x →
   RequestAndEntitiesMatchEnvironment env req₁ es₁ →
+  -- Do we need this hypothesis?
+  -- I doubt that because `RequestAndEntitiesMatchEnvironment` ∧ `IsConsistent` → `PartialRequestAndEntitiesMatchEnvironment`
+  -- not the other way around, unless we make `IsConsistent` stronger to consider the types of request/entities.
+  -- Nevertheless, we should only need one of them.
   PartialRequestAndEntitiesMatchEnvironment env req₂ es₂ →
-  IsConsistent env req₁ es₁ req₂ es₂ →
+  IsConsistent req₁ es₁ req₂ es₂ →
   (Spec.evaluate x.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate x req₂ es₂) req₁ es₁).toOption
 := by
   intro h₁ h₂ h₃ h₄

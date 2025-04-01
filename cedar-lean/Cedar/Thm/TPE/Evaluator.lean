@@ -38,7 +38,7 @@ theorem partial_evaluate_value
   {ty : CedarType} :
   RequestAndEntitiesMatchEnvironment env req₁ es₁ →
   TypedExpr.WellTyped env x →
-  IsConsistent env req₁ es₁ req₂ es₂ →
+  IsConsistent req₁ es₁ req₂ es₂ →
   TPE.evaluate x req₂ es₂ = .val v ty →
   Spec.evaluate x.toExpr req₁ es₁ = .ok v
 := by
