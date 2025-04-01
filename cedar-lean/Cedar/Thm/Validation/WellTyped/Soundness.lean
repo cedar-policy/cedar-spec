@@ -645,15 +645,6 @@ InstanceOfType v (TypedExpr.call xfn args ty).typeOf
     have : InstanceOfExtType (Ext.duration dt.toTime) .duration := by
       simp only [InstanceOfExtType]
     exact InstanceOfType.instance_of_ext (Ext.duration dt.toTime) .duration this
-  case _ =>
-    exact InstanceOfType.instance_of_int
-  case _ =>
-    exact InstanceOfType.instance_of_int
-  case _ =>
-    exact InstanceOfType.instance_of_int
-  case _ =>
-    exact InstanceOfType.instance_of_int
-  case _ =>
-    exact InstanceOfType.instance_of_int
+  all_goals { exact InstanceOfType.instance_of_int }
 
 end Cedar.Thm
