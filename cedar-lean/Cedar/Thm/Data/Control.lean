@@ -62,6 +62,24 @@ theorem do_ok {res : Except ε α} {f : α → β} :
   ∃ a, res = .ok a ∧ f a = b
 := by cases res <;> simp
 
+theorem to_option_some {v : α} {res: Except ε α} :
+  res.toOption = .some v → res = .ok v
+:= by
+  intro h
+  simp [Except.toOption] at h
+  split at h <;> simp at h
+  subst h
+  rfl
+
+theorem to_option_none {res: Except ε α} :
+  res.toOption = .none → (∃ err, res = .error err)
+:= by
+  intro h
+  simp [Except.toOption] at h
+  split at h <;> simp at h
+  rename_i err
+  exists err
+
 theorem to_option_left_ok {v : α} {res₁ res₂ : Except ε α} :
   res₁.toOption = res₂.toOption → res₁ = .ok v → res₂ = .ok v
 := by
@@ -74,6 +92,13 @@ theorem to_option_left_ok {v : α} {res₁ res₂ : Except ε α} :
     simp only [← h₀]; exact h₁
   · cases h₀
   · cases h₁
+
+theorem to_option_right_ok {v : α} {res₁ res₂ : Except ε α} :
+  res₁.toOption = res₂.toOption → res₂ = .ok v → res₁ = .ok v
+:= by
+  intro h
+  symm at h
+  exact to_option_left_ok h
 
 theorem to_option_left_err {err₁: ε} {res₂ : Except ε α} :
   (Except.error err₁).toOption = res₂.toOption → ∃ err₂, res₂ = .error err₂
