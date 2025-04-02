@@ -17,7 +17,7 @@
 import Cedar.TPE.Input
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm
+import Cedar.Thm.Validation
 
 namespace Cedar.Thm
 
@@ -70,7 +70,7 @@ def RequestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Prop :=
   PartialIsValid (· = req₁.context) req₂.context
 
 def EntitiesAreConsistent (es₁ : Entities) (es₂ : PartialEntities) : Prop :=
-   ∀ a e₂, (a, e₂) ∈ es₂.kvs → (∃ a e₁, (a, e₁) ∈ es₁.kvs ∧
+   ∀ a e₂, es₂.find? a = some e₂ → (∃ e₁, es₁.find? a = some e₁ ∧
     PartialIsValid (· = e₁.attrs) e₂.attrs ∧
     PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
     PartialIsValid (· = e₁.tags) e₂.tags)

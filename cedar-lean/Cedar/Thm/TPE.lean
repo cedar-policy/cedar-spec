@@ -19,7 +19,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Evaluator
-import Cedar.Thm
+import Cedar.Thm.Validation
 
 namespace Cedar.Thm
 

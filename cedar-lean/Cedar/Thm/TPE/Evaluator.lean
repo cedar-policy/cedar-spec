@@ -18,7 +18,8 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
-import Cedar.Thm
+import Cedar.Thm.Validation
+import Cedar.Thm.WellTyped
 
 namespace Cedar.Thm
 
@@ -64,78 +65,18 @@ theorem partial_evaluate_value_binary_app
   unfold TPE.apply₂ at h₃
   split at h₃
   case _ heq₁ heq₂ =>
-    split at h₃ <;> try simp at h₃
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
+    split at h₃ <;>
+    ( replace ⟨_, heq₁⟩ := as_value_some heq₁
       replace ⟨_, heq₂⟩ := as_value_some heq₂
       rw [heq₁] at h₁ᵢ
       rw [heq₂] at h₂ᵢ
       specialize hᵢ₄ h₁ᵢ
       specialize hᵢ₅ h₂ᵢ
       simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
+      try (simp at h₃; exact h₃.left)
+      )
     case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂, intOrErr]
+      simp [intOrErr]
       simp [someOrError, Option.bind] at h₃
       split at h₃ <;> simp at h₃
       rename_i heq₃
@@ -146,13 +87,7 @@ theorem partial_evaluate_value_binary_app
       subst h₃
       exact heq₃
     case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂, intOrErr]
+      simp [intOrErr]
       simp [someOrError, Option.bind] at h₃
       split at h₃ <;> simp at h₃
       rename_i heq₃
@@ -163,13 +98,7 @@ theorem partial_evaluate_value_binary_app
       subst h₃
       exact heq₃
     case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂, intOrErr]
+      simp [intOrErr]
       simp [someOrError, Option.bind] at h₃
       split at h₃ <;> simp at h₃
       rename_i heq₃
@@ -179,42 +108,54 @@ theorem partial_evaluate_value_binary_app
       rcases h₃ with ⟨h₃, _⟩
       subst h₃
       exact heq₃
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
-      replace ⟨_, heq₁⟩ := as_value_some heq₁
-      replace ⟨_, heq₂⟩ := as_value_some heq₂
-      rw [heq₁] at h₁ᵢ
-      rw [heq₂] at h₂ᵢ
-      specialize hᵢ₄ h₁ᵢ
-      specialize hᵢ₅ h₂ᵢ
-      simp [Spec.evaluate, hᵢ₄, hᵢ₅, Spec.apply₂]
-      exact h₃.left
-    case _ =>
+    case _ uid₁ _ _ _ =>
+      simp [someOrSelf, TPE.inₑ, Option.map, Option.bind, apply₂.self] at h₃
+      split at h₃ <;> simp at h₃
+      rename_i heq₃
+      split at heq₃ <;> cases heq₃
+      rename_i heq₃
+      rcases h₃ with ⟨h₃, _⟩ ; subst h₃
+      split at heq₃
+      case _ heq₄ =>
+        simp at heq₃
+        simp only [Spec.inₑ, heq₄, beq_self_eq_true, Bool.true_or, heq₃]
+      case _ hneq =>
+        split at heq₃ <;> cases heq₃
+        rename_i heq₃
+        simp [Spec.inₑ, Entities.ancestorsOrEmpty]
+        simp [PartialEntities.ancestors, PartialEntities.get, Option.bind] at heq₃
+        split at heq₃ <;> try cases heq₃
+        rename_i data heq₄
+        simp [IsConsistent, EntitiesAreConsistent] at h₂
+        rcases h₂ with ⟨_, h₂⟩
+        specialize h₂ uid₁ data heq₄
+        rcases h₂ with ⟨_, h₂₁, _, h₂₂, _⟩
+        rw [heq₃] at h₂₂
+        cases h₂₂
+        rename_i heq₅
+        subst heq₅
+        simp only [h₂₁, Bool.or_iff_right_iff_imp, beq_iff_eq, hneq, false_implies]
+    case _ vs _ _ =>
+      simp [someOrSelf, TPE.inₛ, Option.map, Option.bind, apply₂.self] at h₃
+      split at h₃ <;> simp at h₃
+      rename_i heq₃
+      split at heq₃ <;> cases heq₃
+      rename_i heq₃
+      rcases h₃ with ⟨h₃, _⟩ ; subst h₃
+      split at heq₃ <;> try cases heq₃
+      rename_i vs' heq₄
+      simp only at heq₃
+      simp [Data.Set.toList] at heq₄
+      simp [TPE.inₑ] at heq₃
+      simp [Spec.inₛ, Data.Set.mapOrErr]
       sorry
     case _ =>
       sorry
     case _ =>
       sorry
-    case _ =>
-      sorry
-  case _ => sorry
+    case _ => simp only [reduceCtorEq] at h₃
+  case _ =>
+    split at h₃ <;> simp [apply₂.self] at h₃
 
 theorem partial_evaluate_value
   {x : TypedExpr}
@@ -224,7 +165,6 @@ theorem partial_evaluate_value
   {es₂ : PartialEntities}
   {env : Environment}
   {v : Value}
-  {op₂ : BinaryOp}
   {ty : CedarType} :
   RequestAndEntitiesMatchEnvironment env req₁ es₁ →
   TypedExpr.WellTyped env x →
