@@ -213,7 +213,7 @@ instance UInt32.strictLT : StrictLT UInt32 where
   transitive a b c := by apply Nat.strictLT.transitive
   connected  a b   := by
     simp only [ne_eq, UInt32.ext_iff, LT.lt, Nat.lt,
-      toNat_toBitVec_eq_toNat, Nat.succ_eq_add_one, Nat.le_eq]
+      toNat_toBitVec, Nat.succ_eq_add_one, Nat.le_eq]
     apply StrictLT.connected
 
 instance Char.strictLT : StrictLT Char where

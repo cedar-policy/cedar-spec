@@ -52,27 +52,27 @@ theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt :=
   constructor <;> intro h₁
   · simp only [h₁]
   · cases i₁ ; cases i₂ ; rename_i i₁ i₂
-    simp only [mk.injEq]
-    simp only [toInt, BitVec.toInt_inj, Int64.toBitVec, UInt64.toBitVec_inj] at h₁
+    apply Int64.toBitVec.inj
+    simp only [toInt, BitVec.toInt_inj] at h₁
     exact h₁
 
-theorem lt_def {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
+theorem lt_def_toInt {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
   simp [LT.lt, Int64.lt, BitVec.slt, Int64.toInt]
 
-theorem le_def {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
+theorem le_def_toInt {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
   simp [LE.le, Int64.le, BitVec.sle, Int64.toInt]
 
 deriving instance Repr for Int64
 
 instance strictLT : Cedar.Data.StrictLT Int64 where
   asymmetric a b   := by
-    simp [Int64.lt_def]
+    simp [Int64.lt_def_toInt]
     omega
   transitive a b c := by
-    simp [Int64.lt_def]
+    simp [Int64.lt_def_toInt]
     omega
   connected  a b   := by
-    simp [Int64.lt_def, Int64.ext_iff]
+    simp [Int64.lt_def_toInt, Int64.ext_iff]
     omega
 
 instance : Coe Int64 Int where

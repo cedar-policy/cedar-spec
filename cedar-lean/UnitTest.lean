@@ -15,6 +15,7 @@
 -/
 
 import UnitTest.CedarProto
+import UnitTest.Datetime
 import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Levels
