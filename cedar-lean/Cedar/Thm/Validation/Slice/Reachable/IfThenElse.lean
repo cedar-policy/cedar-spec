@@ -50,38 +50,36 @@ theorem checked_eval_entity_reachable_ite {e₁ e₂ e₃: Expr} {n : Nat} {c c'
   rename_i hl₁ hl₂ hl₃
 
   simp only [evaluate] at he
-  cases he₁ : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁, Except.bind_err, Except.bind_ok, reduceCtorEq] at he
-  simp only [Result.as, Coe.coe, Value.asBool] at he₁
-  split at he₁ <;> try contradiction
-  split at he₁ <;> try contradiction
-  injections he₁
+  cases he₁' : Result.as Bool (evaluate e₁ request entities) <;> simp only [he₁', Except.bind_err, Except.bind_ok, reduceCtorEq] at he
+  rename_i b
+  replace he₁' : evaluate e₁ request entities = .ok (.prim (.bool b)) := by
+    simp only [Result.as, Coe.coe, Value.asBool] at he₁'
+    split at he₁' <;> try contradiction
+    split at he₁' <;> try contradiction
+    injections he₁'
+    subst he₁'
+    assumption
+  replace he₁ : .prim (.bool b) = v := by
+    simpa [EvaluatesTo, he₁'] using he₁
   subst he₁
-  rename_i _ b he₁'
-  replace he₁ : Value.prim (Prim.bool b) = v := by
-    unfold EvaluatesTo at he₁
-    simp only [he₁', reduceCtorEq, Except.ok.injEq, false_or] at he₁
-    exact he₁
-  subst he₁
-
   split at he
   case isTrue hb =>
     subst hb
     have htx₂ : typeOf e₂ (c ∪ c₁) env = .ok (tx₂, c₂) := by
-      split at hif <;> try simp only [hif]
-      rw [hty₁] at hi₁
-      have := instance_of_ff_is_false hi₁
-      contradiction
+      split at hif <;> first
+        | simp only [hif]
+        | rw [hty₁] at hi₁
+          contradiction
     replace hgc : CapabilitiesInvariant c₁ request entities := by
-      simp only [he₁', GuardedCapabilitiesInvariant, forall_const] at hgc
-      exact hgc
+      simpa [he₁', GuardedCapabilitiesInvariant] using hgc
     exact ih₂ (capability_union_invariant hc hgc) hr htx₂ hl₂ he ha hf
   case isFalse hb =>
     replace hb : b = false := by
       cases b <;> simp only [Bool.true_eq_false] <;> contradiction
     subst hb
     have htx₃ : typeOf e₃ c env = .ok (tx₃, c₃) := by
-      split at hif <;> try simp only [hif]
-      rw [hty₁] at hi₁
-      have := instance_of_tt_is_true hi₁
-      contradiction
+      split at hif <;> first
+        | simp only [hif]
+        | rw [hty₁] at hi₁
+          contradiction
     exact ih₃ hc hr htx₃ hl₃ he ha hf
