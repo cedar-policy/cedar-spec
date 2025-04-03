@@ -19,6 +19,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Evaluator
+import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
 
 namespace Cedar.Thm
@@ -47,28 +48,14 @@ theorem partial_evaluate_is_sound
 := by
   intro h₁ h₂ h₃ h₄
   induction h₁
+  case lit =>
+    exact partial_evaluate_is_sound_lit
+  case var =>
+    exact partial_evaluate_is_sound_var h₄
   case ite x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ hᵢ₇ hᵢ₈ =>
-    simp [TypedExpr.toExpr, TPE.evaluate, TPE.ite]
-    generalize h₅ : TPE.evaluate x₁ req₂ es₂ = res₁
-    split
-    case _ =>
-      have h₆ := partial_evaluate_value h₂ hᵢ₁ h₄ h₅
-      split
-      case isTrue heq =>
-        simp [Spec.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
-        exact hᵢ₇
-      case isFalse heq =>
-        simp [Spec.evaluate, h₆, Result.as, Coe.coe, Value.asBool, heq]
-        exact hᵢ₈
-    case _ =>
-      simp [h₅, Residual.evaluate] at hᵢ₆
-      rcases to_option_right_err hᵢ₆ with ⟨_, h₆⟩
-      simp [Spec.evaluate, h₆, Result.as, Residual.evaluate, Except.toOption]
-    case _ =>
-      simp [←h₅]
-      -- "main" case: residual is essentially input expr
-      -- essentially proving by case splitting and using induction lemmas
-      sorry
+    exact partial_evaluate_is_sound_ite h₂ h₄ hᵢ₁ hᵢ₄ hᵢ₆ hᵢ₇ hᵢ₈
+  case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    exact partial_evaluate_is_sound_and h₂ h₄ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
   case _ => sorry
   case _ => sorry
   case _ => sorry
@@ -79,7 +66,5 @@ theorem partial_evaluate_is_sound
   case _ => sorry
   case _ => sorry
   case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+
 end Cedar.Thm
