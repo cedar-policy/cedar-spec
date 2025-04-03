@@ -60,13 +60,13 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_or h₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
   case unaryApp op₁ x₁ ty hᵢ₁ hᵢ₂ hᵢ₃ =>
     exact partial_evaluate_is_sound_unary_app hᵢ₃
-  case binaryApp op₂  => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+  case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ => sorry
+  case hasAttr_entity ety rty x₁ attr hᵢ₁ hᵢ₂ => sorry
+  case hasAttr_record rty x₁ attr hᵢ₁ hᵢ₂ => sorry
+  case getAttr_entity ety rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ => sorry
+  case getAttr_record rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ => sorry
+  case set ls ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ => sorry
+  case record rty m hᵢ₁ hᵢ₂ hᵢ₃ => sorry
+  case call xfn args ty hᵢ₁ hᵢ₂ hᵢ₃ => sorry
 
 end Cedar.Thm
