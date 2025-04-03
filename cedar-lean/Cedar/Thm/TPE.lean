@@ -53,12 +53,14 @@ theorem partial_evaluate_is_sound
   case var =>
     exact partial_evaluate_is_sound_var h₄
   case ite x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ hᵢ₇ hᵢ₈ =>
-    exact partial_evaluate_is_sound_ite h₂ h₄ hᵢ₁ hᵢ₄ hᵢ₆ hᵢ₇ hᵢ₈
+    exact partial_evaluate_is_sound_ite h₂ hᵢ₁ hᵢ₄ hᵢ₆ hᵢ₇ hᵢ₈
   case and x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
-    exact partial_evaluate_is_sound_and h₂ h₄ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+    exact partial_evaluate_is_sound_and h₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
+  case or x₁ x₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆ =>
+    exact partial_evaluate_is_sound_or h₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
+  case unaryApp op₁ x₁ ty hᵢ₁ hᵢ₂ hᵢ₃ =>
+    exact partial_evaluate_is_sound_unary_app hᵢ₃
+  case binaryApp op₂  => sorry
   case _ => sorry
   case _ => sorry
   case _ => sorry

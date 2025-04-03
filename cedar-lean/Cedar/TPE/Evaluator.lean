@@ -70,7 +70,7 @@ def or : Residual → Residual → CedarType → Residual
   | .val false _, r, _ => r
   | .error _, _, ty    => .error ty
   | l, .val false _, _ => l
-  | l, r, ty           => .and l r ty
+  | l, r, ty           => .or l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r with
