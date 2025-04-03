@@ -88,27 +88,28 @@ deriving Repr
 instance : Inhabited CedarType where
   default := .int
 
-def CedarType.liftBoolTypes : CedarType → CedarType
-  | .bool bty => .bool bty.lift
-  | .set s => .set s.liftBoolTypes
-  | .record m => .record (Map.make (m.kvs.map₁ λ ⟨(k, qt), _⟩ =>
-    (k,
-    match qt with
-    | .optional ty => .optional ty.liftBoolTypes
-    | .required ty => .required ty.liftBoolTypes)))
-  | ty => ty
-decreasing_by
-  all_goals simp_wf
-  all_goals
-    have := Map.sizeOf_lt_of_kvs m
-    rename_i h₁
-    have h₂ := Map.sizeOf_lt_of_value h₁
-    simp at h₂
-    omega
-
 abbrev QualifiedType := Qualified CedarType
 
 abbrev RecordType := Map Attr QualifiedType
+
+mutual
+def QualifiedType.liftBoolTypes : QualifiedType → QualifiedType
+  | .optional ty => .optional ty.liftBoolTypes
+  | .required ty => .required ty.liftBoolTypes
+
+def CedarType.liftBoolTypesRecord :  List (Attr × QualifiedType) → List (Attr × QualifiedType)
+  | [] => []
+  | (a, ty)::l => (a, ty.liftBoolTypes)::(CedarType.liftBoolTypesRecord l)
+
+def RecordType.liftBoolTypes (rty : RecordType) : RecordType :=
+  .mk (CedarType.liftBoolTypesRecord rty.1)
+
+def CedarType.liftBoolTypes : CedarType → CedarType
+  | .bool bty => .bool bty.lift
+  | .set s => .set s.liftBoolTypes
+  | .record rty => .record (RecordType.liftBoolTypes rty)
+  | ty => ty
+end
 
 structure StandardSchemaEntry where
   ancestors : Cedar.Data.Set EntityType

@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 import Cedar.Validation.TypedExpr
-import Cedar.Thm
 import Cedar.Spec.Ext
+import Cedar.Thm.Validation
 
 /-!
-This file contains useful definitions and lemmas about well-typedness of `TypedExpr`
+This file contains well-typedness definitions of `TypedExpr`
 -/
 
 namespace Cedar.Spec
@@ -34,7 +34,7 @@ inductive Prim.WellTyped (env : Environment) : Prim → CedarType → Prop
   | string (s : String) :
     WellTyped env (.string s) .string
   | entityUID (uid : EntityUID)
-    (h₁ : env.ets.isValidEntityUID uid || env.acts.contains uid) :
+    (h₁ : env.ets.isValidEntityUID uid ∨ env.acts.contains uid) :
     WellTyped env (.entityUID uid) (.entity uid.ty)
 
 inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
@@ -45,7 +45,7 @@ inductive Var.WellTyped (env : Environment) : Var → CedarType → Prop
   | action :
     WellTyped env .action (.entity env.reqty.action.ty)
   | context:
-    WellTyped env .context (.record env.reqty.context)
+    WellTyped env .context (CedarType.liftBoolTypes (.record env.reqty.context))
 
 inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | not {x₁ : TypedExpr}
@@ -60,18 +60,28 @@ inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Prop
   | like {x₁ : TypedExpr} {p : Pattern}
     (h₁ : x₁.typeOf = .string) :
     WellTyped (.like p) x₁ (.bool .anyBool)
+  | is {ety₁ ety₂ : EntityType}
+    (h₁ : x₁.typeOf = .entity ety₂) :
+    WellTyped (.is ety₁) x₁ (.bool .anyBool)
 
 inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → TypedExpr → CedarType → Prop
+  | eq_lit {p₁ p₂ : Prim} {ty₁ ty₂ : CedarType} :
+    -- do we need hypothesis like `InstanceOfType (.prim p₁) ty₁`?
+    WellTyped env .eq (.lit p₁ ty₁) (.lit p₂ ty₂) (.bool .anyBool)
+  | eq_entity {ety₁ ety₂ : EntityType} {x₁ x₂ : TypedExpr}
+    (h₁ : x₁.typeOf = .entity ety₁)
+    (h₂ : x₂.typeOf = .entity ety₂) :
+    WellTyped env .eq x₁ x₂ (.bool .anyBool)
   | eq {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = x₂.typeOf) :
     WellTyped env .eq x₁ x₂ (.bool .anyBool)
   | memₑ {x₁ x₂ : TypedExpr} {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₁)
-    (h₂ : x₂.typeOf = .entity ety₁) :
+    (h₂ : x₂.typeOf = .entity ety₂) :
     WellTyped env .mem x₁ x₂ (.bool .anyBool)
   | memₛ {x₁ x₂ : TypedExpr} {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₁)
-    (h₂ : x₂.typeOf = .set (.entity ety₁)) :
+    (h₂ : x₂.typeOf = .set (.entity ety₂)) :
     WellTyped env .mem x₁ x₂ (.bool .anyBool)
   | less_int {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .int)
@@ -124,11 +134,11 @@ inductive BinaryOp.WellTyped (env : Environment) : BinaryOp → TypedExpr → Ty
     (h₁ : x₁.typeOf = .entity ety)
     (h₂ : x₂.typeOf = .string) :
     WellTyped env .hasTag x₁ x₂ (.bool .anyBool)
-  | getTag {x₁ x₂ : TypedExpr} {ety : EntityType}
+  | getTag {x₁ x₂ : TypedExpr} {ety : EntityType} {ty : CedarType}
     (h₁ : x₁.typeOf = .entity ety)
     (h₂ : x₂.typeOf = .string)
     (h₃ : env.ets.tags? ety = .some (.some ty)) :
-    WellTyped env .getTag x₁ x₂ ty
+    WellTyped env .getTag x₁ x₂ ty.liftBoolTypes
 
 inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | decimal {s₁ : String} {d₁ : Decimal}
@@ -141,15 +151,15 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | lessThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .lessThanOrEqual [x₁, x₂] (.bool .anyBool)
   | greaterThan {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .greaterThan [x₁, x₂] (.bool .anyBool)
   | greaterThanOrEqual {x₁ x₂ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .decimal)
     (h₂ : x₂.typeOf = .ext .decimal) :
-    WellTyped .lessThan [x₁, x₂] (.bool .anyBool)
+    WellTyped .greaterThanOrEqual [x₁, x₂] (.bool .anyBool)
   | ip {s₁ : String} {ip₁ : IPAddr}
     (h₁ : ip₁ =  IPAddr.ip s₁) :
     WellTyped .ip [.lit (.string s₁) .string] (.ext .ipAddr)
@@ -189,6 +199,21 @@ inductive ExtFun.WellTyped : ExtFun → List TypedExpr → CedarType → Prop
   | toTime {x₁ : TypedExpr}
     (h₁ : x₁.typeOf = .ext .datetime) :
     WellTyped .toTime [x₁] (.ext .duration)
+  | toMilliseconds {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toMilliseconds [x₁] .int
+  | toSeconds {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toSeconds [x₁] .int
+  | toMinutes {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toMinutes [x₁] .int
+  | toHours {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toHours [x₁] .int
+  | toDays {x₁ : TypedExpr}
+    (h₁ : x₁.typeOf = .ext .duration) :
+    WellTyped .toDays [x₁] .int
 
 end Cedar.Spec
 
@@ -244,7 +269,7 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
 | getAttr_entity {ety : EntityType} {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {ty : CedarType}
   (h₁ : WellTyped env x₁)
   (h₂ : x₁.typeOf = .entity ety)
-  (h₃ : env.ets.attrs? ety = .some rty)
+  (h₃ : (env.ets.attrs? ety).map RecordType.liftBoolTypes = .some rty)
   (h₄ : (rty.find? attr).map Qualified.getType = .some ty) :
   WellTyped env (.getAttr x₁ attr ty)
 | getAttr_record {rty : RecordType} {x₁ : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -254,11 +279,11 @@ inductive TypedExpr.WellTyped (env : Environment) : TypedExpr → Prop
   WellTyped env (.getAttr x₁ attr ty)
 | set {ls : List TypedExpr} {ty : CedarType}
   (h₁ : ∀ x, x ∈ ls → WellTyped env x)
-  (h₂ : ∀ x, x ∈ ls → x.typeOf = ty) :
+  (h₂ : ∀ x, x ∈ ls → x.typeOf = ty)
+  (h₃ : ls != []) :
   WellTyped env (.set ls (.set ty))
 | record {rty : RecordType} {m : List (Attr × TypedExpr)}
   (h₁ : ∀ k v, (k,v) ∈ m → WellTyped env v)
-  -- should we require well-formedness of `m` and then rewrite h₁ using quantifiers?
   (h₂ : rty = Map.make (m.map (λ (a, ty) => (a, .required ty.typeOf)))) :
   WellTyped env (.record m (.record rty))
 | call {xfn : ExtFun} {args : List TypedExpr} {ty : CedarType}

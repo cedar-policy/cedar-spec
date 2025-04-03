@@ -1295,4 +1295,22 @@ theorem mem_pmap_subtype
 := by
   induction as <;> simp [*]
 
+theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α → Bool) {xs : List α} :
+  (∀ x, (p₁ ∘ f) x = p₂ x) →
+  List.find? (p₁ ∘ f) xs = List.find? p₂ xs
+:= by
+  induction xs
+  case nil => simp only [Function.comp_apply, find?_nil, implies_true]
+  case cons head tail h =>
+    intro hₐ
+    simp [find?]
+    split <;> split
+    case _ => rfl
+    case _ heq₁ _ heq₂ =>
+      specialize hₐ head
+      simp only [Function.comp_apply, heq₁, heq₂, Bool.true_eq_false] at hₐ
+    case _ heq₁ _ heq₂ =>
+      specialize hₐ head
+      simp only [Function.comp_apply, heq₁, heq₂, Bool.false_eq_true] at hₐ
+    case _ => exact h hₐ
 end List
