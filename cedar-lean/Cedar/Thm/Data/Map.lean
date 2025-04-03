@@ -371,6 +371,38 @@ theorem find?_none_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableE
   specialize hf (k, v) hc
   simp only [not_true_eq_false] at hf
 
+theorem all_absent_find?_none [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+  (∀ v, (k, v) ∉ m.kvs) → m.find? k = none
+:= by
+  cases h₁ : m.kvs
+  case nil =>
+    intros
+    have hm : m = Map.mk [] := by
+      rw [(by simp : m = Map.mk m.kvs), h₁]
+    subst m
+    simp [Map.find?, List.find?]
+  case cons head tail =>
+    intro hi
+    have hm : m = Map.mk (head :: tail) := by
+      rw [(by simp : m = Map.mk m.kvs), h₁]
+    subst m
+    simp only [List.mem_cons, not_or, ne_eq] at hi
+    simp only [Map.find?, List.find?]
+    have hh : head.fst ≠ k := by
+      intro hh
+      apply (hi head.snd).left
+      simp [←hh]
+    replace hh : (head.fst == k) = false := by
+      simp [hh]
+    simp only [hh]
+    have hi₂ : ∀ v, (k, v) ∉ tail := by simp [hi]
+    have ih := all_absent_find?_none hi₂
+    simpa [Map.find?, Map.kvs] using ih
+
+theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} :
+  m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
+:= Iff.intro find?_none_all_absent all_absent_find?_none
+
 theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by
@@ -538,17 +570,47 @@ theorem findOrErr_ok_iff_in_kvs [LT α] [DecidableLT α] [StrictLT α] [Decidabl
 
 /--
   The converse requires the `wf` precondition, and is available in
+  `find?_some_iff_in_values` below
+-/
+theorem find?_some_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} :
+  m.find? k = .some v → v ∈ m.values
+:= by
+  intro h₁
+  simp [values]
+  exists k
+  have h₂ := find?_mem_toList h₁ ; simp [toList] at h₂
+  simp [h₁, h₂, and_true]
+
+/--
+  The converse requires the `wf` precondition, and is available in
   `findOrErr_ok_iff_in_values` below
 -/
 theorem findOrErr_ok_implies_in_values [LT α] [DecidableLT α] [DecidableEq α] {m : Map α β} {k : α} {v : β} {e : Error} :
   m.findOrErr k e = .ok v → v ∈ m.values
 := by
-  intro h₁
-  simp [values]
-  simp [findOrErr_ok_iff_find?_some] at h₁
-  exists k
-  have h₂ := find?_mem_toList h₁ ; simp [toList] at h₂
-  simp [h₁, h₂, and_true]
+  simp only [findOrErr_ok_iff_find?_some]
+  exact find?_some_implies_in_values
+
+/--
+  The `mp` direction of this does not need the `wf` precondition and, in fact,
+  is available separately as `find?_some_implies_in_values` above
+-/
+theorem find?_some_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {v : β}
+  (wf : m.WellFormed) :
+  (∃ k, m.find? k = .some v) ↔ v ∈ m.values
+:= by
+  constructor
+  case mp =>
+    intro ⟨k, h₁⟩
+    exact find?_some_implies_in_values h₁
+  case mpr =>
+    simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
+    intro h₁
+    replace ⟨⟨k, v'⟩, ⟨h₁, h₂⟩⟩ := h₁
+    simp only at h₂
+    subst v'
+    exists k
+    simp [h₁, ← in_list_iff_find?_some wf]
 
 /--
   The `mp` direction of this does not need the `wf` precondition and, in fact,
@@ -558,18 +620,8 @@ theorem findOrErr_ok_iff_in_values [LT α] [DecidableLT α] [StrictLT α] [Decid
   (wf : m.WellFormed) :
   (∃ k, m.findOrErr k e = .ok v) ↔ v ∈ m.values
 := by
-  constructor
-  case mp =>
-    intro ⟨k, h₁⟩
-    exact findOrErr_ok_implies_in_values h₁
-  case mpr =>
-    simp only [values, List.mem_map, findOrErr_ok_iff_find?_some]
-    intro h₁
-    replace ⟨⟨k, v'⟩, ⟨h₁, h₂⟩⟩ := h₁
-    simp only at h₂
-    subst v'
-    exists k
-    simp [h₁, ← in_list_iff_find?_some wf]
+  simp only [findOrErr_ok_iff_find?_some]
+  exact find?_some_iff_in_values wf
 
 theorem findOrErr_err_iff_not_in_keys [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {m : Map α β} {k : α} {e : Error}
   (wf : m.WellFormed) :

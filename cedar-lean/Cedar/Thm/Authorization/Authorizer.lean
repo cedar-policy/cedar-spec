@@ -111,7 +111,38 @@ theorem errorPolicies_order_and_dup_independent {policies₁ policies₂ : Polic
   rw [Set.make_make_eqv]
   exact List.filterMap_equiv (errored · request entities) policies₁ policies₂ h₁
 
+theorem satisfied_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities} (effect : Effect)
+  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
+  satisfiedPolicies effect ps r₁ es₁ = satisfiedPolicies effect ps r₂ es₂
+:= by
+  simp only [satisfiedPolicies]
+  replace heq : ∀ p ∈ ps, satisfiedWithEffect effect p r₁ es₁ = satisfiedWithEffect effect p r₂ es₂ := by
+    intro p hp
+    specialize heq p hp
+    simp only [heq, satisfiedWithEffect, satisfied]
+  rw [List.filterMap_congr heq]
 
+theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
+  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
+  errorPolicies ps r₁ es₁ = errorPolicies ps r₂ es₂
+:= by
+  simp only [errorPolicies]
+  replace heq : ∀ p ∈ ps, errored p r₁ es₁ = errored p r₂ es₂ := by
+    intro p hp
+    specialize heq p hp
+    simp [heq, errored, hasError]
+  rw [List.filterMap_congr heq]
+
+theorem is_authorized_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
+  (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
+  isAuthorized r₁ es₁ ps = isAuthorized r₂ es₂ ps
+:= by
+  simp only [isAuthorized]
+  rw [
+    satisfied_policies_congr_evaluate .permit heq,
+    satisfied_policies_congr_evaluate .forbid heq,
+    error_policies_congr_evaluate heq
+  ]
 
 /--
   an alternate, proved-equivalent, definition of errorPolicies that's easier to prove things about

@@ -507,6 +507,11 @@ def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BPars
     | "durationSince" => ret .durationSince
     | "toDate" => ret .toDate
     | "toTime" => ret .toTime
+    | "toMilliseconds" => ret .toMilliseconds
+    | "toSeconds" => ret .toSeconds
+    | "toMinutes" => ret .toMinutes
+    | "toHours" => ret .toHours
+    | "toDays" => ret .toDays
     | xfn => throw s!"mergeName: unknown extension function {xfn}"
   | _ => throw "Expected ExprKind.ExtensionFunctionApp to have constructor .call"
 
