@@ -130,3 +130,8 @@ theorem to_option_right_err {ε₂ ε₁ α} {err₂: ε₂} {res₁ : Except ε
   intro h
   symm at h
   exact to_option_left_err h
+
+theorem do_error_to_option {res : Except ε α} {e : ε} :
+  (do let (_ : α) ← res ; (.error e : Except ε α)).toOption = .none
+:= by
+  cases res <;> simp [Except.toOption]

@@ -60,7 +60,8 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_or h₂ hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ hᵢ₆
   case unaryApp op₁ x₁ ty hᵢ₁ hᵢ₂ hᵢ₃ =>
     exact partial_evaluate_is_sound_unary_app hᵢ₃
-  case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ => sorry
+  case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ =>
+    exact partial_evaluate_is_sound_binary_app h₂ h₄ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅
   case hasAttr_entity ety rty x₁ attr hᵢ₁ hᵢ₂ => sorry
   case hasAttr_record rty x₁ attr hᵢ₁ hᵢ₂ => sorry
   case getAttr_entity ety rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ => sorry
