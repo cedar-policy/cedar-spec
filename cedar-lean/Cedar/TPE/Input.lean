@@ -50,7 +50,7 @@ structure PartialEntityData where
 
 abbrev PartialEntities := Map EntityUID PartialEntityData
 
-private def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
+def PartialEntities.get (es : PartialEntities) (uid : EntityUID) (f : PartialEntityData → Option α) : Option α :=
   (es.find? uid).bind f
 
 def PartialEntities.ancestors (es : PartialEntities) (uid : EntityUID) : Option (Set EntityUID) := es.get uid PartialEntityData.ancestors
@@ -62,13 +62,12 @@ def PartialEntities.attrs (es : PartialEntities) (uid : EntityUID) : Option (Map
 def partialIsValid {α} (o : Option α) (f : α → Bool) : Bool :=
   (o.map f).getD true
 
--- We do not check if `req`'s action is valid (i.e, if it's contained in `env`)
--- because this function is called after validation, which already ensures it
 def requestIsValid (env : Environment) (req : PartialRequest) : Bool :=
   (partialIsValid req.principal.asEntityUID λ principal =>
-    instanceOfEntityType principal principal.ty env.ets.entityTypeMembers?) &&
+    instanceOfEntityType principal env.reqty.principal env.ets.entityTypeMembers?) &&
+  req.action == env.reqty.action &&
   (partialIsValid req.resource.asEntityUID λ resource =>
-    instanceOfEntityType resource resource.ty env.ets.entityTypeMembers?) &&
+    instanceOfEntityType resource env.reqty.resource env.ets.entityTypeMembers?) &&
   (partialIsValid req.context λ m =>
     instanceOfType (.record m) (.record env.reqty.context) env.ets)
 

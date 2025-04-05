@@ -20,3 +20,4 @@ import Cedar.Thm.PolicySlice
 import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
 import Cedar.Thm.WellTyped
+import Cedar.Thm.TPE
