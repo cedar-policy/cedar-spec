@@ -18,7 +18,6 @@ import Cedar.TPE
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
-import Cedar.Thm.TPE.Evaluator
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
 

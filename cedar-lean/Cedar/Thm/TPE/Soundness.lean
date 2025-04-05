@@ -19,7 +19,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
 import Cedar.Thm.Validation
-import Cedar.Thm.TPE.Evaluator
+import Cedar.Thm.WellTyped
 
 namespace Cedar.Thm
 
@@ -27,6 +27,61 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
+
+theorem as_value_some {r : Residual} {v : Value} :
+  r.asValue = .some v → (∃ ty, r = .val v ty)
+:= by
+  intro h
+  simp only [Residual.asValue] at h
+  split at h <;> simp at h
+  subst h
+  simp only [Residual.val.injEq, true_and, exists_eq']
+
+theorem anyM_any {es₁ : Entities} {es₂ : PartialEntities} {b : Bool} {uid : EntityUID} {uids : List EntityUID} (h : EntitiesAreConsistent es₁ es₂):
+List.anyM (fun x => if uid = x then some true else Option.map (fun x_1 => x_1.contains x) (es₂.ancestors uid)) uids =
+  some b →
+  (uids.any fun x => uid == x || (es₁.ancestorsOrEmpty uid).contains x) = b
+:= by
+  induction uids generalizing b
+  case nil => simp
+  case cons head tail hᵢ =>
+    intro h₁
+    simp at h₁
+    simp
+    split at h₁
+    case isTrue heq =>
+      simp at h₁
+      simp [heq]
+      exact h₁
+    case isFalse hneq =>
+      simp [Option.bind] at h₁
+      split at h₁ <;> simp at h₁
+      rename_i heq
+      simp at heq
+      rcases heq with ⟨ancestors₂, heq₁, heq₂⟩
+      simp [PartialEntities.ancestors, PartialEntities.get, Option.bind] at heq₁
+      split at heq₁ <;> try cases heq₁
+      rename_i data heq₃
+      simp [EntitiesAreConsistent] at h
+      specialize h uid data heq₃
+      rcases h with ⟨e, h₂, _, h₃, _⟩
+      split at h₁
+      case _ =>
+        simp at h₁
+        subst h₁
+        rw [heq₁] at h₃
+        cases h₃
+        rename_i heq₄
+        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄]
+        left; right; exact heq₂
+      case _ =>
+        specialize hᵢ h₁
+        rw [heq₁] at h₃
+        cases h₃
+        rename_i heq₄
+        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄]
+        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄] at hᵢ
+        simp [heq₂, hᵢ, hneq]
 
 theorem to_option_eq_do₁ {α β ε} {res₁ res₂: Except ε α} (f : α → Except ε β) :
   Except.toOption res₁ = Except.toOption res₂ →
