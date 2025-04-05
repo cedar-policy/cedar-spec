@@ -28,7 +28,20 @@ open Cedar.Validation
 open Cedar.TPE
 open Cedar.Thm
 
-theorem to_option_eq_f {α ε} {res₁ res₂ res₃ res₄: Except ε α} (f : α → α → Except ε α):
+theorem to_option_eq_do₁ {α β ε} {res₁ res₂: Except ε α} (f : α → Except ε β) :
+  Except.toOption res₁ = Except.toOption res₂ →
+  Except.toOption (do let x ← res₁; f x) = Except.toOption (do let x ← res₂; f x)
+:= by
+  intro h₁
+  simp [Except.toOption] at *
+  split at h₁ <;>
+  split at h₁ <;>
+  simp at h₁
+  case _ => subst h₁; simp only [Except.bind_ok]
+  case _ => simp only [Except.bind_err]
+
+
+theorem to_option_eq_do₂ {α ε} {res₁ res₂ res₃ res₄: Except ε α} (f : α → α → Except ε α) :
   Except.toOption res₁ = Except.toOption res₃ →
   Except.toOption res₂ = Except.toOption res₄ →
   Except.toOption (do let x ← res₁; let y ← res₂; f x y) = Except.toOption (do let x ← res₃; let y ← res₄; f x y)
@@ -45,6 +58,35 @@ theorem to_option_eq_f {α ε} {res₁ res₂ res₃ res₄: Except ε α} (f : 
   case _ => simp only [Except.bind_err, Except.bind_ok]
   case _ => simp only [Except.bind_ok, Except.bind_err]
   case _ => simp only [Except.bind_err]
+
+theorem to_option_eq_mapM {α β ε} {ls : List α} (f g: α → Except ε β) :
+(∀ x,
+  x ∈ ls →
+    Except.toOption (f x) = Except.toOption (g x)) →
+  Except.toOption (List.mapM f ls) =
+  Except.toOption (List.mapM g ls)
+:= by
+  induction ls
+  case nil => simp only [List.not_mem_nil, false_implies, implies_true, List.mapM_nil, imp_self]
+  case cons head tail hᵢ =>
+    simp only [List.mem_cons, forall_eq_or_imp, List.mapM_cons, bind_pure_comp, and_imp]
+    intro h
+    simp only [Except.toOption] at h
+    split at h <;> split at h <;> simp at h
+    case _ heq₁ _ _ heq₂ =>
+      subst h
+      simp only [heq₁, Except.bind_ok, heq₂]
+      intro h
+      specialize hᵢ h
+      simp only [Except.toOption] at hᵢ
+      split at hᵢ <;> split at hᵢ <;> simp at hᵢ
+      case _ heq₃ _ _ heq₄ =>
+        subst hᵢ
+        simp only [heq₃, Except.map_ok, heq₄]
+      case _ heq₃ _ _ heq₄ =>
+        simp only [Except.toOption, heq₃, Except.map_error, heq₄]
+    case _ heq₁ _ _ heq₂ =>
+      simp only [Except.toOption, heq₁, Except.bind_err, heq₂, implies_true]
 
 theorem partial_evaluate_is_sound_lit
 {p : Prim}
@@ -408,7 +450,7 @@ theorem partial_evaluate_is_sound_unary_app
       simp [someOrError, TypedExpr.toExpr, Spec.evaluate, hᵢ₃]
       split
       case _ heq₂ =>
-        replace heq₂ := to_option_some heq₂
+        simp [to_option_some] at heq₂
         simp [heq₂, Residual.evaluate]
       case _ heq₂ =>
         rcases to_option_none heq₂ with ⟨_, heq₂⟩
@@ -646,6 +688,360 @@ theorem partial_evaluate_is_sound_binary_app
       simp only [Except.toOption]
     case _ =>
       simp [TypedExpr.toExpr, Spec.evaluate, apply₂.self, Residual.evaluate]
-      exact to_option_eq_f
+      exact to_option_eq_do₂
         (λ x y => Spec.apply₂ op₂ x y es₁) hᵢ₄ hᵢ₅
+
+theorem partial_evaluate_is_sound_has_attr
+{x₁ : TypedExpr}
+{req₁ : Request}
+{es₁ : Entities}
+{req₂ : PartialRequest}
+{es₂ : PartialEntities}
+{attr : Attr}
+(h₄ : IsConsistent req₁ es₁ req₂ es₂)
+(hᵢ₃ : Except.toOption (Spec.evaluate x₁.toExpr req₁ es₁) = Except.toOption ((TPE.evaluate x₁ req₂ es₂).evaluate req₁ es₁)) :
+  Except.toOption (Spec.evaluate (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).toExpr req₁ es₁) =
+  Except.toOption ((TPE.evaluate (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)) req₂ es₂).evaluate req₁ es₁)
+:= by
+  simp [TPE.evaluate, TPE.hasAttr]
+  split
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₃
+    rcases to_option_right_err hᵢ₃ with ⟨_, hᵢ₃⟩
+    simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₃, Residual.evaluate, Except.toOption]
+  split
+  case _ heq =>
+    simp [TPE.attrsOf] at heq
+    split at heq
+    case _ heq₁ =>
+      simp only [Option.some.injEq] at heq
+      simp [heq₁, Residual.evaluate] at hᵢ₃
+      replace hᵢ₃ := to_option_right_ok' hᵢ₃
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₃, Spec.hasAttr, Spec.attrsOf, Residual.evaluate, Except.toOption, heq]
+    case _ uid _ heq₁ =>
+      simp [heq₁, Residual.evaluate] at hᵢ₃
+      replace hᵢ₃ := to_option_right_ok' hᵢ₃
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₃, Spec.hasAttr, Spec.attrsOf, Residual.evaluate, Except.toOption]
+      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some] at heq
+      rcases heq with ⟨data, heq₂, heq₃⟩
+      simp [IsConsistent, EntitiesAreConsistent] at h₄
+      rcases h₄ with ⟨_, h₄⟩
+      specialize h₄ uid data heq₂
+      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
+      rw [heq₃] at h₄₂
+      rcases h₄₂
+      rename_i h₄
+      subst h₄
+      simp [Entities.attrsOrEmpty, h₄₁]
+    case _ => cases heq
+  case _ =>
+    simp [Residual.evaluate, TypedExpr.toExpr, Spec.evaluate]
+    exact to_option_eq_do₁ (λ x => Spec.hasAttr x attr es₁) hᵢ₃
+
+theorem partial_evaluate_is_sound_get_attr
+{x₁ : TypedExpr}
+{req₁ : Request}
+{es₁ : Entities}
+{req₂ : PartialRequest}
+{es₂ : PartialEntities}
+{attr : Attr}
+{ty : CedarType}
+(h₄ : IsConsistent req₁ es₁ req₂ es₂)
+(hᵢ₅ : Except.toOption (Spec.evaluate x₁.toExpr req₁ es₁) = Except.toOption ((TPE.evaluate x₁ req₂ es₂).evaluate req₁ es₁)) :
+  Except.toOption (Spec.evaluate (x₁.getAttr attr ty).toExpr req₁ es₁) =
+  Except.toOption ((TPE.evaluate (x₁.getAttr attr ty) req₂ es₂).evaluate req₁ es₁)
+:= by
+  simp [TPE.evaluate, TPE.getAttr]
+  split
+  case _ heq =>
+    simp [heq, Residual.evaluate] at hᵢ₅
+    rcases to_option_right_err hᵢ₅ with ⟨_, hᵢ₅⟩
+    simp [TypedExpr.toExpr, hᵢ₅, Spec.evaluate, Residual.evaluate, Except.toOption]
+  split
+  case _ heq =>
+    simp [TPE.attrsOf] at heq
+    split at heq
+    case _ heq₁ =>
+      simp at heq
+      simp [heq₁, Residual.evaluate] at hᵢ₅
+      replace hᵢ₅ := to_option_right_ok' hᵢ₅
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₅, someOrError, Spec.getAttr, Spec.attrsOf]
+      subst heq
+      split <;>
+      (
+        rename_i heq₂
+        simp [Data.Map.findOrErr, heq₂, Residual.evaluate, Except.toOption]
+      )
+    case _ uid _ heq₁ =>
+      simp [heq₁, Residual.evaluate] at hᵢ₅
+      replace hᵢ₅ := to_option_right_ok' hᵢ₅
+      simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₅, Spec.getAttr, Spec.attrsOf]
+      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some] at heq
+      rcases heq with ⟨data, heq₂, heq₃⟩
+      simp [IsConsistent, EntitiesAreConsistent] at h₄
+      rcases h₄ with ⟨_, h₄⟩
+      specialize h₄ uid data heq₂
+      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
+      rw [heq₃] at h₄₂
+      rcases h₄₂
+      rename_i data' _ h₄
+      subst h₄
+      simp [Entities.attrs, Data.Map.findOrErr, h₄₁]
+      generalize h₄ : data'.attrs.find? attr = res
+      cases res <;> simp [someOrError, Residual.evaluate, Except.toOption]
+    case _ => cases heq
+  case _ =>
+    simp [TypedExpr.toExpr, Spec.evaluate, Residual.evaluate]
+    exact to_option_eq_do₁ (Spec.getAttr · attr es₁) hᵢ₅
+
+theorem partial_evaluate_is_sound_set
+{req₁ : Request}
+{es₁ : Entities}
+{req₂ : PartialRequest}
+{es₂ : PartialEntities}
+{ls : List TypedExpr}
+{ty : CedarType}
+(hᵢ₄ : ∀ (x : TypedExpr),
+  x ∈ ls →
+    Except.toOption (Spec.evaluate x.toExpr req₁ es₁) = Except.toOption ((TPE.evaluate x req₂ es₂).evaluate req₁ es₁)) :
+  Except.toOption (Spec.evaluate (TypedExpr.set ls ty.set).toExpr req₁ es₁) =
+  Except.toOption ((TPE.evaluate (TypedExpr.set ls ty.set) req₂ es₂).evaluate req₁ es₁)
+:= by
+  simp [TPE.evaluate, List.map₁, TPE.set]
+  split
+  case _ vs heq =>
+    simp [Residual.evaluate]
+    have : (Except.ok (Value.set (Data.Set.make vs)) : Except Spec.Error Value).toOption = .some (Value.set (Data.Set.make vs)) := by
+      simp only [Except.toOption]
+    rw [this]
+    clear this
+    simp only [TypedExpr.toExpr, List.map₁_eq_map, Spec.evaluate,
+      List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map, to_option_some, do_ok,
+      Value.set.injEq]
+    exists vs
+    simp only [and_true]
+    simp [List.mapM_map, List.mapM_some_iff_forall₂] at heq
+    have : ∀ x y, (TPE.evaluate x req₂ es₂).asValue = some y → (TPE.evaluate x req₂ es₂).evaluate req₁ es₁ = .ok y := by
+      intro x y h
+      rcases as_value_some h with ⟨_, h⟩
+      simp [h, Residual.evaluate]
+    replace heq := List.Forall₂.imp this heq
+    clear this
+    rw [←List.mapM_ok_iff_forall₂] at heq
+    have : ∀ (x : TypedExpr),
+      x ∈ ls →
+      Except.toOption ((TPE.evaluate x req₂ es₂).evaluate req₁ es₁) =
+      Except.toOption (Spec.evaluate x.toExpr req₁ es₁) := by
+      intro x h
+      specialize hᵢ₄ x h
+      symm
+      exact hᵢ₄
+    have h₅ := to_option_eq_mapM
+      (λ x => (TPE.evaluate x req₂ es₂).evaluate req₁ es₁)
+      (λ x => Spec.evaluate x.toExpr req₁ es₁)
+      this
+    simp [heq] at h₅
+    exact to_option_left_ok' h₅
+  case _ heq =>
+    split
+    case isTrue heq₁ =>
+      rcases heq₁ with ⟨x, heq₂, heq₃⟩
+      specialize hᵢ₄ x heq₂
+      simp [Residual.isError] at heq₃
+      split at heq₃ <;> cases heq₃
+      rename_i heq₃
+      simp [heq₃, Residual.evaluate] at hᵢ₄
+      rcases to_option_right_err hᵢ₄ with ⟨_, hᵢ₄⟩
+      simp [TypedExpr.toExpr, List.map₁, Spec.evaluate, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map]
+      have heq₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (λ x => Spec.evaluate x.toExpr req₁ es₁) _ heq₂ hᵢ₄
+      rcases heq₄ with ⟨_, heq₄⟩
+      simp [heq₄, Residual.evaluate, Except.toOption]
+    case isFalse =>
+      simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
+        List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map, Residual.evaluate,
+        List.mapM₁_eq_mapM (fun x => Residual.evaluate x req₁ es₁)]
+      apply to_option_eq_do₁ (λ (x : List Value) => (Except.ok (Value.set (Data.Set.make x))))
+      exact to_option_eq_mapM
+        (fun x => Spec.evaluate x.toExpr req₁ es₁)
+        (fun x => (TPE.evaluate x req₂ es₂).evaluate req₁ es₁)
+        hᵢ₄
+
+theorem partial_evaluate_is_sound_record
+{m : List (Attr × TypedExpr)}
+{rty : RecordType}
+{req₁ : Request}
+{es₁ : Entities}
+{req₂ : PartialRequest}
+{es₂ : PartialEntities}
+(hᵢ₃ : ∀ (k : Attr) (v : TypedExpr),
+  (k, v) ∈ m →
+    Except.toOption (Spec.evaluate v.toExpr req₁ es₁) = Except.toOption ((TPE.evaluate v req₂ es₂).evaluate req₁ es₁)) :
+  Except.toOption (Spec.evaluate (TypedExpr.record m (CedarType.record rty)).toExpr req₁ es₁) =
+  Except.toOption ((TPE.evaluate (TypedExpr.record m (CedarType.record rty)) req₂ es₂).evaluate req₁ es₁)
+:= by
+  simp only [TPE.evaluate, record,
+    List.map₁_eq_map (fun (x : Attr × TypedExpr) => (x.fst, TPE.evaluate x.snd req₂ es₂)),
+    List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
+  split
+  case _ vs heq =>
+    simp [TypedExpr.toExpr, Spec.evaluate, List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))]
+    simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype
+      (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req₁ es₁)), List.mapM_map, Residual.evaluate]
+    have : (Except.ok (Value.record (Data.Map.make vs)) : Except Spec.Error Value).toOption = .some (Value.record (Data.Map.make vs)) := by
+      simp only [Except.toOption]
+    rw [this]
+    clear this
+    simp [to_option_some, do_ok]
+    exists vs
+    simp only [and_true]
+    simp [List.mapM_map, List.mapM_some_iff_forall₂] at heq
+    have : ∀ (x : Attr × TypedExpr) y, bindAttr x.fst (TPE.evaluate x.snd req₂ es₂).asValue = some y → bindAttr x.fst ((TPE.evaluate x.snd req₂ es₂).evaluate req₁ es₁) = .ok y := by
+      intro x y h
+      simp only [bindAttr] at *
+      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h
+      rcases h with ⟨_, h₁, h₂⟩
+      rcases as_value_some h₁ with ⟨_, h₁⟩
+      simp only [h₁, Residual.evaluate, bind_pure_comp, Except.map_ok, h₂]
+    replace heq := List.Forall₂.imp this heq
+    clear this
+    rw [←List.mapM_ok_iff_forall₂] at heq
+    have : ∀ x,
+      x ∈ m →
+      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd req₂ es₂).evaluate req₁ es₁)) =
+      Except.toOption (bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁)) := by
+      intro x h
+      have hrfl : x = (x.fst, x.snd) := by rfl
+      rw [hrfl] at h
+      specialize hᵢ₃ x.fst x.snd h
+      simp [bindAttr]
+      simp [Except.toOption] at hᵢ₃
+      -- TODO: make it a general lemma
+      split at hᵢ₃ <;> split at hᵢ₃ <;> simp at hᵢ₃
+      case _ heq₁ _ _ heq₂ => subst hᵢ₃ ; simp only [heq₁, Except.map_ok, heq₂]
+      case _ heq₁ _ _ heq₂ => simp only [Except.toOption, heq₁, Except.map_error, heq₂]
+    have h₁ := to_option_eq_mapM
+      (λ (x : Attr × TypedExpr) => bindAttr x.fst ((TPE.evaluate x.snd req₂ es₂).evaluate req₁ es₁))
+      (λ x => bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁))
+      this
+    simp [heq] at h₁
+    replace h₁ := to_option_left_ok' h₁
+    exact h₁
+  split
+  case _ h₁ =>
+    simp only [List.map₁, List.any_map, List.any_eq_true, List.mem_attach, Function.comp_apply,
+      true_and, Subtype.exists, exists_prop, Prod.exists] at h₁
+    rcases h₁ with ⟨k, v, h₂, h₃⟩
+    simp [Residual.isError] at h₃
+    split at h₃ <;> simp at h₃
+    rename_i heq
+    specialize hᵢ₃ k v h₂
+    simp [heq, Residual.evaluate] at hᵢ₃
+    rcases to_option_right_err hᵢ₃ with ⟨err, hᵢ₃⟩
+    simp [TypedExpr.toExpr, Spec.evaluate, List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))]
+    simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype
+      (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req₁ es₁)), List.mapM_map]
+    have : (fun (x: Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁)) (k, v) = .error err := by
+      simp only [bindAttr, hᵢ₃, bind_pure_comp, Except.map_error]
+    have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (fun (x: Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁)) _ h₂ this
+    rcases h₄ with ⟨_, h₄⟩
+    simp [h₄, Residual.evaluate, Except.toOption]
+  case _ =>
+    simp [TypedExpr.toExpr, Spec.evaluate, List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))]
+    simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype
+      (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req₁ es₁)), List.mapM_map]
+    simp [Residual.evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype
+      (fun (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd req₁ es₁)), List.mapM_map]
+    apply to_option_eq_do₁
+    have : ∀ x,
+      x ∈ m →
+      Except.toOption (bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁)) =
+      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd req₂ es₂).evaluate req₁ es₁)) := by
+      intro x h
+      have hrfl : x = (x.fst, x.snd) := by rfl
+      rw [hrfl] at h
+      specialize hᵢ₃ x.fst x.snd h
+      simp [bindAttr]
+      simp [Except.toOption] at hᵢ₃
+      -- TODO: make it a general lemma
+      split at hᵢ₃ <;> split at hᵢ₃ <;> simp at hᵢ₃
+      case _ heq₁ _ _ heq₂ => subst hᵢ₃ ; simp only [heq₁, Except.map_ok, heq₂]
+      case _ heq₁ _ _ heq₂ => simp only [Except.toOption, heq₁, Except.map_error, heq₂]
+    exact to_option_eq_mapM
+      (fun (x : Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req₁ es₁))
+      (fun x => bindAttr x.fst ((TPE.evaluate x.snd req₂ es₂).evaluate req₁ es₁))
+      this
+
+theorem partial_evaluate_is_sound_call
+{req₁ : Request}
+{es₁ : Entities}
+{req₂ : PartialRequest}
+{es₂ : PartialEntities}
+{xfn : ExtFun}
+{args : List TypedExpr}
+{ty : CedarType}
+(hᵢ₃ : ∀ (x : TypedExpr),
+  x ∈ args →
+    Except.toOption (Spec.evaluate x.toExpr req₁ es₁) = Except.toOption ((TPE.evaluate x req₂ es₂).evaluate req₁ es₁)) :
+  Except.toOption (Spec.evaluate (TypedExpr.call xfn args ty).toExpr req₁ es₁) =
+  Except.toOption ((TPE.evaluate (TypedExpr.call xfn args ty) req₂ es₂).evaluate req₁ es₁)
+:= by
+  simp [TPE.evaluate, TPE.call, List.map₁, List.mapM_map]
+  split
+  case _ vs heq =>
+    simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
+      List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map, someOrError]
+    simp [List.mapM_map, List.mapM_some_iff_forall₂] at heq
+    have : ∀ x y, (TPE.evaluate x req₂ es₂).asValue = some y → (TPE.evaluate x req₂ es₂).evaluate req₁ es₁ = .ok y := by
+      intro x y h
+      rcases as_value_some h with ⟨_, h⟩
+      simp [h, Residual.evaluate]
+    replace heq := List.Forall₂.imp this heq
+    clear this
+    rw [←List.mapM_ok_iff_forall₂] at heq
+    have : ∀ (x : TypedExpr),
+      x ∈ args →
+      Except.toOption ((TPE.evaluate x req₂ es₂).evaluate req₁ es₁) =
+      Except.toOption (Spec.evaluate x.toExpr req₁ es₁) := by
+      intro x h
+      specialize hᵢ₃ x h
+      symm
+      exact hᵢ₃
+    have h₅ := to_option_eq_mapM
+      (λ x => (TPE.evaluate x req₂ es₂).evaluate req₁ es₁)
+      (λ x => Spec.evaluate x.toExpr req₁ es₁)
+      this
+    simp [heq] at h₅
+    replace h₅ := to_option_left_ok' h₅
+    simp [h₅]
+    split
+    case _ heq₁ =>
+      simp only [to_option_some] at heq₁
+      simp only [heq₁, Residual.evaluate]
+    case _ heq₁ =>
+      rcases to_option_none heq₁ with ⟨_, heq₁⟩
+      simp [heq₁, Residual.evaluate, Except.toOption]
+  split
+  case _ heq₁ =>
+    rcases heq₁ with ⟨x, heq₂, heq₃⟩
+    specialize hᵢ₃ x heq₂
+    simp [Residual.isError] at heq₃
+    split at heq₃ <;> cases heq₃
+    rename_i heq₃
+    simp [heq₃, Residual.evaluate] at hᵢ₃
+    rcases to_option_right_err hᵢ₃ with ⟨_, hᵢ₃⟩
+    have heq₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (λ x => Spec.evaluate x.toExpr req₁ es₁) _ heq₂ hᵢ₃
+    rcases heq₄ with ⟨_, heq₄⟩
+    simp only [Except.toOption, TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach,
+      Spec.evaluate, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map, heq₄,
+      Except.bind_err, Residual.evaluate]
+  case _ =>
+    simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
+      List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁), List.mapM_map, Residual.evaluate,
+      List.mapM₁_eq_mapM (fun (x : Residual) => x.evaluate req₁ es₁)]
+    apply to_option_eq_do₁ (λ (x : List Value) => Spec.call xfn x)
+    exact to_option_eq_mapM
+      (fun x => Spec.evaluate x.toExpr req₁ es₁)
+      (fun x => (TPE.evaluate x req₂ es₂).evaluate req₁ es₁)
+      hᵢ₃
+
 end Cedar.Thm

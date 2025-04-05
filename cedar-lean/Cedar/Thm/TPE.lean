@@ -38,15 +38,10 @@ theorem partial_evaluate_is_sound
   {env : Environment} :
   TypedExpr.WellTyped env x →
   RequestAndEntitiesMatchEnvironment env req₁ es₁ →
-  -- Do we need this hypothesis?
-  -- I doubt that because `RequestAndEntitiesMatchEnvironment` ∧ `IsConsistent` → `PartialRequestAndEntitiesMatchEnvironment`
-  -- not the other way around, unless we make `IsConsistent` stronger to consider the types of request/entities.
-  -- Nevertheless, we should only need one of them.
-  PartialRequestAndEntitiesMatchEnvironment env req₂ es₂ →
   IsConsistent req₁ es₁ req₂ es₂ →
   (Spec.evaluate x.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate x req₂ es₂) req₁ es₁).toOption
 := by
-  intro h₁ h₂ h₃ h₄
+  intro h₁ h₂ h₄
   induction h₁
   case lit =>
     exact partial_evaluate_is_sound_lit
@@ -62,12 +57,19 @@ theorem partial_evaluate_is_sound
     exact partial_evaluate_is_sound_unary_app hᵢ₃
   case binaryApp op₂ x₁ x₂ ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ =>
     exact partial_evaluate_is_sound_binary_app h₂ h₄ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅
-  case hasAttr_entity ety rty x₁ attr hᵢ₁ hᵢ₂ => sorry
-  case hasAttr_record rty x₁ attr hᵢ₁ hᵢ₂ => sorry
-  case getAttr_entity ety rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ => sorry
-  case getAttr_record rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ => sorry
-  case set ls ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ => sorry
-  case record rty m hᵢ₁ hᵢ₂ hᵢ₃ => sorry
-  case call xfn args ty hᵢ₁ hᵢ₂ hᵢ₃ => sorry
+  case hasAttr_entity ety x₁ attr hᵢ₁ hᵢ₂ hᵢ₃ =>
+    exact partial_evaluate_is_sound_has_attr h₄ hᵢ₃
+  case hasAttr_record rty x₁ attr hᵢ₁ hᵢ₂ =>
+    exact partial_evaluate_is_sound_has_attr h₄ hᵢ₂
+  case getAttr_entity ety rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ hᵢ₅ =>
+    exact partial_evaluate_is_sound_get_attr h₄ hᵢ₅
+  case getAttr_record rty x₁ attr ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ =>
+    exact partial_evaluate_is_sound_get_attr h₄ hᵢ₄
+  case set ls ty hᵢ₁ hᵢ₂ hᵢ₃ hᵢ₄ =>
+    exact partial_evaluate_is_sound_set hᵢ₄
+  case record rty m hᵢ₁ hᵢ₂ hᵢ₃ =>
+    exact partial_evaluate_is_sound_record hᵢ₃
+  case call xfn args ty hᵢ₁ hᵢ₂ hᵢ₃ =>
+    exact partial_evaluate_is_sound_call hᵢ₃
 
 end Cedar.Thm

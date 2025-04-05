@@ -427,7 +427,7 @@ theorem partial_evaluate_value
     rename_i heq₂
     specialize hᵢ₃ heq₂
     simp [hᵢ₃, heq]
-    replace heq₁ := to_option_some heq₁
+    simp [to_option_some] at heq₁
     rcases h₃ with ⟨h₃, _⟩
     subst h₃
     exact heq₁
@@ -552,7 +552,7 @@ theorem partial_evaluate_value
       simp [someOrError] at h₃
       split at h₃ <;> simp at h₃
       rename_i heq₁
-      replace heq₁ := to_option_some heq₁
+      simp [to_option_some] at heq₁
       simp [List.map₁_eq_map, Spec.evaluate, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req₁ es₁) (List.map TypedExpr.toExpr args), List.mapM_map]
       -- repeat set
       sorry

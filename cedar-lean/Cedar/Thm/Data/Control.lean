@@ -63,13 +63,18 @@ theorem do_ok {res : Except ε α} {f : α → β} :
 := by cases res <;> simp
 
 theorem to_option_some {v : α} {res: Except ε α} :
-  res.toOption = .some v → res = .ok v
+  res.toOption = .some v ↔ res = .ok v
 := by
-  intro h
-  simp [Except.toOption] at h
-  split at h <;> simp at h
-  subst h
-  rfl
+  constructor
+  case mp =>
+    intro h
+    simp [Except.toOption] at h
+    split at h <;> simp at h
+    subst h
+    rfl
+  case mpr =>
+    intro h
+    simp only [Except.toOption, h]
 
 theorem to_option_none {res: Except ε α} :
   res.toOption = .none → (∃ err, res = .error err)
