@@ -26,6 +26,15 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
+theorem do_eq_ok₂ {res₁ res₂: Except ε PUnit} :
+  (do res₁ ; res₂) = .ok () → res₁ = .ok () ∧ res₂ = .ok ()
+:= by
+  cases res₁ <;> cases res₂ <;> simp
+
+theorem decide_eq_implies_eq {α} [DecidableEq α] {y : α} :
+  ∀ x, decide (x = y) → x = y := by
+      simp only [decide_eq_true_eq, imp_self, implies_true]
+
 inductive PartialIsValid {α} : (α → Prop) → Option α -> Prop
   | some (p : α → Prop) (x : α)
     (h : p x) :
@@ -81,6 +90,69 @@ partial and concrete parts are validated.
 -/
 def IsConsistent (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Prop :=
   RequestIsConsistent req₁ req₂ ∧ EntitiesAreConsistent es₁ es₂
+
+theorem consistent_checks_ensure_consistency {env : Environment} (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) :
+  isConsistent env req₁ es₁ req₂ es₂ = .ok () → IsConsistent req₁ es₁ req₂ es₂
+:= by
+  intro h
+  simp [isConsistent] at h
+  rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
+  simp [IsConsistent]
+  constructor
+  case _ =>
+    simp [RequestIsConsistent]
+    simp [isConsistent.requestIsConsistent] at h₁
+    split at h₁ <;> simp at h₁
+    rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
+    constructor
+    exact partial_is_valid_rfl (fun x => decide (x = req₁.principal)) (fun x => x = req₁.principal) req₂.principal.asEntityUID decide_eq_implies_eq h₁₁
+    constructor
+    exact h₁₂
+    constructor
+    exact partial_is_valid_rfl (fun x => decide (x = req₁.resource)) (fun x => x = req₁.resource) req₂.resource.asEntityUID decide_eq_implies_eq h₁₃
+    exact partial_is_valid_rfl (fun x => decide (x = req₁.context)) (fun x => x = req₁.context) req₂.context decide_eq_implies_eq h₁₄
+  case _ =>
+    simp [isConsistent.entitiesIsConsistent] at h₂
+    split at h₂ <;> simp at h₂
+    simp [isConsistent.entitiesMatch] at h₂
+    simp [EntitiesAreConsistent]
+    intro uid data₂ hᵢ
+    replace hᵢ := Data.Map.find?_mem_toList hᵢ
+    simp [Data.Map.toList] at hᵢ
+    specialize h₂ uid data₂ hᵢ
+    split at h₂ <;> simp at h₂
+    rcases h₂ with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
+    rename_i data₁ heq
+    exists data₁
+    constructor
+    exact heq
+    constructor
+    exact partial_is_valid_rfl (fun x => decide (x = data₁.attrs)) (fun x => x = data₁.attrs) data₂.attrs decide_eq_implies_eq h₂₁
+    constructor
+    exact partial_is_valid_rfl (fun x => decide (x = data₁.ancestors)) (fun x => x = data₁.ancestors) data₂.ancestors decide_eq_implies_eq h₂₂
+    exact partial_is_valid_rfl (fun x => decide (x = data₁.tags)) (fun x => x = data₁.tags) data₂.tags decide_eq_implies_eq h₂₃
+
+theorem consistent_checks_ensure_match_environment {env : Environment} {req₂ : PartialRequest} {es₂ : PartialEntities} (req₁ : Request) (es₁ : Entities) :
+  isConsistent env req₁ es₁ req₂ es₂ = .ok () → RequestAndEntitiesMatchEnvironment env req₁ es₁
+:= by
+  intro h
+  simp only [isConsistent] at h
+  rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
+  simp only [isConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  split at h₁ <;> simp at h₁
+  rename_i h₃
+  simp only [not_or, Bool.not_eq_false] at h₃
+  simp [isConsistent.entitiesIsConsistent] at h₂
+  split at h₂ <;> simp at h₂
+  simp only [isConsistent.entitiesMatch, List.all_eq_true, Prod.forall] at h₂
+  rename_i h₄
+  simp at h₄
+  rcases h₄ with ⟨_, h₄⟩
+  simp only [Except.isOk, Except.toBool] at h₄
+  split at h₄ <;> cases h₄
+  rename_i h₄
+  exact request_and_entities_match_env h₃.right h₄
 
 theorem partial_request_matches_environment (env : Environment) (request : PartialRequest) :
   requestIsValid env request → PartialRequestMatchesEnvironment env request
