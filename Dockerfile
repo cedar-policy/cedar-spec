@@ -3,7 +3,7 @@ FROM amazonlinux:2023 AS prepare
 RUN yum update -y \
   && yum install -y \
   curl-minimal clang tar zip unzip python3 git xz \
-  make wget \
+  make wget gcc \
   && yum clean all
 
 # Setup Rust toolchain
