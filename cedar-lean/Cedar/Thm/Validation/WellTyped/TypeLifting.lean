@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.Validation
 import Cedar.Thm.Data
+import Cedar.TPE
 
 /-!
 This file contains theorems related to `TypedExpr.liftBoolTypes`
@@ -27,6 +28,7 @@ namespace Cedar.Thm
 
 open Cedar.Validation
 open Cedar.Spec
+open Cedar.TPE
 
 theorem type_of_after_lifted_is_lifted (x : TypedExpr) :
   x.liftBoolTypes.typeOf = x.typeOf.liftBoolTypes
@@ -89,6 +91,10 @@ theorem type_lifting_preserves_evaluation_results {x : TypedExpr} {request : Req
   evaluate x.toExpr request entities = evaluate x.liftBoolTypes.toExpr request entities
  := by
  simp only [type_lifting_preserves_expr x]
+
+theorem type_lifting_preserves_tpe_results {req₂ es₂ req₁ es₁} {x : TypedExpr} :
+  (TPE.evaluate x req₂ es₂).evaluate req₁ es₁ = (TPE.evaluate x.liftBoolTypes req₂ es₂).evaluate req₁ es₁
+ := by sorry
 
 inductive Lifted : CedarType → CedarType → Prop
   | bool {bty : BoolType} :

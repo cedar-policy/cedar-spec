@@ -71,4 +71,35 @@ theorem partial_evaluate_is_sound
   case call xfn args ty hᵢ₁ =>
     exact partial_evaluate_is_sound_call hᵢ₁
 
+theorem partial_evaluate_policy_is_sound
+  {schema : Schema}
+  {residual : Residual}
+  {env : Environment}
+  {policy : Policy}
+  {req₁ : Request}
+  {es₁ : Entities}
+  {req₂ : PartialRequest}
+  {es₂ : PartialEntities} :
+  evaluatePolicy schema policy req₂ es₂ = .ok residual   →
+  isConsistent env req₁ es₁ req₂ es₂ = .ok () →
+  (Spec.evaluate policy.toExpr req₁ es₁).toOption = (Residual.evaluate residual req₁ es₁).toOption
+:= by
+  intro h₁ h₂
+  simp [evaluatePolicy] at h₁
+  split at h₁ <;> try cases h₁
+  split at h₁ <;> try cases h₁
+  simp [do_ok] at h₁
+  rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
+  simp [Except.mapError] at h₁₁
+  split at h₁₁ <;> try cases h₁₁
+  rename_i env _ _ ty _ _ heq
+  have : RequestAndEntitiesMatchEnvironment env req₁ es₁ := by sorry
+  have h₃ := typechecked_is_well_typed_after_lifting this heq
+  have h₄ : (Spec.evaluate ty.liftBoolTypes.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate ty.liftBoolTypes req₂ es₂) req₁ es₁).toOption := by sorry
+  rw [←type_lifting_preserves_evaluation_results, ←type_lifting_preserves_tpe_results, h₁₂] at h₄
+  /- missing pieces:
+  * type lifting preserves TPE results (see unproven theorem: type_lifting_preserves_tpe_results)
+  * connection between result of `typeOf` and its input in terms of evaluation
+  -/
+  sorry
 end Cedar.Thm
