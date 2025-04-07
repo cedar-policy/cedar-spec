@@ -98,7 +98,7 @@ theorem partial_evaluate_policy_is_sound
   have h₄ : (Spec.evaluate ty.liftBoolTypes.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate ty.liftBoolTypes req₂ es₂) req₁ es₁).toOption := by sorry
   rw [←type_lifting_preserves_evaluation_results, ←type_lifting_preserves_tpe_results, h₁₂] at h₄
   /- missing pieces:
-  * type lifting preserves TPE results (see unproven theorem: type_lifting_preserves_tpe_results)
+  * type lifting preserves TPE results (see unproven theorem: `type_lifting_preserves_tpe_results`)
   * connection between result of `typeOf` and its input in terms of evaluation
   -/
   sorry
