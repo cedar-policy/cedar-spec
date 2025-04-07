@@ -3,7 +3,7 @@ FROM amazonlinux:2 AS prepare
 RUN yum update -y \
   && yum install -y \
   curl clang tar zip unzip python3 git xz \
-  make wget \
+  make wget gcc gcc-c++ \
   && yum clean all
 
 # Setup Rust toolchain
