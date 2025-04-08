@@ -98,3 +98,62 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
       exact @type_of_is_sound xᵢ
     exact type_of_call_is_sound h₁ h₂ h₃ ih
 termination_by sizeOf e
+
+theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
+  CapabilitiesInvariant c₁ request entities →
+  RequestAndEntitiesMatchEnvironment env request entities →
+  typeOf e c₁ env = .ok (ty, c₂) →
+  evaluate e request entities = evaluate ty.toExpr request entities
+:= by
+  intro h₁ h₂ h₃
+  induction e, c₁, env using typeOf.induct generalizing ty c₂
+  case _ =>
+    simp [typeOf, typeOfLit, ok] at h₃
+    split at h₃ <;>
+    try (
+      simp at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp only [TypedExpr.toExpr]
+    )
+    split at h₃ <;> simp [err] at h₃
+    rcases h₃ with ⟨h₃, _⟩
+    subst h₃
+    simp only [TypedExpr.toExpr]
+  case _ =>
+    simp [typeOf, typeOfVar, ok] at h₃
+    split at h₃ <;>
+    (
+      simp at h₃
+      rcases h₃ with ⟨h₃, _⟩
+      subst h₃
+      simp only [TypedExpr.toExpr]
+    )
+  case _ c₁ env x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ =>
+    simp [typeOf] at h₃
+    generalize hᵢ : typeOf x₁ c₁ env = res₁
+    cases res₁
+    case ok ty =>
+      simp [hᵢ] at h₃
+      simp [typeOfIf, ok] at h₃
+      specialize hᵢ₁ h₁ h₂ hᵢ
+      split at h₃
+      case _ heq =>
+        simp [do_ok] at h₃
+        simp [evaluate]
+        sorry
+      case _ heq =>
+        sorry
+      case _ heq => sorry
+      case _ => simp [err] at h₃
+    case error =>
+      simp [hᵢ] at h₃
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
+  case _ => sorry
