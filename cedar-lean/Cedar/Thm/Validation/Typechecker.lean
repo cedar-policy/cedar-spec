@@ -140,7 +140,9 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       split at h₃
       case _ heq =>
         simp [do_ok] at h₃
-        simp [evaluate]
+        rcases h₃ with ⟨_, _, h₃₁, h₃₂, h₃₃⟩
+        subst h₃₂
+        simp [evaluate, TypedExpr.toExpr]
         sorry
       case _ heq =>
         sorry
