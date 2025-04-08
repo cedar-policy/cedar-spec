@@ -3,7 +3,7 @@ FROM amazonlinux:2 AS prepare
 RUN yum update -y \
   && yum install -y \
   curl clang tar zip unzip python3 git xz \
-  make wget gcc gcc-c++ \
+  make wget \
   && yum clean all
 
 # Setup Rust toolchain
@@ -28,7 +28,7 @@ COPY . $CEDAR_SPEC_ROOT
 
 # Clone `cedar` repository
 WORKDIR $CEDAR_SPEC_ROOT
-RUN git clone --depth 1 https://github.com/cedar-policy/cedar
+RUN git clone --depth 1 -b release/4.3.x https://github.com/cedar-policy/cedar
 
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
