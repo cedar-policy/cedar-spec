@@ -150,12 +150,201 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       case _ => simp [err] at h₃
     case error =>
       simp [hᵢ] at h₃
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
-  case _ => sorry
+  case _ hᵢ₁ hᵢ₂ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
+    simp [typeOfAnd] at h₃₂
+    split at h₃₂ <;> simp [ok, err] at h₃₂
+    case _ heq =>
+      rcases h₃₂ with ⟨h₃₂, _⟩
+      subst h₃₂
+      sorry
+    simp [do_ok'] at h₃₂
+    rcases h₃₂ with ⟨_, _, _, h₃₂⟩
+    --split at h₃₂ <;> simp [err] at h₃₂
+    sorry
+  case _ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
+    simp [typeOfOr] at h₃₂
+    split at h₃₂ <;> simp [ok, err] at h₃₂
+    case _ heq =>
+      rcases h₃₂ with ⟨h₃₂, _⟩
+      subst h₃₂
+      sorry
+    sorry
+    sorry
+  case _ hᵢ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, ⟨_, h₃₁⟩, h₃₂⟩
+    simp [typeOfUnaryApp] at h₃₂
+    specialize hᵢ h₁ h₂ h₃₁
+    split at h₃₂ <;>
+    simp [ok, err] at h₃₂ <;>
+    try (
+      rcases h₃₂ with ⟨h₃₂, _⟩
+      subst h₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ]
+    )
+  case _ hᵢ₁ hᵢ₂ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, ⟨_, h₃₁⟩, _, ⟨_, h₃₂⟩, h₃₃⟩
+    specialize hᵢ₁ h₁ h₂ h₃₁
+    specialize hᵢ₂ h₁ h₂ h₃₂
+    simp [typeOfBinaryApp] at h₃₃
+    split at h₃₃ <;> try simp [ok, err] at h₃₃
+    case _ =>
+      simp [typeOfEq] at h₃₃
+      split at h₃₃ <;>
+      split at h₃₃ <;>
+      try (
+        simp [ok] at h₃₃
+        rcases h₃₃ with ⟨h₃₃, _⟩
+        subst h₃₃
+        try simp [evaluate] at hᵢ₁
+        try simp [evaluate] at hᵢ₂
+        simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+      )
+      split at h₃₃ <;> simp [ok, err] at h₃₃
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      simp [do_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      simp [do_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      simp [do_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      simp [do_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    case _ =>
+      simp [do_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+  case _ hᵢ =>
+    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    rcases h₃ with ⟨ty, ⟨c, h₃₁⟩, h₃₂⟩
+    simp only [typeOfHasAttr, List.empty_eq] at h₃₂
+    specialize hᵢ h₁ h₂ h₃₁
+    split at h₃₂
+    case _ =>
+      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂⟩
+      subst h₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ]
+    case _ =>
+      split at h₃₂ <;>
+      try split at h₃₂
+      case _ =>
+        simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+        rcases h₃₂ with ⟨_, _, h₃₂⟩
+        subst h₃₂
+        simp only [TypedExpr.toExpr, evaluate, hᵢ]
+      case _ =>
+        simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃₂
+        rcases h₃₂ with ⟨h₃₂, _⟩
+        subst h₃₂
+        simp only [TypedExpr.toExpr, evaluate, hᵢ]
+      simp only [err, reduceCtorEq] at h₃₂
+    simp only [err, reduceCtorEq] at h₃₂
+  case _ hᵢ =>
+    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    rcases h₃ with ⟨ty, ⟨c, h₃₁⟩, h₃₂⟩
+    simp only [typeOfGetAttr, List.empty_eq] at h₃₂
+    specialize hᵢ h₁ h₂ h₃₁
+    split at h₃₂
+    case _ =>
+      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂⟩
+      subst h₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ]
+    case _ =>
+      split at h₃₂
+      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂⟩
+      subst h₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ]
+      simp only [err, reduceCtorEq] at h₃₂
+    simp only [err, reduceCtorEq] at h₃₂
+  case _ c₁ env _ hᵢ =>
+    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    rcases h₃ with ⟨ty, h₃₁, h₃₂⟩
+    simp [List.mapM₁_eq_mapM (fun x => justType (typeOf x c₁ env)), List.mapM_ok_iff_forall₂] at h₃₁
+    simp [typeOfSet] at h₃₂
+    split at h₃₂ <;> simp [err] at h₃₂
+    split at h₃₂ <;> simp [ok] at h₃₂
+    rcases h₃₂ with ⟨h₃₂, _⟩
+    subst h₃₂
+    simp only [TypedExpr.toExpr, evaluate, List.map₁_eq_map, List.mapM₁_eq_mapM (fun x => evaluate x request entities), List.mapM_map]
+    sorry
+  case _ c₁ env axs hᵢ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, h₃₁, h₃₂⟩
+    simp [ok] at h₃₂
+    rcases h₃₂ with ⟨h₃₂, _⟩
+    subst h₃₂
+    simp [evaluate, TypedExpr.toExpr]
+    sorry
+  case _ c₁ env xfn xs hᵢ =>
+    simp [typeOf, do_ok'] at h₃
+    rcases h₃ with ⟨_, h₃₁, h₃₂⟩
+    simp [List.mapM₁_eq_mapM fun x => justType (typeOf x c₁ env)] at h₃₁
+    --simp [typeOfCall] at h₃₂
+    sorry

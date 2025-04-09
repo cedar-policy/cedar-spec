@@ -62,6 +62,11 @@ theorem do_ok {res : Except ε α} {f : α → β} :
   ∃ a, res = .ok a ∧ f a = b
 := by cases res <;> simp
 
+theorem do_ok' {res : Except ε α} {f : α → Except ε β} :
+  (do let v ← res ; f v) = .ok b ↔
+  ∃ a, res = .ok a ∧ f a = .ok b
+:= by cases res <;> simp
+
 theorem to_option_some {v : α} {res: Except ε α} :
   res.toOption = .some v ↔ res = .ok v
 := by
