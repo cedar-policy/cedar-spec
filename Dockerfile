@@ -25,7 +25,7 @@ COPY . $CEDAR_SPEC_ROOT
 
 # Clone `cedar` repository
 WORKDIR $CEDAR_SPEC_ROOT
-RUN git clone --depth 1 https://github.com/cedar-policy/cedar
+RUN git clone --depth 1 -b release/4.0.x https://github.com/cedar-policy/cedar
 
 # Build the Lean formalization and extract to static C libraries
 WORKDIR $CEDAR_SPEC_ROOT/cedar-lean
