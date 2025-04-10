@@ -1,4 +1,0 @@
-# We pin this crate to Rust 1.85 to avoid linking failures.
-# More details in https://github.com/cedar-policy/cedar/issues/1564
-[toolchain]
-channel = "1.85"
