@@ -15,7 +15,6 @@
 -/
 
 import Cedar.Data.LT
-import Batteries.Data.List
 
 /-!
 This file contains utilities for working with lists that are canonical or

@@ -18,7 +18,6 @@ import Protobuf.BParsec
 import Protobuf.Field
 import Protobuf.Structures
 import Protobuf.WireType
-import Batteries.Data.UInt
 
 /-!
 Decode UTF-8 encoded strings with ByteArray Parser Combinators
