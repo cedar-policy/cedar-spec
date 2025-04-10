@@ -102,11 +102,14 @@ inductive ConcretizationError
   | typeError
   | requestsDoNotMatch
   | entitiesDoNotMatch
+  | invalidEnvironment
 
-def isConsistent (env : Environment) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
-  do requestIsConsistent; entitiesIsConsistent
+def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
+  match schema.environment? req₂.principal.ty req₂.resource.ty req₂.action with
+  | .some env => do requestIsConsistent env; entitiesIsConsistent env
+  | .none => .error .invalidEnvironment
 where
-  requestIsConsistent :=
+  requestIsConsistent env :=
   if !requestIsValid env req₂ || !requestMatchesEnvironment env req₁
   then
     .error .typeError
@@ -121,7 +124,7 @@ where
       .ok ()
     else
       .error .requestsDoNotMatch
-  entitiesIsConsistent : Except ConcretizationError Unit :=
+  entitiesIsConsistent env : Except ConcretizationError Unit :=
     if !entitiesIsValid env es₂ || !(entitiesMatchEnvironment env es₁).isOk
     then
       .error .typeError

@@ -74,17 +74,17 @@ theorem partial_evaluate_is_sound
 theorem partial_evaluate_policy_is_sound
   {schema : Schema}
   {residual : Residual}
-  {env : Environment}
   {policy : Policy}
   {req₁ : Request}
   {es₁ : Entities}
   {req₂ : PartialRequest}
   {es₂ : PartialEntities} :
   evaluatePolicy schema policy req₂ es₂ = .ok residual   →
-  isConsistent env req₁ es₁ req₂ es₂ = .ok () →
+  isValidAndConsistent schema req₁ es₁ req₂ es₂ = .ok () →
   (Spec.evaluate policy.toExpr req₁ es₁).toOption = (Residual.evaluate residual req₁ es₁).toOption
 := by
   intro h₁ h₂
+  have h₃ := consistent_checks_ensure_consistency h₂
   simp [evaluatePolicy] at h₁
   split at h₁ <;> try cases h₁
   split at h₁ <;> try cases h₁
@@ -92,15 +92,41 @@ theorem partial_evaluate_policy_is_sound
   rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
   simp [Except.mapError] at h₁₁
   split at h₁₁ <;> try cases h₁₁
-  rename_i env _ _ ty _ _ heq
-  have : RequestAndEntitiesMatchEnvironment env req₁ es₁ := by sorry
-  have h₃ := typechecked_is_well_typed_after_lifting this heq
-  have h₄ : IsConsistent req₁ es₁ req₂ es₂ := by sorry
-  have h₅ := partial_evaluate_is_sound h₃ this h₄
+  rename_i env heq₁ _ ty _ _ heq₂
+  simp [isValidAndConsistent] at h₂
+  split at h₂ <;> try cases h₂
+  rename_i heq₃
+  simp [heq₁] at heq₃
+  subst heq₃
+  rcases do_eq_ok₂ h₂ with ⟨h₂₁, h₂₂⟩
+  simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₂₁
+  split at h₂₁ <;> try cases h₂₁
+  rename_i heq₃
+  simp only [not_or, Bool.not_eq_false] at heq₃
+  rcases heq₃ with ⟨_, heq₃⟩
+  simp only [isValidAndConsistent.entitiesIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂₂
+  split at h₂₂ <;> try cases h₂₂
+  rename_i heq₄
+  simp only [not_or, Bool.not_eq_false] at heq₄
+  rcases heq₄ with ⟨_, heq₄⟩
+  simp [Except.isOk, Except.toBool] at heq₄
+  split at heq₄ <;> cases heq₄
+  rename_i heq₄
+  have h₄ := request_and_entities_match_env heq₃ heq₄
+  have h₅ := typechecked_is_well_typed_after_lifting h₄ heq₂
+  have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
   subst h₁₂
-  have h₆ := type_of_preserves_evaluation_results (empty_capabilities_invariant req₁ es₁) this heq
-  have h₇ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req₁ es₁ = Spec.evaluate policy.toExpr req₁ es₁ := by sorry
-  simp [h₇] at h₆
-  rw [h₆, type_lifting_preserves_expr]
-  exact h₅
+  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req₁ es₁) h₄ heq₂
+  have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req₁ es₁ = Spec.evaluate policy.toExpr req₁ es₁ := by
+    simp [RequestAndEntitiesMatchEnvironment] at h₄
+    rcases h₄ with ⟨h₄, _⟩
+    simp [InstanceOfRequestType] at h₄
+    rcases h₄ with ⟨_, h₄, _⟩
+    rw [←h₄]
+    exact substitute_action_preserves_evaluation policy.toExpr req₁ es₁
+  simp [h₈] at h₇
+  rw [h₇, type_lifting_preserves_expr]
+  exact h₆
 end Cedar.Thm

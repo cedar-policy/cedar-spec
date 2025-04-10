@@ -67,6 +67,11 @@ theorem do_ok' {res : Except ε α} {f : α → Except ε β} :
   ∃ a, res = .ok a ∧ f a = .ok b
 := by cases res <;> simp
 
+theorem do_eq_ok₂ {res₁ res₂: Except ε PUnit} :
+  (do res₁ ; res₂) = .ok () → res₁ = .ok () ∧ res₂ = .ok ()
+:= by
+  cases res₁ <;> cases res₂ <;> simp
+
 theorem to_option_some {v : α} {res: Except ε α} :
   res.toOption = .some v ↔ res = .ok v
 := by
