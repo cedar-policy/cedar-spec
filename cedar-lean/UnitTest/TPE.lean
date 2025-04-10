@@ -236,7 +236,7 @@ def tests :=
             (.prim (.entityUID { ty := { id := "User", path := [] }, eid := "Alice" }))
             (.entity { id := "User", path := [] }))
         (.bool .anyBool)),
-    testResult policy₃ schema req es (.val false (.bool .ff))
+    testResult policy₃ schema req es (.val false (.bool .anyBool))
   ]
 --#eval TestSuite.runAll [tests]
 
@@ -545,7 +545,7 @@ def tests :=
   [
     -- x in x -> true
     testResult policy₀ schema req es
-    (.val (.prim (.bool true)) (.bool .tt)),
+    (.val (.prim (.bool true)) (.bool .anyBool)),
     -- A0::"a0" (LHS) does not exist in the entities and hence is unknown
     testResult policy₁ schema req es
     (.binaryApp .mem
@@ -558,7 +558,7 @@ def tests :=
     (.bool .anyBool)),
     -- A0::"a0" in (if (1 + 2) < 5 then A0::"a0" else A0::"a00")
     testResult policy₂ schema req es
-    (.val (.prim (.bool true)) (.bool (.tt))),
+    (.val (.prim (.bool true)) (.bool .anyBool)),
     -- A0::"a0" in (if (1 + 6) < 5 then A0::"a0" else A0::"a00")
     testResult policy₃ schema req es
     (.binaryApp .mem
@@ -574,7 +574,7 @@ def tests :=
     (.error (.bool .anyBool)),
     -- and x y -> false where x contains integer overflow
     testResult policy₅ schema req es
-    (.error (.bool .ff)),
+    (.error (.bool .anyBool)),
     -- or x y -> error where x is false and y contains integer overflow
     testResult policy₆ schema req es
     (.error (.bool .anyBool)),
