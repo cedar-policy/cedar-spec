@@ -131,49 +131,187 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     )
   case _ c₁ env x₁ x₂ x₃ hᵢ₁ hᵢ₂ hᵢ₃ =>
     simp [typeOf] at h₃
-    generalize hᵢ : typeOf x₁ c₁ env = res₁
+    generalize h₁ᵢ : typeOf x₁ c₁ env = res₁
     cases res₁
     case ok ty =>
-      simp [hᵢ] at h₃
+      simp [h₁ᵢ] at h₃
       simp [typeOfIf, ok] at h₃
-      specialize hᵢ₁ h₁ h₂ hᵢ
+      specialize hᵢ₁ h₁ h₂ h₁ᵢ
       split at h₃
       case _ heq =>
         simp [do_ok] at h₃
         rcases h₃ with ⟨_, _, h₃₁, h₃₂, h₃₃⟩
         subst h₃₂
-        simp [evaluate, TypedExpr.toExpr]
-        sorry
+        simp only [evaluate, TypedExpr.toExpr, ←hᵢ₁]
+        generalize h₃ : evaluate x₁ request entities = res₁
+        cases res₁
+        case _ => simp only [Result.as, Except.bind_err, ite_self]
+        case _ =>
+          have h₄ := type_of_is_sound h₁ h₂ h₁ᵢ
+          rcases h₄ with ⟨h₄₁, _, h₄₂, h₄₃⟩
+          rw [heq] at h₄₃
+          replace h₄₃ := instance_of_tt_is_true h₄₃
+          subst h₄₃
+          simp [EvaluatesTo, h₃] at h₄₂
+          subst h₄₂
+          simp [Result.as, Coe.coe, Value.asBool]
+          simp [GuardedCapabilitiesInvariant] at h₄₁
+          specialize h₄₁ h₃
+          exact hᵢ₂ _ (capability_union_invariant h₁ h₄₁) h₂ h₃₁
       case _ heq =>
-        sorry
-      case _ heq => sorry
-      case _ => simp [err] at h₃
-    case error =>
-      simp [hᵢ] at h₃
-  case _ hᵢ₁ hᵢ₂ =>
+        simp [do_ok] at h₃
+        rcases h₃ with ⟨_, h₃₁, h₃₂⟩
+        subst h₃₂
+        simp only [evaluate, TypedExpr.toExpr, ←hᵢ₁]
+        generalize h₃ : evaluate x₁ request entities = res₁
+        cases res₁
+        case _ => simp only [Result.as, Except.bind_err, ite_self]
+        case _ =>
+          have h₄ := type_of_is_sound h₁ h₂ h₁ᵢ
+          rcases h₄ with ⟨h₄₁, _, h₄₂, h₄₃⟩
+          rw [heq] at h₄₃
+          replace h₄₃ := instance_of_ff_is_false h₄₃
+          subst h₄₃
+          simp [EvaluatesTo, h₃] at h₄₂
+          subst h₄₂
+          simp [Result.as, Coe.coe, Value.asBool]
+          exact hᵢ₃ h₁ h₂ h₃₁
+      case _ heq =>
+        simp [do_ok'] at h₃
+        rcases h₃ with ⟨_, _, h₃₁, _, _, h₃₂, h₃₃⟩
+        split at h₃₃ <;> simp [err] at h₃₃
+        rcases h₃₃ with ⟨h₃₃, _⟩
+        subst h₃₃
+        simp [TypedExpr.toExpr, evaluate, ←hᵢ₁]
+        generalize h₃ : evaluate x₁ request entities = res₁
+        cases res₁
+        case _ => simp only [Result.as, Except.bind_err, ite_self]
+        case _ =>
+          have h₄ := type_of_is_sound h₁ h₂ h₁ᵢ
+          rcases h₄ with ⟨h₄₁, _, h₄₂, h₄₃⟩
+          rw [heq] at h₄₃
+          rcases instance_of_anyBool_is_bool h₄₃ with ⟨b₁, h₄₃⟩
+          subst h₄₃
+          simp [EvaluatesTo, h₃] at h₄₂
+          subst h₄₂
+          simp [Result.as, Coe.coe, Value.asBool]
+          cases b₁
+          case _ =>
+            simp only [Bool.false_eq_true, ↓reduceIte]
+            exact hᵢ₃ h₁ h₂ h₃₂
+          case _ =>
+            simp only [↓reduceIte]
+            simp [GuardedCapabilitiesInvariant] at h₄₁
+            specialize h₄₁ h₃
+            exact hᵢ₂ _ (capability_union_invariant h₁ h₄₁) h₂ h₃₁
+      case _ => simp only [err, reduceCtorEq] at h₃
+    case error => simp only [h₁ᵢ, Except.bind_err, reduceCtorEq] at h₃
+  case _ c₁ env x₁ x₂ hᵢ₁ hᵢ₂ =>
     simp [typeOf, do_ok'] at h₃
     rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
+    specialize hᵢ₁ h₁ h₂ h₃₁
     simp [typeOfAnd] at h₃₂
     split at h₃₂ <;> simp [ok, err] at h₃₂
     case _ heq =>
       rcases h₃₂ with ⟨h₃₂, _⟩
       subst h₃₂
-      sorry
-    simp [do_ok'] at h₃₂
-    rcases h₃₂ with ⟨_, _, _, h₃₂⟩
-    --split at h₃₂ <;> simp [err] at h₃₂
-    sorry
-  case _ =>
+      simp [evaluate, ←hᵢ₁]
+      generalize h₃ : evaluate x₁ request entities = res₁
+      cases res₁
+      case _ => simp only [Result.as, Except.bind_err]
+      case _ =>
+        have h₄ := type_of_is_sound h₁ h₂ h₃₁
+        rcases h₄ with ⟨_, _, h₄₁, h₄₂⟩
+        rw [heq] at h₄₂
+        replace h₄₂ := instance_of_ff_is_false h₄₂
+        subst h₄₂
+        simp only [EvaluatesTo, h₃, reduceCtorEq, Except.ok.injEq, false_or] at h₄₁
+        subst h₄₁
+        simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
+    case _ heq =>
+      simp [do_ok'] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
+      split at h₃₂₂ <;> simp [err] at h₃₂₂
+      all_goals
+        rcases h₃₂₂ with ⟨h₃₂₂, _⟩
+        subst h₃₂₂
+        have h₄ := type_of_is_sound h₁ h₂ h₃₁
+        rcases h₄ with ⟨h₄₁, _, h₄₂, h₄₃⟩
+        simp [TypedExpr.toExpr, evaluate, ←hᵢ₁]
+        generalize h₃ : evaluate x₁ request entities = res₁
+        cases res₁
+        case _ => simp only [Result.as, Except.bind_err]
+        case _ =>
+          rw [heq] at h₄₃
+          rcases instance_of_bool_is_bool h₄₃ with ⟨b₁, h₄₃⟩
+          simp [EvaluatesTo, h₃] at h₄₂
+          subst h₄₂
+          subst h₄₃
+          cases b₁
+          case _ =>
+            simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
+          case _ =>
+            simp [Result.as, Coe.coe, Value.asBool]
+            simp [GuardedCapabilitiesInvariant] at h₄₁
+            specialize h₄₁ h₃
+            specialize hᵢ₂ _ (capability_union_invariant h₁ h₄₁) h₂ h₃₂₁
+            simp only [hᵢ₂]
+  case _ c₁ env x₁ x₂ hᵢ₁ hᵢ₂ =>
     simp [typeOf, do_ok'] at h₃
     rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
     simp [typeOfOr] at h₃₂
+    specialize hᵢ₁ h₁ h₂ h₃₁
     split at h₃₂ <;> simp [ok, err] at h₃₂
     case _ heq =>
       rcases h₃₂ with ⟨h₃₂, _⟩
       subst h₃₂
-      sorry
-    sorry
-    sorry
+      simp [evaluate, ←hᵢ₁]
+      generalize h₃ : evaluate x₁ request entities = res₁
+      cases res₁
+      case _ => simp [Result.as, Except.bind_err]
+      case _ =>
+        have h₄ := type_of_is_sound h₁ h₂ h₃₁
+        rcases h₄ with ⟨_, _, h₄₁, h₄₂⟩
+        rw [heq] at h₄₂
+        replace h₄₂ := instance_of_tt_is_true h₄₂
+        subst h₄₂
+        simp only [EvaluatesTo, h₃, reduceCtorEq, Except.ok.injEq, false_or] at h₄₁
+        subst h₄₁
+        simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
+    case _ heq =>
+      simp [do_ok'] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
+      specialize hᵢ₂ h₁ h₂ h₃₂₁
+      split at h₃₂₂ <;> simp [err] at h₃₂₂
+      rcases h₃₂₂ with ⟨h₃₂₂, _⟩
+      subst h₃₂₂
+      simp only [evaluate, hᵢ₁, hᵢ₂, bind_pure_comp, TypedExpr.toExpr]
+    case _ heq =>
+      simp [do_ok'] at h₃₂
+      rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
+      specialize hᵢ₂ h₁ h₂ h₃₂₁
+      split at h₃₂₂ <;> simp [err] at h₃₂₂
+      all_goals
+        rcases h₃₂₂ with ⟨h₃₂₂, _⟩
+        subst h₃₂₂
+        have h₄ := type_of_is_sound h₁ h₂ h₃₁
+        rcases h₄ with ⟨h₄₁, _, h₄₂, h₄₃⟩
+        simp [TypedExpr.toExpr, evaluate, ←hᵢ₁]
+        generalize h₃ : evaluate x₁ request entities = res₁
+        cases res₁
+        case _ => simp only [Result.as, Except.bind_err]
+        case _ =>
+          rw [heq] at h₄₃
+          rcases instance_of_bool_is_bool h₄₃ with ⟨b₁, h₄₃⟩
+          simp [EvaluatesTo, h₃] at h₄₂
+          subst h₄₂
+          subst h₄₃
+          cases b₁
+          case _ =>
+            simp only [Result.as, Coe.coe, Value.asBool, hᵢ₂, Except.bind_ok, Bool.false_eq_true,
+              ↓reduceIte]
+          case _ =>
+            simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
   case _ hᵢ =>
     simp [typeOf, do_ok'] at h₃
     rcases h₃ with ⟨_, ⟨_, h₃₁⟩, h₃₂⟩
