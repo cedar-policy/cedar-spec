@@ -95,11 +95,12 @@ theorem partial_evaluate_policy_is_sound
   rename_i env _ _ ty _ _ heq
   have : RequestAndEntitiesMatchEnvironment env req₁ es₁ := by sorry
   have h₃ := typechecked_is_well_typed_after_lifting this heq
-  have h₄ : (Spec.evaluate ty.liftBoolTypes.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate ty.liftBoolTypes req₂ es₂) req₁ es₁).toOption := by sorry
-  rw [←type_lifting_preserves_evaluation_results, ←type_lifting_preserves_tpe_results, h₁₂] at h₄
-  /- missing pieces:
-  * type lifting preserves TPE results (see unproven theorem: `type_lifting_preserves_tpe_results`)
-  * connection between result of `typeOf` and its input in terms of evaluation
-  -/
-  sorry
+  have h₄ : IsConsistent req₁ es₁ req₂ es₂ := by sorry
+  have h₅ := partial_evaluate_is_sound h₃ this h₄
+  subst h₁₂
+  have h₆ := type_of_preserves_evaluation_results (empty_capabilities_invariant req₁ es₁) this heq
+  have h₇ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req₁ es₁ = Spec.evaluate policy.toExpr req₁ es₁ := by sorry
+  simp [h₇] at h₆
+  rw [h₆, type_lifting_preserves_expr]
+  exact h₅
 end Cedar.Thm

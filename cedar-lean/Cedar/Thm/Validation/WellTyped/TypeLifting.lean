@@ -92,10 +92,6 @@ theorem type_lifting_preserves_evaluation_results {x : TypedExpr} {request : Req
  := by
  simp only [type_lifting_preserves_expr x]
 
-theorem type_lifting_preserves_tpe_results {req₂ es₂ req₁ es₁} {x : TypedExpr} :
-  (TPE.evaluate x req₂ es₂).evaluate req₁ es₁ = (TPE.evaluate x.liftBoolTypes req₂ es₂).evaluate req₁ es₁
- := by sorry
-
 inductive Lifted : CedarType → CedarType → Prop
   | bool {bty : BoolType} :
     Lifted (.bool bty) (.bool .anyBool)

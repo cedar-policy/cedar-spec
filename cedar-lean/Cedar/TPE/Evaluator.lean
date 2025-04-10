@@ -228,7 +228,7 @@ def evaluatePolicy (schema : Schema)
         do
           let expr := substituteAction env.reqty.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-          .ok (evaluate te req es)
+          .ok (evaluate te.liftBoolTypes req es)
       else .error .invalidRequestOrEntities
     | .none => .error .invalidEnvironment
 
