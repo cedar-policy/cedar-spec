@@ -113,9 +113,29 @@ theorem typechecked_is_well_typed_after_lifting_ite
         simp only [heq₂, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at h₂
         rcases h₂ with ⟨h₂, _⟩
         subst h₂
-        exact hᵢ₂ ty₁.snd h₁ heq₂
-    case _ =>
-      exact hᵢ₃ h₁ h₂
+        simp [TypedExpr.liftBoolTypes, ←type_of_after_lifted_is_lifted]
+        constructor
+        · exact hᵢ₁ h₁ heq
+        · exact hᵢ₂ ty₁.snd h₁ heq₂
+        · exact hᵢ₂ ty₁.snd h₁ heq₂
+        · simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+        · rfl
+    case _ heq₁ =>
+      generalize heq₂ : typeOf elseExpr c₁ env = res₃
+      cases res₃
+      case error =>
+        simp only [heq₂, Except.bind_err, reduceCtorEq] at h₂
+      case ok ty' =>
+        simp only [heq₂, ok, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at h₂
+        rcases h₂ with ⟨h₂, _⟩
+        subst h₂
+        simp [TypedExpr.liftBoolTypes, ←type_of_after_lifted_is_lifted]
+        constructor
+        · exact hᵢ₁ h₁ heq
+        · exact hᵢ₃ h₁ heq₂
+        · exact hᵢ₃ h₁ heq₂
+        · simp [type_of_after_lifted_is_lifted, heq₁, CedarType.liftBoolTypes, BoolType.lift]
+        · rfl
     case _ ty₁ _ heq₁ =>
       generalize heq₂ : typeOf thenExpr (c₁ ∪ ty₁.snd) env = res₂
       cases res₂

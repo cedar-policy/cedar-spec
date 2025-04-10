@@ -26,21 +26,24 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
-  (h₁ : typeOf (Expr.or x₁ x₂) c env = Except.ok (ty, c')) :
-  ∃ bty₁ c₁,
-    (typeOf x₁ c env).typeOf = .ok (.bool bty₁, c₁) ∧
+theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Environment} {tx : TypedExpr}
+  (h₁ : typeOf (Expr.or x₁ x₂) c env = Except.ok (tx, c')) :
+  ∃ tx₁ bty₁ c₁,
+    typeOf x₁ c env = .ok (tx₁, c₁) ∧
+    tx₁.typeOf = .bool bty₁ ∧
     if bty₁ = BoolType.tt
-    then ty.typeOf = .bool BoolType.tt ∧ c' = ∅
-    else ∃ bty₂ c₂,
-      (typeOf x₂ c env).typeOf = .ok (.bool bty₂, c₂) ∧
+    then tx = tx₁ ∧ c' = ∅
+    else ∃ bty tx₂ bty₂ c₂,
+      tx = (.or tx₁ tx₂ (.bool bty)) ∧
+      typeOf x₂ c env = .ok (tx₂, c₂) ∧
+      tx₂.typeOf = .bool bty₂ ∧
       if bty₁ = BoolType.ff
-      then ty.typeOf = .bool bty₂ ∧ c' = c₂
+      then bty = bty₂ ∧ c' = c₂
       else if bty₂ = BoolType.tt
-      then ty.typeOf = .bool BoolType.tt ∧ c' = ∅
+      then bty = BoolType.tt ∧ c' = ∅
       else if bty₂ = BoolType.ff
-      then ty.typeOf = .bool BoolType.anyBool ∧ c' = c₁
-      else ty.typeOf = .bool BoolType.anyBool ∧ c' = c₁ ∩ c₂
+      then bty = BoolType.anyBool ∧ c' = c₁
+      else bty = BoolType.anyBool ∧ c' = c₁ ∩ c₂
 := by
   simp [typeOf] at h₁
   cases h₂ : typeOf x₁ c env <;> simp [h₂] at *
@@ -49,21 +52,23 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   split at h₁ <;> simp [ok, err] at h₁ <;>
   rename_i hr₁
   case ok.h_1 c₁  =>
-    exists BoolType.tt, res₁.snd
-    simp [←h₁, hr₁, ResultType.typeOf, Except.map]
+    exists res₁.fst, BoolType.tt, res₁.snd
+    simp [←h₁, hr₁]
   case ok.h_2 c₁ =>
-    cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
+    cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁
     rename_i bty₂ hr₂
     have ⟨ht, hc⟩ := h₁
     subst ht hc
-    exists BoolType.ff, res₁.snd
-    simp [hr₁, hr₂, ResultType.typeOf, Except.map]
-    simp [TypedExpr.typeOf]
+    exists res₁.fst, BoolType.ff, res₁.snd
+    simp only [hr₁, hr₂, true_and]
+    exists bty₂, res₂.fst
+    simp only [exists_eq_right_right', true_and]
+    exists bty₂, res₂.snd
   case ok.h_3 bty₁ hneq₁ hneq₂ =>
     cases bty₁ <;> simp at hneq₁ hneq₂
-    exists BoolType.anyBool, res₁.snd
+    exists res₁.fst, BoolType.anyBool, res₁.snd
     simp [hr₁]
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at *
     rename_i res₂
@@ -71,13 +76,25 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     rename_i hr₂ <;>
     have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [hr₁, ResultType.typeOf, Except.map]
     case anyBool.ok.h_1 =>
+      exists BoolType.tt, res₂.fst
+      simp only [hr₂, true_and]
       exists BoolType.tt, res₂.snd
     case anyBool.ok.h_2 =>
+      exists BoolType.anyBool, res₂.fst
+      simp only [true_and]
       exists BoolType.ff, res₂.snd
     case anyBool.ok.h_3 bty₂ hneq₁ hneq₂ =>
+      exists BoolType.anyBool, res₂.fst
+      simp
       exists bty₂, res₂.snd
-      simp [←hr₂, TypedExpr.typeOf]
-      cases bty₂ <;> simp at *
+      simp [←hr₂]
+      constructor
+      · intro heq
+        specialize hneq₁ heq
+        contradiction
+      · intro heq
+        specialize hneq₂ heq
+        contradiction
 
 theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
@@ -88,30 +105,30 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   GuardedCapabilitiesInvariant (Expr.or x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.or x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
 := by
-  have ⟨bty₁, rc₁, h₄, h₅⟩ := type_of_or_inversion h₃
-  split_type_of h₄ ; rename_i h₄ hl₄ hr₄
+  have ⟨tx₁, bty₁, rc₁, h₄, h₅, h₆⟩ := type_of_or_inversion h₃
   specialize ih₁ h₁ h₂ h₄
   have ⟨ih₁₁, v₁, ih₁₂, ih₁₃⟩ := ih₁
-  rw [hl₄] at ih₁₃
+  rw [h₅] at ih₁₃
   have ⟨b₁, hb₁⟩ := instance_of_bool_is_bool ih₁₃ ; subst hb₁
-  split at h₅
-  case isTrue h₆ =>
-    subst h₆
-    have ⟨hty, hc⟩ := h₅ ; rw [hty] at * ; subst hc
+  split at h₆
+  case isTrue h₇ =>
+    subst h₇
+    have ⟨hty, hc⟩ := h₆ ; rw [hty] at * ; subst hc
     apply And.intro empty_guarded_capabilities_invariant
     have h₇ := instance_of_tt_is_true ih₁₃
     simp at h₇ ; subst h₇
     simp [EvaluatesTo] at ih₁₂
+    rw [h₅]
+    exists (.prim (.bool true))
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-    try exact type_is_inhabited (CedarType.bool BoolType.tt)
     exact true_is_instance_of_tt
   case isFalse =>
-    have ⟨bty₂, rc₂, h₅', h₇⟩ := h₅
-    split_type_of h₅' ; rename_i h₅' hl₅ hr₅
-    specialize ih₂ h₁ h₂ h₅'
+    have ⟨bty, tx₂, bty₂, rc₂, h₅', h₇, h₈, h₉⟩ := h₆
+    subst ty
+    specialize ih₂ h₁ h₂ h₇
     have ⟨ih₂₁, v₂, ih₂₂, ih₂₃⟩ := ih₂
-    rw [hl₅] at ih₂₃
+    rw [h₈] at ih₂₃
     have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
     subst hb₂
     simp [EvaluatesTo]
@@ -123,19 +140,21 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     case false.inr.inr.inr.inr.inr.inr =>
       cases b₂ <;>
       simp [CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe, Coe.coe]
-      case false h₆ _ _ =>
-        cases bty₁ <;> simp at h₆ h₇
+      case false h₉ =>
+        cases bty₁ <;> simp at h₉ h₈
         case anyBool =>
-          cases bty₂ <;> simp at h₇ <;>
-          have ⟨h₇, _⟩ := h₇ <;> rw [h₇] at * <;>
+          cases bty₂ <;> simp at h₉ <;>
+          replace ⟨h₉, _⟩ := h₉ <;> rw [h₉] <;>
           try exact bool_is_instance_of_anyBool false
           exact ih₂₃
         case ff =>
-          rw [h₇.left]
+          rw [h₉.left]
           exact ih₂₃
-      case true h₆ _ _ =>
-        cases bty₁ <;> cases bty₂ <;> simp at h₆ h₇ <;>
-        have ⟨hty, hc⟩ := h₇ <;> simp [hty, hc] at *
+        case tt =>
+          contradiction
+      case true h₉ =>
+        cases bty₁ <;> cases bty₂ <;> simp at h₉ h₈ <;>
+        have ⟨hty, hc⟩ := h₉ <;> simp [hty, hc] at *
         case ff.ff =>
           rcases ih₂₃ with ⟨_, _, ih₂₃⟩
           simp [InstanceOfBoolType] at ih₂₃
@@ -150,12 +169,10 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
           apply And.intro
           · simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
             apply capability_intersection_invariant
-            rw [←hr₅]
             simp [ih₂₁]
           · apply bool_is_instance_of_anyBool
         all_goals {
           simp [GuardedCapabilitiesInvariant, ih₂₂] at ih₂₁
-          rw [←hr₅]
           simp [ih₂₁]
           first
             | apply true_is_instance_of_tt
@@ -164,19 +181,17 @@ theorem type_of_or_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     all_goals {
       simp [GuardedCapabilitiesInvariant] at ih₁₁ ih₂₁
       simp [ih₁₂] at ih₁₁ ; simp [ih₂₂] at ih₂₁
-      rename_i h₆ _ _
+      rename_i h₁₀
       rcases ih₁₃ with ⟨_, _, ih₁₃⟩
       simp [InstanceOfBoolType] at ih₁₃
-      cases bty₁ <;> simp at h₆ ih₁₃ h₇
-      cases bty₂ <;> simp at h₇ <;>
-      have ⟨ht, hc⟩ := h₇ <;> simp [ht, hc] at * <;>
-      simp [true_is_instance_of_tt, bool_is_instance_of_anyBool] <;>
+      cases bty₁ <;> simp at h₁₀ ih₁₃ h₈
+      cases bty₂ <;> simp at h₉ <;>
+      have ⟨ht, hc⟩ := h₉ <;> simp [ht, hc] at * <;>
+      simp [TypedExpr.typeOf, true_is_instance_of_tt, bool_is_instance_of_anyBool] <;>
       try { apply empty_capabilities_invariant } <;>
-      subst rc₁ rc₂ <;>
       try { assumption }
       apply capability_intersection_invariant
       simp [ih₁₁]
     }
-
 
 end Cedar.Thm
