@@ -432,11 +432,7 @@ theorem intersects_iff_exists {α} [LT α] [StrictLT α] [DecidableLT α] [Decid
 theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   WellFormed (s₁ ∪ s₂)
 := by
-  unfold WellFormed
-  simp only [Union.union, union, toList]
-  rw [make_make_eqv]
-  apply List.Equiv.symm
-  exact elts_make_equiv
+  simp only [Union.union, union, make_wf]
 
 theorem mem_union_iff_mem_or [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   ∀ a, a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
