@@ -41,7 +41,9 @@ pub use cedar_testing::cedar_test_impl::{
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 use miette::miette;
+use std::collections::BTreeMap;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 /// Times for cedar-policy authorization and validation.
 pub const RUST_AUTH_MSG: &str = "rust_auth (ns) : ";
@@ -99,6 +101,29 @@ pub fn run_eval_test(
             )
         }
     }
+}
+
+/// A specialized version of `run_eval_test` for targeting a single extension type constructor.
+pub fn run_ext_constructor_test(
+    custom_impl: &impl CedarTestImplementation,
+    constructor: ast::Name,
+    ext_str: String,
+){
+    run_eval_test(
+        custom_impl,
+        ast::Request::new::<ast::RequestSchemaAllPass>(
+            (r#"P::"""#.parse().unwrap(), None),
+            (r#"Action::"""#.parse().unwrap(), None),
+            (r#"R::"""#.parse().unwrap(), None),
+            ast::Context::Value(Arc::new(BTreeMap::new())),
+            None,
+            Extensions::all_available(),
+        )
+        .unwrap(),
+        &ast::Expr::call_extension_fn(constructor, vec![ast::Expr::val(ext_str)]),
+        &Entities::new(),
+        true,
+    )
 }
 
 /// Compare the behavior of the authorizer in `cedar-policy` against a custom Cedar

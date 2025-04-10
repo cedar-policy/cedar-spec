@@ -78,6 +78,29 @@ initialize_corpus() {
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
 
+  datetime-parser-drt)
+    sed -En 's/test(Inv|V)alidDatetime "([^"]*)".*/\2/p' ../cedar-lean/UnitTest/Datetime.lean |
+    while read p ; do
+      echo "$p" > "$corpus_dir/$(uuidgen)"
+    done ;;
+
+  duration-parser-drt)
+    sed -En 's/test(Inv|V)alidDuration "([^"]*)".*/\2/p' ../cedar-lean/UnitTest/Datetime.lean |
+    while read p ; do
+      echo "$p" > "$corpus_dir/$(uuidgen)"
+    done ;;
+
+  ip-parser-drt)
+    sed -En 's/test(Inv|V)alid "([^"]*)".*/\2/p' ../cedar-lean/UnitTest/IPAddr.lean |
+    while read p ; do
+      echo "$p" > "$corpus_dir/$(uuidgen)"
+    done ;;
+
+  decimal-parser-drt)
+    sed -En 's/test(Inv|V)alid "([^"]*)".*/\2/p' ../cedar-lean/UnitTest/Decimal.lean |
+    while read p ; do
+      echo "$p" > "$corpus_dir/$(uuidgen)"
+    done ;;
   *)
     echo "Nothing to do for fuzz target $1"
     return ;;

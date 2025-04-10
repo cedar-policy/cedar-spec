@@ -217,3 +217,27 @@ name = "level-validation-drt"
 path = "fuzz_targets/level-validation-drt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "datetime-parser-drt"
+path = "fuzz_targets/datetime-parser-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "duration-parser-drt"
+path = "fuzz_targets/duration-parser-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "decimal-parser-drt"
+path = "fuzz_targets/decimal-parser-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "ip-parser-drt"
+path = "fuzz_targets/ip-parser-drt.rs"
+test = false
+doc = false
