@@ -26,14 +26,14 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_inversion
-  (h₁ : (typeOf (Expr.lit l) c₁ env) = Except.ok (tx, c₂)) :
-  ∃ ty, TypedExpr.lit l ty = tx
+theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedExpr} {env : Environment}
+  (h₁ : (typeOf (.lit p) c₁ env) = .ok (tx, c₂)) :
+  ∃ ty, tx = .lit p ty
 := by
-  simp [typeOf, typeOfLit, ok, err] at h₁
-  (split at h₁ <;> try split at h₁) <;>
-  try simp only [reduceCtorEq, Except.ok.injEq, Prod.mk.injEq] at h₁ <;>
-  simp [←h₁]
+  simp only [typeOf, typeOfLit, ok, err, Function.comp_apply] at h₁
+  (split at h₁ <;> try split at h₁) <;> first
+  | simp only [reduceCtorEq] at h₁
+  | injections h₁ h₁ ; simp [←h₁]
 
 theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (ty, c₂)) :
@@ -57,35 +57,6 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       apply InstanceOfType.instance_of_string |
       apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
   }
-
-theorem type_of_lit_is_lit {p : Prim} {c₁ c₂ : Capabilities} {ty : TypedExpr} {env : Environment} :
-  typeOf (.lit p) c₁ env = .ok (ty, c₂) →
-  ∃ t, ty = (.lit p t)
-:= by
-  intro h
-  simp [typeOf, typeOfLit] at h
-  split at h <;> simp [ok] at h
-  case _ =>
-    rcases h with ⟨h, _⟩
-    subst h
-    exists (.bool .tt)
-  case _ =>
-    rcases h with ⟨h, _⟩
-    subst h
-    exists (.bool .ff)
-  case _ =>
-    rcases h with ⟨h, _⟩
-    subst h
-    exists .int
-  case _ =>
-    rcases h with ⟨h, _⟩
-    subst h
-    exists .string
-  case _ uid =>
-    split at h <;> simp [err] at h
-    rcases h with ⟨h, _⟩
-    subst h
-    exists (.entity uid.ty)
 
 theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)

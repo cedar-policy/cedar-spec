@@ -375,17 +375,17 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
       constructor
       · exact hᵢ₁ h₁ hᵢ₁'
       · exact hᵢ₂ h₁ hᵢ₂'
-      · rcases type_of_lit_is_lit hᵢ₁' with ⟨ty₁, hᵢ₁'⟩
+      · rcases type_of_lit_inversion hᵢ₁' with ⟨ty₁, hᵢ₁'⟩
         rw [hᵢ₁']
-        rcases type_of_lit_is_lit hᵢ₂' with ⟨ty₂, hᵢ₂'⟩
+        rcases type_of_lit_inversion hᵢ₂' with ⟨ty₂, hᵢ₂'⟩
         rw [hᵢ₂']
         simp [TypedExpr.liftBoolTypes]
         exact BinaryOp.WellTyped.eq_lit
       · exact hᵢ₁ h₁ hᵢ₁'
       · exact hᵢ₂ h₁ hᵢ₂'
-      · rcases type_of_lit_is_lit hᵢ₁' with ⟨ty₁, hᵢ₁'⟩
+      · rcases type_of_lit_inversion hᵢ₁' with ⟨ty₁, hᵢ₁'⟩
         rw [hᵢ₁']
-        rcases type_of_lit_is_lit hᵢ₂' with ⟨ty₂, hᵢ₂'⟩
+        rcases type_of_lit_inversion hᵢ₂' with ⟨ty₂, hᵢ₂'⟩
         rw [hᵢ₂']
         simp [TypedExpr.liftBoolTypes]
         exact BinaryOp.WellTyped.eq_lit

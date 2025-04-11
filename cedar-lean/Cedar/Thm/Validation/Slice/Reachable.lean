@@ -49,7 +49,7 @@ theorem checked_eval_entity_lit_is_action {p : Prim} {n nmax : Nat} {c c' : Capa
   case entityUID =>
     replace he : euid = env.reqty.action := by
       replace ⟨ _, ht ⟩ := type_of_lit_inversion ht
-      rw [←ht] at hel
+      rw [ht] at hel
       cases hel
       simp only [evaluate, Except.ok.injEq] at he
       rw [←he] at ha
