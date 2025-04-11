@@ -403,6 +403,46 @@ theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [Decida
   m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
 := Iff.intro find?_none_all_absent all_absent_find?_none
 
+theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
+  (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
+  (h₂ : k ∈ ks) :
+  (Map.mk kvs).find? k = fn k
+:= by
+  simp only [Map.find?, Map.kvs]
+  cases h₂
+  case head l =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn k <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (l.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp [ht₁ , Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    subst h₁
+    simp
+  case tail h t h₂  =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
+    cases hf : fn h <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
+    cases ht₁ : (t.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [ht₁, Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    subst h₁
+    simp only [List.find?]
+    cases h₃ : (h == k)
+    · simp only
+      exact find?_mapM_key_id ht₁ h₂
+    · simp only [beq_iff_eq] at h₃
+      simp [h₃, ←hf]
+
+theorem mapM_key_id_key_none_implies_find?_none {α β : Type} [DecidableEq α] [LT α] [StrictLT α] [DecidableLT α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
+  (h₂ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
+  (h₁ : fn k = none) :
+  (Map.make kvs).find? k = none
+:= by
+  by_cases h₃ : k ∈ ks
+  case pos =>
+    have ⟨ _, _, h₄ ⟩ := List.mapM_some_implies_all_some h₂ k h₃
+    simp [h₁] at h₄
+  case neg =>
+    simp only [Map.find?_none_iff_all_absent, Map.kvs, Map.make]
+    intro v hl'
+    have h₄ := List.in_canonicalize_in_list hl'
+    exact List.not_mem_implies_not_mem_mapM_key_id h₂ h₃ v h₄
+
 theorem mapOnValues_wf [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {m : Map α β} :
   m.WellFormed ↔ (m.mapOnValues f).WellFormed
 := by
