@@ -393,6 +393,29 @@ theorem mapM_head_tail {α β γ} {f : α → Except β γ} {x : α} {xs : List 
   cases h₂ : mapM' f xs <;>
   simp [h₂, pure, Except.pure]
 
+theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
+  (hm : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
+  (hl : k ∉ ks) :
+  ∀ v, (k, v) ∉ kvs
+:= by
+  intro v hl'
+  cases ks
+  case nil =>
+    have : kvs = [] := by simpa using hm
+    subst kvs
+    cases hl'
+  case cons head tail =>
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
+    cases hm₁ : fn head <;> simp only [hm₁, Option.none_bind, Option.some_bind, reduceCtorEq] at hm
+    cases hm₂ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    subst kvs
+    cases hl'
+    case head =>
+      exact hl (List.Mem.head _)
+    case tail tail' ht' =>
+      replace hl : k ∉ tail := (hl $ List.Mem.tail _ ·)
+      exact not_mem_implies_not_mem_mapM_key_id  hm₂ hl _ ht'
+
 theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α} {ys : List β} :
   List.mapM' f xs = .ok ys ↔
   List.Forall₂ (λ x y => f x = .ok y) xs ys
