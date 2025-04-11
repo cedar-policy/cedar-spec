@@ -21,6 +21,10 @@ import Cedar.Thm.TPE.Input
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.Validation
 
+/-!
+This file defines the main theorem of TPE soundness and its associated lemmas.
+-/
+
 namespace Cedar.Thm
 
 open Cedar.TPE
@@ -28,6 +32,11 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.Thm
 
+/-- The main lemma: Evaluating a residual derived from partially evaluating
+a well-typed expression is equivalent to that of evaluating the original
+expression, provided that requests and entities are consistent. The equivalency
+is defined using `Except.toOption`.
+-/
 theorem partial_evaluate_is_sound
   {x : TypedExpr}
   {req₁ : Request}
@@ -71,6 +80,12 @@ theorem partial_evaluate_is_sound
   case call xfn args ty hᵢ₁ =>
     exact partial_evaluate_is_sound_call hᵢ₁
 
+/-- The main theorem of TPE: Evaluating a result residual is equivalent to
+evaluating the input policy, given valid and consistent requests and entities.
+The equivalence is w.r.t authorization results. That is, the evaluation results
+are strictly equal when they are `.ok` or both errors (captured by
+`Except.toOption`).
+-/
 theorem partial_evaluate_policy_is_sound
   {schema : Schema}
   {residual : Residual}

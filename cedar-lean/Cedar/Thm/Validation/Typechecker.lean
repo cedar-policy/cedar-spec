@@ -110,6 +110,7 @@ theorem forall₂_impies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : Lis
   case cons h₁ h₂ =>
     simp only [List.mapM_cons, h₁, forall₂_impies_mapM_eq f g h₂, bind_pure_comp]
 
+/- TODO: make it a general theorem -/
 theorem type_of_ok_attr_list {c₁ env atys request entities} {axs : List (Attr × Expr)} :
   List.Forall₂ (fun x y => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env) = Except.ok y) axs atys →
   (∀ (a₁ : Attr) (x₁ : Expr),
@@ -146,6 +147,7 @@ theorem type_of_ok_attr_list {c₁ env atys request entities} {axs : List (Attr 
         exact h₂ a' x₁ this
       exact type_of_ok_attr_list h₄ this
 
+/- TODO: make it a general theorem -/
 theorem type_of_ok_list {c₁ env xs ys request entities} :
   List.Forall₂ (fun x y => justType (typeOf x c₁ env) = Except.ok y) xs ys →
   (∀ (x₁ : Expr),
@@ -174,6 +176,7 @@ theorem type_of_ok_list {c₁ env xs ys request entities} :
         exact h₂ x₁ this
       exact type_of_ok_list h₄ this
 
+/- We need this theorem because inlining it will require higher heartbeats -/
 theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities} {xs : List Expr} {tys : List TypedExpr} :
   typeOfCall xfn tys xs = Except.ok (ty, c₂) →
   List.mapM (fun x => evaluate x request entities) xs = List.mapM (fun y => evaluate y.toExpr request entities) tys →
@@ -193,6 +196,9 @@ theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities}
     subst h₁
     simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM fun x => evaluate x request entities, List.map₁_eq_map, List.mapM_map, h₂]
 
+/-- The type checker, if succeeds, should produce a typed expression that
+evaluates to the same result as the input expression.
+-/
 theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities} :
   CapabilitiesInvariant c₁ request entities →
   RequestAndEntitiesMatchEnvironment env request entities →

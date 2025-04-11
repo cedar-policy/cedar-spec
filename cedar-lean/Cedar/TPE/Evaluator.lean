@@ -216,6 +216,18 @@ decreasing_by
     try simp at h
     omega
 
+/-- Partially evaluating a policy.
+Note that this function actually evaluates a type-lifted version of `TypedExpr`
+produced by the type checker, as opposed to evaluating the expression directly.
+This design is to simplify proofs otherwise we need to prove theorems that
+state type-lifting (i.e, `TypedExpr.liftBoolTypes`) do not change the results
+of evaluating residuals. The soundness theorem still holds. That is,
+reauthorizing the residuals produces the same outcome as authorizing the input
+expressions with consistent requests/entities. It is just that the types in the
+residuals are all lifted. We essentially trade efficiency for ease of proofs,
+which I (Shaobo) think is fine because the Lean model is a reference model not
+used in production.
+-/
 def evaluatePolicy (schema : Schema)
   (p : Policy)
   (req : PartialRequest)
