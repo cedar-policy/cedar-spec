@@ -17,7 +17,7 @@
 import Protobuf.Field
 import Protobuf.Message
 import Protobuf.Structures
-import Batteries.Data.UInt
+import Lean.Elab.Tactic.Basic
 
 open Proto
 
