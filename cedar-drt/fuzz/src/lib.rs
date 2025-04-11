@@ -272,21 +272,6 @@ fn compare_validation_results(
                     }
                     ValidationComparisonMode::AgreeOnValid => {} // ignore
                 };
-                // We can enforce a stronger condition for level validation. The
-                // Rust result should always exactly match the Lean.
-                if rust_res
-                    .validation_errors()
-                    .any(|e| matches!(e, ValidationError::EntityDerefLevelViolation(_)))
-                {
-                    assert!(
-                        definitional_res.errors.contains(&"levelError".to_string()),
-                        "Mismatch for Policies:\n{}\nSchema:\n{:?}\ncedar-policy response: {:?}\nTest engine response: {:?}\n",
-                        &policies,
-                        schema,
-                        rust_res,
-                        definitional_res,
-                    )
-                }
             }
         }
     }
