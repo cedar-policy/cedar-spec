@@ -81,10 +81,10 @@ def InstanceOfRequestType (request : Request) (reqty : RequestType) : Prop :=
   InstanceOfEntityType request.resource reqty.resource ∧
   InstanceOfType request.context (.record reqty.context)
 
-def InstanceOfEntityTags (tags : Map Tag Value) (entry : EntitySchemaEntry) : Prop :=
+def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
   match entry.tags? with
-  | .some tty => ∀ v ∈ tags.values, InstanceOfType v tty
-  | .none     => tags = Map.empty
+  | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty
+  | .none     => data.tags = Map.empty
 
 def IsValidEntityEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
   match entry with
@@ -105,7 +105,7 @@ def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
       IsValidEntityEID entry uid.eid ∧
       InstanceOfType data.attrs (.record entry.attrs) ∧
       (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
-      InstanceOfEntityTags data.tags entry
+      InstanceOfEntityTags data entry
 
 /--
 For every action in the entity store, the action's ancestors are consistent
