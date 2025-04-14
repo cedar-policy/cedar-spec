@@ -57,12 +57,12 @@ theorem do_error {res : Except ε α} {e : ε} {f : α → β} :
   res = .error e
 := by cases res <;> simp
 
-theorem do_ok {res : Except ε α} {f : α → β} :
+theorem do_ok_eq_ok {res : Except ε α} {f : α → β} :
   (do let v ← res ; .ok (f v)) = .ok b ↔
   ∃ a, res = .ok a ∧ f a = b
 := by cases res <;> simp
 
-theorem do_ok' {res : Except ε α} {f : α → Except ε β} :
+theorem do_eq_ok {res : Except ε α} {f : α → Except ε β} :
   (do let v ← res ; f v) = .ok b ↔
   ∃ a, res = .ok a ∧ f a = .ok b
 := by cases res <;> simp

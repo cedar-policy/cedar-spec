@@ -289,7 +289,7 @@ theorem well_typed_is_sound_binary_app
     rename_i h₂
     simp only [h₂] at hᵢ₂
     cases hᵢ₂
-  · simp only [inₛ, do_ok] at h₃
+  · simp only [inₛ, do_ok_eq_ok] at h₃
     rcases h₃ with ⟨_, _, h₃⟩
     simp only [← h₃, bool_is_instance_of_anyBool]
   · rename_i uid₁ tag _ _ h₄ _ _
@@ -312,7 +312,7 @@ theorem well_typed_is_sound_binary_app
         simp only [RequestAndEntitiesMatchEnvironment] at h₁
         rcases h₁ with ⟨_, h₁, _⟩
         simp only [InstanceOfEntitySchema] at h₁
-        simp only [Entities.tags, do_ok, Data.Map.findOrErr] at hᵢ
+        simp only [Entities.tags, do_ok_eq_ok, Data.Map.findOrErr] at hᵢ
         split at hᵢ
         · simp only [Except.ok.injEq, exists_eq_left'] at hᵢ
           rename_i entry heq₁
@@ -342,7 +342,7 @@ theorem well_typed_is_sound_has_attr
   simp only [evaluate] at h₃
   generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
   cases res₁ <;> simp [hᵢ'] at h₃
-  simp only [hasAttr, do_ok] at h₃
+  simp only [hasAttr, do_ok_eq_ok] at h₃
   rcases h₃ with ⟨_, _, h₃⟩
   simp only [← h₃, TypedExpr.typeOf, bool_is_instance_of_anyBool]
 
@@ -454,7 +454,7 @@ theorem well_typed_is_sound_set
 (h₃ : evaluate (Expr.set (ls.map₁ λ x => x.val.toExpr)) request entities = Except.ok v)
 : InstanceOfType v (TypedExpr.set ls ty.set).typeOf
 := by
-  simp only [evaluate, do_ok] at h₃
+  simp only [evaluate, do_ok_eq_ok] at h₃
   obtain ⟨v₁, h₃₁, h₃₂⟩ := h₃
   subst h₃₂
   rw [List.map₁_eq_map, List.mapM₁_eq_mapM (λ x => evaluate x request entities)] at h₃₁
@@ -531,7 +531,7 @@ theorem well_typed_is_sound_record
 (h₃ : evaluate (Expr.record (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) m.attach₂)) request entities = Except.ok v) :
   InstanceOfType v (TypedExpr.record m (CedarType.record rty)).typeOf
 := by
-  simp only [evaluate, do_ok] at h₃
+  simp only [evaluate, do_ok_eq_ok] at h₃
   obtain ⟨r, h₄, h₅⟩ := h₃
   subst h₅
   rw [List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))] at h₄

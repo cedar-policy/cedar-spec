@@ -185,7 +185,7 @@ theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities}
   intro h₁ h₂
   simp [typeOfCall] at h₁
   split at h₁ <;>
-  simp [ok, err, do_ok] at h₁ <;>
+  simp [ok, err, do_ok_eq_ok] at h₁ <;>
   try (
     rcases h₁ with ⟨_, _, h₁⟩
     subst h₁
@@ -239,7 +239,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       specialize hᵢ₁ h₁ h₂ h₁ᵢ
       split at h₃
       case _ heq =>
-        simp [do_ok] at h₃
+        simp [do_ok_eq_ok] at h₃
         rcases h₃ with ⟨_, _, h₃₁, h₃₂, h₃₃⟩
         subst h₃₂
         simp only [evaluate, TypedExpr.toExpr, ←hᵢ₁]
@@ -259,7 +259,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
           specialize h₄₁ h₃
           exact hᵢ₂ _ (capability_union_invariant h₁ h₄₁) h₂ h₃₁
       case _ heq =>
-        simp [do_ok] at h₃
+        simp [do_ok_eq_ok] at h₃
         rcases h₃ with ⟨_, h₃₁, h₃₂⟩
         subst h₃₂
         simp only [evaluate, TypedExpr.toExpr, ←hᵢ₁]
@@ -277,7 +277,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
           simp [Result.as, Coe.coe, Value.asBool]
           exact hᵢ₃ h₁ h₂ h₃₁
       case _ heq =>
-        simp [do_ok'] at h₃
+        simp [do_eq_ok] at h₃
         rcases h₃ with ⟨_, _, h₃₁, _, _, h₃₂, h₃₃⟩
         split at h₃₃ <;> simp [err] at h₃₃
         rcases h₃₃ with ⟨h₃₃, _⟩
@@ -307,7 +307,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       case _ => simp only [err, reduceCtorEq] at h₃
     case error => simp only [h₁ᵢ, Except.bind_err, reduceCtorEq] at h₃
   case _ c₁ env x₁ x₂ hᵢ₁ hᵢ₂ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
     specialize hᵢ₁ h₁ h₂ h₃₁
     simp [typeOfAnd] at h₃₂
@@ -329,7 +329,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
         subst h₄₁
         simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
     case _ heq =>
-      simp [do_ok'] at h₃₂
+      simp [do_eq_ok] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
       split at h₃₂₂ <;> simp [err] at h₃₂₂
       all_goals
@@ -357,7 +357,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
             specialize hᵢ₂ _ (capability_union_invariant h₁ h₄₁) h₂ h₃₂₁
             simp only [hᵢ₂]
   case _ c₁ env x₁ x₂ hᵢ₁ hᵢ₂ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨_, _, h₃₁, h₃₂⟩
     simp [typeOfOr] at h₃₂
     specialize hᵢ₁ h₁ h₂ h₃₁
@@ -379,7 +379,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
         subst h₄₁
         simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
     case _ heq =>
-      simp [do_ok'] at h₃₂
+      simp [do_eq_ok] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
       specialize hᵢ₂ h₁ h₂ h₃₂₁
       split at h₃₂₂ <;> simp [err] at h₃₂₂
@@ -387,7 +387,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       subst h₃₂₂
       simp only [evaluate, hᵢ₁, hᵢ₂, bind_pure_comp, TypedExpr.toExpr]
     case _ heq =>
-      simp [do_ok'] at h₃₂
+      simp [do_eq_ok] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂₁, h₃₂₂⟩
       specialize hᵢ₂ h₁ h₂ h₃₂₁
       split at h₃₂₂ <;> simp [err] at h₃₂₂
@@ -413,7 +413,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
           case _ =>
             simp only [Result.as, Coe.coe, Value.asBool, Except.bind_ok, ↓reduceIte]
   case _ hᵢ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨_, ⟨_, h₃₁⟩, h₃₂⟩
     simp [typeOfUnaryApp] at h₃₂
     specialize hᵢ h₁ h₂ h₃₁
@@ -425,7 +425,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       simp only [TypedExpr.toExpr, evaluate, hᵢ]
     )
   case _ hᵢ₁ hᵢ₂ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨_, ⟨_, h₃₁⟩, _, ⟨_, h₃₂⟩, h₃₃⟩
     specialize hᵢ₁ h₁ h₂ h₃₁
     specialize hᵢ₂ h₁ h₂ h₃₂
@@ -456,12 +456,12 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       subst h₃₃
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
-      simp [do_ok] at h₃₃
+      simp [do_ok_eq_ok] at h₃₃
       rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
       subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
-      simp [do_ok] at h₃₃
+      simp [do_ok_eq_ok] at h₃₃
       rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
       subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
@@ -502,28 +502,28 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       subst h₃₃
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
-      simp [do_ok] at h₃₃
+      simp [do_ok_eq_ok] at h₃₃
       rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
       subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
-      simp [do_ok] at h₃₃
+      simp [do_ok_eq_ok] at h₃₃
       rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
       subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
-      simp [do_ok] at h₃₃
+      simp [do_ok_eq_ok] at h₃₃
       rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
       subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
   case _ hᵢ =>
-    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃
     rcases h₃ with ⟨ty, ⟨c, h₃₁⟩, h₃₂⟩
     simp only [typeOfHasAttr, List.empty_eq] at h₃₂
     specialize hᵢ h₁ h₂ h₃₁
     split at h₃₂
     case _ =>
-      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ]
@@ -531,7 +531,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       split at h₃₂ <;>
       try split at h₃₂
       case _ =>
-        simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+        simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
         rcases h₃₂ with ⟨_, _, h₃₂⟩
         subst h₃₂
         simp only [TypedExpr.toExpr, evaluate, hᵢ]
@@ -543,26 +543,26 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       simp only [err, reduceCtorEq] at h₃₂
     simp only [err, reduceCtorEq] at h₃₂
   case _ hᵢ =>
-    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃
     rcases h₃ with ⟨ty, ⟨c, h₃₁⟩, h₃₂⟩
     simp only [typeOfGetAttr, List.empty_eq] at h₃₂
     specialize hᵢ h₁ h₂ h₃₁
     split at h₃₂
     case _ =>
-      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ]
     case _ =>
       split at h₃₂
-      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
+      simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃₂
       rcases h₃₂ with ⟨_, _, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ]
       simp only [err, reduceCtorEq] at h₃₂
     simp only [err, reduceCtorEq] at h₃₂
   case _ c₁ env xs hᵢ =>
-    simp only [typeOf, do_ok', Prod.exists, exists_and_right] at h₃
+    simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃
     rcases h₃ with ⟨ty, h₃₁, h₃₂⟩
     simp [List.mapM₁_eq_mapM (fun x => justType (typeOf x c₁ env)), List.mapM_ok_iff_forall₂] at h₃₁
     simp [typeOfSet] at h₃₂
@@ -581,7 +581,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     replace h₄ := forall₂_impies_mapM_eq _ _ h₄
     simp [h₄]
   case _ c₁ env axs hᵢ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨atys, h₃₁, h₃₂⟩
     simp [ok] at h₃₂
     rcases h₃₂ with ⟨h₃₂, _⟩
@@ -605,7 +605,7 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     replace h₄ := forall₂_impies_mapM_eq _ _ h₄
     simp only [h₄]
   case _ c₁ env xfn xs hᵢ =>
-    simp [typeOf, do_ok'] at h₃
+    simp [typeOf, do_eq_ok] at h₃
     rcases h₃ with ⟨tys, h₃₁, h₃₂⟩
     simp [List.mapM₁_eq_mapM fun x => justType (typeOf x c₁ env), List.mapM_ok_iff_forall₂] at h₃₁
     have : ∀ (x₁ : Expr),

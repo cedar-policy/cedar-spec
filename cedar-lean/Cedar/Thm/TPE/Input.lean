@@ -19,6 +19,10 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.Validation
 
+/-!
+This file defines theorems related to the inputs of TPE.
+-/
+
 namespace Cedar.Thm
 
 open Cedar.TPE
@@ -50,51 +54,52 @@ theorem partial_is_valid_rfl (f : α → Bool) (p : α → Prop) (o : Option α)
   case _ =>
     constructor
 
-def RequestIsConsistent (req₁ : Request) (req₂ : PartialRequest) : Prop :=
-  PartialIsValid (· = req₁.principal) req₂.principal.asEntityUID ∧
-  req₁.action = req₂.action ∧
-  PartialIsValid (· = req₁.resource) req₂.resource.asEntityUID  ∧
-  PartialIsValid (· = req₁.context) req₂.context
+def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
+  PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧
+  req.action = preq.action ∧
+  PartialIsValid (· = req.resource) preq.resource.asEntityUID  ∧
+  PartialIsValid (· = req.context) preq.context
 
-def EntitiesAreConsistent (es₁ : Entities) (es₂ : PartialEntities) : Prop :=
-   ∀ a e₂, es₂.find? a = some e₂ → (∃ e₁, es₁.find? a = some e₁ ∧
+def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
+   ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧
     PartialIsValid (· = e₁.attrs) e₂.attrs ∧
     PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
     PartialIsValid (· = e₁.tags) e₂.tags)
 
-/- should have a better name like `abstracts`.
-Also note that `isConsistent` is a much stronger check that ensures both
-partial and concrete parts are validated.
+/-- Concrete request `req` and entities `es` refine their partial counterparts
+`peq` and `pes`.
 -/
-def IsConsistent (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Prop :=
-  RequestIsConsistent req₁ req₂ ∧ EntitiesAreConsistent es₁ es₂
+def RequestAndEntitiesRefine (req : Request) (es : Entities) (preq : PartialRequest) (pes : PartialEntities) : Prop :=
+  RequestRefines req preq ∧ EntitiesRefine es pes
 
-theorem consistent_checks_ensure_consistency {schema : Schema} {req₁ : Request} {es₁ : Entities} {req₂ : PartialRequest} {es₂ : PartialEntities} :
-  isValidAndConsistent schema req₁ es₁ req₂ es₂ = .ok () → IsConsistent req₁ es₁ req₂ es₂
+/-- Requests and entities that pass `isValidAndConsistent` satisfy `RequestAndEntitiesRefine`.
+-/
+theorem consistent_checks_ensure_refinement {schema : Schema} {req : Request} {es : Entities} {preq : PartialRequest} {pes : PartialEntities} :
+  isValidAndConsistent schema req es preq pes = .ok () → RequestAndEntitiesRefine req es preq pes
 := by
   intro h
   simp [isValidAndConsistent] at h
   split at h <;> try cases h
   rcases do_eq_ok₂ h with ⟨h₁, h₂⟩
-  simp [IsConsistent]
+  simp [RequestAndEntitiesRefine]
   constructor
   case _ =>
-    simp [RequestIsConsistent]
+    simp [RequestRefines]
     simp [isValidAndConsistent.requestIsConsistent] at h₁
     split at h₁ <;> simp at h₁
     rcases h₁ with ⟨h₁₁, h₁₂, h₁₃, h₁₄⟩
     constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req₁.principal)) (fun x => x = req₁.principal) req₂.principal.asEntityUID decide_eq_implies_eq h₁₁
+    exact partial_is_valid_rfl (fun x => decide (x = req.principal)) (fun x => x = req.principal) preq.principal.asEntityUID decide_eq_implies_eq h₁₁
     constructor
     exact h₁₂
     constructor
-    exact partial_is_valid_rfl (fun x => decide (x = req₁.resource)) (fun x => x = req₁.resource) req₂.resource.asEntityUID decide_eq_implies_eq h₁₃
-    exact partial_is_valid_rfl (fun x => decide (x = req₁.context)) (fun x => x = req₁.context) req₂.context decide_eq_implies_eq h₁₄
+    exact partial_is_valid_rfl (fun x => decide (x = req.resource)) (fun x => x = req.resource) preq.resource.asEntityUID decide_eq_implies_eq h₁₃
+    exact partial_is_valid_rfl (fun x => decide (x = req.context)) (fun x => x = req.context) preq.context decide_eq_implies_eq h₁₄
   case _ =>
     simp [isValidAndConsistent.entitiesIsConsistent] at h₂
     split at h₂ <;> simp at h₂
     simp [isValidAndConsistent.entitiesMatch] at h₂
-    simp [EntitiesAreConsistent]
+    simp [EntitiesRefine]
     intro uid data₂ hᵢ
     replace hᵢ := Data.Map.find?_mem_toList hᵢ
     simp [Data.Map.toList] at hᵢ

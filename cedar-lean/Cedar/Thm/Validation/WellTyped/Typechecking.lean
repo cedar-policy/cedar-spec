@@ -441,7 +441,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
       · simp [heq₁, CedarType.liftBoolTypes]
       · simp [heq₂, CedarType.liftBoolTypes]
   case _ ety heq₁ heq₂ =>
-    simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
+    simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
     rcases h₃ with ⟨a, h₃₁, h₃₂⟩
     subst h₃₂
     simp only [TypedExpr.liftBoolTypes]
@@ -483,7 +483,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
           · simp [heq₂, CedarType.liftBoolTypes]
         case _ => simp [err] at h₃₁
   case _ ety heq₁ heq₂ =>
-    simp [ok, do_ok] at h₃
+    simp [ok, do_ok_eq_ok] at h₃
     rcases h₃ with ⟨a, h₃₁, h₃₂⟩
     subst h₃₂
     simp [typeOfGetTag] at h₃₁
@@ -606,7 +606,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
       · simp [heq₁, CedarType.liftBoolTypes]
       · simp [heq₂, CedarType.liftBoolTypes]
   case _ heq =>
-    simp [ok, do_ok] at h₃
+    simp [ok, do_ok_eq_ok] at h₃
     rcases h₃ with ⟨a, h₃₁, h₃₂⟩
     subst h₃₂
     simp [TypedExpr.liftBoolTypes]
@@ -626,7 +626,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
         exact lifted_type_lub heq₁
     case _ => simp [err] at h₃₁
   case _ =>
-    simp [ok, do_ok] at h₃
+    simp [ok, do_ok_eq_ok] at h₃
     rcases h₃ with ⟨a, h₃₁, h₃₂⟩
     subst h₃₂
     simp [TypedExpr.liftBoolTypes]
@@ -645,7 +645,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
         exact lifted_type_lub heq₃
     case _ => simp [err] at h₃₁
   case _ =>
-    simp [ok, do_ok] at h₃
+    simp [ok, do_ok_eq_ok] at h₃
     rcases h₃ with ⟨a, h₃₁, h₃₂⟩
     subst h₃₂
     simp [TypedExpr.liftBoolTypes]
@@ -686,7 +686,7 @@ theorem typechecked_is_well_typed_after_lifting_has_attr
   simp [typeOfHasAttr] at h₃
   split at h₃
   case _ rty heq =>
-    simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
+    simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
     rcases h₃ with ⟨_, h₃₁, h₃₂⟩
     subst h₃₂
     simp only [TypedExpr.liftBoolTypes]
@@ -713,7 +713,7 @@ theorem typechecked_is_well_typed_after_lifting_has_attr
   case _ ety heq =>
     split at h₃
     case _ =>
-      simp only [ok, do_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
+      simp only [ok, do_ok_eq_ok, Prod.mk.injEq, Prod.exists, exists_eq_right_right] at h₃
       rcases h₃ with ⟨_, h₃₁, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.liftBoolTypes]
@@ -810,7 +810,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
     simp only [hᵢ, typeOfGetAttr, Except.bind_ok] at h₃
     split at h₃
     case _ rty heq =>
-      simp [ok, do_ok] at h₃
+      simp [ok, do_ok_eq_ok] at h₃
       rcases h₃ with ⟨a, h₃₁, h₃₂⟩
       subst h₃₂
       simp only [TypedExpr.liftBoolTypes]
@@ -822,7 +822,7 @@ theorem typechecked_is_well_typed_after_lifting_get_attr
     case _ ety heq =>
       split at h₃
       case _ rty heq₁ =>
-        simp [ok, do_ok] at h₃
+        simp [ok, do_ok_eq_ok] at h₃
         rcases h₃ with ⟨a, h₃₁, h₃₂⟩
         subst h₃₂
         simp [TypedExpr.liftBoolTypes]
@@ -886,7 +886,7 @@ theorem typechecked_is_well_typed_after_lifting_call
   simp [List.mapM_ok_iff_forall₂] at hᵢ
   simp [typeOfCall] at h₃
   split at h₃ <;>
-  simp [err, ok, do_ok] at h₃
+  simp [err, ok, do_ok_eq_ok] at h₃
   · rcases h₃ with ⟨_, h₃₁, h₃₂⟩
     subst h₃₂
     simp only [TypedExpr.liftBoolTypes]

@@ -39,15 +39,15 @@ is defined using `Except.toOption`.
 -/
 theorem partial_evaluate_is_sound
   {x : TypedExpr}
-  {req₁ : Request}
-  {es₁ : Entities}
-  {req₂ : PartialRequest}
-  {es₂ : PartialEntities}
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities}
   {env : Environment} :
   TypedExpr.WellTyped env x →
-  RequestAndEntitiesMatchEnvironment env req₁ es₁ →
-  IsConsistent req₁ es₁ req₂ es₂ →
-  (Spec.evaluate x.toExpr req₁ es₁).toOption = (Residual.evaluate (Cedar.TPE.evaluate x req₂ es₂) req₁ es₁).toOption
+  RequestAndEntitiesMatchEnvironment env req es →
+  RequestAndEntitiesRefine req es preq pes →
+  (Spec.evaluate x.toExpr req es).toOption = (Residual.evaluate (Cedar.TPE.evaluate x preq pes) req es).toOption
 := by
   intro h₁ h₂ h₃
   induction h₁
@@ -90,20 +90,20 @@ theorem partial_evaluate_policy_is_sound
   {schema : Schema}
   {residual : Residual}
   {policy : Policy}
-  {req₁ : Request}
-  {es₁ : Entities}
-  {req₂ : PartialRequest}
-  {es₂ : PartialEntities} :
-  evaluatePolicy schema policy req₂ es₂ = .ok residual   →
-  isValidAndConsistent schema req₁ es₁ req₂ es₂ = .ok () →
-  (Spec.evaluate policy.toExpr req₁ es₁).toOption = (Residual.evaluate residual req₁ es₁).toOption
+  {req : Request}
+  {es : Entities}
+  {preq : PartialRequest}
+  {pes : PartialEntities} :
+  evaluatePolicy schema policy preq pes = .ok residual   →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  (Spec.evaluate policy.toExpr req es).toOption = (Residual.evaluate residual req es).toOption
 := by
   intro h₁ h₂
-  have h₃ := consistent_checks_ensure_consistency h₂
+  have h₃ := consistent_checks_ensure_refinement h₂
   simp [evaluatePolicy] at h₁
   split at h₁ <;> try cases h₁
   split at h₁ <;> try cases h₁
-  simp [do_ok] at h₁
+  simp [do_ok_eq_ok] at h₁
   rcases h₁ with ⟨_, ⟨_, h₁₁⟩, h₁₂⟩
   simp [Except.mapError] at h₁₁
   split at h₁₁ <;> try cases h₁₁
@@ -133,14 +133,14 @@ theorem partial_evaluate_policy_is_sound
   have h₅ := typechecked_is_well_typed_after_lifting h₄ heq₂
   have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
   subst h₁₂
-  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req₁ es₁) h₄ heq₂
-  have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req₁ es₁ = Spec.evaluate policy.toExpr req₁ es₁ := by
+  have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
+  have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
     simp [RequestAndEntitiesMatchEnvironment] at h₄
     rcases h₄ with ⟨h₄, _⟩
     simp [InstanceOfRequestType] at h₄
     rcases h₄ with ⟨_, h₄, _⟩
     rw [←h₄]
-    exact substitute_action_preserves_evaluation policy.toExpr req₁ es₁
+    exact substitute_action_preserves_evaluation policy.toExpr req es
   simp [h₈] at h₇
   rw [h₇, type_lifting_preserves_expr]
   exact h₆

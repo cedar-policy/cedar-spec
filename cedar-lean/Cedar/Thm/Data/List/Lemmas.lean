@@ -437,7 +437,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
       · simp only [reduceCtorEq] at h₁
       · simp only [reduceCtorEq] at h₁
       · rename_i yhd
-        replace ⟨ytl, h₁, h₃⟩ := do_ok.mp h₁
+        replace ⟨ytl, h₁, h₃⟩ := do_ok_eq_ok.mp h₁
         subst h₃
         exact List.Forall₂.cons h₂ (ih h₁)
   case mpr =>

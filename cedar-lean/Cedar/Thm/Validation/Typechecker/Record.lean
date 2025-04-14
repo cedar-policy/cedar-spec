@@ -307,7 +307,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   subst h₆ h₄
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate]
-  simp only [do_ok, do_error]
+  simp only [do_ok_eq_ok, do_error]
   simp only [List.mapM₂, List.attach₂]
   let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
   rw [List.mapM_pmap_subtype f]
