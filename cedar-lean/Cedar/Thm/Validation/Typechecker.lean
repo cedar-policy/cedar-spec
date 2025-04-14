@@ -431,6 +431,15 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     specialize hᵢ₂ h₁ h₂ h₃₂
     simp [typeOfBinaryApp] at h₃₃
     split at h₃₃ <;> try simp [ok, err] at h₃₃
+    any_goals
+      rcases h₃₃ with ⟨h₃₃, _⟩
+      subst h₃₃
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
+    any_goals
+      simp [do_ok_eq_ok] at h₃₃
+      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
+      subst h₃₃₂
+      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
     case _ =>
       simp [typeOfEq] at h₃₃
       split at h₃₃ <;>
@@ -446,75 +455,6 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
       split at h₃₃ <;> simp [ok, err] at h₃₃
       rcases h₃₃ with ⟨h₃₃, _⟩
       subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      simp [do_ok_eq_ok] at h₃₃
-      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
-      subst h₃₃₂
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      simp [do_ok_eq_ok] at h₃₃
-      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
-      subst h₃₃₂
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      rcases h₃₃ with ⟨h₃₃, _⟩
-      subst h₃₃
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      simp [do_ok_eq_ok] at h₃₃
-      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
-      subst h₃₃₂
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      simp [do_ok_eq_ok] at h₃₃
-      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
-      subst h₃₃₂
-      simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
-    case _ =>
-      simp [do_ok_eq_ok] at h₃₃
-      rcases h₃₃ with ⟨_, h₃₃₁, h₃₃₂⟩
-      subst h₃₃₂
       simp only [TypedExpr.toExpr, evaluate, hᵢ₁, hᵢ₂]
   case _ hᵢ =>
     simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃

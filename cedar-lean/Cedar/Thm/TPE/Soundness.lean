@@ -305,8 +305,6 @@ theorem partial_evaluate_is_sound_and
       subst h₆
       replace h₅ := to_option_left_ok hᵢ₅ h₅
       simp [Result.as, Coe.coe, Residual.evaluate, h₅, Value.asBool]
-      -- TODO: maybe we can use something like
-      -- Except.toOption a = Except.toOption b → Except.toOption (f a) = Except.toOption (f b)
       generalize h₇ : Spec.evaluate x₂.toExpr req es = res₂
       cases res₂
       case _ =>
@@ -555,39 +553,7 @@ theorem partial_evaluate_is_sound_binary_app
     simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₁, hᵢ₅, Spec.apply₂]
     -- TODO: rewrite one of the two binary app evaluation function so that we don't need this amount of case splits.
     split <;> simp [Residual.evaluate]
-    case _ =>
-      simp [intOrErr, someOrError]
-      split <;> split
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp [Option.bind_eq_some] at heq₄
-        rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
-        subst heq₄₂
-        simp [heq₃] at heq₄₁
-        subst heq₄₁
-        simp [Residual.evaluate]
-      case _ heq₃ _ _ _ heq₄ =>
-        simp only [heq₃, Option.some_bind, reduceCtorEq] at heq₄
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp only [heq₃, Option.none_bind, reduceCtorEq] at heq₄
-      case _ =>
-        simp only [Except.toOption, Residual.evaluate]
-    case _ =>
-      simp [intOrErr, someOrError]
-      split <;> split
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp [Option.bind_eq_some] at heq₄
-        rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
-        subst heq₄₂
-        simp [heq₃] at heq₄₁
-        subst heq₄₁
-        simp [Residual.evaluate]
-      case _ heq₃ _ _ _ heq₄ =>
-        simp only [heq₃, Option.some_bind, reduceCtorEq] at heq₄
-      case _ heq₃ _ _ _ _ heq₄ =>
-        simp only [heq₃, Option.none_bind, reduceCtorEq] at heq₄
-      case _ =>
-        simp only [Except.toOption, Residual.evaluate]
-    case _ =>
+    any_goals
       simp [intOrErr, someOrError]
       split <;> split
       case _ heq₃ _ _ _ _ heq₄ =>
