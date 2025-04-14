@@ -29,49 +29,43 @@ open Cedar.Validation
 def SubstituteActionPreservesEvaluation (expr : Expr) (request : Request) (entities : Entities) : Prop :=
   evaluate (substituteAction request.action expr) request entities = evaluate expr request entities
 
-
 theorem substitute_action_preserves_evaluation_ite {i t e : Expr} {request : Request} {entities : Entities}
   (ih₁ : SubstituteActionPreservesEvaluation i request entities)
   (ih₂ : SubstituteActionPreservesEvaluation t request entities)
   (ih₃ : SubstituteActionPreservesEvaluation e request entities) :
-  evaluate (substituteAction request.action (Expr.ite i t e)) request entities =
-  evaluate (Expr.ite i t e) request entities
+  SubstituteActionPreservesEvaluation (.ite i t e) request entities
 := by
   simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂, ih₃]
 
 theorem substitute_action_preserves_evaluation_getAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation e request entities) :
-  evaluate (substituteAction request.action (Expr.getAttr e attr)) request entities =
-  evaluate (Expr.getAttr e attr) request entities
+  SubstituteActionPreservesEvaluation (.getAttr e attr) request entities
 := by
-  simp only [SubstituteActionPreservesEvaluation] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁ ⊢
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
 theorem substitute_action_preserves_evaluation_hasAttr {e : Expr} {attr : Attr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation e request entities) :
-  evaluate (substituteAction request.action (Expr.hasAttr e attr)) request entities =
-  evaluate (Expr.hasAttr e attr) request entities
+  SubstituteActionPreservesEvaluation (.hasAttr e attr) request entities
 := by
-  simp only [SubstituteActionPreservesEvaluation] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁ ⊢
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
 theorem substitute_action_preserves_evaluation_unaryApp {op : UnaryOp} {e : Expr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation e request entities) :
-  evaluate (substituteAction request.action (Expr.unaryApp op e)) request entities =
-  evaluate (Expr.unaryApp op e) request entities
+  SubstituteActionPreservesEvaluation (.unaryApp op e) request entities
 := by
-  simp only [SubstituteActionPreservesEvaluation] at ih₁
+  simp only [SubstituteActionPreservesEvaluation] at ih₁ ⊢
   simp only [substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁]
 
 theorem substitute_action_preserves_evaluation_binaryApp {op : BinaryOp} {a b : Expr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation a request entities)
 (ih₂ : SubstituteActionPreservesEvaluation b request entities) :
-  evaluate (substituteAction request.action (Expr.binaryApp op a b)) request entities =
-  evaluate (Expr.binaryApp op a b) request entities
+  SubstituteActionPreservesEvaluation (.binaryApp op a b) request entities
 := by
   simp only [SubstituteActionPreservesEvaluation] at *
   simp only [substituteAction, mapOnVars] at *
@@ -80,8 +74,7 @@ theorem substitute_action_preserves_evaluation_binaryApp {op : BinaryOp} {a b : 
 theorem substitute_action_preserves_evaluation_and {a b : Expr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation a request entities)
 (ih₂ : SubstituteActionPreservesEvaluation b request entities) :
-  evaluate (substituteAction request.action (Expr.and a b)) request entities =
-  evaluate (Expr.and a b) request entities
+  SubstituteActionPreservesEvaluation (.and a b) request entities
 := by
   simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
@@ -89,8 +82,7 @@ theorem substitute_action_preserves_evaluation_and {a b : Expr} {request : Reque
 theorem substitute_action_preserves_evaluation_or {a b : Expr} {request : Request} {entities : Entities}
 (ih₁ : SubstituteActionPreservesEvaluation a request entities)
 (ih₂ : SubstituteActionPreservesEvaluation b request entities) :
-  evaluate (substituteAction request.action (Expr.or a b)) request entities =
-  evaluate (Expr.or a b) request entities
+  SubstituteActionPreservesEvaluation (.or a b) request entities
 := by
   simp only [SubstituteActionPreservesEvaluation, substituteAction, mapOnVars] at *
   simp only [evaluate, ih₁, ih₂]
@@ -111,28 +103,23 @@ theorem substitute_action_cons_set : ∀ (h : Expr) (t : List Expr) (uid : Entit
   simp only
 
 theorem substitute_action_preserves_evaluation_set {xs : List Expr} {request : Request} {entities : Entities}
-(ih₁ : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities) :
-  evaluate (substituteAction request.action (Expr.set xs)) request entities =
-  evaluate (Expr.set xs) request entities
+(ih₁ : ∀ xᵢ ∈ xs,  SubstituteActionPreservesEvaluation xᵢ request entities) :
+  SubstituteActionPreservesEvaluation (.set xs) request entities
 := by
+  unfold SubstituteActionPreservesEvaluation
   cases h₀ : xs with
   | nil =>
     rw [substitute_action_nil_set]
   | cons h t =>
-    simp only [SubstituteActionPreservesEvaluation] at ih₁
-    have h₁ := ih₁ h
-    simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
+    have ⟨h₁, h₂⟩ :
+      SubstituteActionPreservesEvaluation h request entities ∧
+      ∀ x ∈ t, SubstituteActionPreservesEvaluation x request entities
+    := by simpa [h₀] using ih₁
+    replace h₂ := List.mapM_congr h₂
     rw [substitute_action_cons_set]
-    simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
-    simp only [List.mapM_cons, bind_assoc, pure_bind]
-    rw [h₁]
-    simp [List.mapM_map]
-    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
-    by
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      exact h₂
-    simp [List.mapM_congr h₂]
+    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [List.mapM_cons, List.mapM_map]
+    rw [h₁, h₂]
 
 theorem substitute_action_nil_record : ∀ (uid : EntityUID),
   substituteAction uid (.record []) = .record []
@@ -148,37 +135,26 @@ theorem substitute_action_cons_record : ∀ (ax : Attr × Expr) (axs : List (Att
   simp only [substituteAction, mapOnVars, List.attach₂, List.map_pmap_subtype_snd, List.map_cons]
 
 theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)} {request : Request} {entities : Entities}
-(ih₁ : ∀ axᵢ, axᵢ ∈ axs → SubstituteActionPreservesEvaluation axᵢ.snd request entities) :
-  evaluate (substituteAction request.action (Expr.record axs)) request entities =
-  evaluate (Expr.record axs) request entities
+(ih₁ : ∀ axᵢ ∈ axs, SubstituteActionPreservesEvaluation axᵢ.snd request entities) :
+  SubstituteActionPreservesEvaluation (.record axs) request entities
 := by
+  unfold SubstituteActionPreservesEvaluation
   cases h₀ : axs with
   | nil =>
     rw [substitute_action_nil_record]
   | cons hd tl =>
-    simp only [SubstituteActionPreservesEvaluation] at ih₁
-    have h₁ := ih₁ hd
-    simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
+    have ⟨h₁, h₂⟩ :
+      SubstituteActionPreservesEvaluation hd.snd request entities ∧
+      ∀ ax ∈ tl, SubstituteActionPreservesEvaluation ax.snd request entities
+    := by simpa [h₀] using ih₁
+    replace h₂ : ∀ ax ∈ tl,
+      (do pure (ax.fst,←evaluate (substituteAction request.action ax.snd) request entities)) =
+      (do pure (ax.fst,←evaluate ax.snd request entities)) := by simpa using h₂
+    replace h₂ := List.mapM_congr h₂
     rw [substitute_action_cons_record]
-    simp only [mapOnVars, evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
-    simp only [bindAttr]
-    simp only [List.mapM_cons, bind_assoc, Except.bind_ok, pure_bind]
-    rw [h₁]
-    simp only [List.mapM_map]
-    have h₂ : ∀ x ∈ tl,
-    (do
-      let v ← evaluate (substituteAction request.action x.snd) request entities
-      pure (x.fst, v)) =
-    (do
-      let v ← evaluate x.snd request entities
-      pure (x.fst, v))
-    := by
-      intro x hx
-      replace (a, x) := x
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      simp [h₂ a x hx]
-    rw [List.mapM_congr h₂]
+    simp only [evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype (fun (a, e) => bindAttr a (evaluate e request entities))]
+    simp only [bindAttr, List.mapM_map, List.mapM_cons]
+    rw [h₁, h₂]
 
 theorem substitute_action_nil_call : ∀ (uid : EntityUID) (xfn : ExtFun),
   substituteAction uid (.call xfn []) = .call xfn [] :=
@@ -199,27 +175,22 @@ by
 
 theorem substitute_action_preserves_evaluation_call {xfn : ExtFun} {xs : List Expr} {request : Request} {entities : Entities}
 (ih₁ : ∀ xᵢ, xᵢ ∈ xs → SubstituteActionPreservesEvaluation xᵢ request entities) :
-  evaluate (substituteAction request.action (Expr.call xfn xs)) request entities =
-  evaluate (Expr.call xfn xs) request entities
+  SubstituteActionPreservesEvaluation (.call xfn xs) request entities
 := by
+  unfold SubstituteActionPreservesEvaluation
   cases h₀ : xs with
   | nil =>
     rw [substitute_action_nil_call]
   | cons h t =>
-    simp only [SubstituteActionPreservesEvaluation] at ih₁
-    have h₁ := ih₁ h
-    simp only [h₀, List.mem_cons, true_or, true_implies] at h₁
+    have ⟨h₁, h₂⟩ :
+      SubstituteActionPreservesEvaluation h request entities ∧
+      ∀ x ∈ t, SubstituteActionPreservesEvaluation x request entities
+    := by simpa [h₀] using ih₁
+    replace h₂ := List.mapM_congr h₂
     rw [substitute_action_cons_call]
-    simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
-    simp only [List.mapM_cons, bind_assoc, pure_bind]
-    rw [h₁]
-    simp [List.mapM_map]
-    have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
-    by
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      exact h₂
-    rw [List.mapM_congr h₂]
+    simp only [evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
+    simp only [List.mapM_cons, List.mapM_map]
+    rw [h₁, h₂]
 
 theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request) (entities : Entities) :
   evaluate (substituteAction request.action expr) request entities =
