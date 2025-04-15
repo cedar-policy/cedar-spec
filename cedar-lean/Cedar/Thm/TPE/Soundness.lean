@@ -37,51 +37,31 @@ theorem as_value_some {r : Residual} {v : Value} :
   subst h
   simp only [Residual.val.injEq, true_and, exists_eq']
 
-theorem anyM_any {es : Entities} {pes : PartialEntities} {b : Bool} {uid : EntityUID} {uids : List EntityUID} (h : EntitiesRefine es pes):
-List.anyM (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid)) uids =
-  some b →
-  (uids.any fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) = b
+theorem anyM_some_implies_any {α} {xs : List α} {b : Bool}  (f : α → Option Bool) (g : α → Bool) :
+(∀ x b, f x = some b → g x = b) → List.anyM f xs = some b → xs.any g = b
 := by
-  induction uids generalizing b
-  case nil => simp
+  intro h₁ h₂
+  induction xs generalizing b
+  case nil =>
+    simp only [List.anyM, Option.pure_def, Option.some.injEq, Bool.false_eq] at h₂
+    simp only [List.any_nil, h₂]
   case cons head tail hᵢ =>
-    intro h₁
-    simp at h₁
-    simp
-    split at h₁
-    case isTrue heq =>
-      simp at h₁
-      simp [heq]
-      exact h₁
-    case isFalse hneq =>
-      simp [Option.bind] at h₁
-      split at h₁ <;> simp at h₁
-      rename_i heq
-      simp at heq
-      rcases heq with ⟨ancestors₂, heq₁, heq₂⟩
-      simp [PartialEntities.ancestors, PartialEntities.get, Option.bind] at heq₁
-      split at heq₁ <;> try cases heq₁
-      rename_i data heq₃
-      simp [EntitiesRefine] at h
-      specialize h uid data heq₃
-      rcases h with ⟨e, h₂, _, h₃, _⟩
-      split at h₁
+    simp only [List.any_cons]
+    simp only [List.anyM, Option.pure_def, Option.bind_eq_bind] at h₂
+    generalize h₃ : f head = res
+    cases res <;> simp [h₃] at h₂
+    case some =>
+      split at h₂
       case _ =>
-        simp at h₁
-        subst h₁
-        rw [heq₁] at h₃
-        cases h₃
-        rename_i heq₄
-        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄]
-        left; right; exact heq₂
+        simp only [Option.some.injEq, Bool.true_eq] at h₂
+        subst h₂
+        specialize h₁ head true h₃
+        simp only [h₁, Bool.true_or]
       case _ =>
-        specialize hᵢ h₁
-        rw [heq₁] at h₃
-        cases h₃
-        rename_i heq₄
-        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄]
-        simp [Entities.ancestorsOrEmpty, h₂, ←heq₄] at hᵢ
-        simp [heq₂, hᵢ, hneq]
+        specialize hᵢ h₂
+        simp only [hᵢ, Bool.or_iff_right_iff_imp]
+        specialize h₁ head false h₃
+        simp only [h₁, Bool.false_eq_true, false_implies]
 
 theorem to_option_eq_do₁ {α β ε} {res₁ res₂: Except ε α} (f : α → Except ε β) :
   Except.toOption res₁ = Except.toOption res₂ →
@@ -95,6 +75,17 @@ theorem to_option_eq_do₁ {α β ε} {res₁ res₂: Except ε α} (f : α → 
   case _ => subst h₁; simp only [Except.bind_ok]
   case _ => simp only [Except.bind_err]
 
+theorem to_option_eq_map {α β ε} {res₁ res₂: Except ε α} (f : α → β) :
+  Except.toOption res₁ = Except.toOption res₂ →
+  Except.toOption (f <$> res₁) = Except.toOption (f <$> res₂)
+:= by
+  intro h₁
+  simp [Except.toOption] at *
+  split at h₁ <;>
+  split at h₁ <;>
+  simp at h₁
+  case _ => subst h₁; simp only [Except.bind_ok]
+  case _ => simp only [Except.map_error]
 
 theorem to_option_eq_do₂ {α ε} {res₁ res₂ res₃ res₄: Except ε α} (f : α → α → Except ε α) :
   Except.toOption res₁ = Except.toOption res₃ →
@@ -606,7 +597,7 @@ theorem partial_evaluate_is_sound_binary_app
     case _ =>
       simp [apply₂.self, heq₁, heq₂, someOrSelf]
       split
-      case _ vs _ _ _ _ _ heq₃ =>
+      case _ uid vs _ _ _ _ _ heq₃ =>
         simp only [Option.bind_eq_some] at heq₃
         rcases heq₃ with ⟨_, heq₃₁, heq₃₂⟩
         simp only [Option.some.injEq] at heq₃₂
@@ -642,7 +633,32 @@ theorem partial_evaluate_is_sound_binary_app
           simp [Spec.inₑ]
           simp [TPE.inₑ] at heq₃₂
           simp [RequestAndEntitiesRefine] at h₄
-          replace heq₃₂ := anyM_any h₄.right heq₃₂
+          rcases h₄ with ⟨_, h₄⟩
+          have : ∀ x b, ((if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid)) = some b) →
+            (uid == x || (es.ancestorsOrEmpty uid).contains x) = b := by
+            intro x b' h₁
+            split at h₁
+            case isTrue heq =>
+              simp only [Option.some.injEq, Bool.true_eq] at h₁
+              subst h₁
+              simp only [heq, beq_self_eq_true, Bool.true_or]
+            case isFalse heq =>
+              simp [EntitiesRefine] at h₄
+              simp at h₁
+              rcases h₁ with ⟨ancestors₁, h₂, h₃⟩
+              simp [PartialEntities.ancestors, PartialEntities.get, Option.bind] at h₂
+              split at h₂ <;> try cases h₂
+              rename_i data heq₁
+              specialize h₄ uid data heq₁
+              rcases h₄ with ⟨e, h₄, _, h₅, _⟩
+              rw [h₂] at h₅
+              cases h₅
+              rename_i heq₂
+              rw [heq₂] at h₃
+              simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_iff_right_iff_imp, beq_iff_eq, heq,
+                false_implies]
+          replace heq₃₂ := anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
+            (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
           subst heq₃₂
           simp only [Residual.evaluate]
       case _ =>
@@ -933,11 +949,8 @@ theorem partial_evaluate_is_sound_record
       rw [hrfl] at h
       specialize hᵢ₁ x.fst x.snd h
       simp [bindAttr]
-      simp [Except.toOption] at hᵢ₁
-      -- TODO: make it a general lemma
-      split at hᵢ₁ <;> split at hᵢ₁ <;> simp at hᵢ₁
-      case _ heq₁ _ _ heq₂ => subst hᵢ₁ ; simp only [heq₁, Except.map_ok, heq₂]
-      case _ heq₁ _ _ heq₂ => simp only [Except.toOption, heq₁, Except.map_error, heq₂]
+      symm
+      exact to_option_eq_map (Prod.mk x.fst ·) hᵢ₁
     have h₁ := to_option_eq_mapM
       (λ (x : Attr × TypedExpr) => bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
       (λ x => bindAttr x.fst (Spec.evaluate x.snd.toExpr req es))
@@ -980,11 +993,7 @@ theorem partial_evaluate_is_sound_record
       rw [hrfl] at h
       specialize hᵢ₁ x.fst x.snd h
       simp [bindAttr]
-      simp [Except.toOption] at hᵢ₁
-      -- TODO: make it a general lemma
-      split at hᵢ₁ <;> split at hᵢ₁ <;> simp at hᵢ₁
-      case _ heq₁ _ _ heq₂ => subst hᵢ₁ ; simp only [heq₁, Except.map_ok, heq₂]
-      case _ heq₁ _ _ heq₂ => simp only [Except.toOption, heq₁, Except.map_error, heq₂]
+      exact to_option_eq_map (Prod.mk x.fst ·) hᵢ₁
     exact to_option_eq_mapM
       (fun (x : Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req es))
       (fun x => bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
