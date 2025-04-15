@@ -926,4 +926,24 @@ theorem type_of_call_is_sound {xfn : ExtFun} {xs : List Expr} {c₁ c₂ : Capab
   | .toHours
   | .toDays             => exact type_of_call_duration_converter_is_sound (by simp [IsDurationConverter]) h₁ h₂ h₃ ih
 
+/- Used by `type_of_preserves_evaluation_results` -/
+theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities} {xs : List Expr} {tys : List TypedExpr} :
+  typeOfCall xfn tys xs = Except.ok (ty, c₂) →
+  List.mapM (fun x => evaluate x request entities) xs = List.mapM (fun y => evaluate y.toExpr request entities) tys →
+  evaluate (Expr.call xfn xs) request entities = evaluate ty.toExpr request entities
+:= by
+  intro h₁ h₂
+  simp [typeOfCall] at h₁
+  split at h₁ <;>
+  simp [ok, err, do_ok_eq_ok] at h₁ <;>
+  try (
+    rcases h₁ with ⟨_, _, h₁⟩
+    subst h₁
+    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM fun x => evaluate x request entities, List.map₁_eq_map, List.mapM_map, h₂]
+  )
+  all_goals
+    rcases h₁ with ⟨h₁, _⟩
+    subst h₁
+    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM fun x => evaluate x request entities, List.map₁_eq_map, List.mapM_map, h₂]
+
 end Cedar.Thm
