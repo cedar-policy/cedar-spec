@@ -307,7 +307,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   subst h₆ h₄
   apply And.intro empty_guarded_capabilities_invariant
   simp only [EvaluatesTo, evaluate]
-  simp only [do_ok, do_error]
+  simp only [do_ok_eq_ok, do_error]
   simp only [List.mapM₂, List.attach₂]
   let f := fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities)
   rw [List.mapM_pmap_subtype f]
@@ -319,5 +319,34 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   case ok avs =>
     rename_i h₄
     exact type_of_record_is_sound_ok ih h₁ h₂ h₄ h₅
+
+/- Used by `type_of_preserves_evaluation_results` -/
+theorem type_of_ok_list {c₁ env xs ys request entities} :
+  List.Forall₂ (fun x y => justType (typeOf x c₁ env) = Except.ok y) xs ys →
+  (∀ (x₁ : Expr),
+    x₁ ∈ xs →
+      ∀ {c₂ : Capabilities} {ty : TypedExpr},
+        typeOf x₁ c₁ env = Except.ok (ty, c₂) → evaluate x₁ request entities = evaluate ty.toExpr request entities) →
+  List.Forall₂ (fun x y => evaluate x request entities = evaluate y.toExpr request entities) xs ys
+:= by
+  intro h₁ h₂
+  cases h₁
+  case nil => simp only [List.Forall₂.nil]
+  case cons x y xs ys h₃ h₄ =>
+    constructor
+    · simp [justType, Except.map] at h₃
+      split at h₃ <;> cases h₃
+      rename_i heq
+      have : x ∈ x :: xs := by simp only [List.mem_cons, true_or]
+      specialize h₂ x this heq
+      exact h₂
+    · have : ∀ (x₁ : Expr),
+        x₁ ∈ xs →
+          ∀ {c₂ : Capabilities} {ty : TypedExpr},
+            typeOf x₁ c₁ env = Except.ok (ty, c₂) → evaluate x₁ request entities = evaluate ty.toExpr request entities := by
+        intro x₁ hᵢ c₂ ty
+        have : x₁ ∈ x :: xs := by simp only [List.mem_cons, hᵢ, or_true]
+        exact h₂ x₁ this
+      exact type_of_ok_list h₄ this
 
 end Cedar.Thm

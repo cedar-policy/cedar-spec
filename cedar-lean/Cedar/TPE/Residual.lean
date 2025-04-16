@@ -96,7 +96,7 @@ def Residual.evaluate (x : Residual) (req : Request) (es: Entities) : Result Val
     Cedar.Spec.hasAttr v a es
   | .getAttr e a _ => do
     let v ← e.evaluate req es
-    Cedar.Spec.hasAttr v a es
+    Cedar.Spec.getAttr v a es
   | .set xs _ => do
     let vs ← xs.mapM₁ (fun ⟨x₁, _⟩ => evaluate x₁ req es)
     .ok (Set.make vs)

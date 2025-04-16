@@ -70,7 +70,7 @@ def or : Residual → Residual → CedarType → Residual
   | .val false _, r, _ => r
   | .error _, _, ty    => .error ty
   | l, .val false _, _ => l
-  | l, r, ty           => .and l r ty
+  | l, r, ty           => .or l r ty
 
 def apply₁ (op₁ : UnaryOp) (r : Residual) (ty : CedarType) : Residual :=
   match r with
@@ -95,45 +95,51 @@ def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarTy
   | .none => .binaryApp .getTag uid tag ty
 
 def apply₂ (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match op₂, r₁, r₂ with
-  | .eq, .val v₁ _, .val v₂ _ =>
-    .val (v₁ == v₂) ty
-  | .less, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    .val (i < j : Bool) ty
-  | .less, .val (.ext (.datetime d₁)) _, .val (.ext (.datetime d₂)) _ =>
-    .val (d₁ < d₂: Bool) ty
-  | .less, .val (.ext (.duration d₁)) _, .val (.ext (.duration d₂)) _ =>
-    .val (d₁ < d₂: Bool) ty
-  | .lessEq, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    .val (i ≤ j : Bool) ty
-  | .lessEq, .val (.ext (.datetime d₁)) _, .val (.ext (.datetime d₂)) _ =>
-    .val (d₁ ≤ d₂: Bool) ty
-  | .lessEq, .val (.ext (.duration d₁)) _, .val (.ext (.duration d₂)) _ =>
-    .val (d₁ ≤ d₂: Bool) ty
-  | .add, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    someOrError (i.add? j) ty
-  | .sub, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    someOrError (i.sub? j) ty
-  | .mul, .val (.prim (.int i)) _, .val (.prim (.int j)) _ =>
-    someOrError (i.mul? j) ty
-  | .contains, .val (.set vs₁) _, .val v₂ _ =>
-    .val (vs₁.contains v₂) ty
-  | .containsAll, .val (.set vs₁) _, .val (.set vs₂) _ =>
-    .val (vs₂.subset vs₁) ty
-  | .containsAny, .val (.set vs₁) _, .val (.set vs₂) _ =>
-    .val (vs₁.intersects vs₂) ty
-  | .mem, .val (.prim (.entityUID uid₁)) _, .val (.prim (.entityUID uid₂)) _ =>
-    someOrSelf (inₑ uid₁ uid₂ es) ty self
-  | .mem, .val (.prim (.entityUID uid₁)) _, .val (.set vs) _ =>
-    someOrSelf (inₛ uid₁ vs es) ty self
-  | .hasTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    someOrSelf (hasTag uid₁ tag es) ty self
-  | .getTag, .val (.prim (.entityUID uid₁)) _, .val (.prim (.string tag)) _ =>
-    getTag uid₁ tag es ty
-  | _, .error _, _ | _, _, .error _ => .error ty
-  | _, _, _ => self
-where
+  match r₁.asValue, r₂.asValue with
+  | .some v₁, .some v₂ =>
+    match op₂, v₁, v₂ with
+    | .eq, _, _ =>
+      .val (v₁ == v₂) ty
+    | .less, .prim (.int i), .prim (.int j) =>
+      .val (i < j : Bool) ty
+    | .less, .ext (.datetime d₁), .ext (.datetime d₂) =>
+      .val (d₁ < d₂: Bool) ty
+    | .less, .ext (.duration d₁), .ext (.duration d₂) =>
+      .val (d₁ < d₂: Bool) ty
+    | .lessEq, .prim (.int i), .prim (.int j) =>
+      .val (i ≤ j : Bool) ty
+    | .lessEq, .ext (.datetime d₁), .ext (.datetime d₂) =>
+      .val (d₁ ≤ d₂: Bool) ty
+    | .lessEq, .ext (.duration d₁), .ext (.duration d₂) =>
+      .val (d₁ ≤ d₂: Bool) ty
+    | .add, .prim (.int i), .prim (.int j) =>
+      someOrError (i.add? j) ty
+    | .sub, .prim (.int i), .prim (.int j) =>
+      someOrError (i.sub? j) ty
+    | .mul, .prim (.int i), .prim (.int j) =>
+      someOrError (i.mul? j) ty
+    | .contains, .set vs₁, _ =>
+      .val (vs₁.contains v₂) ty
+    | .containsAll, .set vs₁, .set vs₂ =>
+      .val (vs₂.subset vs₁) ty
+    | .containsAny, .set vs₁, .set vs₂ =>
+      .val (vs₁.intersects vs₂) ty
+    | .mem, .prim (.entityUID uid₁), .prim (.entityUID uid₂) =>
+      someOrSelf (inₑ uid₁ uid₂ es) ty self
+    | .mem, .prim (.entityUID uid₁), .set vs =>
+      someOrSelf (inₛ uid₁ vs es) ty self
+    | .hasTag, .prim (.entityUID uid₁), .prim (.string tag) =>
+      someOrSelf (hasTag uid₁ tag es) ty self
+    | .getTag, .prim (.entityUID uid₁), .prim (.string tag) =>
+      getTag uid₁ tag es ty
+    | _, _, _ => .error ty
+  | _, _ =>
+    match r₁, r₂ with
+    | .error _, _ | _, .error _ => .error ty
+    | _, _ => self
+  where
   self := .binaryApp op₂ r₁ r₂ ty
+
 
 def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Option (Map Attr Value) :=
   match r with
@@ -210,6 +216,18 @@ decreasing_by
     try simp at h
     omega
 
+/-- Partially evaluating a policy.
+Note that this function actually evaluates a type-lifted version of `TypedExpr`
+produced by the type checker, as opposed to evaluating the expression directly.
+This design is to simplify proofs otherwise we need to prove theorems that
+state type-lifting (i.e, `TypedExpr.liftBoolTypes`) do not change the results
+of evaluating residuals. The soundness theorem still holds. That is,
+reauthorizing the residuals produces the same outcome as authorizing the input
+expressions with consistent requests/entities. It is just that the types in the
+residuals are all lifted. We essentially trade efficiency for ease of proofs,
+which I (Shaobo) think is fine because the Lean model is a reference model not
+used in production.
+-/
 def evaluatePolicy (schema : Schema)
   (p : Policy)
   (req : PartialRequest)
@@ -222,7 +240,7 @@ def evaluatePolicy (schema : Schema)
         do
           let expr := substituteAction env.reqty.action p.toExpr
           let (te, _) ← (typeOf expr ∅ env).mapError Error.invalidPolicy
-          .ok (evaluate te req es)
+          .ok (evaluate te.liftBoolTypes req es)
       else .error .invalidRequestOrEntities
     | .none => .error .invalidEnvironment
 

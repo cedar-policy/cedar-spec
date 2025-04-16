@@ -18,6 +18,7 @@ import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.Validation
 import Cedar.Thm.Data
+import Cedar.TPE
 
 /-!
 This file contains theorems related to `TypedExpr.liftBoolTypes`
@@ -27,6 +28,7 @@ namespace Cedar.Thm
 
 open Cedar.Validation
 open Cedar.Spec
+open Cedar.TPE
 
 theorem type_of_after_lifted_is_lifted (x : TypedExpr) :
   x.liftBoolTypes.typeOf = x.typeOf.liftBoolTypes

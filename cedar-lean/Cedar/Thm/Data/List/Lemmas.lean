@@ -437,7 +437,7 @@ theorem mapM'_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List �
       · simp only [reduceCtorEq] at h₁
       · simp only [reduceCtorEq] at h₁
       · rename_i yhd
-        replace ⟨ytl, h₁, h₃⟩ := do_ok.mp h₁
+        replace ⟨ytl, h₁, h₃⟩ := do_ok_eq_ok.mp h₁
         subst h₃
         exact List.Forall₂.cons h₂ (ih h₁)
   case mpr =>
@@ -851,6 +851,17 @@ theorem mapM_some_subset {f : α → Option β} {xs xs' : List α} {ys : List β
 := by
   simp only [← mapM'_eq_mapM]
   exact mapM'_some_subset
+
+theorem forall₂_implies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : List α₂} (f : α₁ → Except ε β) (g : α₂ → Except ε β):
+  List.Forall₂ (fun x y => f x = g y) xs ys →
+  List.mapM f xs =
+  List.mapM g ys
+:= by
+  intro h
+  cases h
+  case nil => simp only [List.mapM_nil]
+  case cons h₁ h₂ =>
+    simp only [List.mapM_cons, h₁, forall₂_implies_mapM_eq f g h₂, bind_pure_comp]
 
 /--
   our own variant of map_congr, for mapM'

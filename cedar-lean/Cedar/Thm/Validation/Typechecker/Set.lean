@@ -299,4 +299,41 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
     rw [←Set.make_mem] at h₇
     exact type_of_set_is_sound_ok ih h₁ h₂ h₅ h₆ h₇
 
+/- Used by `type_of_preserves_evaluation_results` -/
+theorem type_of_ok_attr_list {c₁ env atys request entities} {axs : List (Attr × Expr)} :
+  List.Forall₂ (fun x y => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env) = Except.ok y) axs atys →
+  (∀ (a₁ : Attr) (x₁ : Expr),
+    sizeOf (a₁, x₁).snd < 1 + sizeOf axs →
+      ∀ {c₂ : Capabilities} {ty : TypedExpr},
+        typeOf x₁ c₁ env = Except.ok (ty, c₂) → evaluate x₁ request entities = evaluate ty.toExpr request entities) →
+ List.Forall₂ (fun x y => bindAttr x.fst (evaluate x.snd request entities) = bindAttr y.fst (evaluate y.snd.toExpr request entities)) axs atys
+:= by
+  intro h₁ h₂
+  cases h₁
+  case nil => simp only [List.Forall₂.nil]
+  case cons a b l₁ l₂ h₃ h₄ =>
+    constructor
+    · simp [Except.map] at h₃
+      split at h₃ <;> cases h₃
+      rename_i heq
+      have : a ∈ a :: l₁ := by simp
+      have : sizeOf (a.fst, a.snd).snd < 1 + sizeOf (a :: l₁) := by
+        have : a = (a.fst, a.snd) := by rfl
+        rw [this]
+        simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec, gt_iff_lt]
+        omega
+      specialize h₂ a.fst a.snd this heq
+      simp only [h₂]
+    · have : (∀ (a₁ : Attr) (x₁ : Expr),
+        sizeOf (a₁, x₁).snd < 1 + sizeOf l₁ →
+          ∀ {c₂ : Capabilities} {ty : TypedExpr},
+            typeOf x₁ c₁ env = Except.ok (ty, c₂) → evaluate x₁ request entities = evaluate ty.toExpr request entities) := by
+        intro a' x₁ hᵢ c₂ ty
+        have : sizeOf (a', x₁).snd < 1 + sizeOf (a :: l₁) := by
+          simp
+          simp at hᵢ
+          omega
+        exact h₂ a' x₁ this
+      exact type_of_ok_attr_list h₄ this
+
 end Cedar.Thm
