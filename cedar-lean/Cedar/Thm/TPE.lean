@@ -84,7 +84,10 @@ theorem partial_evaluate_is_sound
 evaluating the input policy, given valid and consistent requests and entities.
 The equivalence is w.r.t authorization results. That is, the evaluation results
 are strictly equal when they are `.ok` or both errors (captured by
-`Except.toOption`).
+`Except.toOption`). We do not care if the error types match because they do not
+impact authorization results. As a matter of fact, they do not match because all
+errors encountered during TPE are represented by an `error` residual, whose
+interpretation always produces an `extensionError`.
 -/
 theorem partial_evaluate_policy_is_sound
   {schema : Schema}
@@ -113,7 +116,7 @@ theorem partial_evaluate_policy_is_sound
   rename_i heq₃
   simp [heq₁] at heq₃
   subst heq₃
-  rcases do_eq_ok₂ h₂ with ⟨h₂₁, h₂₂⟩
+  have ⟨h₂₁, h₂₂⟩ := do_eq_ok₂ h₂
   simp only [isValidAndConsistent.requestIsConsistent, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
     Bool.not_true, Bool.and_eq_true, decide_eq_true_eq] at h₂₁
   split at h₂₁ <;> try cases h₂₁
