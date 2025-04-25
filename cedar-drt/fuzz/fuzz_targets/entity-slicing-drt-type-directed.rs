@@ -112,7 +112,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             let mut policyset = ast::PolicySet::new();
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
-            let manifest = match compute_entity_manifest(&schema, &policyset) {
+            let manifest = match compute_entity_manifest(&Validator::new(schema), &policyset) {
                 Ok(manifest) => manifest,
                 Err(
                     EntityManifestError::UnsupportedCedarFeature(_)
