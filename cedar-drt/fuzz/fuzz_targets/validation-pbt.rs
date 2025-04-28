@@ -82,6 +82,7 @@ const LOG_FILENAME_ERR_INCORRECT_FORMAT: &str = "./logs/err_incorrect_format.txt
 const LOG_FILENAME_ERR_OTHER: &str = "./logs/err_other.txt";
 const LOG_FILENAME_ENTITIES_ERROR: &str = "./logs/err_entities.txt";
 const LOG_FILENAME_SCHEMA_ERROR: &str = "./logs/err_schema.txt";
+const LOG_FILENAME_TOO_MANY_REQ_ENVS_ERROR: &str = "./logs/err_too_many_req_envs.txt";
 
 // In the below, "vyes" means the schema passed validation, while "vno" means we
 // got to the point of running the validator but validation failed
@@ -154,6 +155,9 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
             ),
             Err(Error::OtherArbitrary(_)) => {
                 checkpoint(LOG_FILENAME_ERR_OTHER.to_string() + "_" + doing_what)
+            }
+            Err(Error::TooManyReqEnvs(_)) => {
+                checkpoint(LOG_FILENAME_TOO_MANY_REQ_ENVS.to_string() + "_" + doing_what)
             }
             Ok(_) => (),
         }
