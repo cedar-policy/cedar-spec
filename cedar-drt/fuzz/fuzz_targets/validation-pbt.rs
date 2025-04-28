@@ -157,7 +157,7 @@ fn log_err<T>(res: Result<T>, doing_what: &str) -> Result<T> {
                 checkpoint(LOG_FILENAME_ERR_OTHER.to_string() + "_" + doing_what)
             }
             Err(Error::TooManyReqEnvs(_)) => {
-                checkpoint(LOG_FILENAME_TOO_MANY_REQ_ENVS.to_string() + "_" + doing_what)
+                checkpoint(LOG_FILENAME_TOO_MANY_REQ_ENVS_ERROR.to_string() + "_" + doing_what)
             }
             Ok(_) => (),
         }
