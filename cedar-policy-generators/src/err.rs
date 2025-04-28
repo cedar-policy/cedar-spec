@@ -78,7 +78,7 @@ pub enum Error {
     OtherArbitrary(arbitrary::Error),
     /// Error thrown when the generator produces a schema that has too many
     /// valid request environments
-    #[error("Too many request environments: {} vs upper bound {}", .0 , crate::schema::Schema::REQUEST_ENV_LIMIT)]
+    #[error("Too many request environments: {} vs upper bound {}", .0 , crate::schema::Schema::PER_ACTION_REQUEST_ENV_LIMIT)]
     TooManyReqEnvs(usize),
 }
 

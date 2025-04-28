@@ -954,7 +954,7 @@ impl Schema {
     // An upper bound on the number of request environment a schema can produce
     // See https://github.com/cedar-policy/cedar-spec/issues/610 for the
     // motivation why we want this limit
-    pub(crate) const REQUEST_ENV_LIMIT: usize = 128;
+    pub(crate) const PER_ACTION_REQUEST_ENV_LIMIT: usize = 128;
 
     /// Get an arbitrary `Schema`.
     pub fn arbitrary(settings: ABACSettings, u: &mut Unstructured<'_>) -> Result<Schema> {
@@ -1068,7 +1068,9 @@ impl Schema {
                                  u: &mut Unstructured<'_>|
          -> Result<Vec<ast::InternalName>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u.int_in_range(1..=entity_types.len()).unwrap() % Self::REQUEST_ENV_LIMIT;
+            let num = u
+                .int_in_range(1..=(entity_types.len() % Self::PER_ACTION_REQUEST_ENV_LIMIT))
+                .unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
 
@@ -1117,7 +1119,7 @@ impl Schema {
                                 picked_principal_types.len() * picked_resource_types.len();
                             // Fail fast if the number of request environment
                             // number is too large
-                            if req_env_num > Self::REQUEST_ENV_LIMIT {
+                            if req_env_num > Self::PER_ACTION_REQUEST_ENV_LIMIT {
                                 return Err(Error::TooManyReqEnvs(req_env_num));
                             }
                             Some(json_schema::ApplySpec {
