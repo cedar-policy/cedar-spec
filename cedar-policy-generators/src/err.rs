@@ -76,6 +76,10 @@ pub enum Error {
     /// ourselves.
     #[error(transparent)]
     OtherArbitrary(arbitrary::Error),
+    /// Error thrown when the generator produces a schema that has too many
+    /// valid request environments
+    #[error("Too many request environments: {} vs upper bound {}", .0 , crate::schema::Schema::REQUEST_ENV_LIMIT)]
+    TooManyReqEnvs(usize),
 }
 
 /// Type alias for convenience
@@ -95,6 +99,7 @@ impl From<Error> for arbitrary::Error {
             Error::ContextError(_) => arbitrary::Error::IncorrectFormat,
             Error::SchemaError(_) => arbitrary::Error::IncorrectFormat,
             Error::OtherArbitrary(e) => e,
+            Error::TooManyReqEnvs(_) => arbitrary::Error::IncorrectFormat,
         }
     }
 }
