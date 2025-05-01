@@ -316,16 +316,6 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
 
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
-/--
-  `mapM` with a function that always produces `pure`
--/
-theorem mapM_pure {α β} [Monad m] [LawfulMonad m] {f : α → β} {xs : List α} :
-  xs.mapM ((λ a => pure (f a)) : α → m β) = pure (xs.map f)
-:= by
-  induction xs
-  case nil => simp only [mapM_nil, map_nil]
-  case cons hd tl ih => simp [ih]
-
 theorem mapM_some {xs : List α} :
   xs.mapM some = some xs
 := by

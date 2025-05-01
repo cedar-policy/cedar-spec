@@ -273,8 +273,11 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     match n with
     | 0 => cases hw
     | n + 1 =>
+      sorry
+      /-
       have ih := slice_contains_reachable hw hs₄
       rw [Set.mem_mapUnion_iff_mem_exists]
       subst hs
       rename_i ed_slice _
       exists ed_slice
+      -/

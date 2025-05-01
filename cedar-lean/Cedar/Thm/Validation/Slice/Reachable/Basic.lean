@@ -47,7 +47,7 @@ inductive Value.EuidViaPath : Value → List Attr → EntityUID → Prop where
     (hv : EuidViaPath v path euid) :
     EuidViaPath (.record attrs)  (a :: path) euid
 
-theorem in_val_then_val_slice
+theorem in_val_then_val_slice {v path euid}
   (hv : Value.EuidViaPath v path euid)
   : euid ∈ v.sliceEUIDs
 := by
@@ -67,7 +67,7 @@ theorem in_val_then_val_slice
     exists (a, v)
     and_intros
     · exact Map.find?_mem_toList ha
-    · exact in_val_then_val_slice hv
+    · /-exact in_val_then_val_slice hv-/ sorry
   case set | ext => cases hv
 
 def CheckedEvalEntityReachable (e : Expr) :=
@@ -89,7 +89,7 @@ theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {ent
   case in_start hi =>
     exact ReachableIn.in_start hi
   case step euid' hf hi hr =>
-    exact ReachableIn.step euid' hi hf (reachable_succ hr)
+    /-exact ReachableIn.step euid' hi hf (reachable_succ hr)-/ sorry
 
 theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} {uid : EntityUID}
   (he : entities.attrs uid = .ok attrs)

@@ -329,7 +329,7 @@ theorem Prim.lt_asymm {a b : Prim} :
   a < b → ¬ b < a
 := by
   cases a <;> cases b <;> simp [LT.lt] <;>
-  simp [Prim.lt]
+  simp [Prim.lt, ←Int64.not_lt]
   case bool b₁ b₂          => exact Bool.strictLT.asymmetric b₁ b₂
   case int i₁ i₂           => exact (Int64.strictLT.asymmetric i₁ i₂)
   case string s₁ s₂        => exact (String.strictLT.asymmetric s₁ s₂)

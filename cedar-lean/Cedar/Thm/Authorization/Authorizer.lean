@@ -322,7 +322,7 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set (list : List EntityUID) 
     unfold List.Equiv at *
     repeat rw [List.subset_def] at *
     constructor <;> intro a h₃ <;>
-    replace h₃ := List.mem_map_of_mem (Value.prim ∘ Prim.entityUID) h₃
+    replace h₃ := @List.mem_map_of_mem _ _ _ _ (Value.prim ∘ Prim.entityUID) h₃
     · specialize h₁ h₃
       simp at h₁
       exact h₁

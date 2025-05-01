@@ -133,7 +133,7 @@ theorem partial_evaluate_policy_is_sound
   split at heq₄ <;> cases heq₄
   rename_i heq₄
   have h₄ := request_and_entities_match_env heq₃ heq₄
-  have h₅ := typechecked_is_well_typed_after_lifting h₄ heq₂
+  have h₅ := typechecked_is_well_typed_after_lifting heq₂
   have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
