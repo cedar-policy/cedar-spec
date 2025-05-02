@@ -37,7 +37,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   (he₃ : Value.EuidViaPath tv path euid') :
   ReachableIn entities start euid' (n + 1)
 := by
-  cases hr
+  cases n <;> cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.tags.values, euid' ∈ v.sliceEUIDs by
@@ -50,11 +50,8 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
       ReachableIn.in_start he₄
     exact ReachableIn.step euid hi he₁ hr'
   case step n' ed' euid'' he₁' hi hr' =>
-    /-
     have ih := reachable_tag_step hr' he₁ he₂ he₃
     exact ReachableIn.step euid'' hi he₁' ih
-    -/
-    sorry
 
 theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {entities : Entities} {path : List Attr}
   (hc : CapabilitiesInvariant c request entities)
