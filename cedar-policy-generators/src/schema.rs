@@ -1069,7 +1069,9 @@ impl Schema {
          -> Result<Vec<ast::InternalName>> {
             // Pre-select the number of entity types (minimum 1), then randomly select that many indices
             let num = u
-                .int_in_range(1..=(entity_types.len() % Self::PER_ACTION_REQUEST_ENV_LIMIT))
+                .int_in_range(
+                    1..=std::cmp::min(entity_types.len(), Self::PER_ACTION_REQUEST_ENV_LIMIT),
+                )
                 .unwrap();
             let mut indices: Vec<usize> = (0..entity_types.len()).collect();
             let mut selected_indices = Vec::with_capacity(num);
