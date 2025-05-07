@@ -205,7 +205,7 @@ private theorem foldl_union_swap_middle {α} [LT α] [StrictLT α] [DecidableLT 
   case nil =>
     simp only [List.nil_append, List.foldl_cons, List.singleton_append]
   case cons xhd xtl =>
-    rw [eq_comm, List.cons_append y, List.cons_append xhd, foldl_union_swap_front y xhd, eq_comm]
+    rw [eq_comm, List.cons_append, List.cons_append, foldl_union_swap_front y xhd, eq_comm]
     rw [List.foldl_cons, List.cons_append, List.foldl_cons]
     exact foldl_union_swap_middle y
 
@@ -219,7 +219,7 @@ private theorem foldl_union_comm {α} [LT α] [StrictLT α] [DecidableLT α] [De
     simp only [List.append_nil, List.nil_append, List.foldl_cons]
   case cons xhd xtl yhd ytl =>
     rw [foldl_union_swap_middle, foldl_union_swap_middle, ← List.singleton_append, List.append_assoc,
-      List.cons_append xhd, foldl_union_swap_middle]
+      @List.cons_append _ xhd, foldl_union_swap_middle]
     simp only [List.cons_append, List.singleton_append, List.foldl_cons, List.nil_append]
     exact foldl_union_comm
 

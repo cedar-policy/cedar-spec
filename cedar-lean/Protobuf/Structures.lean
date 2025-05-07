@@ -14,7 +14,7 @@
  limitations under the License.
 -/
 
-import Lean.Data.HashMap
+import Std.Data.HashMap
 import Protobuf.BParsec
 import Protobuf.Varint
 import Protobuf.WireType

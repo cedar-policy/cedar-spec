@@ -37,7 +37,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   (he₃ : Value.EuidViaPath tv path euid') :
   ReachableIn entities start euid' (n + 1)
 := by
-  cases hr
+  cases n <;> cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.tags.values, euid' ∈ v.sliceEUIDs by

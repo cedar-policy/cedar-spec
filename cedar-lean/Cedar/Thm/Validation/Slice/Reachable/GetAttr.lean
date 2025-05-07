@@ -36,7 +36,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   (he₂ : Value.EuidViaPath (.record ed.attrs) path euid' ) :
   ReachableIn entities start euid' (n + 1)
 := by
-  cases hr
+  cases n <;> cases hr
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.attrs.values, euid' ∈ v.sliceEUIDs by

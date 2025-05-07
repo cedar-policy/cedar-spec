@@ -80,8 +80,8 @@ theorem in_list_iff_in_mk {α : Type u} (v : α) (xs : List α) :
 theorem mem_cons_self {α : Type u} (hd : α) (tl : List α) :
   hd ∈ Set.mk (hd :: tl)
 := by
-  simp only [Membership.mem]
-  apply List.mem_cons_self hd tl
+  simp only [Membership.mem, elts]
+  exact List.mem_cons_self
 
 theorem mem_cons_of_mem {α : Type u} (a : α) (hd : α) (tl : List α) :
   a ∈ Set.mk tl → a ∈ Set.mk (hd :: tl)
