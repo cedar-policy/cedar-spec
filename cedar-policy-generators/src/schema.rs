@@ -1978,7 +1978,7 @@ mod tests {
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
     use cedar_policy_validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
-    use rand::{rngs::ThreadRng, thread_rng, RngCore};
+    use rand::{rng, rngs::ThreadRng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
     const ITERATION: u8 = 100;
@@ -2418,7 +2418,7 @@ mod tests {
     fn entities_generation_github() {
         let fragment = json_schema::Fragment::from_json_file(GITHUB_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for _ in 0..ITERATION {
             assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
         }
@@ -2428,7 +2428,7 @@ mod tests {
     fn entities_generation_document_cloud() {
         let fragment = json_schema::Fragment::from_json_file(DOCUMENT_CLOUD_SCHEMA_STR.as_bytes())
             .expect("schema str should be valid!");
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for _ in 0..ITERATION {
             assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
         }
