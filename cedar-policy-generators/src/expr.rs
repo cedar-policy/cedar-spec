@@ -50,7 +50,7 @@ pub struct ExprGenerator<'a> {
     pub hierarchy: Option<&'a Hierarchy>,
 }
 
-impl<'a> ExprGenerator<'a> {
+impl ExprGenerator<'_> {
     /// get a (fully general) arbitrary expression conforming to the schema, but
     /// no attempt to match types.
     ///

@@ -52,7 +52,7 @@ pub fn equivalence_check<N: Clone + PartialEq + Debug + Display + TypeName + Ord
             .map(|(name, lhs_namespace)| {
                 let rhs_namespace = rhs
                     .0
-                    .get(&name)
+                    .get(name)
                     .ok_or_else(|| format!("namespace `{name:?}` does not exist in RHS schema"))?;
                 Equiv::equiv(lhs_namespace, rhs_namespace)
             })
@@ -84,7 +84,7 @@ pub trait Equiv {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String>;
 }
 
-impl<'a, T: Equiv> Equiv for &'a T {
+impl<T: Equiv> Equiv for &T {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(*lhs, *rhs)
     }
@@ -140,7 +140,7 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv
 impl<V: Eq + Hash + Display> Equiv for HashSet<V> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs != rhs {
-            let missing_elems = lhs.symmetric_difference(&rhs).join(", ");
+            let missing_elems = lhs.symmetric_difference(rhs).join(", ");
             Err(format!("missing set elements: {missing_elems}"))
         } else {
             Ok(())
@@ -154,7 +154,7 @@ impl<V: Eq + Hash + Display> Equiv for HashSet<V> {
 impl<V: Eq + Ord + Display> Equiv for BTreeSet<V> {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs != rhs {
-            let missing_elems = lhs.symmetric_difference(&rhs).join(", ");
+            let missing_elems = lhs.symmetric_difference(rhs).join(", ");
             Err(format!("missing set elements: {missing_elems}"))
         } else {
             Ok(())
@@ -387,9 +387,8 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
                     return Err("records are not equivalent because they have different additional_attributes flags".into());
                 }
                 lhs_attributes
-                    .into_iter()
-                    .map(|(key, lhs)| Equiv::equiv(lhs, rhs_attributes.get(key).unwrap()))
-                    .collect::<Result<(), String>>()
+                    .iter()
+                    .try_for_each(|(key, lhs)| Equiv::equiv(lhs, rhs_attributes.get(key).unwrap()))
             }
             // Sets are equivalent if their elements are equivalent
             (
@@ -435,7 +434,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
             }
             (Self::Extension { name }, Self::EntityOrCommon { type_name })
             | (Self::EntityOrCommon { type_name }, Self::Extension { name }) => {
-                if is_internal_type(type_name, &name.to_string()) {
+                if is_internal_type(type_name, name.as_ref()) {
                     Ok(())
                 } else {
                     Err(format!(
@@ -512,22 +511,22 @@ impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_sch
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(&lhs.annotations, &rhs.annotations)
             .map_err(|e| format!("mismatch in action annotations: {e}"))?;
-        if &lhs.attributes != &rhs.attributes
+        if lhs.attributes != rhs.attributes
             && !(lhs.attributes.as_ref().is_none_or(HashMap::is_empty)
                 && rhs.attributes.as_ref().is_none_or(HashMap::is_empty))
         {
-            Err(format!("Attributes don't match"))
-        } else if &lhs.member_of != &rhs.member_of
+            Err("Attributes don't match".to_string())
+        } else if lhs.member_of != rhs.member_of
             && !(lhs.member_of.as_ref().is_none_or(Vec::is_empty)
                 && rhs.member_of.as_ref().is_none_or(Vec::is_empty))
         {
-            Err(format!("Member-of doesn't match"))
+            Err("Member-of doesn't match".to_string())
         } else {
             match (&lhs.applies_to, &rhs.applies_to) {
                 (None, None) => Ok(()),
                 (Some(lhs), Some(rhs)) => {
                     // If either of them has at least one empty appliesTo list, the other must have the same attribute.
-                    if either_empty(&lhs) && either_empty(&rhs) {
+                    if either_empty(lhs) && either_empty(rhs) {
                         Ok(())
                     } else {
                         Equiv::equiv(lhs, rhs).map_err(|e| format!("Mismatches appliesTo: {e}"))
@@ -539,12 +538,12 @@ impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_sch
                 (Some(applies_to), None) | (None, Some(applies_to)) if either_empty(applies_to) => {
                     Ok(())
                 }
-                (Some(_), None) => Err(format!(
-                    "Mismatched appliesTo, lhs was `Some`, `rhs` was `None`"
-                )),
-                (None, Some(_)) => Err(format!(
-                    "Mismatched appliesTo, lhs was `None`, `rhs` was `Some`"
-                )),
+                (Some(_), None) => {
+                    Err("Mismatched appliesTo, lhs was `Some`, `rhs` was `None`".to_string())
+                }
+                (None, Some(_)) => {
+                    Err("Mismatched appliesTo, lhs was `None`, `rhs` was `Some`".to_string())
+                }
             }
         }
     }

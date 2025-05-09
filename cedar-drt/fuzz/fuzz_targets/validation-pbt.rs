@@ -394,9 +394,8 @@ fuzz_target!(|input: FuzzTargetInput| {
                 maybe_log_schemastats(schemafile.as_ref(), "vno");
                 maybe_log_hierarchystats(&input.hierarchy, "vno");
                 maybe_log_policystats(&policy, "vno");
-                assert_eq!(
-                    false,
-                    passes_strict,
+                assert!(
+                    !passes_strict,
                     "policy fails permissive validation but passes strict validation!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\n",
                 );
             }

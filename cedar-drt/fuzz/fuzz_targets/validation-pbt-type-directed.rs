@@ -175,9 +175,8 @@ fuzz_target!(|input: FuzzTargetInput| {
                     )
                 }
             } else {
-                assert_eq!(
-                    false,
-                    passes_strict,
+                assert!(
+                    !passes_strict,
                     "policy fails permissive validation but passes strict validation!\npolicies:\n{policyset}\nentities:\n{entities}\nschema:\n{schemafile_string}\n",
                 );
             }

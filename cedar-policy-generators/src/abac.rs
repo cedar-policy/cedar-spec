@@ -129,8 +129,8 @@ struct BiasedI64(i64);
 impl<'a> Arbitrary<'a> for BiasedI64 {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(gen!(u,
-            1 => std::i64::MAX,
-            1 => std::i64::MIN,
+            1 => i64::MAX,
+            1 => i64::MIN,
             1 => -1,
             1 => 0,
             6 => <i64 as Arbitrary>::arbitrary(u)?
@@ -830,6 +830,7 @@ pub enum NotEnoughTypeInformation {
 /// - UID literals
 /// - extension function calls applied to the other things on this list
 /// - sets, record literals containing items found on this list (including nested)
+///
 /// and not:
 /// - vars
 /// - builtin operators or functions

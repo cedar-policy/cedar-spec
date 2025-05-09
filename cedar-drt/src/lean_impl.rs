@@ -138,8 +138,8 @@ fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
     unsafe {
         let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
         let y = (*x).m_data.as_mut_ptr();
-        for i in 0..buf.len() {
-            y.add(i).write(buf[i])
+        for (i, byte) in buf.iter().enumerate() {
+            y.add(i).write(*byte)
         }
         x.cast()
     }

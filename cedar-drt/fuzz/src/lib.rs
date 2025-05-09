@@ -18,7 +18,6 @@ mod dump;
 mod parsing_utils;
 mod prt;
 
-use cedar_policy_validator::ValidationError;
 use cedar_policy_validator::ValidationResult;
 use cedar_testing::cedar_test_impl::TestValidationResult;
 pub use dump::*;
@@ -65,10 +64,9 @@ pub fn run_eval_test(
         Extensions::none()
     };
     let eval = Evaluator::new(request.clone(), entities, exts);
-    let expected = match eval.interpret(expr, &std::collections::HashMap::default()) {
-        Ok(v) => Some(v),
-        Err(_) => None,
-    };
+    let expected = eval
+        .interpret(expr, &std::collections::HashMap::default())
+        .ok();
 
     // `custom_impl.interpret()` returns true when the result of evaluating `expr`
     // matches `expected`

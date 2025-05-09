@@ -35,13 +35,13 @@ pub struct ABACSettings {
     /// This is used in the following places:
     /// - Maximum depth of the expression in a when/unless clause
     ///     - Note that this is only the limit for _each_ `when` and `unless`
-    ///     clause.
-    ///     Some generated policies will have multiple `when` and `unless`
-    ///     clauses, in which case the conjunction of all conditions may exceed
-    ///     the `max_depth`. But, the `max_depth` still applies for each clause
-    ///     individually.
+    ///       clause.
+    ///       Some generated policies will have multiple `when` and `unless`
+    ///       clauses, in which case the conjunction of all conditions may exceed
+    ///       the `max_depth`. But, the `max_depth` still applies for each clause
+    ///       individually.
     /// - Maximum depth of expressions in attribute values in the hierarchy,
-    ///     and also of attributes of `context` in each request
+    ///   and also of attributes of `context` in each request
     /// - Maximum depth of a type specified in a generated schema
     /// - Maximum number of when/unless clauses in a policy
     pub max_depth: usize,
@@ -50,14 +50,14 @@ pub struct ABACSettings {
     ///
     /// This is used in the following places:
     /// - Maximum number of elements in a set in an attribute value in the
-    ///     hierarchy
+    ///   hierarchy
     /// - Maximum number of elements in a set literal in a policy
     /// - Maximum number of attributes in a record in an attribute value in the
-    ///     hierarchy
+    ///   hierarchy
     /// - Maximum number of attributes in a record literal in a policy
     /// - Maximum number of UIDs in the hierarchy of any given entity type
     /// - Maximum number of "additional attributes" on any entity in the
-    ///     hierarchy
+    ///   hierarchy
     pub max_width: usize,
     /// Whether to enable the `additional_attributes` flag in generated schemas.
     /// If this option is `false`, `additional_attributes` will always be false
