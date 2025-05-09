@@ -178,7 +178,7 @@ impl Hierarchy {
             // generate a UID that (probably) doesn't exist, but, still is schema-compatible
             let choices = schema
                 .map(|schema| schema.get_uid_enum_choices(typename))
-                .unwrap_or_else(|| vec![]);
+                .unwrap_or_default();
             generate_uid_with_type(typename.clone(), &choices, u)
         }
     }
@@ -285,7 +285,7 @@ impl TryFrom<Hierarchy> for Entities {
     type Error = String;
     fn try_from(h: Hierarchy) -> std::result::Result<Entities, String> {
         Entities::from_entities(
-            h.into_entities().map(Into::into),
+            h.into_entities(),
             None::<&NoEntitiesSchema>,
             TCComputation::ComputeNow,
             Extensions::all_available(),
@@ -329,9 +329,9 @@ pub struct HierarchyGenerator<'a, 'u> {
 }
 
 // can't auto-derive `Debug` because of the `Unstructured`
-impl<'a, 'u> std::fmt::Debug for HierarchyGenerator<'a, 'u> {
+impl std::fmt::Debug for HierarchyGenerator<'_, '_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <HierarchyGeneratorMode<'a> as std::fmt::Debug>::fmt(&self.mode, f)?;
+        <HierarchyGeneratorMode<'_> as std::fmt::Debug>::fmt(&self.mode, f)?;
         <NumEntities as std::fmt::Debug>::fmt(&self.num_entities, f)?;
         Ok(())
     }
@@ -404,7 +404,7 @@ pub(crate) fn generate_uid_with_type(
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
 
-impl<'a, 'u> HierarchyGenerator<'a, 'u> {
+impl HierarchyGenerator<'_, '_> {
     /// Generate a `Hierarchy` according to the specified parameters
     pub fn generate(&mut self) -> Result<Hierarchy> {
         let entity_types = match &self.mode {
@@ -636,30 +636,27 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                         let et = entitytypes_by_type
                         .get(name)
                         .expect("typename should have an EntityType");
-                        match &et.kind {
-                            EntityTypeKind::Standard(StandardEntityType { tags: Some(tag_type), .. }) => {
-                                // add tags with the type `tag_type`
-                                self.u.arbitrary_loop(
-                                    None,
-                                    Some(schema.settings.max_width as u32),
-                                    |u| {
-                                        let tag_key: SmolStr = u.arbitrary()?;
-                                        tags.insert(
-                                            tag_key,
-                                            schema
-                                                .exprgenerator(Some(&hierarchy_no_attrs))
-                                                .generate_attr_value_for_schematype(
-                                                    tag_type,
-                                                    schema.settings.max_depth,
-                                                    u,
-                                                )?
-                                                .into(),
-                                        );
-                                        Ok(std::ops::ControlFlow::Continue(()))
-                                    },
-                                )?;
-                            }
-                            _ => {}
+                        if let EntityTypeKind::Standard(StandardEntityType { tags: Some(tag_type), .. })  = &et.kind {
+                            // add tags with the type `tag_type`
+                            self.u.arbitrary_loop(
+                                None,
+                                Some(schema.settings.max_width as u32),
+                                |u| {
+                                    let tag_key: SmolStr = u.arbitrary()?;
+                                    tags.insert(
+                                        tag_key,
+                                        schema
+                                            .exprgenerator(Some(&hierarchy_no_attrs))
+                                            .generate_attr_value_for_schematype(
+                                                tag_type,
+                                                schema.settings.max_depth,
+                                                u,
+                                            )?
+                                            .into(),
+                                    );
+                                    Ok(std::ops::ControlFlow::Continue(()))
+                                },
+                            )?;
                         }
                     }
                 }
@@ -670,7 +667,7 @@ impl<'a, 'u> HierarchyGenerator<'a, 'u> {
                     std::collections::HashSet::new(),
                     parents.into_iter().collect(),
                     tags,
-                    &self.extensions,
+                    self.extensions,
                 )
                 .map_err(|e| Error::EntitiesError(e.to_string()))?;
                 Ok((uid.clone(), entity))

@@ -33,7 +33,7 @@ fuzz_target!(|est_json_str: String| {
     // Attempt to deserialize an est policy set from the specified json string
     // Then, convert the est policy set to an ast policy set
     let ast_from_est_result = serde_json::from_str::<serde_json::Value>(&est_json_str)
-        .and_then(|val| serde_json::from_value::<cedar_policy_core::est::PolicySet>(val))
+        .and_then(serde_json::from_value::<cedar_policy_core::est::PolicySet>)
         .map_err(ESTParseError::from)
         .and_then(|est| {
             cedar_policy_core::ast::PolicySet::try_from(est).map_err(ESTParseError::from)

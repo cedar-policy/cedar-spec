@@ -15,9 +15,7 @@
  */
 
 use cedar_policy::{AuthorizationError, Policy};
-use cedar_policy_core::ast::{
-    Context, EntityUID, EntityUIDEntry, PolicySet, Request, RestrictedExpr,
-};
+use cedar_policy_core::ast::{Context, EntityUID, EntityUIDEntry, PolicySet, Request};
 use cedar_policy_core::authorizer::Response;
 use cedar_policy_core::entities;
 use cedar_policy_core::entities::{Entities, TypeAndId};
@@ -232,15 +230,7 @@ fn dump_request_var(var: &EntityUIDEntry) -> JsonValueWithNoDuplicateKeys {
 fn dump_context(context: Context) -> JsonValueWithNoDuplicateKeys {
     let context = context
         .into_iter()
-        .map(|(k, pval)| {
-            (
-                k,
-                RestrictedExpr::try_from(pval)
-                    .unwrap()
-                    .to_natural_json()
-                    .unwrap(),
-            )
-        })
+        .map(|(k, pval)| (k, pval.to_natural_json().unwrap()))
         .collect::<HashMap<_, _>>();
     serde_json::to_value(context)
         .expect("failed to serialize context")

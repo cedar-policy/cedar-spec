@@ -779,8 +779,8 @@ impl Schema {
                     ))
                 })
                 .collect::<Result<BTreeMap<_, _>>>()?,
-            entity_types: entity_types.into(),
-            actions: actions.into(),
+            entity_types,
+            actions,
             annotations: self.schema.annotations.clone(),
         })
     }
@@ -839,11 +839,9 @@ impl Schema {
                 resource_types.extend(applyspec.resource_types.iter());
             }
         }
-        let mut attributes = Vec::new();
-        for schematype in nsdef
+        let attributes = nsdef
             .common_types
             .values()
-            .into_iter()
             .map(|ty| &ty.ty)
             .chain(
                 nsdef
@@ -856,9 +854,8 @@ impl Schema {
                         }
                     }),
             )
-        {
-            attributes.extend(attrs_in_schematype(&nsdef, schematype));
-        }
+            .flat_map(|schematype| attrs_in_schematype(&nsdef, schematype))
+            .collect();
         let attributes_by_type =
             build_attributes_by_type(&nsdef, &nsdef.entity_types, namespace.as_ref());
         Ok(Schema {
@@ -1165,7 +1162,7 @@ impl Schema {
         }
 
         let nsdef = json_schema::NamespaceDefinition {
-            common_types: BTreeMap::new().into(),
+            common_types: BTreeMap::new(),
             entity_types: entity_types.into_iter().collect(),
             actions: actions.into_iter().collect(),
             // We cannot allow annotations on the empty namespace
@@ -1455,7 +1452,7 @@ impl Schema {
                     ..
                 } = et
                 {
-                    if json_schema::Type::from(tag_ty.clone()) == target_type {
+                    if tag_ty == &target_type {
                         Some(
                             ast::EntityType::from(ast::Name::from(name.clone()))
                                 .qualify_with(self.namespace()),
@@ -1748,7 +1745,7 @@ impl Schema {
 
 impl From<Schema> for json_schema::Fragment<ast::InternalName> {
     fn from(schema: Schema) -> json_schema::Fragment<ast::InternalName> {
-        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema)]).into())
+        json_schema::Fragment(BTreeMap::from_iter([(schema.namespace, schema.schema)]))
     }
 }
 
@@ -1957,10 +1954,7 @@ fn downgrade_applyspec_to_raw(
 fn downgrade_aeuid_to_raw(
     aeuid: json_schema::ActionEntityUID<ast::InternalName>,
 ) -> json_schema::ActionEntityUID<RawName> {
-    json_schema::ActionEntityUID::new(
-        Some(RawName::from_name(aeuid.ty().clone().into())),
-        aeuid.id,
-    )
+    json_schema::ActionEntityUID::new(Some(RawName::from_name(aeuid.ty().clone())), aeuid.id)
 }
 
 impl TryFrom<Schema> for ValidatorSchema {

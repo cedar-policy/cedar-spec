@@ -83,7 +83,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
 // Attach each token two uuids as leading comment and one uuid as trailing comment
 fn attach_comment(p: &str, uuids: &mut Vec<String>, seed: u64) -> String {
     let mut rng = SmallRng::seed_from_u64(seed);
-    let mut build_uuid = || Builder::from_random_bytes(rng.gen()).into_uuid();
+    let mut build_uuid = || Builder::from_random_bytes(rng.random()).into_uuid();
 
     Token::lexer(p)
         .spanned()
