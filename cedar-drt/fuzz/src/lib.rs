@@ -24,6 +24,7 @@ pub use dump::*;
 pub use parsing_utils::*;
 pub use prt::*;
 pub mod schemas;
+pub mod validation_drt;
 
 use cedar_policy::ffi;
 use cedar_policy::PolicyId;
