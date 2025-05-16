@@ -18,6 +18,7 @@ cedar-policy = { path = "../../cedar/cedar-policy", version = "4.*", features = 
 cedar-policy-core = { path = "../../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
 cedar-policy-validator = { path = "../../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary", "entity-manifest"] }
 cedar-policy-formatter = { path = "../../cedar/cedar-policy-formatter", version = "4.*" }
+cedar-partial-evaluation = { path = "../../cedar/cedar-partial-evaluation", version = "4.*" }
 cedar-testing = { path = "../../cedar/cedar-testing", version = "4.*" }
 cedar-policy-generators = { path = "../../cedar-policy-generators", version = "4.*" }
 miette = "7.1.0"
@@ -215,5 +216,11 @@ doc = false
 [[bin]]
 name = "level-validation-drt"
 path = "fuzz_targets/level-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "tpe-pbt"
+path = "fuzz_targets/tpe-pbt.rs"
 test = false
 doc = false
