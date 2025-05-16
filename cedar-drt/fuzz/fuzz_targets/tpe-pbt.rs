@@ -15,12 +15,14 @@
  */
 
 #![no_main]
-use cedar_drt::ast::Value;
+use cedar_drt::ast::{Expr, Request, Value};
+use cedar_drt::evaluator::Evaluator;
 use cedar_drt::extensions::Extensions;
 use cedar_drt::initialize_log;
 use cedar_drt_inner::*;
 use cedar_partial_evaluation::entities::{PartialEntities, PartialEntity};
 use cedar_partial_evaluation::request::{PartialEntityUID, PartialRequest};
+use cedar_partial_evaluation::residual::Residual;
 use cedar_partial_evaluation::tpe::tpe_policy;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
@@ -187,6 +189,18 @@ fn entities_to_partial_entities(entities: &Entities) -> PartialEntities {
     }
 }
 
+fn test_weak_equiv(residual: Residual, e: &Expr, req: Request, entities: &Entities) -> bool {
+    let eval = Evaluator::new(req, entities, Extensions::all_available());
+    let slots = HashMap::new();
+
+    let expr = Expr::from(residual);
+    debug!("expr: {e}");
+    debug!("residual: {expr}");
+    let concrete_res = eval.interpret(e, &slots);
+    let reeval_res = eval.interpret(&expr, &slots);
+    concrete_res.ok() == reeval_res.ok()
+}
+
 // The main fuzz target. This is for PBT on the validator
 fuzz_target!(|input: FuzzTargetInput| {
     initialize_log();
@@ -205,18 +219,21 @@ fuzz_target!(|input: FuzzTargetInput| {
                 partial_entities
                     .compute_tc()
                     .expect("tc computation failed");
+                let policy: ast::Policy = policy.clone().into();
+                let expr = policy.condition();
                 for i in 0..8 {
                     let request: ast::Request = input.requests[i].clone().into();
                     let partial_request = &input.partial_requests[i];
                     if passes_request_validation(&schema, &request) {
                         let residual = tpe_policy(
-                            &policy.clone().into(),
+                            &policy,
                             &partial_request,
                             &mut partial_entities,
                             &schema,
                             TCComputation::AssumeAlreadyComputed,
                         )
                         .expect("tpe failed");
+                        assert!(test_weak_equiv(residual, &expr, request, &entities));
                     }
                 }
             }
