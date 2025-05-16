@@ -26,6 +26,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
 use cedar_policy_core::entities::Entities;
+use cedar_policy_core::entities::TCComputation;
 use cedar_policy_core::evaluator::EvaluationError;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
@@ -36,7 +37,7 @@ use cedar_policy_generators::{
 use cedar_policy_validator::{CoreSchema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
 
@@ -114,7 +115,9 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
         let partial_requests = requests
             .iter()
             .map(|req| make_partial_request(req, u))
-            .collect()?;
+            .collect::<arbitrary::Result<Vec<_>>>()?
+            .try_into()
+            .unwrap();
         Ok(Self {
             schema,
             hierarchy,
@@ -159,18 +162,29 @@ fn passes_request_validation(schema: &ValidatorSchema, request: &ast::Request) -
 
 fn entity_to_partial_entity(entity: &ast::Entity) -> PartialEntity {
     PartialEntity {
-        uid: PartialEntityUID {
-            ty: entity.ty().clone(),
-            eid: None,
-        },
-        attrs: Some(BTreeMap::from_iter(entity.attrs().map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())))),
+        uid: entity.uid().clone(),
+        attrs: Some(BTreeMap::from_iter(
+            entity
+                .attrs()
+                .map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())),
+        )),
         ancestors: Some(HashSet::from_iter(entity.ancestors().cloned())),
-        tags: Some(BTreeMap::from_iter(entity.tags().map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())))),
+        tags: Some(BTreeMap::from_iter(
+            entity
+                .tags()
+                .map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())),
+        )),
     }
 }
 
 fn entities_to_partial_entities(entities: &Entities) -> PartialEntities {
-    PartialEntities { entities: HashMap::from_iter(entities.entities().map(|(eid, entity)| (eid.clone(), entity_to_partial_entity(entity)))) }
+    PartialEntities {
+        entities: HashMap::from_iter(
+            entities
+                .iter()
+                .map(|e| (e.uid().clone(), entity_to_partial_entity(e))),
+        ),
+    }
 }
 
 // The main fuzz target. This is for PBT on the validator
@@ -181,19 +195,28 @@ fuzz_target!(|input: FuzzTargetInput| {
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
         debug!("Schema: {:?}", schema);
         if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
-            let validator = Validator::new(schema);
+            let validator = Validator::new(schema.clone());
             let mut policyset = ast::PolicySet::new();
             let policy: ast::StaticPolicy = input.policy.into();
             policyset.add_static(policy.clone()).unwrap();
             let passes_strict = passes_policy_validation(&validator, &policyset);
             if passes_strict {
                 let mut partial_entities = entities_to_partial_entities(&entities);
-                partial_entities.compute_tc().expect("tc computation failed");
+                partial_entities
+                    .compute_tc()
+                    .expect("tc computation failed");
                 for i in 0..8 {
-                    let request: ast::Request = input.requests[i].into();
-                    let partial_request = input.partial_requests[i];
+                    let request: ast::Request = input.requests[i].clone().into();
+                    let partial_request = &input.partial_requests[i];
                     if passes_request_validation(&schema, &request) {
-                        let residual = tpe_policy(&policy.into(), &partial_request, &mut partial_entities, &schema, TCComputation::AlreadyComputed).expect("tpe failed");
+                        let residual = tpe_policy(
+                            &policy.clone().into(),
+                            &partial_request,
+                            &mut partial_entities,
+                            &schema,
+                            TCComputation::AssumeAlreadyComputed,
+                        )
+                        .expect("tpe failed");
                     }
                 }
             }
