@@ -57,10 +57,10 @@ theorem ext_iff {i₁ i₂ : Int64} : i₁ = i₂ ↔ i₁.toInt = i₂.toInt :=
     exact h₁
 
 theorem lt_def_toInt {i₁ i₂ : Int64} : i₁ < i₂ ↔ i₁.toInt < i₂.toInt := by
-  simp [LT.lt, Int64.lt, BitVec.slt, Int64.toInt]
+  simp only [LT.lt, Int64.lt, BitVec.slt, toInt_toBitVec, decide_eq_true_eq]
 
 theorem le_def_toInt {i₁ i₂ : Int64} : i₁ ≤ i₂ ↔ i₁.toInt ≤ i₂.toInt := by
-  simp [LE.le, Int64.le, BitVec.sle, Int64.toInt]
+  simp only [LE.le, Int64.le, BitVec.sle, toInt_toBitVec, decide_eq_true_eq]
 
 deriving instance Repr for Int64
 

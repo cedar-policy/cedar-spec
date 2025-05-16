@@ -143,7 +143,7 @@ open Cedar.Validation
 open Cedar.Data
 open Cedar.Spec
 
-theorem entity_access_at_level_succ {tx : TypedExpr} {env : Environment} {n n' : Nat}
+theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : Environment} {n n' : Nat}
   (h₁ : tx.EntityAccessAtLevel env n n' path) :
   tx.EntityAccessAtLevel env (n + 1) n' path
 := by
@@ -158,9 +158,12 @@ theorem entity_access_at_level_succ {tx : TypedExpr} {env : Environment} {n n' :
         rw [Prod.mk.sizeOf_spec ha tx] at h₁
         omega
       exact entity_access_at_level_succ hl
-
   case getAttrRecord h₁ h₂ =>
-    have h₃ := entity_access_at_level_succ h₂
+    rename_i tx₁ a ty
+    have ih : ∀ {n n'}, tx₁.EntityAccessAtLevel env n n' (a :: path) → tx₁.EntityAccessAtLevel env (n + 1) n' (a :: path) := by
+      intro _ _ h
+      exact entity_access_at_level_succ h
+    specialize ih h₂
     apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
   all_goals
     constructor <;> first
