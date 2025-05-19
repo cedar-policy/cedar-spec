@@ -15,7 +15,7 @@
  */
 
 #![no_main]
-use cedar_drt::ast::{Expr, Request, Value};
+use cedar_drt::ast::{EntityUID, Expr, Request, Value};
 use cedar_drt::evaluator::Evaluator;
 use cedar_drt::extensions::Extensions;
 use cedar_drt::initialize_log;
@@ -57,6 +57,7 @@ struct FuzzTargetInput {
     /// We try 8 requests per validated policy.
     pub requests: [ABACRequest; 8],
     pub partial_requests: [PartialRequest; 8],
+    pub partial_entities: PartialEntities,
 }
 
 /// settings for this fuzz target
@@ -126,6 +127,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             policy,
             requests,
             partial_requests,
+            partial_entities: entities_to_partial_entities(hierarchy.entities(), u)?,
         })
     }
 
@@ -162,31 +164,57 @@ fn passes_request_validation(schema: &ValidatorSchema, request: &ast::Request) -
         .is_ok()
 }
 
-fn entity_to_partial_entity(entity: &ast::Entity) -> PartialEntity {
-    PartialEntity {
+fn entity_to_partial_entity(
+    entity: &ast::Entity,
+    u: &mut Unstructured<'_>,
+    leafs: &HashSet<EntityUID>,
+) -> arbitrary::Result<PartialEntity> {
+    Ok(PartialEntity {
         uid: entity.uid().clone(),
-        attrs: Some(BTreeMap::from_iter(
-            entity
-                .attrs()
-                .map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())),
-        )),
-        ancestors: Some(HashSet::from_iter(entity.ancestors().cloned())),
-        tags: Some(BTreeMap::from_iter(
-            entity
-                .tags()
-                .map(|(k, v)| (k.clone(), Value::try_from(v.clone()).unwrap())),
-        )),
-    }
+        attrs: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(BTreeMap::from_iter(entity.attrs().map(|(k, v)| {
+                (k.clone(), Value::try_from(v.clone()).unwrap())
+            })))
+        },
+        ancestors: if leafs.contains(entity.uid()) {
+            if u.ratio(1, 4)? {
+                None
+            } else {
+                Some(HashSet::from_iter(entity.ancestors().cloned()))
+            }
+        } else {
+            Some(HashSet::from_iter(entity.ancestors().cloned()))
+        },
+        tags: if u.ratio(1, 4)? {
+            None
+        } else {
+            Some(BTreeMap::from_iter(entity.tags().map(|(k, v)| {
+                (k.clone(), Value::try_from(v.clone()).unwrap())
+            })))
+        },
+    })
 }
 
-fn entities_to_partial_entities(entities: &Entities) -> PartialEntities {
-    PartialEntities {
+fn entities_to_partial_entities(
+    entities: impl Iterator<Item = &ast::Entity>,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<PartialEntities> {
+    let entities = HashSet::from_iter(entities.cloned());
+    let mut leafs: HashSet<_> = entities.iter().map(|e| e.uid().clone()).collect();
+    for e in &entities {
+        for a in e.ancestors() {
+            leafs.remove(a);
+        }
+    }
+    Ok(PartialEntities {
         entities: HashMap::from_iter(
             entities
                 .iter()
-                .map(|e| (e.uid().clone(), entity_to_partial_entity(e))),
+                .map(|e| (e.uid().clone(), entity_to_partial_entity(e, u, &leafs))),
         ),
-    }
+    })
 }
 
 fn test_weak_equiv(residual: Residual, e: &Expr, req: Request, entities: &Entities) -> bool {
@@ -215,7 +243,7 @@ fuzz_target!(|input: FuzzTargetInput| {
             policyset.add_static(policy.clone()).unwrap();
             let passes_strict = passes_policy_validation(&validator, &policyset);
             if passes_strict {
-                let mut partial_entities = entities_to_partial_entities(&entities);
+                let mut partial_entities = input.partial_entities;
                 partial_entities
                     .compute_tc()
                     .expect("tc computation failed");
