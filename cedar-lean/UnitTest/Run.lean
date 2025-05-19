@@ -14,7 +14,6 @@
  limitations under the License.
 -/
 
-import Batteries.Data.List
 
 /-! This file defines simple utilities for unit testing. -/
 
