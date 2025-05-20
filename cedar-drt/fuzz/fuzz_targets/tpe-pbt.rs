@@ -123,7 +123,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
             .unwrap();
         Ok(Self {
             schema,
-            hierarchy,
+            hierarchy: hierarchy.clone(),
             policy,
             requests,
             partial_requests,
@@ -197,11 +197,11 @@ fn entity_to_partial_entity(
     })
 }
 
-fn entities_to_partial_entities(
-    entities: impl Iterator<Item = &ast::Entity>,
+fn entities_to_partial_entities<'a>(
+    entities: impl Iterator<Item = &'a ast::Entity>,
     u: &mut Unstructured<'_>,
 ) -> arbitrary::Result<PartialEntities> {
-    let entities = HashSet::from_iter(entities.cloned());
+    let entities: HashSet<ast::Entity> = HashSet::from_iter(entities.cloned());
     let mut leafs: HashSet<_> = entities.iter().map(|e| e.uid().clone()).collect();
     for e in &entities {
         for a in e.ancestors() {
@@ -212,7 +212,8 @@ fn entities_to_partial_entities(
         entities: HashMap::from_iter(
             entities
                 .iter()
-                .map(|e| (e.uid().clone(), entity_to_partial_entity(e, u, &leafs))),
+                .map(|e| Ok((e.uid().clone(), entity_to_partial_entity(e, u, &leafs)?)))
+                .collect::<arbitrary::Result<Vec<(ast::EntityUID, PartialEntity)>>>()?,
         ),
     })
 }
