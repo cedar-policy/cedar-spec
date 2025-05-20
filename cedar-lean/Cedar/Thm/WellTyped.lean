@@ -72,37 +72,33 @@ theorem typechecked_is_well_typed_after_lifting
 {e : Expr}
 {c₁ c₂ : Capabilities}
 {env : Environment}
-{ty : TypedExpr}
-{request : Request}
-{entities : Entities} :
-  RequestAndEntitiesMatchEnvironment env request entities →
+{ty : TypedExpr} :
   typeOf e c₁ env = .ok (ty, c₂) →
   TypedExpr.WellTyped env ty.liftBoolTypes
 := by
-  intro h₁
-  induction e, c₁, env using typeOf.induct generalizing ty c₂
+  induction e, c₁ using typeOf.induct generalizing ty c₂
   case _ =>
     exact typechecked_is_well_typed_after_lifting_lit
   case _ =>
     exact typechecked_is_well_typed_after_lifting_var
   case _ hᵢ₁ hᵢ₂ hᵢ₃ =>
-    exact typechecked_is_well_typed_after_lifting_ite h₁ hᵢ₁ hᵢ₂ hᵢ₃
+    exact typechecked_is_well_typed_after_lifting_ite hᵢ₁ hᵢ₂ hᵢ₃
   case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_and h₁ hᵢ₁ hᵢ₂
+    exact typechecked_is_well_typed_after_lifting_and hᵢ₁ hᵢ₂
   case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_or h₁ hᵢ₁ hᵢ₂
+    exact typechecked_is_well_typed_after_lifting_or hᵢ₁ hᵢ₂
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_unary_app h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_unary_app hᵢ
   case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_binary_app h₁ hᵢ₁ hᵢ₂
+    exact typechecked_is_well_typed_after_lifting_binary_app hᵢ₁ hᵢ₂
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_has_attr h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_has_attr hᵢ
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_get_attr h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_get_attr hᵢ
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_set h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_set hᵢ
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_record h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_record hᵢ
   case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_call h₁ hᵢ
+    exact typechecked_is_well_typed_after_lifting_call hᵢ
 end Cedar.Thm

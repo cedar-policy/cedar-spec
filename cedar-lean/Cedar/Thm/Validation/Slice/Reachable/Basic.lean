@@ -42,12 +42,12 @@ inductive ReachableIn : Entities → Set EntityUID → EntityUID → Nat → Pro
 inductive Value.EuidViaPath : Value → List Attr → EntityUID → Prop where
   | euid (euid : EntityUID) :
     EuidViaPath (.prim (.entityUID euid)) [] euid
-  | record {a : Attr} {path : List Attr} {attrs : Map Attr Value}
+  | record {v euid} {a : Attr} {path : List Attr} {attrs : Map Attr Value}
     (ha : attrs.find? a = some v)
     (hv : EuidViaPath v path euid) :
     EuidViaPath (.record attrs)  (a :: path) euid
 
-theorem in_val_then_val_slice
+theorem in_val_then_val_slice {v path euid}
   (hv : Value.EuidViaPath v path euid)
   : euid ∈ v.sliceEUIDs
 := by
@@ -62,8 +62,8 @@ theorem in_val_then_val_slice
         Set.mem_mapUnion_iff_mem_exists,
         List.mapUnion_pmap_subtype (λ e : (Attr × Value) => e.snd.sliceEUIDs) attrs.1
       ] using h
-    cases hv
-    rename_i v a _ ha hv
+    cases path <;> cases hv
+    rename_i a _ v ha hv
     exists (a, v)
     and_intros
     · exact Map.find?_mem_toList ha
@@ -85,7 +85,7 @@ theorem reachable_succ {n : Nat} {euid : EntityUID} {start : Set EntityUID} {ent
   (hr : ReachableIn entities start euid n)
   : ReachableIn entities start euid (n + 1)
 := by
-  cases hr
+  cases n <;> cases hr
   case in_start hi =>
     exact ReachableIn.in_start hi
   case step euid' hf hi hr =>

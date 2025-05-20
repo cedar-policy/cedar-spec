@@ -76,7 +76,7 @@ theorem type_of_set_tail
 := by
   cases xtl
   case nil =>
-    have _ := List.not_mem_nil x
+    have _ := @List.not_mem_nil _ x
     contradiction
   case cons xhd' xtl' =>
     simp only [typeOf]

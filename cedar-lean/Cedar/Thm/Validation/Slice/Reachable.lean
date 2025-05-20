@@ -270,9 +270,9 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     rw [hf₁] at hf ; injections hf ; subst hf
     cases hs₄ : Entities.sliceAtLevel.sliceAtLevel entities ed.sliceEUIDs n <;>
       simp only [hs₄, reduceCtorEq, Option.some.injEq] at hs
-    match n with
-    | 0 => cases hw
-    | n + 1 =>
+    cases n
+    case _ => cases hw
+    case _ n' =>
       have ih := slice_contains_reachable hw hs₄
       rw [Set.mem_mapUnion_iff_mem_exists]
       subst hs
