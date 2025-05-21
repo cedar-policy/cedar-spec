@@ -23,7 +23,7 @@ use cedar_drt_inner::*;
 use cedar_partial_evaluation::entities::{PartialEntities, PartialEntity};
 use cedar_partial_evaluation::request::{PartialEntityUID, PartialRequest};
 use cedar_partial_evaluation::residual::Residual;
-use cedar_partial_evaluation::tpe::tpe_policy;
+use cedar_partial_evaluation::tpe::tpe_policies;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
@@ -248,21 +248,25 @@ fuzz_target!(|input: FuzzTargetInput| {
                 partial_entities
                     .compute_tc()
                     .expect("tc computation failed");
-                let policy: ast::Policy = policy.clone().into();
                 let expr = policy.condition();
                 for i in 0..8 {
                     let request: ast::Request = input.requests[i].clone().into();
                     let partial_request = &input.partial_requests[i];
                     if passes_request_validation(&schema, &request) {
-                        let residual = tpe_policy(
-                            &policy,
+                        let residual = tpe_policies(
+                            &policyset,
                             &partial_request,
                             &mut partial_entities,
                             &schema,
                             TCComputation::AssumeAlreadyComputed,
                         )
                         .expect("tpe failed");
-                        assert!(test_weak_equiv(residual, &expr, request, &entities));
+                        assert!(test_weak_equiv(
+                            residual[0].clone(),
+                            &expr,
+                            request,
+                            &entities
+                        ));
                     }
                 }
             }
