@@ -26,10 +26,7 @@ use cedar_partial_evaluation::residual::Residual;
 use cedar_partial_evaluation::tpe::tpe_policies;
 use cedar_policy_core::ast;
 use cedar_policy_core::ast::RequestSchema;
-use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
 use cedar_policy_core::entities::Entities;
-use cedar_policy_core::entities::TCComputation;
-use cedar_policy_core::evaluator::EvaluationError;
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     hierarchy::{Hierarchy, HierarchyGenerator},
@@ -41,7 +38,6 @@ use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
-use std::sync::Arc;
 
 /// Input expected by this fuzz target:
 /// An ABAC hierarchy, schema, and 8 associated policies
@@ -78,8 +74,8 @@ fn make_partial_request(
     req: &ABACRequest,
     u: &mut Unstructured<'_>,
 ) -> arbitrary::Result<PartialRequest> {
-    Ok(PartialRequest {
-        principal: PartialEntityUID {
+    Ok(PartialRequest::new_unchecked(
+        PartialEntityUID {
             ty: req.principal.entity_type().clone(),
             eid: if u.ratio(1, 4)? {
                 None
@@ -87,8 +83,7 @@ fn make_partial_request(
                 Some(req.principal.eid().clone())
             },
         },
-        action: req.action.clone(),
-        resource: PartialEntityUID {
+        PartialEntityUID {
             ty: req.resource.entity_type().clone(),
             eid: if u.ratio(1, 4)? {
                 None
@@ -96,8 +91,9 @@ fn make_partial_request(
                 Some(req.resource.eid().clone())
             },
         },
-        context: None,
-    })
+        req.action.clone(),
+        None,
+    ))
 }
 
 impl<'a> Arbitrary<'a> for FuzzTargetInput {
@@ -208,14 +204,13 @@ fn entities_to_partial_entities<'a>(
             leafs.remove(a);
         }
     }
-    Ok(PartialEntities {
-        entities: HashMap::from_iter(
-            entities
-                .iter()
-                .map(|e| Ok((e.uid().clone(), entity_to_partial_entity(e, u, &leafs)?)))
-                .collect::<arbitrary::Result<Vec<(ast::EntityUID, PartialEntity)>>>()?,
-        ),
-    })
+    Ok(PartialEntities::from_entities_unchecked(
+        entities
+            .iter()
+            .map(|e| Ok((e.uid().clone(), entity_to_partial_entity(e, u, &leafs)?)))
+            .collect::<arbitrary::Result<Vec<(ast::EntityUID, PartialEntity)>>>()?
+            .into_iter(),
+    ))
 }
 
 fn test_weak_equiv(residual: Residual, e: &Expr, req: Request, entities: &Entities) -> bool {
@@ -236,7 +231,7 @@ fuzz_target!(|input: FuzzTargetInput| {
     // preserve the schema in string format, which may be needed for error messages later
     let schemafile_string = input.schema.schemafile_string();
     if let Ok(schema) = ValidatorSchema::try_from(input.schema) {
-        debug!("Schema: {:?}", schema);
+        debug!("Schema: {schemafile_string}");
         if let Ok(entities) = Entities::try_from(input.hierarchy.clone()) {
             let validator = Validator::new(schema.clone());
             let mut policyset = ast::PolicySet::new();
@@ -244,6 +239,9 @@ fuzz_target!(|input: FuzzTargetInput| {
             policyset.add_static(policy.clone()).unwrap();
             let passes_strict = passes_policy_validation(&validator, &policyset);
             if passes_strict {
+                for e in input.partial_entities.entities() {
+                    e.validate(&schema).expect("entities should be valid");
+                }
                 let mut partial_entities = input.partial_entities;
                 partial_entities
                     .compute_tc()
@@ -253,14 +251,9 @@ fuzz_target!(|input: FuzzTargetInput| {
                     let request: ast::Request = input.requests[i].clone().into();
                     let partial_request = &input.partial_requests[i];
                     if passes_request_validation(&schema, &request) {
-                        let residual = tpe_policies(
-                            &policyset,
-                            &partial_request,
-                            &mut partial_entities,
-                            &schema,
-                            TCComputation::AssumeAlreadyComputed,
-                        )
-                        .expect("tpe failed");
+                        let residual =
+                            tpe_policies(&policyset, &partial_request, &partial_entities, &schema)
+                                .expect("tpe failed");
                         assert!(test_weak_equiv(
                             residual[0].clone(),
                             &expr,
