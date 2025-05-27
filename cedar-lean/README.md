@@ -58,6 +58,7 @@ Definitional engine ([`Cedar/Spec/`](Cedar/Spec/))
 Definitional validator ([`Cedar/Validation/`](Cedar/Validation/))
 
 * `typeOf` returns the result of type checking an expression against a schema.
+* `checkLevel` checks that an expression does an exceed the specified maximum entity entity deference level
 
 ## Verified properties
 
@@ -76,3 +77,8 @@ Sound type checking ([`Cedar/Thm/Typechecking.lean`](Cedar/Thm/Typechecking.lean
 
 * If an expression is well-typed according to the typechecker, then either evaluation returns a value of that type, or it returns an error of type
 `entityDoesNotExist`, `extensionError`, or `arithBoundsError`. All other errors are impossible.
+
+Sound level-based entity slicing ([`Cedar/Thm/Validation/Levels.lean`](Cedar/Thm/Validation/Levels.lean))
+
+* If an expression is well-typed and does not exceed a maximum entity dereference level `n`, then, for any set of entities, the result
+  of evaluating the expression with entities sliced at level `n` is the same as evaluating the expression with the original set of entities.
