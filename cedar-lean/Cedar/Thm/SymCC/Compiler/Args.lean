@@ -98,16 +98,4 @@ theorem compile_evaluate_ihs {xs : List Expr} {env : Env} {εnv : SymEnv}
     simp only [and_true]
     exact compile_evaluate_ihs heq hwe.right hwε.right ih.right htl
 
--- theorem compile_evaluate_error {env : Env} {xs : List Expr} {ts : List Term} {t : Term} {e : Spec.Error} :
---   List.Forall₂ (λ x t => evaluate x env.request env.entities ∼ t) xs ts →
---   List.mapM (λ x => evaluate x env.request env.entities) xs = Except.error e →
---   (Except.error e : Spec.Result Value) ∼ ifAllSome ts (Term.some t)
--- := by
---   intro ih h
---   replace ⟨x, hx, h⟩ := List.mapM_error_implies_exists_error h
---   replace ⟨_, ht, ih⟩ := List.forall₂_implies_all_left ih x hx
---   rw [h] at ih
---   exact same_error_implies_ifAllSome_error ih ht typeOf_term_some
-
-
 end Cedar.Thm
