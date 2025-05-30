@@ -52,9 +52,6 @@ abbrev TermType.ext (xty : ExtType) : TermType := .prim (.ext xty)
 abbrev TermType.tagFor (ety : EntityType) : TermType :=
   .record (EntityTag.mk (.entity ety) .string)
 
--- instance : Coe TermPrimType TermType where
---   coe pty := .prim pty
-
 def TermType.isPrimType : TermType → Bool
   | .prim _ => true
   | _       => false

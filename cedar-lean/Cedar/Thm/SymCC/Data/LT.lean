@@ -842,10 +842,6 @@ theorem Term.ltListProd_irrefl (ts : List (Attr × Term)) :
     contradiction
 
 end
--- termination_by
---   lt_irrefl a => sizeOf a
---   ltList_irrefl ts => sizeOf ts
---   ltListProd_irrefl ts => sizeOf ts
 
 private theorem Term.lt_trans_prim {p₁ p₂ : TermPrim} {c : Term} :
   p₁ < p₂ → Term.lt (Term.prim p₂) c  → Term.lt (Term.prim p₁) c

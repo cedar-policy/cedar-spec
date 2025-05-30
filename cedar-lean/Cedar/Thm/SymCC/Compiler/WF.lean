@@ -23,7 +23,7 @@ This file proves that both `compile` and `evaluate` preserve well-formedness.
 --/
 
 -- We're disabling the linter on this file because it erroneously claims
--- that a used variable is unused in Lean 4.18.
+-- that a used variable is unused in Lean 4.19.
 -- TODO: Remove this option when the linter is fixed.
 set_option linter.unusedVariables false
 
