@@ -58,7 +58,13 @@ Definitional engine ([`Cedar/Spec/`](Cedar/Spec/))
 Definitional validator ([`Cedar/Validation/`](Cedar/Validation/))
 
 * `typeOf` returns the result of type checking an expression against a schema.
-* `checkLevel` checks that an expression does an exceed the specified maximum entity entity deference level
+* `checkLevel` checks that an expression does not exceed the specified maximum entity entity deference level
+
+Definitional symbolic compiler ([`Cedar/SymCC/`](Cedar/SymCC/))
+
+* `SymCC.Compiler.compile` returns the result of compiling an expression to an SMT term.
+* `SymCC.Authorizer.isAuthorized` returns the result of compiling the authorization semantics of a set of policies to an SMT term.
+* See [`Cedar/SymCC.lean`](Cedar/SymCC.lean) for other key definitions and how they are used to formulate SMT queries.
 
 ## Verified properties
 
@@ -82,3 +88,11 @@ Sound level-based entity slicing ([`Cedar/Thm/Validation/Levels.lean`](Cedar/Thm
 
 * If an expression is well-typed and does not exceed a maximum entity dereference level `n`, then, for any set of entities, the result
   of evaluating the expression with entities sliced at level `n` is the same as evaluating the expression with the original set of entities.
+
+Sound and complete symbolic compilation ([`Cedar/Thm/SymbolicCompilation.lean`](Cedar/Thm/SymbolicCompilation.lean))
+
+* Compiling an expression results in an SMT term that both overapproximates (soundness) and underapproximates (completeness) the semantics of that expression.
+
+Sound and complete verification ([`Cedar/Thm/Verification.lean`](Cedar/Thm/Verification.lean))
+
+* Verification checks (such as equivalence, implication, etc.) based on the symbolic compiler are sound (no false negatives) and complete (no false positives).
