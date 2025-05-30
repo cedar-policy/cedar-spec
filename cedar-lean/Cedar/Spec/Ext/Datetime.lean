@@ -137,6 +137,8 @@ def parse (str: String) : Option Datetime := do
   then datetime? zonedTime.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
   else none
 
+abbrev datetime := parse
+
 /--
   A duration value is measured in milliseconds and constructed from a duration string.
   A duration string is a concatenated sequence of quantity-unit pairs where the quantity

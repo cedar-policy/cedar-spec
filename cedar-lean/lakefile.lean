@@ -28,10 +28,20 @@ package Cedar
 lean_lib Cedar where
   defaultFacets := #[LeanLib.staticFacet]
 
+@[default_target]
+lean_lib SymCC where
+  defaultFacets := #[LeanLib.staticFacet]
+
+lean_lib Cedar.SymCC where
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_lib DiffTest where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_lib UnitTest where
+  defaultFacets := #[LeanLib.staticFacet]
+
+lean_lib SymTest where
   defaultFacets := #[LeanLib.staticFacet]
 
 lean_lib Protobuf where
@@ -42,6 +52,9 @@ lean_lib CedarProto where
 
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
+
+lean_exe CedarSymTests where
+  root := `SymTest.Main
 
 lean_exe Cli where
   root := `Cli.Main
