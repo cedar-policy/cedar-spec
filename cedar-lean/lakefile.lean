@@ -69,12 +69,13 @@ USAGE:
 @[lint_driver]
 script checkThm do
   let thm ← IO.FS.readFile ⟨"Cedar/Thm.lean"⟩
+  let symcc ← IO.FS.readFile ⟨"SymCC.lean"⟩
   let dir ← System.FilePath.readDir ⟨"Cedar/Thm/"⟩
   for entry in dir.toList do
     let fn := entry.fileName
     if fn.endsWith ".lean" then
-      let ln := s!"import Cedar.Thm.{fn.dropRight 5}"
-      if thm.replace ln "" == thm then
-        IO.println s!"Cedar.Thm does not import Cedar/Thm/{fn}"
+      let ln := s!"import Cedar.Thm.{fn.dropRight 5}\n"
+      if thm.replace ln "" == thm && symcc.replace ln "" == symcc then
+        IO.println s!"Neither Cedar.Thm nor SymCC imports Cedar/Thm/{fn}"
         return 1
   return 0
