@@ -32,6 +32,7 @@ import CedarProto.PrincipalOrResourceConstraint
 import CedarProto.Request
 import CedarProto.RequestValidationRequest
 import CedarProto.Schema
+import CedarProto.SymCCRequest
 import CedarProto.TemplateBody
 import CedarProto.Type
 import CedarProto.ValidationRequest

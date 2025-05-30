@@ -50,6 +50,12 @@ lean_lib Protobuf where
 lean_lib CedarProto where
   defaultFacets := #[LeanLib.staticFacet]
 
+lean_lib CedarFFI where
+  defaultFacets := #[LeanLib.staticFacet]
+
+lean_lib SymFFI where
+  defaultFacets := #[LeanLib.staticFacet]
+
 lean_exe CedarUnitTests where
   root := `UnitTest.Main
 

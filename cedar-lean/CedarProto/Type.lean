@@ -220,10 +220,19 @@ partial def ProtoType.parseField (t : Tag) : BParsec (MergeFn ProtoType) := do
 end
 
 namespace RecordType
+
 instance : Message RecordType := {
   parseField := parseField
   merge := merge
 }
+
+def toRecordType (r : RecordType) : Except String Validation.RecordType :=
+  match ProtoType.toCedarType (.record r) with
+  | .ok (.record r') => .ok r'
+  | .ok _ => .error "Error converted record type to non-record type"
+  | .error s => .error s
+
+instance : Field RecordType := Field.fromInterFieldFallible (fun x => .ok x) merge
 end RecordType
 
 namespace ProtoType
@@ -239,3 +248,10 @@ instance : Message (Qualified ProtoType) := {
 }
 
 end Cedar.Validation.Proto
+
+namespace Cedar.Validation
+
+def RecordType.merge (r₁ r₂ : RecordType) : RecordType := Cedar.Data.Map.make (r₁.kvs ++ r₂.kvs)
+instance : Field RecordType := Field.fromInterFieldFallible Proto.RecordType.toRecordType RecordType.merge
+
+end Cedar.Validation
