@@ -66,7 +66,7 @@ pub enum Error {
     /// in extension constructors.
     #[error(transparent)]
     ContextError(#[from] ast::ContextCreationError),
-    /// Error thrown by the `cedar_policy_validator` crate while processing a
+    /// Error thrown by the `cedar_policy_core` crate while processing a
     /// user-provided schema.
     #[error(transparent)]
     SchemaError(#[from] cedar_policy_core::validator::SchemaError),
