@@ -17,11 +17,11 @@
 #![no_main]
 use cedar_drt_inner::schemas::equivalence_check;
 use cedar_drt_inner::*;
+use cedar_policy_core::validator::json_schema;
 use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
     schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
 };
-use cedar_policy_core::validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::collections::BTreeMap;
 

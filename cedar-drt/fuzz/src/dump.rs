@@ -22,8 +22,10 @@ use cedar_policy_core::entities::{Entities, TypeAndId};
 use cedar_policy_core::extensions::Extensions;
 use cedar_policy_core::jsonvalue::JsonValueWithNoDuplicateKeys;
 use cedar_policy_core::parser;
+use cedar_policy_core::validator::{
+    json_schema, RawName, ValidationMode, Validator, ValidatorSchema,
+};
 use cedar_policy_generators::collections::HashMap;
-use cedar_policy_core::validator::{json_schema, RawName, ValidationMode, Validator, ValidatorSchema};
 use cedar_testing::cedar_test_impl::RustEngine;
 use cedar_testing::integration_testing::{perform_integration_test, JsonRequest, JsonTest};
 use std::io::Write;

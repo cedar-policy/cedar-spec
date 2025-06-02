@@ -21,6 +21,7 @@ use cedar_policy_core::ast;
 use cedar_policy_core::authorizer::{AuthorizationError, Authorizer};
 use cedar_policy_core::entities::Entities;
 use cedar_policy_core::evaluator::EvaluationError;
+use cedar_policy_core::validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use cedar_policy_generators::{
     abac::{ABACPolicy, ABACRequest},
     err::{Error, Result},
@@ -28,7 +29,6 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_core::validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;

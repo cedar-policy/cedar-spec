@@ -17,11 +17,11 @@
 #![no_main]
 use cedar_drt_inner::*;
 use cedar_policy_core::ast;
+use cedar_policy_core::validator::json_schema;
 use cedar_policy_generators::{
     schema::{downgrade_frag_to_raw, Schema},
     settings::ABACSettings,
 };
-use cedar_policy_core::validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::info;
 use std::collections::BTreeMap;

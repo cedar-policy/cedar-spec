@@ -25,10 +25,10 @@ use cedar_policy::{
     conformance_errors::EntitySchemaConformanceError, entities_errors::EntitiesError,
     entities_json_errors::JsonSerializationError,
 };
+use cedar_policy_core::validator::CoreSchema;
 use cedar_policy_generators::{
     hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
-use cedar_policy_core::validator::CoreSchema;
 use libfuzzer_sys::{
     arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured},
     fuzz_target,
