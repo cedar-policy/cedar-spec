@@ -28,7 +28,7 @@ use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, UnreservedId};
 use cedar_policy_core::est::Annotations;
-use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
+use cedar_policy_core::validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 

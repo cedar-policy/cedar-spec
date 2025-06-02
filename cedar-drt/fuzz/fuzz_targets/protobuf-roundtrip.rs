@@ -38,7 +38,7 @@ struct FuzzTargetInput {
     request: ABACRequest,
     policy: ABACPolicy,
     entities: Entities,
-    schema: cedar_policy_validator::ValidatorSchema,
+    schema: cedar_policy_core::validator::ValidatorSchema,
 }
 
 // settings for this fuzz target
@@ -141,7 +141,7 @@ fn roundtrip_authz_request_msg(auth_request: AuthorizationRequest) {
     assert_eq!(auth_request.entities, &roundtripped.entities);
 }
 
-fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
+fn roundtrip_schema(schema: cedar_policy_core::validator::ValidatorSchema) {
     // AST -> Protobuf bytes
     let schema_proto = proto::models::Schema::from(&schema);
 
@@ -153,7 +153,7 @@ fn roundtrip_schema(schema: cedar_policy_validator::ValidatorSchema) {
         proto::models::Schema::decode(&buf[..]).expect("Failed to deserialize Schema from proto");
 
     // Protobuf -> AST
-    let roundtripped = cedar_policy_validator::ValidatorSchema::from(&roundtripped_proto);
+    let roundtripped = cedar_policy_core::validator::ValidatorSchema::from(&roundtripped_proto);
 
     // Checking schema equivalence
     Equiv::equiv(&schema, &roundtripped).unwrap();

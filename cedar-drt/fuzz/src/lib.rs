@@ -18,7 +18,7 @@ mod dump;
 mod parsing_utils;
 mod prt;
 
-use cedar_policy_validator::ValidationResult;
+use cedar_policy_core::validator::ValidationResult;
 use cedar_testing::cedar_test_impl::TestValidationResult;
 pub use dump::*;
 pub use parsing_utils::*;
@@ -33,7 +33,7 @@ use cedar_policy_core::authorizer::{AuthorizationError, Authorizer, Response};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::evaluator::Evaluator;
 use cedar_policy_core::extensions::Extensions;
-pub use cedar_policy_validator::{ValidationMode, Validator, ValidatorSchema};
+pub use cedar_policy_core::validator::{ValidationMode, Validator, ValidatorSchema};
 pub use cedar_testing::cedar_test_impl::{
     time_function, CedarTestImplementation, ErrorComparisonMode, TestResult,
     ValidationComparisonMode,
@@ -326,7 +326,7 @@ pub fn run_ent_val_test(
     let (rust_res, rust_auth_dur) = time_function(|| {
         Entities::from_entities(
             entities.iter().cloned(),
-            Some(&cedar_policy_validator::CoreSchema::new(&schema)),
+            Some(&cedar_policy_core::validator::CoreSchema::new(&schema)),
             TCComputation::AssumeAlreadyComputed,
             extensions,
         )

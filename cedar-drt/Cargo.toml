@@ -9,7 +9,6 @@ env_logger = "0.11"
 log = "0.4"
 cedar-policy = { path = "../cedar/cedar-policy", version = "4.*", features = ["protobufs"] }
 cedar-policy-core = { path = "../cedar/cedar-policy-core", version = "4.*", features = ["arbitrary"] }
-cedar-policy-validator = { path = "../cedar/cedar-policy-validator", version = "4.*", features = ["arbitrary"] }
 cedar-policy-formatter = { path = "../cedar/cedar-policy-formatter", version = "4.*" }
 cedar-testing = { path = "../cedar/cedar-testing", version = "4.*" }
 lean-sys = { version = "0.0.8", default-features = false }

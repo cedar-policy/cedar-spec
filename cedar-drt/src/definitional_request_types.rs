@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+pub use cedar_policy_core::validator::{ValidationMode, ValidatorSchema};
 pub use cedar_policy_core::*;
-pub use cedar_policy_validator::{ValidationMode, ValidatorSchema};
 pub use entities::Entities;
 
 pub mod proto {
