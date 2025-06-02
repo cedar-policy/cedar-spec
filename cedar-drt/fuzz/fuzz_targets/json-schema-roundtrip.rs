@@ -21,7 +21,7 @@ use cedar_policy_core::{ast, extensions::Extensions};
 use cedar_policy_generators::{
     schema::downgrade_frag_to_raw, schema::Schema, settings::ABACSettings,
 };
-use cedar_policy_validator::json_schema;
+use cedar_policy_core::validator::json_schema;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use std::collections::BTreeMap;
 

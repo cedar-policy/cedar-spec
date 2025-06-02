@@ -30,10 +30,10 @@ use arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured};
 use cedar_policy_core::ast::{self, Effect, PolicyID, UnreservedId};
 use cedar_policy_core::est;
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::{
+use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
-use cedar_policy_validator::{
+use cedar_policy_core::validator::{
     json_schema, ActionBehavior, AllDefs, RawName, SchemaError, ValidatorNamespaceDef,
     ValidatorSchema, ValidatorSchemaFragment,
 };
@@ -1971,7 +1971,7 @@ mod tests {
     use arbitrary::Unstructured;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
-    use cedar_policy_validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
+    use cedar_policy_core::validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
     use rand::{rng, rngs::ThreadRng, RngCore};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;

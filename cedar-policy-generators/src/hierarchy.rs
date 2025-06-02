@@ -23,7 +23,7 @@ use arbitrary::{Arbitrary, Unstructured};
 use cedar_policy_core::ast::{self, Eid, Entity, EntityUID};
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
-use cedar_policy_validator::json_schema::{self, EntityTypeKind, StandardEntityType};
+use cedar_policy_core::validator::json_schema::{self, EntityTypeKind, StandardEntityType};
 use smol_str::SmolStr;
 
 /// EntityUIDs with the mappings to their indices in the container.

@@ -306,7 +306,7 @@ impl LeanDefinitionalEngine {
         let val_request = ValidationRequest {
             schema,
             policies,
-            mode: cedar_policy_validator::ValidationMode::default(),
+            mode: cedar_policy_core::validator::ValidationMode::default(),
         };
         let val_request_proto = proto::ValidationRequest::from(&val_request);
         let buf = val_request_proto.encode_to_vec();
@@ -423,7 +423,7 @@ impl CedarTestImplementation for LeanDefinitionalEngine {
 
     fn validate(
         &self,
-        schema: &cedar_policy_validator::ValidatorSchema,
+        schema: &cedar_policy_core::validator::ValidatorSchema,
         policies: &ast::PolicySet,
         mode: ValidationMode,
     ) -> TestResult<TestValidationResult> {

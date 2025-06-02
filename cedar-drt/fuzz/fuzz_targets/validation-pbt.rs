@@ -28,7 +28,7 @@ use cedar_policy_generators::{
     schema::Schema,
     settings::ABACSettings,
 };
-use cedar_policy_validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
+use cedar_policy_core::validator::{json_schema, ValidationMode, Validator, ValidatorSchema};
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
 use log::debug;
 use std::convert::TryFrom;

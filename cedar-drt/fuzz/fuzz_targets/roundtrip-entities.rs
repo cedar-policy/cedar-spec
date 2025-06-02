@@ -28,7 +28,7 @@ use cedar_policy::{
 use cedar_policy_generators::{
     hierarchy::HierarchyGenerator, schema::Schema, settings::ABACSettings,
 };
-use cedar_policy_validator::CoreSchema;
+use cedar_policy_core::validator::CoreSchema;
 use libfuzzer_sys::{
     arbitrary::{self, Arbitrary, MaxRecursionReached, Unstructured},
     fuzz_target,

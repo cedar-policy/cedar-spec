@@ -15,10 +15,10 @@
  */
 
 use cedar_policy_core::ast::{Id, InternalName, Name};
-use cedar_policy_validator::json_schema;
-use cedar_policy_validator::json_schema::EntityTypeKind;
-use cedar_policy_validator::RawName;
-use cedar_policy_validator::ValidatorEntityTypeKind;
+use cedar_policy_core::validator::json_schema;
+use cedar_policy_core::validator::json_schema::EntityTypeKind;
+use cedar_policy_core::validator::RawName;
+use cedar_policy_core::validator::ValidatorEntityTypeKind;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -262,7 +262,7 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
     }
 }
 
-impl Equiv for cedar_policy_validator::ValidatorEntityType {
+impl Equiv for cedar_policy_core::validator::ValidatorEntityType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         match (&lhs.kind, &rhs.kind) {
             (ValidatorEntityTypeKind::Enum(c1), ValidatorEntityTypeKind::Enum(c2)) => {
@@ -306,7 +306,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
     }
 }
 
-impl Equiv for cedar_policy_validator::types::AttributeType {
+impl Equiv for cedar_policy_core::validator::types::AttributeType {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs.is_required != rhs.is_required {
             return Err("attributes differ in required flag".into());
@@ -349,7 +349,7 @@ impl<N: Clone + PartialEq + TypeName + Debug + Display> Equiv for json_schema::T
     }
 }
 
-impl Equiv for cedar_policy_validator::types::Type {
+impl Equiv for cedar_policy_core::validator::types::Type {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         if lhs != rhs {
             Err(format!("types are not equal: {lhs} != {rhs}"))
@@ -571,7 +571,7 @@ fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
-impl Equiv for cedar_policy_validator::ValidatorSchema {
+impl Equiv for cedar_policy_core::validator::ValidatorSchema {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(
             &lhs.entity_types()
