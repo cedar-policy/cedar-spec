@@ -499,7 +499,7 @@ private theorem interpret_app_foldr' {εs : SymEntities} {I : Interpretation} {t
 := by
   induction table
   case nil =>
-    simp only [List.foldr_nil, List.find?_nil, Option.map_none']
+    simp only [List.foldr_nil, List.find?_nil, Option.map_none]
     exact interpret_term_lit_id I h₂
   case cons hd tl ih =>
     simp only [List.foldr_cons]

@@ -27,8 +27,8 @@ def printUsage (err : String) : IO Unit :=
 unsafe def main (args : List String) : IO Unit :=
   match args.length with
     | 2 => do
-      let command := args.get! 0
-      let filename := args.get! 1
+      let command := args[0]!
+      let filename := args[1]!
       match command with
       | "authorize" =>
         let request ← IO.FS.readBinFile filename

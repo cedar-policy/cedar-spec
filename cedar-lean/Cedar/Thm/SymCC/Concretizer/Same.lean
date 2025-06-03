@@ -47,7 +47,7 @@ theorem term_recordValue?_some_same {t : Term} {r : Map Attr Value} :
   t.recordValue? = some r → (Value.record r) ∼ t
 := by
   intro h
-  simp only [Term.recordValue?, Option.bind_eq_bind, Option.bind_eq_some] at h
+  simp only [Term.recordValue?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
   replace ⟨v, h, hv⟩ := h
   simp only [Value.record?] at hv
   split at hv <;> simp only [Option.some.injEq, reduceCtorEq] at hv
@@ -66,7 +66,7 @@ private theorem term_setOfEntityUIDs?_some_exists {t : Term} {uids : Set EntityU
 := by
   intro hwt hty hs
   simp only [Term.setOfEntityUIDs?, Option.bind_eq_bind] at hs
-  split at hs <;> simp only [Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at hs
+  split at hs <;> simp only [Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hs
   rename_i ts _
   replace ⟨uids, huids, hs⟩ := hs
   exists (Set.mk ts)
@@ -350,7 +350,7 @@ private theorem concretize?_some_same_entity_data {uid : EntityUID} {d : EntityD
   simp only [SameEntityData]
   simp only [SymEntityData.concretize?, Option.bind_eq_bind, Option.bind_some_fun,
     Option.bind_none_fun] at hs
-  split at hs <;> simp only [Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at hs
+  split at hs <;> simp only [Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hs
   rename_i hvd
   replace ⟨attrs, hr, ancs, ha, tags, ht, hs⟩ := hs
   subst hs
@@ -372,7 +372,7 @@ private theorem concretize?_some_same_entities {uids : Set EntityUID} {es : Enti
   intro hwε hs
   simp only [SameEntities]
   intro uid d hf
-  simp only [SymEntities.concretize?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hs
   replace ⟨es', hs, heq⟩ := hs
   subst heq
@@ -380,7 +380,7 @@ private theorem concretize?_some_same_entities {uids : Set EntityUID} {es : Enti
   simp only [Map.toList, Map.kvs, Map.make] at hf
   replace hf := List.in_canonicalize_in_list hf
   replace ⟨_, _, hs⟩ := List.mapM_some_implies_all_from_some hs (uid, d) hf
-  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq, Prod.mk.injEq, exists_eq_right_right] at hs
   replace ⟨δ, hf', hs, heq⟩ := hs
   rw [eq_comm] at heq ; subst heq
@@ -394,7 +394,7 @@ theorem concretize?_some_same {x : Expr} {env : Env} {εnv : SymEnv} :
 := by
   intro hwε hs
   simp only [Same.same, SameEnvs]
-  simp only [SymEnv.concretize?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hs
+  simp only [SymEnv.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hs
   replace ⟨r, hr, es, hs, henv⟩ := hs
   subst henv
   simp only [

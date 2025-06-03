@@ -73,7 +73,7 @@ theorem εs_ancestors_find?_implies_ancestors {ety : EntityType} {δ : SymEntity
   εs.ancestors ety = .some δ.ancestors
 := by
   intro hδ
-  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   exists δ
 
 theorem εs_ancestors_find?_implies_ancestorsOfType {ety₁ ety₂ : EntityType} {δ : SymEntityData} {f : UnaryFunction} {εs : SymEntities} :
@@ -82,7 +82,7 @@ theorem εs_ancestors_find?_implies_ancestorsOfType {ety₁ ety₂ : EntityType}
   εs.ancestorsOfType ety₁ ety₂ = some f
 := by
   intros hδ hf
-  simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+  simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   exists δ.ancestors
   simp only [hf, and_true]
   exists δ

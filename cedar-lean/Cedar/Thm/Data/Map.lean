@@ -461,7 +461,7 @@ theorem find?_mapOnValues {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (
   (m.find? k).map f = (m.mapOnValues f).find? k
 := by
   simp only [find?, kvs, mapOnValues, ← List.find?_pair_map]
-  cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none', Option.map_some']
+  cases m.1.find? (λ x => x.fst == k) <;> simp only [Option.map_none, Option.map_some]
 
 theorem find?_mapOnValues_some {α β γ} [LT α] [DecidableLT α] [DecidableEq α] (f : β → γ) {m : Map α β} {k : α} {v : β} :
   m.find? k = .some v →
@@ -730,12 +730,12 @@ theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : 
   m₁.kvs.map Prod.fst = m₂.kvs.map Prod.fst
 := by
   intro h₁
-  simp only [mapMOnValues, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [mapMOnValues, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at h₁
   replace ⟨xs, h₁, h₂⟩ := h₁
   subst h₂
   cases h₂ : m₁.kvs <;> simp only [h₂, List.mapM_nil, List.mapM_cons, Option.pure_def,
-    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+    Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
   <;> unfold kvs at *
   case nil =>
     subst h₁
@@ -749,7 +749,7 @@ theorem mapMOnValues_preserves_keys [LT α] [DecidableLT α] [StrictLT α] {f : 
     subst k' y'
     have ih := mapMOnValues_preserves_keys (m₁ := mk tl) (m₂ := mk tl') (f := f)
     simp only [mapMOnValues, kvs, Option.pure_def, Option.bind_eq_bind,
-      Option.bind_eq_some, Option.some.injEq, mk.injEq, exists_eq_right] at ih
+      Option.bind_eq_some_iff, Option.some.injEq, mk.injEq, exists_eq_right] at ih
     specialize ih h₄
     simp [ih, h₂]
 
@@ -827,18 +827,18 @@ theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Opt
     cases h₃ : (mk tl).mapMOnValues f
     <;> simp only [Option.none_bind, Option.some_bind]
     <;> unfold mapMOnValues at *
-    <;> simp only [h₁, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none,
-          Option.bind_eq_some, Option.some.injEq, reduceCtorEq, List.mapM_cons]
+    <;> simp only [h₁, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none_iff,
+          Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq, List.mapM_cons]
     case none =>
       simp only [forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
       intro kvs' v'' h₄ tl' h₅ h₆
       simp only [h₂, Option.some.injEq] at h₄
       subst v'' kvs'
       cases (tl.mapM λ x => match x with | (k, v) => do let v' ← f v ; pure (k, v'))
-      <;> simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none, reduceCtorEq] at h₃
+      <;> simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none_iff, reduceCtorEq] at h₃
       <;> exact h₃ tl' h₅
     case some mtl' =>
-      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
         Map.mk.injEq, exists_eq_right, List.cons.injEq, exists_eq_right_right,
         Prod.mk.injEq, true_and] at *
       apply And.intro h₂
@@ -852,14 +852,14 @@ theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β →
 := by
   unfold mapMOnValues kvs
   intro h₁
-  simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+  simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
   replace ⟨x, h₁, h₂⟩ := h₁
   subst h₂
   replace h₁ := List.mapM_some_iff_forall₂.mp h₁
   simp only
   apply List.Forall₂.imp _ h₁
   intro (k, v) (k', v') h₂
-  simp only [Option.bind_eq_some, Option.some.injEq, Prod.mk.injEq, exists_eq_right_right] at h₂
+  simp only [Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq, exists_eq_right_right] at h₂
   replace ⟨h₂, h₂'⟩ := h₂
   subst k'
   simp only [true_and]
@@ -897,7 +897,7 @@ theorem mapMOnValues_some_implies_all_some_alt_proof [LT α] [DecidableLT α] {f
     simp only
     replace h₃ := List.mapM_some_implies_all_some h₃
     replace ⟨(a', g), h₃, h₄⟩ := h₃ (a, b) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Prod.mk.injEq, exists_eq_right_right] at h₄
     replace ⟨h₄, h₄'⟩ := h₄
     subst a'
@@ -935,7 +935,7 @@ theorem mapMOnValues_some_implies_all_from_some_alt_proof [LT α] [DecidableLT �
     simp only
     replace h₃ := List.mapM_some_implies_all_from_some h₃
     replace ⟨(a', b), h₃, h₄⟩ := h₃ (a, g) h₂
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Prod.mk.injEq, exists_eq_right_right] at h₄
     replace ⟨h₄, h₄'⟩ := h₄
     subst a'
@@ -955,7 +955,7 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
       have (khd, vhd) := hd ; clear hd
       simp only [values_cons h₂, List.mem_cons, exists_eq_or_imp]
       simp only [mapMOnValues_cons h₂, Option.pure_def, Option.bind_eq_bind,
-        Option.bind_eq_none, reduceCtorEq] at h₁
+        Option.bind_eq_none_iff, reduceCtorEq] at h₁
       cases h₃ : f vhd
       case none => simp only [true_or]
       case some yhd =>
@@ -977,7 +977,7 @@ theorem mapMOnValues_none_iff_exists_none {α : Type 0} [LT α] [DecidableLT α]
     case cons hd tl =>
       have (khd, vhd) := hd ; clear hd
       simp only [values_cons h₃, List.mem_cons] at h₁
-      simp only [mapMOnValues_cons h₃, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none]
+      simp only [mapMOnValues_cons h₃, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none_iff]
       intro yhd h₄ ytl h₅
       rcases h₁ with h₁ | h₁
       · subst h₁ ; simp [h₂] at h₄

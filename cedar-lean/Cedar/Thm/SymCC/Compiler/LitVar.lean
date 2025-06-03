@@ -50,7 +50,7 @@ theorem compile_evaluate_lit {p : Prim} {env : Env} {εnv : SymEnv} {t : Term}
     simp only [Same.same, SameResults, evaluate, SameValues, ne_eq, Term.value?,
       TermPrim.value?]
     simp only [Lean.Internal.coeM, CoeT.coe, CoeHTCT.coe, CoeHTC.coe, CoeOTC.coe, CoeTC.coe,
-      Coe.coe, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+      Coe.coe, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.prim.injEq, Prim.int.injEq, exists_eq_right]
     exact int64?_some
   case entityUID =>

@@ -33,7 +33,7 @@ theorem concretize?_ρ_some_eq {ρ : SymRequest} {r : Request} :
     r = {principal := uidₚ, action := uidₐ, resource := uidᵣ, context := ctx}
 := by
   intro h
-  simp only [SymRequest.concretize?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h
+  simp only [SymRequest.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
   replace ⟨uidₚ, hp, uidₐ, ha, uidᵣ, hr, ctx, hc, h⟩ := h
   simp only [hp, Option.some.injEq, ha, hr, hc, exists_and_left, exists_eq_left', h]
 
@@ -44,7 +44,7 @@ theorem concretize?_εs_some_eq {uids : Set EntityUID} {εs : SymEntities} {es :
     Map.make eds = es
 := by
   intro hs
-  simp only [SymEntities.concretize?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hs
   exact hs
 
@@ -56,7 +56,7 @@ theorem concretize?_entityData?_some_eq {uid : EntityUID} {ed : EntityUID × Ent
     (uid, d) = ed
 := by
   intro hs
-  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hs
   simp only [exists_and_left, hs]
 

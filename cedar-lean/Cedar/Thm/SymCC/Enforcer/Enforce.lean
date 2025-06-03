@@ -118,10 +118,10 @@ private theorem εnv_interpret_find?_ancestor {εnv : SymEnv} {I : Interpretatio
     δ'.ancestors.find? ety₂ = some ancUF' ∧
     ancUF'.interpret I = ancUF
 := by
-  simp only [SymEnv.interpret, SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some'] at hδ
+  simp only [SymEnv.interpret, SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
   replace ⟨_, hδ⟩ := hδ
   simp only [hδ, Option.some.injEq, exists_and_left, exists_eq_left', true_and]
-  simp only [← hδ.right, SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some'] at hf
+  simp only [← hδ.right, SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
   replace ⟨_, hf⟩ := hf
   simp only [hf, Option.some.injEq, exists_eq_left']
 
@@ -292,7 +292,7 @@ private theorem same_envs_implies_exists_ancestors_of_type
   simp only [SymEnv.interpret, interpret_entities_find?_some hδ₁, Option.some.injEq] at hδ₁'
   subst hδ₁'
   replace heq := heq.right.right.left ety₂ (f₁₂.interpret I)
-  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some', forall_exists_index, and_imp] at heq
+  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff, forall_exists_index, and_imp] at heq
   replace ⟨ts₂, heq, hts₂⟩ := heq f₁₂ hf₁ rfl
   exists ts₂
 

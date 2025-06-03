@@ -123,7 +123,7 @@ private theorem compile_evaluate_attrsOrEmpty
   simp only [Entities.attrsOrEmpty, hwf]
   replace ⟨δ, hδ, heq⟩ := heq uid d hwf
   have hwφ := wf_εs_implies_wf_attrs hwε hf
-  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hf
+  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
   replace ⟨δ', hδ', hf⟩ := hf
   simp only [hδ, Option.some.injEq] at hδ'
   subst hδ' hf
@@ -221,7 +221,7 @@ private theorem interpret_εs_attrs {εs : SymEntities} {I : Interpretation} {et
   (hf  : SymEntities.attrs εs ety = some fₐ) :
   SymEntities.attrs (SymEntities.interpret I εs) ety = some (fₐ.interpret I)
 := by
-  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at *
+  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at *
   replace ⟨d, hf, hf'⟩ := hf
   subst hf'
   exists (d.interpret I)

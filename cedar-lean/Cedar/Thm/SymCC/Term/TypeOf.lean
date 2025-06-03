@@ -253,7 +253,7 @@ private theorem type_of_wf_term_record_is_wf {εs : SymEntities} {r : Map Attr T
     split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h
     subst h
     rename_i heq
-    simp only [Option.map_eq_some', Prod.mk.injEq] at heq
+    simp only [Option.map_eq_some_iff, Prod.mk.injEq] at heq
     replace ⟨axt, heq, _, heq'⟩ := heq
     replace heq := List.mem_of_find?_eq_some heq
     have haxt : axt = (axt.fst, axt.snd) := by simp only
@@ -314,7 +314,7 @@ theorem isCedarRecordType_implies_term_record_type {ty : TermType} :
   split at h
   case h_1 heq =>
     unfold TermType.cedarType? at heq
-    cases ty <;> simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    cases ty <;> simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
     case prim pty =>
       cases pty <;> try { simp only [Option.some.injEq, reduceCtorEq] at heq  }
@@ -324,7 +324,7 @@ theorem isCedarRecordType_implies_term_record_type {ty : TermType} :
           subst h
           simp only [Option.some.injEq, reduceCtorEq] at heq
         case neg =>
-          split at heq <;> simp only [Option.bind_eq_some, Option.some.injEq,
+          split at heq <;> simp only [Option.bind_eq_some_iff, Option.some.injEq,
             Validation.CedarType.record.injEq, and_false, exists_const, reduceCtorEq] at heq
           rename_i heq'
           simp only [reduceCtorEq] at heq'
@@ -342,21 +342,21 @@ theorem typeOf_term_record_cedarType?_some_implies_attr_cedarType?_some {a : Att
   intro hty hin
   simp only [typeOf_term_record_eq] at hty
   simp only [TermType.cedarType?,
-    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hty
+    Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty
   replace ⟨atys, hty, _⟩ := hty
   simp only [List.mapM₃, List.attach₃,
     List.mapM_pmap_subtype λ (x : Attr × TermType) =>
     (TermType.cedarType?.qualifiedType? x.snd).bind
     λ qty => some (x.fst, qty)] at hty
   replace hty := List.mapM_some_implies_all_some hty (a, t.typeOf)
-  simp only [List.mem_map, Prod.mk.injEq, Option.bind_eq_some, Option.some.injEq,
+  simp only [List.mem_map, Prod.mk.injEq, Option.bind_eq_some_iff, Option.some.injEq,
     forall_exists_index, and_imp] at hty
   specialize hty (a, t) hin
   simp only [true_implies] at hty
   have ⟨_, _, _, hty, _⟩ := hty
   unfold TermType.cedarType?.qualifiedType? at hty
   split at hty <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hty <;>
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hty <;>
   replace ⟨cty, hty⟩ := hty
   · rename_i tty heq
     exists tty, cty

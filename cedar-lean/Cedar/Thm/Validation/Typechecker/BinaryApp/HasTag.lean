@@ -65,7 +65,7 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
   · rename_i d hf
     replace ⟨e, hf', _, _, h₁⟩ := h₁ uid d hf
     simp only [InstanceOfEntityTags] at h₁
-    simp only [EntitySchema.tags?, Option.map_eq_some'] at h₂
+    simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
     replace ⟨e', h₂, h₃⟩ := h₂
     simp only [hf', Option.some.injEq] at h₂
     subst h₂
@@ -85,7 +85,7 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
   split
   · rename_i d hf
     replace ⟨e, h₁, _, _, _⟩ := h₁ uid d hf
-    simp only [EntitySchema.tags?, Option.map_eq_none'] at h₂
+    simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
     simp only [h₁, reduceCtorEq] at h₂
   · exact map_empty_contains_instance_of_ff
 

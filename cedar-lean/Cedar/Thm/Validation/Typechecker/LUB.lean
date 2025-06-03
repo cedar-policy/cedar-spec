@@ -264,7 +264,7 @@ theorem lubQualified_is_lub_of_getType {qty qty₁ qty₂: Qualified CedarType}
   (qty₁.getType ⊔ qty₂.getType) = .some qty.getType
 := by
   unfold lubQualifiedType at h₁
-  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at h₁
+  split at h₁ <;> try simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at h₁
   all_goals {
     rename_i aty₁ aty₂
     cases h₂ : (aty₁ ⊔ aty₂)

@@ -65,7 +65,7 @@ private theorem wfl_term_isEntitySetType_implies_setOfEntityUIDs?_some {t : Term
   intro hwl hty
   have ⟨s, hs⟩ := wfl_of_type_set_is_set hwl hty
   subst hs
-  simp only [Term.setOfEntityUIDs?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+  simp only [Term.setOfEntityUIDs?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   have h : ∀ t ∈ s.1, ∃ uid, t.entityUID? = some uid := by
     intro t hin
     replace hty : t.typeOf.isEntityType := by
@@ -88,7 +88,7 @@ private theorem wfl_term_isCedarRecordType_implies_recordValue?_some {t : Term} 
   split at hty <;> simp only [Bool.false_eq_true] at hty
   rename_i hcty
   have ⟨v, hv⟩ := term_value?_exists hw hcty
-  simp only [Term.recordValue?, Option.bind_eq_bind, Option.bind_eq_some]
+  simp only [Term.recordValue?, Option.bind_eq_bind, Option.bind_eq_some_iff]
   replace ⟨rv, hv, hr⟩ := same_record_term_implies (same_values_def.mpr hv)
   exists rv, v
   subst hv
@@ -117,7 +117,7 @@ private theorem concretize?_wfl_ρ_implies_some {ρ : SymRequest} {εs : SymEnti
   ∃ (r : Request), ρ.concretize? = .some r
 := by
   intro hwρ hlit
-  simp only [SymRequest.concretize?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+  simp only [SymRequest.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   simp only [SymRequest.isLiteral, Bool.and_eq_true] at hlit
   replace ⟨hw, hty, hwρ⟩ := hwρ
   have ⟨p, hp⟩ := wfl_term_isEntityType_implies_entityUID?_some (And.intro hw hlit.left.left.left) hty
@@ -425,7 +425,7 @@ private theorem concretize?_wfl_δ_implies_some {uid : EntityUID} {δ : SymEntit
 := by
   intro hf hwδ hlit hvu
   simp only [SymEntityData.concretize?, hvu, ↓reduceIte, Option.bind_eq_bind, Option.bind_some_fun,
-    Option.bind_eq_some, Option.some.injEq]
+    Option.bind_eq_some_iff, Option.some.injEq]
   replace hvu := concretize?_δ_isValidEntityUID_implies_wfl hf hvu
   have ⟨hwf₁, hty₁⟩ := wf_δ_implies_wf_app_attrs hwδ hvu.left
   replace hty₁ : (Factory.app δ.attrs (Term.entity uid)).typeOf.isCedarRecordType := by
@@ -466,7 +466,7 @@ private theorem concretize?_wfl_εs_implies_entityData?_some {uid : EntityUID} {
   ∃ ed, SymEntities.concretize?.entityData? εs uid = some ed
 := by
   intro hwε hlit hvu
-  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.concretize?.entityData?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq]
   simp only [SymEntities.isValidEntityUID] at hvu
   split at hvu <;> try simp only [Bool.false_eq_true] at hvu
