@@ -48,12 +48,12 @@ private theorem concretize?_mapM_entityData?_wf_some_implies_sortedBy {eds : Lis
     exact List.SortedBy.nil
   case cons_nil =>
     simp only [List.mapM_cons, List.mapM_nil, Option.pure_def, Option.bind_some_fun,
-      Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hs
+      Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hs
     replace ⟨_, _, hs⟩ := hs
     subst hs
     exact List.SortedBy.cons_nil
   case cons_cons uid₁ uid₂ tl hlt htl ih =>
-    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at hs
     replace ⟨_, hs₁, _, ⟨_, hs₂, _, hs, heq⟩, heq'⟩ := hs
     subst heq heq'
@@ -294,8 +294,8 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
 := by
   intro hs
   simp only [Term.setOfEntityUIDs?, Option.bind_eq_bind] at hs
-  split at hs <;> simp only [Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at hs
-  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+  split at hs <;> simp only [Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hs
+  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.set.injEq]
   replace ⟨uids', hs, heq⟩ := hs
   exists (List.map (fun uid => Value.prim (Prim.entityUID uid)) uids') -- uids.elts)
@@ -465,7 +465,7 @@ private theorem concretize?_δ_some_implies {uid : EntityUID} {δ : SymEntityDat
   intro hf hw hs
   simp only [SymEntityData.concretize?, Option.bind_eq_bind, Option.bind_some_fun,
     Option.bind_none_fun] at hs
-  split at hs <;> simp only [Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at hs
+  split at hs <;> simp only [Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hs
   rename_i hwu
   replace hwu := concretize?_δ_isValidEntityUID_implies_wfl hf hwu
   replace ⟨attrs, hattrs, ancs, hs, tags, htags, heq⟩ := hs
@@ -533,7 +533,7 @@ theorem concretize?_some_wf {x : Expr} {env : Env} {εnv : SymEnv} :
   env.WellFormedFor x
 := by
   intro hwε hs
-  simp only [SymEnv.concretize?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hs
+  simp only [SymEnv.concretize?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hs
   replace ⟨r, hr, es, hs, heq⟩ := hs
   subst heq
   constructor

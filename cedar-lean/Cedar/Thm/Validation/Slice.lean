@@ -45,7 +45,7 @@ theorem slice_at_level_inner_well_formed {entities : Entities} {work slice : Set
         simp only [hs₁, Option.map_eq_map, Option.bind_eq_bind, Option.bind_none_fun, Option.bind_some_fun, reduceCtorEq] at hs
       rename_i n eds
       cases hs₂ : eds.mapM (Entities.sliceAtLevel.sliceAtLevel entities ·.sliceEUIDs n) <;>
-        simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at hs
+        simp only [hs₂, Option.map_none, Option.map_some, Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at hs
       rename_i slice'
       exists work, (slice'.mapUnion id)
     subst hs

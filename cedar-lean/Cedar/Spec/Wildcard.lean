@@ -14,11 +14,11 @@
  limitations under the License.
 -/
 
-import Batteries.Data.HashMap
+import Std.Data.HashMap
 
 namespace Cedar.Spec
 
-open Batteries
+open Std (HashMap)
 
 inductive PatElem where
   | star
@@ -57,7 +57,7 @@ def wildcardMatchIdx (text : List Char) (pattern : Pattern) (i j : Nat)
   (h₁ : i ≤ text.length)
   (h₂ : j ≤ pattern.length) : CacheM Bool
 := do
-  if let .some b := (← get).find? (i, j) then
+  if let .some b := (← get).get? (i, j) then
     return b
   let mut r := false
   if h₃ : j = pattern.length then
@@ -78,6 +78,6 @@ decreasing_by
   all_goals { simp_wf ; omega }
 
 def wildcardMatch (text : String) (pattern : Pattern) : Bool :=
-  wildcardMatchIdx text.toList pattern 0 0 (by simp) (by simp) |>.run' HashMap.empty
+  wildcardMatchIdx text.toList pattern 0 0 (by simp) (by simp) |>.run' {}
 
 end Cedar.Spec

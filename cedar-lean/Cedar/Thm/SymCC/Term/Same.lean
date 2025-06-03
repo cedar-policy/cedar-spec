@@ -172,7 +172,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
     simp only [List.attach_def, List.all_pmap_subtype Term.isLiteral, List.all_eq_true]
     intro x h₂
     unfold Term.value? at h₁
-    simp only [List.mapM₁_eq_mapM Term.value?, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [List.mapM₁_eq_mapM Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at h₁
     replace ⟨vs, h₁, _⟩ := h₁
     rw [← List.mapM'_eq_mapM] at h₁
@@ -187,7 +187,7 @@ theorem same_value_implies_lit {v : Value} {t : Term} :
     unfold Term.value? at h₁
     simp only [List.mapM₂, List.attach₂,
       List.mapM_pmap_subtype (λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd),
-      Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+      Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
     replace ⟨avs, h₁, _⟩ := h₁
     rw [← List.mapM'_eq_mapM] at h₁
     replace ⟨av', _, h₁⟩ := List.mapM'_some_implies_all_some h₁ x h₂
@@ -301,7 +301,7 @@ theorem same_set_term_implies {v : Value} {ts : Set Term} {ty : TermType} :
   intro h₁
   simp only [Same.same, SameValues] at h₁
   unfold Term.value? at h₁
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
   have ⟨vs', h₁⟩ := h₁
   exists (Set.make vs')
   simp only [h₁, true_and]
@@ -319,14 +319,14 @@ theorem same_set_implies {vs : Set Value} {t : Term} {ty : TermType} :
   case h_1 =>
     simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ <;>
     split at h₁ <;>
-    simp only [Option.bind_eq_some, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
+    simp only [Option.bind_eq_some_iff, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
   case h_2 =>
-    simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Value.set.injEq] at h₁
+    simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.set.injEq] at h₁
     simp only [Term.typeOf, TermType.set.injEq] at hty
     subst hty
     rename_i ts _
     exists (Set.mk ts)
-    simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.set.injEq, h₁, and_self]
   case h_3 r =>
     have ⟨_, h⟩ := @typeOf_term_record_is_record_type (Map.mk r)
@@ -342,7 +342,7 @@ theorem same_record_term_implies {v : Value} {rt : Map Attr Term} :
   intro h₁
   have h₂ := h₁
   unfold Term.value? at h₁
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h₁
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h₁
   have ⟨avs, h₁⟩ := h₁
   exists (Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs))
   simp only [h₁, h₂, and_self]
@@ -358,15 +358,15 @@ theorem same_record_implies {avs : Map Attr Value} {t : Term} {rty : Map Attr Te
   case h_1 =>
     simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at h₁ <;>
     split at h₁ <;>
-    simp only [Option.bind_eq_some, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
+    simp only [Option.bind_eq_some_iff, Option.some.injEq, and_false, exists_const, reduceCtorEq] at h₁
   case h_2 | h_4 =>
-    simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, and_false,
+    simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, and_false,
       exists_const, reduceCtorEq] at h₁
   case h_3 =>
-    simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Value.record.injEq] at h₁
+    simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.record.injEq] at h₁
     rename_i ats
     exists (Map.mk ats)
-    simp only [Term.value?, h₁, true_and, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    simp only [Term.value?, h₁, true_and, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
       Value.record.injEq]
 
 theorem bool_value? {b : Bool} :
@@ -408,7 +408,7 @@ theorem same_bitvec_term_implies {v : Value} {n : Nat} {bv : BitVec n} :
   ∃ i, v = Value.prim (.int i) ∧ bv.toInt = i ∧ n = 64
 := by
   simp only [Same.same, SameValues, Term.value?, TermPrim.value?, Option.pure_def,
-    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, forall_exists_index, and_imp]
+    Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, forall_exists_index, and_imp]
   intro i h₁ h₂
   simp only [BitVec.int64?] at h₁
   exists i
@@ -441,7 +441,7 @@ theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
   case prim p =>
     simp only [Term.value?, TermPrim.value?] at h₂
     split at h₂ <;>
-    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq, Value.prim.injEq, Prim.int.injEq, exists_eq_right, reduceCtorEq] at h₂
     simp only [BitVec.int64?] at h₂
     split at h₂ <;>
@@ -453,7 +453,7 @@ theorem same_int_implies {t : Term} {bv : BitVec 64} {i : Int64} :
     simp only [Term.value?, reduceCtorEq] at h₂
   case set | record =>
     unfold Term.value? at h₂
-    simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, and_false,
+    simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, and_false,
       exists_const, reduceCtorEq] at h₂
 
 theorem same_int {i : Int} {bv : BitVec 64}
@@ -517,14 +517,14 @@ private theorem value?_attrValue?_some_required {a : Attr} {tₐ : Term} {av : A
   case h_1 | h_2 =>
     simp only [Term.typeOf, TermType.option.injEq, forall_eq'] at hty
   case h_3 =>
-    simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hv
+    simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hv
     exact hv
 
 private theorem value?_attrValue?_some_optional {a : Attr} {tₐ : Term} {av : Attr × Option Value}
   (hv : Term.value?.attrValue? a (.some tₐ) = some av) :
   ∃ vₐ, Term.value? tₐ = some vₐ ∧ (a, some vₐ) = av
 := by
-  simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hv
   replace ⟨vₐ, hv, hv'⟩ := hv
   exists vₐ
@@ -533,7 +533,7 @@ private theorem value?_attrValue?_none_optional {a : Attr} {ty : TermType} {av :
   (hv : Term.value?.attrValue? a (.none ty) = some av) :
   Term.value? (.none ty) = none ∧ (a, none) = av
 := by
-  simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hv
   simp only [Term.value?, hv, and_self]
 
@@ -543,7 +543,7 @@ theorem value?_attrValue?_none_implies_none {a : Attr} {t : Term}
 := by
   unfold Term.value?.attrValue? at hv
   cases t <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Prod.mk.injEq,
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq,
     and_false, exists_const, reduceCtorEq] at hv
   rename_i ty
   exists ty
@@ -560,7 +560,7 @@ theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
   split
   case h_1 heq =>
     split at hv <;>
-    simp only [Option.bind_eq_some, Option.some.injEq, Prod.mk.injEq, true_and,
+    simp only [Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq, true_and,
       exists_eq_right, and_false, reduceCtorEq] at hv
     case h_1 t =>
       exists t
@@ -576,7 +576,7 @@ theorem value?_attrValue?_some_implies_same {a : Attr} {t : Term} {v : Value} :
         simp only [reduceCtorEq] at hv
   case h_2 h =>
     split at hv <;>
-    simp only [Option.bind_eq_some, Option.some.injEq, Prod.mk.injEq, true_and,
+    simp only [Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq, true_and,
       exists_eq_right, and_false, reduceCtorEq] at hv
     case h_1 t =>
       specialize h (t.typeOf)
@@ -590,7 +590,7 @@ theorem value?_attrValue?_fst {a : Attr} {t : Term} {av : Attr × Option Value} 
   intro hv
   unfold Term.value?.attrValue? at hv
   split at hv <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hv
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hv
   case h_1 | h_3 =>
     replace ⟨_, _, hv⟩ := hv
     simp only [← hv]
@@ -609,7 +609,7 @@ private theorem filterMap_attrValue?'_wf {rt : Map Attr Term}
   replace hw : (List.filterMap attrValue?' rt.1).SortedBy Prod.fst := by
     apply List.filterMap_sortedBy _ hw
     intro x y hfx
-    simp only [attrValue?', Option.bind_eq_some, Option.map_eq_some'] at hfx
+    simp only [attrValue?', Option.bind_eq_some_iff, Option.map_eq_some_iff] at hfx
     have ⟨a, hfx, a', hfx'⟩ := hfx
     simp only [← hfx'.right, value?_attrValue?_fst hfx]
   exact Map.mk_wf hw
@@ -621,7 +621,7 @@ theorem record_value?_mapM' {rt : Map Attr Term} {rv : Map Attr Value}
     Map.mk (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs) = rv
 := by
   unfold Term.value? at hr
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Value.record.injEq] at hr
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.record.injEq] at hr
   replace ⟨avs, hr, hv⟩ := hr
   simp only [List.mapM₂, List.attach₂,
     List.mapM_pmap_subtype (fun (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd)] at hr
@@ -658,7 +658,7 @@ theorem record_value?_find?_required {a : Attr} {tₐ : Term} {rt : Map Attr Ter
   simp only [Map.toList, Map.kvs] at hf
   replace hmem : (a, vₐ) ∈ List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd)
     (List.filterMap (fun x => Term.value?.attrValue? x.fst x.snd) rt.1) := by
-    simp only [List.mem_filterMap, Option.map_eq_some', Prod.mk.injEq, exists_eq_right_right]
+    simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right]
     exists (a, some vₐ)
     simp only [and_self, and_true]
     exists (a, tₐ)
@@ -688,7 +688,7 @@ theorem record_value?_find?_optional_some {a : Attr} {tₐ : Term} {rt : Map Att
   simp only [Map.toList, Map.kvs] at hf
   replace hmem : (a, vₐ) ∈ List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd)
     (List.filterMap (fun x => Term.value?.attrValue? x.fst x.snd) rt.1) := by
-    simp only [List.mem_filterMap, Option.map_eq_some', Prod.mk.injEq, exists_eq_right_right]
+    simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right]
     exists (a, some vₐ)
     simp only [and_self, and_true]
     exists (a, .some tₐ)
@@ -719,7 +719,7 @@ theorem record_value?_find?_optional_none {a : Attr} {ty : TermType} {rt : Map A
   rw [beq_iff_eq, eq_comm] at heq'
   subst heq'
   replace heq := List.mem_of_find?_eq_some heq
-  simp only [List.mem_filterMap, Option.map_eq_some', Prod.mk.injEq, exists_eq_right_right] at heq
+  simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq, exists_eq_right_right] at heq
   replace ⟨_, ⟨p', hmem', heq⟩, hsnd, hfst⟩ := heq
   simp only [List.mem_filterMap] at hmem
   replace ⟨p, hmem, ha⟩ := hmem
@@ -751,7 +751,7 @@ theorem record_value?_find?_none {a : Attr} {rt : Map Attr Term} {rv : Map Attr 
   rw [beq_iff_eq, eq_comm] at heq'
   subst heq'
   replace heq := List.mem_of_find?_eq_some heq
-  simp only [List.mem_filterMap, Option.map_eq_some', Prod.mk.injEq,
+  simp only [List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
     exists_eq_right_right] at heq
   replace ⟨_, ⟨p, hmem', heq⟩, _, hfst⟩ := heq
   simp only [Map.find?, Map.kvs] at hf
@@ -795,7 +795,7 @@ theorem set_value?_implies_in_value {vs : Set Value} {ts : Set Term} {ty : TermT
 := by
   intro hv t ht
   rw [Term.value?] at hv
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Value.set.injEq] at hv
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.set.injEq] at hv
   replace ⟨ts', hv, hvs⟩ := hv
   subst hvs
   simp only [List.mapM₁_eq_mapM Term.value?, ← List.mapM'_eq_mapM] at hv
@@ -810,7 +810,7 @@ theorem set_value?_implies_in_term {vs : Set Value} {ts : Set Term} {ty : TermTy
 := by
   intro hv v ht
   rw [Term.value?] at hv
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, Value.set.injEq] at hv
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, Value.set.injEq] at hv
   replace ⟨vs', hv, hvs⟩ := hv
   subst hvs
   simp only [List.mapM₁_eq_mapM Term.value?, ← List.mapM'_eq_mapM] at hv
@@ -840,7 +840,7 @@ theorem record_value?_some_implies {ats : List (Attr × Term)} {avs : List (Attr
     List.filterMap (λ (x : Attr × Option Value) => Option.map (Prod.mk x.fst) x.snd) avs' = avs
 := by
   intro hv
-  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.record.injEq, Map.mk.injEq] at hv
   replace ⟨avs', hv⟩ := hv
   rw [List.mapM₂, List.attach₂,
@@ -856,7 +856,7 @@ theorem record_value?_some_implied_by {ats : List (Attr × Term)} {avs : List (A
   intro h₁ h₂
   simp only [Term.value?, List.mapM₂, List.attach₂,
     List.mapM_pmap_subtype λ (x : Attr × Term) => Term.value?.attrValue? x.fst x.snd, ←
-    List.mapM'_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+    List.mapM'_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.record.injEq, Map.mk.injEq, h₁]
   exists avs'
 
@@ -869,7 +869,7 @@ private theorem record_value?_cons {a : Attr} {t : Term} {ats : List (Attr × Te
 := by
   intro hv
   replace ⟨ats', hv⟩ := record_value?_some_implies hv
-  simp only [List.mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [List.mapM'_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq] at hv
   replace ⟨⟨av', ⟨hv, avs', hv', havs⟩⟩, h⟩ := hv
   subst havs
@@ -879,12 +879,12 @@ private theorem record_value?_cons {a : Attr} {t : Term} {ats : List (Attr × Te
   simp only [List.filterMap_cons] at h
   split
   case h_1 v hsome =>
-    simp only [hsome, Option.map_some'] at h
+    simp only [hsome, Option.map_some] at h
     exists (List.filterMap (fun x => Option.map (Prod.mk x.fst) x.snd) avs')
     simp only [h, true_and]
     exact record_value?_some_implied_by hv' rfl
   case h_2 hnone =>
-    simp only [hnone, Option.map_none'] at h
+    simp only [hnone, Option.map_none] at h
     exact record_value?_some_implied_by hv' h
 
 private theorem record_value?_head_none {a : Attr} {t : Term} {ats : List (Attr × Term)} {avs : List (Attr × Value)} :
@@ -1096,12 +1096,12 @@ private theorem prim_value?_exists {p : TermPrim} {ty : Validation.CedarType} {�
 := by
   intro hw hty
   cases p <;>
-  simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq, exists_eq']
   simp only [TermPrim.typeOf] at hty
   unfold TermType.cedarType? at hty
   split at hty <;>
-  simp only [Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq, reduceCtorEq] at hty <;>
+  simp only [Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hty <;>
   rename_i heq <;>
   simp only [TermType.prim.injEq, TermPrimType.bitvec.injEq, reduceCtorEq] at heq
   rename_i bv _
@@ -1157,7 +1157,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
   have ⟨hwf, hlit⟩ := hwfl
   unfold Term.value?
   cases t <;>
-  simp only [exists_const, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+  simp only [exists_const, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
   case var | app =>
     simp only [Term.isLiteral, Bool.false_eq_true] at hlit
   case none | some =>
@@ -1168,7 +1168,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
     exact prim_value?_exists hwf hcty
   case set ts sty =>
     cases ts ; rename_i ts
-    simp only [Term.typeOf, TermType.cedarType?, Option.bind_eq_bind, Option.bind_eq_some,
+    simp only [Term.typeOf, TermType.cedarType?, Option.bind_eq_bind, Option.bind_eq_some_iff,
       Option.some.injEq] at hcty
     have ⟨ty', hcty', _⟩ := hcty
     have ih : ∀ t' ∈ ts, ∃ (v' : Value), t'.value? = some v' := by
@@ -1189,7 +1189,7 @@ theorem term_value?_exists {t : Term} {ty : Validation.CedarType} {εs : SymEnti
       split at ht
       · simp only [Term.value?.attrValue?, Option.some.injEq, exists_eq']
       · simp only [true_and] at ht
-        simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq]
+        simp only [Term.value?.attrValue?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq]
         have ⟨v', hv'⟩ := term_value?_exists ht.left ht.right
         exists (a', some v'), v'
       · have ⟨v', hv'⟩ := term_value?_exists ht.left ht.right

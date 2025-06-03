@@ -231,7 +231,7 @@ theorem in_work_then_in_slice {entities : Entities} {work slice : Set EntityUID}
   rename_i eds
   cases hs₂ :
     List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds
-  <;> simp only [hs₂, Option.map_none', Option.map_some', Option.none_bind, Option.some_bind, reduceCtorEq,Option.some.injEq] at hs
+  <;> simp only [hs₂, Option.map_none, Option.map_some, Option.none_bind, Option.some_bind, reduceCtorEq,Option.some.injEq] at hs
   rename_i slice'
   subst hs
   have ⟨ _, hc ⟩ := Set.mem_union_iff_mem_or work (slice'.mapUnion id) euid
@@ -261,7 +261,7 @@ theorem slice_contains_reachable {n: Nat} {work : Set EntityUID} {euid : EntityU
     subst hs
     rename_i slice'
     cases hs₃ : List.mapM (λ x => Entities.sliceAtLevel.sliceAtLevel entities x.sliceEUIDs n) eds <;>
-      simp only [hs₃, Option.map_some', Option.some.injEq, Option.map_none', reduceCtorEq] at hs₂
+      simp only [hs₃, Option.map_some, Option.some.injEq, Option.map_none, reduceCtorEq] at hs₂
     subst hs₂
     rw [Set.mem_union_iff_mem_or]
     right

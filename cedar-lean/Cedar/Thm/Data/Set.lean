@@ -388,7 +388,7 @@ theorem inter_self_eq {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq �
     rw [eq_comm]
     rw (config := {occs := .pos [1]}) [← ih]
     rw [List.filter_congr]
-    simp only [Bool.decide_or, Bool.iff_or_self, decide_eq_true_eq]
+    simp only [Bool.decide_or, Bool.eq_or_self, decide_eq_true_eq]
     intro _ h
     simp only [h, implies_true]
 

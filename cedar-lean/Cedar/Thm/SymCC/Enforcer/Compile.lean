@@ -527,7 +527,7 @@ private theorem same_footprint_ancestors {x : Expr} {ft : Set Term} {εnv : SymE
   simp only [Term.prim.injEq, TermPrim.entity.injEq, exists_eq_left', true_and]
   intro ety₂ f hancs
   simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind,
-      Option.bind_eq_some, Option.some.injEq] at hancs
+      Option.bind_eq_some_iff, Option.some.injEq] at hancs
   replace ⟨_, ⟨δ, hδ, hancs⟩, hf⟩ := hancs
   subst hancs
   have ⟨tₑ, hin, heq₃⟩ := compile_interpret_in_footprint hwε hI₁ hok heq₁
@@ -688,7 +688,7 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
         ← interpret_hasTag (wf_εs_implies_wf_tags hwε.left.right hτs) hI₁ hwo₁.left hwo₂.left hty₁,
         ← interpret_hasTag (wf_εs_implies_wf_tags hwε.left.right hτs) hI₂ hwo₁.left hwo₂.left hty₁,
         ih₁', ih₂', Term.some.injEq]
-      simp only [SymEntities.tags, Option.map_eq_some'] at hτs
+      simp only [SymEntities.tags, Option.map_eq_some_iff] at hτs
       replace ⟨δ, hδ, hτs⟩ := hτs
       simp only [(hsm.right ety δ hδ).right.right τs hτs]
   case getTag =>
@@ -699,7 +699,7 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
       ← interpret_getTag (wf_εs_implies_wf_tags hwε.left.right hτs) hI₁ hwo₁.left hwo₂.left hty₁ hty₂,
       ← interpret_getTag (wf_εs_implies_wf_tags hwε.left.right hτs) hI₂ hwo₁.left hwo₂.left hty₁ hty₂,
       ih₁', ih₂']
-    simp only [SymEntities.tags, Option.map_eq_some'] at hτs
+    simp only [SymEntities.tags, Option.map_eq_some_iff] at hτs
     replace ⟨δ, hδ, hτs⟩ := hτs
     simp only [(hsm.right ety δ hδ).right.right τs hτs]
 
@@ -723,7 +723,7 @@ private theorem compileAttrsOf_interpret_record_get_eq {t₁ t₃ : Term} {a₁ 
   have hwf := wf_εs_implies_wf_attrs hwε hf
   rw [eq_comm, ← hty₁] at hwf
   simp only [interpret_app hI₁ hwt₁ hwf.left hwf.right.left, interpret_app hI₂ hwt₁ hwf.left hwf.right.left, ih₁]
-  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hf
+  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
   replace ⟨δ, hf⟩ := hf
   replace hsm := (hsm ety δ hf.left).left
   simp only [SymEntityData.attrs, hf.right] at hsm

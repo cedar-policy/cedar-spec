@@ -143,10 +143,10 @@ private theorem mem_ancestors_implies_ancestorsOfType {ety₁ ety₂ : EntityTyp
   (hin : (ety₂, f) ∈ ancs.kvs) :
   εs.ancestorsOfType ety₁ ety₂ = some f
 := by
-  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some]
+  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff]
   exists ancs
   simp only [hanc, true_and]
-  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hanc
+  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hanc
   replace ⟨δ, hf, hanc⟩ := hanc
   subst hanc
   replace hwε := (hwε.right ety₁ δ hf).right.right.right.right.left
@@ -560,13 +560,13 @@ private theorem interpret_entities_ancestorsOfType_some_implies {εs : SymEntiti
 := by
   intro heq
   simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind,
-    Option.bind_eq_some, Option.some.injEq] at heq
+    Option.bind_eq_some_iff, Option.some.injEq] at heq
   replace ⟨ancs, ⟨δ', hδ, heq⟩, hf⟩ := heq
   subst heq
-  simp only [SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some'] at hδ
+  simp only [SymEntities.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hδ
   replace ⟨δ, hδ, hf'⟩ := hδ
   subst hf'
-  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some'] at hf
+  simp only [SymEntityData.interpret, ← Map.find?_mapOnValues, Option.map_eq_some_iff] at hf
   replace ⟨f, hf, heq⟩ := hf
   exists δ, f
 

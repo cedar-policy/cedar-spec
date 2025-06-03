@@ -96,7 +96,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
   replace ⟨entry, hf₂, _, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂
-  simp [EntitySchema.tags?, Option.map_eq_some'] at ht
+  simp [EntitySchema.tags?, Option.map_eq_some_iff] at ht
   replace ⟨_, ht₁, ht₂⟩ := ht
   simp only [hf₂, Option.some.injEq] at ht₁
   subst ht₁

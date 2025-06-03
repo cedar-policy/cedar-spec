@@ -79,7 +79,7 @@ theorem term_prim_value?_some_implies_ws {t : TermPrim} {v : Value} :
 := by
   intro hv
   simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at hv
-  cases t <;> simp only [Option.bind_eq_some, Option.some.injEq] at hv
+  cases t <;> simp only [Option.bind_eq_some_iff, Option.some.injEq] at hv
   all_goals {
     try (replace ⟨_, _, hv⟩ := hv)
     subst hv
@@ -93,7 +93,7 @@ theorem term_set_value?_some_implies {ts : List Term} {ty : TermType} {v : Value
   ∃ vs,
     List.mapM Term.value? ts = some vs ∧ Value.set (Set.make vs) = v
 := by
-  simp only [Term.value?, List.mapM₁_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [Term.value?, List.mapM₁_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some_iff,
     Option.some.injEq, imp_self]
 
 theorem term_set_value?_some_implies_ws {ts : List Term} {ty : TermType} {v : Value} {εs : SymEntities}
@@ -120,7 +120,7 @@ private theorem term_record_value?_some_implies {ats : List (Attr × Term)} {v :
   intro h
   simp only [Term.value?, List.mapM₂, List.attach₂,
     List.mapM_pmap_subtype (λ x : Attr × Term => Term.value?.attrValue? x.fst x.snd),
-    Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h
+    Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
   exact h
 
 private theorem term_value?_attrValue?_some_implies_or {a : Attr} {t : Term} {v : Value} :
@@ -159,7 +159,7 @@ private theorem term_record_value?_some_implies_ws {ats : List (Attr × Term)} {
   case h₁ =>
     intro a' v' hf
     replace hf := Map.find?_mem_toList hf
-    simp only [Map.toList, Map.kvs, List.mem_filterMap, Option.map_eq_some', Prod.mk.injEq,
+    simp only [Map.toList, Map.kvs, List.mem_filterMap, Option.map_eq_some_iff, Prod.mk.injEq,
       exists_eq_right_right] at hf
     replace ⟨(aᵥ, vᵢ), hf, h₂, h₁⟩ := hf
     simp only at h₁ h₂ ; subst h₁ h₂
@@ -220,7 +220,7 @@ private theorem term_prim_value?_some_implies_eq_entityUIDs {t : TermPrim} {v : 
 := by
   intro hv
   simp only [TermPrim.value?, Option.pure_def, Option.bind_eq_bind] at hv
-  cases t <;> simp only [Option.bind_eq_some, Option.some.injEq] at hv
+  cases t <;> simp only [Option.bind_eq_some_iff, Option.some.injEq] at hv
   all_goals {
     try (replace ⟨_, _, hv⟩ := hv)
     subst hv

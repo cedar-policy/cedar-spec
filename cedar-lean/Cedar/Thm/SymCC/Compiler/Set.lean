@@ -177,7 +177,7 @@ private theorem same_forall₂_implies_same_set {ts : List Term} {vs : List Valu
   Term.value? (Term.set (Set.make ts) ty) = some (Value.set (Set.make vs))
 := by
   unfold Term.value?
-  simp only [List.mapM₁_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+  simp only [List.mapM₁_eq_mapM, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.set.injEq]
   simp only [same_values_def] at hs
   have heqv := List.canonicalize_equiv ts

@@ -384,14 +384,14 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
       simp only [Except.ok.injEq] at h₇
       cases h₁₂
       rename_i h₈ _
-      simp only [EntitySchema.attrs?, Option.map_eq_some'] at h₅
+      simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
       rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
       simp [←het] at h₁₁
       simp only [h₁₁, Option.some.injEq] at h₅₁
       simp only [← h₅₁] at h₅₃
       have h₈ := λ qty => h₈ attr v₁ qty heq₁
       simp only [h₅₂] at h₈
-      simp only [Option.map_eq_some'] at h₆
+      simp only [Option.map_eq_some_iff] at h₆
       rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
       simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
       replace ⟨qty', h₆₁, h₆₃⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes h₆₁
@@ -435,7 +435,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
   split at h₆
   · rename_i v₁ heq
     have h₇ := λ qty => h₇ attr v₁ qty heq
-    simp only [Option.map_eq_some'] at h₅
+    simp only [Option.map_eq_some_iff] at h₅
     rcases h₅ with ⟨qty, h₅₁, h₅₂⟩
     have h₇ := h₇ qty h₅₁
     simp only [Except.ok.injEq] at h₆

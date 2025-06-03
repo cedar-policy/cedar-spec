@@ -59,7 +59,7 @@ theorem anyM_some_implies_any {α} {xs : List α} {b : Bool}  (f : α → Option
         simp only [h₁, Bool.true_or]
       case _ =>
         specialize hᵢ h₂
-        simp only [hᵢ, Bool.or_iff_right_iff_imp]
+        simp only [hᵢ, Bool.or_eq_right_iff_imp]
         specialize h₁ head false h₃
         simp only [h₁, Bool.false_eq_true, false_implies]
 
@@ -163,7 +163,7 @@ theorem partial_evaluate_is_sound_var
   case _ =>
     split
     case _ heq =>
-      simp [Option.bind_eq_some] at heq
+      simp [Option.bind_eq_some_iff] at heq
       rcases heq with ⟨_, heq₁, heq₂⟩
       subst heq₂
       simp [Residual.evaluate]
@@ -179,7 +179,7 @@ theorem partial_evaluate_is_sound_var
   case _ =>
     split
     case _ heq =>
-      simp [Option.bind_eq_some] at heq
+      simp [Option.bind_eq_some_iff] at heq
       rcases heq with ⟨_, heq₁, heq₂⟩
       subst heq₂
       simp [Residual.evaluate]
@@ -548,7 +548,7 @@ theorem partial_evaluate_is_sound_binary_app
       simp [intOrErr, someOrError]
       split <;> split
       case _ heq₃ _ _ _ _ heq₄ =>
-        simp [Option.bind_eq_some] at heq₄
+        simp [Option.bind_eq_some_iff] at heq₄
         rcases heq₄ with ⟨_, heq₄₁, heq₄₂⟩
         subst heq₄₂
         simp [heq₃] at heq₄₁
@@ -564,7 +564,7 @@ theorem partial_evaluate_is_sound_binary_app
       simp [apply₂.self, heq₁, heq₂, someOrSelf]
       split
       case _ heq₃ =>
-        simp only [Option.bind_eq_some] at heq₃
+        simp only [Option.bind_eq_some_iff] at heq₃
         rcases heq₃ with ⟨_, heq₃₁, heq₃₂⟩
         simp only [Option.some.injEq] at heq₃₂
         subst heq₃₂
@@ -579,7 +579,7 @@ theorem partial_evaluate_is_sound_binary_app
           simp [Option.map] at heq₃₁
           split at heq₃₁ <;> cases heq₃₁
           rename_i heq₅
-          simp [PartialEntities.ancestors, PartialEntities.get, Option.bind_eq_some] at heq₅
+          simp [PartialEntities.ancestors, PartialEntities.get, Option.bind_eq_some_iff] at heq₅
           rcases heq₅ with ⟨data, heq₅₁, heq₅₂⟩
           simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
           rcases h₄ with ⟨_, h₄⟩
@@ -598,7 +598,7 @@ theorem partial_evaluate_is_sound_binary_app
       simp [apply₂.self, heq₁, heq₂, someOrSelf]
       split
       case _ uid vs _ _ _ _ _ heq₃ =>
-        simp only [Option.bind_eq_some] at heq₃
+        simp only [Option.bind_eq_some_iff] at heq₃
         rcases heq₃ with ⟨_, heq₃₁, heq₃₂⟩
         simp only [Option.some.injEq] at heq₃₂
         subst heq₃₂
@@ -616,7 +616,7 @@ theorem partial_evaluate_is_sound_binary_app
           simp only [Value.asEntityUID, h₆, reduceCtorEq] at h₇₂
         case _ =>
           simp [Data.Set.make_any_iff_any]
-          simp [TPE.inₛ, Option.bind_eq_some, Data.Set.toList] at heq₃₁
+          simp [TPE.inₛ, Option.bind_eq_some_iff, Data.Set.toList] at heq₃₁
           rcases heq₃₁ with ⟨vs', heq₃₁, heq₃₂⟩
           rw [List.mapM_some_iff_forall₂] at heq₃₁
           have heq₄ : List.Forall₂ (fun x y => x.asEntityUID = .ok y) vs.elts vs' := by
@@ -655,7 +655,7 @@ theorem partial_evaluate_is_sound_binary_app
               cases h₅
               rename_i heq₂
               rw [heq₂] at h₃
-              simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_iff_right_iff_imp, beq_iff_eq, heq,
+              simp only [Entities.ancestorsOrEmpty, h₄, h₃, Bool.or_eq_right_iff_imp, beq_iff_eq, heq,
                 false_implies]
           replace heq₃₂ := anyM_some_implies_any (fun x => if uid = x then some true else Option.map (fun y => y.contains x) (pes.ancestors uid))
             (fun x => uid == x || (es.ancestorsOrEmpty uid).contains x) this heq₃₂
@@ -667,14 +667,14 @@ theorem partial_evaluate_is_sound_binary_app
       simp [someOrSelf, apply₂.self]
       split
       case _ heq =>
-        rw [Option.bind_eq_some] at heq
+        rw [Option.bind_eq_some_iff] at heq
         rcases heq with ⟨_, heq₁, heq₂⟩
         simp at heq₂
         subst heq₂
         simp [TPE.hasTag] at heq₁
         rcases heq₁ with ⟨_, heq₁, heq₂⟩
         simp [PartialEntities.tags, PartialEntities.get] at heq₁
-        rw [Option.bind_eq_some] at heq₁
+        rw [Option.bind_eq_some_iff] at heq₁
         rcases heq₁ with ⟨data, heq₃, heq₄⟩
         subst heq₂
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
@@ -693,7 +693,7 @@ theorem partial_evaluate_is_sound_binary_app
       split
       case _ heq =>
         simp [PartialEntities.tags, PartialEntities.get] at heq
-        rw [Option.bind_eq_some] at heq
+        rw [Option.bind_eq_some_iff] at heq
         rcases heq with ⟨data, heq₂, heq₃⟩
         simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
         rcases h₄ with ⟨_, h₄⟩
@@ -757,7 +757,7 @@ theorem partial_evaluate_is_sound_has_attr
       simp [heq₁, Residual.evaluate] at hᵢ₁
       replace hᵢ₁ := to_option_right_ok' hᵢ₁
       simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, Residual.evaluate, Except.toOption]
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some] at heq
+      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
       rcases heq with ⟨data, heq₂, heq₃⟩
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
@@ -811,7 +811,7 @@ theorem partial_evaluate_is_sound_get_attr
       simp [heq₁, Residual.evaluate] at hᵢ₁
       replace hᵢ₁ := to_option_right_ok' hᵢ₁
       simp [TypedExpr.toExpr, Spec.evaluate, hᵢ₁, Spec.getAttr, Spec.attrsOf]
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some] at heq
+      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
       rcases heq with ⟨data, heq₂, heq₃⟩
       simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
       rcases h₄ with ⟨_, h₄⟩
@@ -933,7 +933,7 @@ theorem partial_evaluate_is_sound_record
     have : ∀ (x : Attr × TypedExpr) y, bindAttr x.fst (TPE.evaluate x.snd preq pes).asValue = some y → bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es) = .ok y := by
       intro x y h
       simp only [bindAttr] at *
-      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at h
+      simp only [Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at h
       rcases h with ⟨_, h₁, h₂⟩
       rcases as_value_some h₁ with ⟨_, h₁⟩
       simp only [h₁, Residual.evaluate, bind_pure_comp, Except.map_ok, h₂]

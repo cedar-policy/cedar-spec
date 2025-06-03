@@ -135,7 +135,7 @@ theorem wf_εs_implies_wf_attrs {ety : EntityType} {fₐ : UnaryFunction} {εs :
   fₐ.argType = .entity ety ∧
   fₐ.outType.isCedarRecordType
 := by
-  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hf
+  simp only [SymEntities.attrs, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
   replace ⟨d, hf⟩ := hf
   replace ⟨hf, hf'⟩ := hf
   subst hf'
@@ -151,9 +151,9 @@ theorem wf_εs_implies_wf_ancs {ety₁ ety₂ : EntityType} {fₐ : UnaryFunctio
   fₐ.argType = .entity ety₁ ∧
   fₐ.outType = .set (.entity ety₂)
 := by
-  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at hf
+  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hf
   replace ⟨ancs₁, ha, hf⟩ := hf
-  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq] at ha
+  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at ha
   replace ⟨εd, hf', ha⟩ := ha
   subst ha
   exact (hwε.right ety₁ εd hf').right.right.right.left ety₂ fₐ hf
@@ -163,7 +163,7 @@ theorem wf_εs_implies_wf_tags {ety : EntityType} {τs : SymTags} {εs : SymEnti
   (hτs : εs.tags ety = some (some τs)) :
   τs.WellFormed εs ety
 := by
-  simp only [SymEntities.tags, Option.map_eq_some'] at hτs
+  simp only [SymEntities.tags, Option.map_eq_some_iff] at hτs
   replace ⟨δ, hf, hτs⟩ := hτs
   exact (hwε.right ety δ hf).right.right.right.right.right.left τs hτs
 

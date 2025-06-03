@@ -766,7 +766,7 @@ theorem same_entities_ancestors_none_of_type {es : Entities} {εs : SymEntities}
     by_contra hc
     replace ⟨δ, heq⟩ := heq e₁ d hf
     simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind,
-      Option.bind_eq_none, Option.bind_eq_some, Option.some.injEq, forall_exists_index, and_imp,
+      Option.bind_eq_none_iff, Option.bind_eq_some_iff, Option.some.injEq, forall_exists_index, and_imp,
       forall_apply_eq_imp_iff₂] at hno
     replace hno := hno δ heq.left
     have ha := heq.right.right.left e₂ hc
@@ -792,7 +792,7 @@ theorem same_entities_ancestors_some_of_type {es : Entities} {εs : SymEntities}
     replace ⟨δ, hf₂, heq⟩ := heq e₁ d hf₁
     replace ⟨heq, hεq⟩ := heq.right
     simp only [SymEntities.ancestorsOfType, SymEntities.ancestors, Option.bind_eq_bind,
-      Option.bind_eq_some, Option.some.injEq] at hso
+      Option.bind_eq_some_iff, Option.some.injEq] at hso
     replace ⟨_, ⟨δ, hf₃, hso⟩, hf₄⟩ := hso
     simp [hf₂] at hf₃
     subst hf₃ hso
@@ -940,7 +940,7 @@ private theorem term_entity_set_wfl_implies_value? {ts : List Term} {ety : Entit
   (hvs  : Term.value? (Term.set (Set.mk ts) (TermType.entity ety)) = some (Value.set (Set.mk vs))) :
   vs = uids.map (λ uid => Value.prim (Prim.entityUID uid))
 := by
-  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+  simp only [Term.value?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     Value.set.injEq] at hvs
   replace ⟨vs', hvs, hmk⟩ := hvs
   rw [List.mapM₁_eq_mapM, ← List.mapM'_eq_mapM] at hvs
@@ -1164,7 +1164,7 @@ private theorem compileApp₂_hasTag_implies_apply₂ {t₁ t₂ t₃ : Term} {v
   simp only [apply₂, hasTag]
   rcases hok with ⟨hτs, hok⟩ | ⟨τs, hτs, hok⟩ <;>
   subst hok <;>
-  simp only [SymEntities.tags, Option.map_eq_some'] at hτs <;>
+  simp only [SymEntities.tags, Option.map_eq_some_iff] at hτs <;>
   replace ⟨δ', hδ', hτs⟩ := hτs <;>
   simp [hδ] at hδ' <;>
   subst hδ' <;>
@@ -1212,7 +1212,7 @@ private theorem compileApp₂_getTag_implies_apply₂ {t₁ t₂ t₃ : Term} {v
   replace ⟨δ, hδ, heq⟩ := heq uid d hd
   replace heq := heq.right.right.right
   simp only [SameTags] at heq
-  simp only [SymEntities.tags, Option.map_eq_some'] at hτs
+  simp only [SymEntities.tags, Option.map_eq_some_iff] at hτs
   replace ⟨δ', hδ', hτs⟩ := hτs
   simp only [hδ, Option.some.injEq] at hδ'
   subst hδ'

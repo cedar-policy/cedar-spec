@@ -66,7 +66,7 @@ theorem interpret_entities_ancestors_none  {εs : SymEntities} {ety : EntityType
   εs.ancestors ety = .none →
   (εs.interpret I).ancestors ety = .none
 := by
-  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_none]
+  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_none_iff]
   intro h₁ _ h₂
   cases h₃ : εs.find? ety
   case none =>
@@ -79,7 +79,7 @@ theorem interpret_entities_ancestors_some  {εs : SymEntities} {ety : EntityType
   εs.ancestors ety = .some ancs →
   (εs.interpret I).ancestors ety = .some (ancs.mapOnValues (UnaryFunction.interpret I))
 := by
-  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some, Option.some.injEq,
+  simp only [SymEntities.ancestors, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq,
     SymEntities.interpret, forall_exists_index, and_imp]
   intro _ h₁ h₂
   simp only [Map.find?_mapOnValues_some _ h₁, SymEntityData.interpret, h₂,
@@ -89,7 +89,7 @@ theorem interpret_entities_ancestorsOfType_none {εs : SymEntities} {ety ancTy :
   εs.ancestorsOfType ety ancTy = .none →
   (εs.interpret I).ancestorsOfType ety ancTy = .none
 := by
-  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_none]
+  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_none_iff]
   intro h₁ _ h₂
   cases h₃ : SymEntities.ancestors εs ety
   case none =>
@@ -106,7 +106,7 @@ theorem interpret_entities_ancestorsOfType_some {εs : SymEntities} {ety ancTy :
   εs.ancestorsOfType ety ancTy = .some f →
   (εs.interpret I).ancestorsOfType ety ancTy = .some (f.interpret I)
 := by
-  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some,
+  simp only [SymEntities.ancestorsOfType, Option.bind_eq_bind, Option.bind_eq_some_iff,
     forall_exists_index, and_imp]
   intro _ h₁ h₂
   simp only [interpret_entities_ancestors_some I h₁, Map.find?_mapOnValues_some _ h₂,
@@ -116,22 +116,22 @@ theorem interpret_entities_tags_none {εs : SymEntities} {I : Interpretation} {e
   εs.tags ety = some none →
   (εs.interpret I).tags ety = some none
 := by
-  simp only [SymEntities.tags, Option.map_eq_some', forall_exists_index, and_imp]
+  simp only [SymEntities.tags, Option.map_eq_some_iff, forall_exists_index, and_imp]
   intro δ hf hτs
   replace hf := @interpret_entities_find?_some _ I _ _ hf
   exists (SymEntityData.interpret I δ)
-  simp only [hf, SymEntityData.interpret, hτs, Option.map_none', and_self]
+  simp only [hf, SymEntityData.interpret, hτs, Option.map_none, and_self]
 
 theorem interpret_entities_tags_some {εs : SymEntities} {I : Interpretation} {ety : EntityType} {τs : SymTags} :
   εs.tags ety = some τs →
   (εs.interpret I).tags ety = some (τs.interpret I)
 := by
-  simp only [SymEntities.tags, Option.pure_def, Option.bind_some_fun, Option.map_eq_some',
+  simp only [SymEntities.tags, Option.pure_def, Option.bind_some_fun, Option.map_eq_some_iff,
     forall_exists_index, and_imp]
   intro δ hf hτs
   replace hf := @interpret_entities_find?_some _ I _ _ hf
   exists (SymEntityData.interpret I δ)
-  simp only [hf, SymEntityData.interpret, hτs, Option.map_some', and_self]
+  simp only [hf, SymEntityData.interpret, hτs, Option.map_some, and_self]
 
 theorem interpret_entities_same_domain (εs : SymEntities) (I : Interpretation) :
   SameDomain εs (εs.interpret I)
@@ -165,7 +165,7 @@ theorem interpret_εdata_wf {εs : SymEntities} {I : Interpretation} {ety : Enti
   have h₆ := interpret_uf_wf h₁ h₂
   simp only [SymEntityData.interpret, h₆, h₃, h₄, true_and]
   intro hwf
-  simp only [← Map.mapOnValues_wf, hwf, Option.map_eq_some', forall_exists_index, and_imp,
+  simp only [← Map.mapOnValues_wf, hwf, Option.map_eq_some_iff, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂, true_and]
   intro htags hmems
   constructor
@@ -313,7 +313,7 @@ theorem interpret_εnv_lit {εnv : SymEnv} {I : Interpretation} :
     · simp only [Option.all]
       split <;> try rfl
       rename_i τs' hτs
-      simp only [Option.map_eq_some'] at hτs
+      simp only [Option.map_eq_some_iff] at hτs
       replace ⟨τs, hτs, heq⟩ := hτs
       subst heq
       have hwr := hw.right.right.right.right.right.left τs hτs
