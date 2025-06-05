@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::lean_ffi::LeanDefinitionalEngine;
+use cedar_lean_ffi::CedarLeanFfi;
 use crate::util::{AnalyzePolicyFindingsSer, OpenRequestEnv};
 use crate::{err::ExecError, util::RequestEnvSer};
 use cedar_policy::{Effect, Policy, PolicyId, PolicySet, RequestEnv, Schema};
@@ -450,7 +450,7 @@ fn policyset_vacuous(
 ) -> Result<Vec<VacuityResult>, ExecError> {
     let mut vr = Vec::new();
 
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     for req_env in req_envs {
         if lean_context.run_check_always_allows(policyset, schema, req_env)? {
             if negate {
@@ -521,7 +521,7 @@ fn compute_permit_shadowing_result(
         }
     })?;
 
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     for ((src_vr, tgt_vr), req_env) in zip(zip(src_vacuous_results, tgt_vacuous_results), req_envs)
     {
         match (src_vr, tgt_vr) {
@@ -582,7 +582,7 @@ fn compute_forbid_overrides_shadow_result(
         }
     })?;
 
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     for ((forbid_vr, permit_vr), req_env) in zip(
         zip(forbid_vacuous_results, permit_vacuous_results),
         req_envs,
@@ -622,7 +622,7 @@ fn compute_forbid_shadowing_result(
             error: Box::new(err),
         }
     })?;
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     for ((src_vr, tgt_vr), req_env) in zip(zip(src_vacuous_results, tgt_vacuous_results), req_envs)
     {
         // Forbid vacuity results are computed on them as if they were permit policies
@@ -755,7 +755,7 @@ pub fn compare_policysets(
     json_output: bool,
 ) -> Result<(), ExecError> {
     let req_envs = OpenRequestEnv::any().to_request_envs(&schema)?;
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let comparison_results: Vec<PolicySetComparisonResult> = req_envs
         .iter()
         .map(|req_env| -> Result<PolicySetComparisonResult, ExecError> {

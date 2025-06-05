@@ -15,7 +15,7 @@
 //
 
 syntax = "proto3";
-package cedar_symcc;
+package cedar_proto_ffi;
 import "core.proto";
 import "validator.proto";
 

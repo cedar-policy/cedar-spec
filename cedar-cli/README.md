@@ -48,12 +48,11 @@ cp -r include/google/ /usr/local/include/
 Use the following commands to build `cedar-cli`
 
 ```
-cd cedar-spec                                       # enter the cedar-spec directory of this repository
-git clone https://github.com/cedar-policy/cedar.git # Clone Cedar locally (Required for building the CLI's protobuf messages)
-
-cd cedar-cli                                        # Enter this directory
+cd cedar-lean-ffi                                   # Enter the cedar-lean-ffi library directory
 source set_env_vars.sh                              # Updates environment variables with Lean's library location
 ./build_lean_lib.sh                                 # Build the Lean model of Cedar
+
+cd ../cedar-cli                                     # Enter this directory
 cargo install --path .                              # Build and install this CLI
 ```
 

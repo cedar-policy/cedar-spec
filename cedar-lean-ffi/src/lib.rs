@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-mod analysis;
-mod cli_enums;
-mod cli_exec;
 mod err;
-mod evaluation;
-mod symcc;
-mod util;
-mod validation;
+mod lean_ffi;
+mod messages;
 
-/// Make only CLIArgs and ExecError public
-pub use cli_enums::CliArgs;
-pub use err::ExecError;
+pub use err::FfiError;
+pub use lean_ffi::{AuthorizationResponse, CedarLeanFfi, TimedResult, ValidationResponse};

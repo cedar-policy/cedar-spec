@@ -13,16 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+use thiserror::Error;
 
-mod analysis;
-mod cli_enums;
-mod cli_exec;
-mod err;
-mod evaluation;
-mod symcc;
-mod util;
-mod validation;
-
-/// Make only CLIArgs and ExecError public
-pub use cli_enums::CliArgs;
-pub use err::ExecError;
+#[derive(Error, Debug)]
+pub enum FfiError {
+    #[error("Error deserializing Lean backend output")]
+    LeanDeserializationError,
+    #[error("Error occured in Lean backend : {0}")]
+    LeanBackendError(String),
+}

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 use crate::err::ExecError;
-use crate::lean_ffi::{LeanDefinitionalEngine, ValidationResponse};
+use cedar_lean_ffi::{CedarLeanFfi, ValidationResponse};
 use cedar_policy::{Entities, PolicySet, Request, Schema, ValidationMode};
 
 /// Validate (using the lean_ffi backend) that the input `PolicySet` matches the provided
@@ -24,7 +24,7 @@ pub fn validate(
     schema: &Schema,
     mode: &ValidationMode,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     match lean_context.validate(policyset, schema, mode) {
         Ok(ValidationResponse::Ok(())) => {
             println!("Policyset successfully validated");
@@ -34,7 +34,7 @@ pub fn validate(
             println!("Policyset failed to validate: {s}");
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e)?,
     }
 }
 
@@ -42,7 +42,7 @@ pub fn validate(
 /// `Schema` at level `level`. Level 0 means no entity or context record fields are accessed.
 /// Level `i` means that record fields are accessed upto depth `i`.
 pub fn level_validate(policyset: &PolicySet, schema: &Schema, level: i32) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     match lean_context.level_validate(policyset, schema, level) {
         Ok(ValidationResponse::Ok(())) => {
             println!("Policyset successfully validated at level {level}");
@@ -52,13 +52,13 @@ pub fn level_validate(policyset: &PolicySet, schema: &Schema, level: i32) -> Res
             println!("Policyset failed to validate at level {level}: {s}");
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e)?,
     }
 }
 
 /// Validates (using the lean_ffi backend) that the input `Entities` matches the provided `Schema`
 pub fn validate_entities(schema: &Schema, entities: &Entities) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     match lean_context.validate_entities(schema, entities) {
         Ok(ValidationResponse::Ok(())) => {
             println!("Entities successfully validated");
@@ -68,13 +68,13 @@ pub fn validate_entities(schema: &Schema, entities: &Entities) -> Result<(), Exe
             println!("Entities failed to validate: {s}");
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e)?,
     }
 }
 
 /// Validates (using the lean_ffi backend) that the input `Request` matches the provided `Schema`
 pub fn validate_request(schema: &Schema, request: &Request) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     match lean_context.validate_request(schema, request) {
         Ok(ValidationResponse::Ok(())) => {
             println!("Request successfully validated");
@@ -84,6 +84,6 @@ pub fn validate_request(schema: &Schema, request: &Request) -> Result<(), ExecEr
             println!("Request failed to validate: {s}");
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e)?,
     }
 }

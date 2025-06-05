@@ -204,7 +204,6 @@ impl util::OpenRequestEnv {
 #[derive(ValueEnum, Clone, Debug, Serialize)]
 pub(crate) enum ValidationMode {
     Strict,
-    Permissive,
 }
 
 #[derive(Clone, Debug, Serialize, Subcommand)]

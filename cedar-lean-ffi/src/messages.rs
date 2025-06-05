@@ -19,7 +19,7 @@ pub use cedar_policy::{
 
 pub mod proto {
     #![allow(missing_docs)]
-    include!(concat!(env!("OUT_DIR"), "/cedar_symcc.rs"));
+    include!(concat!(env!("OUT_DIR"), "/cedar_proto_ffi.rs"));
 }
 
 /// Serialize a Cedar Policy to a Protobuf message (note this is a custom Policy format that differs from cedar_policy::proto::Policy)

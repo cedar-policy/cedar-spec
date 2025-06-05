@@ -340,11 +340,14 @@ fn rename_from_id_annotation_policyset(ps: PolicySet) -> miette::Result<PolicySe
 pub fn parse_schema(fname: &PathBuf) -> Result<Schema, ExecError> {
     match read_to_string(fname) {
         Ok(schema_text) => {
-            if fname.ends_with(".json") {
+            let is_json_schema = fname
+                .extension()
+                .map_or(false, |ext| ext == "json");
+            if is_json_schema {
                 match Schema::from_json_str(schema_text.as_str()) {
                     Ok(schema) => Ok(schema),
                     Err(schema_err) => Err(ExecError::ParseError {
-                        content_type: ContentType::Schema,
+                        content_type: ContentType::SchemaJSON,
                         file_name: fname.to_path_buf(),
                         error: Box::new(schema_err),
                     }),
@@ -531,7 +534,6 @@ impl ValidationMode {
     pub fn to_cedar(self) -> cedar_policy::ValidationMode {
         match self {
             Self::Strict => cedar_policy::ValidationMode::Strict,
-            Self::Permissive => cedar_policy::ValidationMode::Permissive,
         }
     }
 }

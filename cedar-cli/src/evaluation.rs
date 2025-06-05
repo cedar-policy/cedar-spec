@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 use crate::err::ExecError;
-use crate::lean_ffi::LeanDefinitionalEngine;
-use cedar_policy::{Entities, Expression, PolicySet, Request};
+use cedar_lean_ffi::CedarLeanFfi;
+use cedar_policy::{Decision, Entities, Expression, PolicySet, Request};
 
 /// Use the lean_ffi to check if the `policyset` allows the given `request`.
 pub fn check_is_authorized(
@@ -23,25 +23,25 @@ pub fn check_is_authorized(
     entities: &Entities,
     request: &Request,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let auth_response = lean_context.is_authorized(policyset, entities, request)?;
-    let decision = match auth_response.decision.as_str() {
-        "allow" => "allowed",
-        "deny" => "denied",
-        _ => return Err(ExecError::LeanDeserializationError),
-    };
-    println!("Authorization request was {decision}.\n");
-    if decision == "denied" && auth_response.determining_policies.mk.l.len() == 0 {
-        print!("This request was implicitly denied as this request matched no policies")
-    } else {
-        print!("This was {decision} due to the following policies:");
+    match auth_response.decision() {
+        Decision::Deny if auth_response.determining_policies().len() == 0 => {
+            print!("This request was implicitly denied as this request matched no policies")
+        }
+        Decision::Deny => {
+            print!("This request was denies as it matched the following policies:")
+        }
+        Decision::Allow => {
+            print!("This request was allowed as it matched the following policies:")
+        }
     }
-    for policy in auth_response.determining_policies.mk.l {
+    for policy in auth_response.determining_policies() {
         print!(" {policy}");
     }
     println!();
     print!("The following policies did not contribute to the decision as they errored during evaluation:");
-    for policy in auth_response.erroring_policies.mk.l {
+    for policy in auth_response.erroring_policies() {
         print!(" {policy}");
     }
     println!();
@@ -56,7 +56,7 @@ pub fn evaluate(
     request: &Request,
     expected_output: Option<&Expression>,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     match expected_output {
         Some(output_expr) => {
             match lean_context.check_evaluate(input_expr, entities, request, output_expr) {
@@ -70,9 +70,12 @@ pub fn evaluate(
                     }
                     Ok(())
                 }
-                Err(e) => Err(e),
+                Err(e) => Err(e)?,
             }
         }
-        None => lean_context.print_evaluation(input_expr, entities, request),
+        None => {
+            lean_context.print_evaluation(input_expr, entities, request)?;
+            Ok(())
+        }
     }
 }

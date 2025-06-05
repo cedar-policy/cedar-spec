@@ -27,6 +27,7 @@ pub enum ContentType {
     PolicySet,
     Request,
     Schema,
+    SchemaJSON,
 }
 
 /// The element of a RequestEnvironment that was involved in the error
@@ -97,8 +98,6 @@ pub enum ExecError {
         action_name: String,
         resource_type: String,
     },
-    #[error("Error deserializing Lean backend output")]
-    LeanDeserializationError,
-    #[error("Error occured in Lean backend : {0}")]
-    LeanBackendError(String),
+    #[error("{0}")]
+    LeanFFIError(#[from] cedar_lean_ffi::FfiError),
 }
