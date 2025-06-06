@@ -46,7 +46,7 @@ fn main() {
     // We'll need to link against some files found here later, and it's nicer to
     // fail quickly with a helpful error message.
     if !Path::new(LEAN_BUILD_DIR).exists() {
-        panic!("Lean build directory does not exist! Try running `( ./build_lean_lib.sh )`")
+        panic!("Lean build directory does not exist! Try running `./build_lean_lib.sh`")
     }
 
     println!("cargo:rustc-link-search=native={LEAN_BUILD_DIR}");
