@@ -17,7 +17,7 @@
 import Cedar.Thm.SymCC.Compiler.Basic
 
 /-!
-This file proves the reduction lemmas for `.lit` and `.var` expressions.
+This file proves the compilation lemmas for `.lit` and `.var` expressions.
 --/
 
 namespace Cedar.Thm

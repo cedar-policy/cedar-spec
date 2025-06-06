@@ -19,7 +19,7 @@ import Cedar.SymCC.Authorizer
 import Cedar.SymCC.Compiler
 
 /-!
-This file contains `verify*` functions that use the Cedar symbolic evaluator,
+This file contains `verify*` functions that use the Cedar symbolic compiler,
 authorizer, and hierarchy enforcer to generate a list of `Asserts`. These are
 boolean terms whose conjunction is unsatisfiable if and only if the verified
 property holds.

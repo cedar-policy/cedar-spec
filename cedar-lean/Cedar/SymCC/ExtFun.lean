@@ -27,10 +27,10 @@ arguments, an extension function will return a well-formed and type-correct
 output. Otherwise, the output is an arbitrary term.
 
 This design lets us minimize the number of error paths in the overall
-specification of symbolic evaluation, which makes for nicer code and proofs, and
+specification of symbolic compilation, which makes for nicer code and proofs, and
 it more closely tracks the specification of the concrete evaluator.
 
-See `Evaluator.lean` to see how the symbolic evaluator uses this API. See also
+See `Compiler.lean` to see how the symbolic compiler uses this API. See also
 `Factory.lean`.
 
 -/

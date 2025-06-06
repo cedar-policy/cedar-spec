@@ -27,7 +27,7 @@ import Cedar.Thm.SymCC.Data.BitVec
 # Well-formedness and interpretations
 
 This file defines well-formedness constraints and relations on concrete and
-symbolic structures. We prove correctness properties of the symbolic evaluator
+symbolic structures. We prove correctness properties of the symbolic compiler
 with respect to these defintions.
 
 Well-formedness of a concrete structure is defined with respect to a set of
@@ -71,10 +71,10 @@ A literal term or symbolic request represent a single corresponding Cedar
 structure (i.e., a `Value`, `Outcome Value`, or `Request`). A well-formed
 literal symbolic environment `εnv : SymEnv` represents a set of well-formed
 concrete environments that lead to equivalent evaluation outcomes. In
-particular, if `εnv` is a literal symbolic environmnent that is well-formed for
+particular, if `εnv` is a literal symbolic environment that is well-formed for
 an expression `x`, then `x` produces the same outcome when evaluated against any
 concrete environment `env ∈ εnv` that is well-formed for `x`. We write `env ∈ εnv`
-to denote that exists a well-fromed interpretation `I` such that
+to denote that exists a well-formed interpretation `I` such that
 `εnv.interpret I` is a literal that represents `env`.
 -/
 

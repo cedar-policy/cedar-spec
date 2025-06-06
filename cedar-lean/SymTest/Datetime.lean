@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of Decimal operators. -/
+/-! This file unit tests symbolic compilation of Decimal operators. -/
 
 namespace SymTest.Datetime
 
@@ -45,13 +45,13 @@ def durLit (str : String) : Expr :=
   .call .duration [.lit (.string str)]
 
 private def testValidConstructor (str : String) (rep : Int) : TestCase SolverM :=
-  testReduce str
+  testCompile str
     (durLit str)
     durationSymEnv
     (.ok (.some (.prim (.ext (.duration (Ext.Datetime.duration? rep).get!)))))
 
 private def testInvalidConstructor (str : String) (msg : String) : TestCase SolverM :=
-  testReduce s!"{str} [{msg}]"
+  testCompile s!"{str} [{msg}]"
     (durLit str)
     durationSymEnv
     (.error .typeError)
@@ -391,13 +391,13 @@ def dtLit (str : String) : Expr :=
   .call .datetime [.lit (.string str)]
 
 private def testValidConstructor (str : String) (rep : Int) : TestCase SolverM :=
-  testReduce str
+  testCompile str
     (dtLit str)
     datetimeSymEnv
     (.ok (.some (.prim (.ext (.datetime (Ext.Datetime.datetime? rep).get!)))))
 
 private def testInvalidConstructor (str : String) (msg : String) : TestCase SolverM :=
-  testReduce s!"{str} [{msg}]"
+  testCompile s!"{str} [{msg}]"
     (dtLit str)
     datetimeSymEnv
     (.error .typeError)

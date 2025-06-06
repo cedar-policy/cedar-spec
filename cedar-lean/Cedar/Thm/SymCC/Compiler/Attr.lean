@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.hasAttr` and `.getAttr` expressions.
+This file proves the compilation lemmas for `.hasAttr` and `.getAttr` expressions.
 --/
 
 namespace Cedar.Thm
@@ -185,7 +185,7 @@ theorem compile_evaluate_hasAttr {x₁ : Expr} {a : Attr} {env : Env} {εnv : Sy
   (hwe : env.WellFormedFor (.hasAttr x₁ a))
   (hwε : εnv.WellFormedFor (.hasAttr x₁ a))
   (hok : compile (.hasAttr x₁ a) εnv = .ok t)
-  (ih  : ReduceEvaluate x₁) :
+  (ih  : CompileEvaluate x₁) :
   evaluate (.hasAttr x₁ a) env.request env.entities ∼ t
 := by
   replace ⟨t₁, t₂, hok, hr, ht⟩ := compile_hasAttr_ok_implies hok
@@ -348,7 +348,7 @@ theorem compile_interpret_hasAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.hasAttr x₁ a))
   (hok : compile (.hasAttr x₁ a) εnv = .ok t)
-  (ih  : ReduceInterpret x₁) :
+  (ih  : CompileInterpret x₁) :
   compile (.hasAttr x₁ a) (εnv.interpret I) = .ok (t.interpret I)
 := by
   have hwε' := interpret_εntities_wf hwε.left.right hI
@@ -505,7 +505,7 @@ theorem compile_evaluate_getAttr {x₁ : Expr} {a : Attr} {env : Env} {εnv : Sy
   (hwe : env.WellFormedFor (.getAttr x₁ a))
   (hwε : εnv.WellFormedFor (.getAttr x₁ a))
   (hok : compile (.getAttr x₁ a) εnv = .ok t)
-  (ih  : ReduceEvaluate x₁) :
+  (ih  : CompileEvaluate x₁) :
   evaluate (.getAttr x₁ a) env.request env.entities ∼ t
 := by
   replace ⟨t₁, t₂, hok, hr, ht⟩ := compile_getAttr_ok_implies hok
@@ -667,7 +667,7 @@ theorem compile_interpret_getAttr {x₁ : Expr} {a : Attr} {εnv : SymEnv} {I : 
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.getAttr x₁ a))
   (hok : compile (.getAttr x₁ a) εnv = .ok t)
-  (ih  : ReduceInterpret x₁) :
+  (ih  : CompileInterpret x₁) :
   compile (.getAttr x₁ a) (εnv.interpret I) = .ok (t.interpret I)
 := by
   have hwε' := interpret_εntities_wf hwε.left.right hI

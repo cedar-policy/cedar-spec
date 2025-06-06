@@ -15,7 +15,7 @@
 -/
 
 /-!
-This file defines the Result type for symbolic evaluation.
+This file defines the Result type for symbolic compilation.
 -/
 
 namespace Cedar.SymCC
