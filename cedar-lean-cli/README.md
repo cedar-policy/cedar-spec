@@ -1,4 +1,4 @@
-# Cedar CLI
+# Cedar Lean CLI
 
 This directory contains a command line interface (CLI) for interacting with the Lean formalization of Cedar. This CLI uses [`Cedar`](https://github.com/cedar-policy/cedar) to parse policies, schemas, entities, and requests and then uses the Lean formalization of Cedar to perform validation, evaluation, authorization, and analysis.
 
@@ -45,20 +45,20 @@ cp -r include/google/ /usr/local/include/
 
 ### Build this CLI
 
-Use the following commands to build `cedar-cli`
+Use the following commands to build `cedar-lean-cli`
 
 ```
 cd cedar-lean-ffi                                   # Enter the cedar-lean-ffi library directory
 source set_env_vars.sh                              # Updates environment variables with Lean's library location
 ./build_lean_lib.sh                                 # Build the Lean model of Cedar
 
-cd ../cedar-cli                                     # Enter this directory
+cd ../cedar-lean-cli                                     # Enter this directory
 cargo install --path .                              # Build and install this CLI
 ```
 
 Consider adding `source <path-to-cedar-spec>/cedar-lean-ffi/set_env_vars.sh` to your `~/.bashrc` or `~/.profile` to ensure Lean's library path is automatically exported in all new terminal sessions.
 
-If you try to run `cedar-cli` and get the error `cedar-cli: error while loading shared libraries: libleanshared.so: cannot open shared object file: No such file or directory` you need to run `source set_env_vars.sh`.
+If you try to run `cedar-lean-cli` and get the error `cedar-lean-cli: error while loading shared libraries: libleanshared.so: cannot open shared object file: No such file or directory` you need to run `source set_env_vars.sh`.
 
 ## Usage
 
@@ -70,10 +70,10 @@ This CLI implements 4 high-level commands `analyze`, `evaluate`, `validate`, and
 * The `symcc` command gives access to Cedar's Symbolic Compiler---a lower level interface to Cedar's analysis capabilities.
 
 ```
-> cedar-cli --help
+> cedar-lean-cli --help
 Command Line Interface for Cedar Lean
 
-Usage: cedar-cli <COMMAND>
+Usage: cedar-lean-cli <COMMAND>
 
 Commands:
   analyze   Run the Cedar Analyzer
@@ -95,10 +95,10 @@ The `analyze` command provides two sub-commands `policies` and `compare`.
 * The `compare` command takes two policysets `source` and `target` and determines for each "type" of request if the `source` policyset is equivalent, less permissive, more permissive, or incomparable to the `target` policyset (in terms of the requests allowed by each policyset).
 
 ```
-> cedar-cli analyze --help
+> cedar-lean-cli analyze --help
 Run the Cedar Analyzer
 
-Usage: cedar-cli analyze <COMMAND>
+Usage: cedar-lean-cli analyze <COMMAND>
 
 Commands:
   policies  Analyze a PolicySet
@@ -143,10 +143,10 @@ The `symcc` command provides an interface to access Cedar's Symbolic Compiler. T
 * `check-disjoint`:Compares two policy sets `source` and `target`; Checks if `source` and `taget` allow disjoint sets of authorization requests.
 
 ```
-> cedar-cli symcc --help
+> cedar-lean-cli symcc --help
 Run the Cedar Symbolic Compiler
 
-Usage: cedar-cli symcc <COMMAND>
+Usage: cedar-lean-cli symcc <COMMAND>
 
 Commands:
   check-never-errors   Check if the provided Policy never errors
@@ -186,10 +186,10 @@ The `evaluate` command provides two sub-commands `authorize` and `evaluate`.
 * The `evaluate` sub-command evalutes a cedar expression (and optionally compares the evaluated expression to a cedar value).
 
 ```
-> cedar-cli evaluate --help
+> cedar-lean-cli evaluate --help
 Evaluate a Cedar PolicySet or Expression
 
-Usage: cedar-cli evaluate <COMMAND>
+Usage: cedar-lean-cli evaluate <COMMAND>
 
 Commands:
   authorize  Check if a given PolicySet allows or denies a Request
@@ -209,10 +209,10 @@ The `validate` command provides four sub-commands `policy-set`, `level`, `reques
 * The `entities` sub-command validates a set of entities against a given Schema.
 
 ```
-> cedar-cli validate --help
+> cedar-lean-cli validate --help
 Validate PolicySets, Entities, or Requests against a Schema
 
-Usage: cedar-cli validate <COMMAND>
+Usage: cedar-lean-cli validate <COMMAND>
 
 Commands:
   policy-set  Validate a PolicySet against a Schema
