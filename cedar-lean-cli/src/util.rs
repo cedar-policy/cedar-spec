@@ -340,9 +340,7 @@ fn rename_from_id_annotation_policyset(ps: PolicySet) -> miette::Result<PolicySe
 pub fn parse_schema(fname: &PathBuf) -> Result<Schema, ExecError> {
     match read_to_string(fname) {
         Ok(schema_text) => {
-            let is_json_schema = fname
-                .extension()
-                .map_or(false, |ext| ext == "json");
+            let is_json_schema = fname.extension().map_or(false, |ext| ext == "json");
             if is_json_schema {
                 match Schema::from_json_str(schema_text.as_str()) {
                     Ok(schema) => Ok(schema),

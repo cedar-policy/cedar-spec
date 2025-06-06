@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 use crate::err::ExecError;
-use cedar_lean_ffi::CedarLeanFfi;
 use crate::util::{OpenRequestEnv, ReqEnv};
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use std::iter::zip;
 

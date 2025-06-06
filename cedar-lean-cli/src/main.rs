@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use cedar_cli::CliArgs;
+use cedar_lean_cli::CliArgs;
 use clap::Parser;
 use std::process::ExitCode;
 

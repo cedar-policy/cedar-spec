@@ -98,6 +98,6 @@ pub enum ExecError {
         action_name: String,
         resource_type: String,
     },
-    #[error("{0}")]
+    #[error(transparent)]
     LeanFFIError(#[from] cedar_lean_ffi::FfiError),
 }

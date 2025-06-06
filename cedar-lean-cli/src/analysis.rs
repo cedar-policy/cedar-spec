@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use cedar_lean_ffi::CedarLeanFfi;
 use crate::util::{AnalyzePolicyFindingsSer, OpenRequestEnv};
 use crate::{err::ExecError, util::RequestEnvSer};
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Effect, Policy, PolicyId, PolicySet, RequestEnv, Schema};
 use itertools::Itertools;
 use prettytable::{Attr, Cell, Row, Table};
