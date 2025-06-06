@@ -1,6 +1,6 @@
 # Cedar Lean FFI (Rust Bindings of Cedar Lean Formalization)
 
-This directory contains Rust bindings for interacting with the Lean formalization of Cedar. This FFI assumes all inputs for `Policy`s, `PolicySet`s, `Entities`, `Schema`s, `Request`s are represented using [`Cedar`](https://github.com/cedar-policy/cedar) public API types. This FFI makes use of Cedar's Protobuf feature to convert Cedar types in rust to the corresponding type within the Lean formalization.
+This directory contains Rust bindings for interacting with the Lean formalization of Cedar. This FFI assumes all inputs for `Policy`s, `PolicySet`s, `Entities`, `Schema`s, `Request`s are represented using [`Cedar`](https://github.com/cedar-policy/cedar) public API types. This FFI makes use of Cedar's Protobuf feature to convert Cedar types in Rust to the corresponding type within the Lean formalization.
 
 ## Build
 
