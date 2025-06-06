@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 use crate::err::ExecError;
-use crate::lean_ffi::LeanDefinitionalEngine;
 use crate::util::{OpenRequestEnv, ReqEnv};
+use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Policy, PolicySet, RequestEnv, Schema};
 use std::iter::zip;
 
@@ -25,7 +25,7 @@ pub fn run_check_never_errors(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -41,7 +41,7 @@ pub fn run_check_always_allows(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -57,7 +57,7 @@ pub fn run_check_always_denies(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -74,7 +74,7 @@ pub fn run_check_equivalent(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -97,7 +97,7 @@ pub fn run_check_implies(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -118,7 +118,7 @@ pub fn run_check_disjoint(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
@@ -139,7 +139,7 @@ pub fn print_check_never_errors(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
@@ -160,7 +160,7 @@ pub fn print_check_always_allows(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
@@ -181,7 +181,7 @@ pub fn print_check_always_denies(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
@@ -203,7 +203,7 @@ pub fn print_check_equivalent(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
@@ -225,7 +225,7 @@ pub fn print_check_implies(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
@@ -247,7 +247,7 @@ pub fn print_check_disjoint(
     schema: Schema,
     request_env: &OpenRequestEnv,
 ) -> Result<(), ExecError> {
-    let lean_context = LeanDefinitionalEngine::new();
+    let lean_context = CedarLeanFfi::new();
     let req_envs = request_env.to_request_envs(&schema)?;
     for req_env in req_envs {
         println!(";;");
