@@ -56,9 +56,9 @@ cd ../cedar-cli                                     # Enter this directory
 cargo install --path .                              # Build and install this CLI
 ```
 
-Consider adding `source set_env_vars.sh` to your `~/.bashrc` or `~/.profile` to ensure Lean's library path is automatically exported in all new terminal sessions.
+Consider adding `source <path-to-cedar-spec>/cedar-lean-ffi/set_env_vars.sh` to your `~/.bashrc` or `~/.profile` to ensure Lean's library path is automatically exported in all new terminal sessions.
 
-If you try to run `cedar-cli` and get the error `cedar-cli: error while loading shared libraries: libleanshared.so: cannot open shared object file: No such file or directory` you need to run `source set_env_vars.sh`
+If you try to run `cedar-cli` and get the error `cedar-cli: error while loading shared libraries: libleanshared.so: cannot open shared object file: No such file or directory` you need to run `source set_env_vars.sh`.
 
 ## Usage
 

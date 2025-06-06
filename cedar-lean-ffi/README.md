@@ -43,7 +43,7 @@ cp bin/protoc /usr/local/bin/
 cp -r include/google/ /usr/local/include/
 ```
 
-### Build this CLI
+### Build this Library
 
 Use the following commands to build the `cedar-lean-ffi` Library.
 
@@ -54,6 +54,6 @@ source set_env_vars.sh              # Update environment variabels with Lean's l
 cargo build                         # Build this library
 ```
 
-Consider adding `source set_env_vars.sh` to your `~/.bashrc` or `~/.profile` to ensure Lean's library path is automatically exported in all new terminal sessions.
+Consider adding `source source <path-to-cedar-spec>/cedar-lean-ffi/set_env_vars.sh` to your `~/.bashrc` or `~/.profile` to ensure Lean's library path is automatically exported in all new terminal sessions.
 
 If you try to run an executable linked with this library and get the error `error while loading shared libraries: libleanshared.so: cannot open shared object file: No such file or directory` you need to run `source set_env_vars.sh`.
