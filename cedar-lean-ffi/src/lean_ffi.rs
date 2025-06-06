@@ -167,7 +167,7 @@ impl AuthorizationResponse {
         let decision = match inner.decision.as_str() {
             "allow" => Decision::Allow,
             "deny" => Decision::Deny,
-            _ => return Err(FfiError::LeanDeserializationError),
+            _ => return Err(FfiError::LeanDeserializationError(inner.decision)),
         };
         let determining = inner
             .determining_policies
@@ -257,7 +257,7 @@ macro_rules! checkPolicy_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError),
+                Err(_) => Err(FfiError::LeanDeserializationError(response)),
             }
         }
         pub fn $untimed_func_name(
@@ -290,7 +290,7 @@ macro_rules! checkPolicySet_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError),
+                Err(_) => Err(FfiError::LeanDeserializationError(response)),
             }
         }
         pub fn $untimed_func_name(
@@ -329,7 +329,7 @@ macro_rules! comparePolicySet_func {
             match serde_json::from_str(&response) {
                 Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
                 Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-                Err(_) => Err(FfiError::LeanDeserializationError),
+                Err(_) => Err(FfiError::LeanDeserializationError(response)),
             }
         }
         pub fn $untimed_func_name(
@@ -526,7 +526,7 @@ impl CedarLeanFfi {
                 Ok(TimedResult::from_def(tdef))
             }
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(response)),
         }
     }
     pub fn is_authorized(
@@ -555,7 +555,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(t)) => Ok(TimedResult::from_def(t)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn print_evaluation(
@@ -591,7 +591,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(are_eq)) => Ok(TimedResult::from_def(are_eq)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn check_evaluate(
@@ -621,7 +621,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn validate(
@@ -648,7 +648,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn level_validate(
@@ -676,7 +676,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn validate_entities(
@@ -703,7 +703,7 @@ impl CedarLeanFfi {
         match serde_json::from_str(&ret) {
             Ok(ResultDef::Ok(res)) => Ok(TimedResult::from_def(res)),
             Ok(ResultDef::Error(s)) => Err(FfiError::LeanBackendError(s)),
-            Err(_) => Err(FfiError::LeanDeserializationError),
+            Err(_) => Err(FfiError::LeanDeserializationError(ret)),
         }
     }
     pub fn validate_request(

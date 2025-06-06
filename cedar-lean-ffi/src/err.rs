@@ -17,8 +17,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum FfiError {
-    #[error("Error deserializing Lean backend output")]
-    LeanDeserializationError,
+    #[error("Error deserializing Lean backend output : {0}")]
+    LeanDeserializationError(String),
     #[error("Error occured in Lean backend : {0}")]
     LeanBackendError(String),
 }
