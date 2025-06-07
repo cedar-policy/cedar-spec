@@ -30,10 +30,10 @@ arguments, a factory function will return a well-formed and type-correct output.
 Otherwise, the output is an arbitrary term.
 
 This design lets us minimize the number of error paths in the overall
-specification of symbolic evaluation, which makes for nicer code and proofs, and
+specification of symbolic compilation, which makes for nicer code and proofs, and
 it more closely tracks the specification of the concrete evaluator.
 
-See `Evaluator.lean` to see how the symbolic evaluator uses this API.
+See `Compiler.lean` to see how the symbolic compiler uses this API.
 -/
 
 namespace Cedar.SymCC
@@ -147,7 +147,7 @@ def app : UnaryFunction → Term → Term
 -- We are doing very weak partial evaluation for bitvectors: just constant
 -- propagation. If more rewrites are needed, we can add them later.  This simple
 -- approach is sufficient for the strong PE property we care about:  if given a
--- fully concrete input, the symbolic evaluator returns a fully concrete output.
+-- fully concrete input, the symbolic compiler returns a fully concrete output.
 
 def bvneg : Term → Term
   | .prim (.bitvec b)  => b.neg

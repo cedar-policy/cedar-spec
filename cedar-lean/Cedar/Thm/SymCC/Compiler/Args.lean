@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file contains utility lemmas for proving reduction theorems
+This file contains utility lemmas for proving compilation theorems
 about lists of argument terms.
 --/
 
@@ -38,7 +38,7 @@ theorem compile_wfs {xs : List Expr} {εnv : SymEnv} {ts : List Term}
 theorem compile_interpret_ihs {xs : List Expr} {εnv : SymEnv} {I : Interpretation} {ts : List Term}
   (hI  : Interpretation.WellFormed I εnv.entities)
   (hwε : ∀ (x : Expr), x ∈ xs → SymEnv.WellFormedFor εnv x)
-  (ih  : ∀ (x : Expr), x ∈ xs → ReduceInterpret x)
+  (ih  : ∀ (x : Expr), x ∈ xs → CompileInterpret x)
   (hok : List.Forall₂ (fun x t => compile x εnv = Except.ok t) xs ts) :
   List.Forall₂ (fun x t => compile x (SymEnv.interpret I εnv) = Except.ok (Term.interpret I t)) xs ts
 := by
@@ -80,7 +80,7 @@ theorem compile_evaluate_ihs {xs : List Expr} {env : Env} {εnv : SymEnv}
   (heq : env ∼ εnv)
   (hwe : ∀ (x : Expr), x ∈ xs → env.WellFormedFor x)
   (hwε : ∀ (x : Expr), x ∈ xs → εnv.WellFormedFor x)
-  (ih  : ∀ (x : Expr), x ∈ xs → ReduceEvaluate x)
+  (ih  : ∀ (x : Expr), x ∈ xs → CompileEvaluate x)
   (hok : List.Forall₂ (fun x t => compile x εnv = Except.ok t) xs ts) :
   List.Forall₂ (fun x t => evaluate x env.request env.entities ∼ t) xs ts
 := by

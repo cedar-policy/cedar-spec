@@ -34,7 +34,7 @@ namespace Cedar.Thm
 
 open Spec SymCC Factory
 
-def ReduceEvaluate (x : Expr) : Prop :=
+def CompileEvaluate (x : Expr) : Prop :=
   ∀ {env : Env} {εnv : SymEnv} {t : Term},
     env ∼ εnv →
     env.WellFormedFor x →
@@ -42,7 +42,7 @@ def ReduceEvaluate (x : Expr) : Prop :=
     compile x εnv = .ok t →
     evaluate x env.request env.entities ∼ t
 
-def ReduceInterpret (x : Expr) : Prop :=
+def CompileInterpret (x : Expr) : Prop :=
   ∀ {εnv : SymEnv} {I : Interpretation} {t : Term},
     I.WellFormed εnv.entities →
     εnv.WellFormedFor x →

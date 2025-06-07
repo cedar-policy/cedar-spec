@@ -106,7 +106,7 @@ private theorem compile_and_wf_option_bool {x₁ x₂ : Expr} {εnv : SymEnv} {t
   simp only [compile_wf hwε hok, true_and]
   replace ⟨t₁, hok₁, hok⟩ := compile_and_ok_implies hok
   split at hok <;> try simp only [hok, typeOf_term_some, typeOf_bool]
-  simp only [ReduceAndSym] at hok
+  simp only [CompileAndSym] at hok
   replace ⟨hty₁, t₂, hok₂, hty₂, hok⟩ := hok
   subst hok
   have ⟨hw₁, hw₂⟩ := wf_εnv_for_and_implies hwε

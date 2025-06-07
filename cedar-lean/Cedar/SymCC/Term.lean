@@ -21,10 +21,10 @@ import Init.Data.BitVec.Basic
 
 /-!
 This file defines the Cedar Term language, a strongly and simply typed IR to
-which we compile Cedar expression during symbolic evalution. The Term language
-has a straightforward translation to SMTLib. It is designed to compile the
-semantic gap between Cedar and SMTLib, and to faciliate proofs of soundness and
-completeness of the Cedar symbolic evaluator.
+which we compile Cedar expressions. The Term language has a straightforward
+translation to SMTLib. It is designed to reduce the semantic gap between Cedar
+and SMTLib, and to faciliate proofs of soundness and completeness of the Cedar
+symbolic compiler.
 
 Terms should _not_ be created directly using `Term` constructors. Instead, they
 should be created using the factory functions defined in `Factory.lean`.

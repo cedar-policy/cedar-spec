@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of the `hasTag` and `getTag` operators. -/
+/-! This file unit tests symbolic compilation of the `hasTag` and `getTag` operators. -/
 
 namespace SymTest.Tags
 
@@ -40,7 +40,7 @@ private def getₖ : Expr := .binaryApp .getTag (.var .principal) (.getAttr (.va
 def testsForTagOps :=
   suite "Tags.basic"
   [
-    testReduce "False: principal.hasTag(\"a\")"
+    testCompile "False: principal.hasTag(\"a\")"
       hasₐ
       noTagsEnv
       (.ok (.some false)),

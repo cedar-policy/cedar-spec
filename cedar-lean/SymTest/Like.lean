@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of the `like` operator on strings. -/
+/-! This file unit tests symbolic compilation of the `like` operator on strings. -/
 
 namespace SymTest.Like
 

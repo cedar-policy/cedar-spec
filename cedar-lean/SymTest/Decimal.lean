@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of Decimal operators. -/
+/-! This file unit tests symbolic compilation of Decimal operators. -/
 
 namespace SymTest.Decimal
 
@@ -43,13 +43,13 @@ def decLit (str : String) : Expr :=
   .call .decimal [.lit (.string str)]
 
 private def testValid (str : String) (rep : Int) : TestCase SolverM :=
-  testReduce str
+  testCompile str
     (decLit str)
     decimalSymEnv
     (.ok (.some (.prim (.ext (.decimal (Ext.Decimal.decimal? rep).get!)))))
 
 private def testInvalid (str : String) (msg : String) : TestCase SolverM :=
-  testReduce s!"{str} [{msg}]"
+  testCompile s!"{str} [{msg}]"
     (decLit str)
     decimalSymEnv
     (.error .typeError)
@@ -75,7 +75,7 @@ def testsForDecimalConstructor :=
     testInvalid "1.23456" "too many fractional digits",
     testInvalid "922337203685477.5808" "overflow",
     testInvalid "-922337203685477.5809" "overflow",
-    testReduce s!"Error: applying decimal constructor to a non-literal"
+    testCompile s!"Error: applying decimal constructor to a non-literal"
       (.call .decimal [s])
       decimalSymEnv
       (.error .typeError)

@@ -17,7 +17,7 @@
 import Cedar.SymCC.Tags
 
 /-!
-This file defines the ADTs that represent the symbolic evaluation environment.
+This file defines the ADTs that represent the symbolic environment.
 The environment consists of a symbolic request, entity store, and action store.
 A symbolic environment is _literal_ when it consists of literal terms and
 interpreted functions (UDFs).

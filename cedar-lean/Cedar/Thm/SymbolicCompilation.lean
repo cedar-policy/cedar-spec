@@ -20,7 +20,7 @@ import Cedar.Thm.SymCC.Compiler
 
 /-!
 This file defines the top-level correctness properties for the symbolic
-evaluator. We show the encoding is sound and complete with respect to the
+compiler. We show the encoding is sound and complete with respect to the
 concrete semantics of Cedar. That is, the symbolic semantics both
 overapproximates (soundness) and underapproximates (completeness) the concrete
 semantics.
@@ -32,15 +32,15 @@ open Spec SymCC
 
 /--
 Let `x` be a Cedar expression, `env` a concrete evaluation environment (request
-and entities), `εnv` a symbolic evaluation environment, and `t` the outcome of
-reducing `x` to a Term with respect to `εnv`.
+and entities), `εnv` a symbolic environment, and `t` the outcome of
+compiling `x` to a Term with respect to `εnv`.
 
 Let `x` and `env` be a well-formed input to the concrete evaluator, i.e.,
 `env.WellFormedFor x`.  This means that the entity store `env.entities` has
 no dangling entity references, and all entity references that occur in `x` and
 `env.request` are included in `env.entities`.
 
-Let `x` and `εnv` be a well-formed input to the symbolic evaluator, i.e.,
+Let `x` and `εnv` be a well-formed input to the symbolic compiler, i.e.,
 `εnv.WellFormedFor x`.  This means that the symbolic entity store `εnv.entities`
 has no dangling (undefined) entity types or references; all term types contained
 in `εnv.entities` represent valid Cedar types; and all entity references that
@@ -59,9 +59,9 @@ corresponding concrete structure using a suitable sameness relation.
 
 Given the above, the soundness theorem says that the output of the concrete
 evaluator on `x` and `env` is contained in the set of concrete outcomes
-represented by the output of the symbolic evaluator on `x` and `εnv`. We state
+represented by the output of the symbolic compiler on `x` and `εnv`. We state
 soundness in terms of `Outcome`s rather than `Result`s because the symbolic
-evaluator does not distinguish between different kinds of errors---only between
+compiler does not distinguish between different kinds of errors---only between
 normal and erroring executions.
 -/
 theorem compile_is_sound {x : Expr} {env : Env} {εnv : SymEnv} {t : Term.Outcome εnv} :
@@ -81,11 +81,11 @@ theorem compile_is_sound {x : Expr} {env : Env} {εnv : SymEnv} {t : Term.Outcom
   exists I
 
 /--
-Let `x` be a Cedar expression and `εnv` a symbolic evaluation environment, where
-`x` and `εnv` are a well-formed input to the symbolic evaluator, i.e.,
+Let `x` be a Cedar expression and `εnv` a symbolic environment, where
+`x` and `εnv` are a well-formed input to the symbolic compiler, i.e.,
 `εnv.WellFormedFor x`.
 
-Let `t` the outcome of reducing `x` to a Term with respect to `εnv`, and `o` a
+Let `t` the outcome of compiling `x` to a Term with respect to `εnv`, and `o` a
 concrete outcome represented by `t`.
 
 Then, the completeness theorem says that there exists a concrete environment
@@ -115,7 +115,7 @@ theorem compile_is_complete {x : Expr} {εnv : SymEnv} {t : Term.Outcome εnv} {
 
 /--
 Let `ps` be Cedar policies, `env` a concrete evaluation environment (request and
-entities), `εnv` a symbolic evaluation environment, and `t` the term resulting
+entities), `εnv` a symbolic environment, and `t` the term resulting
 from symbolically authorizing `ps` with respect to `εnv`, i.e.,
 `SymCC.isAuthorized ps εnv = .ok t`.
 
@@ -165,7 +165,7 @@ theorem isAuthorized_is_sound  {ps : Policies} {env : Env} {εnv : SymEnv} {t : 
   exists I
 
 /--
-Let `ps` be Cedar policies and `εnv` a symbolic evaluation environment, where
+Let `ps` be Cedar policies and `εnv` a symbolic environment, where
 `ps` and `εnv` are a well-formed input to the symbolic authorizer, i.e.,
 `εnv.WellFormedForPolicies ps`.
 

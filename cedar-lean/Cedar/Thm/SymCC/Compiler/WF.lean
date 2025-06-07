@@ -31,9 +31,9 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
----------- Reduce is well-formed ----------
+---------- Compile is well-formed ----------
 
-private def ReduceWF (x : Expr)  : Prop :=
+private def CompileWF (x : Expr)  : Prop :=
   ∀ {εnv : SymEnv} {t : Term},
     εnv.WellFormedFor x →
     compile x εnv = .ok t →
@@ -87,9 +87,9 @@ private theorem compile_var_wf {v : Var} {εnv : SymEnv} {t : Term}
 private theorem compile_ite_wf {x₁ x₂ x₃: Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.ite x₁ x₂ x₃))
   (hok : compile (Expr.ite x₁ x₂ x₃) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁)
-  (ih₂ : ReduceWF x₂)
-  (ih₃ : ReduceWF x₃) :
+  (ih₁ : CompileWF x₁)
+  (ih₂ : CompileWF x₂)
+  (ih₃ : CompileWF x₃) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have ⟨hwφ₁, hwφ₂, hwφ₃⟩ := wf_εnv_for_ite_implies hwf
@@ -123,8 +123,8 @@ private theorem compile_ite_wf {x₁ x₂ x₃: Expr} {εnv : SymEnv} {t : Term}
 private theorem compile_and_wf {x₁ x₂: Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.and x₁ x₂))
   (hok : compile (Expr.and x₁ x₂) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁)
-  (ih₂ : ReduceWF x₂) :
+  (ih₁ : CompileWF x₁)
+  (ih₂ : CompileWF x₂) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have ⟨hwφ₁, hwφ₂⟩ := wf_εnv_for_and_implies hwf
@@ -154,8 +154,8 @@ private theorem compile_and_wf {x₁ x₂: Expr} {εnv : SymEnv} {t : Term}
 private theorem compile_or_wf {x₁ x₂: Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.or x₁ x₂))
   (hok : compile (Expr.or x₁ x₂) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁)
-  (ih₂ : ReduceWF x₂) :
+  (ih₁ : CompileWF x₁)
+  (ih₂ : CompileWF x₂) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have ⟨hwφ₁, hwφ₂⟩ := wf_εnv_for_or_implies hwf
@@ -235,7 +235,7 @@ theorem compileHasAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
 private theorem compile_hasAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.hasAttr x₁ a))
   (hok : compile (Expr.hasAttr x₁ a) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁) :
+  (ih₁ : CompileWF x₁) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have hwφ₁ := wf_εnv_for_hasAttr_implies hwf
@@ -271,7 +271,7 @@ theorem compileGetAttr_wf {t t₁: Term} {a : Attr} {εs : SymEntities}
 private theorem compile_getAttr_wf {x₁ : Expr} {a : Attr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.getAttr x₁ a))
   (hok : compile (Expr.getAttr x₁ a) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁) :
+  (ih₁ : CompileWF x₁) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have hwφ₁ := wf_εnv_for_getAttr_implies hwf
@@ -332,7 +332,7 @@ theorem compileApp₁_wf {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntities}
 private theorem compile_unaryApp_wf {op₁ : UnaryOp} {x₁ : Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.unaryApp op₁ x₁))
   (hok : compile (Expr.unaryApp op₁ x₁) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁) :
+  (ih₁ : CompileWF x₁) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have hwφ₁ := wf_εnv_for_unaryApp_implies hwf
@@ -552,8 +552,8 @@ theorem compileApp₂_wf {op₂ : BinaryOp} {t t₁ t₂: Term} {εs : SymEntiti
 private theorem compile_binaryApp_wf {op₂ : BinaryOp} {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.binaryApp op₂ x₁ x₂))
   (hok : compile (Expr.binaryApp op₂ x₁ x₂) εnv = Except.ok t)
-  (ih₁ : ReduceWF x₁)
-  (ih₂ : ReduceWF x₂) :
+  (ih₁ : CompileWF x₁)
+  (ih₂ : CompileWF x₂) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   have ⟨hwφ₁, hwφ₂⟩ := wf_εnv_for_binaryApp_implies hwf
@@ -571,7 +571,7 @@ private theorem compile_binaryApp_wf {op₂ : BinaryOp} {x₁ x₂ : Expr} {εnv
 private theorem compile_set_wf {xs : List Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.set xs))
   (hok : compile (Expr.set xs) εnv = Except.ok t)
-  (ih  : ∀ x ∈ xs, ReduceWF x) :
+  (ih  : ∀ x ∈ xs, CompileWF x) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   replace hwf := wf_εnv_for_set_implies hwf
@@ -592,7 +592,7 @@ private theorem compile_set_wf {xs : List Expr} {εnv : SymEnv} {t : Term}
 private theorem compile_record_wf {axs : List (Attr × Expr)} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.record axs))
   (hok : compile (Expr.record axs) εnv = Except.ok t)
-  (ih  : ∀ (aᵢ : Attr) (xᵢ : Expr), (aᵢ, xᵢ) ∈ axs → Cedar.Thm.ReduceWF xᵢ) :
+  (ih  : ∀ (aᵢ : Attr) (xᵢ : Expr), (aᵢ, xᵢ) ∈ axs → CompileWF xᵢ) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   replace hwf := wf_εnv_for_record_implies hwf
@@ -744,7 +744,7 @@ theorem compileCall_wf {f : ExtFun} {ts : List Term} {εs : SymEntities} {t : Te
 private theorem compile_call_wf {f : ExtFun} {xs : List Expr} {εnv : SymEnv} {t : Term}
   (hwf : SymEnv.WellFormedFor εnv (Expr.call f xs))
   (hok : compile (Expr.call f xs) εnv = Except.ok t)
-  (ih  : ∀ x ∈ xs, ReduceWF x) :
+  (ih  : ∀ x ∈ xs, CompileWF x) :
   t.WellFormed εnv.entities ∧ ∃ ty, t.typeOf = .option ty
 := by
   replace hwf := wf_εnv_for_call_implies hwf
@@ -790,18 +790,18 @@ theorem compile_wf {x : Expr} {εnv : SymEnv} {t : Term} :
     have ih₁ := @compile_wf x₁
     exact compile_hasAttr_wf hwf hok ih₁
   | .set xs          =>
-    have ih : ∀ xᵢ ∈ xs, ReduceWF xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileWF xᵢ := by
       intro xᵢ _
       exact @compile_wf xᵢ
     exact compile_set_wf hwf hok ih
   | .record axs      =>
-    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → ReduceWF xᵢ := by
+    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → CompileWF xᵢ := by
       intro aᵢ xᵢ h
       have _ : sizeOf xᵢ < 1 + sizeOf axs := List.sizeOf_snd_lt_sizeOf_list h
       exact @compile_wf xᵢ
     exact compile_record_wf hwf hok ih
   | .call _ xs       =>
-    have ih : ∀ xᵢ ∈ xs, ReduceWF xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileWF xᵢ := by
       intro xᵢ _
       exact @compile_wf xᵢ
     exact compile_call_wf hwf hok ih

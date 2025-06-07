@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of IPAddr operators. -/
+/-! This file unit tests symbolic compilation of IPAddr operators. -/
 
 namespace SymTest.IPAddr
 
@@ -43,13 +43,13 @@ def ipLit (str : String) : Expr :=
   .call .ip [.lit (.string str)]
 
 private def testValid (str : String) : TestCase SolverM :=
-  testReduce str
+  testCompile str
     (ipLit str)
     ipSymEnv
     (.ok (.some (IPAddr.ipTerm (Ext.IPAddr.ip str).get!)))
 
 private def testInvalid (str : String) (msg : String) : TestCase SolverM :=
-  testReduce s!"{str} [{msg}]"
+  testCompile s!"{str} [{msg}]"
     (ipLit str)
     ipSymEnv
     (.error .typeError)
@@ -80,14 +80,14 @@ def testsForIpConstructor :=
     testInvalid "::/001" "no leading zeros",
     testInvalid "127.0.0.1/01" "no leading zeros",
     testInvalid "F:AE::F:5:F:F:0/01" "no leading zeros",
-    testReduce s!"Error: applying ip constructor to a non-literal"
+    testCompile s!"Error: applying ip constructor to a non-literal"
       (.call .ip [s])
       ipSymEnv
       (.error .typeError)
   ]
 
 private def testIs (msg : String) (isFun : ExtFun) (x : Expr) (expected : Bool) : TestCase SolverM :=
-  testReduce s!"Expected {expected}: {reprStr isFun} {msg}]"
+  testCompile s!"Expected {expected}: {reprStr isFun} {msg}]"
     (.call isFun [x])
     ipSymEnv
     (.ok (.some expected))
@@ -99,7 +99,7 @@ private def testIsMulticast (msg : String) (x : Expr) (expected : Bool) : TestCa
   testIs msg .isMulticast x expected
 
 private def testInRange (str₁ str₂ : String) (expected : Bool) : TestCase SolverM :=
-  testReduce s!"Expected {expected}: inRange {str₁} {str₂}]"
+  testCompile s!"Expected {expected}: inRange {str₁} {str₂}]"
     (.call .isInRange [(ipLit str₁), (ipLit str₂)])
     ipSymEnv
     (.ok (.some expected))

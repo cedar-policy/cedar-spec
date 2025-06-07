@@ -19,7 +19,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.call` expressions.
+This file proves the compilation lemmas for `.call` expressions.
 --/
 
 namespace Cedar.Thm
@@ -1049,7 +1049,7 @@ theorem compile_interpret_call {f : ExtFun} {xs : List Expr} {εnv : SymEnv} {I 
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.call f xs))
   (hok : compile (.call f xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceInterpret x) :
+  (ih  : ∀ x ∈ xs, CompileInterpret x) :
   compile (.call f xs) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨ts, hok₂, hok⟩ := compile_call_ok_implies hok
@@ -1432,7 +1432,7 @@ theorem compile_evaluate_call {f : ExtFun} {xs : List Expr} {env : Env} {εnv : 
   (hwe : env.WellFormedFor (.call f xs))
   (hwε : εnv.WellFormedFor (.call f xs))
   (hok : compile (.call f xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceEvaluate x) :
+  (ih  : ∀ x ∈ xs, CompileEvaluate x) :
   evaluate (.call f xs) env.request env.entities ∼ t
 := by
   replace ⟨ts, hok₂, hok⟩ := compile_call_ok_implies hok

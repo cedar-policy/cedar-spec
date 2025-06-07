@@ -176,8 +176,8 @@ private def testVerifyDisjoint? (expected : Finding) (ps₁ ps₂ : Policies) : 
 
 def testTrivialPolicies :=
   suite "Reduction of trivial policies" [
-    testReduce policyAllowAll.id policyAllowAll.toExpr εnvRead (.ok (.some true)),
-    testReduce policyAllowNone.id policyAllowNone.toExpr εnvRead (.ok (.some false)),
+    testCompile policyAllowAll.id policyAllowAll.toExpr εnvRead (.ok (.some true)),
+    testCompile policyAllowNone.id policyAllowNone.toExpr εnvRead (.ok (.some false)),
   ]
 
 def testsForNeverErrors? :=

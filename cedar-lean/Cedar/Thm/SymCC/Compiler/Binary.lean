@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.binaryApp` expressions.
+This file proves the compilation lemmas for `.binaryApp` expressions.
 --/
 
 namespace Cedar.Thm
@@ -331,8 +331,8 @@ theorem compile_interpret_binaryApp {op₂ : BinaryOp} {x₁ x₂ : Expr} {εnv 
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.binaryApp op₂ x₁ x₂))
   (hok : compile (.binaryApp op₂ x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpret x₁)
-  (ih₂ : ReduceInterpret x₂) :
+  (ih₁ : CompileInterpret x₁)
+  (ih₂ : CompileInterpret x₂) :
   compile (.binaryApp op₂ x₁ x₂) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨t₁, t₂, t₃, hok₁, hok₂, hok, ht⟩ := compile_binaryApp_ok_implies hok
@@ -1258,8 +1258,8 @@ theorem compile_evaluate_binaryApp {op₂ : BinaryOp} {x₁ x₂ : Expr} {env : 
   (hwe : env.WellFormedFor (.binaryApp op₂ x₁ x₂))
   (hwε : εnv.WellFormedFor (.binaryApp op₂ x₁ x₂))
   (hok : compile (.binaryApp op₂ x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceEvaluate x₁)
-  (ih₂ : ReduceEvaluate x₂) :
+  (ih₁ : CompileEvaluate x₁)
+  (ih₂ : CompileEvaluate x₂) :
   evaluate (.binaryApp op₂ x₁ x₂) env.request env.entities ∼ t
 := by
   replace ⟨t₁, t₂, t₃, hok₁, hok₂, hok, ht⟩ := compile_binaryApp_ok_implies hok

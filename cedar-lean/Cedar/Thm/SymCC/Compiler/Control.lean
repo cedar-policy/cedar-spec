@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.ite`, `.and`, and `.or` expressions.
+This file proves the compilation lemmas for `.ite`, `.and`, and `.or` expressions.
 --/
 
 namespace Cedar.Thm
@@ -28,11 +28,11 @@ open Batteries Data Spec SymCC Factory
 private theorem compile_evaluate_ite_none {x₂ x₃ : Expr} {εnv : SymEnv} {t : Term} {e : Spec.Error} {ty : TermType}
   (hwφ₂ : SymEnv.WellFormedFor εnv x₂)
   (hwφ₃ : SymEnv.WellFormedFor εnv x₃)
-  (h₁   : ReduceIfSym t (Term.none ty) (compile x₂ εnv) (compile x₃ εnv))
+  (h₁   : CompileIfSym t (Term.none ty) (compile x₂ εnv) (compile x₃ εnv))
   (h₂   : ¬e = Error.entityDoesNotExist) :
   (Except.error e : Spec.Result Value) ∼ t
 := by
-  simp only [ReduceIfSym, Term.typeOf, TermType.option.injEq] at h₁
+  simp only [CompileIfSym, Term.typeOf, TermType.option.injEq] at h₁
   replace ⟨h₁, t₂, t₃, h₃, h₄, h₅, h₆⟩ := h₁
   subst h₁
   replace ⟨hwφ₂, ty, hty⟩ := compile_wf hwφ₂ h₃
@@ -52,9 +52,9 @@ theorem compile_evaluate_ite {x₁ x₂ x₃ : Expr} {env : Env} {εnv : SymEnv}
   (h₂  : env.WellFormedFor (.ite x₁ x₂ x₃))
   (h₃  : εnv.WellFormedFor (.ite x₁ x₂ x₃))
   (h₄  : compile (.ite x₁ x₂ x₃) εnv = .ok t)
-  (ih₁ : ReduceEvaluate x₁)
-  (ih₂ : ReduceEvaluate x₂)
-  (ih₃ : ReduceEvaluate x₃) :
+  (ih₁ : CompileEvaluate x₁)
+  (ih₂ : CompileEvaluate x₂)
+  (ih₃ : CompileEvaluate x₃) :
   evaluate (.ite x₁ x₂ x₃) env.request env.entities ∼ t
 := by
   replace ⟨t₁, hr₁, h₄⟩ := compile_ite_ok_implies h₄
@@ -76,7 +76,7 @@ theorem compile_evaluate_ite {x₁ x₂ x₃ : Expr} {env : Env} {εnv : SymEnv}
       replace ih₁ := same_ok_bool_implies ih₁
       subst ih₁
       cases b <;>
-      simp only [ReduceIfSym] at h₄ <;>
+      simp only [CompileIfSym] at h₄ <;>
       rw [eq_comm] at h₄
       case false => simp only [ite_false, ih₃ h₁ hwf₃ hwφ₃ h₄, reduceCtorEq]
       case true  => simp only [ite_true, ih₂ h₁ hwf₂ hwφ₂ h₄]
@@ -100,7 +100,7 @@ theorem compile_evaluate_ite {x₁ x₂ x₃ : Expr} {env : Env} {εnv : SymEnv}
           exact compile_evaluate_ite_none hwφ₂ hwφ₃ h₄ (by simp only [not_false_eq_true, reduceCtorEq])
         case inr h₅ h₆ =>
           replace ⟨t', hr₁, hr₁'⟩ := hr₁ ; subst hr₁ hr₁'
-          simp only [ReduceIfSym, Term.typeOf, TermType.option.injEq] at h₄
+          simp only [CompileIfSym, Term.typeOf, TermType.option.injEq] at h₄
           replace hwφ₁ := wf_term_some_implies hwφ₁
           replace ih₁ := lit_term_some_implies_lit ih₁
           replace ih₁ := wfl_of_type_bool_is_true_or_false (And.intro hwφ₁ ih₁) h₄.left
@@ -111,9 +111,9 @@ theorem compile_interpret_ite {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {I : Inter
   (h₁  : I.WellFormed εnv.entities)
   (h₂  : εnv.WellFormedFor (.ite x₁ x₂ x₃))
   (h₃  : compile (.ite x₁ x₂ x₃) εnv = .ok t)
-  (ih₁ : ReduceInterpret x₁)
-  (ih₂ : ReduceInterpret x₂)
-  (ih₃ : ReduceInterpret x₃) :
+  (ih₁ : CompileInterpret x₁)
+  (ih₂ : CompileInterpret x₂)
+  (ih₃ : CompileInterpret x₃) :
   compile (.ite x₁ x₂ x₃) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨_, hr₁, h₃⟩ := compile_ite_ok_implies h₃
@@ -190,11 +190,11 @@ theorem compile_interpret_ite {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {I : Inter
 
 private theorem compile_evaluate_and_none {x₂ : Expr} {εnv : SymEnv} {t : Term} {e : Spec.Error} {ty : TermType}
   (hwφ₂ : SymEnv.WellFormedFor εnv x₂)
-  (h₁   : ReduceAndSym t (Term.none ty) (compile x₂ εnv))
+  (h₁   : CompileAndSym t (Term.none ty) (compile x₂ εnv))
   (h₂   : ¬e = Error.entityDoesNotExist) :
   (Except.error e : Spec.Result Value) ∼ t
 := by
-  simp only [ReduceAndSym, Term.typeOf, TermType.option.injEq] at h₁
+  simp only [CompileAndSym, Term.typeOf, TermType.option.injEq] at h₁
   replace ⟨h₁, t₂, h₃, h₄, h₅⟩ := h₁
   subst h₁
   replace ⟨hwφ₂, _, _⟩ := compile_wf hwφ₂ h₃
@@ -233,8 +233,8 @@ theorem compile_evaluate_and {x₁ x₂ : Expr} {env : Env} {εnv : SymEnv} {t :
   (h₂  : env.WellFormedFor (.and x₁ x₂))
   (h₃  : εnv.WellFormedFor (.and x₁ x₂))
   (h₄  : compile (.and x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceEvaluate x₁)
-  (ih₂ : ReduceEvaluate x₂) :
+  (ih₁ : CompileEvaluate x₁)
+  (ih₂ : CompileEvaluate x₂) :
   evaluate (.and x₁ x₂) env.request env.entities ∼ t
 := by
   replace ⟨_, hr₁, h₄⟩ := compile_and_ok_implies h₄
@@ -289,8 +289,8 @@ theorem compile_interpret_and {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpreta
   (h₁  : I.WellFormed εnv.entities)
   (h₂  : εnv.WellFormedFor (.and x₁ x₂))
   (h₃  : compile (.and x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpret x₁)
-  (ih₂ : ReduceInterpret x₂) :
+  (ih₁ : CompileInterpret x₁)
+  (ih₂ : CompileInterpret x₂) :
   compile (.and x₁ x₂) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨_, hr₁, h₃⟩ := compile_and_ok_implies h₃
@@ -365,11 +365,11 @@ theorem compile_interpret_and {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpreta
 
 private theorem compile_evaluate_or_none {x₂ : Expr} {εnv : SymEnv} {t : Term} {e : Spec.Error} {ty : TermType}
   (hwφ₂ : SymEnv.WellFormedFor εnv x₂)
-  (h₁   : ReduceOrSym t (Term.none ty) (compile x₂ εnv))
+  (h₁   : CompileOrSym t (Term.none ty) (compile x₂ εnv))
   (h₂   : ¬e = Error.entityDoesNotExist) :
   (Except.error e : Spec.Result Value) ∼ t
 := by
-  simp only [ReduceOrSym, Term.typeOf, TermType.option.injEq] at h₁
+  simp only [CompileOrSym, Term.typeOf, TermType.option.injEq] at h₁
   replace ⟨h₁, t₂, h₃, h₄, h₅⟩ := h₁
   subst h₁
   replace ⟨hwφ₂, _, _⟩ := compile_wf hwφ₂ h₃
@@ -389,8 +389,8 @@ theorem compile_evaluate_or {x₁ x₂ : Expr} {env : Env} {εnv : SymEnv} {t : 
   (h₂  : env.WellFormedFor (.or x₁ x₂))
   (h₃  : εnv.WellFormedFor (.or x₁ x₂))
   (h₄  : compile (.or x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceEvaluate x₁)
-  (ih₂ : ReduceEvaluate x₂) :
+  (ih₁ : CompileEvaluate x₁)
+  (ih₂ : CompileEvaluate x₂) :
   evaluate (.or x₁ x₂) env.request env.entities ∼ t
 := by
   replace ⟨_, hr₁, h₄⟩ := compile_or_ok_implies h₄
@@ -445,8 +445,8 @@ theorem compile_interpret_or {x₁ x₂ : Expr} {εnv : SymEnv} {I : Interpretat
   (h₁  : I.WellFormed εnv.entities)
   (h₂  : εnv.WellFormedFor (.or x₁ x₂))
   (h₃  : compile (.or x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpret x₁)
-  (ih₂ : ReduceInterpret x₂) :
+  (ih₁ : CompileInterpret x₁)
+  (ih₂ : CompileInterpret x₂) :
   compile (.or x₁ x₂) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨_, hr₁, h₃⟩ := compile_or_ok_implies h₃

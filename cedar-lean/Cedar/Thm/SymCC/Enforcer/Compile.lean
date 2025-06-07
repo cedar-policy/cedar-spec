@@ -306,7 +306,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
 
 -------------------
 
-private def ReduceInterpretOnFootprint (x : Expr) (ft : Set Term) (εnv : SymEnv) (I₁ I₂ : Interpretation) : Prop :=
+private def CompileInterpretOnFootprint (x : Expr) (ft : Set Term) (εnv : SymEnv) (I₁ I₂ : Interpretation) : Prop :=
   ∀ {t : Term},
     εnv.WellFormedFor x →
     I₁.WellFormed εnv.entities →
@@ -402,9 +402,9 @@ private theorem compile_interpret_ite_on_footprint {x₁ x₂ x₃ : Expr} {ft :
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.ite x₁ x₂ x₃) εnv ⊆ ft)
   (hok : compile (.ite x₁ x₂ x₃) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂)
-  (ih₂ : ReduceInterpretOnFootprint x₂ ft εnv I₁ I₂)
-  (ih₃ : ReduceInterpretOnFootprint x₃ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂)
+  (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂)
+  (ih₃ : CompileInterpretOnFootprint x₃ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace hwε := wf_εnv_for_ite_implies hwε
@@ -435,8 +435,8 @@ private theorem compile_interpret_and_on_footprint {x₁ x₂ : Expr} {ft : Set 
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.and x₁ x₂) εnv ⊆ ft)
   (hok : compile (.and x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂)
-  (ih₂ : ReduceInterpretOnFootprint x₂ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂)
+  (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace ⟨t₁, hok₁, hok⟩ := compile_and_ok_implies hok
@@ -470,8 +470,8 @@ private theorem compile_interpret_or_on_footprint {x₁ x₂ : Expr} {ft : Set T
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.or x₁ x₂) εnv ⊆ ft)
   (hok : compile (.or x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂)
-  (ih₂ : ReduceInterpretOnFootprint x₂ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂)
+  (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace ⟨t₁, hok₁, hok⟩ := compile_or_ok_implies hok
@@ -541,7 +541,7 @@ private theorem compile_interpret_unaryApp_on_footprint {op₁ : UnaryOp} {x₁ 
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.unaryApp op₁ x₁) εnv ⊆ ft)
   (hok : compile (.unaryApp op₁ x₁) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   simp only [footprint] at hft
@@ -569,8 +569,8 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.binaryApp op₂ x₁ x₂) εnv ⊆ ft)
   (hok : compile (.binaryApp op₂ x₁ x₂) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂)
-  (ih₂ : ReduceInterpretOnFootprint x₂ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂)
+  (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace ⟨t₁, t₂, t₃, hok₁, hok₂, hok, ht⟩ := compile_binaryApp_ok_implies hok
@@ -736,7 +736,7 @@ private theorem compile_interpret_hasAttr_on_footprint {x₁ : Expr}  {a₁ : At
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.hasAttr x₁ a₁) εnv ⊆ ft)
   (hok : compile (.hasAttr x₁ a₁) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace hwε := wf_εnv_for_hasAttr_implies hwε
@@ -772,7 +772,7 @@ private theorem compile_interpret_getAttr_on_footprint {x₁ : Expr}  {a₁ : At
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.getAttr x₁ a₁) εnv ⊆ ft)
   (hok : compile (.getAttr x₁ a₁) εnv = .ok t)
-  (ih₁ : ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂) :
+  (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   simp only [footprint, footprint.ofEntity, hok, Set.union_subset] at hft
@@ -822,7 +822,7 @@ private theorem compile_interpret_on_footprint_ihs {xs : List Expr} {ts : List T
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : List.mapUnion (fun x => footprint x εnv) xs ⊆ ft)
   (hok : ∀ t ∈ ts, ∃ x ∈ xs, compile x εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceInterpretOnFootprint x ft εnv I₁ I₂) :
+  (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   ∀ t ∈ ts, t.interpret I₁ = t.interpret I₂
 := by
   intro t ht
@@ -837,7 +837,7 @@ private theorem compile_interpret_set_on_footprint {xs : List Expr} {ft : Set Te
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.set xs) εnv ⊆ ft)
   (hok : compile (.set xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceInterpretOnFootprint x ft εnv I₁ I₂) :
+  (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   replace hwε := wf_εnv_for_set_implies hwε
@@ -893,7 +893,7 @@ private theorem compile_interpret_record_on_footprint {axs : List (Attr × Expr)
   (hft : footprint (.record axs) εnv ⊆ ft)
   (hok : compile (.record axs) εnv = .ok t)
   (ih  : ∀ (a₁ : Attr) (x₁ : Expr), sizeOf (a₁, x₁).snd < 1 + sizeOf axs →
-    ReduceInterpretOnFootprint x₁ ft εnv I₁ I₂) :
+    CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   simp only [footprint, List.attach₂, List.mapUnion_pmap_subtype (λ x : Attr × Expr => footprint x.snd εnv)] at hft
@@ -934,7 +934,7 @@ private theorem compile_interpret_call_on_footprint {xfn : ExtFun} {xs : List Ex
   (hsm : εnv.SameOn ft I₁ I₂)
   (hft : footprint (.call xfn xs) εnv ⊆ ft)
   (hok : compile (.call xfn xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceInterpretOnFootprint x ft εnv I₁ I₂) :
+  (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
   simp only [footprint, List.attach_def, List.mapUnion_pmap_subtype (footprint · εnv) ] at hft

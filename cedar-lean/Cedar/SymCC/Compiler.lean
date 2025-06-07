@@ -20,14 +20,14 @@ import Cedar.SymCC.Factory
 
 /-!
 
-This file defines the Cedar symbolic evaluator.
+This file defines the Cedar symbolic compiler.
 
-The symbolic evaluator takes as input a Cedar expression and a symbolic
+The symbolic compiler takes as input a Cedar expression and a symbolic
 environment. Given these inputs, it produces a Term encoding of the expression.
 
-If the evaluator returns a Term, this Term represents a sound and complete
+If the compiler returns a Term, this Term represents a sound and complete
 encoding of the input expression's semantics with respect to the given
-environment: using this reduction for verification will neither miss bugs
+environment: using this Term for verification will neither miss bugs
 (soundness) nor produce false positives (completeness).
 -/
 
