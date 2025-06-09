@@ -38,6 +38,7 @@ use std::ffi::{c_char, CStr};
 use std::sync::Once;
 
 // Import and signal RUST to link the exported Lean FFI code (which are C functions at this point)
+#[allow(clippy::duplicated_attributes)]
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Cedar_SymCC", kind = "static")]
 #[link(name = "Protobuf", kind = "static")]
@@ -85,7 +86,7 @@ static START: Once = Once::new();
 /// A struct which will initialize the lean backend (and initialize a thread running the lean runtime)
 pub struct CedarLeanFfi {}
 
-/// Lean return types
+/********************************************** Lean return types **********************************************/
 
 /// List type
 #[derive(Debug, Deserialize)]
@@ -174,14 +175,14 @@ impl AuthorizationResponse {
             .mk
             .l
             .iter()
-            .map(|pid| PolicyId::new(pid))
+            .map(PolicyId::new)
             .collect();
         let erroring = inner
             .erroring_policies
             .mk
             .l
             .iter()
-            .map(|pid| PolicyId::new(pid))
+            .map(PolicyId::new)
             .collect();
         Ok(Self {
             decision,
@@ -233,8 +234,8 @@ fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
     unsafe {
         let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
         let y = (*x).m_data.as_mut_ptr();
-        for i in 0..buf.len() {
-            y.add(i).write(buf[i])
+        for (i, bi) in buf.iter().enumerate() {
+            y.add(i).write(*bi)
         }
         x.cast()
     }
@@ -564,9 +565,8 @@ impl CedarLeanFfi {
         entities: &Entities,
         request: &Request,
     ) -> Result<(), FfiError> {
-        Ok(self
-            .print_evaluation_timed(input_expr, entities, request)?
-            .take_result())
+        self.print_evaluation_timed(input_expr, entities, request)?;
+        Ok(())
     }
 
     /// Calls the lean backend and returns `true` if the input Cedar `Expression`
