@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.record` expressions.
+This file proves the compilation lemmas for `.record` expressions.
 --/
 
 namespace Cedar.Thm
@@ -40,7 +40,7 @@ theorem compile_attr_expr_wfs {εnv : SymEnv} {axs : List (Attr × Expr)} {ats :
 private theorem compile_interpret_ihs {axs : List (Attr × Expr)} {ats : List (Attr × Term)} {εnv : SymEnv} {I : Interpretation}
   (hI : Interpretation.WellFormed I εnv.entities)
   (hwε : ∀ (ax : Attr × Expr), ax ∈ axs → SymEnv.WellFormedFor εnv ax.snd)
-  (ih : ∀ (a : Attr) (x : Expr), (a, x) ∈ axs → ReduceInterpret x)
+  (ih : ∀ (a : Attr) (x : Expr), (a, x) ∈ axs → CompileInterpret x)
   (hok : List.Forall₂ (λ px pt => px.fst = pt.fst ∧ compile px.snd εnv = Except.ok pt.snd) axs ats) :
   List.Forall₂ (λ (a, x) (a', t) => a = a' ∧ compile x (εnv.interpret I) = .ok (t.interpret I)) axs ats
 := by
@@ -170,7 +170,7 @@ theorem compile_interpret_record {axs : List (Attr × Expr)} {εnv : SymEnv} {I 
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.record axs))
   (hok : compile (.record axs) εnv = .ok t)
-  (ih  : ∀ a x, (a, x) ∈ axs → ReduceInterpret x) :
+  (ih  : ∀ a x, (a, x) ∈ axs → CompileInterpret x) :
   compile (.record axs) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨ats, hok, ht⟩ := compile_record_ok_implies hok
@@ -200,7 +200,7 @@ private theorem compile_evaluate_ihs {axs : List (Attr × Expr)} {ats : List (At
   (heq : env ∼ εnv)
   (hwe : ∀ (ax : Attr × Expr), ax ∈ axs → env.WellFormedFor ax.snd)
   (hwε : ∀ (ax : Attr × Expr), ax ∈ axs → εnv.WellFormedFor ax.snd)
-  (ih  : ∀ a x, (a, x) ∈ axs → ReduceEvaluate x)
+  (ih  : ∀ a x, (a, x) ∈ axs → CompileEvaluate x)
   (hok : List.Forall₂ (fun px pt => px.fst = pt.fst ∧ compile px.snd εnv = Except.ok pt.snd) axs ats) :
   List.Forall₂ (fun px pt => px.fst = pt.fst ∧ evaluate px.snd env.request env.entities ∼ pt.snd) axs ats
 := by
@@ -289,7 +289,7 @@ theorem compile_evaluate_record {axs : List (Attr × Expr)} {env : Env} {εnv : 
   (hwe : env.WellFormedFor (.record axs))
   (hwε : εnv.WellFormedFor (.record axs))
   (hok : compile (.record axs) εnv = .ok t)
-  (ih  : ∀ a x, (a, x) ∈ axs → ReduceEvaluate x) :
+  (ih  : ∀ a x, (a, x) ∈ axs → CompileEvaluate x) :
   evaluate (.record axs) env.request env.entities ∼ t
 := by
   replace ⟨ats, hok, ht⟩ := compile_record_ok_implies hok

@@ -19,7 +19,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.set` expressions.
+This file proves the compilation lemmas for `.set` expressions.
 --/
 
 namespace Cedar.Thm
@@ -100,7 +100,7 @@ theorem compile_interpret_set {xs : List Expr} {εnv : SymEnv} {I : Interpretati
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.set xs))
   (hok : compile (.set xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceInterpret x) :
+  (ih  : ∀ x ∈ xs, CompileInterpret x) :
   compile (.set xs) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨ts, hok, ht⟩ := compile_set_ok_implies hok
@@ -203,7 +203,7 @@ theorem compile_evaluate_set {xs : List Expr} {env : Env} {εnv : SymEnv} {t : T
   (hwe : env.WellFormedFor (.set xs))
   (hwε : εnv.WellFormedFor (.set xs))
   (hok : compile (.set xs) εnv = .ok t)
-  (ih  : ∀ x ∈ xs, ReduceEvaluate x) :
+  (ih  : ∀ x ∈ xs, CompileEvaluate x) :
   evaluate (.set xs) env.request env.entities ∼ t
 := by
   replace ⟨ts, hok, ht⟩ := compile_set_ok_implies hok

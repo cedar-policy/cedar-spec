@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of membership operators on entities
+/-! This file unit tests symbolic compilation of membership operators on entities
 and sets of entities: `in`, `contains`, `containsAny`, and `containsAll`. -/
 
 namespace SymTest.In

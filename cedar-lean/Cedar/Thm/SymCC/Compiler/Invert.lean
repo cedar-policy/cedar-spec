@@ -24,7 +24,7 @@ namespace Cedar.Thm
 
 open Batteries Data Spec SymCC Factory
 
-def ReduceIfSym (t t₁ : Term) (r₂ r₃ : SymCC.Result Term) : Prop :=
+def CompileIfSym (t t₁ : Term) (r₂ r₃ : SymCC.Result Term) : Prop :=
   t₁.typeOf = (.option .bool) ∧
   ∃ t₂ t₃,
     r₂ = .ok t₂ ∧
@@ -39,9 +39,9 @@ theorem compile_ite_ok_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {t : Term
     match t₁ with
      | .some (.prim (.bool true))  => t = compile x₂ εnv
      | .some (.prim (.bool false)) => t = compile x₃ εnv
-     | t₁ => ReduceIfSym t t₁ (compile x₂ εnv) (compile x₃ εnv)
+     | t₁ => CompileIfSym t t₁ (compile x₂ εnv) (compile x₃ εnv)
 := by
-  simp only [ReduceIfSym]
+  simp only [CompileIfSym]
   simp only [compile, compileIf] at h₁
   simp_do_let (compile x₁ εnv) at h₁
   split at h₁
@@ -62,7 +62,7 @@ theorem compile_ite_ok_implies {x₁ x₂ x₃ : Expr} {εnv : SymEnv} {t : Term
       compile_ite_ok_implies]
   case h_4 => simp only [reduceCtorEq] at h₁
 
-def ReduceAndSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
+def CompileAndSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
   t₁.typeOf = .option .bool ∧
   ∃ t₂,
     r₂ = .ok t₂ ∧
@@ -75,12 +75,12 @@ theorem compile_and_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
     (compile x₁ εnv) = .ok t₁ ∧
     match t₁ with
      | .some (.prim (.bool false)) => t = t₁
-     | _ => ReduceAndSym t t₁ (compile x₂ εnv)
+     | _ => CompileAndSym t t₁ (compile x₂ εnv)
 := by
   simp only [compile] at h₁
   simp_do_let (compile x₁ εnv) at h₁ ; rename_i t₁ h₂
   exists t₁
-  simp only [true_and, ReduceAndSym]
+  simp only [true_and, CompileAndSym]
   simp only [compileAnd] at h₁
   split at h₁
   case h_1 =>
@@ -98,7 +98,7 @@ theorem compile_and_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
       simp only [h₆, h₁, and_self]
   case h_3 => simp only [reduceCtorEq] at h₁
 
-def ReduceOrSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
+def CompileOrSym (t t₁ : Term) (r₂ : SymCC.Result Term): Prop :=
   t₁.typeOf = .option .bool ∧
   ∃ t₂,
     r₂ = .ok t₂ ∧
@@ -111,12 +111,12 @@ theorem compile_or_ok_implies {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term}
     (compile x₁ εnv) = .ok t₁ ∧
     match t₁ with
     | .some (.prim (.bool true)) => t = t₁
-    | _ => ReduceOrSym t t₁ (compile x₂ εnv)
+    | _ => CompileOrSym t t₁ (compile x₂ εnv)
 := by
   simp only [compile] at h₁
   simp_do_let (compile x₁ εnv) at h₁ ; rename_i t₁ h₂
   exists t₁
-  simp only [true_and, ReduceOrSym]
+  simp only [true_and, CompileOrSym]
   simp only [compileOr] at h₁
   split at h₁
   case h_1 =>

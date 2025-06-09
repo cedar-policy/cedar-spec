@@ -107,7 +107,7 @@ propagating contextual information---specifically, the path condition---from the
 top down, just like the validator. It is possible to do this and to prove it
 correct (see https://dl.acm.org/doi/10.1145/3498709), but it would require
 invasive changes to both the compiler and all the accompanying proofs.  We can
-do this if we find that calling the typechecker prior to symbolic evaluation
+do this if we find that calling the typechecker prior to symbolic compilation
 introduces too much of a burden in practice (e.g., by making debugging difficult
 due to the deepening of the analysis pipeline).
 -/

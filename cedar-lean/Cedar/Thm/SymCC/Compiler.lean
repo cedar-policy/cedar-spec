@@ -27,7 +27,7 @@ import Cedar.Thm.SymCC.Compiler.Unary
 
 /-!
 This file proves two key auxiliary lemmas used to show the soundness
-and completeness of Cedar's symbolic evaluator.
+and completeness of Cedar's symbolic compiler.
 --/
 
 namespace Cedar.Thm
@@ -35,12 +35,12 @@ namespace Cedar.Thm
 open Spec SymCC Factory
 
 /--
-The lemma shows that the symbolic evaluator (`compile`) behaves like the
+The lemma shows that the symbolic compiler (`compile`) behaves like the
 concrete evaluator (`evaluate`) on literal inputs.
 
 In particular, let `x` be an expression, `εnv` a well-formed symbolic
 environment for `x`, and `env` a well-formed concrete environment for `x` that
-is equivalent to `εnv`. Then, the result produced by the symbolic evaluator on
+is equivalent to `εnv`. Then, the result produced by the symbolic compiler on
 `x` and `εnv` is equivalent to the result produced by the concrete evaluator `x`
 and `env`.
 -/
@@ -82,18 +82,18 @@ theorem compile_evaluate {x : Expr} {env : Env} {εnv : SymEnv} {t : Term} :
     have ih₁ := @compile_evaluate x₁
     exact compile_evaluate_hasAttr h₁ h₂ h₃ h₄ ih₁
   | .set xs           =>
-    have ih : ∀ xᵢ ∈ xs, ReduceEvaluate xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileEvaluate xᵢ := by
       intro xᵢ _
       exact @compile_evaluate xᵢ
     exact compile_evaluate_set h₁ h₂ h₃ h₄ ih
   | .record axs      =>
-    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → ReduceEvaluate xᵢ := by
+    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → CompileEvaluate xᵢ := by
       intro aᵢ xᵢ h
       have _ : sizeOf xᵢ < 1 + sizeOf axs := List.sizeOf_snd_lt_sizeOf_list h
       exact @compile_evaluate xᵢ
     exact compile_evaluate_record h₁ h₂ h₃ h₄ ih
   | .call _ xs       =>
-    have ih : ∀ xᵢ ∈ xs, ReduceEvaluate xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileEvaluate xᵢ := by
       intro xᵢ _
       exact @compile_evaluate xᵢ
     exact compile_evaluate_call h₁ h₂ h₃ h₄ ih
@@ -102,8 +102,8 @@ theorem compile_evaluate {x : Expr} {env : Env} {εnv : SymEnv} {t : Term} :
 The lemma shows that `interpret` and `compile` can be applied in any order to get
 the same result. In particular, let `x` be an expression, `εnv` a well-formed
 symbolic environment for `x`, and `I` a well-formed interpretion for `εnv`.
-Then, reducing `x` with respect to `(εnv.interpret I)` gives the same result as
-interpreting the output of reducing `x` with respect to `εnv`.
+Then, compiling `x` with respect to `(εnv.interpret I)` gives the same result as
+interpreting the output of compiling `x` with respect to `εnv`.
 -/
 theorem compile_interpret {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} :
   I.WellFormed εnv.entities →
@@ -142,18 +142,18 @@ theorem compile_interpret {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : T
     have ih₁ := @compile_interpret x₁
     exact compile_interpret_hasAttr h₁ h₂ h₃ ih₁
   | .set xs            =>
-    have ih : ∀ xᵢ ∈ xs, ReduceInterpret xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileInterpret xᵢ := by
       intro xᵢ _
       exact @compile_interpret xᵢ
     exact compile_interpret_set h₁ h₂ h₃ ih
   | .record axs      =>
-    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → ReduceInterpret xᵢ := by
+    have ih : ∀ aᵢ xᵢ, (aᵢ, xᵢ) ∈ axs → CompileInterpret xᵢ := by
       intro aᵢ xᵢ h
       have _ : sizeOf xᵢ < 1 + sizeOf axs := List.sizeOf_snd_lt_sizeOf_list h
       exact @compile_interpret xᵢ
     exact compile_interpret_record h₁ h₂ h₃ ih
   | .call _ xs       =>
-    have ih : ∀ xᵢ ∈ xs, ReduceInterpret xᵢ := by
+    have ih : ∀ xᵢ ∈ xs, CompileInterpret xᵢ := by
       intro xᵢ _
       exact @compile_interpret xᵢ
     exact compile_interpret_call h₁ h₂ h₃ ih

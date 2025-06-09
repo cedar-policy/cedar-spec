@@ -35,7 +35,7 @@ If `I` is the result of solving a `verify*` query (see Cedar.SymCC.Verifier),
 then `εnv.extract? xs I` is a valid strongly well-formed counterexample
 to that query. More generally, `εnv.extract? xs I` extracts such a
 counterexample for any verification query that is expressed as a boolean
-combination of (boolean) terms obtained by reducing `xs` with respect to `εnv`.
+combination of (boolean) terms obtained by compiling `xs` with respect to `εnv`.
 
 See `Cedar.Thm.SymCC.Verification` for how this is used to prove that verification
 queries based on Cedar's compiler and hierarchy enforcer are correct.

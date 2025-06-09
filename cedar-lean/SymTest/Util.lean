@@ -19,7 +19,7 @@ import Cedar.SymCC.Encoder
 import Cedar.SymCC.Verifier
 import UnitTest.Run
 
-/-! This file defines simple utilities for unit testing symbolic evaluation. -/
+/-! This file defines simple utilities for unit testing symbolic compilation. -/
 
 namespace SymTest
 
@@ -63,7 +63,7 @@ def testVerifyImplies (desc : String) (x₁ x₂ : Expr) (εnv : SymEnv) (expect
 def testVerifyEquivalent (desc : String) (x₁ x₂ : Expr) (εnv : SymEnv) (expected : Outcome) : TestCase SolverM :=
   test desc ⟨λ _ => expected.check (verifyEquivalent [(permit x₁)] [(permit x₂)]) εnv⟩
 
-def testReduce (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=
+def testCompile (desc : String) (x : Expr) (εnv : SymEnv) (expected : SymCC.Result Term) : TestCase SolverM :=
   test desc ⟨λ _ => checkEq (compile x εnv) expected⟩
 
 namespace BasicTypes

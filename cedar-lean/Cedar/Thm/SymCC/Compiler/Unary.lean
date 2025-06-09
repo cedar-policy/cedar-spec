@@ -18,7 +18,7 @@ import Cedar.Thm.SymCC.Compiler.Invert
 import Cedar.Thm.SymCC.Compiler.WF
 
 /-!
-This file proves the reduction lemmas for `.unaryApp` expressions.
+This file proves the compilation lemmas for `.unaryApp` expressions.
 --/
 
 namespace Cedar.Thm
@@ -99,7 +99,7 @@ theorem compile_evaluate_unaryApp {op₁ : UnaryOp} {x₁ : Expr} {env : Env} {�
   (hwe : env.WellFormedFor (.unaryApp op₁ x₁))
   (hwε : εnv.WellFormedFor (.unaryApp op₁ x₁))
   (hok : compile (.unaryApp op₁ x₁) εnv = .ok t)
-  (ih  : ReduceEvaluate x₁) :
+  (ih  : CompileEvaluate x₁) :
   evaluate (.unaryApp op₁ x₁) env.request env.entities ∼ t
 := by
   replace ⟨t₁, t₂, hok, hr, ht⟩ := compile_unaryApp_ok_implies hok
@@ -186,7 +186,7 @@ theorem compile_interpret_unaryApp {op₁ : UnaryOp} {x₁ : Expr} {εnv : SymEn
   (hI  : I.WellFormed εnv.entities)
   (hwε : εnv.WellFormedFor (.unaryApp op₁ x₁))
   (hok : compile (.unaryApp op₁ x₁) εnv = .ok t)
-  (ih  : ReduceInterpret x₁) :
+  (ih  : CompileInterpret x₁) :
   compile (.unaryApp op₁ x₁) (εnv.interpret I) = .ok (t.interpret I)
 := by
   replace ⟨t₁, t₂, hok, ha, ht⟩ := compile_unaryApp_ok_implies hok

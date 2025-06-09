@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of the `has` operator. -/
+/-! This file unit tests symbolic compilation of the `has` operator. -/
 
 namespace SymTest.Has
 

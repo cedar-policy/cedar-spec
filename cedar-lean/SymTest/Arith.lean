@@ -16,7 +16,7 @@
 
 import SymTest.Util
 
-/-! This file unit tests symbolic evaluation of arithmetic operators. -/
+/-! This file unit tests symbolic compilation of arithmetic operators. -/
 
 namespace SymTest.Arith
 
