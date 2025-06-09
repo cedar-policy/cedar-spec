@@ -11,11 +11,9 @@
 # Don't check IntelliJ module files
 *.iml
 
-# cedar-drt build artifacts
-cedar-drt/target
-cedar-drt/Cargo.lock
-cedar-drt/fuzz/target
-cedar-drt/fuzz/Cargo.lock
+# Rust build artifacts
+**/target
+**/Cargo.lock
 cedar-drt/fuzz/corpus
 cedar-drt/fuzz/artifacts
 
