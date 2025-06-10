@@ -38,6 +38,7 @@ use std::ffi::{c_char, CStr};
 use std::sync::Once;
 
 // Import and signal RUST to link the exported Lean FFI code (which are C functions at this point)
+#[allow(clippy::duplicated_attributes)]
 #[link(name = "Cedar", kind = "static")]
 #[link(name = "Cedar_SymCC", kind = "static")]
 #[link(name = "Protobuf", kind = "static")]
@@ -85,7 +86,7 @@ static START: Once = Once::new();
 /// A struct which will initialize the lean backend (and initialize a thread running the lean runtime)
 pub struct CedarLeanFfi {}
 
-/// Lean return types
+/********************************************** Lean return types **********************************************/
 
 /// List type
 #[derive(Debug, Deserialize)]
@@ -174,14 +175,14 @@ impl AuthorizationResponse {
             .mk
             .l
             .iter()
-            .map(|pid| PolicyId::new(pid))
+            .map(PolicyId::new)
             .collect();
         let erroring = inner
             .erroring_policies
             .mk
             .l
             .iter()
-            .map(|pid| PolicyId::new(pid))
+            .map(PolicyId::new)
             .collect();
         Ok(Self {
             decision,
@@ -204,7 +205,7 @@ impl AuthorizationResponse {
 }
 
 /// Validation Response
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub enum ValidationResponse {
     /// Successful validation
     #[serde(rename = "ok")]
@@ -233,8 +234,8 @@ fn buf_to_lean_obj(buf: &[u8]) -> *mut lean_object {
     unsafe {
         let x: *mut lean_sarray_object = lean_alloc_sarray(1, buf.len(), buf.len()).cast();
         let y = (*x).m_data.as_mut_ptr();
-        for i in 0..buf.len() {
-            y.add(i).write(buf[i])
+        for (i, bi) in buf.iter().enumerate() {
+            y.add(i).write(*bi)
         }
         x.cast()
     }
@@ -464,42 +465,42 @@ impl CedarLeanFfi {
         smtlib_of_check_never_errors_timed,
         smtlib_of_check_never_errors,
         smtLibOfCheckNeverErrors,
-        ()
+        String
     );
 
     checkPolicySet_func!(
         smtlib_of_check_always_allows_timed,
         smtlib_of_check_always_allows,
         smtLibOfCheckAlwaysAllows,
-        ()
+        String
     );
 
     checkPolicySet_func!(
         smtlib_of_check_always_denies_timed,
         smtlib_of_check_always_denies,
         smtLibOfCheckAlwaysDenies,
-        ()
+        String
     );
 
     comparePolicySet_func!(
         smtlib_of_check_equivalent_timed,
         smtlib_of_check_equivalent,
         smtLibOfCheckEquivalent,
-        ()
+        String
     );
 
     comparePolicySet_func!(
         smtlib_of_check_implies_timed,
         smtlib_of_check_implies,
         smtLibOfCheckImplies,
-        ()
+        String
     );
 
     comparePolicySet_func!(
         smtlib_of_check_disjoint_timed,
         smtlib_of_check_disjoint,
         smtLibOfCheckDisjoint,
-        ()
+        String
     );
 
     /// Calls the lean backend to determine if the `Request` is allowed
@@ -564,9 +565,8 @@ impl CedarLeanFfi {
         entities: &Entities,
         request: &Request,
     ) -> Result<(), FfiError> {
-        Ok(self
-            .print_evaluation_timed(input_expr, entities, request)?
-            .take_result())
+        self.print_evaluation_timed(input_expr, entities, request)?;
+        Ok(())
     }
 
     /// Calls the lean backend and returns `true` if the input Cedar `Expression`
@@ -719,5 +719,448 @@ impl CedarLeanFfi {
 impl Drop for CedarLeanFfi {
     fn drop(&mut self) {
         unsafe { lean_finalize_thread() }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    /***************** Copy Extern Block so that Tests are also linked with lean code *****************/
+    #[allow(clippy::duplicated_attributes)]
+    #[link(name = "Cedar", kind = "static")]
+    #[link(name = "Cedar_SymCC", kind = "static")]
+    #[link(name = "Protobuf", kind = "static")]
+    #[link(name = "CedarProto", kind = "static")]
+    #[link(name = "Batteries", kind = "static")]
+    #[link(name = "CedarFFI", kind = "static")]
+    extern "C" {}
+
+    use cedar_policy::{
+        Context, Entities, Entity, EntityTypeName, EntityUid, Expression, Policy, PolicySet,
+        Request, RequestEnv, Schema, ValidationMode,
+    };
+
+    use std::str::FromStr;
+
+    use super::*;
+
+    fn example_schema() -> Schema {
+        Schema::from_cedarschema_str(
+            r#"
+            entity Account;
+            entity Identity {
+                account: Account
+            };
+            entity Thing in Account {
+                owner: Identity,
+                description: String,
+                private: Bool
+            };
+            action view appliesTo {
+            principal: [Identity],
+            resource: [Thing],
+            context: {
+                n1: String
+            }
+            };
+            "#,
+        )
+        .expect("Example schema failed to parse")
+        .0
+    }
+
+    fn request(principal: &str, action: &str, resource: &str) -> Request {
+        let principal = EntityUid::from_str(principal).expect("Failed to parse principal");
+        let action = EntityUid::from_str(action).expect("Failed to parse action");
+        let resource = EntityUid::from_str(resource).expect("Failed to parse resource");
+        let ctx = Context::from_pairs([(
+            "n1".to_string(),
+            cedar_policy::RestrictedExpression::new_string("Some value".to_string()),
+        )])
+        .expect("Failed to construct context");
+        Request::new(principal, action, resource, ctx, None).expect("Failed to construct request")
+    }
+
+    fn request_env(principal_type: &str, action: &str, resource_type: &str) -> RequestEnv {
+        let principal_type =
+            EntityTypeName::from_str(principal_type).expect("Failed to parse principal type");
+        let action = EntityUid::from_str(action).expect("Failed to parse action");
+        let resource_type =
+            EntityTypeName::from_str(resource_type).expect("Failed to parse resource type");
+        RequestEnv::new(principal_type, action, resource_type)
+    }
+
+    #[test]
+    fn test_check_never_errors() {
+        let trivial_policy = Policy::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_never_errors(&trivial_policy, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_never_errors");
+        assert!(
+            res,
+            "run_check_never_errors returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_never_errors(&trivial_policy, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_never_errors");
+    }
+
+    #[test]
+    fn test_check_always_allows() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_always_allows(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_always_allows");
+        assert!(
+            res,
+            "run_check_always_allows returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_always_allows(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
+
+        let res = ffi
+            .run_check_always_allows(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_always_allows");
+        assert!(
+            !res,
+            "run_check_always_allows returned wrong result. Expected: false"
+        );
+
+        ffi.smtlib_of_check_always_allows(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
+    }
+
+    #[test]
+    fn test_check_always_denies() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_always_denies(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_always_denies");
+        assert!(
+            !res,
+            "run_check_always_denies returned wrong result. Expected: false"
+        );
+
+        ffi.smtlib_of_check_always_denies(&always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
+
+        let res = ffi
+            .run_check_always_denies(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_always_denies");
+        assert!(
+            res,
+            "run_check_always_denies returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_always_denies(&always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_denies");
+    }
+
+    #[test]
+    fn test_check_equivalent() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_equivalent");
+        assert!(
+            res,
+            "run_check_equivalent returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+
+        let res = ffi
+            .run_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_equivalent");
+        assert!(
+            res,
+            "run_check_equivalent returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_equivalent(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+
+        let res = ffi
+            .run_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_equivalent");
+        assert!(
+            !res,
+            "run_check_equivalent returned wrong result. Expected: false"
+        );
+
+        ffi.smtlib_of_check_equivalent(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_equivalent");
+    }
+
+    #[test]
+    fn test_check_implies() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_implies");
+        assert!(
+            res,
+            "run_check_implies returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_implies(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+
+        let res = ffi
+            .run_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_implies");
+        assert!(
+            res,
+            "run_check_implies returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_implies(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+
+        let res = ffi
+            .run_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_implies");
+        assert!(
+            !res,
+            "run_check_implies returned wrong result. Expected: false"
+        );
+
+        ffi.smtlib_of_check_implies(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+
+        let res = ffi
+            .run_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_implies");
+        assert!(
+            res,
+            "run_check_implies returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_implies(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_implies");
+    }
+
+    #[test]
+    fn test_check_disjoint() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .run_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_disjoint");
+        assert!(
+            !res,
+            "run_check_disjoint returned wrong result. Expected: false"
+        );
+
+        ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+
+        let res = ffi
+            .run_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_disjoint");
+        assert!(
+            res,
+            "run_check_disjoint returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+
+        let res = ffi
+            .run_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_disjoint");
+        assert!(
+            res,
+            "run_check_disjoint returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_disjoint(&always_allows_pset, &always_denies_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+
+        let res = ffi
+            .run_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for run_check_disjoint");
+        assert!(
+            res,
+            "run_check_disjoint returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_disjoint(&always_denies_pset, &always_allows_pset, &schema, &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_disjoint");
+    }
+
+    #[test]
+    fn test_is_authorized() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let always_denies_pset = PolicySet::from_str("forbid(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let req = request(
+            "Identity::\"Alice\"",
+            "Action::\"view\"",
+            "Thing::\"Thing1\"",
+        );
+        let principal = Entity::with_uid(req.principal().unwrap().clone());
+        let action = Entity::with_uid(req.action().unwrap().clone());
+        let resource = Entity::with_uid(req.resource().unwrap().clone());
+        let entities = Entities::from_entities(vec![principal, action, resource], None)
+            .expect("Failed to construct entities");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .is_authorized(&always_allows_pset, &entities, &req)
+            .expect("Lean call unexpectedly failed for is_authorized");
+
+        assert_eq!(res.decision(), cedar_policy::Decision::Allow);
+        let deciding_policies = HashSet::from_iter(vec![PolicyId::from_str("policy0").unwrap()]);
+        assert_eq!(*res.determining_policies(), deciding_policies);
+        assert!(
+            res.erroring_policies().is_empty(),
+            "Always allows policyset should have no erroring policies"
+        );
+
+        let res = ffi
+            .is_authorized(&always_denies_pset, &entities, &req)
+            .expect("Lean call unexpectedly failed for is_authorized");
+        assert_eq!(res.decision(), cedar_policy::Decision::Deny);
+        assert_eq!(*res.determining_policies(), deciding_policies);
+        assert!(
+            res.erroring_policies().is_empty(),
+            "Always denies policyset should have no erroring policies"
+        );
+    }
+
+    #[test]
+    fn test_check_evaluate() {
+        let input_expr = Expression::from_str("1 + 2").expect("Failed to parse expression");
+        let eval_expr = Expression::from_str("3").expect("Failed to parse expression");
+        let wrong_expr = Expression::from_str("2").expect("Failed to parse expression");
+        let entities = Entities::empty();
+        let req = request(
+            "Identity::\"Alice\"",
+            "Action::\"view\"",
+            "Thing::\"Thing1\"",
+        );
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .check_evaluate(&input_expr, &entities, &req, &eval_expr)
+            .expect("Lean call unexpectedly failed for check_evaluate");
+        assert!(res, "check_evaluate returned wrong result: Expected true");
+
+        let res = ffi
+            .check_evaluate(&input_expr, &entities, &req, &wrong_expr)
+            .expect("Lean call unexpectedly failed for check_evaluate");
+        assert!(!res, "check_evaluate returned wrong result: Expected false");
+    }
+
+    #[test]
+    fn test_validate() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+        let mode = ValidationMode::Strict;
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .validate(&always_allows_pset, &schema, &mode)
+            .expect("Lean call unexpectedly failed for validate");
+        assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    #[test]
+    fn test_level_validate() {
+        let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")
+            .expect("Failed to parse trivial policy set");
+        let schema = example_schema();
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .level_validate(&always_allows_pset, &schema, 0)
+            .expect("Lean call unexpectedly failed for level_validate");
+        assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    #[test]
+    fn test_validate_entities() {
+        let schema = example_schema();
+        let account = Entity::with_uid(EntityUid::from_str("Account::\"account\"").unwrap());
+        let action = Entity::with_uid(EntityUid::from_str("Action::\"view\"").unwrap());
+        let entities = Entities::from_entities(vec![account, action], None)
+            .expect("Failed to construct entities");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .validate_entities(&schema, &entities)
+            .expect("Lean call unexpectedly failed for validate_entities");
+        assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    #[test]
+    fn test_validate_request() {
+        let schema = example_schema();
+        let req = request(
+            "Identity::\"Alice\"",
+            "Action::\"view\"",
+            "Thing::\"thing1\"",
+        );
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .validate_request(&schema, &req)
+            .expect("Lean call unexpectedly failed for validate_request");
+        assert_eq!(res, ValidationResponse::Ok(()));
     }
 }
