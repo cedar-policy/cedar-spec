@@ -1,7 +1,7 @@
 [package]
 name = "cedar-lean-cli"
 edition = "2021"
-version = "0.1.0"
+version = "4.4.0"
 publish = false
 
 [dependencies]
