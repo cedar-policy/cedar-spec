@@ -62,8 +62,8 @@ jobs:
               fi
               wget https://github.com/cvc5/cvc5/releases/download/cvc5-1.2.1/cvc5-Linux-${ARCH_NAME}-static.zip
               unzip cvc5-Linux-${ARCH_NAME}-static.zip
+              chmod +x cvc5-Linux-${ARCH_NAME}-static/bin/cvc5
               echo "CVC5=cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
-              chmod +x $CVC5
       - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: cargo fmt (cedar-lean-ffi)
