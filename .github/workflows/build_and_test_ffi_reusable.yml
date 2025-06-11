@@ -39,7 +39,7 @@ jobs:
           mkdir -p .cargo
           cat > .cargo/config.toml << EOF
           [patch.crates-io]
-          ccedar-policy = { path = "../cedar/cedar-policy" }
+          cedar-policy = { path = "../cedar/cedar-policy" }
           EOF
       - name: Install Lean
         shell: bash
