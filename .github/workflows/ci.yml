@@ -65,7 +65,7 @@ jobs:
       - name: Run unit tests
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && lake exe CedarUnitTests && lake exe CedarSymTests
+        run: source ~/.profile && lake exe CedarUnitTests && echo "$CVC5" && lake exe CedarSymTests
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
