@@ -61,11 +61,11 @@ jobs:
               wget https://github.com/cvc5/cvc5/releases/download/cvc5-1.2.1/cvc5-Linux-${ARCH_NAME}-static.zip
               unzip cvc5-Linux-${ARCH_NAME}-static.zip
               chmod +x cvc5-Linux-${ARCH_NAME}-static/bin/cvc5
-              echo "CVC5=cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
+              echo "CVC5=$GITHUB_WORKSPACE/cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> $GITHUB_ENV
       - name: Run unit tests
         working-directory: ./cedar-lean
         shell: bash
-        run: source ~/.profile && lake exe CedarUnitTests && echo "$CVC5" && lake exe CedarSymTests
+        run: source ~/.profile && lake exe CedarUnitTests && lake exe CedarSymTests
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
