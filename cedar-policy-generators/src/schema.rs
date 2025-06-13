@@ -36,6 +36,7 @@ use cedar_policy_validator::{
 };
 use smol_str::SmolStr;
 use smol_str::ToSmolStr;
+use std::cmp::min;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -322,10 +323,21 @@ pub(crate) fn arbitrary_specified_uid_without_schema(
     ))
 }
 
+// An upper bound on the number of components in a namespace's path.
+// Improves test throughput by preventing large namespaces which negatively impact hashing
+// performance during tc computation.
+pub(crate) const NAMESPACE_PATH_LIMIT: usize = 20;
+
 /// Get an arbitrary namespace for a schema. The namespace may be absent.
 fn arbitrary_namespace(u: &mut Unstructured<'_>) -> Result<Option<ast::Name>> {
-    u.arbitrary()
-        .map_err(|e| while_doing("generating namespace", e))
+    Ok(if <bool as Arbitrary>::arbitrary(u)? {
+        Some(ast::Name::new(
+            u.arbitrary()?,
+            arbitrary_vec(u, 0..=NAMESPACE_PATH_LIMIT)?,
+        ))
+    } else {
+        None
+    })
 }
 
 /// Given an (optional) namespace and a type base name, build a fully
@@ -636,35 +648,6 @@ impl Schema {
         };
         let mut principal_types = HashSet::new();
         let mut resource_types = HashSet::new();
-        // optionally return a list of entity types and add them to `tys` at the same time
-        let pick_entity_types = |tys: &mut HashSet<Name>, u: &mut Unstructured<'_>| {
-            // Pre-select the number of entity types (minimum 1), then randomly select that many indices
-            let num = u.int_in_range(1..=entity_types.len()).unwrap();
-            let mut indices: Vec<usize> = (0..entity_types.len()).collect();
-            let mut selected_indices = Vec::with_capacity(num);
-
-            while selected_indices.len() < num {
-                let index = u.choose_index(indices.len()).unwrap();
-                selected_indices.push(indices.swap_remove(index));
-            }
-
-            Result::Ok(Some(
-                selected_indices
-                    .iter()
-                    .map(|&i| {
-                        let (name, _) = &entity_types[i];
-                        tys.insert(build_qualified_entity_type_name(
-                            namespace.clone(),
-                            name.parse().unwrap_or_else(|e| {
-                                panic!("invalid entity type name {name:?}: {e}")
-                            }),
-                        ));
-                        name.parse()
-                            .unwrap_or_else(|e| panic!("invalid entity type name {name:?}: {e}"))
-                    })
-                    .collect::<Vec<Name>>(),
-            ))
-        };
         let mut principal_and_resource_types_exist = false;
         let mut actions: Vec<(SmolStr, ActionType)> = action_names
             .iter()
@@ -673,10 +656,22 @@ impl Schema {
                     name.clone(),
                     ActionType {
                         applies_to: {
-                            let mut picked_resource_types =
-                                pick_entity_types(&mut resource_types, u)?;
-                            let mut picked_principal_types =
-                                pick_entity_types(&mut principal_types, u)?;
+                            let (num_principals, num_resources) =
+                                pick_principal_resource_counts(u, entity_types.len())?;
+                            let mut picked_resource_types = pick_entity_types(
+                                &mut resource_types,
+                                u,
+                                &entity_types,
+                                &namespace,
+                                num_resources,
+                            )?;
+                            let mut picked_principal_types = pick_entity_types(
+                                &mut principal_types,
+                                u,
+                                &entity_types,
+                                &namespace,
+                                num_principals,
+                            )?;
                             // If we already have resource_types and principal_types, randomly make them empty
                             if principal_and_resource_types_exist {
                                 if u.ratio(1, 8)? {
@@ -1224,6 +1219,89 @@ impl TryFrom<Schema> for ValidatorSchema {
     type Error = SchemaError;
     fn try_from(schema: Schema) -> std::result::Result<ValidatorSchema, Self::Error> {
         ValidatorSchema::try_from(SchemaFragment::from(schema))
+    }
+}
+
+fn arbitrary_vec<'a, A>(
+    u: &mut Unstructured<'a>,
+    range: std::ops::RangeInclusive<usize>,
+) -> Result<Vec<A>>
+where
+    A: Arbitrary<'a>,
+{
+    let len = u.int_in_range(range)?;
+    let mut vec: Vec<A> = Vec::with_capacity(len);
+    for _ in 0..len {
+        vec.push(u.arbitrary()?);
+    }
+    Ok(vec)
+}
+
+/// Select n entity types without replace from the specified [`Vec`].
+/// Return the selected entity types and add them to `tys` at the same time
+fn pick_entity_types(
+    tys: &mut HashSet<Name>,
+    u: &mut Unstructured<'_>,
+    entity_types: &Vec<(SmolStr, cedar_policy_validator::EntityType)>,
+    namespace: &Option<Name>,
+    n: usize,
+) -> Result<Option<Vec<Name>>> {
+    // Select `n` indices without replacement
+    let mut indices: Vec<usize> = (0..entity_types.len()).collect();
+    let mut selected_indices = Vec::with_capacity(n);
+
+    while selected_indices.len() < n {
+        let index = u.choose_index(indices.len()).unwrap();
+        selected_indices.push(indices.swap_remove(index));
+    }
+
+    Ok(Some(
+        selected_indices
+            .iter()
+            .map(|&i| {
+                let (name, _) = &entity_types[i];
+                tys.insert(build_qualified_entity_type_name(
+                    namespace.clone(),
+                    name.parse()
+                        .unwrap_or_else(|e| panic!("invalid entity type name {name:?}: {e}")),
+                ));
+                name.parse()
+                    .unwrap_or_else(|e| panic!("invalid entity type name {name:?}: {e}"))
+            })
+            .collect::<Vec<Name>>(),
+    ))
+}
+
+// An upper bound on the number of request environment a schema can produce
+// See https://github.com/cedar-policy/cedar-spec/issues/610 for the
+// motivation why we want this limit
+pub(crate) const PER_ACTION_REQUEST_ENV_LIMIT: usize = 128;
+
+/// Select the number of principals, `p`, and resources, `r`, that an action applies to ensuring that the
+/// following properties hold by construction:
+/// - `p` * `r` <= [`PER_ACTION_REQUEST_ENV_LIMIT`]
+/// - 1 <= `p` <= the specified total number of entities
+/// - 1 <= `r` <= the specified total number of entities
+fn pick_principal_resource_counts(
+    u: &mut Unstructured<'_>,
+    number_of_entities: usize,
+) -> Result<(usize, usize)> {
+    // Pick p in range [1, min(number_of_entities, PER_ACTION_REQUEST_ENV_LIMIT)]
+    let limit = min(number_of_entities, PER_ACTION_REQUEST_ENV_LIMIT);
+    let n1 = u
+        .int_in_range(1..=limit)
+        .map_err(|e| while_doing("picking number of entities", e))?;
+    // Limit the next number to ensure we stay under `PER_ACTION_REQUEST_ENV_LIMIT`
+    let limit = min(number_of_entities, PER_ACTION_REQUEST_ENV_LIMIT / n1);
+    let n2 = u
+        .int_in_range(1..=limit)
+        .map_err(|e| while_doing("picking number of entities", e))?;
+    // Flip a coin to determine whether to swap the numbers
+    // this prevents biasing the number of principal or resources towards a large range
+    if <bool as Arbitrary>::arbitrary(u)? {
+        Ok((n1, n2))
+    } else {
+        Ok((n2, n1))
     }
 }
 
