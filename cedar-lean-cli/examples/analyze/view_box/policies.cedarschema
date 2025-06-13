@@ -1,0 +1,16 @@
+entity Account;
+entity User {
+    account: Account
+};
+entity Thing, Box in [Box, Account] {
+    owner: User,
+    description: String,
+    private: Bool
+};
+action view appliesTo {
+    principal: [User],
+    resource: [Thing, Box],
+    context: {
+    n1: String
+    }
+};

@@ -167,7 +167,7 @@ impl From<RequestArgs> for RequestArgsEnum {
                         principal: p,
                         action: a,
                         resource: r,
-                        context: context,
+                        context,
                     },
                     (_, _, _) => panic!("Error parsing args. Principal, Action, and Resource are required if request_file is not provided"),
                 }
@@ -201,7 +201,7 @@ impl util::OpenRequestEnv {
     }
 }
 
-#[derive(ValueEnum, Clone, Debug, Serialize)]
+#[derive(ValueEnum, Clone, Copy, Debug, Serialize)]
 pub(crate) enum ValidationMode {
     Strict,
 }
@@ -281,6 +281,7 @@ pub(crate) enum ValidationCommands {
     },
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug, Serialize, Subcommand)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum SymCCCommands {

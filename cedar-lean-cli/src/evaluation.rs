@@ -26,7 +26,7 @@ pub fn check_is_authorized(
     let lean_context = CedarLeanFfi::new();
     let auth_response = lean_context.is_authorized(policyset, entities, request)?;
     match auth_response.decision() {
-        Decision::Deny if auth_response.determining_policies().len() == 0 => {
+        Decision::Deny if auth_response.determining_policies().is_empty() => {
             print!("This request was implicitly denied as this request matched no policies")
         }
         Decision::Deny => {

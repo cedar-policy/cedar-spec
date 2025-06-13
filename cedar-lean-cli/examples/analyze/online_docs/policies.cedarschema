@@ -1,0 +1,8 @@
+entity Group;
+entity A, B, C, D, E, F in Group {
+    val: Long,
+};
+action view, edit, create, delete, share, comment appliesTo {
+    principal: [A, B, C],
+    resource: [D, E],
+};

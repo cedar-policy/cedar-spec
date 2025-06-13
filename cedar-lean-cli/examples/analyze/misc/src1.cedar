@@ -1,0 +1,1 @@
+permit(principal == P1::"A", action, resource);

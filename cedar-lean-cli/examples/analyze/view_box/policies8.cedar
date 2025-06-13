@@ -1,0 +1,1 @@
+permit(principal == User::"catherine", action, resource);

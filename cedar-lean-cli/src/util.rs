@@ -46,10 +46,10 @@ impl OpenRequestEnv {
     }
 
     pub fn is_any(&self) -> bool {
-        match (&self.principal_type, &self.action_id, &self.resource_type) {
-            (None, None, None) => true,
-            _ => false,
-        }
+        matches!(
+            (&self.principal_type, &self.action_id, &self.resource_type),
+            (None, None, None)
+        )
     }
 
     fn principal_type_fmt(
@@ -147,10 +147,7 @@ impl OpenRequestEnv {
     }
 
     fn action_id_from_str(action_name: Option<String>) -> Option<EntityUid> {
-        let action_name = match action_name {
-            Option::None => return None,
-            Some(action_name) => action_name,
-        };
+        let action_name = action_name?;
         let action_type = EntityTypeName::from_str("Action").unwrap();
         let action_id = EntityId::from_str(&action_name).unwrap();
         Some(EntityUid::from_type_name_and_id(action_type, action_id))
@@ -167,16 +164,17 @@ impl OpenRequestEnv {
         let resource_type =
             Self::entity_type_from_str(resource_type, EntityType::ResourceTypeName)?;
 
-        return Ok(OpenRequestEnv {
+        Ok(OpenRequestEnv {
             principal_type,
             action_id,
             resource_type,
-        });
+        })
     }
 
     /// Convert a OpenRequestEnv to a vector of RequestEnv that are
     /// 1) consistent with OpenRequestEnv, and
     /// 2) consistent with the provided `schema`
+    ///
     /// if `self` specifies any component and there are no (principal, action, resource)
     /// consistent with both `self` and `schema`, then an error will be thrown. Otherwise,
     /// if the schema has no such request environments, then an empty vector is returned.
@@ -193,39 +191,31 @@ impl OpenRequestEnv {
                 Some(req_act_id) if (*req_act_id).id() != action_id.id() => continue,
                 _ => (),
             };
-            match schema.principals_for_action(&action_id) {
-                Some(principal_types) => {
-                    for principal_type in principal_types {
-                        match &self.principal_type {
-                            Some(req_principal_type) if req_principal_type != principal_type => {
-                                continue
-                            }
-                            _ => (),
-                        };
-                        match schema.resources_for_action(&action_id) {
-                            Some(resource_types) => {
-                                for resource_type in resource_types {
-                                    match &self.resource_type {
-                                        Some(req_resource_type)
-                                            if req_resource_type != resource_type =>
-                                        {
-                                            continue
-                                        }
-                                        _ => (),
-                                    };
-                                    let req_env = RequestEnv::new(
-                                        principal_type.clone(),
-                                        action_id.clone(),
-                                        resource_type.clone(),
-                                    );
-                                    req_envs.push(req_env)
+            if let Some(principal_types) = schema.principals_for_action(&action_id) {
+                for principal_type in principal_types {
+                    match &self.principal_type {
+                        Some(req_principal_type) if req_principal_type != principal_type => {
+                            continue
+                        }
+                        _ => (),
+                    };
+                    if let Some(resource_types) = schema.resources_for_action(&action_id) {
+                        for resource_type in resource_types {
+                            match &self.resource_type {
+                                Some(req_resource_type) if req_resource_type != resource_type => {
+                                    continue
                                 }
-                            }
-                            _ => (),
+                                _ => (),
+                            };
+                            let req_env = RequestEnv::new(
+                                principal_type.clone(),
+                                action_id.clone(),
+                                resource_type.clone(),
+                            );
+                            req_envs.push(req_env)
                         }
                     }
                 }
-                _ => (),
             }
         }
         if req_envs.is_empty()
@@ -340,7 +330,7 @@ fn rename_from_id_annotation_policyset(ps: PolicySet) -> miette::Result<PolicySe
 pub fn parse_schema(fname: &PathBuf) -> Result<Schema, ExecError> {
     match read_to_string(fname) {
         Ok(schema_text) => {
-            let is_json_schema = fname.extension().map_or(false, |ext| ext == "json");
+            let is_json_schema = fname.extension().is_some_and(|ext| ext == "json");
             if is_json_schema {
                 match Schema::from_json_str(schema_text.as_str()) {
                     Ok(schema) => Ok(schema),
@@ -513,13 +503,13 @@ impl RequestArgsEnum {
                     Ok(v) => request_from_json_value(v, file_name),
                     Err(e) => Err(ExecError::ParseError {
                         content_type: ContentType::Request,
-                        file_name: file_name,
+                        file_name,
                         error: Box::new(e),
                     }),
                 },
                 Err(e) => Err(ExecError::FileReadError {
                     content_type: ContentType::Request,
-                    file_name: file_name,
+                    file_name,
                     error: Box::new(e),
                 }),
             },

@@ -19,10 +19,10 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     match CliArgs::parse().exec() {
-        Ok(_) => return ExitCode::SUCCESS,
+        Ok(_) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("{err}");
-            return ExitCode::from(2);
+            ExitCode::from(2)
         }
     }
 }
