@@ -98,12 +98,7 @@ pub fn analyze_policyset(
             }
             (Effect::Permit, Effect::Forbid) => {
                 let override_results = compute_forbid_overrides_shadow_result(
-                    tgt_policy,
-                    tvr,
-                    &src_policy,
-                    svr,
-                    &schema,
-                    &req_envs,
+                    tgt_policy, tvr, src_policy, svr, &schema, &req_envs,
                 )?;
                 update_findings(
                     src_policy.id(),
@@ -115,12 +110,7 @@ pub fn analyze_policyset(
             }
             (Effect::Forbid, Effect::Permit) => {
                 let override_results = compute_forbid_overrides_shadow_result(
-                    src_policy,
-                    svr,
-                    &tgt_policy,
-                    tvr,
-                    &schema,
-                    &req_envs,
+                    src_policy, svr, tgt_policy, tvr, &schema, &req_envs,
                 )?;
                 update_findings(
                     tgt_policy.id(),
@@ -336,7 +326,11 @@ impl AnalyzePolicyFindings {
         if !self.vacuous_policies.is_empty() {
             println!("Found {} vacuous policies:", self.vacuous_policies.len());
 
-            for (pid, vr) in self.vacuous_policies.iter().sorted_by_key(|(pid, _)| pid.to_string()) {
+            for (pid, vr) in self
+                .vacuous_policies
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
                 match vr {
                     VacuityResult::MatchesSome => (),
                     VacuityResult::MatchesAll => {
@@ -372,19 +366,31 @@ impl AnalyzePolicyFindings {
                 let result_str = format!("Redundant Policies: {}", ids_comma_sep(equiv_class));
                 per_env_result_strs.push(result_str);
             }
-            for (pid, shadowers) in sig_finding.permit_shadowed_by_permits.iter().sorted_by_key(|(pid, _)| pid.to_string()) {
+            for (pid, shadowers) in sig_finding
+                .permit_shadowed_by_permits
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
                 for spid in shadowers.iter().sorted_by_key(|pid| pid.to_string()) {
                     let result_str = format!("Policy `{pid}` shadowed by `{spid}`");
                     per_env_result_strs.push(result_str);
                 }
             }
-            for (pid, overriders) in sig_finding.permit_overriden_by_forbids.iter().sorted_by_key(|(pid, _)| pid.to_string()) {
+            for (pid, overriders) in sig_finding
+                .permit_overriden_by_forbids
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
                 for opid in overriders.iter().sorted_by_key(|pid| pid.to_string()) {
                     let result_str = format!("Policy `{pid}` overriden by `{opid}`");
                     per_env_result_strs.push(result_str);
                 }
             }
-            for (pid, shadowers) in sig_finding.forbid_shadowed_by_forbids.iter().sorted_by_key(|(pid, _)| pid.to_string())  {
+            for (pid, shadowers) in sig_finding
+                .forbid_shadowed_by_forbids
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
                 for spid in shadowers.iter().sorted_by_key(|pid| pid.to_string()) {
                     let result_str = format!("Policy `{pid}` shadowed by `{spid}`");
                     per_env_result_strs.push(result_str);
@@ -423,6 +429,7 @@ fn ids_comma_sep(pids: &HashSet<PolicyId>) -> String {
     ret
 }
 
+#[allow(clippy::enum_variant_names)]
 /// A policy can be non-vacuous (MatchesSome) or vacuous by applying to all requests (MatchesAll) or no requests (MatchesNone)
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum VacuityResult {
@@ -431,7 +438,7 @@ pub enum VacuityResult {
     MatchesNone,
 }
 
-fn vacous_finding_from_results(results: &Vec<VacuityResult>) -> VacuityResult {
+fn vacous_finding_from_results(results: &[VacuityResult]) -> VacuityResult {
     if results.iter().all(|res| *res == VacuityResult::MatchesAll) {
         VacuityResult::MatchesAll
     } else if results.iter().all(|res| *res == VacuityResult::MatchesNone) {
@@ -664,7 +671,7 @@ fn force_permit(policy: &Policy) -> Result<Policy, ExecError> {
 fn update_findings<T>(
     src_pid: &PolicyId,
     tgt_pid: &PolicyId,
-    results: &Vec<T>,
+    results: &[T],
     findings: &mut HashMap<PolicyId, Vec<HashSet<PolicyId>>>,
     result_filter: T,
 ) where

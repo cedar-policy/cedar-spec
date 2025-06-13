@@ -31,6 +31,7 @@ pub enum ContentType {
 }
 
 /// The element of a RequestEnvironment that was involved in the error
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug)]
 pub enum EntityType {
     PrincipalTypeName,
