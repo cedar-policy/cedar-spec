@@ -1,0 +1,1 @@
+permit(principal, action == Action::"edit", resource is R2);
