@@ -29,7 +29,7 @@ rand_chacha = { version = "0.9", optional = true }
 similar-asserts = "1.5.0"
 thiserror = "2.0"
 logos = "0.15.0"
-prost = "0.13"
+prost = "0.14"
 itertools = "0.14.0"
 
 [dependencies.uuid]
