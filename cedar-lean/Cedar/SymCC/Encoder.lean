@@ -147,7 +147,7 @@ https://smtlib.cs.uiowa.edu/theories-UnicodeStrings.shtml. Here,
 we're assuming ASCII strings for simplicity.
 -/
 def encodeString (s : String) : String :=
-  s!"\"{s}\""
+  s!"\"{s.replace "\"" "\"\""}\""
 
 def encodeBitVec {n : Nat} (bv : _root_.BitVec n) : String :=
   s!"(_ bv{bv.toNat} {n})"
