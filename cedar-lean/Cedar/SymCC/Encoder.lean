@@ -145,6 +145,9 @@ String printing has to be done carefully in the presence of
 non-ASCII characters.  See the SMTLib standard for the details:
 https://smtlib.cs.uiowa.edu/theories-UnicodeStrings.shtml. Here,
 we're assuming ASCII strings for simplicity.
+
+According to the standard, `""` is the only escape sequence
+in strings, which is interpreted as a single `"` character.
 -/
 def encodeString (s : String) : String :=
   s!"\"{s.replace "\"" "\"\""}\""
