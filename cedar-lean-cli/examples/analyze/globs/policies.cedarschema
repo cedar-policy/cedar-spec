@@ -1,0 +1,9 @@
+entity User, Thing;
+action view appliesTo {
+    principal: [User],
+    resource: [Thing],
+    context: {
+        str1: String,
+        str2: String
+    }
+};

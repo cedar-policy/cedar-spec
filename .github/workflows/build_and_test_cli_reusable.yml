@@ -72,6 +72,9 @@ jobs:
       - name: Build Lean libraries
         working-directory: ./cedar-spec/cedar-lean-ffi
         run: source ~/.profile && ./build_lean_lib.sh
-      - name: cargo build (cedar-lean-cli)
+      - name: cargo install (cedar-lean-cli)
         working-directory: ./cedar-spec/cedar-lean-cli
-        run: source ~/.profile && source ../cedar-lean-ffi/set_env_vars.sh && cargo build
+        run: source ~/.profile && source ../cedar-lean-ffi/set_env_vars.sh && cargo install --path .
+      - name: cargo test (cedar-lean-cli)
+        working-directory: ./cedar-spec/cedar-lean-cli
+        run: source ~/.profile && source ../cedar-lean-ffi/set_env_vars.sh && cargo test

@@ -1,0 +1,13 @@
+entity User {
+    n: Long
+};
+entity Thing {
+    n: Long
+};
+action view appliesTo {
+    principal: [User],
+    resource: [Thing],
+    context: {
+        n: Long
+    }
+};

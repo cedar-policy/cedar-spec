@@ -53,7 +53,7 @@ pub fn analyze_policyset(
     let mut forbid_shadowed_by_forbid_findigns: HashMap<PolicyId, Vec<HashSet<PolicyId>>> =
         HashMap::new();
 
-    let policyset_vacuity_results = policyset_vacuous(&policy_set, &schema, &req_envs, false)?;
+    let policyset_vacuity_results = policyset_vacuous(&policy_set, &schema, &req_envs)?;
 
     for [src_policy, tgt_policy] in policies.iter().array_combinations() {
         let svr = policy_vacuity_results
@@ -98,12 +98,7 @@ pub fn analyze_policyset(
             }
             (Effect::Permit, Effect::Forbid) => {
                 let override_results = compute_forbid_overrides_shadow_result(
-                    tgt_policy,
-                    tvr,
-                    &src_policy,
-                    svr,
-                    &schema,
-                    &req_envs,
+                    tgt_policy, tvr, src_policy, svr, &schema, &req_envs,
                 )?;
                 update_findings(
                     src_policy.id(),
@@ -115,12 +110,7 @@ pub fn analyze_policyset(
             }
             (Effect::Forbid, Effect::Permit) => {
                 let override_results = compute_forbid_overrides_shadow_result(
-                    src_policy,
-                    svr,
-                    &tgt_policy,
-                    tvr,
-                    &schema,
-                    &req_envs,
+                    src_policy, svr, tgt_policy, tvr, &schema, &req_envs,
                 )?;
                 update_findings(
                     tgt_policy.id(),
@@ -264,7 +254,7 @@ impl AnalyzePolicyFindings {
         let vacuous_policies: HashMap<PolicyId, VacuityResult> = policy_vacuity_results
             .into_iter()
             .map(|(pid, pvr)| (pid, vacous_finding_from_results(&pvr)))
-            .filter(|(_, pvr)| *pvr != VacuityResult::AllowsSome)
+            .filter(|(_, pvr)| *pvr != VacuityResult::MatchesSome)
             .collect();
         let mut per_sig_findings = Vec::new();
 
@@ -324,11 +314,11 @@ impl AnalyzePolicyFindings {
 
     pub fn print_table(&self) {
         match self.vacuous_result {
-            VacuityResult::AllowsSome => (),
-            VacuityResult::AllowsAll => {
+            VacuityResult::MatchesSome => (),
+            VacuityResult::MatchesAll => {
                 println!("Policyset is vacuous. Policyset allows all authorization requests.\n");
             }
-            VacuityResult::AllowsNone => {
+            VacuityResult::MatchesNone => {
                 println!("Policyset is vacuous. Policyset denies all authorization requests.\n");
             }
         }
@@ -336,14 +326,18 @@ impl AnalyzePolicyFindings {
         if !self.vacuous_policies.is_empty() {
             println!("Found {} vacuous policies:", self.vacuous_policies.len());
 
-            for (pid, vr) in self.vacuous_policies.iter() {
+            for (pid, vr) in self
+                .vacuous_policies
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
                 match vr {
-                    VacuityResult::AllowsSome => (),
-                    VacuityResult::AllowsAll => {
-                        println!("Policy `{pid}` allows all authorization requests.")
+                    VacuityResult::MatchesSome => (),
+                    VacuityResult::MatchesAll => {
+                        println!("Policy `{pid}` applies to all authorization requests.")
                     }
-                    VacuityResult::AllowsNone => {
-                        println!("Policy `{pid}` denies all authorization requests.")
+                    VacuityResult::MatchesNone => {
+                        println!("Policy `{pid}` applies to no authorization requests.")
                     }
                 }
             }
@@ -372,20 +366,32 @@ impl AnalyzePolicyFindings {
                 let result_str = format!("Redundant Policies: {}", ids_comma_sep(equiv_class));
                 per_env_result_strs.push(result_str);
             }
-            for (pid, shadowers) in sig_finding.permit_shadowed_by_permits.iter() {
-                for spid in shadowers {
+            for (pid, shadowers) in sig_finding
+                .permit_shadowed_by_permits
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
+                for spid in shadowers.iter().sorted_by_key(|pid| pid.to_string()) {
                     let result_str = format!("Policy `{pid}` shadowed by `{spid}`");
                     per_env_result_strs.push(result_str);
                 }
             }
-            for (pid, overriders) in sig_finding.permit_overriden_by_forbids.iter() {
-                for opid in overriders {
-                    let result_str = format!("Policy `{pid}` shadowed by `{opid}`");
+            for (pid, overriders) in sig_finding
+                .permit_overriden_by_forbids
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
+                for opid in overriders.iter().sorted_by_key(|pid| pid.to_string()) {
+                    let result_str = format!("Policy `{pid}` overriden by `{opid}`");
                     per_env_result_strs.push(result_str);
                 }
             }
-            for (pid, shadowers) in sig_finding.forbid_shadowed_by_forbids.iter() {
-                for spid in shadowers {
+            for (pid, shadowers) in sig_finding
+                .forbid_shadowed_by_forbids
+                .iter()
+                .sorted_by_key(|(pid, _)| pid.to_string())
+            {
+                for spid in shadowers.iter().sorted_by_key(|pid| pid.to_string()) {
                     let result_str = format!("Policy `{pid}` shadowed by `{spid}`");
                     per_env_result_strs.push(result_str);
                 }
@@ -409,7 +415,7 @@ impl AnalyzePolicyFindings {
 
 fn ids_comma_sep(pids: &HashSet<PolicyId>) -> String {
     let mut ret = "".into();
-    for (ind, pid) in pids.iter().enumerate() {
+    for (ind, pid) in pids.iter().sorted_by_key(|pid| pid.to_string()).enumerate() {
         if ind == 0 {
             ret = format!("`{pid}`");
         } else if pids.len() == 2 {
@@ -423,21 +429,22 @@ fn ids_comma_sep(pids: &HashSet<PolicyId>) -> String {
     ret
 }
 
-/// A policy can be non-vacuous or vacuous by allowing all requests or no requests
+#[allow(clippy::enum_variant_names)]
+/// A policy can be non-vacuous (MatchesSome) or vacuous by applying to all requests (MatchesAll) or no requests (MatchesNone)
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum VacuityResult {
-    AllowsAll,  // For a forbid policy. Interpreted as DeniesNone
-    AllowsSome, // For a forbid policy. Interpreted as DeniesSome
-    AllowsNone, // For a forbid policy. Interpreted as DeniesAll
+    MatchesAll,
+    MatchesSome,
+    MatchesNone,
 }
 
-fn vacous_finding_from_results(results: &Vec<VacuityResult>) -> VacuityResult {
-    if results.iter().all(|res| *res == VacuityResult::AllowsAll) {
-        VacuityResult::AllowsAll
-    } else if results.iter().all(|res| *res == VacuityResult::AllowsNone) {
-        VacuityResult::AllowsNone
+fn vacous_finding_from_results(results: &[VacuityResult]) -> VacuityResult {
+    if results.iter().all(|res| *res == VacuityResult::MatchesAll) {
+        VacuityResult::MatchesAll
+    } else if results.iter().all(|res| *res == VacuityResult::MatchesNone) {
+        VacuityResult::MatchesNone
     } else {
-        VacuityResult::AllowsSome
+        VacuityResult::MatchesSome
     }
 }
 
@@ -446,38 +453,30 @@ fn policyset_vacuous(
     policyset: &PolicySet,
     schema: &Schema,
     req_envs: &Vec<RequestEnv>,
-    negate: bool, // AllowsAll becomes AllowsNone and vice versa
 ) -> Result<Vec<VacuityResult>, ExecError> {
     let mut vr = Vec::new();
 
     let lean_context = CedarLeanFfi::new();
     for req_env in req_envs {
         if lean_context.run_check_always_allows(policyset, schema, req_env)? {
-            if negate {
-                vr.push(VacuityResult::AllowsNone);
-            } else {
-                vr.push(VacuityResult::AllowsAll);
-            }
+            vr.push(VacuityResult::MatchesAll);
         } else if lean_context.run_check_always_denies(policyset, schema, req_env)? {
-            if negate {
-                vr.push(VacuityResult::AllowsAll);
-            } else {
-                vr.push(VacuityResult::AllowsNone);
-            }
+            vr.push(VacuityResult::MatchesNone);
         } else {
-            vr.push(VacuityResult::AllowsSome);
+            vr.push(VacuityResult::MatchesSome);
         }
     }
     Ok(vr)
 }
 
 /// Auxillary function that computes the vacuitiness of a policy for each request environment
-/// For forbid policies, it computes the vacuitiness of the policy as if it were a permit policy
 fn vacuity_result(
     policy: &Policy,
     schema: &Schema,
     req_envs: &Vec<RequestEnv>,
 ) -> Result<Vec<VacuityResult>, ExecError> {
+    // turn forbid to permit to test if policy matches All, Some, or No requests
+    // by checking if the permit variant allows All, None, or Some
     let permit_policy = force_permit(policy)?;
     let pset = PolicySet::from_policies([permit_policy]).map_err(|err| {
         ExecError::PolicyIntoPolicySetError {
@@ -485,10 +484,7 @@ fn vacuity_result(
         }
     })?;
 
-    match policy.effect() {
-        Effect::Forbid => policyset_vacuous(&pset, schema, req_envs, true),
-        Effect::Permit => policyset_vacuous(&pset, schema, req_envs, false),
-    }
+    policyset_vacuous(&pset, schema, req_envs)
 }
 
 /// Represents if the Src Policy is shadowed by the Tgt Policy or vice versa
@@ -525,19 +521,19 @@ fn compute_permit_shadowing_result(
     for ((src_vr, tgt_vr), req_env) in zip(zip(src_vacuous_results, tgt_vacuous_results), req_envs)
     {
         match (src_vr, tgt_vr) {
-            (VacuityResult::AllowsNone, _) | (_, VacuityResult::AllowsNone) => {
+            (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
                 results.push(ShadowingResult::NoResult)
             }
-            (VacuityResult::AllowsAll, VacuityResult::AllowsAll) => {
+            (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
                 results.push(ShadowingResult::Equivalent)
             }
-            (VacuityResult::AllowsAll, VacuityResult::AllowsSome) => {
+            (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
                 results.push(ShadowingResult::SrcShadowsTgt)
             }
-            (VacuityResult::AllowsSome, VacuityResult::AllowsAll) => {
+            (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
                 results.push(ShadowingResult::TgtShadowsSrc)
             }
-            (VacuityResult::AllowsSome, VacuityResult::AllowsSome) => {
+            (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
                 let src_implies_tgt =
                     lean_context.run_check_implies(&src_pset, &tgt_pset, schema, req_env)?;
                 let tgt_implies_src =
@@ -588,8 +584,8 @@ fn compute_forbid_overrides_shadow_result(
         req_envs,
     ) {
         match (forbid_vr, permit_vr) {
-            (VacuityResult::AllowsNone, _) | (VacuityResult::AllowsAll, _) |                                          // forbid policy is vacous: denies all or does not apply
-            (_, VacuityResult::AllowsNone) | (_, VacuityResult::AllowsAll) => results.push(OverrideResult::NoResult), // permit policy is vacous: allows all (no need to check overriding) or does not apply
+            (VacuityResult::MatchesNone, _) | (VacuityResult::MatchesAll, _) |                                          // forbid policy is vacous: does not apply or denies all
+            (_, VacuityResult::MatchesNone) | (_, VacuityResult::MatchesAll) => results.push(OverrideResult::NoResult), // permit policy is vacous: does not apply or allows all (no need to check overriding)
             _ => {
                 if lean_context.run_check_implies(&permit_pset, &forbid_pset, schema, req_env)? {
                     results.push(OverrideResult::Overrides); // Every request allowed by permit is denied by forbid
@@ -627,19 +623,19 @@ fn compute_forbid_shadowing_result(
     {
         // Forbid vacuity results are computed on them as if they were permit policies
         match (src_vr, tgt_vr) {
-            (VacuityResult::AllowsAll, _) | (_, VacuityResult::AllowsAll) => {
+            (VacuityResult::MatchesNone, _) | (_, VacuityResult::MatchesNone) => {
                 results.push(ShadowingResult::NoResult) // One of the two policies is vacuous
             }
-            (VacuityResult::AllowsNone, VacuityResult::AllowsNone) => {
+            (VacuityResult::MatchesAll, VacuityResult::MatchesAll) => {
                 results.push(ShadowingResult::Equivalent) // Both policies deny all requests
             }
-            (VacuityResult::AllowsNone, VacuityResult::AllowsSome) => {
+            (VacuityResult::MatchesAll, VacuityResult::MatchesSome) => {
                 results.push(ShadowingResult::SrcShadowsTgt) // Src policy denies all requests, Tgt denies some
             }
-            (VacuityResult::AllowsSome, VacuityResult::AllowsNone) => {
+            (VacuityResult::MatchesSome, VacuityResult::MatchesAll) => {
                 results.push(ShadowingResult::TgtShadowsSrc) // Tgt policy denies all requests, Src denies some
             }
-            (VacuityResult::AllowsSome, VacuityResult::AllowsSome) => {
+            (VacuityResult::MatchesSome, VacuityResult::MatchesSome) => {
                 let src_implies_tgt =
                     lean_context.run_check_implies(&src_pset, &tgt_pset, schema, req_env)?;
                 let tgt_implies_src =
@@ -675,7 +671,7 @@ fn force_permit(policy: &Policy) -> Result<Policy, ExecError> {
 fn update_findings<T>(
     src_pid: &PolicyId,
     tgt_pid: &PolicyId,
-    results: &Vec<T>,
+    results: &[T],
     findings: &mut HashMap<PolicyId, Vec<HashSet<PolicyId>>>,
     result_filter: T,
 ) where

@@ -1,0 +1,54 @@
+{
+  "vacuous_result": "MatchesSome",
+  "vacuous_policies": [],
+  "per_sig_findings": [
+    {
+      "req_env": {
+        "principal_type": "User",
+        "action_uid": "view",
+        "resource_type": "Box"
+      },
+      "equiv_classes": [
+        {
+          "equivalent_policies": [
+            {
+              "policy_id": "policy1",
+              "policy_str": "permit(principal == User::\"amelia\", action == Action::\"view\", resource in Box::\"widgets\") when {\n    resource.private || !resource.private\n};"
+            },
+            {
+              "policy_id": "policy0",
+              "policy_str": "permit(principal == User::\"amelia\", action, resource in Box::\"widgets\");"
+            }
+          ]
+        }
+      ],
+      "permit_shadowed_by_permits": [],
+      "forbid_shadowed_by_forbids": [],
+      "permit_overriden_by_forbids": []
+    },
+    {
+      "req_env": {
+        "principal_type": "User",
+        "action_uid": "view",
+        "resource_type": "Thing"
+      },
+      "equiv_classes": [
+        {
+          "equivalent_policies": [
+            {
+              "policy_id": "policy1",
+              "policy_str": "permit(principal == User::\"amelia\", action == Action::\"view\", resource in Box::\"widgets\") when {\n    resource.private || !resource.private\n};"
+            },
+            {
+              "policy_id": "policy0",
+              "policy_str": "permit(principal == User::\"amelia\", action, resource in Box::\"widgets\");"
+            }
+          ]
+        }
+      ],
+      "permit_shadowed_by_permits": [],
+      "forbid_shadowed_by_forbids": [],
+      "permit_overriden_by_forbids": []
+    }
+  ]
+}
