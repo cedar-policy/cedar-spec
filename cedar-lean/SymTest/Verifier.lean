@@ -241,6 +241,13 @@ def testsForDisjoint? :=
     testVerifyDisjoint? .cex [policyOverflowError 3] [policyNoOverflowError 3 (by decide)],
   ]
 
+def testsForEncoder? :=
+  suite "SymCC.Encoder" [
+    testVerifyAlwaysAllows? .cex [
+      policy "AllowAll" .permit (.binaryApp .eq (.var .principal) (.lit (.entityUID ⟨Photoflash.userType, "\""⟩) ))
+    ]
+  ]
+
 def tests := [
   testTrivialPolicies,
   testsForNeverErrors?,
@@ -249,6 +256,7 @@ def tests := [
   testsForAlwaysDenies?,
   testsForEquivalent?,
   testsForDisjoint?,
+  testsForEncoder?,
 ]
 
 -- Uncomment for interactive debugging
