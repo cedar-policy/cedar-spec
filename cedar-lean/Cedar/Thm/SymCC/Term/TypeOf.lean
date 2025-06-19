@@ -415,4 +415,44 @@ theorem typeOf_ifAllSome_option_type {gs : List Term} {t : Term} {ty : TermType}
   simp only [ifAllSome, hty, Factory.ite, noneOf]
   exact typeOf_ite_simplify_option hty
 
+theorem typeOf_not {t : Term} {ty : TermType} :
+  t.typeOf = TermType.bool →
+  (not t).typeOf = TermType.bool
+:= by
+  intro ht
+  simp [Factory.not]
+  split
+  all_goals simp [Term.typeOf, TermPrim.typeOf] at *
+  -- TODO
+  all_goals sorry
+
+theorem typeOf_ite {g t₁ t₂ : Term} {ty : TermType} :
+  g.typeOf = TermType.bool →
+  t₁.typeOf = ty →
+  t₂.typeOf = ty →
+  (ite g t₁ t₂).typeOf = ty
+:= by
+  intros hg h₁ h₂
+  simp [Factory.ite, Factory.ite.simplify]
+  split; split
+  any_goals assumption
+  split
+  any_goals assumption
+  split
+  · simp [Term.typeOf, TermPrim.typeOf, hg] at *; assumption
+
+  · simp [Term.typeOf, TermPrim.typeOf, hg] at h₁
+    simp [Term.typeOf, TermPrim.typeOf, hg]
+    rw [typeOf_not]
+    all_goals assumption
+
+  -- TODO
+
+  all_goals sorry
+
+theorem typeOf_option_get {t : Term} {ty : TermType} :
+  t.typeOf = TermType.option ty →
+  (option.get t).typeOf = ty
+:= sorry
+
 end Cedar.Thm
