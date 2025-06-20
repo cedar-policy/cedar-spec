@@ -212,6 +212,14 @@ theorem wf_typeOf_eq {t₁ t₂ : Term} {entities : SymEntities}
   have h := wf_eq h1 h2 htyeq
   rw [h.right]
 
+theorem wf_typeOf_or {t₁ t₂ : Term} {entities : SymEntities}
+  (hwf_t1 : t₁.WellFormed entities)
+  (hwf_t2 : t₂.WellFormed entities)
+  (hbool_t1 : t₁.typeOf = TermType.bool)
+  (hbool_t2 : t₂.typeOf = TermType.bool) :
+  (Factory.or t₁ t₂).typeOf = TermType.bool
+:= (wf_or hwf_t1 hwf_t2 hbool_t1 hbool_t2).right
+
 theorem compile_well_typed_ite
   {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
   {env : Environment} {εnv : SymEnv}:
@@ -449,7 +457,9 @@ theorem compile_well_typed_binaryApp
 := by
   -- Some facts needed later
   have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_binaryApp hcond_binary
-  have ⟨henv, hwt_binary, hwf_binary⟩ := hcond_binary
+  have ⟨henv, hwt_binary, ⟨hwf_env, hrefs_binary⟩⟩ := hcond_binary
+
+  have ⟨hwf_req, hwf_ent⟩ := hwf_env
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
   have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
@@ -465,7 +475,71 @@ theorem compile_well_typed_binaryApp
   case binaryApp _ hopwt =>
   cases hopwt
 
+  all_goals simp [
+    CompileWellTypedForExpr,
+    hcomp_a,
+    hty_get_comp_a,
+    hcomp_b,
+    hty_get_comp_b,
+    TypedExpr.toExpr,
+    compile,
+    Term.typeOf,
+  ]
 
+  -- Equality between literals
+  case eq_lit p1 p2 pty1 pty2 hprim1 hprim2 =>
+    cases hprim1; case lit hprim1 =>
+    cases hprim2; case lit hprim2 =>
+
+    -- Both types would be primitive types in this case
+    have hprim1 : TermType.isPrimType (TermType.ofType pty1) := by
+      cases hprim1
+      all_goals simp [TermType.ofType, TermType.isPrimType]
+
+    have hprim2 : TermType.isPrimType (TermType.ofType pty2) := by
+      cases hprim2
+      all_goals simp [TermType.ofType, TermType.isPrimType]
+
+    simp [compile, TypedExpr.toExpr] at *
+    simp [
+      hcomp_a, hcomp_b, hty_get_comp_a, hty_get_comp_b, compileApp₂,
+      TypedExpr.typeOf,
+      reducibleEq,
+      hprim1,
+      hprim2,
+    ]
+
+    split <;> simp
+
+    case isTrue heqty =>
+      apply typeOf_ifSome_option
+      apply typeOf_ifSome_option
+      simp [Factory.someOf, Term.typeOf]
+      apply wf_typeOf_eq
+      any_goals assumption
+      simp [hty_get_comp_a, hty_get_comp_b, TypedExpr.typeOf, heqty]
+
+    case isFalse heqty =>
+      apply typeOf_ifSome_option
+      apply typeOf_ifSome_option
+      simp [Factory.someOf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
+
+  -- `e1 in e2` where `e2` is an entity
+  case memₑ hety1 hety2 hent_a hent_b =>
+    simp [compile, TypedExpr.toExpr] at *
+    simp [
+      hent_a, hent_b,
+      hty_get_comp_a, hty_get_comp_b,
+      compileApp₂,
+      TermType.ofType,
+    ]
+    apply typeOf_ifSome_option
+    apply typeOf_ifSome_option
+    simp [Factory.someOf, Term.typeOf, TypedExpr.typeOf, TermType.ofType]
+
+    apply (compileInₑ_wf (ety₁ := hety1) (ety₂ := hety2) (εs := εnv.entities) ?_ ?_ ?_ ?_ ?_ ?_).right
+    any_goals assumption
+    all_goals simp [*, TermType.ofType]
 
   all_goals sorry
 
