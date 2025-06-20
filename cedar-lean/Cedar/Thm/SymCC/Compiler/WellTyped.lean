@@ -27,7 +27,7 @@ def CompileWellTypedCondition (ty : TypedExpr) (env : Environment) (εnv : SymEn
 /--
 A wrapper around compile_wf for convenience
 -/
-theorem CompileWellTypedCondition_implies_compile_well_formed
+theorem wt_cond_implies_compile_wf
   {ty : TypedExpr} {env : Environment} {εnv : SymEnv} {t : Term} :
   CompileWellTypedCondition ty env εnv →
   compile ty.toExpr εnv = .ok t →
@@ -203,94 +203,39 @@ theorem wf_typeOf_not {t : Term} {ty : TermType} {entities : SymEntities}
   have h := wf_not hwf h1
   rw [h.right]; simp [hty]
 
-mutual
-  theorem compile_well_typed_ite
-    {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
-    {env : Environment} {εnv : SymEnv}:
-    CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) env εnv →
-    CompileWellTypedForExpr (.ite cond thenExpr elseExpr ty) εnv
-  := by
-    intros h; rcases h with ⟨henv, hwt, hwf⟩
-    simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
-    sorry
+theorem wf_typeOf_eq {t₁ t₂ : Term} {entities : SymEntities}
+  (h1 : t₁.WellFormed entities)
+  (h2 : t₂.WellFormed entities)
+  (htyeq : t₁.typeOf = t₂.typeOf) :
+  (Factory.eq t₁ t₂).typeOf = .bool
+:= by
+  have h := wf_eq h1 h2 htyeq
+  rw [h.right]
 
-  theorem compile_well_typed_and
-    {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-    {env : Environment} {εnv : SymEnv}
-    (iha: CompileWellTypedForExpr a εnv)
-    (ihb : CompileWellTypedForExpr b εnv)
-    (hcond_and : CompileWellTypedCondition (.and a b ty) env εnv) :
-    CompileWellTypedForExpr (.and a b ty) εnv
-  := by
-    -- Some facts needed later
-    have ⟨hcond_a, hcond_b⟩ := CompileWellTypedCondition_and hcond_and
-    have ⟨henv, hwt_and, hwf_and⟩ := hcond_and
+theorem compile_well_typed_ite
+  {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}:
+  CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) env εnv →
+  CompileWellTypedForExpr (.ite cond thenExpr elseExpr ty) εnv
+:= by
+  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
+  sorry
 
-    have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
-    have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
-
-    have hwf_comp_a := CompileWellTypedCondition_implies_compile_well_formed hcond_a hcomp_a
-    have hwf_comp_b := CompileWellTypedCondition_implies_compile_well_formed hcond_b hcomp_b
-
-    have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
-    have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
-
-    -- By well-typedness, a and b must be booleans
-    -- So we substitute that fact and simplify
-    cases hwt_and; case and _ hbool_a _ hbool_b =>
-    simp [hbool_a, hbool_b] at *; clear hbool_a hbool_b
-    simp [TypedExpr.typeOf, TermType.ofType] at *
-
-    simp [
-      CompileWellTypedForExpr,
-      TypedExpr.toExpr,
-      compile,
-      compileAnd,
-      hcomp_a, hty_comp_a, hcomp_b, hty_comp_b,
-    ]
-    split
-    · apply Exists.intro; constructor; rfl
-      simp [Term.typeOf, TermPrim.typeOf, TermType.ofType, TypedExpr.typeOf]
-    · apply Exists.intro; constructor; rfl
-      apply typeOf_ifSome_option
-      apply wf_typeOf_ite
-      any_goals assumption
-      constructor
-      apply wf_bool
-      simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf, TypedExpr.typeOf]
-    · contradiction
-
-  /--
-  CompileWellTypedCondition decomposes for and
-  -/
-  theorem CompileWellTypedCondition_and {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
-    CompileWellTypedCondition (.and a b ty) env εnv →
-    CompileWellTypedCondition a env εnv ∧
-    CompileWellTypedCondition b env εnv
-  := by
-    intros h; rcases h with ⟨henv, hwt, hwf⟩
+/--
+CompileWellTypedCondition decomposes for and
+-/
+theorem eliminate_wt_cond_and {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.and a b ty) env εnv →
+  CompileWellTypedCondition a env εnv ∧
+  CompileWellTypedCondition b env εnv
+:= by
+  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  constructor
+  all_goals
     constructor
-    all_goals
-      constructor
-      any_goals assumption
+    any_goals assumption
 
-      constructor
-      · cases hwt; assumption
-      · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-        rcases hwf with ⟨_, hrefs⟩
-        constructor; assumption
-        cases hrefs; assumption
-
-  /--
-  CompileWellTypedCondition decomposes for unaryApp
-  -/
-  theorem CompileWellTypedCondition_unaryApp
-    {op : UnaryOp} {expr : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
-    CompileWellTypedCondition (.unaryApp op expr ty) env εnv →
-    CompileWellTypedCondition expr env εnv
-  := by
-    intros h; rcases h with ⟨henv, hwt, hwf⟩
-    constructor; any_goals assumption
     constructor
     · cases hwt; assumption
     · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
@@ -298,98 +243,263 @@ mutual
       constructor; assumption
       cases hrefs; assumption
 
-  theorem compile_well_typed_unaryApp
-    {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
-    {env : Environment} {εnv : SymEnv}
-    (ihexpr : CompileWellTypedForExpr expr εnv)
-    (hcond_unary : CompileWellTypedCondition (.unaryApp op expr ty) env εnv) :
-    CompileWellTypedForExpr (.unaryApp op expr ty) εnv
-  := by
-    have hcond_expr := CompileWellTypedCondition_unaryApp hcond_unary
-    have ⟨henv, hwt, hwf⟩ := hcond_unary
-    have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
+theorem compile_well_typed_and
+  {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (iha: CompileWellTypedForExpr a εnv)
+  (ihb : CompileWellTypedForExpr b εnv)
+  (hcond_and : CompileWellTypedCondition (.and a b ty) env εnv) :
+  CompileWellTypedForExpr (.and a b ty) εnv
+:= by
+  -- Some facts needed later
+  have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_and hcond_and
+  have ⟨henv, hwt_and, hwf_and⟩ := hcond_and
 
-    have hwf_expr := CompileWellTypedCondition_implies_compile_well_formed hcond_expr hcomp_expr
-    have ⟨hwf_get_expr, hty_get_expr⟩ := wf_option_get hwf_expr hty_comp_expr
+  have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
+  have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
 
-    -- simp [CompileWellTypedForExpr, TypedExpr.toExpr] at *
+  have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
+  have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
 
-    -- Case analysis on the operator
-    cases hwt
-    case unaryApp _ hopwt =>
-    cases hopwt
+  have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
+  have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
 
-    -- Some simplification on all goals
-    all_goals simp [
-      CompileWellTypedForExpr,
-      hcomp_expr,
-      hty_get_expr,
-      TypedExpr.toExpr,
-      compile,
-      compileApp₁,
+  -- By well-typedness, a and b must be booleans
+  -- So we substitute that fact and simplify
+  cases hwt_and; case and _ hbool_a _ hbool_b =>
+  simp [hbool_a, hbool_b] at *; clear hbool_a hbool_b
+  simp [TypedExpr.typeOf, TermType.ofType] at *
+
+  simp [
+    CompileWellTypedForExpr,
+    TypedExpr.toExpr,
+    compile,
+    compileAnd,
+    hcomp_a, hty_comp_a, hcomp_b, hty_comp_b,
+  ]
+  split
+  · apply Exists.intro; constructor; rfl
+    simp [Term.typeOf, TermPrim.typeOf, TermType.ofType, TypedExpr.typeOf]
+  · apply Exists.intro; constructor; rfl
+    apply typeOf_ifSome_option
+    apply wf_typeOf_ite
+    any_goals assumption
+    constructor
+    apply wf_bool
+    simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf, TypedExpr.typeOf]
+  · contradiction
+
+/--
+CompileWellTypedCondition decomposes for unaryApp
+-/
+theorem eliminate_wt_cond_unaryApp
+  {op : UnaryOp} {expr : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.unaryApp op expr ty) env εnv →
+  CompileWellTypedCondition expr env εnv
+:= by
+  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  constructor; any_goals assumption
+  constructor
+  · cases hwt; assumption
+  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+    rcases hwf with ⟨_, hrefs⟩
+    constructor; assumption
+    cases hrefs; assumption
+
+theorem compile_well_typed_unaryApp
+  {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (ihexpr : CompileWellTypedForExpr expr εnv)
+  (hcond_unary : CompileWellTypedCondition (.unaryApp op expr ty) env εnv) :
+  CompileWellTypedForExpr (.unaryApp op expr ty) εnv
+:= by
+  have hcond_expr := eliminate_wt_cond_unaryApp hcond_unary
+  have ⟨henv, hwt, hwf⟩ := hcond_unary
+  have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
+
+  have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
+  have ⟨hwf_get_comp_expr, hty_get_comp_expr⟩ := wf_option_get hwf_comp_expr hty_comp_expr
+
+  -- Case analysis on the operator
+  cases hwt
+  case unaryApp _ hopwt =>
+  cases hopwt
+
+  -- Some simplification on all goals
+  all_goals simp [
+    CompileWellTypedForExpr,
+    hcomp_expr,
+    hty_get_comp_expr,
+    TypedExpr.toExpr,
+    compile,
+    compileApp₁,
+    Term.typeOf,
+  ]
+
+  case not hty_expr =>
+    simp [hty_expr, TermType.ofType] at hty_comp_expr
+    simp [hty_expr, TermType.ofType, Factory.someOf]
+    rw [typeOf_ifSome_option]
+    simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf]
+
+    apply wf_typeOf_not
+    any_goals assumption
+    any_goals simp
+
+    simp [hty_get_comp_expr, hty_expr, TermType.ofType, Term.typeOf]
+
+  case neg hty_expr =>
+    simp [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
+    simp [hty_expr, TermType.ofType, Factory.someOf]
+    rw [typeOf_ifSome_option]
+    simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf, Factory.ifFalse, Factory.noneOf, Factory.someOf]
+
+    have ⟨hwf_bvnego_get_expr, hty_bvnego_get_expr⟩ := wf_bvnego hwf_get_comp_expr hty_get_comp_expr
+    have ⟨hwf_bvneg_get_expr, hty_bvneg_get_expr⟩ := wf_bvneg hwf_get_comp_expr hty_get_comp_expr
+
+    apply wf_typeOf_ite
+    any_goals assumption
+    any_goals simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf]
+    · constructor
+      simp [*]
+      constructor
+    · constructor; assumption
+    · simp [*]
+    · simp [*]
+
+  case is hty_expr =>
+    simp [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
+    simp [hty_expr, TermType.ofType, Factory.someOf]
+    rw [typeOf_ifSome_option]
+    simp [
+      TypedExpr.typeOf,
+      TermType.ofType,
       Term.typeOf,
+      Factory.ifFalse,
+      Factory.noneOf,
+      Factory.someOf,
+      TermPrim.typeOf,
     ]
 
-    case not hty_expr =>
-      simp [hty_expr, TermType.ofType] at hty_comp_expr
-      simp [hty_expr, TermType.ofType, Factory.someOf]
-      rw [typeOf_ifSome_option]
-      simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf]
+  case isEmpty elem_ty hty_expr =>
+    simp [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
+    simp [hty_expr, TermType.ofType, Factory.someOf]
+    rw [typeOf_ifSome_option]
+    simp [
+      TypedExpr.typeOf,
+      TermType.ofType,
+      Term.typeOf,
+      Factory.ifFalse,
+      Factory.noneOf,
+      Factory.someOf,
+      TermPrim.typeOf,
+      Factory.set.isEmpty,
+    ]
 
-      apply wf_typeOf_not
-      any_goals assumption
-      any_goals simp
+    split
+    any_goals simp [Term.typeOf, TermPrim.typeOf]
+    simp [hty_get_comp_expr]
+    apply wf_typeOf_eq
+    any_goals assumption
+    any_goals simp [Term.typeOf, hty_get_comp_expr]
 
-      simp [hty_get_expr, hty_expr, TermType.ofType, Term.typeOf]
-
-    case neg hty_expr =>
-      simp [hty_expr, TermType.ofType] at hty_comp_expr hty_get_expr
-      simp [hty_expr, TermType.ofType, Factory.someOf]
-      rw [typeOf_ifSome_option]
-      simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf, Factory.ifFalse, Factory.noneOf, Factory.someOf]
-
-      have ⟨hwf_bvnego_get_expr, hty_bvnego_get_expr⟩ := wf_bvnego hwf_get_expr hty_get_expr
-      have ⟨hwf_bvneg_get_expr, hty_bvneg_get_expr⟩ := wf_bvneg hwf_get_expr hty_get_expr
-
-      apply wf_typeOf_ite
-      any_goals assumption
-      any_goals simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf]
-
+    -- Prove that the empty set term is well-formed
+    · constructor
+      · intros; contradiction
+      · intros; contradiction
+      · have h : TermType.WellFormed εnv.entities (.set (TermType.ofType elem_ty)) := by
+          simp [←hty_get_comp_expr]
+          apply typeOf_wf_term_is_wf
+          assumption
+        cases h; assumption
       · constructor
-        simp [*]
-        constructor
-      · constructor; assumption
-      · simp [*]
-      · simp [*]
 
-    all_goals sorry
+  case like => sorry
 
-  /--
-  Compiling a well-typed expression should produce a term of the corresponding TermType.
-  -/
-  theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
-    CompileWellTypedCondition ty env εnv →
-    CompileWellTypedForExpr ty εnv
-  := by
-    intros h
-    cases ty
-    case lit => exact compile_well_typed_lit h
-    case var => exact compile_well_typed_var h
-    case ite => exact compile_well_typed_ite h
-    case and =>
-      have ⟨ha, hb⟩ := CompileWellTypedCondition_and h
-      apply compile_well_typed_and
-      any_goals apply compile_well_typed
-      all_goals assumption
+/--
+CompileWellTypedCondition decomposes for binaryApp
+TODO: merge this with other eliminate_wt_cond_*
+-/
+theorem eliminate_wt_cond_binaryApp
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.binaryApp op a b ty) env εnv →
+  CompileWellTypedCondition a env εnv ∧
+  CompileWellTypedCondition b env εnv
+:= by
+  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  constructor
+  all_goals
+    constructor
+    any_goals assumption
 
-    case unaryApp =>
-      have hcond := CompileWellTypedCondition_unaryApp h
-      apply compile_well_typed_unaryApp
-      any_goals apply compile_well_typed
-      all_goals assumption
+    constructor
+    · cases hwt; assumption
+    · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+      rcases hwf with ⟨_, hrefs⟩
+      constructor; assumption
+      cases hrefs; assumption
 
-    all_goals sorry
-end
+theorem compile_well_typed_binaryApp
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (iha : CompileWellTypedForExpr a εnv)
+  (ihb : CompileWellTypedForExpr b εnv)
+  (hcond_binary : CompileWellTypedCondition (.binaryApp op a b ty) env εnv) :
+  CompileWellTypedForExpr (.binaryApp op a b ty) εnv
+:= by
+  -- Some facts needed later
+  have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_binaryApp hcond_binary
+  have ⟨henv, hwt_binary, hwf_binary⟩ := hcond_binary
+
+  have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
+  have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
+
+  have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
+  have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
+
+  have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
+  have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
+
+   -- Case analysis on the operator
+  cases hwt_binary
+  case binaryApp _ hopwt =>
+  cases hopwt
+
+
+
+  all_goals sorry
+
+/--
+Compiling a well-typed expression should produce a term of the corresponding TermType.
+-/
+theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
+  CompileWellTypedCondition ty env εnv →
+  CompileWellTypedForExpr ty εnv
+:= by
+  intros h
+  cases ty
+  case lit => exact compile_well_typed_lit h
+  case var => exact compile_well_typed_var h
+  case ite => exact compile_well_typed_ite h
+  case and =>
+    have ⟨ha, hb⟩ := eliminate_wt_cond_and h
+    apply compile_well_typed_and
+    any_goals apply compile_well_typed
+    all_goals assumption
+
+  case unaryApp =>
+    have hcond := eliminate_wt_cond_unaryApp h
+    apply compile_well_typed_unaryApp
+    any_goals apply compile_well_typed
+    all_goals assumption
+
+  case binaryApp =>
+    have ⟨ha, hb⟩ := eliminate_wt_cond_binaryApp h
+    apply compile_well_typed_binaryApp
+    any_goals apply compile_well_typed
+    any_goals assumption
+
+  all_goals sorry
 
 -- theorem compile_well_typed_expr_never_fails {ty : TypedExpr} {env : Environment} {εnv : SymEnv} :
 --   εnv = SymEnv.ofEnv env →
