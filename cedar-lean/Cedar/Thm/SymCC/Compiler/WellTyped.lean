@@ -9,32 +9,40 @@ open Cedar.Thm
 open Cedar.Validation
 open SymCC
 
-def CompileWellTyped (ty : TypedExpr) (env : Environment) (εnv : SymEnv) (t : Term) : Prop :=
+/--
+States that under sufficiently good conditions, the symbolic compiler
+succeeds on a typed expression `ty` and produces a term `t` with the
+corresponding type.
+-/
+def CompileWellTypedResult (ty : TypedExpr) (εnv : SymEnv) : Prop :=
+  ∃ t : Term,
+    compile ty.toExpr εnv = .ok t ∧
+    t.typeOf = .option (TermType.ofType ty.typeOf)
+
+def CompileWellTyped (ty : TypedExpr) (env : Environment) (εnv : SymEnv) : Prop :=
   εnv = SymEnv.ofEnv env →
   TypedExpr.WellTyped env ty →
   εnv.WellFormedFor ty.toExpr →
-  compile ty.toExpr εnv = .ok t →
-  t.typeOf = .option (TermType.ofType ty.typeOf)
+  CompileWellTypedResult ty εnv
 
 /--
 Special case for literals
 -/
-theorem compile_well_typed_lit {p : Prim} {ty : CedarType} {env : Environment} {εnv : SymEnv} {t : Term} :
-  CompileWellTyped (.lit p ty) env εnv t
+theorem compile_well_typed_lit {p : Prim} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
+  CompileWellTyped (.lit p ty) env εnv
 := by
-  intros henv hwt hwf hcomp
-  simp [TypedExpr.typeOf, TypedExpr.toExpr] at *
+  intros henv hwt hwf
+  simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedResult] at *
 
   unfold SymEnv.WellFormedFor at hwf
   rcases hwf with ⟨_, ⟨hrefs⟩⟩
   rcases hwt with ⟨_, ⟨⟨hwt⟩⟩⟩
 
   all_goals
+    simp [compile, compilePrim, Factory.someOf]
     simp [Prim.ValidRef] at hrefs
-    simp [compile, compilePrim, Factory.someOf] at hcomp
-    try simp [hrefs] at hcomp
+    try simp [hrefs]
     simp [
-      ← hcomp,
       TermType.ofType,
       Term.typeOf,
       TermPrim.typeOf,
@@ -84,11 +92,43 @@ mutual
     apply ofRecordType_ignores_liftBool
 end
 
-theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {εnv : SymEnv} {t : Term} :
-  CompileWellTyped (.var v ty) env εnv t
+theorem isCedarRecordType_implies_isRecordType
+  {ty : TermType} :
+  TermType.isCedarRecordType ty →
+  TermType.isRecordType ty
 := by
-  intros henv hwt hwf hcomp
-  simp [TypedExpr.typeOf, TypedExpr.toExpr] at *
+  intros hty
+  simp [
+    TermType.isCedarRecordType,
+    TermType.isRecordType,
+    TermType.cedarType?,
+  ] at *
+  cases ty
+
+  split at hty
+  split
+
+  any_goals simp
+  any_goals contradiction
+  all_goals simp [TermType.cedarType?] at *
+
+  case prim _ h _ _ =>
+    unfold TermType.cedarType? at *
+    split at h
+    any_goals simp at h
+    any_goals contradiction
+
+  case set ty =>
+    cases e : ty.cedarType?
+    all_goals rw [e] at hty
+    all_goals simp at hty
+
+/- Special case for variables -/
+theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
+  CompileWellTyped (.var v ty) env εnv
+:= by
+  intros henv hwt hwf
+  simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedResult] at *
 
   unfold SymEnv.WellFormedFor SymEnv.WellFormed SymRequest.WellFormed at hwf
 
@@ -100,95 +140,103 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {�
 
   all_goals
     simp [compile, compileVar, Factory.someOf] at *
-    simp [
-      hprincipal, haction, hresource, hcontext,
-    ] at *
 
   case var.context =>
     simp [
-      henv,
-      SymEnv.ofEnv, SymRequest.ofRequestType,
-      TermType.ofType, TermPrim.typeOf,
-      Term.typeOf, TermType.isRecordType,
-    ] at hcomp
-    simp [
-      ← hcomp,
       TermType.ofType,
-      Term.typeOf, CedarType.liftBoolTypes,
+      Term.typeOf,
+      CedarType.liftBoolTypes,
       RecordType.liftBoolTypes,
     ]
+    simp [
+      hprincipal, haction, hresource,
+    ] at *
+
+    rw [isCedarRecordType_implies_isRecordType]
+    rotate_left; assumption
+
+    simp [TermType.ofType, Term.typeOf]
+    simp [henv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
     apply ofRecordType_ignores_liftBool
 
   all_goals
-    simp [← hcomp, TermType.ofType, Term.typeOf]
+    simp [
+      hprincipal, haction, hresource, hcontext,
+    ] at *
+    simp [TermType.ofType, Term.typeOf]
     simp [henv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
 
 mutual
   theorem compile_well_typed_ite
     {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
-    {env : Environment} {εnv : SymEnv} {t : Term} :
-    CompileWellTyped (.ite cond thenExpr elseExpr ty) env εnv t
+    {env : Environment} {εnv : SymEnv}:
+    CompileWellTyped (.ite cond thenExpr elseExpr ty) env εnv
   := by
-    intros henv hwt hwf hcomp
+    intros henv hwt hwf
     simp [TypedExpr.typeOf, TypedExpr.toExpr] at *
     sorry
 
   theorem compile_well_typed_and
     {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-    {env : Environment} {εnv : SymEnv} {t : Term} :
-    CompileWellTyped (.and a b ty) env εnv t
+    {env : Environment} {εnv : SymEnv} :
+    CompileWellTypedResult a εnv →
+    CompileWellTypedResult b εnv →
+    CompileWellTyped (.and a b ty) env εnv
   := by
-    intros henv hwt hwf hcomp
-    simp [TypedExpr.typeOf, TypedExpr.toExpr, compile, compileAnd] at *
+    intros ha hb henv hwt hwf
+    simp [CompileWellTypedResult] at *
 
-    -- By well-typedness, ty must be a boolean type
+    let ⟨t_a, ⟨hcomp_a, hty_a⟩⟩ := ha
+    let ⟨t_b, ⟨hcomp_b, hty_b⟩⟩ := hb
+
+    -- By well-typedness, a and b must be booleans
     cases hwt
-    case and _ haty _ hbty =>
+    case and _ hbool_a _ hbool_b =>
 
-    cases e : compile a.toExpr εnv
-    all_goals simp [e] at hcomp
-    case ok compile_a =>
+    simp [compile, compileAnd, TypedExpr.typeOf, TypedExpr.toExpr] at *
+    simp [
+      hcomp_a, hcomp_b, hty_a, hty_b, hbool_a, hbool_b,
+      TermType.ofType, Term.typeOf,
+    ]
 
-    split at hcomp
-    case h_1 =>
-      simp at hcomp
-      simp [←hcomp, Term.typeOf, TermPrim.typeOf, TermType.ofType]
+    split
+    · simp [Term.typeOf, TermPrim.typeOf]
+    · simp
+      rw [typeOf_ifSome_option]
+      rw [typeOf_ite]
+      rw [typeOf_option_get]
+      simp [hty_a, hbool_a, TermType.ofType]
+      simp [hty_b, hbool_b, TermType.ofType]
+      simp [Factory.someOf, TermType.ofType, Term.typeOf, TermPrim.typeOf]
 
-    case h_2 ht1ty =>
-      cases e : compile b.toExpr εnv
-      all_goals simp [e] at hcomp
-      case ok compile_b =>
-      split at hcomp
-      · simp at hcomp
-        simp [←hcomp]
-
-        rw [typeOf_ifSome_option]
-        rw [typeOf_ite]
-        rw [typeOf_option_get]
-        rw [ht1ty]
-        simp [TermType.ofType]; assumption
-        simp [Factory.someOf, TermType.ofType, Term.typeOf, TermPrim.typeOf]
-
-      · contradiction
     · contradiction
 
   /--
   Compiling a well-typed expression should produce a term of the corresponding TermType.
   -/
-  theorem compile_well_typed {env : Environment} {εnv : SymEnv} {t : Term} {ty : TypedExpr} :
-    CompileWellTyped ty env εnv t
-  -- | .lit _ _ => by exact compile_well_typed_lit
-  -- | .var _ _ => by exact compile_well_typed_var
-  -- | .ite _ _ _ _ => by exact compile_well_typed_ite
-  -- | .and _ _ _ => by exact compile_well_typed_and
-  -- | _ => sorry
-  -- termination_by (sizeOf ty)
+  theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
+    CompileWellTyped ty env εnv
   := by
     cases ty
     case lit => exact compile_well_typed_lit
     case var => exact compile_well_typed_var
     case ite => exact compile_well_typed_ite
-    case and => exact compile_well_typed_and
+    case and =>
+      intros henv hwt hwf
+      apply compile_well_typed_and
+      any_goals assumption
+
+      -- Prove IH
+      all_goals
+        apply compile_well_typed
+        any_goals assumption
+        cases hwt
+        any_goals assumption
+        simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor] at *
+        rcases hwf with ⟨hwf, hrefs⟩
+        simp [Expr.ValidRefs, TypedExpr.toExpr] at hrefs
+        constructor; assumption
+        cases hrefs; assumption
 
     all_goals sorry
   -- termination_by (sizeOf ty)
