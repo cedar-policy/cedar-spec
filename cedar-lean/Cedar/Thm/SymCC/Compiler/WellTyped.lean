@@ -470,7 +470,65 @@ theorem compile_well_typed_binaryApp
   have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
   have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
 
-   -- Case analysis on the operator
+  -- A lemma that compile and compileApp₂ should produce term with the same type
+  have hlemma :
+    (t : Term) →
+    (compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) →
+    ∃ t2 : Term,
+      (compileApp₂ op (Factory.option.get tcomp_a) (Factory.option.get tcomp_b) εnv.entities = Except.ok t2) ∧
+      t.typeOf = t2.typeOf
+  := by
+    intros t hcomp
+    simp [compile, TypedExpr.toExpr, hcomp_a, hcomp_b, bind] at hcomp
+    unfold Except.bind at hcomp
+    split at hcomp
+    any_goals contradiction
+
+    case _ heq =>
+    simp at hcomp
+    split at hcomp
+    any_goals contradiction
+
+    case _ tcomp_app hcomp_app =>
+    simp at heq
+    simp [*] at hcomp
+    simp [← heq] at hcomp_app
+    simp [← heq] at hcomp
+
+    apply Exists.intro
+    constructor
+    assumption
+    simp [← hcomp]
+
+    have ⟨hopty, hty⟩ := (compileApp₂_wf hwf_ent hwf_get_comp_a hwf_get_comp_b hcomp_app).right
+    rw [typeOf_ifSome_option]
+    simp [hty]; rfl
+    rw [typeOf_ifSome_option]
+    assumption
+
+  -- Call compileApp₂_wf_types to get facts about the result type
+  have hres_ty :
+    (t : Term) →
+    -- (compileApp₂ op (Factory.option.get tcomp_a) (Factory.option.get tcomp_b) εnv.entities = Except.ok t) →
+    (compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) →
+    match op with
+      | .add | .sub | .mul => t.typeOf = .option (.bitvec 64)
+      | .getTag            =>
+        ∃ ety τs,
+          (Factory.option.get tcomp_a).typeOf = .entity ety ∧
+          εnv.entities.tags ety = some (some τs) ∧
+          t.typeOf = τs.vals.outType.option
+      | _                  => t.typeOf = .option .bool
+    := by
+      intros t hcomp
+      have ⟨t2, hcomp_app, heqty⟩ := hlemma t hcomp
+      have h := (compileApp₂_wf_types hwf_ent hwf_get_comp_a hwf_get_comp_b hcomp_app).right
+      cases op
+      any_goals
+        simp at h
+        simp [h, heqty]
+
+  -- Case analysis on the operator
   cases hwt_binary
   case binaryApp _ hopwt =>
   cases hopwt
@@ -524,22 +582,29 @@ theorem compile_well_typed_binaryApp
       apply typeOf_ifSome_option
       simp [Factory.someOf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
 
-  -- `e1 in e2` where `e2` is an entity
-  case memₑ hety1 hety2 hent_a hent_b =>
-    simp [compile, TypedExpr.toExpr] at *
+  case eq_entity => sorry
+  case eq => sorry
+
+  -- TODO: merge some of these cases
+
+  -- Most binaryOps using compileApp₂ can be resolved with this
+  repeat case _ hty_a hty_b =>
     simp [
-      hent_a, hent_b,
+      hty_a, hty_b,
       hty_get_comp_a, hty_get_comp_b,
       compileApp₂,
       TermType.ofType,
     ]
-    apply typeOf_ifSome_option
-    apply typeOf_ifSome_option
-    simp [Factory.someOf, Term.typeOf, TypedExpr.typeOf, TermType.ofType]
-
-    apply (compileInₑ_wf (ety₁ := hety1) (ety₂ := hety2) (εs := εnv.entities) ?_ ?_ ?_ ?_ ?_ ?_).right
-    any_goals assumption
-    all_goals simp [*, TermType.ofType]
+    apply hres_ty
+    simp [
+      hty_a, hty_b,
+      hcomp_a, hcomp_b,
+      hty_get_comp_a, hty_get_comp_b,
+      compile,
+      compileApp₂,
+      TermType.ofType,
+      TypedExpr.toExpr,
+    ]
 
   all_goals sorry
 
