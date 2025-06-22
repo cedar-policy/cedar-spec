@@ -778,10 +778,6 @@ theorem compile_well_typed_binaryApp
     simp [heqty, compileApp₂, TermType.ofType, reducibleEq]
 
   case hasTag ety hty_a hty_b =>
-    -- hasTag succeeds as long as `ety` is valid
-    -- so we just need that fact
-
-    -- have ⟨τag, htag⟩ := SymEnv_of_preserves_tags htag
     simp [
       henv,
       hty_a, hty_b,
@@ -789,22 +785,179 @@ theorem compile_well_typed_binaryApp
       compileHasTag,
       TermType.ofType,
     ]
-    -- unfold SymEntities.ValidRefsFor at hrefs_binary
-    -- simp [TypedExpr.toExpr] at hrefs_binary
 
-    -- cases hrefs_binary
-    -- case binaryApp_valid hrefs_a _ =>
+    -- Show that `ety` is a valid entity type
+    -- from the fact that `tcomp_a` is well-formed
+    -- (so its (entity) type is well-formed)
+    simp [hty_a, TermType.ofType] at hty_comp_a
+    have hwf_ty_a := typeOf_wf_term_is_wf hwf_comp_a
+    simp [hty_comp_a] at hwf_ty_a
 
-    -- TODO: need to somehow deduce
-    --       from `a.typeOf = CedarType.entity ety✝`
-    --       that ety is a good entity
-    -- apply hres_ty
-    sorry
+    cases hwf_ty_a; case option_wf hwf_ty_a =>
+    cases hwf_ty_a; case entity_wf hwf_ty_a =>
+    simp [SymEntities.isValidEntityType] at hwf_ty_a
+
+    have ⟨_, hety_exists⟩ :=
+      Cedar.Data.Map.contains_iff_some_find?.mp hwf_ty_a
+
+    simp [SymEntities.tags, ← henv, hety_exists]
+    split
+    any_goals contradiction
+    all_goals simp
 
   case getTag _ _ htag hty_a hty_b =>
     have ⟨_, hτag, _⟩ := SymEnv_of_preserves_tags htag
     simp [← henv] at hτag
     simp [hty_a, hty_b, hτag, compileGetTag, TermType.ofType]
+
+/--
+CompileWellTypedCondition decomposes for unaryApp
+-/
+theorem eliminate_wt_cond_getAttr
+  {expr : TypedExpr} {attr : Attr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.getAttr expr attr ty) env εnv) :
+  CompileWellTypedCondition expr env εnv
+:= by
+  have ⟨henv, hwt, hwf⟩ := h
+  constructor; any_goals assumption
+  constructor
+  · cases hwt;
+    assumption
+    assumption
+  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+    rcases hwf with ⟨_, hrefs⟩
+    constructor; assumption
+    cases hrefs; assumption
+
+theorem compile_well_typed_getAttr
+  {expr : TypedExpr} {attr : Attr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (ihexpr : CompileWellTypedForExpr expr εnv)
+  (hcond : CompileWellTypedCondition (.getAttr expr attr ty) env εnv) :
+  CompileWellTypedForExpr (.getAttr expr attr ty) εnv
+:= by
+  have hcond_expr := eliminate_wt_cond_getAttr hcond
+  have ⟨henv, hwt, hwf⟩ := hcond
+  have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
+
+  have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
+  have ⟨hwf_get_comp_expr, hty_get_comp_expr⟩ := wf_option_get hwf_comp_expr hty_comp_expr
+
+  cases hwt
+
+  case getAttr_entity ety rty hrty hwt_expr hty_expr hty_is_attr =>
+    simp [
+      CompileWellTypedForExpr,
+      compile,
+      compileGetAttr,
+      compileAttrsOf,
+      TypedExpr.toExpr,
+      TermType.ofType,
+      hcomp_expr,
+      hty_get_comp_expr,
+      hty_comp_expr,
+      hty_expr,
+    ]
+
+    -- TODO: show this fact
+    -- from hypotheses in `getAttr_entity`
+    have ⟨
+      attrs, rty, attr_ty,
+      hattrs_exists, hwf_attrs, hattr_input,
+      hattr_isrec, hattr_exists, hattr_ty_eq,
+    ⟩ :
+      ∃ (attrs : UnaryFunction)
+        (rty : Data.Map Attr TermType)
+        (attr_ty : TermType),
+        εnv.entities.attrs ety = .some attrs ∧
+        -- the unary function attrs is "well-formed"
+        UnaryFunction.WellFormed εnv.entities attrs ∧
+        (Factory.option.get compile_expr).typeOf = attrs.argType ∧
+        (Factory.app attrs (Factory.option.get compile_expr)).typeOf = .record rty ∧
+
+        rty.find? attr = some attr_ty ∧
+
+        -- Result type matches attr_ty
+        match attr_ty with
+        | .option attr_ty' => TermType.ofType ty = attr_ty'
+        | _ => TermType.ofType ty = attr_ty
+    := sorry
+
+    simp [hattrs_exists, hattr_isrec, hattr_exists]
+    split
+    any_goals contradiction
+
+    -- When the field is optional
+    case h_1 _ _ h =>
+      simp at h; simp [h] at hattr_ty_eq
+      simp [TypedExpr.typeOf]
+      apply typeOf_ifSome_option
+      rw [(wf_record_get (εs := εnv.entities) ?_ hattr_isrec hattr_exists).right]
+      · simp [hattr_ty_eq]; assumption
+      · apply (wf_app hwf_get_comp_expr hattr_input hwf_attrs).left
+
+    -- When the field is not optional
+    case h_2 _ _ h =>
+      simp at h; simp [h] at hattr_ty_eq
+      simp [TypedExpr.typeOf, Factory.someOf]
+      apply typeOf_ifSome_option
+      simp [Term.typeOf]
+      rw [(wf_record_get (εs := εnv.entities) ?_ hattr_isrec hattr_exists).right]
+      · simp [hattr_ty_eq]; assumption
+      · apply (wf_app hwf_get_comp_expr hattr_input hwf_attrs).left
+
+  case getAttr_record rty _ hty_expr _ =>
+    simp [hty_expr, TermType.ofType] at hty_get_comp_expr
+    simp [
+      CompileWellTypedForExpr,
+      compile,
+      compileGetAttr,
+      compileAttrsOf,
+      TypedExpr.toExpr,
+      TermType.ofType,
+      hcomp_expr,
+      hty_get_comp_expr,
+      hty_comp_expr,
+      hty_expr,
+    ]
+
+    -- TODO: show these facts from hypotheses in `getAttr_record`
+    have ⟨attr_ty, hattr_exists, hattr_ty_eq⟩ :
+      ∃ attr_ty : TermType,
+        (Data.Map.mk (TermType.ofRecordType rty.1)).find? attr = some attr_ty ∧
+        -- Result type matches attr_ty
+        match attr_ty with
+        | .option attr_ty' => TermType.ofType ty = attr_ty'
+        | _ => TermType.ofType ty = attr_ty
+    := sorry
+
+    simp [hattr_exists]
+    split
+    any_goals contradiction
+
+    -- Optional field
+    case h_1 _ h =>
+      simp [TypedExpr.typeOf]
+      apply typeOf_ifSome_option
+      rw [(wf_record_get (εs := εnv.entities)
+        hwf_get_comp_expr
+        hty_get_comp_expr hattr_exists).right]
+      simp at h
+      simp [h] at hattr_ty_eq
+      simp [h, hattr_ty_eq]
+
+    -- Required field
+    case h_2 _ h =>
+      simp [TypedExpr.typeOf, Factory.someOf]
+      apply typeOf_ifSome_option
+      simp [Term.typeOf]
+      rw [(wf_record_get (εs := εnv.entities)
+        hwf_get_comp_expr
+        hty_get_comp_expr hattr_exists).right]
+      simp at h
+      simp [h] at hattr_ty_eq
+      simp [h, hattr_ty_eq]
 
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
@@ -849,7 +1002,23 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
     any_goals apply compile_well_typed
     any_goals assumption
 
-  all_goals sorry
+  case getAttr =>
+    have hcond := eliminate_wt_cond_getAttr h
+    apply compile_well_typed_getAttr
+    any_goals apply compile_well_typed
+    all_goals assumption
+
+  case hasAttr =>
+    sorry
+
+  case set =>
+    sorry
+
+  case record =>
+    sorry
+
+  case call =>
+    sorry
 
 -- theorem compile_well_typed_expr_never_fails {ty : TypedExpr} {env : Environment} {εnv : SymEnv} :
 --   εnv = SymEnv.ofEnv env →
