@@ -447,6 +447,102 @@ theorem eliminate_wt_cond_binaryApp
       constructor; assumption
       cases hrefs; assumption
 
+set_option maxHeartbeats 300000
+
+/--
+Lemma that if a concrete `env : Environment` has tags for
+a particular entity type, when `SymEnv.ofEnv env` must also
+have tags for it
+-/
+theorem SymEnv_of_preserves_tags
+  {env : Environment} {ety : EntityType} {ty : CedarType}
+  (h : env.ets.tags? ety = some (some ty)) :
+  ∃ τags : SymTags,
+    (SymEnv.ofEnv env).entities.tags ety = τags ∧
+    τags.vals.outType = TermType.ofType ty
+:= by
+  simp [EntitySchema.tags?] at h
+  have ⟨_, ⟨h1, h2⟩⟩ := h
+
+  -- have _ := Cedar.Data.Map.in_list_iff_find?_some.mpr
+
+  -- apply Cedar.Data.Map.in_list_iff_find?_some at h1
+
+  simp [
+    SymEnv.ofEnv,
+    SymEntities.ofSchema,
+    SymEntities.tags,
+    Cedar.Data.Map.find?,
+  ]
+  sorry
+
+/--
+Similar to compileApp₂_wf_types, but for compile
+-/
+theorem compile_binaryApp_wf_types
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
+  {t : Term} {tcomp_a : Term} {tcomp_b : Term}
+  {εnv : SymEnv}
+  (hwf_ent : εnv.entities.WellFormed)
+  (hok_a : compile a.toExpr εnv = Except.ok tcomp_a)
+  (hok_b : compile b.toExpr εnv = Except.ok tcomp_b)
+  (hwf_get_comp_a : Term.WellFormed εnv.entities (Factory.option.get tcomp_a))
+  (hwf_get_comp_b : Term.WellFormed εnv.entities (Factory.option.get tcomp_b))
+  (hok : compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) :
+
+  match op with
+    | .add | .sub | .mul => t.typeOf = .option (.bitvec 64)
+    | .getTag            =>
+      ∃ ety τs,
+        (Factory.option.get tcomp_a).typeOf = .entity ety ∧
+        εnv.entities.tags ety = some (some τs) ∧
+        t.typeOf = τs.vals.outType.option
+    | _                  => t.typeOf = .option .bool
+:= by
+  simp [compile, TypedExpr.toExpr, hok_a, hok_b] at hok
+  simp_do_let
+    (compileApp₂ op
+      (Factory.option.get tcomp_a)
+      (Factory.option.get tcomp_b)
+      εnv.entities)
+    at hok
+  simp at hok
+  case ok tcomp_app hcomp_app =>
+
+  have h := (compileApp₂_wf_types
+    hwf_ent
+    hwf_get_comp_a
+    hwf_get_comp_b
+    hcomp_app
+  ).right
+
+  -- tcomp_app and t should have the same type
+  have heqty :
+    t.typeOf = tcomp_app.typeOf
+  := by
+    simp [← hok]
+    cases op
+    any_goals
+      simp at h
+      simp [h]
+      apply typeOf_ifSome_option
+      apply typeOf_ifSome_option
+      assumption
+
+    -- Special case for getTag
+    case getTag =>
+      simp at h
+      have ⟨_, _, _, _, h⟩ := h
+      simp [h]
+      apply typeOf_ifSome_option
+      apply typeOf_ifSome_option
+      assumption
+
+  cases op
+  any_goals
+    simp at h
+    simp [h, heqty]
+
 theorem compile_well_typed_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
   {env : Environment} {εnv : SymEnv}
@@ -470,143 +566,130 @@ theorem compile_well_typed_binaryApp
   have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
   have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
 
-  -- A lemma that compile and compileApp₂ should produce term with the same type
-  have hlemma :
-    (t : Term) →
-    (compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) →
-    ∃ t2 : Term,
-      (compileApp₂ op (Factory.option.get tcomp_a) (Factory.option.get tcomp_b) εnv.entities = Except.ok t2) ∧
-      t.typeOf = t2.typeOf
+  -- For each operator, reduce the goal to simply proving
+  -- that compilation succeeds
+  have reduce_to_compile_ok
+    (hok : ∃ t : Term,
+      compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) :
+    CompileWellTypedForExpr (.binaryApp op a b ty) εnv
   := by
-    intros t hcomp
-    simp [compile, TypedExpr.toExpr, hcomp_a, hcomp_b, bind] at hcomp
-    unfold Except.bind at hcomp
-    split at hcomp
-    any_goals contradiction
+    have ⟨t, hok⟩ := hok
+    have htypes := compile_binaryApp_wf_types
+      hwf_ent hcomp_a hcomp_b hwf_get_comp_a hwf_get_comp_b hok
 
-    case _ heq =>
-    simp at hcomp
-    split at hcomp
-    any_goals contradiction
+    cases hwt_binary
+    case binaryApp _ hopwt =>
+    cases hopwt
 
-    case _ tcomp_app hcomp_app =>
-    simp at heq
-    simp [*] at hcomp
-    simp [← heq] at hcomp_app
-    simp [← heq] at hcomp
+    all_goals simp [
+      CompileWellTypedForExpr,
+      hcomp_a,
+      hty_get_comp_a,
+      hcomp_b,
+      hty_get_comp_b,
+      TypedExpr.toExpr,
+      Term.typeOf,
+      TermType.ofType,
+      TypedExpr.typeOf,
+    ]
 
-    apply Exists.intro
-    constructor
-    assumption
-    simp [← hcomp]
+    any_goals
+      simp [TypedExpr.toExpr] at hok
+      simp at htypes
+      simp [hok, htypes]
 
-    have ⟨hopty, hty⟩ := (compileApp₂_wf hwf_ent hwf_get_comp_a hwf_get_comp_b hcomp_app).right
-    rw [typeOf_ifSome_option]
-    simp [hty]; rfl
-    rw [typeOf_ifSome_option]
-    assumption
+    -- Special case for geTag
+    case getTag _ ety tags htag hty_a hty_b _ _ =>
+      have ⟨ety2, hty_get_comp_a2, τs, hτag, hτag_ty⟩ := htypes
+      rw [← ofType_ignores_liftBool]
 
-  -- Call compileApp₂_wf_types to get facts about the result type
-  have hres_ty :
-    (t : Term) →
-    -- (compileApp₂ op (Factory.option.get tcomp_a) (Factory.option.get tcomp_b) εnv.entities = Except.ok t) →
-    (compile (TypedExpr.toExpr (.binaryApp op a b ty)) εnv = .ok t) →
-    match op with
-      | .add | .sub | .mul => t.typeOf = .option (.bitvec 64)
-      | .getTag            =>
-        ∃ ety τs,
-          (Factory.option.get tcomp_a).typeOf = .entity ety ∧
-          εnv.entities.tags ety = some (some τs) ∧
-          t.typeOf = τs.vals.outType.option
-      | _                  => t.typeOf = .option .bool
-    := by
-      intros t hcomp
-      have ⟨t2, hcomp_app, heqty⟩ := hlemma t hcomp
-      have h := (compileApp₂_wf_types hwf_ent hwf_get_comp_a hwf_get_comp_b hcomp_app).right
-      cases op
-      any_goals
-        simp at h
-        simp [h, heqty]
+      have ⟨τs2, hτag2, hτag_ty2⟩ := SymEnv_of_preserves_tags htag
 
-  -- Case analysis on the operator
+      have heq_ety : ety = ety2 := by
+        simp [hty_get_comp_a, hty_a, TermType.ofType] at hty_get_comp_a2
+        assumption
+
+      have hτs : τs = τs2 := by
+        simp [← henv, heq_ety, hτag] at hτag2
+        assumption
+
+      simp [← hτag_ty2, hτag_ty, hτs]
+
+  -- Reduce to proving that compilation succeeds
+  apply reduce_to_compile_ok
   cases hwt_binary
   case binaryApp _ hopwt =>
   cases hopwt
 
-  all_goals simp [
-    CompileWellTypedForExpr,
-    hcomp_a,
-    hty_get_comp_a,
-    hcomp_b,
-    hty_get_comp_b,
-    TypedExpr.toExpr,
-    compile,
-    Term.typeOf,
-  ]
+  -- Apply some common definitions
+  all_goals
+    unfold compile TypedExpr.toExpr
+    simp [hcomp_a, hcomp_b]
+    simp [compileApp₂, hty_get_comp_a, hty_get_comp_b]
 
-  -- Equality between literals
-  case eq_lit p1 p2 pty1 pty2 hprim1 hprim2 =>
-    cases hprim1; case lit hprim1 =>
-    cases hprim2; case lit hprim2 =>
+  -- Most cases in `BinaryOp.WellTyped`
+  -- have the form <case> (a.typeOf = ...) (b.typeOf = ...)
+  -- which can be resolved by some simplification
+  any_goals try case _ hty_a hty_b =>
+    simp [hty_a, hty_b, TermType.ofType]
 
-    -- Both types would be primitive types in this case
-    have hprim1 : TermType.isPrimType (TermType.ofType pty1) := by
-      cases hprim1
-      all_goals simp [TermType.ofType, TermType.isPrimType]
-
-    have hprim2 : TermType.isPrimType (TermType.ofType pty2) := by
-      cases hprim2
-      all_goals simp [TermType.ofType, TermType.isPrimType]
-
-    simp [compile, TypedExpr.toExpr] at *
+  case eq_entity hty_a hty_b =>
     simp [
-      hcomp_a, hcomp_b, hty_get_comp_a, hty_get_comp_b, compileApp₂,
-      TypedExpr.typeOf,
+      hty_a, hty_b,
+      TermType.ofType,
       reducibleEq,
-      hprim1,
-      hprim2,
-    ]
-
-    split <;> simp
-
-    case isTrue heqty =>
-      apply typeOf_ifSome_option
-      apply typeOf_ifSome_option
-      simp [Factory.someOf, Term.typeOf]
-      apply wf_typeOf_eq
-      any_goals assumption
-      simp [hty_get_comp_a, hty_get_comp_b, TypedExpr.typeOf, heqty]
-
-    case isFalse heqty =>
-      apply typeOf_ifSome_option
-      apply typeOf_ifSome_option
-      simp [Factory.someOf, Term.typeOf, TermPrim.typeOf, TermType.ofType]
-
-  case eq_entity => sorry
-  case eq => sorry
-
-  -- TODO: merge some of these cases
-
-  -- Most binaryOps using compileApp₂ can be resolved with this
-  repeat case _ hty_a hty_b =>
-    simp [
-      hty_a, hty_b,
-      hty_get_comp_a, hty_get_comp_b,
-      compileApp₂,
-      TermType.ofType,
-    ]
-    apply hres_ty
-    simp [
-      hty_a, hty_b,
-      hcomp_a, hcomp_b,
-      hty_get_comp_a, hty_get_comp_b,
-      compile,
-      compileApp₂,
-      TermType.ofType,
+      TermType.isPrimType,
       TypedExpr.toExpr,
     ]
+    split <;> simp
 
-  all_goals sorry
+  case eq_lit p1 p2 pty1 pty2 hprim1 hprim2 =>
+    -- Prove that both types would are primitive types
+    cases hprim1; case lit hprim1 =>
+    cases hprim2; case lit hprim2 =>
+    have hprim1 : TermType.isPrimType (TermType.ofType pty1) := by
+      cases hprim1; all_goals simp [TermType.ofType, TermType.isPrimType]
+    have hprim2 : TermType.isPrimType (TermType.ofType pty2) := by
+      cases hprim2; all_goals simp [TermType.ofType, TermType.isPrimType]
+    simp [
+      hprim1, hprim2,
+      TypedExpr.toExpr,
+      TypedExpr.typeOf,
+      reducibleEq,
+    ]
+    split <;> simp
+
+  case eq _ heqty =>
+    simp [heqty, compileApp₂, TermType.ofType, reducibleEq]
+
+  case hasTag ety hty_a hty_b =>
+    -- hasTag succeeds as long as `ety` is valid
+    -- so we just need that fact
+
+    -- have ⟨τag, htag⟩ := SymEnv_of_preserves_tags htag
+    simp [
+      henv,
+      hty_a, hty_b,
+      hty_get_comp_a, hty_get_comp_b,
+      compileHasTag,
+      TermType.ofType,
+    ]
+    -- unfold SymEntities.ValidRefsFor at hrefs_binary
+    -- simp [TypedExpr.toExpr] at hrefs_binary
+
+    -- cases hrefs_binary
+    -- case binaryApp_valid hrefs_a _ =>
+
+    -- TODO: need to somehow deduce
+    --       from `a.typeOf = CedarType.entity ety✝`
+    --       that ety is a good entity
+    -- apply hres_ty
+    sorry
+
+  case getTag _ _ htag hty_a hty_b =>
+    have ⟨_, hτag, _⟩ := SymEnv_of_preserves_tags htag
+    simp [← henv] at hτag
+    simp [hty_a, hty_b, hτag, compileGetTag, TermType.ofType]
 
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
