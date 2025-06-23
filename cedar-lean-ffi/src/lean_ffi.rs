@@ -1078,6 +1078,27 @@ mod test {
     }
 
     #[test]
+    fn test_print_evaluate() {
+        let input_expr = Expression::from_str("1 + 2").expect("Failed to parse expression");
+        let err_expr = Expression::from_str("1 + true").expect("Failed to parse expression");
+        let entities = Entities::empty();
+        let req = request(
+            "Identity::\"Alice\"",
+            "Action::\"view\"",
+            "Thing::\"Thing1\"",
+        );
+
+        let ffi = CedarLeanFfi::new();
+
+        ffi.print_evaluation(&input_expr, &entities, &req)
+            .expect("Lean call unexpectedly failed for check_evaluate");
+
+        // Erroring expressions should print the evaluation error, not result in an FFI error.
+        ffi.print_evaluation(&err_expr, &entities, &req)
+            .expect("Lean call unexpectedly failed for check_evaluate");
+    }
+
+    #[test]
     fn test_check_evaluate() {
         let input_expr = Expression::from_str("1 + 2").expect("Failed to parse expression");
         let eval_expr = Expression::from_str("3").expect("Failed to parse expression");

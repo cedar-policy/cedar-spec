@@ -110,19 +110,25 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
   returns a string encoding either .error err_msg if an error occurs or .ok () upon success
 -/
 @[export printEvaluation] unsafe def printEvaluationFFI (req: ByteArray) : String :=
-  let result : Except String (Timed (Except String Unit)) :=
+  let result : Except String (Timed Unit) :=
     match (@Message.interpret? EvaluationRequest) req with
     | .error e => .error s!"evaluate: failed to parse input: {e}"
     | .ok v =>
-      let result := runAndTime (λ () =>
+      let result : BaseIO (Timed (Except String Unit)) := runAndTime (λ () =>
         match evaluate v.expr v.request v.entities with
-        | .error e => .error s!"evaluate: error during evaluation: {reprStr e}"
+        | .error e =>
+          match unsafeIO (println! s!"evaluate: error during evaluation: {reprStr e}") with
+          | .error _ => .error s!"evaluate: error occurred while printing evaluation error"
+          | .ok _ => .ok ()
         | .ok v =>
           match unsafeIO (println! "{reprStr v}") with
           | .error _ => .error s!"evaluate: error printing value"
           | .ok _ => .ok ()
       )
-      .ok (unsafeBaseIO result)
+      let result := unsafeBaseIO result
+      match result.data with
+      | .ok _ => .ok { data := (), duration := result.duration }
+      | .error s => .error s
   toString (Lean.toJson result)
 
 /--
