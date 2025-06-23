@@ -15,11 +15,11 @@ TODO: this is currently incomplete; move this to somewhere else
 -/
 def Environment.WellFormed (env : Environment) : Prop :=
   env.ets.WellFormed ∧
-  env.acts.WellFormed ∧
-  ∀ (ety : EntityType) (euid : EntityUID),
-    env.ets.contains ety →
-    env.acts.contains euid →
-    euid.ty ≠ ety
+  env.acts.WellFormed
+  -- ∀ (ety : EntityType) (euid : EntityUID),
+  --   env.ets.contains ety →
+  --   env.acts.contains euid →
+  --   euid.ty ≠ ety
 
 /--
 States that under sufficiently good conditions, the symbolic compiler
@@ -61,34 +61,92 @@ theorem list_key_find?_map
       simp [ih]
       simp [h]
 
+theorem insertCanonical_exists [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
+  {f : α → β} {xs : List α} (x : α) :
+  x ∈ List.insertCanonical f x xs
+:= by
+  induction xs
+  case nil => simp [List.insertCanonical]
+  case cons head tail ih =>
+    simp [List.insertCanonical]
+    split; any_goals simp
+    split; any_goals simp
+    apply Or.inr ih
+
+theorem insertCanonical_new
+  [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [DecidableEq β]
+  {f : α → β} {xs : List α} {x : α} {y : α}
+  (hexists : y ∈ xs)
+  (hneq : f x ≠ f y) :
+  y ∈ List.insertCanonical f x xs
+:= by
+  induction xs
+
+  case nil => simp at hexists
+
+  case cons hd tl ih =>
+    simp [List.insertCanonical]
+    split
+    simp [hexists]
+    split
+    · simp at hexists
+      cases hexists
+      case _ hy => simp [hy]
+      case _ hy => simp [ih hy]
+    · simp at hexists
+      cases hexists
+      case _ hlt hgt hy =>
+        simp [← hy] at hlt hgt
+        have hltgt := Data.StrictLT.connected (f x) (f y) hneq
+        cases hltgt <;> contradiction
+      case _ hy => simp [hy]
+
 /--
 If the key exists in l, then it exists in `Data.Map.make l`
 -/
-theorem list_key_find?_to_map_make_find?
+theorem list_key_find?_append_to_map_make_find?
   -- [BEq α]
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
-  {l : List (α × β)}
-  {k : α} {v : β}
-  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
-  (Data.Map.make l).find? k = some v
-:= by
-  apply (Data.Map.in_list_iff_find?_some (Data.Map.make_wf l)).mp
-
-  apply Data.Map.mem_list_mem_make
-
-  all_goals sorry
-
-/--
-If the key exists in a, then it exists in a ++ b
--/
-theorem list_key_find?_append
-  [BEq α] [LT α] [DecidableLT α]
   {a b : List (α × β)}
   {k : α} {v : β}
   (h : List.find? (λ x => x.fst == k) a = some (k, v)) :
-  List.find? (λ x => x.fst == k) (a ++ b) = some (k, v)
-:= by sorry
+  (Data.Map.make (a ++ b)).find? k = some v
+:= by
+  apply (Data.Map.in_list_iff_find?_some (Data.Map.make_wf (a ++ b))).mp
+  simp [Data.Map.make, Data.Map.kvs]
+
+  induction a
+
+  case nil => simp at h
+  case cons head tail ih =>
+    simp [List.find?] at h
+    split at h
+
+    case _ heq =>
+      simp at h
+      simp [List.canonicalize, h]
+      apply insertCanonical_exists
+
+    case _ hneq =>
+      have ih := ih h
+      simp at hneq
+      simp [List.canonicalize]
+
+      apply insertCanonical_new
+      assumption
+      simp [hneq]
+
+-- /--
+-- If the key exists in a, then it exists in a ++ b
+-- -/
+-- theorem list_key_find?_append
+--   [BEq α] [LT α] [DecidableLT α]
+--   {a b : List (α × β)}
+--   {k : α} {v : β}
+--   (h : List.find? (λ x => x.fst == k) a = some (k, v)) :
+--   List.find? (λ x => x.fst == k) (a ++ b) = some (k, v)
+-- := by sorry
 
 /--
 A wrapper around compile_wf for convenience
@@ -671,8 +729,7 @@ theorem ofEnv_lookup_entity
   simp at h
   simp [h] at hfound; clear h
 
-  apply list_key_find?_to_map_make_find?
-  apply list_key_find?_append
+  apply list_key_find?_append_to_map_make_find?
   apply list_key_find?_map
   assumption
 
