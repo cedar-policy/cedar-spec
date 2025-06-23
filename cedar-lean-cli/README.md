@@ -4,6 +4,21 @@ This directory contains a command line interface (CLI) for interacting with the 
 
 ## Build
 
+The simplest way to build the CLI is to use the provided Dockerfile to build and run the cli within a docker container.
+
+```
+# Create a docker image that is identified with the tag "cedar-lean-cli"
+docker build -t cedar-lean-cli -f ./Dockerfile ..
+
+# Create and enter a container using the newly created cedar-lean-cli docker image
+docker run -it cedar-lean-cli
+
+# You can now run the cedar-lean-cli within the container
+bash-5.2# cedar-lean-cli help
+```
+
+If you prefer to install directly on your machine, you may follow the below detailed instructions for installing `cedar-lean-cli` from source.
+
 ### Prerequisites:
 
 #### Install Lean
