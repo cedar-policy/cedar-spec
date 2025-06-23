@@ -8,6 +8,7 @@ The simplest way to build the CLI is to use the provided Dockerfile to build and
 
 ```
 # Create a docker image that is identified with the tag "cedar-lean-cli"
+cd cedar-lean-cli                                   # Enter the cedar-lean-cli directory
 docker build -t cedar-lean-cli -f ./Dockerfile ..
 
 # Create and enter a container using the newly created cedar-lean-cli docker image
