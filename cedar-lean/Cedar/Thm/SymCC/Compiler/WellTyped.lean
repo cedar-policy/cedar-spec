@@ -565,8 +565,6 @@ theorem eliminate_wt_cond_binaryApp
       constructor; assumption
       cases hrefs; assumption
 
-set_option maxHeartbeats 300000
-
 /--
 Lemma that if a concrete `env : Environment` has tags for
 a particular entity type, when `SymEnv.ofEnv env` must also
@@ -811,6 +809,58 @@ theorem compile_well_typed_binaryApp
     simp [hty_a, hty_b, hτag, compileGetTag, TermType.ofType]
 
 /--
+If some attribute exists in a record type,
+then it should still exist after applying `TermType.ofRecordType`
+-/
+theorem ofRecordType_lookup
+  {rty : RecordType} {attr : Attr} {qty : Qualified CedarType} {ty : CedarType}
+  (hattr_exists : Data.Map.find? rty attr = some qty)
+  (hattr_ty : qty.getType = ty) :
+  ∃ attr_ty : TermType,
+    (Data.Map.mk (TermType.ofRecordType rty.1)).find? attr = some attr_ty ∧
+    match attr_ty with
+    | .option attr_ty' => TermType.ofType ty = attr_ty' ∧ ¬qty.isRequired
+    | _ => TermType.ofType ty = attr_ty ∧ qty.isRequired
+:= by
+  cases rty
+  case mk rty_1 =>
+  induction rty_1
+  case nil =>
+    simp [Data.Map.find?, List.find?] at hattr_exists
+
+  case cons head tail ih =>
+    rcases head with ⟨k, v⟩
+    simp [TermType.ofRecordType, Data.Map.find?, List.find?]
+    simp [Data.Map.find?, List.find?] at hattr_exists ih
+
+    cases e : k == attr
+    simp [e] at *
+
+    case false => apply ih hattr_exists
+    case true =>
+      simp [e] at hattr_exists
+      simp [hattr_exists, TermType.ofQualifiedType]
+      cases qty
+
+      case optional =>
+        simp [TermType.ofQualifiedType, Qualified.isRequired]
+        simp [Qualified.getType] at hattr_ty
+        simp [hattr_ty]
+
+      case required =>
+        simp [TermType.ofQualifiedType, Qualified.isRequired]
+        simp [Qualified.getType] at hattr_ty
+        simp [hattr_ty]
+
+        -- TermType.ofType never produces an option type
+        unfold TermType.ofType
+        split
+        case h_1 hof_type =>
+          split at hof_type
+          all_goals contradiction
+        simp
+
+/--
 CompileWellTypedCondition decomposes for unaryApp
 -/
 theorem eliminate_wt_cond_getAttr
@@ -907,7 +957,7 @@ theorem compile_well_typed_getAttr
       · simp [hattr_ty_eq]; assumption
       · apply (wf_app hwf_get_comp_expr hattr_input hwf_attrs).left
 
-  case getAttr_record rty _ hty_expr _ =>
+  case getAttr_record rty _ hty_expr henv_attr_lookup =>
     simp [hty_expr, TermType.ofType] at hty_get_comp_expr
     simp [
       CompileWellTypedForExpr,
@@ -922,7 +972,8 @@ theorem compile_well_typed_getAttr
       hty_expr,
     ]
 
-    -- TODO: show these facts from hypotheses in `getAttr_record`
+    -- Some some facts about record attr lookup
+    -- from hypotheses in `getAttr_record` and `ofRecordType_lookup`
     have ⟨attr_ty, hattr_exists, hattr_ty_eq⟩ :
       ∃ attr_ty : TermType,
         (Data.Map.mk (TermType.ofRecordType rty.1)).find? attr = some attr_ty ∧
@@ -930,7 +981,12 @@ theorem compile_well_typed_getAttr
         match attr_ty with
         | .option attr_ty' => TermType.ofType ty = attr_ty'
         | _ => TermType.ofType ty = attr_ty
-    := sorry
+    := by
+      simp at henv_attr_lookup
+      have ⟨field_ty, field_exists, hfield_ty⟩ := henv_attr_lookup
+      have ⟨attr_ty, h1, h2⟩ := ofRecordType_lookup field_exists hfield_ty
+      simp [h1]; split
+      all_goals simp at h2; simp [h2]
 
     simp [hattr_exists]
     split
