@@ -3,7 +3,7 @@ FROM amazonlinux:2023 AS prepare
 RUN yum update -y \
   && yum install -y \
   curl-minimal clang tar zip unzip python3 git xz \
-  make wget gcc gcc-c++ \
+  make wget gcc gcc-c++ protobuf-compiler \
   && yum clean all
 
 # Setup Rust toolchain
@@ -14,9 +14,6 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh \
 
 # Install Lean
 RUN wget https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh && sh elan-init.sh -y --default-toolchain none
-
-# Install protoc
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v29.0/protoc-29.0-linux-x86_64.zip && unzip protoc-29.0-linux-x86_64.zip && rm protoc-29.0-linux-x86_64.zip
 
 # Install CVC5
 RUN ARCH=$(uname -m) && \
