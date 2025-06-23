@@ -1,0 +1,64 @@
+namespace App {
+    entity Drive;
+
+
+    entity Group;
+    entity User in [Group] = {
+        "blocked": Set<User>,
+        "jobLevel": Long,
+        "jobTitle" : String,
+    };
+
+    entity Document = {
+        "owner": User,
+        "readers": Group,
+        "editors" : Group,
+        "dataClassification" : String
+    };
+
+    action EditFile appliesTo {
+        principal: [User],
+        resource: [Document],
+    };
+
+    action DownloadFile appliesTo {
+        principal: [User],
+        resource: [Document],
+    };
+
+    action ViewFile appliesTo {
+        principal: [User],
+        resource: [Document],
+    };
+
+    action CreateDocument appliesTo {
+        principal: [User],
+        resource: [Drive],
+    };
+
+    action AddReader appliesTo {
+        principal: [User],
+        resource: [Document],
+    };
+
+    action AddEditor appliesTo {
+        principal: [User],
+        resource: [Document],
+    };
+
+    action CreateUser appliesTo {
+        principal: [User],
+        resource: [Drive],
+    };
+
+    action CreateGroup appliesTo {
+        principal: [User],
+        resource: [Drive],
+    };
+
+    action DeleteUser appliesTo {
+        principal: [User],
+        resource: [User],
+    };
+
+}

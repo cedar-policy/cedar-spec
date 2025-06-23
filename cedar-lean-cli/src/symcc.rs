@@ -61,7 +61,7 @@ pub fn run_check_always_denies(
     let req_envs = request_env.to_request_envs(&schema)?;
     let mut results = Vec::new();
     for req_env in req_envs.iter() {
-        results.push(lean_context.run_check_always_denies(&policyset, &schema, &req_env)?);
+        results.push(lean_context.run_check_always_denies(&policyset, &schema, req_env)?);
     }
     print_check_always_denies_results(&results, &req_envs, request_env);
     Ok(())
@@ -82,7 +82,7 @@ pub fn run_check_equivalent(
             &src_policyset,
             &tgt_policyset,
             &schema,
-            &req_env,
+            req_env,
         )?);
     }
     print_check_equivalent_results(&results, &req_envs, request_env);
@@ -105,7 +105,7 @@ pub fn run_check_implies(
             &src_policyset,
             &tgt_policyset,
             &schema,
-            &req_env,
+            req_env,
         )?);
     }
     print_check_implies_results(&results, &req_envs, request_env);
@@ -126,7 +126,7 @@ pub fn run_check_disjoint(
             &src_policyset,
             &tgt_policyset,
             &schema,
-            &req_env,
+            req_env,
         )?);
     }
     print_check_disjoint_results(&results, &req_envs, request_env);
@@ -149,7 +149,7 @@ pub fn print_check_never_errors(
         );
         println!(";;");
         lean_context.print_check_never_errors(&policy, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -170,7 +170,7 @@ pub fn print_check_always_allows(
         );
         println!(";;");
         lean_context.print_check_always_allows(&policyset, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -191,7 +191,7 @@ pub fn print_check_always_denies(
         );
         println!(";;");
         lean_context.print_check_always_denies(&policyset, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -213,7 +213,7 @@ pub fn print_check_equivalent(
         );
         println!(";;");
         lean_context.print_check_equivalent(&src_policyset, &tgt_policyset, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -235,7 +235,7 @@ pub fn print_check_implies(
         );
         println!(";;");
         lean_context.print_check_implies(&src_policyset, &tgt_policyset, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -257,7 +257,7 @@ pub fn print_check_disjoint(
         );
         println!(";;");
         lean_context.print_check_disjoint(&src_policyset, &tgt_policyset, &schema, &req_env)?;
-        println!("");
+        println!();
     }
     Ok(())
 }
@@ -273,7 +273,7 @@ struct SigWidths {
 }
 
 impl SigWidths {
-    pub fn from_req_envs(req_envs: &Vec<RequestEnv>) -> Self {
+    pub fn from_req_envs(req_envs: &[RequestEnv]) -> Self {
         let mut principal_width = 13; // PrincipalType
         let mut action_width = 10; // ActionName
         let mut resource_width = 12; // ResourceType
@@ -331,8 +331,8 @@ impl SigWidths {
 }
 
 fn print_check_never_errors_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -350,15 +350,13 @@ fn print_check_never_errors_results(
                 open_req_env
             )
         }
+    } else if open_req_env.is_any() {
+        println!("Policy can error for some request signatures")
     } else {
-        if open_req_env.is_any() {
-            println!("Policy can error for some request signatures")
-        } else {
-            println!(
-                "Policy can error for some request signatures where {}",
-                open_req_env
-            )
-        }
+        println!(
+            "Policy can error for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();
@@ -376,8 +374,8 @@ fn print_check_never_errors_results(
 }
 
 fn print_check_always_allows_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -395,15 +393,13 @@ fn print_check_always_allows_results(
                 open_req_env
             )
         }
+    } else if open_req_env.is_any() {
+        println!("PolicySet allows all requests for some request signatures")
     } else {
-        if open_req_env.is_any() {
-            println!("PolicySet allows all requests for some request signatures")
-        } else {
-            println!(
-                "PolicySet allows all requests for some request signatures where {}",
-                open_req_env
-            )
-        }
+        println!(
+            "PolicySet allows all requests for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();
@@ -425,8 +421,8 @@ fn print_check_always_allows_results(
 }
 
 fn print_check_always_denies_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -441,15 +437,13 @@ fn print_check_always_denies_results(
         } else {
             println!("PolicySet does not deny all requests when {}", open_req_env)
         }
+    } else if open_req_env.is_any() {
+        println!("PolicySet denies all requests for some request signatures")
     } else {
-        if open_req_env.is_any() {
-            println!("PolicySet denies all requests for some request signatures")
-        } else {
-            println!(
-                "PolicySet denies all requests for some request signatures where {}",
-                open_req_env
-            )
-        }
+        println!(
+            "PolicySet denies all requests for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();
@@ -471,8 +465,8 @@ fn print_check_always_denies_results(
 }
 
 fn print_check_equivalent_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -493,12 +487,13 @@ fn print_check_equivalent_results(
                 open_req_env
             )
         }
+    } else if open_req_env.is_any() {
+        println!("Source and Target PolicySets are not equivalent for some signatures")
     } else {
-        if open_req_env.is_any() {
-            println!("Source and Target PolicySets are not equivalent for some signatures")
-        } else {
-            println!("Source and Target PolicySets are not equivalent for some request signatures where {}", open_req_env)
-        }
+        println!(
+            "Source and Target PolicySets are not equivalent for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();
@@ -520,8 +515,8 @@ fn print_check_equivalent_results(
 }
 
 fn print_check_implies_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -542,15 +537,13 @@ fn print_check_implies_results(
                 open_req_env
             )
         }
+    } else if open_req_env.is_any() {
+        println!("Source PolicySet implies Target PolicySet for some request signatures")
     } else {
-        if open_req_env.is_any() {
-            println!("Source PolicySet implies Target PolicySet for some request signatures")
-        } else {
-            println!(
-                "Source PolicySet implies Target PolicySet for some request signatures where {}",
-                open_req_env
-            )
-        }
+        println!(
+            "Source PolicySet implies Target PolicySet for some request signatures where {}",
+            open_req_env
+        )
     }
 
     println!();
@@ -568,8 +561,8 @@ fn print_check_implies_results(
 }
 
 fn print_check_disjoint_results(
-    results: &Vec<bool>,
-    req_envs: &Vec<RequestEnv>,
+    results: &[bool],
+    req_envs: &[RequestEnv],
     open_req_env: &OpenRequestEnv,
 ) {
     if results.iter().all(|r| *r) {
@@ -590,14 +583,10 @@ fn print_check_disjoint_results(
                 open_req_env
             )
         }
+    } else if open_req_env.is_any() {
+        println!("Source PolicySet is disjoint with Target PolicySet for some request signatures")
     } else {
-        if open_req_env.is_any() {
-            println!(
-                "Source PolicySet is disjoint with Target PolicySet for some request signatures"
-            )
-        } else {
-            println!("Source PolicySet is disjoint with Target PolicySet for some request signatures where {}", open_req_env)
-        }
+        println!("Source PolicySet is disjoint with Target PolicySet for some request signatures where {}", open_req_env)
     }
 
     println!();
