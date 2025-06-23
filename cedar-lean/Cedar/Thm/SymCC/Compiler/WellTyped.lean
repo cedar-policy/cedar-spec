@@ -10,6 +10,18 @@ open Cedar.Validation
 open SymCC
 
 /--
+States that an `Environment` is well-formed
+TODO: this is currently incomplete; move this to somewhere else
+-/
+def Environment.WellFormed (env : Environment) : Prop :=
+  env.ets.WellFormed ∧
+  env.acts.WellFormed ∧
+  ∀ (ety : EntityType) (euid : EntityUID),
+    env.ets.contains ety →
+    env.acts.contains euid →
+    euid.ty ≠ ety
+
+/--
 States that under sufficiently good conditions, the symbolic compiler
 succeeds on a typed expression `ty` and produces a term `t` with the
 corresponding type.
@@ -20,6 +32,7 @@ def CompileWellTypedForExpr (ty : TypedExpr) (εnv : SymEnv) : Prop :=
     t.typeOf = .option (TermType.ofType ty.typeOf)
 
 def CompileWellTypedCondition (ty : TypedExpr) (env : Environment) (εnv : SymEnv) : Prop :=
+  Environment.WellFormed env ∧
   εnv = SymEnv.ofEnv env ∧
   TypedExpr.WellTyped env ty ∧
   εnv.WellFormedFor ty.toExpr
@@ -49,17 +62,33 @@ theorem list_key_find?_map
       simp [h]
 
 /--
-A lemma about how key lookup and `Data.Map.make` interact
+If the key exists in l, then it exists in `Data.Map.make l`
 -/
 theorem list_key_find?_to_map_make_find?
+  -- [BEq α]
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  (Data.Map.make l).find? k = some v
+:= by
+  apply (Data.Map.in_list_iff_find?_some (Data.Map.make_wf l)).mp
+
+  apply Data.Map.mem_list_mem_make
+
+  all_goals sorry
+
+/--
+If the key exists in a, then it exists in a ++ b
+-/
+theorem list_key_find?_append
   [BEq α] [LT α] [DecidableLT α]
   {a b : List (α × β)}
   {k : α} {v : β}
   (h : List.find? (λ x => x.fst == k) a = some (k, v)) :
-  (Data.Map.make (a ++ b)).find? k = some v
-:= by
-
-  sorry
+  List.find? (λ x => x.fst == k) (a ++ b) = some (k, v)
+:= by sorry
 
 /--
 A wrapper around compile_wf for convenience
@@ -70,7 +99,7 @@ theorem wt_cond_implies_compile_wf
   compile ty.toExpr εnv = .ok t →
   t.WellFormed εnv.entities
 := by
-  intros h hcomp; rcases h with ⟨henv, hwt, hwf⟩
+  intros h hcomp; rcases h with ⟨_, _, _, hwf⟩
   have htwf := compile_wf hwf hcomp
   simp [htwf]
 
@@ -81,7 +110,7 @@ theorem compile_well_typed_lit {p : Prim} {ty : CedarType} {env : Environment} {
   CompileWellTypedCondition (.lit p ty) env εnv →
   CompileWellTypedForExpr (.lit p ty) εnv
 := by
-  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  intros h; rcases h with ⟨_, henv, hwt, hwf⟩
   simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
 
   unfold SymEnv.WellFormedFor at hwf
@@ -178,7 +207,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {�
   CompileWellTypedCondition (.var v ty) env εnv →
   CompileWellTypedForExpr (.var v ty) εnv
 := by
-  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  intros h; rcases h with ⟨_, henv, hwt, hwf⟩
   simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
 
   unfold SymEnv.WellFormedFor SymEnv.WellFormed SymRequest.WellFormed at hwf
@@ -268,7 +297,7 @@ theorem eliminate_wt_cond_ite
   CompileWellTypedCondition thenExpr env εnv ∧
   CompileWellTypedCondition elseExpr env εnv
 := by
-  have ⟨henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
   constructor; rotate_left; constructor
   all_goals
     constructor
@@ -278,8 +307,12 @@ theorem eliminate_wt_cond_ite
     · cases hwt; assumption
     · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
       rcases hwf with ⟨_, hrefs⟩
-      constructor; assumption
-      cases hrefs; assumption
+      constructor;
+      · cases hwt; assumption
+      · constructor
+        · assumption
+        · cases hrefs;
+          any_goals assumption
 
 theorem compile_well_typed_ite
   {a : TypedExpr} {b : TypedExpr} {c : TypedExpr} {ty : CedarType}
@@ -291,7 +324,7 @@ theorem compile_well_typed_ite
   CompileWellTypedForExpr (.ite a b c ty) εnv
 := by
   have ⟨hcond_a, hcond_b, hcond_c⟩ := eliminate_wt_cond_ite hcond_ite
-  have ⟨henv, hwt_ite, hwf_ite⟩ := hcond_ite
+  have ⟨hwf_env, henv, hwt_ite, hwf_ite⟩ := hcond_ite
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
   have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
@@ -363,7 +396,7 @@ theorem eliminate_wt_cond_or_and
     -- Same proof for both cases
     case _ hcons =>
     simp [hcons] at *
-    have ⟨henv, hwt, hwf⟩ := h
+    have ⟨hwf_env, henv, hwt, hwf⟩ := h
     constructor
     all_goals
       constructor
@@ -373,8 +406,12 @@ theorem eliminate_wt_cond_or_and
       · cases hwt; assumption
       · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
         rcases hwf with ⟨_, hrefs⟩
-        constructor; assumption
-        cases hrefs; assumption
+        constructor;
+        · cases hwt; assumption
+        · constructor
+          · assumption
+          · cases hrefs;
+            any_goals assumption
 
 /--
 Special case for `or` and `and`
@@ -396,7 +433,7 @@ theorem compile_well_typed_or_and
   intros hcond
 
   -- Some facts needed later
-  have ⟨henv, hwt, hwf⟩ := hcond
+  have ⟨hwf_env, henv, hwt, hwf⟩ := hcond
   have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_or_and hcond ?_
   any_goals simp
 
@@ -444,14 +481,18 @@ theorem eliminate_wt_cond_unaryApp
   (h : CompileWellTypedCondition (.unaryApp op expr ty) env εnv) :
   CompileWellTypedCondition expr env εnv
 := by
-  have ⟨henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; assumption
   · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
     rcases hwf with ⟨_, hrefs⟩
-    constructor; assumption
-    cases hrefs; assumption
+    constructor;
+    · cases hwt; assumption
+    · constructor
+      · assumption
+      · cases hrefs;
+        any_goals assumption
 
 theorem compile_well_typed_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
@@ -461,7 +502,7 @@ theorem compile_well_typed_unaryApp
   CompileWellTypedForExpr (.unaryApp op expr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_unaryApp hcond_unary
-  have ⟨henv, hwt, hwf⟩ := hcond_unary
+  have ⟨hwf_env, henv, hwt, hwf⟩ := hcond_unary
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -589,7 +630,7 @@ theorem eliminate_wt_cond_binaryApp
   CompileWellTypedCondition a env εnv ∧
   CompileWellTypedCondition b env εnv
 := by
-  intros h; rcases h with ⟨henv, hwt, hwf⟩
+  intros h; rcases h with ⟨hwf_env, henv, hwt, hwf⟩
   constructor
   all_goals
     constructor
@@ -599,8 +640,12 @@ theorem eliminate_wt_cond_binaryApp
     · cases hwt; assumption
     · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
       rcases hwf with ⟨_, hrefs⟩
-      constructor; assumption
-      cases hrefs; assumption
+      constructor;
+      · cases hwt; assumption
+      · constructor
+        · assumption
+        · cases hrefs;
+          any_goals assumption
 
 /--
 If some entity exists in `env`, then it must
@@ -627,6 +672,7 @@ theorem ofEnv_lookup_entity
   simp [h] at hfound; clear h
 
   apply list_key_find?_to_map_make_find?
+  apply list_key_find?_append
   apply list_key_find?_map
   assumption
 
@@ -743,9 +789,9 @@ theorem compile_well_typed_binaryApp
 := by
   -- Some facts needed later
   have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_binaryApp hcond_binary
-  have ⟨henv, hwt_binary, ⟨hwf_env, hrefs_binary⟩⟩ := hcond_binary
+  have ⟨_, henv, hwt_binary, ⟨hwf_εnv, hrefs_binary⟩⟩ := hcond_binary
 
-  have ⟨hwf_req, hwf_ent⟩ := hwf_env
+  have ⟨hwf_req, hwf_ent⟩ := hwf_εnv
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
   have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
@@ -1044,16 +1090,18 @@ theorem eliminate_wt_cond_getAttr
   (h : CompileWellTypedCondition (.getAttr expr attr ty) env εnv) :
   CompileWellTypedCondition expr env εnv
 := by
-  have ⟨henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
-  · cases hwt;
-    assumption
-    assumption
+  · cases hwt; any_goals assumption
   · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
     rcases hwf with ⟨_, hrefs⟩
-    constructor; assumption
-    cases hrefs; assumption
+    constructor;
+    · cases hwt; any_goals assumption
+    · constructor
+      · assumption
+      · cases hrefs;
+        any_goals assumption
 
 theorem compile_well_typed_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -1063,7 +1111,7 @@ theorem compile_well_typed_getAttr
   CompileWellTypedForExpr (.getAttr expr attr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_getAttr hcond
-  have ⟨henv, hwt, hwf_env, hrefs⟩ := hcond
+  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -1116,7 +1164,7 @@ theorem compile_well_typed_getAttr
         | .option attr_ty' => TermType.ofType ty = attr_ty'
         | _ => TermType.ofType ty = attr_ty
     := by
-      have ⟨_, h1, h2, h3, h4⟩ := ofEnv_entity_attr_lookup henv hrty2 hwf_env
+      have ⟨_, h1, h2, h3, h4⟩ := ofEnv_entity_attr_lookup henv hrty2 hwf_εnv
 
       simp [hty_expr, TermType.ofType] at hty_get_comp_expr
       simp [h1, h2, h3, h4, hty_get_comp_expr]
