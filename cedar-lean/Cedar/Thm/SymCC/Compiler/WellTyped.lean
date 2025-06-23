@@ -25,6 +25,43 @@ def CompileWellTypedCondition (ty : TypedExpr) (env : Environment) (εnv : SymEn
   εnv.WellFormedFor ty.toExpr
 
 /--
+A lemma related to key lookup and map in a list of key-value pairs
+-/
+theorem list_key_find?_map
+  [BEq α] [ReflBEq α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  {f : α → β → γ}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
+:= by
+  induction l
+  case nil => simp at h
+  case cons head tail ih =>
+    simp at h
+    cases h
+    case _ h => simp [h]
+    case _ h =>
+      have ih := ih h.2
+      simp only [List.map]
+      simp only [List.find?]
+      simp [ih]
+      simp [h]
+
+/--
+A lemma about how key lookup and `Data.Map.make` interact
+-/
+theorem list_key_find?_to_map_make_find?
+  [BEq α] [LT α] [DecidableLT α]
+  {a b : List (α × β)}
+  {k : α} {v : β}
+  (h : List.find? (λ x => x.fst == k) a = some (k, v)) :
+  (Data.Map.make (a ++ b)).find? k = some v
+:= by
+
+  sorry
+
+/--
 A wrapper around compile_wf for convenience
 -/
 theorem wt_cond_implies_compile_wf
@@ -566,6 +603,34 @@ theorem eliminate_wt_cond_binaryApp
       cases hrefs; assumption
 
 /--
+If some entity exists in `env`, then it must
+also exists in `SymEnv.ofEnv env` with the corresponding `SymEntityData`
+-/
+theorem ofEnv_lookup_entity
+  {env : Environment} {εnv : SymEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  (henv : εnv = SymEnv.ofEnv env)
+  (hfound : Data.Map.find? env.ets ety = some entry) :
+  Data.Map.find? εnv.entities ety = some (SymEntityData.ofEntityType ety entry)
+:= by
+  simp [henv, Data.Map.find?, SymEnv.ofEnv, SymEntities.ofSchema, Data.Map.toList]
+  simp [Data.Map.find?] at hfound
+
+  -- Simplify hfound
+  split at hfound
+  any_goals contradiction
+  case _ _ _ hfound2 =>
+  simp at hfound; simp [hfound] at *;
+  have hfound := hfound2; clear hfound2
+
+  have h := List.find?_some hfound
+  simp at h
+  simp [h] at hfound; clear h
+
+  apply list_key_find?_to_map_make_find?
+  apply list_key_find?_map
+  assumption
+
+/--
 Lemma that if a concrete `env : Environment` has tags for
 a particular entity type, when `SymEnv.ofEnv env` must also
 have tags for it
@@ -578,16 +643,28 @@ theorem SymEnv_of_preserves_tags
     τags.vals.outType = TermType.ofType ty
 := by
   simp [EntitySchema.tags?] at h
-  have ⟨_, ⟨h1, h2⟩⟩ := h
-  -- have _ := Cedar.Data.Map.in_list_iff_find?_some.mpr
-  -- apply Cedar.Data.Map.in_list_iff_find?_some at h1
+  have ⟨found_entry, ⟨hfound, hty_entry⟩⟩ := h
+
+  -- The corresponding entity exists in `εnv`
+  have hety_exists :
+    Data.Map.find? (SymEnv.ofEnv env).entities ety
+    = some (SymEntityData.ofEntityType ety found_entry)
+  := by
+    apply ofEnv_lookup_entity ?_ hfound
+    rfl
+
   simp [
-    SymEnv.ofEnv,
-    SymEntities.ofSchema,
+    hety_exists,
     SymEntities.tags,
-    Cedar.Data.Map.find?,
+    SymEntityData.ofEntityType,
+    SymEntityData.ofStandardEntityType,
+    SymEntityData.ofEnumEntityType,
   ]
-  sorry
+  split <;> simp
+  case h_1 std_entry =>
+    simp [EntitySchemaEntry.tags?] at hty_entry
+    simp [hty_entry, SymEntityData.ofStandardEntityType.symTags, UnaryFunction.outType]
+  case h_2 enum_entry => contradiction
 
 /--
 Similar to compileApp₂_wf_types, but for compile
@@ -860,6 +937,104 @@ theorem ofRecordType_lookup
           all_goals contradiction
         simp
 
+-- Given that
+--   env.ets.attrs? ety = some a
+--   a.liftBoolTypes = rty
+-- Show that
+--   (SymEnv.ofEnv env).entities.attrs ety = .some attrs
+--   UnaryFunction.WellFormed εnv.entities attrs
+--   attrs.argType = CedarType.entity ety
+--   attrs.outType = .record (Data.Map.mk (TermType.ofRecordType rty.1))
+
+/--
+`SymEnv` being well-formed implies that any
+attribute function is well-formed
+-/
+theorem env_wf_implies_attrs_wf
+  {εnv : SymEnv} {ety : EntityType} {attrs : UnaryFunction}
+  (hwf : εnv.WellFormed)
+  (hattrs_exists : εnv.entities.attrs ety = .some attrs) :
+  UnaryFunction.WellFormed εnv.entities attrs ∧
+  attrs.argType = .entity ety
+:= by
+  have ⟨_, _, hwf_entities⟩ := hwf
+  simp [SymEntities.attrs] at hattrs_exists
+  simp_do_let (Data.Map.find? εnv.entities ety) at hattrs_exists
+  contradiction
+
+  case some d hety_exists =>
+    have ⟨h1, h2, _⟩ := hwf_entities ety d hety_exists
+    simp at hattrs_exists
+    simp [hattrs_exists] at h1 h2
+    simp [h1, h2]
+
+/--
+Show that `SymEnv.ofEnv env` preserves the result of attribute lookup
+-/
+theorem ofEnv_entity_attr_lookup
+  {env : Environment} {εnv : SymEnv}
+  {rty : RecordType} {ety : EntityType}
+  (henv : εnv = SymEnv.ofEnv env)
+  (hattrs_exists : env.ets.attrs? ety = some rty)
+  (hwf : εnv.WellFormed) :
+  ∃ attrs : UnaryFunction,
+    εnv.entities.attrs ety = .some attrs ∧
+    UnaryFunction.WellFormed εnv.entities attrs ∧
+    attrs.argType = .entity ety ∧
+    attrs.outType = .record (Data.Map.mk (TermType.ofRecordType rty.1))
+:= by
+  simp [EntitySchema.attrs?, Data.Map.find?] at hattrs_exists
+
+  split at hattrs_exists
+  all_goals simp at hattrs_exists
+  case h_1 found_ety found_entry hfound =>
+
+  -- The corresponding entity exists in `εnv`
+  have hety_exists :
+    Data.Map.find? εnv.entities ety
+    = some (SymEntityData.ofEntityType ety found_entry)
+  := by
+    apply ofEnv_lookup_entity henv
+    simp [Data.Map.find?, hfound]
+
+  have ⟨attrs, hattrs_exists2⟩ :
+    ∃ attrs : UnaryFunction, εnv.entities.attrs ety = .some attrs
+  := by
+    simp [SymEntities.attrs, hety_exists]
+
+  have ⟨hwf_attrs, hty_arg_attrs⟩ := env_wf_implies_attrs_wf hwf hattrs_exists2
+
+  apply Exists.intro attrs
+  constructor
+
+  -- Entity type exists in `εnv.entities`
+  · assumption
+
+  -- Some well-formedness and well-typedness conditions
+  · simp [hwf_attrs, hty_arg_attrs]
+
+    -- TODO: show that the `attrs.outType` is `TermType.ofRecordType rty.1`
+    simp [
+      SymEntities.attrs,
+      hety_exists,
+      SymEntityData.ofEntityType,
+      SymEntityData.ofStandardEntityType,
+      SymEntityData.ofEnumEntityType,
+      SymEntityData.ofStandardEntityType.attrsUUF,
+      SymEntityData.emptyAttrs,
+    ] at hattrs_exists2
+    split at hattrs_exists2 <;> simp at hattrs_exists2
+
+    -- Standard entity types
+    · simp [← hattrs_exists2, UnaryFunction.outType, TermType.ofType]
+      simp [EntitySchemaEntry.attrs] at hattrs_exists
+      simp [hattrs_exists]
+
+    -- Enum entity types
+    · simp [← hattrs_exists2, UnaryFunction.outType, TermType.ofType]
+      simp [EntitySchemaEntry.attrs] at hattrs_exists
+      simp [← hattrs_exists, TermType.ofRecordType, Data.Map.empty]
+
 /--
 CompileWellTypedCondition decomposes for unaryApp
 -/
@@ -888,7 +1063,7 @@ theorem compile_well_typed_getAttr
   CompileWellTypedForExpr (.getAttr expr attr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_getAttr hcond
-  have ⟨henv, hwt, hwf⟩ := hcond
+  have ⟨henv, hwt, hwf_env, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -896,7 +1071,7 @@ theorem compile_well_typed_getAttr
 
   cases hwt
 
-  case getAttr_entity ety rty hrty hwt_expr hty_expr hty_is_attr =>
+  case getAttr_entity ety rty hent_attrs_exists hwt_expr hty_expr henv_attr_lookup =>
     simp [
       CompileWellTypedForExpr,
       compile,
@@ -910,18 +1085,26 @@ theorem compile_well_typed_getAttr
       hty_expr,
     ]
 
-    -- TODO: show this fact
-    -- from hypotheses in `getAttr_entity`
+    simp at hent_attrs_exists
+    have ⟨rty2, hrty2, hrty_rty2⟩ := hent_attrs_exists
+
+    simp at henv_attr_lookup
+    have ⟨attr_ty, henv_attr_lookup, hty_env_attr⟩ := henv_attr_lookup
+
+    -- Show some facts about `εnv` from the hypotheses in `getAttr_entity`
     have ⟨
-      attrs, rty, attr_ty,
+      attrs, _, attr_ty,
       hattrs_exists, hwf_attrs, hattr_input,
       hattr_isrec, hattr_exists, hattr_ty_eq,
     ⟩ :
       ∃ (attrs : UnaryFunction)
         (rty : Data.Map Attr TermType)
         (attr_ty : TermType),
+
+        -- Entity type has attrs
         εnv.entities.attrs ety = .some attrs ∧
-        -- the unary function attrs is "well-formed"
+
+        -- The symbolic attrs is "well-formed"
         UnaryFunction.WellFormed εnv.entities attrs ∧
         (Factory.option.get compile_expr).typeOf = attrs.argType ∧
         (Factory.app attrs (Factory.option.get compile_expr)).typeOf = .record rty ∧
@@ -932,7 +1115,32 @@ theorem compile_well_typed_getAttr
         match attr_ty with
         | .option attr_ty' => TermType.ofType ty = attr_ty'
         | _ => TermType.ofType ty = attr_ty
-    := sorry
+    := by
+      have ⟨_, h1, h2, h3, h4⟩ := ofEnv_entity_attr_lookup henv hrty2 hwf_env
+
+      simp [hty_expr, TermType.ofType] at hty_get_comp_expr
+      simp [h1, h2, h3, h4, hty_get_comp_expr]
+
+      apply Exists.intro (Data.Map.mk (TermType.ofRecordType rty2.1))
+      constructor
+
+      -- Types of symbolic attrs are correct
+      · simp [← h4]
+        apply (wf_app (εs := εnv.entities) hwf_get_comp_expr ?_ ?_).right
+        simp [hty_get_comp_expr, h3]
+        apply h2
+
+      -- (hattr_exists : Data.Map.find? rty attr = some qty)
+      -- (hattr_ty : qty.getType = ty) :
+      have ⟨_, h1, h2⟩ := ofRecordType_lookup henv_attr_lookup hty_env_attr
+
+      -- Finally, show that TermType is agnostic to `rty2` and `rty2.liftBoolTypes`
+      have hlift := ofRecordType_ignores_liftBool rty2.1
+      simp [RecordType.liftBoolTypes] at hrty_rty2
+      simp [← hrty_rty2] at hlift
+      simp [← hrty_rty2, ← hlift] at h1
+      simp [h1]
+      split at h2 <;> simp [h2]
 
     simp [hattrs_exists, hattr_isrec, hattr_exists]
     split
