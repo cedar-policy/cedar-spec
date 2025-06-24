@@ -1683,6 +1683,305 @@ theorem compile_well_typed_set
       simp [hty_comp_xs_hd] at hnot_opt
 
 /--
+CompileWellTypedCondition decomposes for record
+-/
+theorem eliminate_wt_cond_record
+  {xs : List (Attr × TypedExpr)} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.record xs ty) env εnv)
+  (a : Attr) (x : TypedExpr)
+  (hx : (a, x) ∈ xs) :
+  CompileWellTypedCondition x env εnv
+:= by
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  -- constructor; rotate_left
+  -- · have e : x = (a, x).snd := by rfl
+  --   rw [e]
+  --   apply List.sizeOf_snd_lt_sizeOf_list
+  --   exact hx
+  constructor; any_goals assumption
+  constructor
+  · cases hwt; any_goals assumption
+  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+    rcases hwf with ⟨_, hrefs⟩
+    constructor;
+    · cases hwt with
+      | record h1 =>
+        apply h1; assumption
+    · constructor
+      · assumption
+      · cases hrefs with
+        | record_valid h =>
+          simp at h
+          apply h a x.toExpr a x
+          simp [List.attach₂, hx]
+          any_goals rfl
+          have e : x = (a, x).snd := by rfl
+          rw [e]
+          apply List.sizeOf_snd_lt_sizeOf_list
+          exact hx
+
+/--
+Defines when each pair of values in two list of key-value pairs
+satisfies a relation `p`, and each pair of keys is equal
+-/
+inductive MapListValueRelation {α β κ} (p : α → β → Prop) : List (κ × α) → List (κ × β) → Prop
+  | nil : MapListValueRelation p [] []
+  | cons {k₁ k₂ : κ} {x : α} {y : β} {xs : List (κ × α)} {ys : List (κ × β)} :
+    p x y →
+    k₁ = k₂ →
+    MapListValueRelation p xs ys →
+    MapListValueRelation p ((k₁, x) :: xs) ((k₂, y) :: ys)
+
+/--
+`List.canonicalize` preserves `MapListValueRelation`
+-/
+theorem canonicalize_preseves_MapListValueRelation
+  [LT κ] [DecidableLT κ]
+  {p : α → β → Prop}
+  {xs : List (κ × α)} {ys : List (κ × β)}
+  (h : MapListValueRelation p xs ys) :
+  MapListValueRelation p
+    (List.canonicalize Prod.fst xs)
+    (List.canonicalize Prod.fst ys)
+:= sorry
+
+/--
+If `p x y` implies `f x = g y`,
+then `MapListValueRelation p xs ys` implies
+`List.map (Prod.map id f) xs = List.map (Prod.map id g) ys`
+-/
+theorem MapListValueRelation_implies_map_eq_if_p_implies_eq
+  {p : α → β → Prop}
+  {f : α → γ} {g : β → γ}
+  {xs : List (κ × α)} {ys : List (κ × β)} :
+  MapListValueRelation p xs ys →
+  (∀ x y, p x y → f x = g y) →
+  List.map (λ x => (x.fst, f x.snd)) xs
+  = List.map (λ x => (x.fst, g x.snd)) ys
+:= sorry
+
+/--
+Simplifies a specific combination of `List.map` and `List.attach₃`
+-/
+theorem list_map_attach₃_remove
+  [SizeOf α] [SizeOf β]
+  {xs : List (α × β)}
+  {f : β → γ} :
+  List.map (fun x => (x.1.fst, f x.1.snd)) xs.attach₃
+  = List.map (fun x => (x.fst, f x.snd)) xs
+:= by
+  induction xs with
+  | nil => simp [List.attach₃]
+  | cons x xs ih =>
+    simp [List.attach₃]
+    rw [List.map_pmap]
+    simp
+
+/--
+A technical lemma required to simplify record compilation
+-/
+theorem idk_how_to_call_this
+  {f : α → SymCC.Result β}
+  {g : α → α'}
+  {h : β → β'}
+  {p : β' → α' → Prop}
+  {xs : List (κ × α)} {ys : List (κ × β)} :
+  (hmapM : List.mapM (λ (k, x) => do (k, ← f x)) xs = Except.ok ys) →
+  (hp : ∀ κ x y, (κ, x) ∈ xs → f x = Except.ok y → p (h y) (g x)) →
+  MapListValueRelation p
+    (List.map (fun x => (x.fst, h x.snd)) ys)
+    (List.map (fun x => (x.fst, g x.snd)) xs)
+:= by
+  sorry
+
+theorem compile_well_typed_record
+  {xs : List (Attr × TypedExpr)} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (ihxs : ∀ a x, (a, x) ∈ xs → CompileWellTypedForExpr x εnv)
+  (hcond : CompileWellTypedCondition (.record xs ty) env εnv) :
+  CompileWellTypedForExpr (.record xs ty) εnv
+:= by
+  have hcond_xs := eliminate_wt_cond_record hcond
+  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+
+  simp [
+    CompileWellTypedForExpr,
+    TypedExpr.toExpr,
+    compile,
+    compileRecord,
+    List.mapM₂,
+  ]
+
+  -- Compilation of all fields succeeds (the simplified version)
+  have ⟨tcomp_xs, hcomp_xs_simp⟩ :
+    ∃ ats : List (Attr × Term),
+      List.mapM
+        (fun x => do
+          let __do_lift ← compile x.snd.toExpr εnv
+          Except.ok (x.fst, __do_lift))
+        xs = Except.ok ats
+  := by
+    apply List.all_ok_implies_mapM_ok
+    intros p hx
+    have ⟨k, x⟩ := p
+    have ⟨_, hcomp_x, _⟩ := ihxs k x hx
+    simp [hcomp_x]
+
+  -- Compilation of all fields succeeds (the exact version)
+  have hcomp_xs :
+    List.mapM
+      (fun x => do
+        let __do_lift ← compile x.1.snd εnv
+        Except.ok (x.1.fst, __do_lift))
+      (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂).attach₂
+    = Except.ok tcomp_xs
+  := by
+    simp [List.attach₂]
+
+    -- simp [List.attach₂] at hcomp_xs
+    have e {p : Attr × Expr → Prop} :
+      (fun x : { x : Attr × Expr // p x } => do
+        let __do_lift ← compile x.val.snd εnv
+        Except.ok (x.val.fst, __do_lift))
+      =
+      (fun x : { x : Attr × Expr // p x } => (
+        fun x : Attr × Expr => do
+        let __do_lift ← compile x.snd εnv
+        Except.ok (x.fst, __do_lift)
+      ) x.val)
+    := rfl
+    rw [e]
+
+    simp [List.mapM_pmap_subtype (
+      fun x : Attr × Expr => do
+      let __do_lift ← compile x.snd εnv
+      Except.ok (x.fst, __do_lift)
+    ) ?_ ?_]
+    simp [List.map_pmap]
+    simp [List.mapM_map]
+    simp [hcomp_xs_simp]
+
+  -- Extract some info from well-typedness
+  cases hwt with
+  | record _ hrty =>
+  case _ rty _ =>
+
+  -- `rty` is a well-formed map
+  have hwf_rty :
+    rty.WellFormed
+  := by
+    simp [Data.Map.WellFormed, hrty]
+    apply Eq.symm
+    apply Data.Map.make_of_make_is_id
+
+  -- `tcomp_xs` and `xs` have some association
+  have hassoc_comp_xs :
+    MapListValueRelation
+      (λ t ty =>
+        t.typeOf = TermType.ofQualifiedType ty)
+      (List.map (fun x => (x.fst, Factory.option.get x.snd)) tcomp_xs)
+      (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) xs)
+  := by
+
+    -- Simplify hcomp_xs
+    -- Factor out (
+    --   fun x : Attr × Expr => do
+    --   let __do_lift ← compile x.snd εnv
+    --   Except.ok (x.fst, __do_lift)
+    -- )
+    -- TODO: simplify this and factor this out
+    -- simp [List.attach₂] at hcomp_xs
+    -- have e {p : Attr × Expr → Prop} :
+    --   (fun x : { x : Attr × Expr // p x } => do
+    --     let __do_lift ← compile x.val.snd εnv
+    --     Except.ok (x.val.fst, __do_lift))
+    --   =
+    --   (fun x : { x : Attr × Expr // p x } => (
+    --     fun x : Attr × Expr => do
+    --     let __do_lift ← compile x.snd εnv
+    --     Except.ok (x.fst, __do_lift)
+    --   ) x.val)
+    -- := rfl
+    -- rw [e] at hcomp_xs
+
+    -- simp [List.mapM_pmap_subtype (
+    --   fun x : Attr × Expr => do
+    --   let __do_lift ← compile x.snd εnv
+    --   Except.ok (x.fst, __do_lift)
+    -- ) ?_ ?_] at hcomp_xs
+
+    -- simp [List.map_pmap] at hcomp_xs
+    -- simp [List.mapM_map] at hcomp_xs
+
+    apply idk_how_to_call_this
+      (f := fun x => compile x.toExpr εnv)
+      (g := fun x : TypedExpr => Qualified.required x.typeOf)
+      hcomp_xs_simp
+
+    intros k x tcomp_x hx hcomp_x
+    simp [TermType.ofQualifiedType]
+    have ⟨_, hcomp_x2, hty_comp_x⟩ := ihxs k x hx
+    simp [hcomp_x] at hcomp_x2
+    simp [← hcomp_x2] at hty_comp_x
+
+    have hcond_x := hcond_xs k x hx
+    have ⟨_, h⟩ := wf_option_get (wt_cond_implies_compile_wf hcond_x hcomp_x) hty_comp_x
+    exact h
+
+  -- TODO: each compiled term is well-formed
+  -- TODO: Option.get of each compiled term is well-formed
+
+  simp [hcomp_xs, Factory.someOf]
+
+  apply (wf_ifAllSome (εs := εnv.entities) ?_ ?_ ?_).right
+  · sorry
+
+  · constructor
+    apply wf_recordOf
+    simp
+    sorry
+
+  · simp [
+      Term.typeOf,
+      Factory.recordOf,
+      TypedExpr.typeOf,
+      TermType.ofType,
+      Data.Map.make,
+    ]
+
+    -- Rephrase `TermType.ofRecordType` with `List.map`
+    have e (rty : List (Attr × QualifiedType)) :
+      TermType.ofRecordType rty
+      = rty.map λ (a, qty) => (a, TermType.ofQualifiedType qty)
+    := by
+      induction rty with
+      | nil => simp [TermType.ofRecordType]
+      | cons => simp [TermType.ofRecordType]; assumption
+    simp [e rty.1]
+
+    simp [hrty, Data.Map.make]
+
+    -- -- Since `tcomp_xs` is sorted
+    -- -- so we can strip `List.canonicalize`
+    -- have e :
+    --   List.canonicalize Prod.fst (List.map (Prod.map id Factory.option.get) tcomp_xs)
+    --   = List.map (Prod.map id Factory.option.get) tcomp_xs
+    -- := by
+    --   apply List.sortedBy_implies_canonicalize_eq hsorted_tcomp_xs
+    -- rw [e]
+
+    -- TODO: we need to establish some connection between
+    -- `tcomp_xs` and `xs.map (fun x => (x.fst, Qualified.required x.snd.typeOf)`
+    -- in particular that for each entry `(a, t) ∈ tcomp_xs` and `(a, x) ∈ xs`
+    -- `t.typeOf = TermType.ofType (Qualified.required x.snd.typeOf)`
+
+    simp [list_map_attach₃_remove]
+    have hassoc_canon := canonicalize_preseves_MapListValueRelation hassoc_comp_xs
+    apply MapListValueRelation_implies_map_eq_if_p_implies_eq hassoc_canon
+    simp
+
+/--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
 -/
 theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
@@ -1745,10 +2044,29 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
     assumption
 
   case record =>
-    sorry
+    have hcond := eliminate_wt_cond_record h
+    apply compile_well_typed_record
+    · intros a x hx
+      apply compile_well_typed (hcond a x hx)
+    assumption
 
   case call =>
     sorry
+
+  decreasing_by
+    repeat case _ =>
+      simp [*]; omega
+
+    -- Set
+    · simp [*]
+      have h := List.sizeOf_lt_of_mem hx
+      omega
+
+    -- Record
+    · simp [*]
+      have h := List.sizeOf_snd_lt_sizeOf_list hx
+      simp at h
+      omega
 
 -- theorem compile_well_typed_expr_never_fails {ty : TypedExpr} {env : Environment} {εnv : SymEnv} :
 --   εnv = SymEnv.ofEnv env →
