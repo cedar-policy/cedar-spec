@@ -39,7 +39,7 @@ impl EvaluationCommands {
                 let schema = schema_file
                     .map(|schema_file| util::parse_schema(&schema_file))
                     .transpose()?;
-                let request = RequestArgsEnum::from(req_args).parse()?;
+                let request = RequestArgsEnum::from(req_args).parse(schema.as_ref())?;
                 let entities = util::parse_entities(&entities_file, schema.as_ref())?;
                 evaluation::check_is_authorized(&policyset, &entities, &request)
             }
@@ -55,7 +55,7 @@ impl EvaluationCommands {
                     .map(|schema_file| util::parse_schema(&schema_file))
                     .transpose()?;
                 let entities = util::parse_entities(&entities_file, schema.as_ref())?;
-                let request = RequestArgsEnum::from(req_args).parse()?;
+                let request = RequestArgsEnum::from(req_args).parse(schema.as_ref())?;
                 let output_expr = expected_expr_file
                     .map(|fname| util::parse_expression(&fname))
                     .transpose()?;
@@ -93,7 +93,7 @@ impl ValidationCommands {
                 req_args,
             } => {
                 let schema = util::parse_schema(&schema_file)?;
-                let request = RequestArgsEnum::from(req_args).parse()?;
+                let request = RequestArgsEnum::from(req_args).parse(Some(&schema))?;
                 validation::validate_request(&schema, &request)
             }
             Self::Entities {
