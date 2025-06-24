@@ -1929,18 +1929,39 @@ theorem compile_well_typed_record
     have ⟨_, h⟩ := wf_option_get (wt_cond_implies_compile_wf hcond_x hcomp_x) hty_comp_x
     exact h
 
-  -- TODO: each compiled term is well-formed
-  -- TODO: Option.get of each compiled term is well-formed
+  -- Each compiled term (and Option.get of it) is well-formed
+  have hwf_comp_xs :
+    ∀ (y : Term), y ∈ List.map Prod.snd tcomp_xs →
+    Term.WellFormed εnv.entities y ∧
+    Term.WellFormed εnv.entities (Factory.option.get y)
+  := by
+    simp
+    intros y k hy
+    have ⟨⟨k2, x⟩, hx, hcomp_x⟩ := List.mapM_ok_implies_all_from_ok hcomp_xs_simp (k, y) hy
+    simp at hcomp_x
+    simp_do_let (compile x.toExpr εnv) at hcomp_x
+    case ok hk_to_k2 hcomp_x2 =>
+    simp at hcomp_x
+    simp [hcomp_x] at hcomp_x2
+    simp [hcomp_x] at hx
 
+    have ⟨hwf_comp_x, ⟨ty, hty_comp_x⟩⟩ := compile_wf ((hcond_xs k x hx).2.2.2) hcomp_x2
+    simp [hwf_comp_x]
+    apply (wf_option_get hwf_comp_x hty_comp_x).left
+
+  -- Prove some typing obligations
   simp [hcomp_xs, Factory.someOf]
-
   apply (wf_ifAllSome (εs := εnv.entities) ?_ ?_ ?_).right
-  · sorry
+  · intros g hg
+    exact (hwf_comp_xs g hg).left
 
   · constructor
     apply wf_recordOf
     simp
-    sorry
+    intros k y k2 y2 hy hk_to_k2 hopt_y
+    simp [← hopt_y]
+    simp at hwf_comp_xs
+    exact (hwf_comp_xs y2 k2 hy).right
 
   · simp [
       Term.typeOf,
