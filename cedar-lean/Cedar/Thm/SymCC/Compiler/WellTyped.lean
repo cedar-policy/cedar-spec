@@ -1744,7 +1744,9 @@ theorem canonicalize_preseves_MapListValueRelation
   MapListValueRelation p
     (List.canonicalize Prod.fst xs)
     (List.canonicalize Prod.fst ys)
-:= sorry
+:= by
+
+  sorry
 
 /--
 If `p x y` implies `f x = g y`,
@@ -1786,14 +1788,60 @@ theorem idk_how_to_call_this
   {g : α → α'}
   {h : β → β'}
   {p : β' → α' → Prop}
-  {xs : List (κ × α)} {ys : List (κ × β)} :
-  (hmapM : List.mapM (λ (k, x) => do (k, ← f x)) xs = Except.ok ys) →
-  (hp : ∀ κ x y, (κ, x) ∈ xs → f x = Except.ok y → p (h y) (g x)) →
+  {xs : List (κ × α)} {ys : List (κ × β)}
+  (hmapM : List.mapM (λ (k, x) => do (k, ← f x)) xs = Except.ok ys)
+  (hp : ∀ κ x y, (κ, x) ∈ xs → f x = Except.ok y → p (h y) (g x)) :
   MapListValueRelation p
     (List.map (fun x => (x.fst, h x.snd)) ys)
     (List.map (fun x => (x.fst, g x.snd)) xs)
 := by
-  sorry
+  induction xs generalizing ys with
+  | nil =>
+    simp [pure, Except.pure] at hmapM
+    simp [hmapM]
+    constructor
+
+  | cons xhd xtl ih =>
+    cases ys with
+    | nil =>
+      -- Not possible
+      simp at hmapM
+      simp_do_let (f xhd.snd) at hmapM
+      simp [Functor.map, Except.map] at hmapM
+      split at hmapM; contradiction
+      simp at hmapM
+
+    | cons yhd ytl =>
+      simp
+      have hall_ok := List.mapM_ok_implies_all_ok hmapM
+      simp at hall_ok
+
+      -- Show that xhd.fst = yhd.fst
+      simp at hmapM
+      simp_do_let (f xhd.snd) at hmapM
+      simp [Functor.map, Except.map] at hmapM
+      split at hmapM; contradiction
+      simp at hmapM
+      have heqk : xhd.fst = yhd.fst := by simp [← hmapM.left]
+
+      constructor
+
+      have hp := hp yhd.fst xhd.snd
+      simp [← heqk] at hp
+      apply hp
+
+      simp [*]
+      simp [← hmapM.left]
+      simp [heqk]
+
+      apply ih
+      · simp [← hmapM.right]
+        assumption
+
+      · intros k x y hx hf_x
+        apply hp k x y
+        simp [hx]
+        assumption
 
 theorem compile_well_typed_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
