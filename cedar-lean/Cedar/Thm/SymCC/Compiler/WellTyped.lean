@@ -1635,7 +1635,7 @@ inductive MapListValueRelation {α β κ} (p : α → β → Prop) : List (κ ×
 /--
 `List.insertCanonical` preserves `MapListValueRelation`
 -/
-theorem insertCanonical_preseves_MapListValueRelation
+theorem MapListValueRelation.inv_under_insertCanonical
   [LT κ] [DecidableLT κ] [Data.StrictLT κ]
   {p : α → β → Prop}
   {k : κ} {x : α} {y : β}
@@ -1721,7 +1721,7 @@ theorem canonicalize_preseves_MapListValueRelation
         split
         case _ =>
           constructor; assumption; simp
-          apply insertCanonical_preseves_MapListValueRelation
+          apply MapListValueRelation.inv_under_insertCanonical
           assumption
           assumption
 
