@@ -360,9 +360,9 @@ pub fn parse_schema(fname: &PathBuf) -> Result<Schema, ExecError> {
 }
 
 /// Auxillary function used to parse a file containing Cedar Entities
-pub fn parse_entities(fname: &PathBuf) -> Result<Entities, ExecError> {
+pub fn parse_entities(fname: &PathBuf, schema: Option<&Schema>) -> Result<Entities, ExecError> {
     match read_to_string(fname) {
-        Ok(entities_json_str) => match Entities::from_json_str(&entities_json_str, None) {
+        Ok(entities_json_str) => match Entities::from_json_str(&entities_json_str, schema) {
             Ok(entities) => Ok(entities),
             Err(e) => Err(ExecError::ParseError {
                 content_type: ContentType::Entities,

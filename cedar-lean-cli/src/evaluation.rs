@@ -40,11 +40,14 @@ pub fn check_is_authorized(
         print!(" {policy}");
     }
     println!();
-    print!("The following policies did not contribute to the decision as they errored during evaluation:");
-    for policy in auth_response.erroring_policies() {
-        print!(" {policy}");
+    if !auth_response.erroring_policies().is_empty() {
+        println!();
+        print!("The following policies did not contribute to the decision as they errored during evaluation:");
+        for policy in auth_response.erroring_policies() {
+            print!(" {policy}");
+        }
+        println!();
     }
-    println!();
     Ok(())
 }
 
