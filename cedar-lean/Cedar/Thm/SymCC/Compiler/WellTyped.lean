@@ -1129,7 +1129,7 @@ theorem ofEnv_entity_attr_lookup
       simp [← hattrs_exists, TermType.ofRecordType, Data.Map.empty]
 
 /--
-CompileWellTypedCondition decomposes for unaryApp
+CompileWellTypedCondition decomposes for getAttr
 -/
 theorem eliminate_wt_cond_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -1319,7 +1319,7 @@ theorem compile_well_typed_getAttr
       simp [h, hattr_ty_eq]
 
 /--
-CompileWellTypedCondition decomposes for unaryApp
+CompileWellTypedCondition decomposes for hasAttr
 -/
 theorem eliminate_wt_cond_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -1511,6 +1511,93 @@ theorem compile_well_typed_hasAttr
       ]
 
 /--
+CompileWellTypedCondition decomposes for set
+-/
+theorem eliminate_wt_cond_set
+  {xs : List TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.set xs ty) env εnv)
+  (x : TypedExpr)
+  (hx : x ∈ xs) :
+  CompileWellTypedCondition x env εnv
+:= by
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  constructor; any_goals assumption
+  constructor
+  · cases hwt; any_goals assumption
+  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+    rcases hwf with ⟨_, hrefs⟩
+    constructor;
+    · cases hwt with
+      | set h1 =>
+        apply h1; assumption
+    · constructor
+      · assumption
+      · cases hrefs with
+        | set_valid h =>
+          apply h
+          simp [List.map₁]
+          apply Exists.intro x
+          simp [hx]
+
+theorem compile_well_typed_set
+  {xs : List TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (ihxs : ∀ x, x ∈ xs → CompileWellTypedForExpr x εnv)
+  (hcond : CompileWellTypedCondition (.set xs ty) env εnv) :
+  CompileWellTypedForExpr (.set xs ty) εnv
+:= by
+  have hcond_xs := eliminate_wt_cond_set hcond
+  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+
+  simp [
+    CompileWellTypedForExpr,
+    TypedExpr.toExpr,
+    compile,
+    compileSet,
+    List.map₁,
+    List.mapM₁,
+  ]
+
+  -- Prove that mapM over `compile` succeeds
+  have ⟨tcomp_xs, hcomp_xs⟩ :
+    ∃ tcomp_xs,
+    List.mapM (fun x => compile x.val εnv) (List.map TypedExpr.toExpr xs).attach
+    = Except.ok tcomp_xs
+  := by
+    apply List.all_ok_implies_mapM_ok
+    simp
+    intros x hx
+    have ⟨_, h, _⟩ := ihxs x hx
+    simp [h]
+  simp [hcomp_xs]
+
+  -- TODO: Prove that each compiled result has the correct type
+  -- have _ :
+  --   true
+  -- := sorry
+
+  -- Get some info from well-typedness
+  cases hwt with
+  | set hwt_xs hty_sx hnon_empty =>
+
+  simp at hnon_empty
+
+  have htcomp_xs_non_empty :
+    tcomp_xs ≠ []
+  := by
+    intros hcontra
+    simp [hcontra] at hcomp_xs
+    have hxs_empty := List.mapM_implies_nil hcomp_xs
+    simp at hxs_empty
+    exact hnon_empty hxs_empty
+
+  split
+  contradiction
+
+  all_goals sorry
+
+/--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
 -/
 theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
@@ -1566,7 +1653,11 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
     all_goals assumption
 
   case set =>
-    sorry
+    have hcond := eliminate_wt_cond_set h
+    apply compile_well_typed_set
+    · intros x hx
+      apply compile_well_typed (hcond x hx)
+    assumption
 
   case record =>
     sorry
@@ -1580,7 +1671,6 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
 --   εnv.WellFormedFor ty.toExpr →
 --   Except.isOk (compile ty.toExpr εnv)
 -- := by
---   intros
 --   sorry
 
 end Cedar.Thm
