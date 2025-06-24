@@ -1734,10 +1734,41 @@ inductive MapListValueRelation {α β κ} (p : α → β → Prop) : List (κ ×
     MapListValueRelation p ((k₁, x) :: xs) ((k₂, y) :: ys)
 
 /--
+`List.insertCanonical` preserves `MapListValueRelation`
+-/
+theorem insertCanonical_preseves_MapListValueRelation
+  [LT κ] [DecidableLT κ] [Data.StrictLT κ]
+  {p : α → β → Prop}
+  {k : κ} {x : α} {y : β}
+  {xs : List (κ × α)} {ys : List (κ × β)}
+  (hp : p x y)
+  (h : MapListValueRelation p xs ys) :
+  MapListValueRelation p
+    (List.insertCanonical Prod.fst (k, x) xs)
+    (List.insertCanonical Prod.fst (k, y) ys)
+:= by
+  induction h with
+  | nil =>
+    simp [List.insertCanonical]
+    constructor; assumption; simp
+    constructor
+  | cons px2 pkeq ptail ih =>
+    simp [List.insertCanonical, pkeq]
+    split
+    · constructor; assumption; simp
+      constructor; assumption; simp
+      assumption
+    split
+    · constructor; assumption; simp
+      exact ih
+    constructor; assumption; simp
+    assumption
+
+/--
 `List.canonicalize` preserves `MapListValueRelation`
 -/
 theorem canonicalize_preseves_MapListValueRelation
-  [LT κ] [DecidableLT κ]
+  [LT κ] [DecidableLT κ] [Data.StrictLT κ]
   {p : α → β → Prop}
   {xs : List (κ × α)} {ys : List (κ × β)}
   (h : MapListValueRelation p xs ys) :
@@ -1745,8 +1776,58 @@ theorem canonicalize_preseves_MapListValueRelation
     (List.canonicalize Prod.fst xs)
     (List.canonicalize Prod.fst ys)
 := by
+  -- unfold List.canonicalize
 
-  sorry
+  induction h with
+  | nil =>
+    simp [List.canonicalize]
+    constructor
+
+  | cons hp hkeq hxs ih =>
+    case _ k1 k2 x y xs ys =>
+    simp [List.canonicalize, ← hkeq]
+    unfold List.insertCanonical
+    simp
+    split
+    case _ h =>
+      simp [h] at ih
+      split
+      · constructor
+        assumption
+        simp
+        constructor
+
+      case _ _ _ _ hcons =>
+      simp [hcons] at ih
+      contradiction
+
+    case _ cxshd cxstl hxs =>
+      simp [hxs] at ih
+      cases e : (List.canonicalize Prod.fst ys)
+      simp [e] at ih
+      contradiction
+
+      case _ cyshd cystl =>
+      simp [e] at ih
+      cases ih with
+      | cons phd hkeq2 htail =>
+        simp [hxs, hkeq2]
+        split
+        · repeat
+            constructor
+            assumption
+            simp
+          assumption
+
+        split
+        case _ =>
+          constructor; assumption; simp
+          apply insertCanonical_preseves_MapListValueRelation
+          assumption
+          assumption
+
+        constructor; assumption; simp
+        assumption
 
 /--
 If `p x y` implies `f x = g y`,
@@ -1756,12 +1837,19 @@ then `MapListValueRelation p xs ys` implies
 theorem MapListValueRelation_implies_map_eq_if_p_implies_eq
   {p : α → β → Prop}
   {f : α → γ} {g : β → γ}
-  {xs : List (κ × α)} {ys : List (κ × β)} :
-  MapListValueRelation p xs ys →
-  (∀ x y, p x y → f x = g y) →
+  {xs : List (κ × α)} {ys : List (κ × β)}
+  (hr : MapListValueRelation p xs ys)
+  (heq : ∀ x y, p x y → f x = g y) :
   List.map (λ x => (x.fst, f x.snd)) xs
   = List.map (λ x => (x.fst, g x.snd)) ys
-:= sorry
+:= by
+  induction hr with
+  | nil => simp [List.map]
+  | cons hp hkeq hr2 ih =>
+    case _ x y xs ys =>
+    simp [List.map]
+    simp [hkeq, heq x y hp]
+    exact ih
 
 /--
 Simplifies a specific combination of `List.map` and `List.attach₃`
