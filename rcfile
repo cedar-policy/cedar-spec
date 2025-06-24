@@ -1,4 +1,4 @@
 #!/bin/bash
 
 source /root/.profile
-source ./set_env_vars.sh
+source ../cedar-lean-ffi/set_env_vars.sh
