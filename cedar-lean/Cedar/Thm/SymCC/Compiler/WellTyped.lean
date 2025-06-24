@@ -1572,14 +1572,10 @@ theorem compile_well_typed_set
     simp [h]
   simp [hcomp_xs]
 
-  -- TODO: Prove that each compiled result has the correct type
-  -- have _ :
-  --   true
-  -- := sorry
-
   -- Get some info from well-typedness
   cases hwt with
   | set hwt_xs hty_sx hnon_empty =>
+  case _ ty =>
 
   simp at hnon_empty
 
@@ -1592,10 +1588,99 @@ theorem compile_well_typed_set
     simp at hxs_empty
     exact hnon_empty hxs_empty
 
-  split
-  contradiction
+  -- Prove that each compiled result has the correct type
+  have hty_comp_xs :
+    ∀ y ∈ tcomp_xs,
+      y.typeOf = (TermType.ofType ty).option ∧
+      Term.WellFormed εnv.entities y
+  := by
+    intros y hy
+    have ⟨⟨x', hx⟩, _, hcomp_x⟩ := List.mapM_ok_implies_all_from_ok hcomp_xs y hy
+    simp at hx
+    have ⟨x, hx, hx_to_x'⟩ := hx
+    have ⟨_, hcomp_x2, hty_comp_x⟩ := ihxs x hx
 
-  all_goals sorry
+    simp at hcomp_x
+    simp [← hx_to_x', hcomp_x2] at hcomp_x
+    simp [← hcomp_x, hty_comp_x]
+    simp [hty_sx x hx]
+
+    apply (compile_wf ?_ hcomp_x2).left
+    exact (hcond_xs x hx).2.2.2
+
+  -- Prove that Option.get of each compiled result has the correct type
+  have hty_get_comp_xs :
+    ∀ y ∈ List.map Factory.option.get tcomp_xs,
+      y.typeOf = TermType.ofType ty ∧
+      Term.WellFormed εnv.entities y
+  := by
+    intros y hy
+    simp at hy
+    have ⟨y', hy', hy_to_y'⟩ := hy
+
+    have ⟨hty_y', hwf_y'⟩ := hty_comp_xs y' hy'
+    simp [← hy_to_y']
+    constructor
+    · exact (wf_option_get hwf_y' hty_y').right
+    · exact (wf_option_get hwf_y' hty_y').left
+
+  cases tcomp_xs with
+  | nil => contradiction
+  | cons tcomp_xs_hd tcomp_xs_tl =>
+    simp
+    split
+    case _ hopt =>
+      have h1 :
+        ∀ (a : Term), a ∈ tcomp_xs_tl → a.typeOf = (TermType.ofType ty).option
+      := by
+        intros a ha
+        apply (hty_comp_xs a ?_).left
+        simp [ha]
+
+      have h2 :
+        tcomp_xs_hd.typeOf = (TermType.ofType ty).option
+      := by
+        apply (hty_comp_xs tcomp_xs_hd ?_).left
+        simp
+
+      simp [hopt] at h2
+      simp [hopt, h2]
+      split
+      any_goals contradiction
+      simp
+
+      -- Finally, resolve some typing constraints
+      apply (wf_ifAllSome (εs := εnv.entities) ?_ ?_ ?_).right
+
+      intros g hg
+      apply (hty_comp_xs g hg).right
+
+      · constructor
+        apply (wf_setOf ?_ ?_ ?_).left
+
+        . intros t ht; apply (hty_get_comp_xs t ht).right
+        · intros t ht; apply (hty_get_comp_xs t ht).left
+        · have h := hty_get_comp_xs (Factory.option.get tcomp_xs_hd)
+          simp at h
+          simp [← h.left]
+          apply typeOf_wf_term_is_wf
+          apply h.right
+
+      · simp [Factory.someOf, TermType.ofType, TypedExpr.typeOf, Term.typeOf]
+        apply (wf_setOf (εs := εnv.entities) ?_ ?_ ?_).right
+
+        . intros t ht; apply (hty_get_comp_xs t ht).right
+        . intros t ht; apply (hty_get_comp_xs t ht).left
+        · have h := hty_get_comp_xs (Factory.option.get tcomp_xs_hd)
+          simp at h
+          simp [← h.left]
+          apply typeOf_wf_term_is_wf
+          apply h.right
+
+    case _ hnot_opt =>
+      have hty_comp_xs_hd := hty_comp_xs tcomp_xs_hd
+      simp at hty_comp_xs_hd
+      simp [hty_comp_xs_hd] at hnot_opt
 
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
