@@ -2132,7 +2132,6 @@ theorem compile_well_typed_call
 := by
   have hcond_xs := eliminate_wt_cond_call hcond
   have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
-
   simp [
     CompileWellTypedForExpr,
     TypedExpr.toExpr,
@@ -2160,11 +2159,18 @@ theorem compile_well_typed_call
   | call _ hwt_xfn =>
   cases hwt_xfn
 
-  all_goals
+  -- Compiled with compileCall₀
+  case
+    decimal _ _ hparse _ |
+    ip _ _ hparse _ |
+    datetime _ _ hparse _ |
+    duration _ _ hparse _
+  =>
     simp [Functor.map, Option.map] at hcomp_xs
+    simp [bind, Except.bind] at hcomp_xs
+    split at hcomp_xs
+    contradiction
 
-  case decimal s d hparse hwt_xs =>
-    simp_do_let (compile (TypedExpr.lit (Prim.string s) CedarType.string).toExpr εnv) at hcomp_xs
     case _ tcomp_x1 hcomp_x1 =>
     simp [Except.map, pure, Except.pure] at hcomp_xs
 
@@ -2178,7 +2184,122 @@ theorem compile_well_typed_call
       TypedExpr.typeOf,
     ]
 
-  all_goals sorry
+  -- Compiled with compileCall₁
+  case
+    isIpv4 x1 hty_x1 _ |
+    isIpv6 x1 hty_x1 _ |
+    isLoopback x1 hty_x1 _ |
+    isMulticast x1 hty_x1 _ |
+    toTime x1 hty_x1 _ |
+    toMilliseconds x1 hty_x1 _ |
+    toSeconds x1 hty_x1 _ |
+    toMinutes x1 hty_x1 _ |
+    toHours x1 hty_x1 _ |
+    toDays x1 hty_x1 _ |
+    toDate x1 hty_x1 _
+  =>
+    have ⟨tcomp_x1, hcomp_x1, hty_comp_x1⟩ := ihxs x1 ?_
+    have ⟨hwf_comp_x1, _⟩ := compile_wf ((hcond_xs x1 ?_).2.2.2) hcomp_x1
+
+    have hcomp_xs : tcomp_xs = [tcomp_x1]
+    := by
+      simp [
+        Functor.map, Option.map, Except.map,
+        bind, Except.bind,
+        pure, Except.pure,
+      ] at hcomp_xs
+      simp [hcomp_x1] at hcomp_xs
+      simp [hcomp_xs]
+
+    simp [
+      hcomp_xs,
+      ← hcomp_x1,
+      hty_comp_x1,
+      hty_x1,
+      compileCall₁,
+      compileCallWithError₁,
+      Factory.someOf,
+      Term.typeOf,
+      TermType.ofType,
+    ]
+    simp [TypedExpr.typeOf, TermType.ofType]
+    apply typeOf_ifSome_option
+    try simp [Term.typeOf]
+
+    first
+      | apply (wf_ipaddr_isIpv6 (εs := εnv.entities) ?_).right
+      | apply (wf_ipaddr_isIpv4 (εs := εnv.entities) ?_).right
+      | apply (wf_ipaddr_isLoopback (εs := εnv.entities) ?_).right
+      | apply (wf_ipaddr_isMulticast (εs := εnv.entities) ?_).right
+      | apply (wf_datetime_toTime (εs := εnv.entities) ?_).right
+      | apply (wf_duration_toMilliseconds (εs := εnv.entities) ?_).right
+      | apply (wf_duration_toSeconds (εs := εnv.entities) ?_).right
+      | apply (wf_duration_toMinutes (εs := εnv.entities) ?_).right
+      | apply (wf_duration_toHours (εs := εnv.entities) ?_).right
+      | apply (wf_duration_toDays (εs := εnv.entities) ?_).right
+      | apply (wf_datetime_toDate (εs := εnv.entities) ?_).right
+
+    apply wf_option_get
+    assumption
+
+    simp [hty_comp_x1, hty_x1, TermType.ofType]
+    simp; simp
+
+  -- Compiled with compileCall₂
+  case
+    lessThan x1 x2 hty_x1 hty_x2 _ |
+    lessThanOrEqual x1 x2 hty_x1 hty_x2 _ |
+    greaterThan x1 x2 hty_x1 hty_x2 _ |
+    greaterThanOrEqual x1 x2 hty_x1 hty_x2 _ |
+    isInRange x1 x2 hty_x1 hty_x2 _ |
+    offset x1 x2 hty_x1 hty_x2 _ |
+    durationSince x1 x2 hty_x1 hty_x2 _
+  =>
+    have ⟨tcomp_x1, hcomp_x1, hty_comp_x1⟩ := ihxs x1 ?_
+    have ⟨hwf_comp_x1, _⟩ := compile_wf ((hcond_xs x1 ?_).2.2.2) hcomp_x1
+    have ⟨tcomp_x2, hcomp_x2, hty_comp_x2⟩ := ihxs x2 ?_
+    have ⟨hwf_comp_x2, _⟩ := compile_wf ((hcond_xs x2 ?_).2.2.2) hcomp_x2
+    any_goals simp
+
+    have hcomp_xs : tcomp_xs = [tcomp_x1, tcomp_x2]
+    := by
+      simp [
+        Functor.map, Option.map, Except.map,
+        bind, Except.bind,
+        pure, Except.pure,
+      ] at hcomp_xs
+      simp [hcomp_x1, hcomp_x2] at hcomp_xs
+      simp [hcomp_xs]
+
+    simp [
+      hcomp_xs,
+      ← hcomp_x1, ← hcomp_x2,
+      hty_comp_x1, hty_comp_x2,
+      hty_x1, hty_x2,
+      compileCall₂,
+      compileCallWithError₂,
+      Factory.someOf,
+      Term.typeOf,
+      TermType.ofType,
+    ]
+    simp [TypedExpr.typeOf, TermType.ofType]
+    apply typeOf_ifSome_option
+    apply typeOf_ifSome_option
+
+    try simp [Term.typeOf]
+    first
+      | apply (wf_decimal_lessThan (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_decimal_lessThanOrEqual (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_decimal_greaterThan (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_decimal_greaterThanOrEqual (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_ipaddr_isInRange (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_datetime_offset (εs := εnv.entities) ?_ ?_).right
+      | apply (wf_datetime_durationSince (εs := εnv.entities) ?_ ?_).right
+
+    all_goals
+      apply wf_option_get
+      assumption
+      simp [hty_comp_x1, hty_comp_x2, hty_x1, hty_x2, TermType.ofType]
 
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
