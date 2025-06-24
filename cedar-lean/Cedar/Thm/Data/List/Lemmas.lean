@@ -1074,6 +1074,36 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       simp only [Prod.map, id_eq] at heq
       simp [find?_cons, heq, ih]
 
+theorem find?_implies_find?_fst_map
+  {α β γ} [BEq α] [ReflBEq α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  {f : α → β → γ}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
+:= by
+  induction l
+  case nil => simp at h
+  case cons head tail ih =>
+    simp at h
+    cases h
+    case _ h => simp [h]
+    case _ h =>
+      have ih := ih h.2
+      simp only [List.map]
+      simp only [List.find?]
+      simp [ih]
+      simp [h]
+
+theorem find?_implies_append_find?
+  {a b : List α}
+  {v : α}
+  {f : α → Bool}
+  (h : List.find? f a = some v) :
+  List.find? f (a ++ b) = some v
+:= by
+  simp [List.find?_append, h]
+
 theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
   (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none
 := by

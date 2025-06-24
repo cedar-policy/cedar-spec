@@ -10,140 +10,38 @@ open Cedar.Validation
 open SymCC
 
 /--
-States that an `Environment` is well-formed
-TODO: this is currently just a placeholder; move this to somewhere else
+States the symbolic compiler succeeds on a typed expression `tx` and
+produces a term `t` with the corresponding type.
 -/
-def Environment.WellFormed (_env : Environment) : Prop := true
-  -- env.ets.WellFormed ∧
-  -- env.acts.WellFormed
-  -- ∀ (ety : EntityType) (euid : EntityUID),
-  --   env.ets.contains ety →
-  --   env.acts.contains euid →
-  --   euid.ty ≠ ety
-
-/--
-States that under sufficiently good conditions, the symbolic compiler
-succeeds on a typed expression `ty` and produces a term `t` with the
-corresponding type.
--/
-def CompileWellTypedForExpr (ty : TypedExpr) (εnv : SymEnv) : Prop :=
+def CompileWellTypedForExpr (tx : TypedExpr) (εnv : SymEnv) : Prop :=
   ∃ t : Term,
-    compile ty.toExpr εnv = .ok t ∧
-    t.typeOf = .option (TermType.ofType ty.typeOf)
-
-def CompileWellTypedCondition (ty : TypedExpr) (env : Environment) (εnv : SymEnv) : Prop :=
-  Environment.WellFormed env ∧
-  εnv = SymEnv.ofEnv env ∧
-  TypedExpr.WellTyped env ty ∧
-  εnv.WellFormedFor ty.toExpr
+    compile tx.toExpr εnv = .ok t ∧
+    t.typeOf = .option (TermType.ofType tx.typeOf)
 
 /--
-A lemma related to key lookup and map in a list of key-value pairs
+States that an `Environment` is well-formed.
+
+TODO: this is currently just a placeholder, in case we need more
+assumptions about the input `Environment`.
 -/
-theorem list_key_find?_map
-  [BEq α] [ReflBEq α]
-  {l : List (α × β)}
-  {k : α} {v : β}
-  {f : α → β → γ}
-  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
-  List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
-:= by
-  induction l
-  case nil => simp at h
-  case cons head tail ih =>
-    simp at h
-    cases h
-    case _ h => simp [h]
-    case _ h =>
-      have ih := ih h.2
-      simp only [List.map]
-      simp only [List.find?]
-      simp [ih]
-      simp [h]
-
-theorem insertCanonical_exists [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
-  {f : α → β} {xs : List α} (x : α) :
-  x ∈ List.insertCanonical f x xs
-:= by
-  induction xs
-  case nil => simp [List.insertCanonical]
-  case cons head tail ih =>
-    simp [List.insertCanonical]
-    split; any_goals simp
-    split; any_goals simp
-    apply Or.inr ih
-
-theorem insertCanonical_new
-  [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [DecidableEq β]
-  {f : α → β} {xs : List α} {x : α} {y : α}
-  (hexists : y ∈ xs)
-  (hneq : f x ≠ f y) :
-  y ∈ List.insertCanonical f x xs
-:= by
-  induction xs
-
-  case nil => simp at hexists
-
-  case cons hd tl ih =>
-    simp [List.insertCanonical]
-    split
-    simp [hexists]
-    split
-    · simp at hexists
-      cases hexists
-      case _ hy => simp [hy]
-      case _ hy => simp [ih hy]
-    · simp at hexists
-      cases hexists
-      case _ hlt hgt hy =>
-        simp [← hy] at hlt hgt
-        have hltgt := Data.StrictLT.connected (f x) (f y) hneq
-        cases hltgt <;> contradiction
-      case _ hy => simp [hy]
+def Environment.WellFormed (_ : Environment) : Prop := true
 
 /--
-If the key exists in l, then it exists in `Data.Map.make l`
+A sufficient condition for `CompileWellTypedForExpr` to hold.
 -/
-theorem list_key_find?_append_to_map_make_find?
-  -- [BEq α]
-  [DecidableEq α] [LT α] [DecidableLT α]
-  [Cedar.Data.StrictLT α]
-  {a b : List (α × β)}
-  {k : α} {v : β}
-  (h : List.find? (λ x => x.fst == k) a = some (k, v)) :
-  (Data.Map.make (a ++ b)).find? k = some v
-:= by
-  apply (Data.Map.in_list_iff_find?_some (Data.Map.make_wf (a ++ b))).mp
-  simp [Data.Map.make, Data.Map.kvs]
-
-  induction a
-
-  case nil => simp at h
-  case cons head tail ih =>
-    simp [List.find?] at h
-    split at h
-
-    case _ heq =>
-      simp at h
-      simp [List.canonicalize, h]
-      apply insertCanonical_exists
-
-    case _ hneq =>
-      have ih := ih h
-      simp at hneq
-      simp [List.canonicalize]
-
-      apply insertCanonical_new
-      assumption
-      simp [hneq]
+def CompileWellTypedCondition (tx : TypedExpr) (Γ : Environment) (εnv : SymEnv) : Prop :=
+  Environment.WellFormed Γ ∧
+  εnv = SymEnv.ofEnv Γ ∧
+  TypedExpr.WellTyped Γ tx ∧
+  εnv.WellFormedFor tx.toExpr
 
 /--
 A wrapper around compile_wf for convenience
 -/
 theorem wt_cond_implies_compile_wf
-  {ty : TypedExpr} {env : Environment} {εnv : SymEnv} {t : Term} :
-  CompileWellTypedCondition ty env εnv →
-  compile ty.toExpr εnv = .ok t →
+  {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv} {t : Term} :
+  CompileWellTypedCondition tx Γ εnv →
+  compile tx.toExpr εnv = .ok t →
   t.WellFormed εnv.entities
 := by
   intros h hcomp; rcases h with ⟨_, _, _, hwf⟩
@@ -153,11 +51,11 @@ theorem wt_cond_implies_compile_wf
 /--
 Special case for literals
 -/
-theorem compile_well_typed_lit {p : Prim} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
-  CompileWellTypedCondition (.lit p ty) env εnv →
-  CompileWellTypedForExpr (.lit p ty) εnv
+theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.lit p tx) Γ εnv →
+  CompileWellTypedForExpr (.lit p tx) εnv
 := by
-  intros h; rcases h with ⟨_, henv, hwt, hwf⟩
+  intros h; rcases h with ⟨_, hεnv, hwt, hwf⟩
   simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
 
   unfold SymEnv.WellFormedFor at hwf
@@ -178,11 +76,11 @@ theorem compile_well_typed_lit {p : Prim} {ty : CedarType} {env : Environment} {
 /- Lemmas that TermType.ofType produces the same result w/ or w/o liftBoolTypes. -/
 mutual
   private theorem ofQualifiedType_ignores_liftBool
-    {ty : QualifiedType} :
-    TermType.ofQualifiedType ty =
-    TermType.ofQualifiedType ty.liftBoolTypes
+    {qty : QualifiedType} :
+    TermType.ofQualifiedType qty =
+    TermType.ofQualifiedType qty.liftBoolTypes
   := by
-    cases ty
+    cases qty
     all_goals
       simp [
         TermType.ofQualifiedType,
@@ -196,7 +94,7 @@ mutual
     TermType.ofRecordType recs =
     TermType.ofRecordType (CedarType.liftBoolTypesRecord recs)
   | [] => by simp [TermType.ofRecordType, CedarType.liftBoolTypesRecord]
-  | (_, ty) :: tail => by
+  | _ :: tail => by
     simp [TermType.ofRecordType, CedarType.liftBoolTypesRecord]
     constructor
     apply ofQualifiedType_ignores_liftBool
@@ -250,11 +148,11 @@ theorem isCedarRecordType_implies_isRecordType
     all_goals simp at hty
 
 /- Special case for variables -/
-theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
-  CompileWellTypedCondition (.var v ty) env εnv →
+theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.var v ty) Γ εnv →
   CompileWellTypedForExpr (.var v ty) εnv
 := by
-  intros h; rcases h with ⟨_, henv, hwt, hwf⟩
+  intros h; rcases h with ⟨_, hεnv, hwt, hwf⟩
   simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
 
   unfold SymEnv.WellFormedFor SymEnv.WellFormed SymRequest.WellFormed at hwf
@@ -283,7 +181,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {�
     rotate_left; assumption
 
     simp [TermType.ofType, Term.typeOf]
-    simp [henv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
+    simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
     apply ofRecordType_ignores_liftBool
 
   all_goals
@@ -291,7 +189,7 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {env : Environment} {�
       hprincipal, haction, hresource, hcontext,
     ] at *
     simp [TermType.ofType, Term.typeOf]
-    simp [henv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
+    simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
 
 theorem wf_typeOf_ite {g t₁ t₂ : Term} {ty : TermType} {entities : SymEntities}
   (hwf_g : g.WellFormed entities)
@@ -338,13 +236,13 @@ CompileWellTypedCondition decomposes for ite
 -/
 theorem eliminate_wt_cond_ite
   {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) env εnv) :
-  CompileWellTypedCondition cond env εnv ∧
-  CompileWellTypedCondition thenExpr env εnv ∧
-  CompileWellTypedCondition elseExpr env εnv
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) Γ εnv) :
+  CompileWellTypedCondition cond Γ εnv ∧
+  CompileWellTypedCondition thenExpr Γ εnv ∧
+  CompileWellTypedCondition elseExpr Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; rotate_left; constructor
   all_goals
     constructor
@@ -363,15 +261,15 @@ theorem eliminate_wt_cond_ite
 
 theorem compile_well_typed_ite
   {a : TypedExpr} {b : TypedExpr} {c : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (iha : CompileWellTypedForExpr a εnv)
   (ihb : CompileWellTypedForExpr b εnv)
   (ihc : CompileWellTypedForExpr c εnv)
-  (hcond_ite : CompileWellTypedCondition (.ite a b c ty) env εnv) :
+  (hcond_ite : CompileWellTypedCondition (.ite a b c ty) Γ εnv) :
   CompileWellTypedForExpr (.ite a b c ty) εnv
 := by
   have ⟨hcond_a, hcond_b, hcond_c⟩ := eliminate_wt_cond_ite hcond_ite
-  have ⟨hwf_env, henv, hwt_ite, hwf_ite⟩ := hcond_ite
+  have ⟨hwf_env, hεnv, hwt_ite, hwf_ite⟩ := hcond_ite
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
   have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
@@ -431,19 +329,19 @@ CompileWellTypedCondition decomposes for `or` or `and`
 -/
 theorem eliminate_wt_cond_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   {cons : TypedExpr → TypedExpr → CedarType → TypedExpr}
-  (h : CompileWellTypedCondition (cons a b ty) env εnv)
+  (h : CompileWellTypedCondition (cons a b ty) Γ εnv)
   (hcons : cons = .or ∨ cons = .and) :
-  CompileWellTypedCondition a env εnv ∧
-  CompileWellTypedCondition b env εnv
+  CompileWellTypedCondition a Γ εnv ∧
+  CompileWellTypedCondition b Γ εnv
 := by
   cases hcons
   all_goals
     -- Same proof for both cases
     case _ hcons =>
     simp [hcons] at *
-    have ⟨hwf_env, henv, hwt, hwf⟩ := h
+    have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
     constructor
     all_goals
       constructor
@@ -465,14 +363,14 @@ Special case for `or` and `and`
 -/
 theorem compile_well_typed_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (iha : CompileWellTypedForExpr a εnv)
   (ihb : CompileWellTypedForExpr b εnv) :
 
-  (CompileWellTypedCondition (.or a b ty) env εnv →
+  (CompileWellTypedCondition (.or a b ty) Γ εnv →
     CompileWellTypedForExpr (.or a b ty) εnv) ∧
 
-  (CompileWellTypedCondition (.and a b ty) env εnv →
+  (CompileWellTypedCondition (.and a b ty) Γ εnv →
     CompileWellTypedForExpr (.and a b ty) εnv)
 := by
   constructor
@@ -480,7 +378,7 @@ theorem compile_well_typed_or_and
   intros hcond
 
   -- Some facts needed later
-  have ⟨hwf_env, henv, hwt, hwf⟩ := hcond
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond
   have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_or_and hcond ?_
   any_goals simp
 
@@ -524,11 +422,11 @@ CompileWellTypedCondition decomposes for unaryApp
 -/
 theorem eliminate_wt_cond_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.unaryApp op expr ty) env εnv) :
-  CompileWellTypedCondition expr env εnv
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
+  CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; assumption
@@ -543,13 +441,13 @@ theorem eliminate_wt_cond_unaryApp
 
 theorem compile_well_typed_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihexpr : CompileWellTypedForExpr expr εnv)
-  (hcond_unary : CompileWellTypedCondition (.unaryApp op expr ty) env εnv) :
+  (hcond_unary : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
   CompileWellTypedForExpr (.unaryApp op expr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_unaryApp hcond_unary
-  have ⟨hwf_env, henv, hwt, hwf⟩ := hcond_unary
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond_unary
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -672,12 +570,12 @@ CompileWellTypedCondition decomposes for binaryApp
 TODO: merge this with other eliminate_wt_cond_*
 -/
 theorem eliminate_wt_cond_binaryApp
-  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {env : Environment} {εnv : SymEnv} :
-  CompileWellTypedCondition (.binaryApp op a b ty) env εnv →
-  CompileWellTypedCondition a env εnv ∧
-  CompileWellTypedCondition b env εnv
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv} :
+  CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv →
+  CompileWellTypedCondition a Γ εnv ∧
+  CompileWellTypedCondition b Γ εnv
 := by
-  intros h; rcases h with ⟨hwf_env, henv, hwt, hwf⟩
+  intros h; rcases h with ⟨hwf_env, hεnv, hwt, hwf⟩
   constructor
   all_goals
     constructor
@@ -695,16 +593,16 @@ theorem eliminate_wt_cond_binaryApp
           any_goals assumption
 
 /--
-If some entity exists in `env`, then it must
-also exists in `SymEnv.ofEnv env` with the corresponding `SymEntityData`
+If some entity exists in `Γ`, then it must
+also exists in `SymEnv.ofEnv Γ` with the corresponding `SymEntityData`
 -/
 theorem ofEnv_lookup_entity
-  {env : Environment} {εnv : SymEnv} {ety : EntityType} {entry : EntitySchemaEntry}
-  (henv : εnv = SymEnv.ofEnv env)
-  (hfound : Data.Map.find? env.ets ety = some entry) :
+  {Γ : Environment} {εnv : SymEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hεnv : εnv = SymEnv.ofEnv Γ)
+  (hfound : Data.Map.find? Γ.ets ety = some entry) :
   Data.Map.find? εnv.entities ety = some (SymEntityData.ofEntityType ety entry)
 := by
-  simp [henv, Data.Map.find?, SymEnv.ofEnv, SymEntities.ofSchema, Data.Map.toList]
+  simp [hεnv, Data.Map.find?, SymEnv.ofEnv, SymEntities.ofSchema, Data.Map.toList]
   simp [Data.Map.find?] at hfound
 
   -- Simplify hfound
@@ -718,20 +616,21 @@ theorem ofEnv_lookup_entity
   simp at h
   simp [h] at hfound; clear h
 
-  apply list_key_find?_append_to_map_make_find?
-  apply list_key_find?_map
+  apply Data.Map.find?_implies_make_find?
+  apply List.find?_implies_append_find?
+  apply List.find?_implies_find?_fst_map
   assumption
 
 /--
-Lemma that if a concrete `env : Environment` has tags for
-a particular entity type, when `SymEnv.ofEnv env` must also
+Lemma that if a concrete `Γ : Environment` has tags for
+a particular entity type, when `SymEnv.ofEnv Γ` must also
 have tags for it
 -/
 theorem SymEnv_of_preserves_tags
-  {env : Environment} {ety : EntityType} {ty : CedarType}
-  (h : env.ets.tags? ety = some (some ty)) :
+  {Γ : Environment} {ety : EntityType} {ty : CedarType}
+  (h : Γ.ets.tags? ety = some (some ty)) :
   ∃ τags : SymTags,
-    (SymEnv.ofEnv env).entities.tags ety = τags ∧
+    (SymEnv.ofEnv Γ).entities.tags ety = τags ∧
     τags.vals.outType = TermType.ofType ty
 := by
   simp [EntitySchema.tags?] at h
@@ -739,7 +638,7 @@ theorem SymEnv_of_preserves_tags
 
   -- The corresponding entity exists in `εnv`
   have hety_exists :
-    Data.Map.find? (SymEnv.ofEnv env).entities ety
+    Data.Map.find? (SymEnv.ofEnv Γ).entities ety
     = some (SymEntityData.ofEntityType ety found_entry)
   := by
     apply ofEnv_lookup_entity ?_ hfound
@@ -827,15 +726,15 @@ theorem compile_binaryApp_wf_types
 
 theorem compile_well_typed_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (iha : CompileWellTypedForExpr a εnv)
   (ihb : CompileWellTypedForExpr b εnv)
-  (hcond_binary : CompileWellTypedCondition (.binaryApp op a b ty) env εnv) :
+  (hcond_binary : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv) :
   CompileWellTypedForExpr (.binaryApp op a b ty) εnv
 := by
   -- Some facts needed later
   have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_binaryApp hcond_binary
-  have ⟨_, henv, hwt_binary, ⟨hwf_εnv, hrefs_binary⟩⟩ := hcond_binary
+  have ⟨_, hεnv, hwt_binary, ⟨hwf_εnv, hrefs_binary⟩⟩ := hcond_binary
 
   have ⟨hwf_req, hwf_ent⟩ := hwf_εnv
 
@@ -892,7 +791,7 @@ theorem compile_well_typed_binaryApp
         assumption
 
       have hτs : τs = τs2 := by
-        simp [← henv, heq_ety, hτag] at hτag2
+        simp [← hεnv, heq_ety, hτag] at hτag2
         assumption
 
       simp [← hτag_ty2, hτag_ty, hτs]
@@ -946,7 +845,7 @@ theorem compile_well_typed_binaryApp
 
   case hasTag ety hty_a hty_b =>
     simp [
-      henv,
+      hεnv,
       hty_a, hty_b,
       hty_get_comp_a, hty_get_comp_b,
       compileHasTag,
@@ -967,14 +866,14 @@ theorem compile_well_typed_binaryApp
     have ⟨_, hety_exists⟩ :=
       Cedar.Data.Map.contains_iff_some_find?.mp hwf_ty_a
 
-    simp [SymEntities.tags, ← henv, hety_exists]
+    simp [SymEntities.tags, ← hεnv, hety_exists]
     split
     any_goals contradiction
     all_goals simp
 
   case getTag _ _ htag hty_a hty_b =>
     have ⟨_, hτag, _⟩ := SymEnv_of_preserves_tags htag
-    simp [← henv] at hτag
+    simp [← hεnv] at hτag
     simp [hty_a, hty_b, hτag, compileGetTag, TermType.ofType]
 
 /--
@@ -1030,10 +929,10 @@ theorem ofRecordType_lookup
         simp
 
 -- Given that
---   env.ets.attrs? ety = some a
+--   Γ.ets.attrs? ety = some a
 --   a.liftBoolTypes = rty
 -- Show that
---   (SymEnv.ofEnv env).entities.attrs ety = .some attrs
+--   (SymEnv.ofEnv Γ).entities.attrs ety = .some attrs
 --   UnaryFunction.WellFormed εnv.entities attrs
 --   attrs.argType = CedarType.entity ety
 --   attrs.outType = .record (Data.Map.mk (TermType.ofRecordType rty.1))
@@ -1062,13 +961,13 @@ theorem env_wf_implies_attrs_wf
     simp [h1, h2, h3]
 
 /--
-Show that `SymEnv.ofEnv env` preserves the result of attribute lookup
+Show that `SymEnv.ofEnv Γ` preserves the result of attribute lookup
 -/
 theorem ofEnv_entity_attr_lookup
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   {rty : RecordType} {ety : EntityType}
-  (henv : εnv = SymEnv.ofEnv env)
-  (hattrs_exists : env.ets.attrs? ety = some rty)
+  (hεnv : εnv = SymEnv.ofEnv Γ)
+  (hattrs_exists : Γ.ets.attrs? ety = some rty)
   (hwf : εnv.WellFormed) :
   ∃ attrs : UnaryFunction,
     εnv.entities.attrs ety = .some attrs ∧
@@ -1087,7 +986,7 @@ theorem ofEnv_entity_attr_lookup
     Data.Map.find? εnv.entities ety
     = some (SymEntityData.ofEntityType ety found_entry)
   := by
-    apply ofEnv_lookup_entity henv
+    apply ofEnv_lookup_entity hεnv
     simp [Data.Map.find?, hfound]
 
   have ⟨attrs, hattrs_exists2⟩ :
@@ -1133,11 +1032,11 @@ CompileWellTypedCondition decomposes for getAttr
 -/
 theorem eliminate_wt_cond_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.getAttr expr attr ty) env εnv) :
-  CompileWellTypedCondition expr env εnv
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
+  CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; any_goals assumption
@@ -1152,13 +1051,13 @@ theorem eliminate_wt_cond_getAttr
 
 theorem compile_well_typed_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihexpr : CompileWellTypedForExpr expr εnv)
-  (hcond : CompileWellTypedCondition (.getAttr expr attr ty) env εnv) :
+  (hcond : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
   CompileWellTypedForExpr (.getAttr expr attr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_getAttr hcond
-  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+  have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -1211,7 +1110,7 @@ theorem compile_well_typed_getAttr
         | .option attr_ty' => TermType.ofType ty = attr_ty'
         | _ => TermType.ofType ty = attr_ty
     := by
-      have ⟨_, h1, h2, h3, h4⟩ := ofEnv_entity_attr_lookup henv hrty2 hwf_εnv
+      have ⟨_, h1, h2, h3, h4⟩ := ofEnv_entity_attr_lookup hεnv hrty2 hwf_εnv
 
       simp [hty_expr, TermType.ofType] at hty_get_comp_expr
       simp [h1, h2, h3, h4, hty_get_comp_expr]
@@ -1323,11 +1222,11 @@ CompileWellTypedCondition decomposes for hasAttr
 -/
 theorem eliminate_wt_cond_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.hasAttr expr attr ty) env εnv) :
-  CompileWellTypedCondition expr env εnv
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
+  CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; any_goals assumption
@@ -1342,13 +1241,13 @@ theorem eliminate_wt_cond_hasAttr
 
 theorem compile_well_typed_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihexpr : CompileWellTypedForExpr expr εnv)
-  (hcond : CompileWellTypedCondition (.hasAttr expr attr ty) env εnv) :
+  (hcond : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
   CompileWellTypedForExpr (.hasAttr expr attr ty) εnv
 := by
   have hcond_expr := eliminate_wt_cond_hasAttr hcond
-  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+  have ⟨_, _, hwt, hwf_εnv, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
@@ -1515,13 +1414,13 @@ CompileWellTypedCondition decomposes for set
 -/
 theorem eliminate_wt_cond_set
   {xs : List TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.set xs ty) env εnv)
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.set xs ty) Γ εnv)
   (x : TypedExpr)
   (hx : x ∈ xs) :
-  CompileWellTypedCondition x env εnv
+  CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; any_goals assumption
@@ -1542,13 +1441,13 @@ theorem eliminate_wt_cond_set
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihxs : ∀ x, x ∈ xs → CompileWellTypedForExpr x εnv)
-  (hcond : CompileWellTypedCondition (.set xs ty) env εnv) :
+  (hcond : CompileWellTypedCondition (.set xs ty) Γ εnv) :
   CompileWellTypedForExpr (.set xs ty) εnv
 := by
   have hcond_xs := eliminate_wt_cond_set hcond
-  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+  have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
 
   simp [
     CompileWellTypedForExpr,
@@ -1687,13 +1586,13 @@ CompileWellTypedCondition decomposes for record
 -/
 theorem eliminate_wt_cond_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.record xs ty) env εnv)
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.record xs ty) Γ εnv)
   (a : Attr) (x : TypedExpr)
   (hx : (a, x) ∈ xs) :
-  CompileWellTypedCondition x env εnv
+  CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   -- constructor; rotate_left
   -- · have e : x = (a, x).snd := by rfl
   --   rw [e]
@@ -1834,7 +1733,7 @@ If `p x y` implies `f x = g y`,
 then `MapListValueRelation p xs ys` implies
 `List.map (Prod.map id f) xs = List.map (Prod.map id g) ys`
 -/
-theorem MapListValueRelation_implies_map_eq_if_p_implies_eq
+theorem MapListValueRelation.implies_map_eq_if_p_implies_eq
   {p : α → β → Prop}
   {f : α → γ} {g : β → γ}
   {xs : List (κ × α)} {ys : List (κ × β)}
@@ -1852,26 +1751,9 @@ theorem MapListValueRelation_implies_map_eq_if_p_implies_eq
     exact ih
 
 /--
-Simplifies a specific combination of `List.map` and `List.attach₃`
--/
-theorem list_map_attach₃_remove
-  [SizeOf α] [SizeOf β]
-  {xs : List (α × β)}
-  {f : β → γ} :
-  List.map (fun x => (x.1.fst, f x.1.snd)) xs.attach₃
-  = List.map (fun x => (x.fst, f x.snd)) xs
-:= by
-  induction xs with
-  | nil => simp [List.attach₃]
-  | cons x xs ih =>
-    simp [List.attach₃]
-    rw [List.map_pmap]
-    simp
-
-/--
 A technical lemma required to simplify record compilation
 -/
-theorem idk_how_to_call_this
+theorem MapListValueRelation.from_map_mapM
   {f : α → SymCC.Result β}
   {g : α → α'}
   {h : β → β'}
@@ -1933,13 +1815,13 @@ theorem idk_how_to_call_this
 
 theorem compile_well_typed_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihxs : ∀ a x, (a, x) ∈ xs → CompileWellTypedForExpr x εnv)
-  (hcond : CompileWellTypedCondition (.record xs ty) env εnv) :
+  (hcond : CompileWellTypedCondition (.record xs ty) Γ εnv) :
   CompileWellTypedForExpr (.record xs ty) εnv
 := by
   have hcond_xs := eliminate_wt_cond_record hcond
-  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+  have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
 
   simp [
     CompileWellTypedForExpr,
@@ -2019,7 +1901,7 @@ theorem compile_well_typed_record
       (List.map (fun x => (x.fst, Factory.option.get x.snd)) tcomp_xs)
       (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) xs)
   := by
-    apply idk_how_to_call_this
+    apply MapListValueRelation.from_map_mapM
       (f := fun x => compile x.toExpr εnv)
       (g := fun x : TypedExpr => Qualified.required x.typeOf)
       hcomp_xs_simp
@@ -2088,9 +1970,10 @@ theorem compile_well_typed_record
 
     simp [hrty, Data.Map.make]
 
-    simp [list_map_attach₃_remove]
+    simp [List.attach₃]
+    simp [List.map_pmap]
     have hassoc_canon := canonicalize_preseves_MapListValueRelation hassoc_comp_xs
-    apply MapListValueRelation_implies_map_eq_if_p_implies_eq hassoc_canon
+    apply hassoc_canon.implies_map_eq_if_p_implies_eq
     simp
 
 /--
@@ -2098,13 +1981,13 @@ CompileWellTypedCondition decomposes for call
 -/
 theorem eliminate_wt_cond_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
-  (h : CompileWellTypedCondition (.call xfn xs ty) env εnv)
+  {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.call xfn xs ty) Γ εnv)
   (x : TypedExpr)
   (hx : x ∈ xs) :
-  CompileWellTypedCondition x env εnv
+  CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
   constructor; any_goals assumption
   constructor
   · cases hwt; any_goals assumption
@@ -2125,13 +2008,13 @@ theorem eliminate_wt_cond_call
 
 theorem compile_well_typed_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
-  {env : Environment} {εnv : SymEnv}
+  {Γ : Environment} {εnv : SymEnv}
   (ihxs : ∀ x, x ∈ xs → CompileWellTypedForExpr x εnv)
-  (hcond : CompileWellTypedCondition (.call xfn xs ty) env εnv) :
+  (hcond : CompileWellTypedCondition (.call xfn xs ty) Γ εnv) :
   CompileWellTypedForExpr (.call xfn xs ty) εnv
 := by
   have hcond_xs := eliminate_wt_cond_call hcond
-  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+  have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
   simp [
     CompileWellTypedForExpr,
     TypedExpr.toExpr,
@@ -2304,12 +2187,12 @@ theorem compile_well_typed_call
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
 -/
-theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} :
-  CompileWellTypedCondition ty env εnv →
-  CompileWellTypedForExpr ty εnv
+theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
+  CompileWellTypedCondition tx Γ εnv →
+  CompileWellTypedForExpr tx εnv
 := by
   intros h
-  cases ty
+  cases tx
   case lit => exact compile_well_typed_lit h
   case var => exact compile_well_typed_var h
   case ite =>
