@@ -217,6 +217,8 @@ pub(crate) enum EvaluationCommands {
         /// A file containing the entities relevant for authorization
         #[clap(required = true)]
         entities_file: PathBuf,
+        /// A file containing a Schema to parse entities with
+        schema_file: Option<PathBuf>,
         #[clap(flatten)]
         req_args: RequestArgs,
     },
@@ -228,7 +230,10 @@ pub(crate) enum EvaluationCommands {
         /// A file containing the Entities needed for evaluation
         #[clap(required = true)]
         entities_file: PathBuf,
+        /// A file containing a Schema to parse entities with
+        schema_file: Option<PathBuf>,
         /// A file containing the expected output of the evaluation
+        #[arg(long = "output")]
         expected_expr_file: Option<PathBuf>,
         #[clap(flatten)]
         req_args: RequestArgs,

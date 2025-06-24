@@ -16,6 +16,7 @@
 use crate::err::ExecError;
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::{Decision, Entities, Expression, PolicySet, Request};
+use itertools::Itertools;
 
 /// Use the lean_ffi to check if the `policyset` allows the given `request`.
 pub fn check_is_authorized(
@@ -27,24 +28,25 @@ pub fn check_is_authorized(
     let auth_response = lean_context.is_authorized(policyset, entities, request)?;
     match auth_response.decision() {
         Decision::Deny if auth_response.determining_policies().is_empty() => {
-            print!("This request was implicitly denied as this request matched no policies")
+            println!("This request was implicitly denied as this request matched no policies")
         }
         Decision::Deny => {
-            print!("This request was denies as it matched the following policies:")
+            println!(
+                "This request was denies as it matched the following policies: {}",
+                auth_response.determining_policies().iter().join(" ")
+            )
         }
         Decision::Allow => {
-            print!("This request was allowed as it matched the following policies:")
+            println!(
+                "This request was allowed as it matched the following policies: {}",
+                auth_response.determining_policies().iter().join(" ")
+            )
         }
     }
-    for policy in auth_response.determining_policies() {
-        print!(" {policy}");
+    if !auth_response.erroring_policies().is_empty() {
+        println!();
+        println!("The following policies did not contribute to the decision as they errored during evaluation: {}", auth_response.erroring_policies().iter().join(" "));
     }
-    println!();
-    print!("The following policies did not contribute to the decision as they errored during evaluation:");
-    for policy in auth_response.erroring_policies() {
-        print!(" {policy}");
-    }
-    println!();
     Ok(())
 }
 

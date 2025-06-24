@@ -360,9 +360,9 @@ pub fn parse_schema(fname: &PathBuf) -> Result<Schema, ExecError> {
 }
 
 /// Auxillary function used to parse a file containing Cedar Entities
-pub fn parse_entities(fname: &PathBuf) -> Result<Entities, ExecError> {
+pub fn parse_entities(fname: &PathBuf, schema: Option<&Schema>) -> Result<Entities, ExecError> {
     match read_to_string(fname) {
-        Ok(entities_json_str) => match Entities::from_json_str(&entities_json_str, None) {
+        Ok(entities_json_str) => match Entities::from_json_str(&entities_json_str, schema) {
             Ok(entities) => Ok(entities),
             Err(e) => Err(ExecError::ParseError {
                 content_type: ContentType::Entities,
@@ -399,10 +399,10 @@ pub fn parse_expression(fname: &PathBuf) -> Result<Expression, ExecError> {
 
 impl ContextArg {
     /// Parses a ContextArg into a Cedar Context struct
-    pub fn parse(self) -> Result<Context, ExecError> {
+    pub fn parse(self, schema: Option<(&Schema, &EntityUid)>) -> Result<Context, ExecError> {
         match self {
             Self::Default => Ok(Context::empty()),
-            Self::FromString { json_str } => match Context::from_json_str(&json_str, None) {
+            Self::FromString { json_str } => match Context::from_json_str(&json_str, schema) {
                 Ok(c) => Ok(c),
                 Err(e) => Err(ExecError::RequestError {
                     element: RequestElement::Context,
@@ -411,7 +411,7 @@ impl ContextArg {
                 }),
             },
             Self::FromFile { file_name } => match read_to_string(&file_name) {
-                Ok(json_str) => match Context::from_json_str(&json_str, None) {
+                Ok(json_str) => match Context::from_json_str(&json_str, schema) {
                     Ok(c) => Ok(c),
                     Err(e) => Err(ExecError::ParseError {
                         content_type: ContentType::Context,
@@ -447,11 +447,13 @@ fn request_from_args(
     action: String,
     resource: String,
     context: ContextArg,
+    schema: Option<&Schema>,
 ) -> Result<Request, ExecError> {
     let principal = parse_entity_uid(principal, RequestElement::Principal)?;
     let action = parse_entity_uid(action, RequestElement::Action)?;
     let resource = parse_entity_uid(resource, RequestElement::Resource)?;
-    let context = context.parse()?;
+    let schema = schema.map(|schema| (schema, &action));
+    let context = context.parse(schema)?;
     match Request::new(principal, action, resource, context, None) {
         Ok(r) => Ok(r),
         Err(e) => Err(ExecError::RequestValidationError { error: Box::new(e) }),
@@ -467,7 +469,11 @@ fn string_from_value(v: Option<&Value>) -> Option<String> {
 }
 
 /// Auxillary function used to convert a JSON representation of a request into a Cedar Request struct
-fn request_from_json_value(v: Value, fname: PathBuf) -> Result<Request, ExecError> {
+fn request_from_json_value(
+    v: Value,
+    fname: PathBuf,
+    schema: Option<&Schema>,
+) -> Result<Request, ExecError> {
     let principal = string_from_value(v.get("principal"));
     let action = string_from_value(v.get("action"));
     let resource = string_from_value(v.get("resource"));
@@ -480,6 +486,7 @@ fn request_from_json_value(v: Value, fname: PathBuf) -> Result<Request, ExecErro
             ContextArg::FromString {
                 json_str: c.to_string(),
             },
+            schema,
         ),
         _ => Err(ExecError::ParseJsonError {
             content_type: ContentType::Request,
@@ -490,17 +497,17 @@ fn request_from_json_value(v: Value, fname: PathBuf) -> Result<Request, ExecErro
 
 impl RequestArgsEnum {
     /// A function that parses a RequestArgEnum into a Cedar Request struct
-    pub fn parse(self) -> Result<Request, ExecError> {
+    pub fn parse(self, schema: Option<&Schema>) -> Result<Request, ExecError> {
         match self {
             Self::FromArgs {
                 principal,
                 action,
                 resource,
                 context,
-            } => request_from_args(principal, action, resource, context),
+            } => request_from_args(principal, action, resource, context, schema),
             Self::FromFile { file_name } => match read_to_string(&file_name) {
                 Ok(json_str) => match from_str::<Value>(&json_str) {
-                    Ok(v) => request_from_json_value(v, file_name),
+                    Ok(v) => request_from_json_value(v, file_name, schema),
                     Err(e) => Err(ExecError::ParseError {
                         content_type: ContentType::Request,
                         file_name,
