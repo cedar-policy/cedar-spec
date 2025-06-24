@@ -234,7 +234,7 @@ theorem wf_typeOf_or {t₁ t₂ : Term} {entities : SymEntities}
 /--
 CompileWellTypedCondition decomposes for ite
 -/
-theorem eliminate_wt_cond_ite
+theorem CompileWellTypedCondition.eliminate_ite
   {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) Γ εnv) :
@@ -268,7 +268,7 @@ theorem compile_well_typed_ite
   (hcond_ite : CompileWellTypedCondition (.ite a b c ty) Γ εnv) :
   CompileWellTypedForExpr (.ite a b c ty) εnv
 := by
-  have ⟨hcond_a, hcond_b, hcond_c⟩ := eliminate_wt_cond_ite hcond_ite
+  have ⟨hcond_a, hcond_b, hcond_c⟩ := hcond_ite.eliminate_ite
   have ⟨hwf_env, hεnv, hwt_ite, hwf_ite⟩ := hcond_ite
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
@@ -327,7 +327,7 @@ theorem compile_well_typed_ite
 /--
 CompileWellTypedCondition decomposes for `or` or `and`
 -/
-theorem eliminate_wt_cond_or_and
+theorem CompileWellTypedCondition.eliminate_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   {cons : TypedExpr → TypedExpr → CedarType → TypedExpr}
@@ -379,7 +379,7 @@ theorem compile_well_typed_or_and
 
   -- Some facts needed later
   have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond
-  have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_or_and hcond ?_
+  have ⟨hcond_a, hcond_b⟩ := hcond.eliminate_or_and ?_
   any_goals simp
 
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
@@ -420,7 +420,7 @@ theorem compile_well_typed_or_and
 /--
 CompileWellTypedCondition decomposes for unaryApp
 -/
-theorem eliminate_wt_cond_unaryApp
+theorem CompileWellTypedCondition.eliminate_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
@@ -446,7 +446,7 @@ theorem compile_well_typed_unaryApp
   (hcond_unary : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
   CompileWellTypedForExpr (.unaryApp op expr ty) εnv
 := by
-  have hcond_expr := eliminate_wt_cond_unaryApp hcond_unary
+  have hcond_expr := hcond_unary.eliminate_unaryApp
   have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond_unary
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
@@ -569,7 +569,7 @@ theorem compile_well_typed_unaryApp
 CompileWellTypedCondition decomposes for binaryApp
 TODO: merge this with other eliminate_wt_cond_*
 -/
-theorem eliminate_wt_cond_binaryApp
+theorem CompileWellTypedCondition.eliminate_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv} :
   CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv →
   CompileWellTypedCondition a Γ εnv ∧
@@ -733,7 +733,7 @@ theorem compile_well_typed_binaryApp
   CompileWellTypedForExpr (.binaryApp op a b ty) εnv
 := by
   -- Some facts needed later
-  have ⟨hcond_a, hcond_b⟩ := eliminate_wt_cond_binaryApp hcond_binary
+  have ⟨hcond_a, hcond_b⟩ := hcond_binary.eliminate_binaryApp
   have ⟨_, hεnv, hwt_binary, ⟨hwf_εnv, hrefs_binary⟩⟩ := hcond_binary
 
   have ⟨hwf_req, hwf_ent⟩ := hwf_εnv
@@ -1030,7 +1030,7 @@ theorem ofEnv_entity_attr_lookup
 /--
 CompileWellTypedCondition decomposes for getAttr
 -/
-theorem eliminate_wt_cond_getAttr
+theorem CompileWellTypedCondition.eliminate_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
@@ -1056,7 +1056,7 @@ theorem compile_well_typed_getAttr
   (hcond : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
   CompileWellTypedForExpr (.getAttr expr attr ty) εnv
 := by
-  have hcond_expr := eliminate_wt_cond_getAttr hcond
+  have hcond_expr := hcond.eliminate_getAttr
   have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
@@ -1220,7 +1220,7 @@ theorem compile_well_typed_getAttr
 /--
 CompileWellTypedCondition decomposes for hasAttr
 -/
-theorem eliminate_wt_cond_hasAttr
+theorem CompileWellTypedCondition.eliminate_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
@@ -1246,7 +1246,7 @@ theorem compile_well_typed_hasAttr
   (hcond : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
   CompileWellTypedForExpr (.hasAttr expr attr ty) εnv
 := by
-  have hcond_expr := eliminate_wt_cond_hasAttr hcond
+  have hcond_expr := hcond.eliminate_hasAttr
   have ⟨_, _, hwt, hwf_εnv, hrefs⟩ := hcond
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
 
@@ -1412,7 +1412,7 @@ theorem compile_well_typed_hasAttr
 /--
 CompileWellTypedCondition decomposes for set
 -/
-theorem eliminate_wt_cond_set
+theorem CompileWellTypedCondition.eliminate_set
   {xs : List TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.set xs ty) Γ εnv)
@@ -1446,7 +1446,7 @@ theorem compile_well_typed_set
   (hcond : CompileWellTypedCondition (.set xs ty) Γ εnv) :
   CompileWellTypedForExpr (.set xs ty) εnv
 := by
-  have hcond_xs := eliminate_wt_cond_set hcond
+  have hcond_xs := hcond.eliminate_set
   have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
 
   simp [
@@ -1584,7 +1584,7 @@ theorem compile_well_typed_set
 /--
 CompileWellTypedCondition decomposes for record
 -/
-theorem eliminate_wt_cond_record
+theorem CompileWellTypedCondition.eliminate_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.record xs ty) Γ εnv)
@@ -1820,7 +1820,7 @@ theorem compile_well_typed_record
   (hcond : CompileWellTypedCondition (.record xs ty) Γ εnv) :
   CompileWellTypedForExpr (.record xs ty) εnv
 := by
-  have hcond_xs := eliminate_wt_cond_record hcond
+  have hcond_xs := hcond.eliminate_record
   have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
 
   simp [
@@ -1979,7 +1979,7 @@ theorem compile_well_typed_record
 /--
 CompileWellTypedCondition decomposes for call
 -/
-theorem eliminate_wt_cond_call
+theorem CompileWellTypedCondition.eliminate_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.call xfn xs ty) Γ εnv)
@@ -2013,7 +2013,7 @@ theorem compile_well_typed_call
   (hcond : CompileWellTypedCondition (.call xfn xs ty) Γ εnv) :
   CompileWellTypedForExpr (.call xfn xs ty) εnv
 := by
-  have hcond_xs := eliminate_wt_cond_call hcond
+  have hcond_xs := hcond.eliminate_call
   have ⟨_, hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
   simp [
     CompileWellTypedForExpr,
@@ -2196,65 +2196,65 @@ theorem compile_well_typed {Γ : Environment} {εnv : SymEnv} {tx : TypedExpr} :
   case lit => exact compile_well_typed_lit h
   case var => exact compile_well_typed_var h
   case ite =>
-    have ⟨h1, h2, h3⟩ := eliminate_wt_cond_ite h
+    have ⟨h1, h2, h3⟩ := h.eliminate_ite
     apply compile_well_typed_ite
     any_goals apply compile_well_typed
     any_goals assumption
 
   case and =>
-    have ⟨ha, hb⟩ := eliminate_wt_cond_or_and h ?_
+    have ⟨ha, hb⟩ := h.eliminate_or_and ?_
     apply (compile_well_typed_or_and ?_ ?_).right
     any_goals apply compile_well_typed
     any_goals assumption
     any_goals simp
 
   case or =>
-    have ⟨ha, hb⟩ := eliminate_wt_cond_or_and h ?_
+    have ⟨ha, hb⟩ := h.eliminate_or_and ?_
     apply (compile_well_typed_or_and ?_ ?_).left
     any_goals apply compile_well_typed
     any_goals assumption
     any_goals simp
 
   case unaryApp =>
-    have hcond := eliminate_wt_cond_unaryApp h
+    have hcond := h.eliminate_unaryApp
     apply compile_well_typed_unaryApp
     any_goals apply compile_well_typed
     all_goals assumption
 
   case binaryApp =>
-    have ⟨ha, hb⟩ := eliminate_wt_cond_binaryApp h
+    have ⟨ha, hb⟩ := h.eliminate_binaryApp
     apply compile_well_typed_binaryApp
     any_goals apply compile_well_typed
     any_goals assumption
 
   case getAttr =>
-    have hcond := eliminate_wt_cond_getAttr h
+    have hcond := h.eliminate_getAttr
     apply compile_well_typed_getAttr
     any_goals apply compile_well_typed
     all_goals assumption
 
   case hasAttr =>
-    have hcond := eliminate_wt_cond_hasAttr h
+    have hcond := h.eliminate_hasAttr
     apply compile_well_typed_hasAttr
     any_goals apply compile_well_typed
     all_goals assumption
 
   case set =>
-    have hcond := eliminate_wt_cond_set h
+    have hcond := h.eliminate_set
     apply compile_well_typed_set
     · intros x hx
       apply compile_well_typed (hcond x hx)
     assumption
 
   case record =>
-    have hcond := eliminate_wt_cond_record h
+    have hcond := h.eliminate_record
     apply compile_well_typed_record
     · intros a x hx
       apply compile_well_typed (hcond a x hx)
     assumption
 
   case call =>
-    have hcond := eliminate_wt_cond_call h
+    have hcond := h.eliminate_call
     apply compile_well_typed_call
     · intros x hx
       apply compile_well_typed (hcond x hx)
