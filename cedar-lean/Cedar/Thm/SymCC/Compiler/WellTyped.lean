@@ -1975,7 +1975,7 @@ theorem compile_well_typed_record
   := by
     simp [List.attach₂]
 
-    -- simp [List.attach₂] at hcomp_xs
+    -- TODO: maybe simplify this a bit
     have e {p : Attr × Expr → Prop} :
       (fun x : { x : Attr × Expr // p x } => do
         let __do_lift ← compile x.val.snd εnv
@@ -2019,37 +2019,6 @@ theorem compile_well_typed_record
       (List.map (fun x => (x.fst, Factory.option.get x.snd)) tcomp_xs)
       (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) xs)
   := by
-
-    -- Simplify hcomp_xs
-    -- Factor out (
-    --   fun x : Attr × Expr => do
-    --   let __do_lift ← compile x.snd εnv
-    --   Except.ok (x.fst, __do_lift)
-    -- )
-    -- TODO: simplify this and factor this out
-    -- simp [List.attach₂] at hcomp_xs
-    -- have e {p : Attr × Expr → Prop} :
-    --   (fun x : { x : Attr × Expr // p x } => do
-    --     let __do_lift ← compile x.val.snd εnv
-    --     Except.ok (x.val.fst, __do_lift))
-    --   =
-    --   (fun x : { x : Attr × Expr // p x } => (
-    --     fun x : Attr × Expr => do
-    --     let __do_lift ← compile x.snd εnv
-    --     Except.ok (x.fst, __do_lift)
-    --   ) x.val)
-    -- := rfl
-    -- rw [e] at hcomp_xs
-
-    -- simp [List.mapM_pmap_subtype (
-    --   fun x : Attr × Expr => do
-    --   let __do_lift ← compile x.snd εnv
-    --   Except.ok (x.fst, __do_lift)
-    -- ) ?_ ?_] at hcomp_xs
-
-    -- simp [List.map_pmap] at hcomp_xs
-    -- simp [List.mapM_map] at hcomp_xs
-
     apply idk_how_to_call_this
       (f := fun x => compile x.toExpr εnv)
       (g := fun x : TypedExpr => Qualified.required x.typeOf)
@@ -2119,24 +2088,97 @@ theorem compile_well_typed_record
 
     simp [hrty, Data.Map.make]
 
-    -- -- Since `tcomp_xs` is sorted
-    -- -- so we can strip `List.canonicalize`
-    -- have e :
-    --   List.canonicalize Prod.fst (List.map (Prod.map id Factory.option.get) tcomp_xs)
-    --   = List.map (Prod.map id Factory.option.get) tcomp_xs
-    -- := by
-    --   apply List.sortedBy_implies_canonicalize_eq hsorted_tcomp_xs
-    -- rw [e]
-
-    -- TODO: we need to establish some connection between
-    -- `tcomp_xs` and `xs.map (fun x => (x.fst, Qualified.required x.snd.typeOf)`
-    -- in particular that for each entry `(a, t) ∈ tcomp_xs` and `(a, x) ∈ xs`
-    -- `t.typeOf = TermType.ofType (Qualified.required x.snd.typeOf)`
-
     simp [list_map_attach₃_remove]
     have hassoc_canon := canonicalize_preseves_MapListValueRelation hassoc_comp_xs
     apply MapListValueRelation_implies_map_eq_if_p_implies_eq hassoc_canon
     simp
+
+/--
+CompileWellTypedCondition decomposes for call
+-/
+theorem eliminate_wt_cond_call
+  {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.call xfn xs ty) env εnv)
+  (x : TypedExpr)
+  (hx : x ∈ xs) :
+  CompileWellTypedCondition x env εnv
+:= by
+  have ⟨hwf_env, henv, hwt, hwf⟩ := h
+  constructor; any_goals assumption
+  constructor
+  · cases hwt; any_goals assumption
+  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
+    rcases hwf with ⟨_, hrefs⟩
+    constructor;
+    · cases hwt with
+      | call h1 =>
+        apply h1; assumption
+    · constructor
+      · assumption
+      · cases hrefs with
+        | call_valid h =>
+          apply h
+          simp [List.map₁]
+          apply Exists.intro x
+          simp [hx]
+
+theorem compile_well_typed_call
+  {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
+  {env : Environment} {εnv : SymEnv}
+  (ihxs : ∀ x, x ∈ xs → CompileWellTypedForExpr x εnv)
+  (hcond : CompileWellTypedCondition (.call xfn xs ty) env εnv) :
+  CompileWellTypedForExpr (.call xfn xs ty) εnv
+:= by
+  have hcond_xs := eliminate_wt_cond_call hcond
+  have ⟨_, henv, hwt, hwf_εnv, hrefs⟩ := hcond
+
+  simp [
+    CompileWellTypedForExpr,
+    TypedExpr.toExpr,
+    compile,
+    List.map₁,
+    List.mapM₁,
+  ]
+
+  have ⟨tcomp_xs, hcomp_xs⟩ :
+    ∃ tcomp_xs,
+    List.mapM (fun x => compile x.val εnv) (List.map TypedExpr.toExpr xs).attach
+    = Except.ok tcomp_xs
+  := by
+    apply List.all_ok_implies_mapM_ok
+    simp
+    intros x hx
+    have ⟨_, h, _⟩ := ihxs x hx
+    simp [h]
+  simp [hcomp_xs]
+
+  simp [compileCall]
+
+  -- Get some info from well-typedness
+  cases hwt with
+  | call _ hwt_xfn =>
+  cases hwt_xfn
+
+  all_goals
+    simp [Functor.map, Option.map] at hcomp_xs
+
+  case decimal s d hparse hwt_xs =>
+    simp_do_let (compile (TypedExpr.lit (Prim.string s) CedarType.string).toExpr εnv) at hcomp_xs
+    case _ tcomp_x1 hcomp_x1 =>
+    simp [Except.map, pure, Except.pure] at hcomp_xs
+
+    simp [TypedExpr.toExpr, compile, compilePrim, Factory.someOf] at hcomp_x1
+    simp [
+      ← hcomp_xs, compileCall₀, ← hcomp_x1, ← hparse,
+      Factory.someOf,
+      Term.typeOf,
+      TermPrim.typeOf,
+      TermType.ofType,
+      TypedExpr.typeOf,
+    ]
+
+  all_goals sorry
 
 /--
 Compiling a well-typed expression should produce a term of the corresponding TermType.
@@ -2208,7 +2250,11 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
     assumption
 
   case call =>
-    sorry
+    have hcond := eliminate_wt_cond_call h
+    apply compile_well_typed_call
+    · intros x hx
+      apply compile_well_typed (hcond x hx)
+    assumption
 
   decreasing_by
     repeat case _ =>
@@ -2225,12 +2271,9 @@ theorem compile_well_typed {env : Environment} {εnv : SymEnv} {ty : TypedExpr} 
       simp at h
       omega
 
--- theorem compile_well_typed_expr_never_fails {ty : TypedExpr} {env : Environment} {εnv : SymEnv} :
---   εnv = SymEnv.ofEnv env →
---   TypedExpr.WellTyped env ty →
---   εnv.WellFormedFor ty.toExpr →
---   Except.isOk (compile ty.toExpr εnv)
--- := by
---   sorry
+    -- Call
+    · simp [*]
+      have h := List.sizeOf_lt_of_mem hx
+      omega
 
 end Cedar.Thm
