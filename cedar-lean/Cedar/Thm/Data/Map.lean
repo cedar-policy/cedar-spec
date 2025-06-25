@@ -415,25 +415,20 @@ theorem find?_implies_make_find?
   (Data.Map.make l).find? k = some v
 := by
   apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
-  simp [make, Data.Map.kvs]
-
+  simp only [make, Data.Map.kvs]
   induction l
-
   case nil => simp at h
   case cons head tail ih =>
-    simp [List.find?] at h
+    simp only [List.find?] at h
     split at h
-
     case _ heq =>
       simp at h
-      simp [List.canonicalize, h]
-      apply List.insertCanonical_exists
-
+      simp only [List.canonicalize, h]
+      apply List.mem_insertCanonical
     case _ hneq =>
       have ih := ih h
       simp at hneq
-      simp [List.canonicalize]
-
+      simp only [List.canonicalize]
       apply List.insertCanonical_new
       assumption
       simp [hneq]

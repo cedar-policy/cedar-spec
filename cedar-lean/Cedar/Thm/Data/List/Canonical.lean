@@ -46,14 +46,14 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
     split at h <;> try trivial
     split at h <;> trivial
 
-theorem insertCanonical_exists [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
+theorem mem_insertCanonical [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
   {f : α → β} {xs : List α} (x : α) :
   x ∈ List.insertCanonical f x xs
 := by
   induction xs
   case nil => simp [List.insertCanonical]
   case cons head tail ih =>
-    simp [List.insertCanonical]
+    simp only [List.insertCanonical]
     split; any_goals simp
     split; any_goals simp
     apply Or.inr ih
@@ -61,25 +61,25 @@ theorem insertCanonical_exists [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
 theorem insertCanonical_new
   [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [DecidableEq β]
   {f : α → β} {xs : List α} {x : α} {y : α}
-  (hexists : y ∈ xs)
+  (hmem : y ∈ xs)
   (hneq : f x ≠ f y) :
   y ∈ List.insertCanonical f x xs
 := by
   induction xs
 
-  case nil => simp at hexists
+  case nil => simp at hmem
 
   case cons hd tl ih =>
-    simp [List.insertCanonical]
+    simp only [List.insertCanonical]
     split
-    simp [hexists]
+    simp [hmem]
     split
-    · simp at hexists
-      cases hexists
+    · simp at hmem
+      cases hmem
       case _ hy => simp [hy]
       case _ hy => simp [ih hy]
-    · simp at hexists
-      cases hexists
+    · simp at hmem
+      cases hmem
       case _ hlt hgt hy =>
         simp [← hy] at hlt hgt
         have hltgt := StrictLT.connected (f x) (f y) hneq
