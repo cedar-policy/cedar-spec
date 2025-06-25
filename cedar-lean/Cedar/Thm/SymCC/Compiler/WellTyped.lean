@@ -582,11 +582,11 @@ Lemma that if a concrete `Γ : Environment` has tags for
 a particular entity type, then `SymEnv.ofEnv Γ` must also
 have tags for it
 -/
-theorem SymEnv_of_preserves_tags
+theorem ofEnv_preserves_tags
   {Γ : Environment} {ety : EntityType} {ty : CedarType}
   (h : Γ.ets.tags? ety = some (some ty)) :
   ∃ τags : SymTags,
-    (SymEnv.ofEnv Γ).entities.tags ety = τags ∧
+    (SymEnv.ofEnv Γ).entities.tags ety = some (some τags) ∧
     τags.vals.outType = TermType.ofType ty
 := by
   simp [EntitySchema.tags?] at h
@@ -740,7 +740,7 @@ theorem compile_well_typed_binaryApp
       have ⟨ety2, hty_get_comp_a2, τs, hτag, hτag_ty⟩ := htypes
       rw [← ofType_ignores_liftBool]
 
-      have ⟨τs2, hτag2, hτag_ty2⟩ := SymEnv_of_preserves_tags htag
+      have ⟨τs2, hτag2, hτag_ty2⟩ := ofEnv_preserves_tags htag
 
       have heq_ety : ety = ety2 := by
         simp [hty_get_comp_a, hty_a, TermType.ofType] at hty_get_comp_a2
@@ -828,7 +828,7 @@ theorem compile_well_typed_binaryApp
     all_goals simp
 
   case getTag _ _ htag hty_a hty_b =>
-    have ⟨_, hτag, _⟩ := SymEnv_of_preserves_tags htag
+    have ⟨_, hτag, _⟩ := ofEnv_preserves_tags htag
     simp [← hεnv] at hτag
     simp [hty_a, hty_b, hτag, compileGetTag, TermType.ofType]
 
