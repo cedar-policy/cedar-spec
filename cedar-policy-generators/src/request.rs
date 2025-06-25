@@ -67,6 +67,13 @@ impl From<Request> for ast::Request {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl From<Request> for cedar_policy::Request {
+    fn from(req: Request) -> Self {
+        ast::Request::from(req).into()
+    }
+}
+
 impl std::fmt::Display for Request {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

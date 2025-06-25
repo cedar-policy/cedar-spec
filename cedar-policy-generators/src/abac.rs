@@ -910,6 +910,13 @@ impl From<ABACPolicy> for StaticPolicy {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl From<ABACPolicy> for cedar_policy::Policy {
+    fn from(abac: ABACPolicy) -> cedar_policy::Policy {
+        StaticPolicy::from(abac).into()
+    }
+}
+
 /// Represents an ABAC request, i.e., fully general
 #[derive(Debug, Clone)]
 pub struct ABACRequest(pub Request);
@@ -936,6 +943,13 @@ impl DerefMut for ABACRequest {
 impl From<ABACRequest> for ast::Request {
     fn from(abac: ABACRequest) -> ast::Request {
         abac.0.into()
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<ABACRequest> for cedar_policy::Request {
+    fn from(abac: ABACRequest) -> cedar_policy::Request {
+        ast::Request::from(abac).into()
     }
 }
 

@@ -294,6 +294,14 @@ impl TryFrom<Hierarchy> for Entities {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Hierarchy> for cedar_policy::Entities {
+    type Error = String;
+    fn try_from(h: Hierarchy) -> std::result::Result<Self, Self::Error> {
+        Entities::try_from(h).map(Into::into)
+    }
+}
+
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
         let mut uids = Vec::new();
@@ -313,6 +321,13 @@ impl From<Entities> for Hierarchy {
             entities: entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
             entity_types,
         }
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<cedar_policy::Entities> for Hierarchy {
+    fn from(entities: cedar_policy::Entities) -> Self {
+        entities.as_ref().clone().into()
     }
 }
 
