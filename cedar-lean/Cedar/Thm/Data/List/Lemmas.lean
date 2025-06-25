@@ -1089,11 +1089,10 @@ theorem find?_implies_find?_fst_map
     cases h
     case _ h => simp [h]
     case _ h =>
-      have ih := ih h.2
+      specialize ih h.2
       simp only [List.map]
       simp only [List.find?]
-      simp [ih]
-      simp [h]
+      simp [ih, h]
 
 theorem find?_implies_append_find?
   {a b : List α}

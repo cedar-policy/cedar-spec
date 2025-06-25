@@ -39,14 +39,13 @@ def CompileWellTypedCondition (tx : TypedExpr) (Γ : Environment) (εnv : SymEnv
 A wrapper around compile_wf for convenience
 -/
 theorem wt_cond_implies_compile_wf
-  {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv} {t : Term} :
-  CompileWellTypedCondition tx Γ εnv →
-  compile tx.toExpr εnv = .ok t →
+  {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv} {t : Term}
+  (h : CompileWellTypedCondition tx Γ εnv)
+  (hcomp : compile tx.toExpr εnv = .ok t) :
   t.WellFormed εnv.entities
 := by
-  intros h hcomp; rcases h with ⟨_, _, _, hwf⟩
-  have htwf := compile_wf hwf hcomp
-  simp [htwf]
+  have ⟨_, _, _, hwf⟩ := h
+  simp [compile_wf hwf hcomp]
 
 /--
 Special case for literals
@@ -144,51 +143,39 @@ theorem isCedarRecordType_implies_isRecordType
 
   case set ty =>
     cases e : ty.cedarType?
-    all_goals rw [e] at hty
-    all_goals simp at hty
+    all_goals simp [e] at hty
 
 /- Special case for variables -/
-theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {εnv : SymEnv} :
-  CompileWellTypedCondition (.var v ty) Γ εnv →
+theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
+  (hcond : CompileWellTypedCondition (.var v ty) Γ εnv) :
   CompileWellTypedForExpr (.var v ty) εnv
 := by
-  intros h; rcases h with ⟨_, hεnv, hwt, hwf⟩
-  simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
-
-  unfold SymEnv.WellFormedFor SymEnv.WellFormed SymRequest.WellFormed at hwf
-
-  rcases hwf with ⟨⟨⟨_, hprincipal, _, haction, _, hresource, _, hcontext⟩, _⟩, _⟩
-  case _ =>
+  have ⟨_, hεnv, hwt, hwf⟩ := hcond
+  have ⟨⟨⟨_, hprincipal, _, haction, _, hresource, _, hcontext⟩, _⟩, _⟩ := hwf
 
   rcases hwt with _ | hwt
   cases hwt
 
   all_goals
-    simp [compile, compileVar, Factory.someOf] at *
-
-  case var.context =>
-    simp [
-      TermType.ofType,
-      Term.typeOf,
-      CedarType.liftBoolTypes,
-      RecordType.liftBoolTypes,
-    ]
     simp [
       hprincipal, haction, hresource,
+      compile, compileVar, Factory.someOf,
+      TypedExpr.typeOf,
+      TypedExpr.toExpr,
+      Term.typeOf,
+      CompileWellTypedForExpr,
+      CedarType.liftBoolTypes,
+      RecordType.liftBoolTypes,
     ] at *
 
+  case var.context =>
     rw [isCedarRecordType_implies_isRecordType]
     rotate_left; assumption
-
     simp [TermType.ofType, Term.typeOf]
     simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
     apply ofRecordType_ignores_liftBool
 
   all_goals
-    simp [
-      hprincipal, haction, hresource, hcontext,
-    ] at *
-    simp [TermType.ofType, Term.typeOf]
     simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
 
 theorem wf_typeOf_ite {g t₁ t₂ : Term} {ty : TermType} {entities : SymEntities}
@@ -358,47 +345,47 @@ theorem compile_well_typed_or_and
 := by
   constructor
   all_goals
-  intros hcond
+    intros hcond
 
-  -- Some facts needed later
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond
-  have ⟨hcond_a, hcond_b⟩ := hcond.eliminate_or_and ?_
-  any_goals simp
+    -- Some facts needed later
+    have ⟨hwf_env, hεnv, hwt, hwf⟩ := hcond
+    have ⟨hcond_a, hcond_b⟩ := hcond.eliminate_or_and ?_
+    any_goals simp
 
-  have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
-  have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
+    have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
+    have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
 
-  have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
-  have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
+    have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
+    have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
 
-  have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
-  have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
+    have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
+    have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
 
-  -- By well-typedness, a and b must be booleans
-  -- So we substitute that fact and simplify
-  cases hwt; case _ _ hbool_a _ hbool_b =>
-  simp [hbool_a, hbool_b] at *; clear hbool_a hbool_b
-  simp [TypedExpr.typeOf, TermType.ofType] at *
+    -- By well-typedness, a and b must be booleans
+    -- So we substitute that fact and simplify
+    cases hwt; case _ _ hbool_a _ hbool_b =>
+    simp [hbool_a, hbool_b] at *; clear hbool_a hbool_b
+    simp [TypedExpr.typeOf, TermType.ofType] at *
 
-  simp [
-    CompileWellTypedForExpr,
-    TypedExpr.toExpr,
-    compile,
-    compileAnd,
-    compileOr,
-    hcomp_a, hty_comp_a, hcomp_b, hty_comp_b,
-  ]
-  split
-  · apply Exists.intro; constructor; rfl
-    simp [Term.typeOf, TermPrim.typeOf, TermType.ofType, TypedExpr.typeOf]
-  · apply Exists.intro; constructor; rfl
-    apply typeOf_ifSome_option
-    apply wf_typeOf_ite
-    any_goals assumption
-    constructor
-    apply wf_bool
-    simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf, TypedExpr.typeOf]
-  · contradiction
+    simp [
+      CompileWellTypedForExpr,
+      TypedExpr.toExpr,
+      compile,
+      compileAnd,
+      compileOr,
+      hcomp_a, hty_comp_a, hcomp_b, hty_comp_b,
+    ]
+    split
+    · apply Exists.intro; constructor; rfl
+      simp [Term.typeOf, TermPrim.typeOf, TermType.ofType, TypedExpr.typeOf]
+    · apply Exists.intro; constructor; rfl
+      apply typeOf_ifSome_option
+      apply wf_typeOf_ite
+      any_goals assumption
+      constructor
+      apply wf_bool
+      simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf, TypedExpr.typeOf]
+    · contradiction
 
 /--
 CompileWellTypedCondition decomposes for unaryApp
@@ -592,7 +579,7 @@ theorem ofEnv_lookup_entity
 
 /--
 Lemma that if a concrete `Γ : Environment` has tags for
-a particular entity type, when `SymEnv.ofEnv Γ` must also
+a particular entity type, then `SymEnv.ofEnv Γ` must also
 have tags for it
 -/
 theorem SymEnv_of_preserves_tags
@@ -897,15 +884,6 @@ theorem ofRecordType_lookup
           all_goals contradiction
         simp
 
--- Given that
---   Γ.ets.attrs? ety = some a
---   a.liftBoolTypes = rty
--- Show that
---   (SymEnv.ofEnv Γ).entities.attrs ety = .some attrs
---   UnaryFunction.WellFormed εnv.entities attrs
---   attrs.argType = CedarType.entity ety
---   attrs.outType = .record (Data.Map.mk (TermType.ofRecordType rty.1))
-
 /--
 `SymEnv` being well-formed implies that any
 attribute function is well-formed
@@ -965,7 +943,7 @@ theorem ofEnv_entity_attr_lookup
 
   have ⟨hwf_attrs, hty_arg_attrs⟩ := env_wf_implies_attrs_wf hwf hattrs_exists2
 
-  apply Exists.intro attrs
+  exists attrs
   constructor
 
   -- Entity type exists in `εnv.entities`
@@ -1080,7 +1058,7 @@ theorem compile_well_typed_getAttr
       simp [hty_expr, TermType.ofType] at hty_get_comp_expr
       simp [h1, h2, h3, h4, hty_get_comp_expr]
 
-      apply Exists.intro (Data.Map.mk (TermType.ofRecordType rty2.1))
+      exists (Data.Map.mk (TermType.ofRecordType rty2.1))
       constructor
 
       -- Types of symbolic attrs are correct
