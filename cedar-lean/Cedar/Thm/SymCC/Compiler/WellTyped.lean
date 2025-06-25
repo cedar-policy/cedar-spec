@@ -242,22 +242,13 @@ theorem CompileWellTypedCondition.eliminate_ite
   CompileWellTypedCondition thenExpr Γ εnv ∧
   CompileWellTypedCondition elseExpr Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  constructor; rotate_left; constructor
-  all_goals
+  have ⟨_, _, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  cases hrefs
+  all_goals repeat
     constructor
-    any_goals assumption
-
-    constructor
-    · cases hwt; assumption
-    · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-      rcases hwf with ⟨_, hrefs⟩
-      constructor;
-      · cases hwt; assumption
-      · constructor
-        · assumption
-        · cases hrefs;
-          any_goals assumption
+    try any_goals assumption
 
 theorem compile_well_typed_ite
   {a : TypedExpr} {b : TypedExpr} {c : TypedExpr} {ty : CedarType}
@@ -341,22 +332,14 @@ theorem CompileWellTypedCondition.eliminate_or_and
     -- Same proof for both cases
     case _ hcons =>
     simp [hcons] at *
-    have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-    constructor
-    all_goals
-      constructor
-      any_goals assumption
 
+    have ⟨_, _, hwt, ⟨_, hrefs⟩⟩ := h
+    simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+    cases hwt
+    cases hrefs
+    all_goals repeat
       constructor
-      · cases hwt; assumption
-      · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-        rcases hwf with ⟨_, hrefs⟩
-        constructor;
-        · cases hwt; assumption
-        · constructor
-          · assumption
-          · cases hrefs;
-            any_goals assumption
+      try any_goals assumption
 
 /--
 Special case for `or` and `and`
@@ -426,18 +409,13 @@ theorem CompileWellTypedCondition.eliminate_unaryApp
   (h : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  constructor; any_goals assumption
-  constructor
-  · cases hwt; assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt; assumption
-    · constructor
-      · assumption
-      · cases hrefs;
-        any_goals assumption
+  have ⟨_, _, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  cases hrefs
+  all_goals repeat
+    constructor
+    try any_goals assumption
 
 theorem compile_well_typed_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
@@ -570,27 +548,18 @@ CompileWellTypedCondition decomposes for binaryApp
 TODO: merge this with other eliminate_wt_cond_*
 -/
 theorem CompileWellTypedCondition.eliminate_binaryApp
-  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv} :
-  CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv →
+  {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
+  (h : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv) :
   CompileWellTypedCondition a Γ εnv ∧
   CompileWellTypedCondition b Γ εnv
 := by
-  intros h; rcases h with ⟨hwf_env, hεnv, hwt, hwf⟩
-  constructor
-  all_goals
+  have ⟨_, _, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  cases hrefs
+  all_goals repeat
     constructor
-    any_goals assumption
-
-    constructor
-    · cases hwt; assumption
-    · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-      rcases hwf with ⟨_, hrefs⟩
-      constructor;
-      · cases hwt; assumption
-      · constructor
-        · assumption
-        · cases hrefs;
-          any_goals assumption
+    try any_goals assumption
 
 /--
 If some entity exists in `Γ`, then it must
@@ -1036,18 +1005,14 @@ theorem CompileWellTypedCondition.eliminate_getAttr
   (h : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  constructor; any_goals assumption
-  constructor
-  · cases hwt; any_goals assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt; any_goals assumption
-    · constructor
-      · assumption
-      · cases hrefs;
-        any_goals assumption
+  have ⟨hwf_env, hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  all_goals
+    cases hrefs
+    all_goals repeat
+      constructor
+      any_goals assumption
 
 theorem compile_well_typed_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -1226,18 +1191,14 @@ theorem CompileWellTypedCondition.eliminate_hasAttr
   (h : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
   CompileWellTypedCondition expr Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  constructor; any_goals assumption
-  constructor
-  · cases hwt; any_goals assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt; any_goals assumption
-    · constructor
-      · assumption
-      · cases hrefs;
-        any_goals assumption
+  have ⟨hwf_env, hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt
+  all_goals
+    cases hrefs
+    all_goals repeat
+      constructor
+      any_goals assumption
 
 theorem compile_well_typed_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
@@ -1420,24 +1381,22 @@ theorem CompileWellTypedCondition.eliminate_set
   (hx : x ∈ xs) :
   CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  constructor; any_goals assumption
+  have ⟨hwf_env, hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt with | set hwt =>
+  cases hrefs with | set_valid hrefs =>
   constructor
-  · cases hwt; any_goals assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt with
-      | set h1 =>
-        apply h1; assumption
+  any_goals assumption
+  constructor
+  · any_goals assumption
+  · constructor;
+    · apply hwt; assumption
     · constructor
       · assumption
-      · cases hrefs with
-        | set_valid h =>
-          apply h
-          simp [List.map₁]
-          apply Exists.intro x
-          simp [hx]
+      · apply hrefs
+        simp [List.map₁]
+        apply Exists.intro x
+        simp [hx]
 
 theorem compile_well_typed_set
   {xs : List TypedExpr} {ty : CedarType}
@@ -1592,33 +1551,25 @@ theorem CompileWellTypedCondition.eliminate_record
   (hx : (a, x) ∈ xs) :
   CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
-  -- constructor; rotate_left
-  -- · have e : x = (a, x).snd := by rfl
-  --   rw [e]
-  --   apply List.sizeOf_snd_lt_sizeOf_list
-  --   exact hx
+  have ⟨hwf_env, hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt with | record hwt =>
+  cases hrefs with | record_valid hrefs =>
   constructor; any_goals assumption
   constructor
-  · cases hwt; any_goals assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt with
-      | record h1 =>
-        apply h1; assumption
+  · any_goals assumption
+  · constructor;
+    · apply hwt; assumption
     · constructor
       · assumption
-      · cases hrefs with
-        | record_valid h =>
-          simp at h
-          apply h a x.toExpr a x
-          simp [List.attach₂, hx]
-          any_goals rfl
-          have e : x = (a, x).snd := by rfl
-          rw [e]
-          apply List.sizeOf_snd_lt_sizeOf_list
-          exact hx
+      · simp at hrefs
+        apply hrefs a x.toExpr a x
+        simp [List.attach₂, hx]
+        any_goals rfl
+        have e : x = (a, x).snd := by rfl
+        rw [e]
+        apply List.sizeOf_snd_lt_sizeOf_list
+        exact hx
 
 /--
 Defines when each pair of values in two list of key-value pairs
@@ -1666,7 +1617,7 @@ theorem MapListValueRelation.inv_under_insertCanonical
 /--
 `List.canonicalize` preserves `MapListValueRelation`
 -/
-theorem canonicalize_preseves_MapListValueRelation
+theorem MapListValueRelation.inv_under_canonicalize
   [LT κ] [DecidableLT κ] [Data.StrictLT κ]
   {p : α → β → Prop}
   {xs : List (κ × α)} {ys : List (κ × β)}
@@ -1972,7 +1923,7 @@ theorem compile_well_typed_record
 
     simp [List.attach₃]
     simp [List.map_pmap]
-    have hassoc_canon := canonicalize_preseves_MapListValueRelation hassoc_comp_xs
+    have hassoc_canon := MapListValueRelation.inv_under_canonicalize hassoc_comp_xs
     apply hassoc_canon.implies_map_eq_if_p_implies_eq
     simp
 
@@ -1987,24 +1938,21 @@ theorem CompileWellTypedCondition.eliminate_call
   (hx : x ∈ xs) :
   CompileWellTypedCondition x Γ εnv
 := by
-  have ⟨hwf_env, hεnv, hwt, hwf⟩ := h
+  have ⟨hwf_env, hεnv, hwt, ⟨_, hrefs⟩⟩ := h
+  simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
+  cases hwt with | call hwt =>
+  cases hrefs with | call_valid hrefs =>
   constructor; any_goals assumption
   constructor
-  · cases hwt; any_goals assumption
-  · simp [SymEnv.WellFormedFor, SymEntities.ValidRefsFor, TypedExpr.toExpr] at *
-    rcases hwf with ⟨_, hrefs⟩
-    constructor;
-    · cases hwt with
-      | call h1 =>
-        apply h1; assumption
+  · any_goals assumption
+  · constructor;
+    · apply hwt; assumption
     · constructor
       · assumption
-      · cases hrefs with
-        | call_valid h =>
-          apply h
-          simp [List.map₁]
-          apply Exists.intro x
-          simp [hx]
+      · apply hrefs
+        simp [List.map₁]
+        apply Exists.intro x
+        simp [hx]
 
 theorem compile_well_typed_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
