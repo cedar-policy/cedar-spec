@@ -46,14 +46,6 @@ pub struct GeneratedPolicy {
     abac_constraints: Expr,
 }
 
-impl From<GeneratedPolicy> for est::Policy {
-    fn from(gp: GeneratedPolicy) -> est::Policy {
-        let sp: StaticPolicy = gp.into();
-        let p: Policy = sp.into();
-        p.into()
-    }
-}
-
 impl GeneratedPolicy {
     /// Create a new `GeneratedPolicy` with these fields
     pub fn new(
@@ -178,6 +170,21 @@ impl From<GeneratedPolicy> for Template {
             gen.resource_constraint.into(),
             gen.abac_constraints,
         )
+    }
+}
+
+impl From<GeneratedPolicy> for est::Policy {
+    fn from(gp: GeneratedPolicy) -> est::Policy {
+        let sp: StaticPolicy = gp.into();
+        let p: Policy = sp.into();
+        p.into()
+    }
+}
+
+#[cfg(feature = "cedar-policy")]
+impl From<GeneratedPolicy> for cedar_policy::Policy {
+    fn from(gp: GeneratedPolicy) -> Self {
+        StaticPolicy::from(gp).into()
     }
 }
 

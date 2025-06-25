@@ -1964,6 +1964,14 @@ impl TryFrom<Schema> for ValidatorSchema {
     }
 }
 
+#[cfg(feature = "cedar-policy")]
+impl TryFrom<Schema> for cedar_policy::Schema {
+    type Error = SchemaError;
+    fn try_from(schema: Schema) -> std::result::Result<cedar_policy::Schema, Self::Error> {
+        ValidatorSchema::try_from(schema).map(Into::into)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Schema;
