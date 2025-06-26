@@ -797,7 +797,6 @@ theorem compile_well_typed_unaryApp
     · simp [hty_get_comp_expr]
       apply (wf_eq ?_ ?_ ?_).right
       any_goals assumption
-      any_goals simp only [hty_get_comp_expr, Term.typeOf]
       -- Prove that the empty set term is well-formed
       · constructor
         · intros; contradiction
@@ -809,6 +808,7 @@ theorem compile_well_typed_unaryApp
             assumption
           cases h; assumption
         · constructor
+      · simp only [hty_get_comp_expr, Term.typeOf]
   case like _ hty_expr =>
     simp only [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
     simp only [hty_expr, TermType.ofType, Factory.someOf, Except.bind_ok, Except.ok.injEq, exists_eq_left']
