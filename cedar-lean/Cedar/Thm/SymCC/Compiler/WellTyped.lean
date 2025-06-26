@@ -176,6 +176,9 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {ε
   all_goals
     simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
 
+/--
+A variant of `wf_ite` to simplify things in this proof
+-/
 theorem wf_typeOf_ite {g t₁ t₂ : Term} {ty : TermType} {entities : SymEntities}
   (hwf_g : g.WellFormed entities)
   (hwf_t1 : t₁.WellFormed entities)
@@ -188,33 +191,6 @@ theorem wf_typeOf_ite {g t₁ t₂ : Term} {ty : TermType} {entities : SymEntiti
   have h1 : t₁.typeOf = t₂.typeOf := by simp [htyeq1, htyeq2]
   have h := wf_ite hwf_g hwf_t1 hwf_t2 hbool_g h1
   rw [h.right]; assumption
-
-theorem wf_typeOf_not {t : Term} {ty : TermType} {entities : SymEntities}
-  (hwf : t.WellFormed entities)
-  (hbool_t : t.typeOf = ty)
-  (hty : ty = .bool) :
-  (Factory.not t).typeOf = ty
-:= by
-  have h1 : t.typeOf = .bool := by simp [hbool_t, hty]
-  have h := wf_not hwf h1
-  rw [h.right]; simp [hty]
-
-theorem wf_typeOf_eq {t₁ t₂ : Term} {entities : SymEntities}
-  (h1 : t₁.WellFormed entities)
-  (h2 : t₂.WellFormed entities)
-  (htyeq : t₁.typeOf = t₂.typeOf) :
-  (Factory.eq t₁ t₂).typeOf = .bool
-:= by
-  have h := wf_eq h1 h2 htyeq
-  rw [h.right]
-
-theorem wf_typeOf_or {t₁ t₂ : Term} {entities : SymEntities}
-  (hwf_t1 : t₁.WellFormed entities)
-  (hwf_t2 : t₂.WellFormed entities)
-  (hbool_t1 : t₁.typeOf = TermType.bool)
-  (hbool_t2 : t₂.typeOf = TermType.bool) :
-  (Factory.or t₁ t₂).typeOf = TermType.bool
-:= (wf_or hwf_t1 hwf_t2 hbool_t1 hbool_t2).right
 
 /--
 CompileWellTypedCondition decomposes for ite
@@ -438,11 +414,9 @@ theorem compile_well_typed_unaryApp
     rw [typeOf_ifSome_option]
     simp [TypedExpr.typeOf, TermType.ofType, Term.typeOf]
 
-    apply wf_typeOf_not
-    any_goals assumption
-    any_goals simp
-
-    simp [hty_get_comp_expr, hty_expr, TermType.ofType, Term.typeOf]
+    apply (wf_not (εs := εnv.entities) ?_ ?_).right
+    assumption
+    simp [hty_get_comp_expr, hty_expr, TermType.ofType]
 
   case neg hty_expr =>
     simp [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
@@ -495,7 +469,7 @@ theorem compile_well_typed_unaryApp
     split
     any_goals simp [Term.typeOf, TermPrim.typeOf]
     simp [hty_get_comp_expr]
-    apply wf_typeOf_eq
+    apply (wf_eq ?_ ?_ ?_).right
     any_goals assumption
     any_goals simp [Term.typeOf, hty_get_comp_expr]
 
@@ -1552,7 +1526,6 @@ theorem compile_well_typed_record
 := by
   have hcond_xs := hcond.eliminate_record
   have ⟨hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
-
   simp [
     CompileWellTypedForExpr,
     TypedExpr.toExpr,
@@ -1579,36 +1552,23 @@ theorem compile_well_typed_record
   -- Compilation of all fields succeeds (the exact version)
   have hcomp_xs :
     List.mapM
-      (fun x => do
-        let __do_lift ← compile x.1.snd εnv
-        Except.ok (x.1.fst, __do_lift))
-      (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂).attach₂
-    = Except.ok tcomp_xs
-  := by
-    simp [List.attach₂]
-
-    -- TODO: maybe simplify this a bit
-    have e {p : Attr × Expr → Prop} :
-      (fun x : { x : Attr × Expr // p x } => do
-        let __do_lift ← compile x.val.snd εnv
-        Except.ok (x.val.fst, __do_lift))
-      =
-      (fun x : { x : Attr × Expr // p x } => (
+      -- Factor `x.val` out of the actual term we need
+      -- so that `mapM_pmap_subtype` can successfully unify
+      (fun x => (
         fun x : Attr × Expr => do
         let __do_lift ← compile x.snd εnv
         Except.ok (x.fst, __do_lift)
       ) x.val)
-    := rfl
-    rw [e]
-
-    simp [List.mapM_pmap_subtype (
+      (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂).attach₂
+    = Except.ok tcomp_xs
+  := by
+    unfold List.attach₂
+    simp only [List.mapM_pmap_subtype (
       fun x : Attr × Expr => do
       let __do_lift ← compile x.snd εnv
       Except.ok (x.fst, __do_lift)
     ) ?_ ?_]
-    simp [List.map_pmap]
-    simp [List.mapM_map]
-    simp [hcomp_xs_simp]
+    simp [List.map_pmap, List.mapM_map, hcomp_xs_simp]
 
   -- Extract some info from well-typedness
   cases hwt with

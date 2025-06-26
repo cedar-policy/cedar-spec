@@ -415,22 +415,4 @@ theorem typeOf_ifAllSome_option_type {gs : List Term} {t : Term} {ty : TermType}
   simp only [ifAllSome, hty, Factory.ite, noneOf]
   exact typeOf_ite_simplify_option hty
 
-theorem typeOf_not {t : Term} {entities : SymEntities} :
-  t.WellFormed entities →
-  t.typeOf = TermType.bool →
-  (not t).typeOf = TermType.bool
-:= by
-  intro hwf ht
-  simp [Factory.not]
-  split
-  all_goals simp [Term.typeOf, TermPrim.typeOf] at *
-
-  -- The last case is for `not (not t) => t`
-  -- which requires the well-formedness condition
-  cases hwf
-  case app_wf _ hopwf =>
-  cases hopwf
-  case not_wt htt =>
-  exact htt
-
 end Cedar.Thm
