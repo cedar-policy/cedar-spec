@@ -29,7 +29,7 @@ def CompileWellTypedCondition (tx : TypedExpr) (Γ : Environment) (εnv : SymEnv
 /--
 A wrapper around compile_wf for convenience
 -/
-theorem wt_cond_implies_compile_wf
+private theorem wt_cond_implies_compile_wf
   {tx : TypedExpr} {Γ : Environment} {εnv : SymEnv} {t : Term}
   (h : CompileWellTypedCondition tx Γ εnv)
   (hcomp : compile tx.toExpr εnv = .ok t) :
@@ -46,12 +46,14 @@ theorem compile_well_typed_lit {p : Prim} {tx : CedarType} {Γ : Environment} {�
   CompileWellTypedForExpr (.lit p tx) εnv
 := by
   have ⟨hεnv, hwt, ⟨_, hrefs⟩⟩ := h
-  simp [TypedExpr.typeOf, TypedExpr.toExpr, CompileWellTypedForExpr] at *
-
+  simp only [TypedExpr.toExpr] at hrefs
   cases hrefs with | lit_valid hrefs =>
   cases hwt with | lit hwt_prim =>
-  simp only [compile, compilePrim, Factory.someOf]
-
+  simp only [
+    compile, compilePrim, Factory.someOf,
+    CompileWellTypedForExpr, TypedExpr.toExpr,
+    TypedExpr.typeOf,
+  ]
   cases hwt_prim with
   | bool | int | string =>
     simp [
@@ -79,10 +81,10 @@ mutual
   := by
     cases qty
     all_goals
-      simp [
+      simp only [
         TermType.ofQualifiedType,
-        CedarType.liftBoolTypes,
         QualifiedType.liftBoolTypes,
+        TermType.option.injEq,
       ]
       apply ofType_ignores_liftBool
 
@@ -94,7 +96,13 @@ mutual
     cases recs with
     | nil => simp [TermType.ofRecordType, CedarType.liftBoolTypesRecord]
     | cons _ tail =>
-      simp [TermType.ofRecordType, CedarType.liftBoolTypesRecord]
+      simp only [
+        TermType.ofRecordType,
+        CedarType.liftBoolTypesRecord,
+        List.cons.injEq,
+        Prod.mk.injEq,
+        true_and,
+      ]
       constructor
       apply ofQualifiedType_ignores_liftBool
       apply ofRecordType_ignores_liftBool tail
@@ -118,30 +126,32 @@ mutual
 end
 
 theorem isCedarRecordType_implies_isRecordType
-  {ty : TermType} :
-  TermType.isCedarRecordType ty →
+  {ty : TermType}
+  (hty : TermType.isCedarRecordType ty) :
   TermType.isRecordType ty
 := by
-  intros hty
-  simp [
-    TermType.isCedarRecordType,
-    TermType.isRecordType,
-    TermType.cedarType?,
-  ] at *
-  cases ty
-  split at hty
-  split
-  any_goals simp
-  any_goals contradiction
-  all_goals simp [TermType.cedarType?] at *
-  case prim _ h _ _ =>
-    unfold TermType.cedarType? at *
-    split at h
-    any_goals simp at h
-    any_goals contradiction
-  case set ty =>
-    cases e : ty.cedarType?
-    all_goals simp [e] at hty
+  simp only [TermType.isCedarRecordType, TermType.cedarType?] at hty
+  cases ty with -- prim option set record
+  | record =>
+    split at hty
+    · simp only [TermType.isRecordType]
+    · contradiction
+  | option =>
+    simp [TermType.cedarType?] at hty
+  | set ty =>
+    simp only [TermType.cedarType?, Option.bind_eq_bind] at hty
+    simp_do_let ty.cedarType? at hty
+    · simp at hty
+    · simp at hty
+  | prim pty =>
+    cases pty with
+    | bool | string | entity | ext =>
+      simp [TermType.cedarType?] at hty
+    | bitvec n =>
+      if h : n = 64 then
+        simp [h, TermType.cedarType?] at hty
+      else
+        simp [h, TermType.cedarType?] at hty
 
 /- Special case for variables -/
 theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
@@ -150,31 +160,40 @@ theorem compile_well_typed_var {v : Var} {ty : CedarType} {Γ : Environment} {ε
 := by
   have ⟨hεnv, hwt, hwf⟩ := hcond
   have ⟨⟨⟨_, hprincipal, _, haction, _, hresource, _, hcontext⟩, _⟩, _⟩ := hwf
-
   cases hwt with | var hwt =>
   cases hwt
-
-  all_goals
-    simp [
-      hprincipal, haction, hresource,
-      compile, compileVar, Factory.someOf,
-      TypedExpr.typeOf,
-      TypedExpr.toExpr,
-      Term.typeOf,
-      CompileWellTypedForExpr,
+  all_goals simp only [
+    hεnv,
+    CompileWellTypedForExpr,
+    TypedExpr.toExpr,
+    SymEnv.ofEnv,
+    SymRequest.ofRequestType,
+    TermType.ofType,
+    compile,
+    compileVar,
+    Term.typeOf,
+    Factory.someOf,
+    TypedExpr.typeOf,
+  ] at ⊢ hprincipal hresource hcontext
+  case principal =>
+    simp only [hprincipal, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+  case action =>
+    simp only [TermType.isEntityType, TermPrim.typeOf, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+  case resource =>
+    simp only [hresource, ↓reduceIte, Except.ok.injEq, exists_eq_left', Term.typeOf]
+  case context =>
+    rw [isCedarRecordType_implies_isRecordType]
+    simp only [
+      ↓reduceIte, Except.ok.injEq,
       CedarType.liftBoolTypes,
       RecordType.liftBoolTypes,
-    ] at *
-
-  case var.context =>
-    rw [isCedarRecordType_implies_isRecordType]
-    rotate_left; assumption
-    simp [TermType.ofType, Term.typeOf]
-    simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
+      TermType.ofType, exists_eq_left',
+      Term.typeOf, TermType.option.injEq,
+      TermType.record.injEq,
+      Data.Map.mk.injEq,
+    ]
     apply ofRecordType_ignores_liftBool
-
-  all_goals
-    simp [hεnv, SymEnv.ofEnv, SymRequest.ofRequestType, TermType.ofType, TermPrim.typeOf, Term.typeOf]
+    apply hcontext
 
 /--
 A variant of `wf_ite` to simplify things in this proof
@@ -222,15 +241,12 @@ theorem compile_well_typed_ite
 := by
   have ⟨hcond_a, hcond_b, hcond_c⟩ := hcond_ite.eliminate_ite
   have ⟨hεnv, hwt_ite, hwf_ite⟩ := hcond_ite
-
   have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
   have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
   have ⟨tcomp_c, ⟨hcomp_c, hty_comp_c⟩⟩ := ihc
-
   have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
   have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
   have hwf_comp_c := wt_cond_implies_compile_wf hcond_c hcomp_c
-
   have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
   have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
   have ⟨hwf_get_comp_c, hty_get_comp_c⟩ := wf_option_get hwf_comp_c hty_comp_c
@@ -238,28 +254,22 @@ theorem compile_well_typed_ite
   -- Infer types from well-typedness of (.ite a b c ty)
   cases hwt_ite;
   case ite _ hbool_a _ _ heqty =>
-
-  simp [
-    CompileWellTypedForExpr,
-    TypedExpr.toExpr,
-    compile,
-    compileIf,
-    hcomp_a, hty_comp_a,
-    hcomp_b, hty_comp_b,
-    hcomp_c, hty_comp_c,
-    hbool_a, heqty,
+  simp only [
+    CompileWellTypedForExpr, heqty,
+    TypedExpr.toExpr, compile,
+    hcomp_a, compileIf, hcomp_b,
+    hcomp_c, Except.bind_ok,
+    hty_comp_c, hty_comp_b,
+    ↓reduceIte, hty_comp_a, hbool_a,
   ]
-
   -- Case analysis on simplification
   split
   · simp [← heqty, hty_comp_b]
     unfold TypedExpr.typeOf
     simp
-
   · simp [heqty, hty_comp_c]
     unfold TypedExpr.typeOf
     simp
-
   · simp
     apply typeOf_ifSome_option
     apply wf_typeOf_ite
@@ -273,7 +283,6 @@ theorem compile_well_typed_ite
     · simp [heqty, hty_comp_c]
       unfold TypedExpr.typeOf
       simp
-
   · simp; contradiction
 
 /--
@@ -293,7 +302,6 @@ private theorem CompileWellTypedCondition.eliminate_or_and
     -- Same proof for both cases
     case _ hcons =>
     simp [hcons] at *
-
     have ⟨_, hwt, ⟨_, hrefs⟩⟩ := h
     simp [SymEntities.ValidRefsFor, TypedExpr.toExpr] at hrefs
     cases hwt
@@ -310,44 +318,36 @@ theorem compile_well_typed_or_and
   {Γ : Environment} {εnv : SymEnv}
   (iha : CompileWellTypedForExpr a εnv)
   (ihb : CompileWellTypedForExpr b εnv) :
-
   (CompileWellTypedCondition (.or a b ty) Γ εnv →
     CompileWellTypedForExpr (.or a b ty) εnv) ∧
-
   (CompileWellTypedCondition (.and a b ty) Γ εnv →
     CompileWellTypedForExpr (.and a b ty) εnv)
 := by
   constructor
   all_goals
     intros hcond
-
-    -- Some facts needed later
     have ⟨hεnv, hwt, hwf⟩ := hcond
     have ⟨hcond_a, hcond_b⟩ := hcond.eliminate_or_and ?_
-    any_goals simp
-
     have ⟨tcomp_a, ⟨hcomp_a, hty_comp_a⟩⟩ := iha
     have ⟨tcomp_b, ⟨hcomp_b, hty_comp_b⟩⟩ := ihb
-
     have hwf_comp_a := wt_cond_implies_compile_wf hcond_a hcomp_a
     have hwf_comp_b := wt_cond_implies_compile_wf hcond_b hcomp_b
-
     have ⟨hwf_get_comp_a, hty_get_comp_a⟩ := wf_option_get hwf_comp_a hty_comp_a
     have ⟨hwf_get_comp_b, hty_get_comp_b⟩ := wf_option_get hwf_comp_b hty_comp_b
-
     -- By well-typedness, a and b must be booleans
     -- So we substitute that fact and simplify
+    any_goals simp only [true_or, or_true]
     cases hwt; case _ _ hbool_a _ hbool_b =>
-    simp [hbool_a, hbool_b] at *; clear hbool_a hbool_b
-    simp [TypedExpr.typeOf, TermType.ofType] at *
-
-    simp [
+    simp only [hbool_a, hbool_b] at *; clear hbool_a hbool_b
+    simp only [TermType.ofType] at *
+    simp only [
+      hcomp_a, hcomp_b,
+      hty_comp_b, hty_comp_a,
       CompileWellTypedForExpr,
       TypedExpr.toExpr,
       compile,
-      compileAnd,
-      compileOr,
-      hcomp_a, hty_comp_a, hcomp_b, hty_comp_b,
+      compileOr, compileAnd,
+      Except.bind_ok, ↓reduceIte,
     ]
     split
     · apply Exists.intro; constructor; rfl
@@ -358,7 +358,13 @@ theorem compile_well_typed_or_and
       any_goals assumption
       constructor
       apply wf_bool
-      simp [TermType.ofType, Term.typeOf, TermPrim.typeOf, Factory.someOf, TypedExpr.typeOf]
+      simp [
+        TermType.ofType,
+        Term.typeOf,
+        TermPrim.typeOf,
+        Factory.someOf,
+        TypedExpr.typeOf,
+      ]
     · contradiction
 
 /--
@@ -388,7 +394,6 @@ theorem compile_well_typed_unaryApp
   have hcond_expr := hcond_unary.eliminate_unaryApp
   have ⟨hεnv, hwt, hwf⟩ := hcond_unary
   have ⟨compile_expr, hcomp_expr, hty_comp_expr⟩ := ihexpr
-
   have hwf_comp_expr := wt_cond_implies_compile_wf hcond_expr hcomp_expr
   have ⟨hwf_get_comp_expr, hty_get_comp_expr⟩ := wf_option_get hwf_comp_expr hty_comp_expr
 
@@ -860,7 +865,7 @@ theorem ofRecordType_lookup
 `SymEnv` being well-formed implies that any
 attribute function is well-formed
 -/
-theorem env_wf_implies_attrs_wf
+private theorem env_wf_implies_attrs_wf
   {εnv : SymEnv} {ety : EntityType} {attrs : UnaryFunction}
   (hwf : εnv.WellFormed)
   (hattrs_exists : εnv.entities.attrs ety = .some attrs) :
