@@ -1396,9 +1396,21 @@ theorem compile_well_typed_record
   CompileWellTyped (.record xs ty) εnv
 := by
   have ⟨hεnv, hwt, hwf_εnv, hrefs⟩ := hcond
-  simp only [CompileWellTyped, TypedExpr.toExpr, compile, List.mapM₂, compileRecord]
-  -- Compilation of all fields succeeds (the simplified version)
-  have ⟨tcomp_xs, hcomp_xs_simp⟩ :
+  simp only [CompileWellTyped, TypedExpr.toExpr, compile, compileRecord]
+  -- Strip one layer of mapM₂
+  simp only [List.mapM₂_eq_mapM
+    (fun x => do Except.ok (x.fst, ← compile x.snd εnv))
+    (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂)]
+  -- Strip off the second later of mapM₂
+  simp only [List.mapM_map]
+  have e := List.mapM₂_eq_mapM
+    (fun x => do Except.ok (x.fst, ← compile x.snd.toExpr εnv))
+    xs
+  simp only [List.mapM₂] at e
+  simp only [e]
+  clear e
+  -- Compilation of all fields succeeds
+  have ⟨tcomp_xs, hcomp_xs⟩ :
     ∃ ats : List (Attr × Term),
       List.mapM
         (fun x => do
@@ -1411,26 +1423,6 @@ theorem compile_well_typed_record
     have ⟨k, x⟩ := p
     have ⟨_, hcomp_x, _⟩ := ihxs k x hx
     simp [hcomp_x]
-  -- Compilation of all fields succeeds (the exact version)
-  have hcomp_xs :
-    List.mapM
-      -- Factor `x.val` out of the actual term we need
-      -- so that `mapM_pmap_subtype` can successfully unify
-      (fun x => (
-        fun x : Attr × Expr => do
-        let __do_lift ← compile x.snd εnv
-        Except.ok (x.fst, __do_lift)
-      ) x.val)
-      (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂).attach₂
-    = Except.ok tcomp_xs
-  := by
-    unfold List.attach₂
-    simp only [List.mapM_pmap_subtype (
-      fun x : Attr × Expr => do
-      let __do_lift ← compile x.snd εnv
-      Except.ok (x.fst, __do_lift)
-    ) ?_ ?_]
-    simp [List.map_pmap, List.mapM_map, hcomp_xs_simp]
   -- Extract some info from well-typedness
   cases hwt with | record _ hrty =>
   case _ rty _ =>
@@ -1450,7 +1442,7 @@ theorem compile_well_typed_record
   := by
     apply List.mapM_implies_forall₂
     rotate_left
-    apply hcomp_xs_simp
+    apply hcomp_xs
     intros kv_x kv_y hkv_x hcomp_x
     have ⟨tcomp_x, hcomp_x2, hty_comp_x⟩ := ihxs kv_x.1 kv_x.2 hkv_x
     simp only [TermType.ofQualifiedType]
@@ -1484,7 +1476,7 @@ theorem compile_well_typed_record
   := by
     simp only [List.mem_map, Prod.exists, exists_eq_right, forall_exists_index]
     intros y k hy
-    have ⟨⟨k2, x⟩, hx, hy⟩ := List.mapM_ok_implies_all_from_ok hcomp_xs_simp (k, y) hy
+    have ⟨⟨k2, x⟩, hx, hy⟩ := List.mapM_ok_implies_all_from_ok hcomp_xs (k, y) hy
     have ⟨tcomp_x, hcomp_x, hty_comp_x, hwf_comp_x⟩ := ihxs k2 x hx
     simp only [hcomp_x, Except.bind_ok, Except.ok.injEq, Prod.mk.injEq] at hy
     simp only [hy.2] at hwf_comp_x hty_comp_x
