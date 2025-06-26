@@ -491,7 +491,7 @@ of a `f` through `List.mapM`. This is slightly stronger
 than the forward direction of `mapM_ok_iff_forall₂`
 since it allowed an extra `x ∈ xs` condition in `h`.
 -/
-theorem mapM_implies_attched_forall₂
+theorem mapM_implies_forall₂
   {f : α → Except ε β}
   {p : α → β → Prop}
   {xs : List α} {ys : List β}
