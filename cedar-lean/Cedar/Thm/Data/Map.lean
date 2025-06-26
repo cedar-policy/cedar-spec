@@ -422,12 +422,12 @@ theorem find?_implies_make_find?
     simp only [List.find?] at h
     split at h
     case _ heq =>
-      simp at h
+      simp only [Option.some.injEq] at h
       simp only [List.canonicalize, h]
       apply List.mem_insertCanonical
     case _ hneq =>
       have ih := ih h
-      simp at hneq
+      simp only [beq_eq_false_iff_ne, ne_eq] at hneq
       simp only [List.canonicalize]
       apply List.insertCanonical_new
       assumption

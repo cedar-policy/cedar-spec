@@ -66,22 +66,20 @@ theorem insertCanonical_new
   y ∈ List.insertCanonical f x xs
 := by
   induction xs
-
   case nil => simp at hmem
-
   case cons hd tl ih =>
     simp only [List.insertCanonical]
     split
-    simp [hmem]
+    simp only [mem_cons, hmem, or_true]
     split
-    · simp at hmem
+    · simp only [mem_cons] at hmem
       cases hmem
       case _ hy => simp [hy]
       case _ hy => simp [ih hy]
-    · simp at hmem
+    · simp only [mem_cons] at hmem
       cases hmem
       case _ hlt hgt hy =>
-        simp [← hy] at hlt hgt
+        simp only [← hy, gt_iff_lt] at hlt hgt
         have hltgt := StrictLT.connected (f x) (f y) hneq
         cases hltgt <;> contradiction
       case _ hy => simp [hy]

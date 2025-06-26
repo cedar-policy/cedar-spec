@@ -501,27 +501,24 @@ theorem mapM_implies_forall₂
 := by
   induction xs generalizing ys
   case nil =>
-    simp [mapM, mapM.loop, pure, Except.pure] at hmapM
+    simp only [mapM, mapM.loop, pure, Except.pure, reverse_nil, Except.ok.injEq, nil_eq] at hmapM
     simp [hmapM]
   case cons xhd xtl ih =>
-    simp [
-      pure, Except.pure,
-      Bind.bind, Except.bind,
-    ] at hmapM
+    simp only [mapM_cons, Bind.bind, Except.bind, pure, Except.pure] at hmapM
     split at hmapM
     contradiction
     split at hmapM
     contradiction
-    simp at hmapM
-    simp [← hmapM]
+    simp only [Except.ok.injEq] at hmapM
+    simp only [← hmapM, forall₂_cons]
     constructor
     · apply h
-      simp
+      simp only [mem_cons, true_or]
       assumption
     · apply ih
       intros
       apply h
-      simp [*]
+      simp only [mem_cons, or_true, *]
       assumption
       assumption
 
@@ -1163,9 +1160,9 @@ theorem find?_implies_find?_fst_map
   List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
 := by
   induction l
-  case nil => simp at h
+  case nil => simp only [find?_nil, reduceCtorEq] at h
   case cons head tail ih =>
-    simp at h
+    simp only [find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true] at h
     cases h
     case _ h => simp [h]
     case _ h =>
