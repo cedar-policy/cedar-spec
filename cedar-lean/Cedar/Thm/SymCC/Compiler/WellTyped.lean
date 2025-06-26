@@ -129,20 +129,16 @@ theorem isCedarRecordType_implies_isRecordType
     TermType.cedarType?,
   ] at *
   cases ty
-
   split at hty
   split
-
   any_goals simp
   any_goals contradiction
   all_goals simp [TermType.cedarType?] at *
-
   case prim _ h _ _ =>
     unfold TermType.cedarType? at *
     split at h
     any_goals simp at h
     any_goals contradiction
-
   case set ty =>
     cases e : ty.cedarType?
     all_goals simp [e] at hty
@@ -223,7 +219,7 @@ theorem wf_typeOf_or {t₁ t₂ : Term} {entities : SymEntities}
 /--
 CompileWellTypedCondition decomposes for ite
 -/
-theorem CompileWellTypedCondition.eliminate_ite
+private theorem CompileWellTypedCondition.eliminate_ite
   {cond : TypedExpr} {thenExpr : TypedExpr} {elseExpr : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.ite cond thenExpr elseExpr ty) Γ εnv) :
@@ -307,7 +303,7 @@ theorem compile_well_typed_ite
 /--
 CompileWellTypedCondition decomposes for `or` or `and`
 -/
-theorem CompileWellTypedCondition.eliminate_or_and
+private theorem CompileWellTypedCondition.eliminate_or_and
   {a : TypedExpr} {b : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   {cons : TypedExpr → TypedExpr → CedarType → TypedExpr}
@@ -392,7 +388,7 @@ theorem compile_well_typed_or_and
 /--
 CompileWellTypedCondition decomposes for unaryApp
 -/
-theorem CompileWellTypedCondition.eliminate_unaryApp
+private theorem CompileWellTypedCondition.eliminate_unaryApp
   {op : UnaryOp} {expr : TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.unaryApp op expr ty) Γ εnv) :
@@ -536,7 +532,7 @@ theorem compile_well_typed_unaryApp
 CompileWellTypedCondition decomposes for binaryApp
 TODO: merge this with other eliminate_wt_cond_*
 -/
-theorem CompileWellTypedCondition.eliminate_binaryApp
+private theorem CompileWellTypedCondition.eliminate_binaryApp
   {op : BinaryOp} {a : TypedExpr} {b : TypedExpr} {ty : CedarType} {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.binaryApp op a b ty) Γ εnv) :
   CompileWellTypedCondition a Γ εnv ∧
@@ -979,7 +975,7 @@ theorem ofEnv_entity_attr_lookup
 /--
 CompileWellTypedCondition decomposes for getAttr
 -/
-theorem CompileWellTypedCondition.eliminate_getAttr
+private theorem CompileWellTypedCondition.eliminate_getAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.getAttr expr attr ty) Γ εnv) :
@@ -1165,7 +1161,7 @@ theorem compile_well_typed_getAttr
 /--
 CompileWellTypedCondition decomposes for hasAttr
 -/
-theorem CompileWellTypedCondition.eliminate_hasAttr
+private theorem CompileWellTypedCondition.eliminate_hasAttr
   {expr : TypedExpr} {attr : Attr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.hasAttr expr attr ty) Γ εnv) :
@@ -1353,7 +1349,7 @@ theorem compile_well_typed_hasAttr
 /--
 CompileWellTypedCondition decomposes for set
 -/
-theorem CompileWellTypedCondition.eliminate_set
+private theorem CompileWellTypedCondition.eliminate_set
   {xs : List TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.set xs ty) Γ εnv)
@@ -1520,7 +1516,7 @@ theorem compile_well_typed_set
 /--
 CompileWellTypedCondition decomposes for record
 -/
-theorem CompileWellTypedCondition.eliminate_record
+private theorem CompileWellTypedCondition.eliminate_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.record xs ty) Γ εnv)
@@ -1546,199 +1542,6 @@ theorem CompileWellTypedCondition.eliminate_record
         rw [e]
         apply List.sizeOf_snd_lt_sizeOf_list
         exact hx
-
-/--
-Defines when each pair of values in two list of key-value pairs
-satisfies a relation `p`, and each pair of keys is equal
--/
-inductive MapListValueRelation {α β κ} (p : α → β → Prop) : List (κ × α) → List (κ × β) → Prop
-  | nil : MapListValueRelation p [] []
-  | cons {k₁ k₂ : κ} {x : α} {y : β} {xs : List (κ × α)} {ys : List (κ × β)} :
-    p x y →
-    k₁ = k₂ →
-    MapListValueRelation p xs ys →
-    MapListValueRelation p ((k₁, x) :: xs) ((k₂, y) :: ys)
-
-/--
-`List.insertCanonical` preserves `MapListValueRelation`
--/
-theorem MapListValueRelation.inv_under_insertCanonical
-  [LT κ] [DecidableLT κ] [Data.StrictLT κ]
-  {p : α → β → Prop}
-  {k : κ} {x : α} {y : β}
-  {xs : List (κ × α)} {ys : List (κ × β)}
-  (hp : p x y)
-  (h : MapListValueRelation p xs ys) :
-  MapListValueRelation p
-    (List.insertCanonical Prod.fst (k, x) xs)
-    (List.insertCanonical Prod.fst (k, y) ys)
-:= by
-  induction h with
-  | nil =>
-    simp [List.insertCanonical]
-    constructor; assumption; simp
-    constructor
-  | cons px2 pkeq ptail ih =>
-    simp [List.insertCanonical, pkeq]
-    split
-    · constructor; assumption; simp
-      constructor; assumption; simp
-      assumption
-    split
-    · constructor; assumption; simp
-      exact ih
-    constructor; assumption; simp
-    assumption
-
-/--
-`List.canonicalize` preserves `MapListValueRelation`
--/
-theorem MapListValueRelation.inv_under_canonicalize
-  [LT κ] [DecidableLT κ] [Data.StrictLT κ]
-  {p : α → β → Prop}
-  {xs : List (κ × α)} {ys : List (κ × β)}
-  (h : MapListValueRelation p xs ys) :
-  MapListValueRelation p
-    (List.canonicalize Prod.fst xs)
-    (List.canonicalize Prod.fst ys)
-:= by
-  -- unfold List.canonicalize
-
-  induction h with
-  | nil =>
-    simp [List.canonicalize]
-    constructor
-
-  | cons hp hkeq hxs ih =>
-    case _ k1 k2 x y xs ys =>
-    simp [List.canonicalize, ← hkeq]
-    unfold List.insertCanonical
-    simp
-    split
-    case _ h =>
-      simp [h] at ih
-      split
-      · constructor
-        assumption
-        simp
-        constructor
-
-      case _ _ _ _ hcons =>
-      simp [hcons] at ih
-      contradiction
-
-    case _ cxshd cxstl hxs =>
-      simp [hxs] at ih
-      cases e : (List.canonicalize Prod.fst ys)
-      simp [e] at ih
-      contradiction
-
-      case _ cyshd cystl =>
-      simp [e] at ih
-      cases ih with
-      | cons phd hkeq2 htail =>
-        simp [hxs, hkeq2]
-        split
-        · repeat
-            constructor
-            assumption
-            simp
-          assumption
-
-        split
-        case _ =>
-          constructor; assumption; simp
-          apply MapListValueRelation.inv_under_insertCanonical
-          assumption
-          assumption
-
-        constructor; assumption; simp
-        assumption
-
-/--
-If `p x y` implies `f x = g y`,
-then `MapListValueRelation p xs ys` implies
-`List.map (Prod.map id f) xs = List.map (Prod.map id g) ys`
--/
-theorem MapListValueRelation.implies_map_eq_if_p_implies_eq
-  {p : α → β → Prop}
-  {f : α → γ} {g : β → γ}
-  {xs : List (κ × α)} {ys : List (κ × β)}
-  (hr : MapListValueRelation p xs ys)
-  (heq : ∀ x y, p x y → f x = g y) :
-  List.map (λ x => (x.fst, f x.snd)) xs
-  = List.map (λ x => (x.fst, g x.snd)) ys
-:= by
-  induction hr with
-  | nil => simp [List.map]
-  | cons hp hkeq hr2 ih =>
-    case _ x y xs ys =>
-    simp [List.map]
-    simp [hkeq, heq x y hp]
-    exact ih
-
-/--
-A technical lemma required to simplify record compilation
--/
-theorem MapListValueRelation.from_map_mapM
-  {f : α → SymCC.Result β}
-  {g : α → α'}
-  {h : β → β'}
-  {p : β' → α' → Prop}
-  {xs : List (κ × α)} {ys : List (κ × β)}
-  (hmapM : List.mapM (λ (k, x) => do (k, ← f x)) xs = Except.ok ys)
-  (hp : ∀ κ x y, (κ, x) ∈ xs → f x = Except.ok y → p (h y) (g x)) :
-  MapListValueRelation p
-    (List.map (fun x => (x.fst, h x.snd)) ys)
-    (List.map (fun x => (x.fst, g x.snd)) xs)
-:= by
-  induction xs generalizing ys with
-  | nil =>
-    simp [pure, Except.pure] at hmapM
-    simp [hmapM]
-    constructor
-
-  | cons xhd xtl ih =>
-    cases ys with
-    | nil =>
-      -- Not possible
-      simp at hmapM
-      simp_do_let (f xhd.snd) at hmapM
-      simp [Functor.map, Except.map] at hmapM
-      split at hmapM; contradiction
-      simp at hmapM
-
-    | cons yhd ytl =>
-      simp
-      have hall_ok := List.mapM_ok_implies_all_ok hmapM
-      simp at hall_ok
-
-      -- Show that xhd.fst = yhd.fst
-      simp at hmapM
-      simp_do_let (f xhd.snd) at hmapM
-      simp [Functor.map, Except.map] at hmapM
-      split at hmapM; contradiction
-      simp at hmapM
-      have heqk : xhd.fst = yhd.fst := by simp [← hmapM.left]
-
-      constructor
-
-      have hp := hp yhd.fst xhd.snd
-      simp [← heqk] at hp
-      apply hp
-
-      simp [*]
-      simp [← hmapM.left]
-      simp [heqk]
-
-      apply ih
-      · simp [← hmapM.right]
-        assumption
-
-      · intros k x y hx hf_x
-        apply hp k x y
-        simp [hx]
-        assumption
 
 theorem compile_well_typed_record
   {xs : List (Attr × TypedExpr)} {ty : CedarType}
@@ -1820,28 +1623,49 @@ theorem compile_well_typed_record
     apply Eq.symm
     apply Data.Map.make_of_make_is_id
 
+  have hassoc_comp_xs_simp :
+    List.Forallᵥ
+      (λ tx t =>
+        TermType.ofQualifiedType (Qualified.required tx.typeOf) =
+        (Factory.option.get t).typeOf)
+      xs tcomp_xs
+  := by
+    apply List.mapM_implies_forall₂
+    rotate_left
+    apply hcomp_xs_simp
+
+    intros kv_x kv_y hkv_x hcomp_x
+    have ⟨tcomp_x, hcomp_x2, hty_comp_x⟩ := ihxs kv_x.1 kv_x.2 hkv_x
+    simp only [TermType.ofQualifiedType]
+
+    simp [hcomp_x2] at hcomp_x
+
+    have hkeq : kv_x.fst = kv_y.fst := by simp [← hcomp_x]
+    have heq2 : kv_y.snd = tcomp_x := by simp [← hcomp_x]
+    simp [hkeq, heq2, hty_comp_x]
+
+    have hcond_x := hcond_xs kv_x.1 kv_x.2 hkv_x
+    apply Eq.symm (wf_option_get (wt_cond_implies_compile_wf hcond_x hcomp_x2) ?_).right
+    assumption
+
   -- `tcomp_xs` and `xs` have some association
   have hassoc_comp_xs :
-    MapListValueRelation
+    List.Forallᵥ
       (λ t ty =>
         t.typeOf = TermType.ofQualifiedType ty)
       (List.map (fun x => (x.fst, Factory.option.get x.snd)) tcomp_xs)
       (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf)) xs)
   := by
-    apply MapListValueRelation.from_map_mapM
-      (f := fun x => compile x.toExpr εnv)
-      (g := fun x : TypedExpr => Qualified.required x.typeOf)
-      hcomp_xs_simp
+    apply List.forall₂_swap
+    apply List.map_preserves_forall₂
+    rotate_left
 
-    intros k x tcomp_x hx hcomp_x
-    simp [TermType.ofQualifiedType]
-    have ⟨_, hcomp_x2, hty_comp_x⟩ := ihxs k x hx
-    simp [hcomp_x] at hcomp_x2
-    simp [← hcomp_x2] at hty_comp_x
+    simp [List.Forallᵥ] at hassoc_comp_xs_simp
+    apply hassoc_comp_xs_simp
+    simp
 
-    have hcond_x := hcond_xs k x hx
-    have ⟨_, h⟩ := wf_option_get (wt_cond_implies_compile_wf hcond_x hcomp_x) hty_comp_x
-    exact h
+    intros k1 x k2 y hkeq h
+    simp [hkeq, h]
 
   -- Each compiled term (and Option.get of it) is well-formed
   have hwf_comp_xs :
@@ -1897,16 +1721,20 @@ theorem compile_well_typed_record
 
     simp [hrty, Data.Map.make]
 
-    simp [List.attach₃]
-    simp [List.map_pmap]
-    have hassoc_canon := MapListValueRelation.inv_under_canonicalize hassoc_comp_xs
-    apply hassoc_canon.implies_map_eq_if_p_implies_eq
+    simp only [List.attach₃]
+    simp only [List.map_pmap]
     simp
+    apply List.forall₂_implies_map_eq
+    apply List.Forall₂.imp
+    rotate_left
+    · apply List.canonicalize_preserves_forallᵥ
+      apply hassoc_comp_xs
+    · simp
 
 /--
 CompileWellTypedCondition decomposes for call
 -/
-theorem CompileWellTypedCondition.eliminate_call
+private theorem CompileWellTypedCondition.eliminate_call
   {xfn : ExtFun} {xs : List TypedExpr} {ty : CedarType}
   {Γ : Environment} {εnv : SymEnv}
   (h : CompileWellTypedCondition (.call xfn xs ty) Γ εnv)
