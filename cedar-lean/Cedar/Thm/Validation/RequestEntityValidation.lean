@@ -159,13 +159,13 @@ theorem instance_of_request_type_refl {request : Request} {reqty : RequestType} 
   · exact instance_of_entity_type_refl h₃
   · exact instance_of_type_refl h₄
 
-theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema} :
-  instanceOfEntitySchema entities ets = .ok () → InstanceOfEntitySchema entities ets
+theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema} {acts : ActionSchema} :
+  instanceOfEntitySchema entities ets acts = .ok () → InstanceOfEntitySchema entities ets acts
 := by
   intro h₀
   simp only [InstanceOfEntitySchema]
   simp only [instanceOfEntitySchema] at h₀
-  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets x.fst x.snd) = f
+  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets acts x.fst x.snd) = f
   rw [h₁] at h₀
   intro uid data h₂
   have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀ (uid, data)
@@ -174,8 +174,9 @@ theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema
   simp only [instanceOfEntitySchema.instanceOfEntityData] at h₀
   cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
   case some entry =>
+    apply Or.inl
     exists entry
-    simp only [true_and]
+    simp only [h₂, true_and]
     split at h₀ <;> try simp only [reduceCtorEq] at h₀
     rename_i hv
     constructor
@@ -209,6 +210,19 @@ theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema
           exact instance_of_type_refl (h₅ v hv)
         · simp only [beq_iff_eq] at h₅
           exact h₅
+  case none =>
+    apply Or.inr
+    split at h₀
+    split at h₀
+    split at h₀
+    any_goals contradiction
+    case _ h₃ h₄ h₅ =>
+    simp [ValidActionEntityEntry]
+    and_intros
+    · simp [h₃]
+    · simp [h₂]
+    · simp [h₄]
+    · simp [h₅]
 
 theorem instance_of_action_schema_refl {entities : Entities} {acts : ActionSchema} :
   instanceOfActionSchema entities acts = .ok () → InstanceOfActionSchema entities acts
@@ -241,7 +255,7 @@ theorem request_and_entities_match_env {env : Environment} {request : Request} {
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl h₀
-  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  cases h₂ : instanceOfEntitySchema entities env.ets env.acts <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   exact And.intro (instance_of_entity_schema_refl h₂) (instance_of_action_schema_refl h₁)
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :

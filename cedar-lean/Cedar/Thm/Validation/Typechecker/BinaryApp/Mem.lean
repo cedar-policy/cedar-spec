@@ -102,11 +102,11 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
       simp only [List.mapM_some_iff_forall₂, h₁]
 
 theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
-  (h₂ : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty = false) :
+  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₂ : env.descendentOf euid₁.ty euid₂.ty = false) :
   inₑ euid₁ euid₂ entities = false
 := by
-  simp only [EntitySchema.descendentOf, Bool.if_true_left, Bool.or_eq_false_iff,
+  simp only [Environment.descendentOf, Bool.if_true_left, Bool.or_eq_false_iff,
     decide_eq_false_iff_not] at h₂
   simp only [inₑ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
   by_contra h₃
@@ -119,10 +119,25 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
   split at h₃
   case h_1 data h₄ =>
     rw [Set.contains_prop_bool_equiv] at h₃
-    have ⟨entry, h₂₁, _, _, h₂₂, _⟩ := h₁ euid₁ data h₄
-    specialize h₂₂ euid₂ h₃
-    rw [←Set.contains_prop_bool_equiv] at h₂₂
-    simp [h₂₁, h₂₂] at h₂
+    cases h₁ euid₁ data h₄ with
+    | inl h₁ =>
+      have ⟨entry, h₂₁, _, _, h₂₂, _⟩ := h₁
+      specialize h₂₂ euid₂ h₃
+      rw [←Set.contains_prop_bool_equiv] at h₂₂
+      simp [h₂₁, h₂₂] at h₂
+    | inr h₁ =>
+      have ⟨entry, h₅, h₁, _, _⟩ := h₁
+      have h₂ := h₂.2
+      simp only [h₁, Bool.decide_eq_true, Bool.or_false, ActionSchema.actionType?] at h₂
+      simp only [
+        Set.any, Set.elts, Map.keys,
+        List.any_map, List.any_eq_false,
+        Function.comp_apply,
+        beq_iff_eq, Prod.forall,
+      ] at h₂
+      have h₆ := Map.find?_mem_toList h₅
+      have h₇ := h₂ euid₁ entry h₆
+      contradiction
   case h_2 => simp [Set.contains, Set.elts, Set.empty] at h₃
 
 theorem action_type_in_eq_action_inₑ (euid₁ euid₂ : EntityUID) {env : Environment} {entities : Entities}
@@ -178,13 +193,13 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   have ⟨_, hents, hacts⟩ := h₂ ; clear h₂
   cases hₐ : actionUID? x₁ env.acts <;> simp [hₐ] at h₇ h₈ h₉
   case none =>
-    cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
+    cases hin : env.descendentOf euid₁.ty euid₂.ty <;>
     simp [hin] at h₇ h₈ h₉
     simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
   case some =>
     cases he : entityUID? x₂ <;> simp [he] at h₇ h₈ h₉
     case none =>
-      cases hin : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty <;>
+      cases hin : env.descendentOf euid₁.ty euid₂.ty <;>
       simp [hin] at h₇ h₈ h₉
       simp [entity_type_in_false_implies_inₑ_false hents hin] at h₉
     case some =>
@@ -228,13 +243,13 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     apply h₅ euid heuid
 
 theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : List EntityUID} {ety : EntityType} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
-  (h₂ : EntitySchema.descendentOf env.ets euid.ty ety = false)
+  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₂ : env.descendentOf euid.ty ety = false)
   (h₃ : ∀ euid, euid ∈ euids → euid.ty = ety) :
   Set.any (fun x => inₑ euid x entities) (Set.make euids) = false
 := by
   simp only [InstanceOfEntitySchema] at h₁
-  simp only [EntitySchema.descendentOf] at h₂
+  simp only [Environment.descendentOf] at h₂
   rw [Set.make_any_iff_any]
   by_contra h₄
   simp only [Bool.not_eq_false, List.any_eq_true] at h₄
@@ -251,18 +266,41 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
     cases h₆ : Map.find? entities euid <;>
     simp only [h₆, List.not_mem_nil] at h₅
     rename_i data
-    replace ⟨entry, h₁, _, _, h₇, _⟩ := h₁ euid data h₆
-    specialize h₇ euid' h₅
-    split at h₂ <;> try contradiction
-    rename_i h₈
-    specialize h₃ euid' h₄ ; subst h₃
-    split at h₂ <;> rename_i h₉ <;> simp [h₁] at h₉
-    subst h₉
-    rw [← Set.in_list_iff_in_set] at h₇
-    simp only [Set.contains, Set.elts] at h₂ h₇
-    rw [← List.elem_iff] at h₇
-    rw [h₂] at h₇
-    contradiction
+    cases h₁ euid data h₆ with
+    | inl h₁ =>
+      replace ⟨entry, h₁, _, _, h₇, _⟩ := h₁
+      specialize h₇ euid' h₅
+      split at h₂ <;> try contradiction
+      rename_i h₈
+      specialize h₃ euid' h₄ ; subst h₃
+      split at h₂ <;> rename_i h₉ <;> simp [h₁] at h₉
+      subst h₉
+      rw [← Set.in_list_iff_in_set] at h₇
+      simp only [Set.contains, Set.elts] at h₂ h₇
+      rw [← List.elem_iff] at h₇
+      rw [h₂] at h₇
+      contradiction
+    | inr h₁ =>
+      have ⟨entry, h₅, h₁, _, _⟩ := h₁
+      simp only [
+        Bool.if_false_right,
+        Bool.decide_eq_true,
+        Bool.and_true,
+        Bool.if_true_left,
+        Bool.or_eq_false_iff,
+        decide_eq_false_iff_not,
+      ] at h₂
+      have h₂ := h₂.2
+      simp only [h₁, Bool.decide_eq_true, Bool.or_false, ActionSchema.actionType?] at h₂
+      simp only [
+        Set.any, Set.elts, Map.keys,
+        List.any_map, List.any_eq_false,
+        Function.comp_apply,
+        beq_iff_eq, Prod.forall,
+      ] at h₂
+      have h₆ := Map.find?_mem_toList h₅
+      have h₇ := h₂ euid entry h₆
+      contradiction
 
 theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : Request} {entities : Entities}
   (h₁ : List.mapM' (evaluate · request entities) (List.map Expr.lit ps) = Except.ok vs) :
@@ -421,7 +459,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp only [ha, ite_eq_left_iff, Bool.not_eq_true, imp_false, Bool.not_eq_false,
     ite_eq_right_iff, reduceCtorEq] at h₈ h₉ h₁₀
   case none =>
-    cases hin : EntitySchema.descendentOf env.ets euid.ty ety₂ <;>
+    cases hin : env.descendentOf euid.ty ety₂ <;>
     simp only [hin, Bool.false_eq_true, ↓reduceIte, not_false_eq_true, implies_true, imp_false,
       Bool.not_eq_false, Bool.true_eq_false] at h₈ h₉ h₁₀
     simp only [entity_type_in_false_implies_inₛ_false hents hin hty₇,
@@ -431,7 +469,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
     simp only [he, ite_eq_left_iff, not_exists, not_and, Bool.not_eq_true, imp_false,
       Classical.not_forall, not_imp, Bool.not_eq_false, ite_eq_right_iff, reduceCtorEq] at h₈ h₉ h₁₀
     case none =>
-      cases hin : EntitySchema.descendentOf env.ets euid.ty ety₂ <;>
+      cases hin : env.descendentOf euid.ty ety₂ <;>
       simp only [hin, Bool.false_eq_true, ↓reduceIte, not_false_eq_true, implies_true, imp_false,
         Bool.not_eq_false, Bool.true_eq_false] at h₈ h₉ h₁₀
       simp only [entity_type_in_false_implies_inₛ_false hents hin hty₇, Bool.false_eq_true] at h₁₀

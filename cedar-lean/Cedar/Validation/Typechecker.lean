@@ -156,9 +156,6 @@ def actionUID? (x : Expr) (acts: ActionSchema) : Option EntityUID := do
   let uid ← entityUID? x
   if acts.contains uid then .some uid else .none
 
-def actionType? (ety : EntityType) (acts: ActionSchema) : Bool :=
-  acts.keys.any (EntityUID.ty · == ety)
-
 -- x₁ in x₂ where x₁ has type ety₁ and x₂ has type ety₂
 def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environment) : BoolType :=
   match actionUID? x₁ env.acts, entityUID? x₂ with
@@ -167,7 +164,7 @@ def typeOfInₑ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
     then .tt
     else .ff
   | _, _ =>
-    if env.ets.descendentOf ety₁ ety₂
+    if env.descendentOf ety₁ ety₂
     then .anyBool
     else .ff
 
@@ -179,7 +176,7 @@ def typeOfInₛ (ety₁ ety₂ : EntityType) (x₁ x₂ : Expr) (env : Environme
     then .tt
     else .ff
   | _, _ =>
-    if env.ets.descendentOf ety₁ ety₂
+    if env.descendentOf ety₁ ety₂
     then .anyBool
     else .ff
 
@@ -191,7 +188,7 @@ def typeOfHasTag (ety : EntityType) (x : Expr) (t : Expr) (c : Capabilities) (en
     then ok (.bool .tt)
     else ok (.bool .anyBool) (Capabilities.singleton x (.tag t))
   | .none           =>
-    if actionType? ety env.acts
+    if env.acts.actionType? ety
     then ok (.bool .ff) -- action tags not allowed
     else err (.unknownEntity ety)
 
@@ -258,7 +255,7 @@ def typeOfHasAttr (ty : TypedExpr) (x : Expr) (a : Attr) (c : Capabilities) (env
       let (ty', c) ← hasAttrInRecord rty x a c false
       ok ty' c
     | .none     =>
-      if actionType? ety env.acts
+      if env.acts.actionType? ety
       then ok (.bool .ff) -- action attributes not allowed
       else err (.unknownEntity ety)
   | _           => err (.unexpectedType ty.typeOf)

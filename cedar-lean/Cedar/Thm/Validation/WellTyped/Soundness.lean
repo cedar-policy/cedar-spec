@@ -317,16 +317,22 @@ theorem well_typed_is_sound_binary_app
         · simp only [Except.ok.injEq, exists_eq_left'] at hᵢ
           rename_i entry heq₁
           specialize h₁ uid₁ entry heq₁
-          replace ⟨entry₁, ⟨h₅, _, _, _, h₆⟩⟩ := h₁
-          simp [InstanceOfEntityTags] at h₆
-          simp [EntitySchema.tags?] at h₄
-          rcases h₄ with ⟨_, h₃₁, h₃₂⟩
-          simp only [h₅, Option.some.injEq] at h₃₁
-          simp only [← h₃₁] at h₃₂
-          simp only [h₃₂] at h₆
-          simp only [←hᵢ] at heq
-          specialize h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
-          exact type_lifting_preserves_instance_of_type h₆
+          cases h₁ with
+          | inl h₁ =>
+            replace ⟨entry₁, ⟨h₅, _, _, _, h₆⟩⟩ := h₁
+            simp [InstanceOfEntityTags] at h₆
+            simp [EntitySchema.tags?] at h₄
+            rcases h₄ with ⟨_, h₃₁, h₃₂⟩
+            simp only [h₅, Option.some.injEq] at h₃₁
+            simp only [← h₃₁] at h₃₂
+            simp only [h₃₂] at h₆
+            simp only [←hᵢ] at heq
+            specialize h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
+            exact type_lifting_preserves_instance_of_type h₆
+          | inr h₁ =>
+            replace ⟨entry₁, ⟨_, _, _, h₆⟩⟩ := h₁
+            simp only [← hᵢ, h₆, Data.Map.empty, Data.Map.find?, List.find?] at heq
+            contradiction
         · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
       · cases h₃
 
@@ -378,36 +384,42 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
   split at h₇
   · simp only [Except.bind_ok] at h₇
     rename_i data heq
-    rcases h₁ uid data heq with ⟨entry, h₁₁, _, h₁₂, _⟩
-    split at h₇
-    · rename_i v₁ heq₁
-      simp only [Except.ok.injEq] at h₇
-      cases h₁₂
-      rename_i h₈ _
-      simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
-      rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
-      simp [←het] at h₁₁
-      simp only [h₁₁, Option.some.injEq] at h₅₁
-      simp only [← h₅₁] at h₅₃
-      have h₈ := λ qty => h₈ attr v₁ qty heq₁
-      simp only [h₅₂] at h₈
-      simp only [Option.map_eq_some_iff] at h₆
-      rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
-      simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
-      replace ⟨qty', h₆₁, h₆₃⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes h₆₁
-      simp [←h₅₃] at h₆₁
-      specialize h₈ qty' h₆₁
-      simp [TypedExpr.typeOf]
-      subst h₆₂
-      subst h₆₃
-      cases qty'
-      all_goals {
-        simp [QualifiedType.liftBoolTypes, Qualified.getType]
-        simp [Qualified.getType] at h₈
-        subst h₇
-        exact type_lifting_preserves_instance_of_type h₈
-      }
-    · cases h₇
+    cases h₁ uid data heq with
+    | inl h₁ =>
+      have ⟨entry, h₁₁, _, h₁₂, _⟩ := h₁
+      split at h₇
+      · rename_i v₁ heq₁
+        simp only [Except.ok.injEq] at h₇
+        cases h₁₂
+        rename_i h₈ _
+        simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+        rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
+        simp [←het] at h₁₁
+        simp only [h₁₁, Option.some.injEq] at h₅₁
+        simp only [← h₅₁] at h₅₃
+        have h₈ := λ qty => h₈ attr v₁ qty heq₁
+        simp only [h₅₂] at h₈
+        simp only [Option.map_eq_some_iff] at h₆
+        rcases h₆ with ⟨qty, h₆₁, h₆₂⟩
+        simp [←h₅₂, RecordType.liftBoolTypes, lift_bool_types_record_eq_map_on_values] at h₆₁
+        replace ⟨qty', h₆₁, h₆₃⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes h₆₁
+        simp [←h₅₃] at h₆₁
+        specialize h₈ qty' h₆₁
+        simp [TypedExpr.typeOf]
+        subst h₆₂
+        subst h₆₃
+        cases qty'
+        all_goals {
+          simp [QualifiedType.liftBoolTypes, Qualified.getType]
+          simp [Qualified.getType] at h₈
+          subst h₇
+          exact type_lifting_preserves_instance_of_type h₈
+        }
+      · cases h₇
+    | inr h₁ =>
+      have ⟨entry, _, _, h₁, _⟩ := h₁
+      simp only [h₁, Data.Map.empty, Data.Map.find?, List.find?] at h₇
+      contradiction
   · simp only [Except.bind_err, reduceCtorEq] at h₇
 
 theorem well_typed_is_sound_get_attr_record
