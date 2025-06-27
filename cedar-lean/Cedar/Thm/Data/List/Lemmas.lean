@@ -295,7 +295,6 @@ theorem forall₂_fun_subset_implies {R : α → β → Prop} {xs xs' : List α}
   subst hf
   exact hy'
 
-
 /--
 The converse (ys ≡ ys' → xs ≡ xs') doesn't hold without requiring R to be
 injective (as well as functional).
@@ -313,6 +312,37 @@ theorem forall₂_fun_equiv_implies {R : α → β → Prop} {xs xs' : List α} 
   constructor
   · exact forall₂_fun_subset_implies ha ha' hf heqv
   · exact forall₂_fun_subset_implies ha' ha hf heqv'
+
+theorem map_preserves_forall₂
+  {f : α → α'}
+  {g : β → β'}
+  {p₁ : α → β → Prop}
+  {p₂ : α' → β' → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, p₁ x y → p₂ (f x) (g y))
+  (hforall₂ : List.Forall₂ p₁ xs ys) :
+  List.Forall₂ p₂ (xs.map f) (ys.map g)
+:= by
+  induction hforall₂
+  case nil => simp
+  case cons =>
+    simp only [List.map]
+    constructor
+    apply h
+    assumption
+    assumption
+
+theorem forall₂_swap
+  {R : α → β → Prop} {xs : List α} {ys : List β}
+  (hforall₂ : List.Forall₂ (λ y x => R x y) ys xs) :
+  List.Forall₂ R xs ys
+:= by
+  induction hforall₂
+  case nil => simp
+  case cons =>
+    constructor
+    assumption
+    assumption
 
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
@@ -352,7 +382,7 @@ theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
 := by
   simp only [mapM₁, attach_def, mapM_pmap_subtype]
 
-theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m]
+theorem mapM₂_eq_mapM [Monad m] [LawfulMonad m] [SizeOf α] [SizeOf β]
   (f : (α × β) → m γ)
   (as : List (α × β)) :
   List.mapM₂ as (λ x : { x // sizeOf x.snd < 1 + sizeOf as } => f x.val) =
@@ -454,6 +484,43 @@ theorem mapM_ok_iff_forall₂ {α β γ} {f : α → Except γ β} {xs : List α
 := by
   rw [← List.mapM'_eq_mapM]
   exact mapM'_ok_iff_forall₂
+
+/--
+Introduces `forall₂` through the input output relation
+of a `f` through `List.mapM`. This is slightly stronger
+than the forward direction of `mapM_ok_iff_forall₂`
+since it allowed an extra `x ∈ xs` condition in `h`.
+-/
+theorem mapM_implies_forall₂
+  {f : α → Except ε β}
+  {p : α → β → Prop}
+  {xs : List α} {ys : List β}
+  (h : ∀ x y, x ∈ xs → f x = .ok y → p x y)
+  (hmapM : List.mapM f xs = .ok ys) :
+  List.Forall₂ p xs ys
+:= by
+  induction xs generalizing ys
+  case nil =>
+    simp only [mapM, mapM.loop, pure, Except.pure, reverse_nil, Except.ok.injEq, nil_eq] at hmapM
+    simp [hmapM]
+  case cons xhd xtl ih =>
+    simp only [mapM_cons, Bind.bind, Except.bind, pure, Except.pure] at hmapM
+    split at hmapM
+    contradiction
+    split at hmapM
+    contradiction
+    simp only [Except.ok.injEq] at hmapM
+    simp only [← hmapM, forall₂_cons]
+    constructor
+    · apply h
+      simp only [mem_cons, true_or]
+      assumption
+    · apply ih
+      intros
+      apply h
+      simp only [mem_cons, or_true, *]
+      assumption
+      assumption
 
 /--
   Note that the converse is not true:
@@ -1073,6 +1140,35 @@ theorem find?_fst_map_implies_find? {α β γ} [BEq α] {f : β → γ} {xs : Li
       exists x
       simp only [Prod.map, id_eq] at heq
       simp [find?_cons, heq, ih]
+
+theorem find?_implies_find?_fst_map
+  {α β γ} [BEq α] [ReflBEq α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  {f : α → β → γ}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  List.find? (λ x => x.fst == k) (l.map λ (k, v) => (k, f k v)) = some (k, f k v)
+:= by
+  induction l
+  case nil => simp only [find?_nil, reduceCtorEq] at h
+  case cons head tail ih =>
+    simp only [find?_cons_eq_some, Bool.not_eq_eq_eq_not, Bool.not_true] at h
+    cases h
+    case _ h => simp [h]
+    case _ h =>
+      specialize ih h.2
+      simp only [List.map]
+      simp only [List.find?]
+      simp [ih, h]
+
+theorem find?_implies_append_find?
+  {a b : List α}
+  {v : α}
+  {f : α → Bool}
+  (h : List.find? f a = some v) :
+  List.find? f (a ++ b) = some v
+:= by
+  simp [List.find?_append, h]
 
 theorem not_find?_some_iff_find?_none {α} {p : α → Bool} {xs : List α} :
   (∀ x ∈ xs, ¬xs.find? p = .some x) ↔ xs.find? p = .none

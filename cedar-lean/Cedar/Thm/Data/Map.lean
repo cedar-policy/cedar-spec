@@ -403,6 +403,36 @@ theorem find?_none_iff_all_absent [LT α] [DecidableLT α] [StrictLT α] [Decida
   m.find? k = none ↔ ∀ v, ¬ (k, v) ∈ m.kvs
 := Iff.intro find?_none_all_absent all_absent_find?_none
 
+/--
+  If the key-value pair exists in l, then it exists in `Data.Map.make l`
+-/
+theorem find?_implies_make_find?
+  [DecidableEq α] [LT α] [DecidableLT α]
+  [Cedar.Data.StrictLT α]
+  {l : List (α × β)}
+  {k : α} {v : β}
+  (h : List.find? (λ x => x.fst == k) l = some (k, v)) :
+  (Data.Map.make l).find? k = some v
+:= by
+  apply (in_list_iff_find?_some (Data.Map.make_wf l)).mp
+  simp only [make, Data.Map.kvs]
+  induction l
+  case nil => simp at h
+  case cons head tail ih =>
+    simp only [List.find?] at h
+    split at h
+    case _ heq =>
+      simp only [Option.some.injEq] at h
+      simp only [List.canonicalize, h]
+      apply List.insertCanonical_mem
+    case _ hneq =>
+      have ih := ih h
+      simp only [beq_eq_false_iff_ne, ne_eq] at hneq
+      simp only [List.canonicalize]
+      apply List.insertCanonical_preserves_non_duplicate_element
+      assumption
+      simp [hneq]
+
 theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} {kvs : List (α × β)} {fn : α → Option β} {k: α}
   (h₁ : ks.mapM (λ k => do (k, ←fn k)) = some kvs)
   (h₂ : k ∈ ks) :
