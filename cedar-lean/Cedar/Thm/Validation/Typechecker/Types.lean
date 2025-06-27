@@ -99,7 +99,7 @@ For every entity `(uid, data)` in the store,
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def ValidEntityEntry (uid : EntityUID) (data : EntityData) (ets : EntitySchema) : Prop :=
+def WellFormedEntityData (uid : EntityUID) (data : EntityData) (ets : EntitySchema) : Prop :=
   ∃ entry, ets.find? uid.ty = some entry ∧
     IsValidEntityEID entry uid.eid ∧
     InstanceOfType data.attrs (.record entry.attrs) ∧
@@ -107,10 +107,10 @@ def ValidEntityEntry (uid : EntityUID) (data : EntityData) (ets : EntitySchema) 
     InstanceOfEntityTags data entry
 
 /--
-Similar to `ValidEntityEntry`, but a special case for action entities
+Similar to `WellFormedEntityData`, but a special case for action entities
 since they are stored disjoint from `ets`
 -/
-def ValidActionEntityEntry (uid : EntityUID) (data : EntityData) (ets : EntitySchema) (as : ActionSchema) : Prop :=
+def WellFormedActionData (uid : EntityUID) (data : EntityData) (ets : EntitySchema) (as : ActionSchema) : Prop :=
   ∃ entry, as.find? uid = some entry ∧
     -- Action entiies types should be disjoint from `ets`
     ets.find? uid.ty = none ∧
@@ -125,8 +125,8 @@ Each entry in the store is valid
 -/
 def InstanceOfEntitySchema (entities : Entities) (ets : EntitySchema) (as : ActionSchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
-    ValidEntityEntry uid data ets ∨
-    ValidActionEntityEntry uid data ets as
+    WellFormedEntityData uid data ets ∨
+    WellFormedActionData uid data ets as
 
 /--
 For every action in the entity store, the action's ancestors are consistent

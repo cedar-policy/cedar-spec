@@ -217,7 +217,7 @@ theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema
     split at h₀
     any_goals contradiction
     case _ h₃ h₄ h₅ =>
-    simp [ValidActionEntityEntry]
+    simp [WellFormedActionData]
     and_intros
     · simp [h₃]
     · simp [h₂]
