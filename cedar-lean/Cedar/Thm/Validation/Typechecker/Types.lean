@@ -92,20 +92,41 @@ def IsValidEntityEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
   | .enum eids => eid ∈ eids
 
 /--
-For every entity in the store,
+For every entity `(uid, data)` in the store,
 1. The entity's type is defined in the type store.
 2. The entity's attributes match the attribute types indicated in the type store.
 3. The entity's ancestors' types are consistent with the ancestor information
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def InstanceOfEntitySchema (entities : Entities) (ets: EntitySchema) : Prop :=
+def ValidEntityEntry (uid : EntityUID) (data : EntityData) (ets : EntitySchema) : Prop :=
+  ∃ entry, ets.find? uid.ty = some entry ∧
+    IsValidEntityEID entry uid.eid ∧
+    InstanceOfType data.attrs (.record entry.attrs) ∧
+    (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
+    InstanceOfEntityTags data entry
+
+/--
+Similar to `ValidEntityEntry`, but a special case for action entities
+since they are stored disjoint from `ets`
+-/
+def ValidActionEntityEntry (uid : EntityUID) (data : EntityData) (ets : EntitySchema) (as : ActionSchema) : Prop :=
+  ∃ entry, as.find? uid = some entry ∧
+    -- Action entiies types should be disjoint from `ets`
+    ets.find? uid.ty = none ∧
+    -- Action entities cannot have attributes or tags
+    data.attrs = .empty ∧
+    -- TODO: or use this? InstanceOfType data.attrs (.record .empty) ∧
+    data.tags = .empty
+    -- `ancestors` consistency is guaranteed by `InstanceOfActionSchema`
+
+/--
+Each entry in the store is valid
+-/
+def InstanceOfEntitySchema (entities : Entities) (ets : EntitySchema) (as : ActionSchema) : Prop :=
   ∀ uid data, entities.find? uid = some data →
-    ∃ entry, ets.find? uid.ty = some entry ∧
-      IsValidEntityEID entry uid.eid ∧
-      InstanceOfType data.attrs (.record entry.attrs) ∧
-      (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
-      InstanceOfEntityTags data entry
+    ValidEntityEntry uid data ets ∨
+    ValidActionEntityEntry uid data ets as
 
 /--
 For every action in the entity store, the action's ancestors are consistent
@@ -120,7 +141,7 @@ def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
-  InstanceOfEntitySchema entities env.ets ∧
+  InstanceOfEntitySchema entities env.ets env.acts ∧
   InstanceOfActionSchema entities env.acts
 
 ----- Theorems -----
@@ -317,11 +338,17 @@ theorem well_typed_entity_attributes {env : Environment} {request : Request} {en
   have ⟨_, h₁, _⟩ := h₁
   simp [InstanceOfEntitySchema] at h₁
   specialize h₁ uid d h₂
-  have ⟨entry, h₁₂, _, h₁, _⟩ := h₁
-  unfold EntitySchema.attrs? at h₃
-  simp [h₁₂] at h₃
-  subst h₃
-  exact h₁
+  cases h₁ with
+  | inl h₁ =>
+    have ⟨entry, h₁₂, _, h₁, _⟩ := h₁
+    unfold EntitySchema.attrs? at h₃
+    simp [h₁₂] at h₃
+    subst h₃
+    exact h₁
+  | inr h₁ =>
+    have ⟨entry, _, h₁, _⟩ := h₁
+    simp only [EntitySchema.attrs?, Option.map, h₁] at h₃
+    contradiction
 
 theorem instance_of_type_bool_is_bool (v : Value) (ty : CedarType) :
   InstanceOfType v ty →
