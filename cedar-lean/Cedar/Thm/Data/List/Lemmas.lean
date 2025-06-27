@@ -920,16 +920,6 @@ theorem forall₂_implies_mapM_eq {α₁ α₂ β ε} {xs : List α₁} {ys : Li
   case cons h₁ h₂ =>
     simp only [List.mapM_cons, h₁, forall₂_implies_mapM_eq f g h₂, bind_pure_comp]
 
-theorem forall₂_implies_map_eq {α₁ α₂ β} {xs : List α₁} {ys : List α₂} (f : α₁ → β) (g : α₂ → β):
-  List.Forall₂ (fun x y => f x = g y) xs ys →
-  List.map f xs = List.map g ys
-:= by
-  intro h
-  cases h
-  case nil => simp only [List.map_nil]
-  case cons h₁ h₂ =>
-    simp only [List.map_cons, h₁, forall₂_implies_map_eq f g h₂, bind_pure_comp]
-
 /--
   our own variant of map_congr, for mapM'
 -/

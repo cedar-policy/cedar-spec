@@ -643,5 +643,27 @@ theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
   case call_valid ih₁ =>
     exact Expr.ValidRefs.call_valid ih₁
 
+/--
+`SymEnv` being well-formed implies that any
+attribute function is well-formed
+-/
+theorem wf_env_implies_attrs_wf
+  {εnv : SymEnv} {ety : EntityType} {attrs : UnaryFunction}
+  (hwf : εnv.WellFormed)
+  (hattrs_exists : εnv.entities.attrs ety = .some attrs) :
+  UnaryFunction.WellFormed εnv.entities attrs ∧
+  attrs.argType = .entity ety ∧
+  attrs.outType.isCedarRecordType
+:= by
+  have ⟨_, _, hwf_entities⟩ := hwf
+  simp only [SymEntities.attrs, Option.bind_eq_bind] at hattrs_exists
+  cases hety_exists : Map.find? εnv.entities ety
+  all_goals simp only [hety_exists] at hattrs_exists
+  case none => contradiction
+  case some d =>
+    have ⟨h1, h2, h3, _⟩ := hwf_entities ety d hety_exists
+    simp only [Option.some_bind, Option.some.injEq] at hattrs_exists
+    simp only [hattrs_exists] at h1 h2 h3
+    simp [h1, h2, h3]
 
 end Cedar.Thm
