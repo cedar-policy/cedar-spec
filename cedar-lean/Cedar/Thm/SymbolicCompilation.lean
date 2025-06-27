@@ -17,6 +17,7 @@
 import Cedar.Thm.SymCC.Authorizer
 import Cedar.Thm.SymCC.Concretizer
 import Cedar.Thm.SymCC.Compiler
+import Cedar.Thm.SymCC.Compiler.WellTyped
 
 /-!
 This file defines the top-level correctness properties for the symbolic
