@@ -1008,7 +1008,7 @@ theorem compile_well_typed_hasAttr
     have hattrs_exists :
       εnv.entities.attrs ety = .some sym_ety_data.attrs
     := by simp [SymEntities.attrs, hety_exists]
-    have ⟨hwf_attrs, hty_attrs_arg, hty_attrs_out⟩ := wf_env_implies_attrs_wf hwf_εnv hattrs_exists
+    have ⟨hwf_attrs, hty_attrs_arg, hty_attrs_out⟩ := wf_εnv_implies_attrs_wf hwf_εnv hattrs_exists
     have ⟨rty, hty_attrs_out⟩ :
       ∃ rty : Data.Map Attr TermType,
         sym_ety_data.attrs.outType = .record rty

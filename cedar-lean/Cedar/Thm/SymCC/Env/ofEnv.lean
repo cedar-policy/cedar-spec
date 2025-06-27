@@ -101,7 +101,7 @@ theorem ofEnv_preserves_entity_attr
     have ⟨attrs, hattrs_exists2⟩ :
       ∃ attrs : UnaryFunction, εnv.entities.attrs ety = .some attrs
     := by simp [SymEntities.attrs, hety_exists]
-    have ⟨hwf_attrs, hty_arg_attrs⟩ := wf_env_implies_attrs_wf hwf hattrs_exists2
+    have ⟨hwf_attrs, hty_arg_attrs⟩ := wf_εnv_implies_attrs_wf hwf hattrs_exists2
     exists attrs
     constructor
     -- Entity type exists in `εnv.entities`

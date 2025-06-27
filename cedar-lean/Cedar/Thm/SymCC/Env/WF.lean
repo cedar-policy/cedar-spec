@@ -647,7 +647,7 @@ theorem expr_valid_refs_same_domain {εs₁ εs₂ : SymEntities} {x : Expr} :
 `SymEnv` being well-formed implies that any
 attribute function is well-formed
 -/
-theorem wf_env_implies_attrs_wf
+theorem wf_εnv_implies_attrs_wf
   {εnv : SymEnv} {ety : EntityType} {attrs : UnaryFunction}
   (hwf : εnv.WellFormed)
   (hattrs_exists : εnv.entities.attrs ety = .some attrs) :

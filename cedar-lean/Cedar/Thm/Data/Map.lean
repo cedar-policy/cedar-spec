@@ -424,12 +424,12 @@ theorem find?_implies_make_find?
     case _ heq =>
       simp only [Option.some.injEq] at h
       simp only [List.canonicalize, h]
-      apply List.mem_insertCanonical
+      apply List.insertCanonical_mem
     case _ hneq =>
       have ih := ih h
       simp only [beq_eq_false_iff_ne, ne_eq] at hneq
       simp only [List.canonicalize]
-      apply List.insertCanonical_new
+      apply List.insertCanonical_preserves_non_duplicate_element
       assumption
       simp [hneq]
 

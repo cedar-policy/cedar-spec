@@ -46,7 +46,7 @@ theorem insertCanonical_not_nil [DecidableEq β] [LT β] [DecidableLT β] (f : �
     split at h <;> try trivial
     split at h <;> trivial
 
-theorem mem_insertCanonical [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
+theorem insertCanonical_mem [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
   {f : α → β} {xs : List α} (x : α) :
   x ∈ List.insertCanonical f x xs
 := by
@@ -58,7 +58,7 @@ theorem mem_insertCanonical [LT β] [Cedar.Data.StrictLT β] [DecidableLT β]
     split; any_goals simp
     apply Or.inr ih
 
-theorem insertCanonical_new
+theorem insertCanonical_preserves_non_duplicate_element
   [LT β] [Cedar.Data.StrictLT β] [DecidableLT β] [DecidableEq β]
   {f : α → β} {xs : List α} {x : α} {y : α}
   (hmem : y ∈ xs)
