@@ -15,8 +15,8 @@ theorem instance_of_bool_type_refl {b : Bool} {bty : BoolType} :
   intro h₀
   cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_entity_type_refl {e : EntityUID} {ety : EntityType} {eids: EntityType → Option (Set String)} :
-  instanceOfEntityType e ety eids = true → InstanceOfEntityType e ety
+theorem instance_of_entity_type_refl {env : Environment} {e : EntityUID} {ety : EntityType} {eids: EntityType → Option (Set String)} :
+  instanceOfEntityType e ety eids = true → InstanceOfEntityType env e ety
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
