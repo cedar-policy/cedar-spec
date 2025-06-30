@@ -195,15 +195,15 @@ structure Environment where
   acts : ActionSchema
   reqty : RequestType
 
+def ActionSchema.maybeDescendentOf (as : ActionSchema) (ety₁ ety₂ : EntityType) : Bool :=
+  as.kvs.any λ (act, entry) => act.ty = ety₁ && entry.ancestors.any (EntityUID.ty · == ety₂)
+
 def Environment.descendentOf (env : Environment) (ety₁ ety₂ : EntityType) : Bool :=
   if ety₁ = ety₂
   then true
   else match env.ets.find? ety₁ with
     | .some entry => entry.ancestors.contains ety₂
-    | .none =>
-      -- For actions, this is sound but may not be precise
-      if env.acts.actionType? ety₁ then true
-      else false
+    | .none       => env.acts.maybeDescendentOf ety₁ ety₂
 
 ----- Derivations -----
 

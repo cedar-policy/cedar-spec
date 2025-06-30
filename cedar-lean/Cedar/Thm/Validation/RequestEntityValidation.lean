@@ -159,90 +159,88 @@ theorem instance_of_request_type_refl {request : Request} {reqty : RequestType} 
   · exact instance_of_entity_type_refl h₃
   · exact instance_of_type_refl h₄
 
-theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema} {acts : ActionSchema} :
-  instanceOfEntitySchema entities ets acts = .ok () → InstanceOfEntitySchema entities ets acts
+theorem instance_of_schema_refl {entities : Entities} {ets : EntitySchema} {acts : ActionSchema} :
+  instanceOfSchema entities ets acts = .ok () →
+    InstanceOfEntitySchema entities ets acts ∧
+    InstanceOfActionSchema entities acts
 := by
   intro h₀
   simp only [InstanceOfEntitySchema]
-  simp only [instanceOfEntitySchema] at h₀
-  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets acts x.fst x.snd) = f
-  rw [h₁] at h₀
-  intro uid data h₂
-  have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀ (uid, data)
-  replace h₀ := h₀ (Map.find?_mem_toList h₂)
-  rw [← h₁] at h₀
-  simp only [instanceOfEntitySchema.instanceOfEntityData] at h₀
-  cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
-  case some entry =>
-    apply Or.inl
-    exists entry
-    simp only [h₂, true_and]
-    split at h₀ <;> try simp only [reduceCtorEq] at h₀
-    rename_i hv
-    constructor
-    simp only [EntitySchemaEntry.isValidEntityEID] at hv
-    simp only [IsValidEntityEID]
-    split at hv
-    · simp
-    · simp
-      rw [Set.contains_prop_bool_equiv] at hv
-      exact hv
-    split at h₀ <;> try simp only [reduceCtorEq] at h₀
-    constructor <;> rename_i h₃
-    · exact instance_of_type_refl h₃
-    · split at h₀ <;> try simp only [reduceCtorEq] at h₀
-      rename_i h₄
-      simp only [Set.all, List.all_eq_true] at h₄
+  simp only [instanceOfSchema, bind, Except.bind] at h₀
+  split at h₀
+  case h_1 => contradiction
+  case h_2 h₀₁ =>
+  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfSchema.instanceOfEntityData ets acts x.fst x.snd) = f
+  rw [h₁] at h₀₁
+  constructor
+  · intro uid data h₂
+    have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀₁ (uid, data)
+    replace h₀ := h₀ (Map.find?_mem_toList h₂)
+    rw [← h₁] at h₀
+    simp only [instanceOfSchema.instanceOfEntityData] at h₀
+    cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
+    case some entry =>
+      apply Or.inl
+      exists entry
+      simp only [h₂, true_and]
+      split at h₀ <;> try simp only [reduceCtorEq] at h₀
+      rename_i hv
       constructor
-      · intro anc ancin
-        simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
-        rw [← Set.in_list_iff_in_set] at ancin
-        replace h₄ := h₄ anc ancin
-        simp at h₄
-        exact h₄.left
+      simp only [EntitySchemaEntry.isValidEntityEID] at hv
+      simp only [IsValidEntityEID]
+      split at hv
+      · simp
+      · simp
+        rw [Set.contains_prop_bool_equiv] at hv
+        exact hv
+      split at h₀ <;> try simp only [reduceCtorEq] at h₀
+      constructor <;> rename_i h₃
+      · exact instance_of_type_refl h₃
       · split at h₀ <;> try simp only [reduceCtorEq] at h₀
-        unfold InstanceOfEntityTags
-        rename_i h₅
-        simp only [instanceOfEntitySchema.instanceOfEntityTags] at h₅
-        split at h₅ <;> rename_i heq <;> simp only [heq]
-        · intro v hv
-          simp only [List.all_eq_true] at h₅
-          exact instance_of_type_refl (h₅ v hv)
-        · simp only [beq_iff_eq] at h₅
-          exact h₅
-  case none =>
-    apply Or.inr
-    split at h₀
-    split at h₀
-    split at h₀
-    any_goals contradiction
-    case _ h₃ h₄ h₅ =>
-    simp [WellFormedActionData]
-    and_intros
-    · simp [h₃]
-    · simp [h₂]
-    · simp [h₄]
-    · simp [h₅]
-
-theorem instance_of_action_schema_refl {entities : Entities} {acts : ActionSchema} :
-  instanceOfActionSchema entities acts = .ok () → InstanceOfActionSchema entities acts
-:= by
-  intro h₀
-  simp only [InstanceOfActionSchema]
-  simp only [instanceOfActionSchema] at h₀
-  generalize h₁ : (fun x : EntityUID × ActionSchemaEntry => instanceOfActionSchema.instanceOfActionSchemaData entities x.fst x.snd) = f
-  rw [h₁] at h₀
-  intro uid entry h₂
-  replace h₀ := List.forM_ok_implies_all_ok (Map.toList acts) f h₀ (uid, entry)
-  replace h₀ := h₀ (Map.find?_mem_toList h₂)
-  rw [← h₁] at h₀
-  simp only [instanceOfActionSchema.instanceOfActionSchemaData, beq_iff_eq] at h₀
-  cases h₂ : Map.find? entities uid <;> simp [h₂] at h₀
-  case some data =>
-    exists data
-    apply And.intro rfl
-    simp only [h₀]
-
+        rename_i h₄
+        simp only [Set.all, List.all_eq_true] at h₄
+        constructor
+        · intro anc ancin
+          simp only [Set.contains, List.elem_eq_mem, decide_eq_true_eq] at h₄
+          rw [← Set.in_list_iff_in_set] at ancin
+          replace h₄ := h₄ anc ancin
+          simp at h₄
+          exact h₄.left
+        · split at h₀ <;> try simp only [reduceCtorEq] at h₀
+          unfold InstanceOfEntityTags
+          rename_i h₅
+          simp only [instanceOfSchema.instanceOfEntityTags] at h₅
+          split at h₅ <;> rename_i heq <;> simp only [heq]
+          · intro v hv
+            simp only [List.all_eq_true] at h₅
+            exact instance_of_type_refl (h₅ v hv)
+          · simp only [beq_iff_eq] at h₅
+            exact h₅
+    case none =>
+      apply Or.inr
+      split at h₀
+      split at h₀
+      split at h₀
+      any_goals contradiction
+      case _ h₃ h₄ h₅ =>
+      simp [WellFormedActionData]
+      and_intros
+      · simp [h₃]
+      · simp [h₂]
+      · simp [h₄]
+      · simp [h₅]
+  · generalize h₁ : (fun x : EntityUID × ActionSchemaEntry => instanceOfSchema.instanceOfActionSchemaData entities x.fst x.snd) = f
+    rw [h₁] at h₀
+    intro uid entry h₂
+    replace h₀ := List.forM_ok_implies_all_ok (Map.toList acts) f h₀ (uid, entry)
+    replace h₀ := h₀ (Map.find?_mem_toList h₂)
+    rw [← h₁] at h₀
+    simp only [instanceOfSchema.instanceOfActionSchemaData, beq_iff_eq] at h₀
+    cases h₂ : Map.find? entities uid <;> simp [h₂] at h₀
+    case some data =>
+      exists data
+      apply And.intro rfl
+      simp only [h₀]
 
 theorem request_and_entities_match_env {env : Environment} {request : Request} {entities : Entities} :
   requestMatchesEnvironment env request →
@@ -255,8 +253,8 @@ theorem request_and_entities_match_env {env : Environment} {request : Request} {
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl h₀
-  cases h₂ : instanceOfEntitySchema entities env.ets env.acts <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
-  exact And.intro (instance_of_entity_schema_refl h₂) (instance_of_action_schema_refl h₁)
+  cases h₂ : instanceOfSchema entities env.ets env.acts <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  exact instance_of_schema_refl h₂
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
   validateRequest schema request = .ok () →

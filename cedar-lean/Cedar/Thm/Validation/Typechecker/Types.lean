@@ -124,7 +124,8 @@ def WellFormedActionData (uid : EntityUID) (data : EntityData) (ets : EntitySche
 Each entry in the store is valid
 -/
 def InstanceOfEntitySchema (entities : Entities) (ets : EntitySchema) (as : ActionSchema) : Prop :=
-  ∀ uid data, entities.find? uid = some data →
+  ∀ (uid : EntityUID) (data : EntityData),
+    entities.find? uid = some data →
     WellFormedEntityData uid data ets ∨
     WellFormedActionData uid data ets as
 
