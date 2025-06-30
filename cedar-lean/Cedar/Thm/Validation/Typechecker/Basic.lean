@@ -81,7 +81,7 @@ def TypeOfIsSound (x₁ : Expr) : Prop :=
     RequestAndEntitiesMatchEnvironment env request entities →
     typeOf x₁ c₁ env = Except.ok (ty, c₂) →
     GuardedCapabilitiesInvariant x₁ c₂ request entities ∧
-    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType v ty.typeOf
+    ∃ v, EvaluatesTo x₁ request entities v ∧ InstanceOfType env v ty.typeOf
 
 ----- Capability lemmas -----
 

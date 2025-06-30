@@ -68,7 +68,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v tx.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType env v tx.typeOf
 := by
   replace ⟨hc, ety, ty, tx₁, tx₂, c₁', c₂', h₃, h₄, h₅, h₆, ht, htx, hc₁⟩ := type_of_getTag_inversion h₃
   subst hc

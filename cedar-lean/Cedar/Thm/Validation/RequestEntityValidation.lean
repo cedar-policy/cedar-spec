@@ -33,8 +33,8 @@ theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   intro h₀
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_type_refl {v : Value} {ty : CedarType} {schema: EntitySchema} :
-  instanceOfType v ty schema = true → InstanceOfType v ty
+theorem instance_of_type_refl {env : Environment} {v : Value} {ty : CedarType} {schema: EntitySchema} :
+  instanceOfType v ty schema = true → InstanceOfType env v ty
 := by
   intro h₀
   unfold instanceOfType at h₀
@@ -146,8 +146,8 @@ decreasing_by
     have := Map.sizeOf_lt_of_value h₁
     omega
 
-theorem instance_of_request_type_refl {request : Request} {reqty : RequestType} {schema: EntitySchema}:
-  instanceOfRequestType request reqty schema = true → InstanceOfRequestType request reqty
+theorem instance_of_request_type_refl {env : Environment} {request : Request} {reqty : RequestType} {schema: EntitySchema}:
+  instanceOfRequestType request reqty schema = true → InstanceOfRequestType env request reqty
 := by
   intro h₀
   simp only [InstanceOfRequestType]
@@ -159,20 +159,20 @@ theorem instance_of_request_type_refl {request : Request} {reqty : RequestType} 
   · exact instance_of_entity_type_refl h₃
   · exact instance_of_type_refl h₄
 
-theorem instance_of_entity_schema_refl {entities : Entities} {ets : EntitySchema} :
-  instanceOfEntitySchema entities ets = .ok () → InstanceOfEntitySchema entities ets
+theorem instance_of_entity_schema_refl {env : Environment} {entities : Entities} :
+  instanceOfEntitySchema env entities = .ok () → InstanceOfEntitySchema env entities
 := by
   intro h₀
   simp only [InstanceOfEntitySchema]
   simp only [instanceOfEntitySchema] at h₀
-  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData ets x.fst x.snd) = f
+  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfEntitySchema.instanceOfEntityData env x.fst x.snd) = f
   rw [h₁] at h₀
   intro uid data h₂
   have h₀ := List.forM_ok_implies_all_ok (Map.toList entities) f h₀ (uid, data)
   replace h₀ := h₀ (Map.find?_mem_toList h₂)
   rw [← h₁] at h₀
   simp only [instanceOfEntitySchema.instanceOfEntityData] at h₀
-  cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
+  cases h₂ : Map.find? env.ets uid.ty <;> simp [h₂] at h₀
   case some entry =>
     exists entry
     simp only [true_and]
@@ -241,7 +241,7 @@ theorem request_and_entities_match_env {env : Environment} {request : Request} {
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl h₀
-  cases h₂ : instanceOfEntitySchema entities env.ets <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  cases h₂ : instanceOfEntitySchema env entities <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   exact And.intro (instance_of_entity_schema_refl h₂) (instance_of_action_schema_refl h₁)
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :

@@ -48,7 +48,7 @@ theorem type_of_is_sound {e : Expr} {c₁ c₂ : Capabilities} {env : Environmen
   RequestAndEntitiesMatchEnvironment env request entities →
   typeOf e c₁ env = .ok (ty, c₂) →
   GuardedCapabilitiesInvariant e c₂ request entities ∧
-  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ (v : Value), EvaluatesTo e request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   intro h₁ h₂ h₃
   match e with

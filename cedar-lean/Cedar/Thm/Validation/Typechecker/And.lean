@@ -86,7 +86,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.and x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.and x₁ x₂) request entities v ∧ InstanceOfType v tx.typeOf
+  ∃ v, EvaluatesTo (Expr.and x₁ x₂) request entities v ∧ InstanceOfType env v tx.typeOf
 := by
   have ⟨tx₁, bty₁, rc₁, h₄, h₅, h₆⟩ := type_of_and_inversion h₃
   specialize ih₁ h₁ h₂ h₄

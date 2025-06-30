@@ -99,21 +99,21 @@ For every entity in the store,
    in the type store.
 4. The entity's tags' types are consistent with the tags information in the type store.
 -/
-def instanceOfEntitySchema (entities : Entities) (ets : EntitySchema) : EntityValidationResult :=
+def instanceOfEntitySchema (env : Environment) (entities : Entities) : EntityValidationResult :=
   entities.toList.forM λ (uid, data) => instanceOfEntityData uid data
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
     match entry.tags? with
-    | .some tty => data.tags.values.all (instanceOfType · tty ets)
+    | .some tty => data.tags.values.all (instanceOfType · tty env.ets)
     | .none     => data.tags == Map.empty
   instanceOfEntityData uid data :=
-    match ets.find? uid.ty with
+    match env.ets.find? uid.ty with
     |  .some entry =>
       if entry.isValidEntityEID uid.eid then
-        if instanceOfType data.attrs (.record entry.attrs) ets then
+        if instanceOfType data.attrs (.record entry.attrs) env.ets then
           if data.ancestors.all (λ ancestor =>
             entry.ancestors.contains ancestor.ty &&
-            instanceOfEntityType ancestor ancestor.ty ets.entityTypeMembers?) then
+            instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?) then
             if instanceOfEntityTags data entry then .ok ()
             else .error (.typeError s!"entity tags inconsistent with type store")
           else .error (.typeError s!"entity ancestors inconsistent with type store")
@@ -143,7 +143,7 @@ def validateRequest (schema : Schema) (request : Request) : RequestValidationRes
   else .error (.typeError "request could not be validated in any environment")
 
 def entitiesMatchEnvironment (env : Environment) (entities : Entities) : EntityValidationResult :=
-  instanceOfEntitySchema entities env.ets >>= λ _ => instanceOfActionSchema entities env.acts
+  instanceOfEntitySchema env entities >>= λ _ => instanceOfActionSchema entities env.acts
 
 def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   ancestors := ase.ancestors,
