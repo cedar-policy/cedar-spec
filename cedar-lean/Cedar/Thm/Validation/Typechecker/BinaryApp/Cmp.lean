@@ -101,15 +101,15 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     rw [htl₁] at ih₃
     rw [htl₂] at ih₄
   )
-  case' inl =>
-    have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
-  case' inr.inl =>
-    have ⟨i₁, ih₁⟩ := instance_of_datetime_type_is_datetime ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_datetime_type_is_datetime ih₄
-  case' inr.inr =>
-    have ⟨i₁, ih₁⟩ := instance_of_duration_type_is_duration ih₃
-    have ⟨i₂, ih₂⟩ := instance_of_duration_type_is_duration ih₄
+  have ⟨i₁, ih₁⟩ := instance_of_int_is_int ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_int_is_int ih₄
+  rotate_left
+  have ⟨i₁, ih₁⟩ := instance_of_datetime_type_is_datetime ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_datetime_type_is_datetime ih₄
+  rotate_left
+  have ⟨i₁, ih₁⟩ := instance_of_duration_type_is_duration ih₃
+  have ⟨i₂, ih₂⟩ := instance_of_duration_type_is_duration ih₄
+  rotate_left
   all_goals (
     subst ih₁ ih₂
     rcases h₀ with h₀ | h₀

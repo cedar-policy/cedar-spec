@@ -48,7 +48,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
   rename_i res₁
   split at h₁ <;> try { simp [ok, err] at h₁ } <;>
   rename_i c₁ hr₁
-  case ok.h_1 =>
+  case h_1 =>
     exists res₁.fst, BoolType.tt, res₁.snd
     simp [hr₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁
@@ -57,7 +57,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     subst ht₂ hc₂
     simp [h₃, ←hr₁, TypedExpr.typeOf]
     exists res₂.snd
-  case ok.h_2 =>
+  case h_2 =>
     exists res₁.fst, BoolType.ff, res₁.snd
     simp [hr₁]
     cases h₃ : typeOf x₃ c env <;> simp [h₃] at h₁
@@ -66,7 +66,7 @@ theorem type_of_ite_inversion {x₁ x₂ x₃ : Expr} {c c' : Capabilities} {env
     replace ⟨hl₁, hr₁⟩ := h₁
     subst hl₁ hr₁
     exists res₃.fst, res₃.fst
-  case ok.h_3 =>
+  case h_3 =>
     exists res₁.fst, BoolType.anyBool, res₁.snd
     simp [hr₁]
     cases h₃ : typeOf x₂ (c ∪ res₁.snd) env <;> simp [h₃] at h₁

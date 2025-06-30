@@ -1003,7 +1003,7 @@ theorem compile_well_typed_hasAttr
       CompileWellTyped, TypedExpr.toExpr, compile, compileHasAttr,
       compileAttrsOf, SymEntities.attrs,
       Option.bind_eq_bind, bind_assoc, Except.bind_ok,
-      TermType.ofType, Option.some_bind,
+      TermType.ofType, Option.bind_some,
     ]
     have hattrs_exists :
       εnv.entities.attrs ety = .some sym_ety_data.attrs
@@ -1241,7 +1241,7 @@ theorem compile_well_typed_record
     (fun x => do Except.ok (x.fst, ← compile x.snd εnv))
     (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) xs.attach₂)]
   -- Strip off the second later of mapM₂
-  simp only [List.mapM_map]
+  simp only [List.mapM_map, Function.comp_def]
   have e := List.mapM₂_eq_mapM
     (fun x => do Except.ok (x.fst, ← compile x.snd.toExpr εnv))
     xs

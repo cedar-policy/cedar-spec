@@ -442,14 +442,14 @@ theorem find?_mapM_key_id {α β : Type} [BEq α] [LawfulBEq α] {ks : List α} 
   cases h₂
   case head l =>
     simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
-    cases hf : fn k <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
-    cases ht₁ : (l.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp [ht₁ , Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    cases hf : fn k <;> simp only [hf, Option.bind_none, Option.bind_some, reduceCtorEq] at h₁
+    cases ht₁ : (l.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp [ht₁ , Option.bind_none, Option.bind_some, reduceCtorEq, Option.some.injEq] at h₁
     subst h₁
     simp
   case tail h t h₂  =>
     simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at h₁
-    cases hf : fn h <;> simp only [hf, Option.none_bind, Option.some_bind, reduceCtorEq] at h₁
-    cases ht₁ : (t.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [ht₁, Option.none_bind, Option.some_bind, reduceCtorEq, Option.some.injEq] at h₁
+    cases hf : fn h <;> simp only [hf, Option.bind_none, Option.bind_some, reduceCtorEq] at h₁
+    cases ht₁ : (t.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [ht₁, Option.bind_none, Option.bind_some, reduceCtorEq, Option.some.injEq] at h₁
     subst h₁
     simp only [List.find?]
     cases h₃ : (h == k)
@@ -855,7 +855,7 @@ theorem mapMOnValues_cons {α : Type 0} [LT α] [DecidableLT α] {f : β → Opt
   case none => simp [h₁, h₂, mapMOnValues]
   case some v' =>
     cases h₃ : (mk tl).mapMOnValues f
-    <;> simp only [Option.none_bind, Option.some_bind]
+    <;> simp only [Option.bind_none, Option.bind_some]
     <;> unfold mapMOnValues at *
     <;> simp only [h₁, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_none_iff,
           Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq, List.mapM_cons]

@@ -310,7 +310,7 @@ private theorem concretize?_some_same_tags {uid : EntityUID} {δ : SymEntityData
     simp only [ht]
   case some τs =>
     cases hkeys : (app τs.keys (Term.entity uid)).setOfTags? <;>
-    simp only [hkeys, Option.none_bind, Option.some_bind, reduceCtorEq] at ht
+    simp only [hkeys, Option.bind_none, Option.bind_some, reduceCtorEq] at ht
     rename_i ts
     simp only [Option.bind] at ht
     split at ht <;> simp only [Option.some.injEq, reduceCtorEq] at ht

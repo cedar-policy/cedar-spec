@@ -282,7 +282,7 @@ private theorem same_forall₂_implies_same_record {ats : List (Attr × Term)} {
     simp only at h₁
     have hhd : Term.value?.attrValue? thd.fst thd.snd = some (vhd.fst, some vhd.snd) := by
       rw [← h₁.left, value?_some_implies_attrValue?_some h₁.right]
-    simp only [List.filterMap_cons, hhd, Option.some_bind, Option.map_some, ih]
+    simp only [List.filterMap_cons, hhd, Option.bind_some, Option.map_some, ih]
 
 theorem compile_evaluate_record {axs : List (Attr × Expr)} {env : Env} {εnv : SymEnv} {t : Term}
   (heq : env ∼ εnv)

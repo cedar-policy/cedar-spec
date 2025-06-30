@@ -555,9 +555,9 @@ theorem partial_evaluate_is_sound_binary_app
         subst heq₄₁
         simp [Residual.evaluate]
       case _ heq₃ _ _ _ heq₄ =>
-        simp only [heq₃, Option.some_bind, reduceCtorEq] at heq₄
+        simp only [heq₃, Option.bind_some, reduceCtorEq] at heq₄
       case _ heq₃ _ _ _ _ heq₄ =>
-        simp only [heq₃, Option.none_bind, reduceCtorEq] at heq₄
+        simp only [heq₃, Option.bind_none, reduceCtorEq] at heq₄
       case _ =>
         simp only [Except.toOption, Residual.evaluate]
     case _ uid₁ uid₂ =>
@@ -886,15 +886,16 @@ theorem partial_evaluate_is_sound_set
       split at heq₃ <;> cases heq₃
       rename_i heq₃
       simp [heq₃, Residual.evaluate] at hᵢ₁
-      rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
-      simp [TypedExpr.toExpr, List.map₁, Spec.evaluate, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map]
+      replace ⟨_, hᵢ₁⟩ := to_option_right_err hᵢ₁
+      simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
+        List.mapM₁_eq_mapM (Spec.evaluate · req es), List.mapM_map, Function.comp_def]
       have heq₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (λ x => Spec.evaluate x.toExpr req es) _ heq₂ hᵢ₁
       rcases heq₄ with ⟨_, heq₄⟩
       simp [heq₄, Residual.evaluate, Except.toOption]
     case isFalse =>
       simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
-        List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map, Residual.evaluate,
-        List.mapM₁_eq_mapM (fun x => Residual.evaluate x req es)]
+        List.mapM₁_eq_mapM (Spec.evaluate · req es), List.mapM_map, Function.comp_def, Residual.evaluate,
+        List.mapM₁_eq_mapM (Residual.evaluate · req es)]
       apply to_option_eq_do₁ (λ (x : List Value) => (Except.ok (Value.set (Data.Set.make x))))
       exact to_option_eq_mapM
         (fun x => Spec.evaluate x.toExpr req es)
@@ -970,8 +971,9 @@ theorem partial_evaluate_is_sound_record
     simp [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨err, hᵢ₁⟩
     simp [TypedExpr.toExpr, Spec.evaluate, List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))]
-    simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype
-      (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req es)), List.mapM_map]
+    simp only [List.mapM₂, List.attach₂,
+      List.mapM_pmap_subtype (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req es)),
+      List.mapM_map, Function.comp_def]
     have : (fun (x: Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req es)) (k, v) = .error err := by
       simp only [bindAttr, hᵢ₁, bind_pure_comp, Except.map_error]
     have h₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (fun (x: Attr × TypedExpr) => bindAttr x.fst (Spec.evaluate x.snd.toExpr req es)) _ h₂ this
@@ -979,10 +981,12 @@ theorem partial_evaluate_is_sound_record
     simp [h₄, Residual.evaluate, Except.toOption]
   case _ =>
     simp [TypedExpr.toExpr, Spec.evaluate, List.map_attach₂ (fun x : Attr × TypedExpr => (x.fst, x.snd.toExpr))]
-    simp [List.mapM₂, List.attach₂, List.mapM_pmap_subtype
-      (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req es)), List.mapM_map]
-    simp [Residual.evaluate, List.mapM₂, List.attach₂, List.mapM_pmap_subtype
-      (fun (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd req es)), List.mapM_map]
+    simp only [List.mapM₂, List.attach₂,
+      List.mapM_pmap_subtype (fun (x : Attr × Expr) => bindAttr x.fst (Spec.evaluate x.snd req es)),
+      List.mapM_map, Function.comp_def]
+    simp only [Residual.evaluate, List.mapM₂, List.attach₂,
+      List.mapM_pmap_subtype (fun (x : Attr × Residual) => bindAttr x.fst (Residual.evaluate x.snd req es)),
+      List.mapM_map, Function.comp_def]
     apply to_option_eq_do₁
     have : ∀ x,
       x ∈ m →
@@ -1013,12 +1017,13 @@ theorem partial_evaluate_is_sound_call
   Except.toOption (Spec.evaluate (TypedExpr.call xfn args ty).toExpr req es) =
   Except.toOption ((TPE.evaluate (TypedExpr.call xfn args ty) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.call, List.map₁, List.mapM_map]
+  simp only [TPE.evaluate, TPE.call, List.map₁, List.map_subtype, List.unattach_attach,
+    List.mapM_map, Function.comp_def, List.any_map, List.any_eq_true]
   split
   case _ vs heq =>
-    simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
-      List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map, someOrError]
-    simp [List.mapM_map, List.mapM_some_iff_forall₂] at heq
+    simp only [TypedExpr.toExpr, List.map₁_eq_map, Spec.evaluate,
+      List.mapM₁_eq_mapM (Spec.evaluate · req es), List.mapM_map, Function.comp_def, someOrError]
+    simp only [List.mapM_some_iff_forall₂] at heq
     have : ∀ x y, (TPE.evaluate x preq pes).asValue = some y → (TPE.evaluate x preq pes).evaluate req es = .ok y := by
       intro x y h
       rcases as_value_some h with ⟨_, h⟩
@@ -1059,11 +1064,11 @@ theorem partial_evaluate_is_sound_call
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     have heq₄ := @List.element_error_implies_mapM_error _ _ _ _ _ (λ x => Spec.evaluate x.toExpr req es) _ heq₂ hᵢ₁
     rcases heq₄ with ⟨_, heq₄⟩
-    simp only [Except.toOption, TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach,
-      Spec.evaluate, List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map, heq₄,
+    simp only [Except.toOption, TypedExpr.toExpr, List.map₁_eq_map, Spec.evaluate,
+      List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map, Function.comp_def, heq₄,
       Except.bind_err, Residual.evaluate]
   case _ =>
-    simp only [TypedExpr.toExpr, List.map₁, List.map_subtype, List.unattach_attach, Spec.evaluate,
+    simp only [TypedExpr.toExpr, List.map₁_eq_map, Spec.evaluate,
       List.mapM₁_eq_mapM (fun x => Spec.evaluate x req es), List.mapM_map, Residual.evaluate,
       List.mapM₁_eq_mapM (fun (x : Residual) => x.evaluate req es)]
     apply to_option_eq_do₁ (λ (x : List Value) => Spec.call xfn x)

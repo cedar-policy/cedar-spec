@@ -275,7 +275,7 @@ private theorem term_record_value?_some_implies_eq_entityUIDs {ats : List (Attr 
   simp only at hv
   have ha := value?_attrValue?_fst hv
   simp only at ha ; subst ha
-  simp only [hv, Option.map, Option.some_bind]
+  simp only [hv, Option.map, Option.bind_some]
   cases vopt
   case a.none =>
     simp only [Option.mapD_none]

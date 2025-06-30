@@ -139,7 +139,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   split at h₃ <;> try simp [err, hasAttrInRecord] at h₃
   rename_i _ rty h₇
   split at h₃
-  case h_1.h_1 =>
+  case h_1 =>
     split at h₃ <;> rcases h₃ with ⟨h₃, _⟩ <;>
     apply InstanceOfType.instance_of_bool <;>
     simp [InstanceOfBoolType]
@@ -148,7 +148,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp [CapabilitiesInvariant] at h₁
     replace h₁ := h₁.left x₁ a h₉
     simp [EvaluatesTo, evaluate, h₅, hasAttr, attrsOf, h₈] at h₁
-  case h_1.h_2 =>
+  case h_2 =>
     simp [ok] at h₃
     have ⟨h₃, _⟩ := h₃
     simp [←h₃]
@@ -158,11 +158,11 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     rename_i _ _ h₉ _ _
     simp [Entities.attrsOrEmpty] at h₈
     split at h₈
-    case h₁.true.h_1 _ _ _ _ _ h₁₀ =>
+    case h_1 _ _ _ _ _ h₁₀ =>
       have h₁₁ := well_typed_entity_attributes h₂ h₁₀ h₇
       have h₁₂ := absent_attribute_is_absent h₁₁ h₉
       simp [Map.contains_iff_some_find?, h₁₂] at h₈
-    case h₁.true.h_2 =>
+    case h_2 =>
       rcases (Map.not_contains_of_empty a) with _
       contradiction
   case h_2 =>

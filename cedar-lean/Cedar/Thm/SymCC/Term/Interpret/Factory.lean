@@ -105,9 +105,7 @@ theorem interpret_and {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term
           rcases hor with hor | hor <;> subst hor <;>
           simp [interpret_term_prim, Term.prim.injEq, TermPrim.bool.injEq, or_false, or_true,
             true_or, ↓reduceIte, ite_self, Bool.false_eq_true]
-          split <;> try rfl
-          rw [eq_comm]
-          assumption
+          exact eq_comm.mp
         case inr =>
           have hb₁ := interpret_term_wfl hI hw₁
           have hb₂ := interpret_term_wfl hI hw₂
@@ -260,7 +258,7 @@ theorem interpret_eq_simplify {I : Interpretation} {t₁ t₂ : Term} :
   I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs →
   (Factory.eq.simplify t₁ t₂).interpret I = Factory.eq.simplify (t₁.interpret I) (t₂.interpret I)
 := by
-  cases t₁, t₂ using Factory.eq.simplify.fun_cases
+  fun_cases Factory.eq.simplify t₁ t₂
   <;> simp_all only [Factory.eq.simplify, interpret_term_prim, reduceIte, forall_self_imp,
     Bool.false_eq_true, Bool.and_eq_true, decide_eq_true_eq, implies_true, true_and]
   case case2 =>
@@ -338,8 +336,8 @@ theorem interpret_eq {I : Interpretation} {t₁ t₂ : Term} :
   (Factory.eq t₁ t₂).interpret I = Factory.eq (t₁.interpret I) (t₂.interpret I)
 := by
   intro h₁ h₂ h₃
-  cases t₁, t₂ using Factory.eq.fun_cases
-  · simp only [Factory.eq, interpret_term_some]
+  fun_cases Factory.eq t₁ t₂
+  · simp only [interpret_term_some]
     exact interpret_eq_simplify h₁ (wf_term_some_implies h₂) (wf_term_some_implies h₃)
   · simp [pe_eq_some_none, interpret_term_prim, interpret_term_some, interpret_term_none]
   · simp [pe_eq_none_some, interpret_term_prim, interpret_term_some, interpret_term_none]

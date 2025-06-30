@@ -935,15 +935,11 @@ theorem type_of_preserves_evaluation_results_call {xfn ty c₂ request entities}
   intro h₁ h₂
   simp [typeOfCall] at h₁
   split at h₁ <;>
-  simp [ok, err, do_ok_eq_ok] at h₁ <;>
-  try (
-    rcases h₁ with ⟨_, _, h₁⟩
-    subst h₁
-    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM fun x => evaluate x request entities, List.map₁_eq_map, List.mapM_map, h₂]
-  )
+  simp [ok, err, do_ok_eq_ok] at h₁
   all_goals
-    rcases h₁ with ⟨h₁, _⟩
+    try replace ⟨_, _, h₁⟩ := h₁
+    try replace ⟨h₁, _⟩ := h₁
     subst h₁
-    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM fun x => evaluate x request entities, List.map₁_eq_map, List.mapM_map, h₂]
+    simp [TypedExpr.toExpr, evaluate, List.mapM₁_eq_mapM (evaluate · request entities), List.map₁_eq_map, List.mapM_map, h₂, Function.comp_def]
 
 end Cedar.Thm
