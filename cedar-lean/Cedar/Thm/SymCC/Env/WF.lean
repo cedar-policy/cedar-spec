@@ -662,7 +662,7 @@ theorem wf_εnv_implies_attrs_wf
   case none => contradiction
   case some d =>
     have ⟨h1, h2, h3, _⟩ := hwf_entities ety d hety_exists
-    simp only [Option.some_bind, Option.some.injEq] at hattrs_exists
+    simp only [Option.bind_some, Option.some.injEq] at hattrs_exists
     simp only [hattrs_exists] at h1 h2 h3
     simp [h1, h2, h3]
 

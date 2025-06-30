@@ -51,10 +51,10 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
   simp [typeOfOr] at h₁
   split at h₁ <;> simp [ok, err] at h₁ <;>
   rename_i hr₁
-  case ok.h_1 c₁  =>
+  case h_1 c₁  =>
     exists res₁.fst, BoolType.tt, res₁.snd
     simp [←h₁, hr₁]
-  case ok.h_2 c₁ =>
+  case h_2 c₁ =>
     cases h₃ : typeOf x₂ c env <;> simp [h₃] at h₁
     rename_i res₂
     split at h₁ <;> simp [ok, err] at h₁
@@ -66,7 +66,7 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     exists bty₂, res₂.fst
     simp only [exists_eq_right_right', true_and]
     exists bty₂, res₂.snd
-  case ok.h_3 bty₁ hneq₁ hneq₂ =>
+  case h_3 bty₁ hneq₁ hneq₂ =>
     cases bty₁ <;> simp at hneq₁ hneq₂
     exists res₁.fst, BoolType.anyBool, res₁.snd
     simp [hr₁]
@@ -75,15 +75,15 @@ theorem type_of_or_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
     split at h₁ <;> simp [ok, err] at h₁ <;>
     rename_i hr₂ <;>
     have ⟨ht, hc⟩ := h₁ <;> subst ht hc <;> simp [hr₁, ResultType.typeOf, Except.map]
-    case anyBool.ok.h_1 =>
+    case h_1 =>
       exists BoolType.tt, res₂.fst
       simp only [hr₂, true_and]
       exists BoolType.tt, res₂.snd
-    case anyBool.ok.h_2 =>
+    case h_2 =>
       exists BoolType.anyBool, res₂.fst
       simp only [true_and]
       exists BoolType.ff, res₂.snd
-    case anyBool.ok.h_3 bty₂ hneq₁ hneq₂ =>
+    case h_3 bty₂ hneq₁ hneq₂ =>
       exists BoolType.anyBool, res₂.fst
       simp
       exists bty₂, res₂.snd

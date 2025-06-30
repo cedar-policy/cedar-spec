@@ -46,11 +46,11 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
   rename_i res₁
   simp only [typeOfAnd, List.empty_eq] at h₁
   split at h₁ <;> simp [ok, err] at h₁
-  case ok.h_1 h₃ =>
+  case h_1 h₃ =>
     have ⟨ hl₁, hr₁ ⟩ := h₁
     subst hl₁ hr₁
     exists res₁.fst, BoolType.ff, res₁.snd
-  case ok.h_2 bty₁ h₃ h₄ =>
+  case h_2 bty₁ h₃ h₄ =>
     exists res₁.fst, bty₁, res₁.snd
     simp [h₄, ResultType.typeOf, Except.map]
     split ; contradiction
@@ -58,11 +58,11 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
     rename_i res₂
     split at h₁ <;> simp at h₁ <;>
     have ⟨hty, hc⟩ := h₁ <;> subst hty hc
-    case isFalse.ok.h_1 hty₂ =>
+    case h_1 hty₂ =>
       exists .ff, res₂.fst
       apply And.intro (by simp)
       exists .ff, res₂.snd
-    case isFalse.ok.h_2 hty₂ =>
+    case h_2 hty₂ =>
       exists bty₁, res₂.fst
       apply And.intro (by simp)
       exists BoolType.tt, res₂.snd
@@ -70,7 +70,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : En
       case ff => contradiction
       all_goals
         simp [hty₂, lubBool]
-    case isFalse.ok.h_3 bty₂ h₄ h₅ hty₂ =>
+    case h_3 bty₂ h₄ h₅ hty₂ =>
       exists .anyBool, res₂.fst
       apply And.intro (by simp)
       exists BoolType.anyBool, res₂.snd

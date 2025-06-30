@@ -237,17 +237,16 @@ theorem pe_eq_simplify_lit {t₁ t₂ : Term} :
   Term.isLiteral (Factory.eq.simplify t₁ t₂) ∧
   Factory.eq.simplify t₁ t₂ = (t₁ == t₂)
 := by
-  cases t₁, t₂ using Factory.eq.simplify.fun_cases
-  <;> simp_all [Factory.eq.simplify, Term.isLiteral, pe_eq_simplify_same]
+  fun_cases Factory.eq.simplify t₁ t₂
+  <;> simp_all [Term.isLiteral, pe_eq_simplify_same]
 
 theorem pe_eq_lit {t₁ t₂ : Term} :
   t₁.isLiteral → t₂.isLiteral →
   Term.isLiteral (Factory.eq t₁ t₂) ∧
   Factory.eq t₁ t₂ = (t₁ == t₂)
 := by
-  cases t₁, t₂ using Factory.eq.fun_cases
-  · simp only [Factory.eq]
-    intro h₁ h₂
+  fun_cases Factory.eq t₁ t₂
+  · intro h₁ h₂
     have h₃ := pe_eq_simplify_lit (lit_term_some_implies_lit h₁) (lit_term_some_implies_lit h₂)
     rw [h₃.left, h₃.right]
     simp only [Term.prim.injEq, TermPrim.bool.injEq]
@@ -255,8 +254,7 @@ theorem pe_eq_lit {t₁ t₂ : Term} :
     cases h : t₁ == t₂ <;> simp_all
   · simp [pe_eq_some_none, Term.isLiteral]
   · simp [pe_eq_none_some, Term.isLiteral]
-  · simp only [Factory.eq]
-    exact pe_eq_simplify_lit
+  · exact pe_eq_simplify_lit
 
 theorem pe_eq_prim {p₁ p₂ : TermPrim} :
   Factory.eq (.prim p₁) (.prim p₂) = (p₁ == p₂)

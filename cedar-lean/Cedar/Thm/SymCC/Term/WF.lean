@@ -668,7 +668,7 @@ theorem wf_eq_simplify {εs : SymEntities} {t₁ t₂ : Term}
   (h₃ : t₁.typeOf = t₂.typeOf) :
   (eq.simplify t₁ t₂).WellFormed εs ∧ (eq.simplify t₁ t₂).typeOf = .bool
 := by
-  cases t₁, t₂ using Factory.eq.simplify.fun_cases
+  fun_cases Factory.eq.simplify t₁ t₂
   <;> simp_all only [Factory.eq.simplify, Term.prim.injEq, TermPrim.bool.injEq,
     Bool.and_self, Bool.and_false, Bool.and_true, Bool.true_and, Bool.false_and,
     Bool.and_eq_true, Bool.not_eq_true, Bool.false_eq_true, Bool.true_eq_false,
@@ -686,16 +686,14 @@ theorem wf_eq {εs : SymEntities} {t₁ t₂ : Term}
   (h₃ : t₁.typeOf = t₂.typeOf) :
   (eq t₁ t₂).WellFormed εs ∧ (eq t₁ t₂).typeOf = .bool
 := by
-  cases t₁, t₂ using Factory.eq.fun_cases
+  fun_cases Factory.eq t₁ t₂
   · replace h₁ := wf_term_some_implies h₁
     replace h₂ := wf_term_some_implies h₂
     simp only [Term.typeOf, TermType.option.injEq] at h₃
-    simp only [Factory.eq]
     exact wf_eq_simplify h₁ h₂ h₃
   · simp [Factory.eq, wf_bool, typeOf_bool]
   · simp [Factory.eq, wf_bool, typeOf_bool]
-  · simp only [Factory.eq]
-    exact wf_eq_simplify h₁ h₂ h₃
+  · exact wf_eq_simplify h₁ h₂ h₃
 
 theorem wf_and {εs : SymEntities} {t₁ t₂ : Term}
   (h₁ : t₁.WellFormed εs)

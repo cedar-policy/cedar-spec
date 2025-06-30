@@ -552,7 +552,7 @@ theorem sdiv_pos_bounded {bv₁ bv₂ : BitVec 64}
     simp only [Int.tdiv, Nat.succ_eq_add_one, Int.ofNat_eq_coe, Int.neg_natCast_le_natCast,
       Int.ofNat_le, true_and, ge_iff_le]
     simp only [Int.ofNat_le] at h₂
-    simp only [Int.ofNat_pos] at h₀
+    simp only [Int.natCast_pos] at h₀
     clear h₁ h₃ nlow
     simp only [Nat.le_div_iff_mul_le h₀]
     apply Nat.le_trans _ h₂

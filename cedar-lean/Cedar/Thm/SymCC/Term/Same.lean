@@ -252,7 +252,7 @@ local macro "simp_same_prim_implies" prim_injEq:ident : tactic => do
     all_goals {
       simp only [BitVec.int64?, Option.bind] at h₁
       split at h₁ <;>
-      simp only [Option.some_bind, Option.some.injEq, Value.prim.injEq, Option.none_bind, reduceCtorEq] at h₁
+      simp only [Option.bind_some, Option.some.injEq, Value.prim.injEq, Option.bind_none, reduceCtorEq] at h₁
     }
   ))
 

@@ -137,7 +137,7 @@ private def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (
   if 0 < len && len ≤ digits && (str.startsWith "0" → str = "0")
   then do
     let n ← str.toNat?
-    if n ≤ size then .some (Fin.ofNat' (size+1) n) else .none
+    if n ≤ size then .some (Fin.ofNat (size+1) n) else .none
   else .none
 
 private def parseNumV4 (str : String) : Option (BitVec 8) :=

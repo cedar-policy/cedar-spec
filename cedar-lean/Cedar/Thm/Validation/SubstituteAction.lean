@@ -126,12 +126,11 @@ theorem substitute_action_preserves_evaluation_set {xs : List Expr} {request : R
     simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
-    simp [List.mapM_map]
+    simp only [List.mapM_map, Function.comp_def]
     have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
     by
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      exact h₂
+      simp only [h₀, List.mem_cons, forall_eq_or_imp] at ih₁
+      exact ih₁.right
     simp [List.mapM_congr h₂]
 
 theorem substitute_action_nil_record : ∀ (uid : EntityUID),
@@ -164,7 +163,7 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     simp only [bindAttr]
     simp only [List.mapM_cons, bind_assoc, Except.bind_ok, pure_bind]
     rw [h₁]
-    simp only [List.mapM_map]
+    simp only [List.mapM_map, Function.comp_def]
     have h₂ : ∀ x ∈ tl,
     (do
       let v ← evaluate (substituteAction request.action x.snd) request entities
@@ -175,9 +174,8 @@ theorem substitute_action_preserves_evaluation_record {axs : List (Attr × Expr)
     := by
       intro x hx
       replace (a, x) := x
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      simp [h₂ a x hx]
+      simp only [h₀, List.mem_cons, forall_eq_or_imp, Prod.forall] at ih₁
+      simp [ih₁.right a x hx]
     rw [List.mapM_congr h₂]
 
 theorem substitute_action_nil_call : ∀ (uid : EntityUID) (xfn : ExtFun),
@@ -213,12 +211,11 @@ theorem substitute_action_preserves_evaluation_call {xfn : ExtFun} {xs : List Ex
     simp only [mapOnVars, evaluate, List.mapM₁, List.attach_def, List.mapM_pmap_subtype (fun x => evaluate x request entities)]
     simp only [List.mapM_cons, bind_assoc, pure_bind]
     rw [h₁]
-    simp [List.mapM_map]
+    simp only [List.mapM_map, Function.comp_def]
     have h₂ : ∀ (x₁ : Expr), x₁ ∈ t → SubstituteActionPreservesEvaluation x₁ request entities :=
     by
-      simp [h₀] at ih₁
-      obtain ⟨_, h₂⟩ := ih₁
-      exact h₂
+      simp only [h₀, List.mem_cons, forall_eq_or_imp] at ih₁
+      exact ih₁.right
     rw [List.mapM_congr h₂]
 
 theorem substitute_action_preserves_evaluation (expr : Expr) (request : Request) (entities : Entities) :

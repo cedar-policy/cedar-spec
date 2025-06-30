@@ -196,7 +196,7 @@ theorem lub_comm {ty₁ ty₂ : CedarType} :
   case h_4 =>
     rename_i h₁ h₂ h₃
     split <;> split <;> rename_i h₄
-    case isTrue.h_4 | isFalse.h_4 =>
+    case h_4 | h_4 => -- we have two goals named h_4 and Lean is perfectly fine with that; this selects them both
       rename_i _ _ h₅ _ _ _ _
       rw [eq_comm] at h₅
       simp [h₅]

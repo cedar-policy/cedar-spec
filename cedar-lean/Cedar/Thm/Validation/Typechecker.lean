@@ -406,31 +406,31 @@ theorem type_of_preserves_evaluation_results {e : Expr} {c₁ c₂ : Capabilitie
     simp only [err, reduceCtorEq] at h₃₂
   case _ c₁ xs hᵢ =>
     simp only [typeOf, do_eq_ok, Prod.exists, exists_and_right] at h₃
-    rcases h₃ with ⟨ty, h₃₁, h₃₂⟩
-    simp [List.mapM₁_eq_mapM (fun x => justType (typeOf x c₁ env)), List.mapM_ok_iff_forall₂] at h₃₁
-    simp [typeOfSet] at h₃₂
-    split at h₃₂ <;> simp [err] at h₃₂
-    split at h₃₂ <;> simp [ok] at h₃₂
-    rcases h₃₂ with ⟨h₃₂, _⟩
+    replace ⟨ty, h₃₁, h₃₂⟩ := h₃
+    simp only [List.mapM₁_eq_mapM (fun x => justType (typeOf x c₁ env)), List.mapM_ok_iff_forall₂] at h₃₁
+    simp only [typeOfSet, List.empty_eq] at h₃₂
+    split at h₃₂ <;> simp only [err, reduceCtorEq] at h₃₂
+    split at h₃₂ <;> simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq, reduceCtorEq] at h₃₂
+    replace ⟨h₃₂, _⟩ := h₃₂
     subst h₃₂
-    simp only [TypedExpr.toExpr, evaluate, List.map₁_eq_map, List.mapM₁_eq_mapM (fun x => evaluate x request entities), List.mapM_map]
+    simp only [TypedExpr.toExpr, evaluate, List.map₁_eq_map, List.mapM₁_eq_mapM (fun x => evaluate x request entities), List.mapM_map, Function.comp_def]
     have h₄ := type_of_ok_list h₃₁ (λ x₁ h => hᵢ x₁ h h₁)
     simp only [List.forall₂_implies_mapM_eq _ _ h₄, List.mapM_cons, bind_pure_comp, bind_assoc,
       bind_map_left]
   case _ c₁ axs hᵢ =>
-    simp [typeOf, do_eq_ok] at h₃
-    rcases h₃ with ⟨atys, h₃₁, h₃₂⟩
-    simp [ok] at h₃₂
-    rcases h₃₂ with ⟨h₃₂, _⟩
+    simp only [typeOf, List.empty_eq, do_eq_ok] at h₃
+    replace ⟨atys, h₃₁, h₃₂⟩ := h₃
+    simp only [ok, Except.ok.injEq, Prod.mk.injEq, List.nil_eq] at h₃₂
+    replace ⟨h₃₂, _⟩ := h₃₂
     subst h₃₂
-    simp [evaluate, List.mapM₂, List.attach₂]
+    simp only [evaluate, List.mapM₂, List.attach₂]
     rw [List.mapM_pmap_subtype (fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities))]
-    simp [TypedExpr.toExpr, List.attach₂]
+    simp only [TypedExpr.toExpr, List.attach₂]
     rw [List.map_pmap_subtype (fun (x : Attr × TypedExpr) => (x.fst, x.snd.toExpr))]
-    simp [evaluate, List.mapM₂, List.attach₂]
+    simp only [evaluate, List.mapM₂, List.attach₂]
     rw [List.mapM_pmap_subtype (fun (x : Attr × Expr) => bindAttr x.fst (evaluate x.snd request entities))]
-    simp [List.mapM_map]
-    simp [evaluate, List.mapM₂, List.attach₂] at h₃₁
+    simp only [List.mapM_map, Function.comp_def]
+    simp only [List.mapM₂, List.attach₂] at h₃₁
     rw [List.mapM_pmap_subtype (fun (x : Attr × Expr) => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c₁ env)), List.mapM_ok_iff_forall₂] at h₃₁
     have h₄ := type_of_ok_attr_list h₃₁ (λ a₁ x₁ h => hᵢ a₁ x₁ h h₁)
     simp only [List.forall₂_implies_mapM_eq _ _ h₄]

@@ -110,7 +110,7 @@ private theorem wfl_term_isStringSetType_implies_setOfTags?_some {t : Term} {εs
     replace hty := wf_term_set_implies_typeOf_elt hwl.left hin
     exact wfl_term_ofStringType_implies_tag?_some (And.intro hwt hlit) hty
   replace ⟨tags, h⟩ := List.all_some_implies_mapM_some h
-  simp only [h, Option.some_bind, Option.some.injEq, exists_eq']
+  simp only [h, Option.bind_some, Option.some.injEq, exists_eq']
 
 private theorem concretize?_wfl_ρ_implies_some {ρ : SymRequest} {εs : SymEntities} :
   ρ.WellFormed εs → ρ.isLiteral →

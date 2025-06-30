@@ -441,15 +441,15 @@ theorem mapM_key_id_sortedBy_key {α β : Type} [LT α] {ks : List α} {kvs : Li
   case cons_nil head =>
     have ⟨_, _⟩ : ∃ kv, kvs = [kv] := by
       cases hm₁ : fn head <;>
-      simp only [hm₁, List.mapM_cons, List.mapM_nil, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+      simp only [hm₁, List.mapM_cons, List.mapM_nil, Option.pure_def, Option.bind_none_fun, Option.bind_some_fun, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
       simp [←hm]
     subst kvs
     exact SortedBy.cons_nil
   case cons_cons head₀ head₁ tail hlt hs =>
     simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
-    cases hm₁ : (fn head₀) <;> simp only [hm₁, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
-    cases hm₂ : (fn head₁) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
-    cases hm₃ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₃, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₁ : (fn head₀) <;> simp only [hm₁, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₂ : (fn head₁) <;> simp only [hm₂, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₃ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₃, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
     rename_i v₀ v₁ kvs'
     subst kvs
 

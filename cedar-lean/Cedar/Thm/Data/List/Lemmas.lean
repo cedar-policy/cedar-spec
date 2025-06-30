@@ -355,13 +355,6 @@ theorem mapM_some {xs : List α} :
   case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
 
-theorem mapM_map {α β γ} [Monad m] [LawfulMonad m] {f : α → β} {g : β → m γ} {xs : List α} :
-  List.mapM g (xs.map f) = xs.mapM λ x => g (f x)
-:= by
-  induction xs
-  case nil => simp only [map_nil, mapM_nil]
-  case cons hd tl ih => simp [ih]
-
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   {p : α → Prop}
   (f : α → m β)
@@ -426,8 +419,8 @@ theorem not_mem_implies_not_mem_mapM_key_id {α β : Type} {ks : List α} {kvs :
     cases hl'
   case cons head tail =>
     simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind] at hm
-    cases hm₁ : fn head <;> simp only [hm₁, Option.none_bind, Option.some_bind, reduceCtorEq] at hm
-    cases hm₂ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₂, Option.none_bind, Option.some_bind, Option.some.injEq, reduceCtorEq] at hm
+    cases hm₁ : fn head <;> simp only [hm₁, Option.bind_none, Option.bind_some, reduceCtorEq] at hm
+    cases hm₂ : (tail.mapM (λ k => (fn k).bind λ v => some (k, v))) <;> simp only [hm₂, Option.bind_none, Option.bind_some, Option.some.injEq, reduceCtorEq] at hm
     subst kvs
     cases hl'
     case head =>
@@ -990,8 +983,8 @@ theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ 
     cases h₄ : f x₂ hd <;> simp only [h₄, false_and, exists_false, Option.some.injEq, exists_eq_left', reduceCtorEq] at h₃
     case some x₄ =>
     have h₅ := h₁ x₀ x₁ hd
-    simp only [h₂, h₄, Option.some_bind] at h₅
-    cases h₆ : f x₁ hd <;> simp only [h₆, Option.some_bind, Option.none_bind, reduceCtorEq] at h₅
+    simp only [h₂, h₄, Option.bind_some] at h₅
+    cases h₆ : f x₁ hd <;> simp only [h₆, Option.bind_some, Option.bind_none, reduceCtorEq] at h₅
     case some x₅ =>
     have h₇ := List.foldlM_of_assoc_some f x₂ hd x₄ x₃ tl h₁ h₄ h₃
     cases h₈ : List.foldlM f hd tl <;> simp only [h₈, Option.bind_some_fun, Option.bind_none_fun, reduceCtorEq] at h₇
@@ -1005,7 +998,7 @@ theorem foldlM_of_assoc_some (f : α → α → Option α) (x₀ x₁ x₂ x₃ 
       have h₁₀ := List.foldlM_of_assoc_some f x₁ hd x₅ x₇ tl h₁ h₆ h₉
       simp only [h₈, Option.bind_some_fun] at h₁₀
       specialize h₁ x₀ x₁ x₆
-      simp only [h₂, h₁₀, Option.some_bind] at h₁
+      simp only [h₂, h₁₀, Option.bind_some] at h₁
       simp [←h₁, h₇]
 
 theorem foldlM_of_assoc_none' (f : α → α → Option α) (x₀ x₁ x₂ : α) (xs : List α)
@@ -1072,13 +1065,13 @@ theorem foldlM_of_assoc (f : α → α → Option α) (x₀ x₁ : α) (xs : Lis
   (do let y ← List.foldlM f x₁ xs ; f x₀ y)
 := by
   simp only [List.foldlM, Option.bind_eq_bind]
-  cases h₂ : f x₀ x₁ <;> simp only [Option.some_bind, Option.none_bind]
+  cases h₂ : f x₀ x₁ <;> simp only [Option.bind_some, Option.bind_none]
   case none =>
     induction xs generalizing x₁
     case nil => simp [h₂]
     case cons hd tl ih =>
       simp only [List.foldlM, Option.bind_eq_bind]
-      cases h₃ : f x₁ hd <;> simp only [Option.some_bind, Option.none_bind]
+      cases h₃ : f x₁ hd <;> simp only [Option.bind_some, Option.bind_none]
       case some x₂ =>
       apply ih x₂
       specialize h₁ x₀ x₁ hd
