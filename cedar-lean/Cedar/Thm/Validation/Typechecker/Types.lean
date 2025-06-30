@@ -38,8 +38,8 @@ def InstanceOfBoolType : Bool → BoolType → Prop
   | _,     .anyBool => True
   | _, _            => False
 
-def InstanceOfEntityType (e : EntityUID) (ety: EntityType) : Prop :=
-  ety = e.ty
+def InstanceOfEntityType (env : Environment) (e : EntityUID) (ety: EntityType) : Prop :=
+  ety = e.ty -- ∧ (env.ets.isValidEntityUID e ∨ env.acts.contains e)
 
 def InstanceOfExtType : Ext → ExtType → Prop
   | .decimal _, .decimal => True
@@ -57,7 +57,7 @@ inductive InstanceOfType : Environment → Value → CedarType → Prop where
   | instance_of_string {env : Environment} :
       InstanceOfType env (.prim (.string _)) .string
   | instance_of_entity {env : Environment} (e : EntityUID) (ety: EntityType)
-      (h₁ : InstanceOfEntityType e ety) :
+      (h₁ : InstanceOfEntityType env e ety) :
       InstanceOfType env (.prim (.entityUID e)) (.entity ety)
   | instance_of_set {env : Environment} (s : Set Value) (ty : CedarType)
       (h₁ : forall v, v ∈ s → InstanceOfType env v ty) :
@@ -76,9 +76,9 @@ inductive InstanceOfType : Environment → Value → CedarType → Prop where
       InstanceOfType env (.ext x) (.ext xty)
 
 def InstanceOfRequestType (env : Environment) (request : Request) (reqty : RequestType) : Prop :=
-  InstanceOfEntityType request.principal reqty.principal ∧
+  InstanceOfEntityType env request.principal reqty.principal ∧
   request.action = reqty.action ∧
-  InstanceOfEntityType request.resource reqty.resource ∧
+  InstanceOfEntityType env request.resource reqty.resource ∧
   InstanceOfType env request.context (.record reqty.context)
 
 def InstanceOfEntityTags (env : Environment) (data : EntityData) (entry : EntitySchemaEntry) : Prop :=
@@ -343,8 +343,8 @@ theorem bool_type_is_inhabited (bty : BoolType) :
   case ff => simp only [or_false]
   case anyBool => simp only [or_self]
 
-theorem entity_type_is_inhabited (ety : EntityType) :
-  ∃ euid, InstanceOfEntityType euid ety
+theorem entity_type_is_inhabited {env : Environment} (ety : EntityType) :
+  ∃ euid, InstanceOfEntityType env euid ety
 := by
   simp [InstanceOfEntityType]
   exists (EntityUID.mk ety default)
@@ -428,7 +428,7 @@ theorem type_is_inhabited {env : Environment} (ty : CedarType) :
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
   | .entity ety =>
-    have ⟨euid, h₁⟩ := entity_type_is_inhabited ety
+    have ⟨euid, h₁⟩ := entity_type_is_inhabited (env := env) ety
     exists (.prim (.entityUID euid))
     apply InstanceOfType.instance_of_entity _ _ h₁
   | .set ty₁ =>

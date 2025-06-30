@@ -47,7 +47,7 @@ InstanceOfType env v (TypedExpr.lit p ty).typeOf
   case int => exact InstanceOfType.instance_of_int
   case string => exact InstanceOfType.instance_of_string
   case entityUID uid h =>
-    have : InstanceOfEntityType uid uid.ty := by rfl
+    have : InstanceOfEntityType env uid uid.ty := by rfl
     exact InstanceOfType.instance_of_entity uid uid.ty this
 
 theorem well_typed_is_sound_var
@@ -76,7 +76,7 @@ InstanceOfType env v (TypedExpr.var var ty).typeOf
   case action =>
     rcases h₁ with ⟨⟨_, h₁, _, _⟩, _, _⟩
     simp only [h₁]
-    have : InstanceOfEntityType env.reqty.action env.reqty.action.ty := by rfl
+    have : InstanceOfEntityType env env.reqty.action env.reqty.action.ty := by rfl
     exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
   case context =>
     rcases h₁ with ⟨⟨_, _, _, h₁⟩, _, _⟩
