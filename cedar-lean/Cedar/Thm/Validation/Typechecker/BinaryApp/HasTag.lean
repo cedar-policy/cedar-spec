@@ -50,15 +50,15 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   simp only [h₄, h₅, ResultType.typeOf, Except.map]
   simp [←h₁, h₆, TypedExpr.typeOf]
 
-private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} :
-  InstanceOfType (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
+private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} {env : Environment} :
+  InstanceOfType env (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
 := by
   simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
 
 private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : env.ets.tags? uid.ty = .some .none) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
@@ -77,9 +77,9 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : env.ets.tags? uid.ty = .none) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
@@ -89,12 +89,12 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
     simp only [h₁, reduceCtorEq] at h₂
   · exact map_empty_contains_instance_of_ff
 
-private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+private theorem mem_capabilities_implies_mem_tags {env : Environment} {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
   (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
   (hin : (x₁, Key.tag x₂) ∈ c₁) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
 := by
   replace h₁ := h₁.right x₁ x₂ hin
   simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
@@ -121,7 +121,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .hasTag x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄

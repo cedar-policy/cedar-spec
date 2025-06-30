@@ -102,7 +102,7 @@ theorem entityUIDs?_some_implies_entity_lits {x : Expr} {euids : List EntityUID}
       simp only [List.mapM_some_iff_forall₂, h₁]
 
 theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : EntitySchema.descendentOf env.ets euid₁.ty euid₂.ty = false) :
   inₑ euid₁ euid₂ entities = false
 := by
@@ -147,7 +147,7 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   (ih₂ : TypeOfIsSound x₂) :
   ∃ v,
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
-    InstanceOfType v (CedarType.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
+    InstanceOfType env v (CedarType.bool (typeOfInₑ ety₁ ety₂ x₁ x₂ env))
 := by
   split_type_of h₃ ; rename_i h₃ hl₃ hr₃
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄
@@ -197,8 +197,8 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       simp [h₁₀] at h₈ h₉
       cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
-theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityType}
-  (h₁ : InstanceOfType (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety))) :
+theorem entity_set_type_implies_set_of_entities {env : Environment} {vs : List Value} {ety : EntityType}
+  (h₁ : InstanceOfType env (Value.set (Set.mk vs)) (CedarType.set (CedarType.entity ety))) :
   ∃ (euids : List EntityUID),
     vs.mapM Value.asEntityUID = Except.ok euids ∧
     ∀ euid, euid ∈ euids → euid.ty = ety
@@ -216,7 +216,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     subst h₂
     rw [Value.asEntityUID] ; simp only [Except.bind_ok]
     rw [List.mapM'_eq_mapM]
-    have h₃ : InstanceOfType (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety)) := by
+    have h₃ : InstanceOfType env (Value.set (Set.mk tl)) (CedarType.set (CedarType.entity ety)) := by
       apply InstanceOfType.instance_of_set
       intro v h₃
       apply h₁ v
@@ -228,7 +228,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     apply h₅ euid heuid
 
 theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : List EntityUID} {ety : EntityType} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : EntitySchema.descendentOf env.ets euid.ty ety = false)
   (h₃ : ∀ euid, euid ∈ euids → euid.ty = ety) :
   Set.any (fun x => inₑ euid x entities) (Set.make euids) = false
@@ -386,7 +386,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   (ih₂ : TypeOfIsSound x₂) :
   ∃ v,
     EvaluatesTo (Expr.binaryApp BinaryOp.mem x₁ x₂) request entities v ∧
-    InstanceOfType v (CedarType.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
+    InstanceOfType env v (CedarType.bool (typeOfInₛ ety₁ ety₂ x₁ x₂ env))
 := by
   split_type_of h₃ ; rename_i h₃ hl₃ hr₃
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄
@@ -465,7 +465,7 @@ theorem type_of_mem_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .mem x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .mem x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .mem x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, ety₁, ety₂, ⟨c₁', h₄⟩ , c₂', h₅⟩ := type_of_mem_inversion h₃
   subst hc

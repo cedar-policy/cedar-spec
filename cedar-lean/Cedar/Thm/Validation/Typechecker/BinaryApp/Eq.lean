@@ -91,9 +91,9 @@ theorem type_of_eq_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Env
             · exists ety₁
             · exists ety₂
 
-theorem no_entity_type_lub_implies_not_eq {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
-  (h₁ : InstanceOfType v₁ (CedarType.entity ety₁))
-  (h₂ : InstanceOfType v₂ (CedarType.entity ety₂))
+theorem no_entity_type_lub_implies_not_eq {env : Environment} {v₁ v₂ : Value} {ety₁ ety₂ : EntityType}
+  (h₁ : InstanceOfType env v₁ (CedarType.entity ety₁))
+  (h₂ : InstanceOfType env v₂ (CedarType.entity ety₂))
   (h₃ : (CedarType.entity ety₁ ⊔ CedarType.entity ety₂) = none) :
   ¬ v₁ = v₂
 := by
@@ -113,7 +113,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .eq x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .eq x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .eq x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty⟩ := type_of_eq_inversion h₃
   subst hc

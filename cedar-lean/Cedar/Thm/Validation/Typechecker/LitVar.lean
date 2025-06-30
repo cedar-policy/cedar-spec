@@ -38,7 +38,7 @@ theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedE
 theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.lit l) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfLit] at h₃
@@ -62,7 +62,7 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
   (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
   (h₃ : typeOf (Expr.var var) c₁ env = Except.ok (e', c₂)) :
   GuardedCapabilitiesInvariant (Expr.var var) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType v e'.typeOf
+  ∃ v, EvaluatesTo (Expr.var var) request entities v ∧ InstanceOfType env v e'.typeOf
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfVar] at h₃

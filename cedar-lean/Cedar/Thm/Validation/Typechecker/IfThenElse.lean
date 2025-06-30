@@ -89,7 +89,7 @@ theorem type_of_ite_is_sound {x₁ x₂ x₃ : Expr} {c₁ c₂ : Capabilities} 
   (ih₂ : TypeOfIsSound x₂)
   (ih₃ : TypeOfIsSound x₃) :
   GuardedCapabilitiesInvariant (Expr.ite x₁ x₂ x₃) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.ite x₁ x₂ x₃) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.ite x₁ x₂ x₃) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨ty₁, bty₁, rc₁, ty₂, rc₂, ty₃, rc₃, h₄, h₅, h₆, h₇⟩ := type_of_ite_inversion h₃
   specialize ih₁ h₁ h₂ h₅

@@ -33,7 +33,7 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
   RequestAndEntitiesMatchEnvironment env request entities →
   TypedExpr.WellTyped env ty →
   evaluate ty.toExpr request entities = .ok v →
-  InstanceOfType v ty.typeOf
+  InstanceOfType env v ty.typeOf
 := by
   intro h₁ h₂ h₃
   induction h₂ generalizing v <;> simp only [TypedExpr.toExpr] at h₃

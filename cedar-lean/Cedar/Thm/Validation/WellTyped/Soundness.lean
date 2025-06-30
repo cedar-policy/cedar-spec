@@ -36,7 +36,7 @@ theorem well_typed_is_sound_lit
 {ty : CedarType}
 (h₁ : Prim.WellTyped env p ty)
 (h₂ : evaluate (Expr.lit p) request entities = Except.ok v) :
-InstanceOfType v (TypedExpr.lit p ty).typeOf
+InstanceOfType env v (TypedExpr.lit p ty).typeOf
 := by
   simp only [evaluate] at h₂
   cases h₁ <;>
@@ -60,7 +60,7 @@ theorem well_typed_is_sound_var
 (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
 (h₂ : Var.WellTyped env var ty)
 (h₃ : evaluate (Expr.var var) request entities = Except.ok v) :
-InstanceOfType v (TypedExpr.var var ty).typeOf
+InstanceOfType env v (TypedExpr.var var ty).typeOf
 := by
   cases h₂ <;>
   simp only [TypedExpr.typeOf] <;>
@@ -89,11 +89,11 @@ theorem well_typed_is_sound_ite
 {v : Value}
 (h₄ : x₁.typeOf = CedarType.bool BoolType.anyBool)
 (h₅ : x₂.typeOf = x₃.typeOf)
-(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
-(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType v x₂.typeOf)
-(hᵢ₃ : ∀ {v : Value}, evaluate x₃.toExpr request entities = Except.ok v → InstanceOfType v x₃.typeOf)
+(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
+(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType env v x₂.typeOf)
+(hᵢ₃ : ∀ {v : Value}, evaluate x₃.toExpr request entities = Except.ok v → InstanceOfType env v x₃.typeOf)
 (h₃ : evaluate (x₁.toExpr.ite x₂.toExpr x₃.toExpr) request entities = Except.ok v) :
-  InstanceOfType v (x₁.ite x₂ x₃ x₂.typeOf).typeOf
+  InstanceOfType env v (x₁.ite x₂ x₃ x₂.typeOf).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
@@ -125,10 +125,10 @@ theorem well_typed_is_sound_and
 {v : Value}
 (h₄ : x₁.typeOf = CedarType.bool BoolType.anyBool)
 (h₅ : x₂.typeOf = CedarType.bool BoolType.anyBool)
-(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
-(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType v x₂.typeOf)
+(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
+(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType env v x₂.typeOf)
 (h₃ : evaluate (x₁.toExpr.and x₂.toExpr) request entities = Except.ok v) :
-  InstanceOfType v (x₁.and x₂ (CedarType.bool BoolType.anyBool)).typeOf
+  InstanceOfType env v (x₁.and x₂ (CedarType.bool BoolType.anyBool)).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
@@ -167,10 +167,10 @@ theorem well_typed_is_sound_or
 {v : Value}
 (h₄ : x₁.typeOf = CedarType.bool BoolType.anyBool)
 (h₅ : x₂.typeOf = CedarType.bool BoolType.anyBool)
-(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
-(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType v x₂.typeOf)
+(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
+(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType env v x₂.typeOf)
 (h₃ : evaluate (x₁.toExpr.or x₂.toExpr) request entities = Except.ok v) :
-  InstanceOfType v (x₁.or x₂ (CedarType.bool BoolType.anyBool)).typeOf
+  InstanceOfType env v (x₁.or x₂ (CedarType.bool BoolType.anyBool)).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
@@ -211,7 +211,7 @@ theorem well_typed_is_sound_unary_app
 {ty : CedarType}
 (h₄ : op₁.WellTyped x₁ ty)
 (h₃ : evaluate (Expr.unaryApp op₁ x₁.toExpr) request entities = Except.ok v) :
-  InstanceOfType v (TypedExpr.unaryApp op₁ x₁ ty).typeOf
+  InstanceOfType env v (TypedExpr.unaryApp op₁ x₁ ty).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ₁ : evaluate x₁.toExpr request entities = res₁
@@ -250,10 +250,10 @@ theorem well_typed_is_sound_binary_app
 {ty : CedarType}
 (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
 (h₄ : BinaryOp.WellTyped env op₂ x₁ x₂ ty)
-(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
-(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType v x₂.typeOf)
+(hᵢ₁ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
+(hᵢ₂ : ∀ {v : Value}, evaluate x₂.toExpr request entities = Except.ok v → InstanceOfType env v x₂.typeOf)
 (h₃ : evaluate (Expr.binaryApp op₂ x₁.toExpr x₂.toExpr) request entities = Except.ok v) :
-  InstanceOfType v (TypedExpr.binaryApp op₂ x₁ x₂ ty).typeOf
+  InstanceOfType env v (TypedExpr.binaryApp op₂ x₁ x₂ ty).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ₁' : evaluate x₁.toExpr request entities = res₁
@@ -337,7 +337,7 @@ theorem well_typed_is_sound_has_attr
 {x₁ : TypedExpr}
 {attr : Attr}
 (h₃ : evaluate (x₁.toExpr.hasAttr attr) request entities = Except.ok v) :
-  InstanceOfType v (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).typeOf
+  InstanceOfType env v (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).typeOf
 := by
   simp only [evaluate] at h₃
   generalize hᵢ' : evaluate x₁.toExpr request entities = res₁
@@ -357,12 +357,12 @@ theorem well_typed_is_sound_get_attr_entity
 {attr : Attr}
 {ty : CedarType}
 (h₁ : RequestAndEntitiesMatchEnvironment env request entities)
-(h₂ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
+(h₂ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
 (h₄ : x₁.typeOf = CedarType.entity ety)
 (h₅ : (env.ets.attrs? ety).map RecordType.liftBoolTypes = some rty)
 (h₆ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
 (h₇ : evaluate (x₁.toExpr.getAttr attr) request entities = Except.ok v) :
-InstanceOfType v (x₁.getAttr attr ty).typeOf
+InstanceOfType env v (x₁.getAttr attr ty).typeOf
 := by
   generalize hᵢ : evaluate x₁.toExpr request entities = res₁
   cases res₁ <;> simp [evaluate, hᵢ] at h₇
@@ -383,7 +383,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
     · rename_i v₁ heq₁
       simp only [Except.ok.injEq] at h₇
       cases h₁₂
-      rename_i h₈ _
+      rename_i h₈
       simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
       rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
       simp [←het] at h₁₁
@@ -418,11 +418,11 @@ theorem well_typed_is_sound_get_attr_record
 {x₁ : TypedExpr}
 {attr : Attr}
 {ty : CedarType}
-(h₂ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType v x₁.typeOf)
+(h₂ : ∀ {v : Value}, evaluate x₁.toExpr request entities = Except.ok v → InstanceOfType env v x₁.typeOf)
 (h₄ : x₁.typeOf = CedarType.record rty)
 (h₅ : Option.map Qualified.getType (Data.Map.find? rty attr) = some ty)
 (h₆ : evaluate (x₁.toExpr.getAttr attr) request entities = Except.ok v) :
-InstanceOfType v (x₁.getAttr attr ty).typeOf
+InstanceOfType env v (x₁.getAttr attr ty).typeOf
 := by
   generalize hᵢ : evaluate x₁.toExpr request entities = res₁
   cases res₁ <;> simp [evaluate, hᵢ] at h₆
@@ -430,7 +430,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
   replace h₂ := h₂ hᵢ
   simp only [h₄] at h₂
   cases h₂
-  rename_i h₇ _
+  rename_i h₇
   simp only [getAttr, attrsOf, Data.Map.findOrErr, Except.bind_ok] at h₆
   split at h₆
   · rename_i v₁ heq
@@ -449,10 +449,10 @@ theorem well_typed_is_sound_set
 {entities : Entities}
 {ls : List TypedExpr}
 {ty : CedarType}
-(h₁ : ∀ (x : TypedExpr), x ∈ ls → ∀ (v : Value), evaluate x.toExpr request entities = Except.ok v → InstanceOfType v x.typeOf)
+(h₁ : ∀ (x : TypedExpr), x ∈ ls → ∀ (v : Value), evaluate x.toExpr request entities = Except.ok v → InstanceOfType env v x.typeOf)
 (h₂ : ∀ (x : TypedExpr), x ∈ ls → x.typeOf = ty)
 (h₃ : evaluate (Expr.set (ls.map₁ λ x => x.val.toExpr)) request entities = Except.ok v)
-: InstanceOfType v (TypedExpr.set ls ty.set).typeOf
+: InstanceOfType env v (TypedExpr.set ls ty.set).typeOf
 := by
   simp only [evaluate, do_ok_eq_ok] at h₃
   obtain ⟨v₁, h₃₁, h₃₂⟩ := h₃
@@ -461,7 +461,7 @@ theorem well_typed_is_sound_set
   simp only [List.mapM_map, List.mapM_ok_iff_forall₂] at h₃₁
   have h₄ := List.forall₂_implies_all_right h₃₁
   simp only [TypedExpr.typeOf]
-  have hₛ : ∀ v, v ∈ (Data.Set.make v₁) → InstanceOfType v ty := by
+  have hₛ : ∀ v, v ∈ (Data.Set.make v₁) → InstanceOfType env v ty := by
     intro v h
     rw [←Data.Set.make_mem] at h
     obtain ⟨x, hₓ₁, hₓ₂⟩ := h₄ v h
@@ -476,9 +476,9 @@ theorem attr_value_has_attrType
 {m : List (Attr × TypedExpr)}
 {r : List (Attr × Value)}
 (h₁ : ∀ (k : Attr) (v : TypedExpr),
-  (k, v) ∈ m → ∀ (v_1 : Value), evaluate v.toExpr request entities = Except.ok v_1 → InstanceOfType v_1 v.typeOf)
+  (k, v) ∈ m → ∀ (v_1 : Value), evaluate v.toExpr request entities = Except.ok v_1 → InstanceOfType env v_1 v.typeOf)
 (h₃ : List.Forall₂ (λ x y => Prod.mk x.fst <$> evaluate x.snd.toExpr request entities = Except.ok y) m r) :
-List.Forall₂ (λ x y => x.fst = y.fst ∧ InstanceOfType x.snd (Qualified.getType y.snd)) r (List.map
+List.Forall₂ (λ x y => x.fst = y.fst ∧ InstanceOfType env x.snd (Qualified.getType y.snd)) r (List.map
       (fun x =>
         match x with
         | (a, ty) => (a, Qualified.required ty.typeOf))
@@ -520,7 +520,7 @@ theorem well_typed_is_sound_record
 {m : List (Attr × TypedExpr)}
 {rty : RecordType}
 (h₁ : ∀ (k : Attr) (v : TypedExpr),
-  (k, v) ∈ m → ∀ (v_1 : Value), evaluate v.toExpr request entities = Except.ok v_1 → InstanceOfType v_1 v.typeOf)
+  (k, v) ∈ m → ∀ (v_1 : Value), evaluate v.toExpr request entities = Except.ok v_1 → InstanceOfType env v_1 v.typeOf)
 (h₂ : rty =
   Data.Map.make
     (List.map
@@ -529,7 +529,7 @@ theorem well_typed_is_sound_record
         | (a, ty) => (a, Qualified.required ty.typeOf))
       m))
 (h₃ : evaluate (Expr.record (List.map (fun x => (x.1.fst, x.1.snd.toExpr)) m.attach₂)) request entities = Except.ok v) :
-  InstanceOfType v (TypedExpr.record m (CedarType.record rty)).typeOf
+  InstanceOfType env v (TypedExpr.record m (CedarType.record rty)).typeOf
 := by
   simp only [evaluate, do_ok_eq_ok] at h₃
   obtain ⟨r, h₄, h₅⟩ := h₃
@@ -548,11 +548,11 @@ theorem well_typed_is_sound_record
     simp only [h₂]
     rfl
   subst h₆
-  have h₅ : List.Forall₂ AttrValueHasAttrType r rty' := by
+  have h₅ : List.Forall₂ (AttrValueHasAttrType (env := env)) r rty' := by
     exact attr_value_has_attrType h₁ h₄
   simp [TypedExpr.typeOf]
   apply mk_vals_instance_of_mk_types
-  let p := fun (v : Value) (qty : QualifiedType) => InstanceOfType v qty.getType
+  let p := fun (v : Value) (qty : QualifiedType) => InstanceOfType env v qty.getType
   have h₆ := List.canonicalize_preserves_forallᵥ p r rty'
   simp only [List.Forallᵥ] at h₆
   exact h₆ h₅
@@ -566,7 +566,7 @@ theorem well_typed_is_sound_call
 {ty : CedarType}
 (h₁ : xfn.WellTyped args ty)
 (h₂ : evaluate (Expr.call xfn (args.map₁ λ x => x.val.toExpr)) request entities = Except.ok v) :
-InstanceOfType v (TypedExpr.call xfn args ty).typeOf
+InstanceOfType env v (TypedExpr.call xfn args ty).typeOf
 := by
   generalize hᵢ : ((args.map₁ λ x => x.val.toExpr).mapM₁ λ x => evaluate x.val request entities) = res₁
   simp only [evaluate] at h₂
