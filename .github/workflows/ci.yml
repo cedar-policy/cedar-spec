@@ -92,8 +92,24 @@ jobs:
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
-  test_docker_build:
-    name: Test Docker build
+  test_cli_docker_build:
+    name: Test CLI Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./cedar-lean-cli/Dockerfile
+          push: false
+          tags: cedar-lean-cli:latest
+
+  test_drt_docker_build:
+    name: Test DRT Docker build
     runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx

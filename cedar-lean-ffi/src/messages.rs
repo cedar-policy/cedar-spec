@@ -174,7 +174,7 @@ impl proto::ValidationRequest {
         // Use a custom code to do this so that this code will compile against any cedar-policy version >= 4.4.0
         let mode = match mode {
             ValidationMode::Strict => cedar_policy::proto::models::ValidationMode::Strict,
-            _ => panic!("Lean Validator only supports strict validation")
+            _ => panic!("Lean Validator only supports strict validation"),
         };
         Self {
             schema: Some(cedar_policy::proto::models::Schema::from(schema)),
