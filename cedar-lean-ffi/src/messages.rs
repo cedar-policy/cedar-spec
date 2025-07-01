@@ -174,7 +174,7 @@ impl proto::ValidationRequest {
         Self {
             schema: Some(cedar_policy::proto::models::Schema::from(schema)),
             policies: Some(cedar_policy::proto::models::PolicySet::from(policyset)),
-            mode: cedar_policy::proto::models::ValidationMode::from(mode).into(),
+            mode: cedar_policy::proto::models::ValidationMode::from(&(*mode).into()).into(),
         }
     }
 }
