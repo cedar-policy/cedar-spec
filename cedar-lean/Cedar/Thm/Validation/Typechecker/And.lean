@@ -105,7 +105,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
     simp [EvaluatesTo] at ih₁₂
     rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
     simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool] <;>
-    try exact type_is_inhabited (CedarType.bool BoolType.ff)
+    try exact type_is_inhabited_bool BoolType.ff
     exact false_is_instance_of_ff
   case isFalse h₇ =>
     replace ⟨bty, tx₂, bty₂, rc₂, htx, htx₂, hty₂, h₆⟩ := h₆
@@ -138,13 +138,13 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
       case false =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant, TypedExpr.typeOf] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool (lubBool bty₁ bty₂)
         apply instance_of_lubBool
         simp [ih₁₃]
       case true =>
         rcases ih₁₂ with ih₁₂ | ih₁₂ | ih₁₂ | ih₁₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₁₂, Coe.coe, Value.asBool, GuardedCapabilitiesInvariant] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool (lubBool bty₁ bty₂)
         simp [GuardedCapabilitiesInvariant] at ih₁₁
         specialize ih₁₁ ih₁₂
         have h₇ := capability_union_invariant h₁ ih₁₁
@@ -153,7 +153,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         simp [EvaluatesTo] at ih₂₂
         rcases ih₂₂ with ih₂₂ | ih₂₂ | ih₂₂ | ih₂₂ <;>
         simp [EvaluatesTo, evaluate, Result.as, ih₂₂, Coe.coe, Value.asBool, Lean.Internal.coeM, pure, Except.pure] <;>
-        try exact type_is_inhabited (CedarType.bool (lubBool bty₁ bty₂))
+        try exact type_is_inhabited_bool (lubBool bty₁ bty₂)
         rw [hty₂] at ih₂₃
         have ⟨b₂, hb₂⟩ := instance_of_bool_is_bool ih₂₃
         subst hb₂

@@ -16,7 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm.Validation
+import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data
 import Cedar.TPE
 

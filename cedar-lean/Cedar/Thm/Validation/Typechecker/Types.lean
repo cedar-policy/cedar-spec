@@ -40,7 +40,7 @@ def InstanceOfBoolType : Bool → BoolType → Prop
   | _, _            => False
 
 def InstanceOfEntityType (env : Environment) (e : EntityUID) (ety: EntityType) : Prop :=
-  ety = e.ty -- ∧ (env.ets.isValidEntityUID e ∨ env.acts.contains e)
+  ety = e.ty ∧ EntityUID.WellFormed env e
 
 def InstanceOfExtType : Ext → ExtType → Prop
   | .decimal _, .decimal => True
@@ -122,7 +122,8 @@ def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType env request env.reqty ∧
   InstanceOfEntitySchema env entities ∧
-  InstanceOfActionSchema entities env.acts
+  InstanceOfActionSchema entities env.acts ∧
+  env.WellFormed
 
 ----- Theorems -----
 
@@ -344,11 +345,50 @@ theorem bool_type_is_inhabited (bty : BoolType) :
   case ff => simp only [or_false]
   case anyBool => simp only [or_self]
 
-theorem entity_type_is_inhabited {env : Environment} (ety : EntityType) :
+theorem entity_type_is_inhabited {env : Environment} {ety : EntityType}
+  (hwf_env : env.WellFormed)
+  (hwf : EntityType.WellFormed env ety) :
   ∃ euid, InstanceOfEntityType env euid ety
 := by
-  simp [InstanceOfEntityType]
-  exists (EntityUID.mk ety default)
+  cases hwf
+  -- Non-action entity
+  case inl hwf_ets =>
+    simp only [EntitySchema.contains, Option.isSome] at hwf_ets
+    split at hwf_ets
+    case _ entry hentry =>
+      have hwf_entry := wf_env_implies_wf_entity_schema_entry hwf_env hentry
+      cases entry with
+      | standard entry =>
+        exists (EntityUID.mk ety default)
+        simp only [InstanceOfEntityType, EntityUID.WellFormed, true_and]
+        apply Or.inl
+        simp [
+          EntitySchema.isValidEntityUID,
+          hentry,
+          EntitySchemaEntry.isValidEntityEID,
+          Set.contains, Membership.mem,
+        ]
+      | enum eids =>
+        have ⟨_, hnon_empty⟩ := hwf_entry
+        have ⟨eid, heid⟩ := (Set.non_empty_iff_exists eids).mp hnon_empty
+        exists (EntityUID.mk ety eid)
+        simp only [InstanceOfEntityType, EntityUID.WellFormed, true_and]
+        apply Or.inl
+        simp only [Membership.mem] at heid
+        simp [
+          EntitySchema.isValidEntityUID,
+          hentry,
+          EntitySchemaEntry.isValidEntityEID,
+          Set.contains, Membership.mem, heid,
+        ]
+    case _ => contradiction
+  -- Action entity
+  case inr hwf_acts =>
+    have ⟨act, hwf_act, hty_act⟩ := hwf_acts
+    exists act
+    simp only [InstanceOfEntityType, hty_act, true_and]
+    apply Or.inr
+    exact hwf_act
 
 theorem ext_type_is_inhabited (xty : ExtType) :
   ∃ x, InstanceOfExtType x xty
@@ -414,7 +454,9 @@ theorem sizeOf_attribute_lt_sizeOf_qualified (aqty : Attr × Qualified CedarType
       omega
   }
 
-theorem type_is_inhabited {env : Environment} (ty : CedarType) :
+theorem type_is_inhabited {env : Environment} {ty : CedarType}
+  (hwf_env : env.WellFormed)
+  (hwf : ty.WellFormed env) :
   ∃ v, InstanceOfType env v ty
 := by
   match ty with
@@ -429,7 +471,8 @@ theorem type_is_inhabited {env : Environment} (ty : CedarType) :
     exists (.prim (.string default))
     apply InstanceOfType.instance_of_string
   | .entity ety =>
-    have ⟨euid, h₁⟩ := entity_type_is_inhabited (env := env) ety
+    cases hwf with | entity_wf hwf_ety =>
+    have ⟨euid, h₁⟩ := entity_type_is_inhabited hwf_env hwf_ety
     exists (.prim (.entityUID euid))
     apply InstanceOfType.instance_of_entity _ _ h₁
   | .set ty₁ =>
@@ -459,12 +502,21 @@ theorem type_is_inhabited {env : Environment} (ty : CedarType) :
           apply sizeOf_attribute_lt_sizeOf_qualified
         case a =>
           simp [Nat.add_assoc]
-      have ⟨rhd, h₂⟩ := type_is_inhabited (env := env) hd.snd.getType
-      have ⟨vtl, h₃⟩ := type_is_inhabited (env := env) (.record (Map.mk tl))
+      have ⟨hwf_hd, hwf_tl⟩ := wf_record_type_cons hwf
+      have ⟨rhd, h₂⟩ := type_is_inhabited hwf_env hwf_hd
+      have ⟨vtl, h₃⟩ := type_is_inhabited hwf_env hwf_tl
       have ⟨mtl, h₄⟩ := instance_of_record_type_is_record h₃
       subst h₄ ; cases mtl ; rename_i rtl
       exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
       exact instance_of_record_cons h₂ h₃
+
+theorem type_is_inhabited_bool {env : Environment} (bty : BoolType) :
+  ∃ v, InstanceOfType env v (CedarType.bool bty)
+:= by
+  have ⟨v, h⟩ := bool_type_is_inhabited bty
+  exists v
+  constructor
+  assumption
 
 theorem instance_of_lubBool_left {env : Environment} {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType env v (CedarType.bool bty₁) →
@@ -579,5 +631,28 @@ theorem instance_of_lub {env : Environment} {v : Value} {ty ty₁ ty₂ : CedarT
   · rw [lub_comm] at h₁
     exact instance_of_lub_left h₁ h₃
 
+/--
+TODO: move this back to Cedar/Thm/Validation/Typechecker/LitVar.lean
+after we fix the proof.
+-/
+theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedExpr} {env : Environment}
+  (h₁ : (typeOf (.lit p) c₁ env) = .ok (tx, c₂)) :
+  ∃ ty, tx = .lit p ty
+:= by
+  simp only [typeOf, typeOfLit, ok, err, Function.comp_apply] at h₁
+  (split at h₁ <;> try split at h₁) <;> first
+  | simp only [reduceCtorEq] at h₁
+  | injections h₁ h₁ ; simp [←h₁]
+
+/--
+Obtains the fact of well-formed environment from RequestAndEntitiesMatchEnvironment
+-/
+theorem RequestAndEntitiesMatchEnvironment.wf_env
+  {env : Environment} {request : Request} {entities : Entities}
+  (h : RequestAndEntitiesMatchEnvironment env request entities):
+  env.WellFormed
+:= by
+  have ⟨_, _, _, h⟩ := h
+  exact h
 
 end Cedar.Thm

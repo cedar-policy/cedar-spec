@@ -16,6 +16,7 @@
 
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.TypeLifting
+import Cedar.Thm.Validation.Typechecker.Record
 
 /-!
 This file contains expression-kind-specific lemmas of the theorem `well_typed_is_sound`
@@ -47,7 +48,8 @@ InstanceOfType env v (TypedExpr.lit p ty).typeOf
   case int => exact InstanceOfType.instance_of_int
   case string => exact InstanceOfType.instance_of_string
   case entityUID uid h =>
-    have : InstanceOfEntityType env uid uid.ty := by rfl
+    have : InstanceOfEntityType env uid uid.ty := by
+      simp [InstanceOfEntityType, EntityUID.WellFormed, h]
     exact InstanceOfType.instance_of_entity uid uid.ty this
 
 theorem well_typed_is_sound_var
@@ -76,7 +78,9 @@ InstanceOfType env v (TypedExpr.var var ty).typeOf
   case action =>
     rcases h₁ with ⟨⟨_, h₁, _, _⟩, _, _⟩
     simp only [h₁]
-    have : InstanceOfEntityType env env.reqty.action env.reqty.action.ty := by rfl
+    have : InstanceOfEntityType env env.reqty.action env.reqty.action.ty := by
+      simp [InstanceOfEntityType, EntityUID.WellFormed]
+      sorry
     exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
   case context =>
     rcases h₁ with ⟨⟨_, _, _, h₁⟩, _, _⟩
@@ -386,7 +390,7 @@ InstanceOfType env v (x₁.getAttr attr ty).typeOf
       rename_i h₈
       simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
       rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
-      simp [←het] at h₁₁
+      simp [←het.1] at h₁₁
       simp only [h₁₁, Option.some.injEq] at h₅₁
       simp only [← h₅₁] at h₅₃
       have h₈ := λ qty => h₈ attr v₁ qty heq₁

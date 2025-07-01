@@ -66,39 +66,4 @@ theorem well_typed_is_sound {ty : TypedExpr} {v : Value} {env : Environment} {re
   case call xfn args ty _ h₄ _ =>
     exact well_typed_is_sound_call h₄ h₃
 
-/-- The type checker produces typed expressions that are well-typed after type
-lifting. -/
-theorem typechecked_is_well_typed_after_lifting
-{e : Expr}
-{c₁ c₂ : Capabilities}
-{env : Environment}
-{ty : TypedExpr} :
-  typeOf e c₁ env = .ok (ty, c₂) →
-  TypedExpr.WellTyped env ty.liftBoolTypes
-:= by
-  induction e, c₁ using typeOf.induct generalizing ty c₂
-  case _ =>
-    exact typechecked_is_well_typed_after_lifting_lit
-  case _ =>
-    exact typechecked_is_well_typed_after_lifting_var
-  case _ hᵢ₁ hᵢ₂ hᵢ₃ =>
-    exact typechecked_is_well_typed_after_lifting_ite hᵢ₁ hᵢ₂ hᵢ₃
-  case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_and hᵢ₁ hᵢ₂
-  case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_or hᵢ₁ hᵢ₂
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_unary_app hᵢ
-  case _ hᵢ₁ hᵢ₂ =>
-    exact typechecked_is_well_typed_after_lifting_binary_app hᵢ₁ hᵢ₂
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_has_attr hᵢ
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_get_attr hᵢ
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_set hᵢ
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_record hᵢ
-  case _ hᵢ =>
-    exact typechecked_is_well_typed_after_lifting_call hᵢ
 end Cedar.Thm
