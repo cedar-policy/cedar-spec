@@ -314,7 +314,7 @@ theorem type_of_record_is_sound {axs : List (Attr × Expr)} {c₁ c₂ : Capabil
   cases h₅ : (axs.mapM f) <;> simp [h₅]
   case error err =>
     rename_i h₄
-    simp [type_is_inhabited]
+    simp [type_of_is_inhabited h₂.wf_env h₃]
     exact type_of_record_is_sound_err ih h₁ h₂ h₄ h₅
   case ok avs =>
     rename_i h₄

@@ -26,15 +26,6 @@ namespace Cedar.Thm
 open Cedar.Spec
 open Cedar.Validation
 
-theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedExpr} {env : Environment}
-  (h₁ : (typeOf (.lit p) c₁ env) = .ok (tx, c₂)) :
-  ∃ ty, tx = .lit p ty
-:= by
-  simp only [typeOf, typeOfLit, ok, err, Function.comp_apply] at h₁
-  (split at h₁ <;> try split at h₁) <;> first
-  | simp only [reduceCtorEq] at h₁
-  | injections h₁ h₁ ; simp [←h₁]
-
 theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₃ : (typeOf (Expr.lit l) c₁ env) = Except.ok (ty, c₂)) :
   GuardedCapabilitiesInvariant (Expr.lit l) c₂ request entities ∧

@@ -82,7 +82,7 @@ def StandardSchemaEntry.WellFormed (env : Environment) (entry : StandardSchemaEn
 def EntitySchemaEntry.WellFormed (env : Environment) (entry : EntitySchemaEntry) : Prop :=
   match entry with
   | standard entry => entry.WellFormed env
-  | enum es => es.WellFormed ∧ es ≠ Set.empty
+  | enum es => es.WellFormed ∧ ¬es.isEmpty
 
 def EntitySchema.WellFormed (env : Environment) (ets : EntitySchema) : Prop :=
   Map.WellFormed ets ∧
@@ -121,5 +121,57 @@ def Environment.WellFormed (env : Environment) : Prop :=
   env.ets.WellFormed env ∧
   env.acts.WellFormed env ∧
   env.reqty.WellFormed env
+
+----- Some lemmas -----
+
+theorem qty_wf_implies_type_of_wf {env : Environment} {qty : Qualified CedarType}
+  (h : QualifiedType.WellFormed env qty) :
+  CedarType.WellFormed env qty.getType
+:= by
+  cases h with
+  | optional_wf hwf => simp [Qualified.getType, hwf]
+  | required_wf hwf => simp [Qualified.getType, hwf]
+
+theorem wf_record_type_cons {env : Environment}
+  {hd : (Attr × Qualified CedarType)}
+  {tl : List (Attr × Qualified CedarType)}
+  (hwf : CedarType.WellFormed env (.record (Map.mk (hd :: tl)))) :
+  CedarType.WellFormed env hd.snd.getType ∧
+  CedarType.WellFormed env (.record (Map.mk tl))
+:= by
+  -- cases hwf
+  -- rename_i hwf_map hwf_tys
+  -- simp [Map.WellFormed] at hwf_map
+  sorry
+
+theorem wf_record_implies_wf_attr {env : Environment} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
+  (hwf : CedarType.WellFormed env (.record rty))
+  (hqty : rty.find? attr = some qty) :
+  QualifiedType.WellFormed env qty
+:= by
+  sorry
+
+theorem wf_env_implies_wf_entity_schema_entry {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
+  (hwf : env.WellFormed)
+  (hets : env.ets.find? ety = some entry) :
+  entry.WellFormed env
+:= sorry
+
+theorem wf_type_iff_wf_liftBoolTypes {env : Environment} {ty : CedarType} :
+  CedarType.WellFormed env ty ↔ CedarType.WellFormed env ty.liftBoolTypes
+:= by
+  sorry
+
+theorem wf_env_implies_wf_tag_type {env : Environment} {ety : EntityType} {ty : CedarType}
+  (hwf : env.WellFormed)
+  (hety : env.ets.tags? ety = .some (.some ty)) :
+  CedarType.WellFormed env ty
+:= sorry
+
+theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : RecordType}
+  (hwf : env.WellFormed)
+  (hattrs : env.ets.attrs? ety = .some attrs) :
+  CedarType.WellFormed env (.record attrs)
+:= sorry
 
 end Cedar.Validation
