@@ -255,7 +255,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   cases h₆ : xs.mapM fun x => evaluate x request entities <;>
   simp [h₆]
   case error err =>
-    simp only [type_is_inhabited, and_true]
+    simp only [TypedExpr.typeOf, type_is_inhabited_set, and_true]
     exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆
   case ok vs =>
     apply InstanceOfType.instance_of_set

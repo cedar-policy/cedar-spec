@@ -123,6 +123,7 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   GuardedCapabilitiesInvariant (Expr.binaryApp .hasTag x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
+  have hok := h₃
   replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   split_type_of h₅ ; rename_i h₅ hl₅ hr₅
@@ -132,10 +133,10 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
   simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
   simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rw [hl₄] at hty₁
   replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
   rw [hl₅] at hty₂

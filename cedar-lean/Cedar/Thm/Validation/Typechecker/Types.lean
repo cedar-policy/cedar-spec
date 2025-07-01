@@ -510,13 +510,35 @@ theorem type_is_inhabited {env : Environment} {ty : CedarType}
       exists (.record (Map.mk ((hd.fst, rhd) :: rtl)))
       exact instance_of_record_cons h₂ h₃
 
-theorem type_is_inhabited_bool {env : Environment} (bty : BoolType) :
-  ∃ v, InstanceOfType env v (CedarType.bool bty)
+theorem type_is_inhabited_bool {env : Environment} {bty : BoolType} :
+  ∃ v, InstanceOfType env v (.bool bty)
 := by
   have ⟨v, h⟩ := bool_type_is_inhabited bty
   exists v
   constructor
   assumption
+
+theorem type_is_inhabited_int {env : Environment} :
+  ∃ v, InstanceOfType env v CedarType.int
+:= by
+  exists (.prim (.int default))
+  apply InstanceOfType.instance_of_int
+
+theorem type_is_inhabited_set {env : Environment} {ty : CedarType} :
+  ∃ v, InstanceOfType env v (.set ty)
+:= by
+  exists (.set Set.empty)
+  apply InstanceOfType.instance_of_set
+  intro v₁ h₁
+  have h₂ := Set.in_set_means_list_non_empty v₁ Set.empty h₁
+  simp [Set.empty, Set.elts] at h₂
+
+theorem type_is_inhabited_ext {env : Environment} {xty : ExtType} :
+  ∃ v, InstanceOfType env v (.ext xty)
+:= by
+  have ⟨x, h₁⟩ := ext_type_is_inhabited xty
+  exists (.ext x)
+  apply InstanceOfType.instance_of_ext _ _ h₁
 
 theorem instance_of_lubBool_left {env : Environment} {v : Value} {bty₁ bty₂ : BoolType} :
   InstanceOfType env v (CedarType.bool bty₁) →

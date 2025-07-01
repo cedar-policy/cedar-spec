@@ -208,7 +208,7 @@ theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
     simp [EvaluatesTo, evaluate] <;>
     rw [h₄] at h₇ <;>
     rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-    <;> try exact type_is_inhabited ty.typeOf
+    <;> try exact type_of_is_inhabited h₂.wf_env h₃
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]
       exact type_of_hasAttr_is_sound_for_entities h₁ h₂ h₃ h₈ h₆ h₇
     · have h₈ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.record rty, c₁') := by simp [h₄, hty₁, ResultType.typeOf, Except.map]

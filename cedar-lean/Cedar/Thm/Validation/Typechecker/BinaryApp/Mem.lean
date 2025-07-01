@@ -156,10 +156,10 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp [EvaluatesTo] at *
   simp [evaluate]
   cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
-  try { apply type_is_inhabited }
+  try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₁ ; subst hev₁
   cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [h₆, hev₂] <;>
-  try { apply type_is_inhabited }
+  try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₂ ; subst hev₂
   rw [hl₃] at hty₁
   replace hty₁ := instance_of_entity_type_is_entity hty₁
@@ -193,7 +193,7 @@ theorem type_of_mem_is_soundₑ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       replace he := entityUID?_some_implies_entity_lit he ; subst he
       rename_i auid euid _ _
       simp [evaluate] at h₅ h₆ ; subst h₅ h₆
-      have h₁₀ := action_type_in_eq_action_inₑ auid euid hacts hₐ'
+      have h₁₀ := action_type_in_eq_action_inₑ auid euid hacts.1 hₐ'
       simp [h₁₀] at h₈ h₉
       cases heq : ActionSchema.descendentOf env.acts auid euid <;> simp [heq] at h₈ h₉
 
@@ -395,10 +395,10 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   simp only [EvaluatesTo] at *
   simp only [evaluate]
   cases h₅ : evaluate x₁ request entities <;> simp [h₅] at hev₁ <;> simp [h₅, hev₁] <;>
-  try { apply type_is_inhabited }
+  try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₁ ; subst hev₁
   cases h₆ : evaluate x₂ request entities <;> simp [h₆] at hev₂ <;> simp [h₆, hev₂] <;>
-  try { apply type_is_inhabited }
+  try { apply type_is_inhabited_bool }
   rw [eq_comm] at hev₂ ; subst hev₂
   rw [hl₃] at hty₁
   replace ⟨euid, hty₁, hty₁'⟩ := instance_of_entity_type_is_entity hty₁
@@ -444,7 +444,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
       rw [eq_comm] at h₅ ; subst h₅
       rename_i euids' _ _
       have h₁₁ := evaluate_entity_set_eqv h₆ h₇
-      have h₁₂ := action_type_in_eq_action_inₛ hacts hac h₁₁
+      have h₁₂ := action_type_in_eq_action_inₛ hacts.1 hac h₁₁
       cases h₁₃ : Set.any (fun x => inₑ euid x entities) (Set.make euids) <;>
       simp only [h₁₃, Bool.false_eq_true, Bool.true_eq_false, false_implies,
         exists_prop, false_implies, true_implies, false_iff, true_iff,

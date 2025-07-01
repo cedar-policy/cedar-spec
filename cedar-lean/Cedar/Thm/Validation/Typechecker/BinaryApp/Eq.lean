@@ -103,7 +103,7 @@ theorem no_entity_type_lub_implies_not_eq {env : Environment} {v₁ v₂ : Value
   cases h₁ ; cases h₂
   rename_i h₄ h₅
   simp [InstanceOfEntityType] at h₄ h₅
-  subst h₄ h₅
+  simp only [h₄.1, h₅.1] at h₃
   contradiction
 
 theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
@@ -138,7 +138,7 @@ theorem type_of_eq_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env :
     simp [EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+    try { simp [ih₁, ih₂] ; apply type_of_is_inhabited h₂.wf_env h₃ }
     replace ⟨ihl₁, ih₃⟩ := ih₁
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂

@@ -37,6 +37,13 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
   case h_5;
   split at h₃ <;> try { simp [err] at h₃ }
   simp at h₃
+  case h_5 =>
+    have ⟨h₃, h₄⟩ := h₃
+    subst c₂ ty
+    apply And.intro empty_guarded_capabilities_invariant
+    apply InstanceOfType.instance_of_entity
+    simp only [InstanceOfEntityType, EntityUID.WellFormed, true_and]
+    assumption
   all_goals {
     have ⟨h₃, h₄⟩ := h₃
     subst c₂ ty
@@ -45,8 +52,7 @@ theorem type_of_lit_is_sound {l : Prim} {c₁ c₂ : Capabilities} {env : Enviro
       exact true_is_instance_of_tt |
       exact false_is_instance_of_ff |
       apply InstanceOfType.instance_of_int |
-      apply InstanceOfType.instance_of_string |
-      apply InstanceOfType.instance_of_entity; simp [InstanceOfEntityType]
+      apply InstanceOfType.instance_of_string
   }
 
 theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Environment} {e' : TypedExpr} {request : Request} {entities : Entities}
@@ -57,6 +63,7 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
 := by
   simp [EvaluatesTo, evaluate]
   simp [typeOf, typeOfVar] at h₃
+  have hwf := h₂.wf_env
   have ⟨h₂, _⟩ := h₂
   simp [InstanceOfRequestType] at h₂
   cases var
@@ -75,7 +82,8 @@ theorem type_of_var_is_sound {var : Var} {c₁ c₂ : Capabilities} {env : Envir
     apply And.intro
     · simp [evaluate]
     · apply InstanceOfType.instance_of_entity
-      simp only [h₂, InstanceOfEntityType]
+      simp only [h₂, InstanceOfEntityType, true_and]
+      exact wf_env_implies_action_wf hwf
   case resource =>
     exists request.resource
     apply And.intro
