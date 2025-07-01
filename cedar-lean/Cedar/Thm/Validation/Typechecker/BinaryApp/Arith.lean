@@ -74,7 +74,7 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-  try { simp [ih₁, ih₂] ; exact type_is_inhabited .int }
+  try { simp [ih₁, ih₂] ; exact type_is_inhabited_int }
   replace ⟨ihl₁, ih₃⟩ := ih₁
   replace ⟨ihl₂, ih₄⟩ := ih₂
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂
@@ -86,15 +86,15 @@ theorem type_of_int_arith_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   rcases h₀ with h₀ | h₀ | h₀ <;> subst h₀ <;> simp [apply₂, intOrErr]
   case inl =>
     cases h₄ : Int64.add? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inl =>
     cases h₄ : Int64.sub? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
   case inr.inr =>
     cases h₄ : Int64.mul? i₁ i₂ <;> simp [h₄]
-    case none => exact type_is_inhabited CedarType.int
+    case none => exact type_is_inhabited_int
     case some => simp [InstanceOfType.instance_of_int]
 
 end Cedar.Thm

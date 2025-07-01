@@ -152,7 +152,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
   cases h₈ : Map.find? entities uid
   case none =>
     simp only [Except.bind_err, Except.error.injEq, or_self, or_false, true_and, reduceCtorEq]
-    exact type_is_inhabited ty.typeOf
+    exact type_of_is_inhabited h₂.wf_env h₃
   case some d =>
     subst h₇
     simp only [Except.bind_ok]
@@ -211,7 +211,7 @@ theorem type_of_getAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilit
   simp [EvaluatesTo] at h₆ <;>
   simp [EvaluatesTo, evaluate] <;>
   rcases h₆ with h₆ | h₆ | h₆ | h₆ <;> simp [h₆]
-  <;> try exact type_is_inhabited ty.typeOf
+  <;> try exact type_of_is_inhabited h₂.wf_env h₃
   · have h₉ : (typeOf x₁ c₁ env).typeOf = Except.ok (CedarType.entity ety, c₁') := by simp [h₄, ResultType.typeOf, Except.map]; exact h₇
     rw [h₇] at h₈
     exact type_of_getAttr_is_sound_for_entities h₁ h₂ h₃ h₉ h₆ h₈

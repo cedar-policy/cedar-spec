@@ -70,6 +70,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
   ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType env v tx.typeOf
 := by
+  have hok := h₃
   replace ⟨hc, ety, ty, tx₁, tx₂, c₁', c₂', h₃, h₄, h₅, h₆, ht, htx, hc₁⟩ := type_of_getTag_inversion h₃
   subst hc
   replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
@@ -78,10 +79,10 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
   simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
   simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rw [h₄] at hty₁
   replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
   rw [h₆] at hty₂
@@ -92,7 +93,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   have hf₁ := Map.findOrErr_returns entities uid Error.entityDoesNotExist
   rcases hf₁ with ⟨d, hf₁⟩ | hf₁ <;>
   simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
-    type_is_inhabited, and_self, reduceCtorEq]
+    type_of_is_inhabited h₂.wf_env hok, and_self, reduceCtorEq]
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
   replace ⟨entry, hf₂, _, _, _, h₂⟩  := h₂.right.left uid d hf₁
   simp only [InstanceOfEntityTags] at h₂

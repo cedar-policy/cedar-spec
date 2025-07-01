@@ -174,4 +174,12 @@ theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : 
   CedarType.WellFormed env (.record attrs)
 := sorry
 
+theorem wf_env_implies_action_wf {env : Environment}
+  (hwf : env.WellFormed) :
+  EntityUID.WellFormed env env.reqty.action
+:= by
+  have ⟨_, _, ⟨_, h, _⟩⟩ := hwf
+  apply Or.inr
+  exact h
+
 end Cedar.Validation

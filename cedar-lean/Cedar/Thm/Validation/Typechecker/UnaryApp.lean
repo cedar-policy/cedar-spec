@@ -111,7 +111,7 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
       simp [apply₁, BoolType.not]
       exact true_is_instance_of_tt
   all_goals {
-    exact type_is_inhabited (CedarType.bool (BoolType.not bty))
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -155,12 +155,12 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
     cases i.neg?
     case none =>
       simp only [or_false, or_true, true_and, reduceCtorEq]
-      exact type_is_inhabited CedarType.int
+      exact type_is_inhabited_int
     case some i' =>
       simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
       exact InstanceOfType.instance_of_int
   all_goals {
-    exact type_is_inhabited CedarType.int
+    exact type_is_inhabited_int
   }
 
 theorem type_of_isEmpty_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -204,7 +204,7 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
     apply InstanceOfType.instance_of_bool
     simp [InstanceOfBoolType]
   all_goals {
-    exact type_is_inhabited (.bool .anyBool)
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -247,7 +247,7 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
     simp [apply₁]
     exact bool_is_instance_of_anyBool (wildcardMatch s p)
   all_goals {
-    exact type_is_inhabited (.bool .anyBool)
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -299,7 +299,7 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
     case false => exact false_is_instance_of_ff
     case true => exact true_is_instance_of_tt
   all_goals {
-    apply type_is_inhabited
+    apply type_is_inhabited_bool
   }
 
 theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}

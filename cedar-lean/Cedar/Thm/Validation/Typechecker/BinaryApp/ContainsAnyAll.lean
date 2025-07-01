@@ -78,7 +78,7 @@ theorem type_of_containsA_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c
   simp [EvaluatesTo, evaluate] at *
   cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
   cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-  try { simp [ih₁, ih₂] ; apply type_is_inhabited }
+  try { simp [ih₁, ih₂] ; apply type_is_inhabited_bool }
   replace ⟨ihl₁, ih₃⟩ := ih₁
   replace ⟨ihl₂, ih₄⟩ := ih₂
   rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂

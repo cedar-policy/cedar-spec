@@ -340,10 +340,10 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
   simp [hl₂] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at  hr₁
   have ⟨d₁, hr₁⟩ := instance_of_decimal_type_is_decimal hr₁
   rw [hl₈] at  hr₂
@@ -413,10 +413,10 @@ theorem type_of_call_isInRange_comparator_is_sound {xs : List Expr} {c₁ c₂ :
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
   simp [hl₂] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at hr₁
   have ⟨d₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
   rw [hl₈] at hr₂
@@ -519,7 +519,7 @@ theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
     true_and] <;>
-  try { exact type_is_inhabited (CedarType.ext .duration)}
+  try { exact type_is_inhabited_ext}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
@@ -579,7 +579,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
     true_and] <;>
-  try { exact type_is_inhabited (CedarType.ext .datetime)}
+  try { exact type_is_inhabited_ext}
   rw [hl₇] at hr₁
   have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
   subst hr₁
@@ -591,7 +591,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp [InstanceOfExtType]
   | none =>
     simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-    apply type_is_inhabited
+    apply type_is_inhabited_ext
 
 theorem type_of_call_offset_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .offset xs) c env = Except.ok (ty, c')) :
@@ -648,7 +648,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     simp only [EvaluatesTo] at hl₁
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
     simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .datetime)}
+    try { exact type_is_inhabited_ext}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
@@ -660,7 +660,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
     simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
       or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .datetime)}
+    try { exact type_is_inhabited_ext}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_duration_type_is_duration hr₂
     subst hr₂
@@ -672,7 +672,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
       simp [InstanceOfExtType]
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-      apply type_is_inhabited
+      apply type_is_inhabited_ext
 
 theorem type_of_call_durationSince_inversion {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .durationSince xs) c env = Except.ok (ty, c')) :
@@ -730,7 +730,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
     simp only [hl₁, Except.bind_err, Except.error.injEq, reduceCtorEq, or_self, or_false, or_true,
       true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .duration)}
+    try { exact type_is_inhabited_ext}
     rw [hl₇] at hr₁
     have ⟨dt₁, hr₁⟩ := instance_of_datetime_type_is_datetime hr₁
     subst hr₁
@@ -742,7 +742,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     rcases hl₂ with hl₂ | hl₂ | hl₂ | hl₂ <;>
     simp only [hl₂, Except.bind_err, Except.bind_ok, Except.error.injEq, reduceCtorEq, or_self,
       or_false, or_true, true_and] <;>
-    try { exact type_is_inhabited (CedarType.ext .duration)}
+    try { exact type_is_inhabited_ext}
     rw [hl₈] at hr₂
     have ⟨dt₂, hr₂⟩ := instance_of_datetime_type_is_datetime hr₂
     subst hr₂
@@ -754,7 +754,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
       simp [InstanceOfExtType]
     | none =>
       simp only [Except.error.injEq, reduceCtorEq, or_self, or_false, or_true, true_and]
-      apply type_is_inhabited
+      apply type_is_inhabited_ext
 
 theorem type_of_call_ipAddr_recognizer_inversion {xfn : ExtFun} {xs : List Expr} {c c' : Capabilities} {env : Environment} {ty : TypedExpr}
   (h₀ : IsIpAddrRecognizer xfn)
@@ -810,7 +810,7 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (CedarType.bool BoolType.anyBool)}
+  try { exact type_is_inhabited_bool}
   rw [hl₇] at hr₁
   have ⟨ip₁, hr₁⟩ := instance_of_ipAddr_type_is_ipAddr hr₁
   subst hr₁
@@ -883,7 +883,7 @@ theorem type_of_call_duration_converter_is_sound {xfn : ExtFun} {xs : List Expr}
   simp [EvaluatesTo] at hl₁
   rcases hl₁ with hl₁ | hl₁ | hl₁ | hl₁ <;>
   simp [hl₁] <;>
-  try { exact type_is_inhabited (.int)}
+  try { exact type_is_inhabited_int}
   rw [hl₇] at hr₁
   have ⟨ip₁, hr₁⟩ := instance_of_duration_type_is_duration hr₁
   subst hr₁
