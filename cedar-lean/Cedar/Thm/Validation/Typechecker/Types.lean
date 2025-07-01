@@ -19,6 +19,7 @@ import Cedar.Validation
 import Cedar.Thm.Data.Control
 import Cedar.Thm.Data.Set
 import Cedar.Thm.Validation.Typechecker.LUB
+import Cedar.Thm.Validation.Typechecker.WF
 
 /-!
 This file contains useful definitions and lemmas about Cedar types.
