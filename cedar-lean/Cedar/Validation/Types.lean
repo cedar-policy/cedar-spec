@@ -205,9 +205,6 @@ def Environment.descendentOf (env : Environment) (ety₁ ety₂ : EntityType) : 
     | .some entry => entry.ancestors.contains ety₂
     | .none       => env.acts.maybeDescendentOf ety₁ ety₂
 
-def Environment.schema (env : Environment) : Schema :=
-  { ets := env.ets, acts := env.acts }
-
 ----- Derivations -----
 
 deriving instance Repr, DecidableEq for BoolType

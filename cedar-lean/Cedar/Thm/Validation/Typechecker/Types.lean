@@ -337,7 +337,7 @@ theorem well_typed_entity_attributes {env : Environment} {request : Request} {en
   InstanceOfType d.attrs (.record rty)
 := by
   have ⟨_, h₁, _⟩ := h₁
-  simp [InstanceOfEntitySchema, Environment.schema] at h₁
+  simp [InstanceOfEntitySchema] at h₁
   specialize h₁ uid d h₂
   cases h₁ with
   | inl h₁ =>
