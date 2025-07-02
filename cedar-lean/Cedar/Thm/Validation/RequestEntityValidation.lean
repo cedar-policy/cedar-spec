@@ -159,10 +159,10 @@ theorem instance_of_request_type_refl {request : Request} {reqty : RequestType} 
   · exact instance_of_entity_type_refl h₃
   · exact instance_of_type_refl h₄
 
-theorem instance_of_schema_refl {entities : Entities} {ets : EntitySchema} {acts : ActionSchema} :
-  instanceOfSchema entities ets acts = .ok () →
-    InstanceOfEntitySchema entities ets acts ∧
-    InstanceOfActionSchema entities acts
+theorem instance_of_schema_refl {entities : Entities} {env : Environment} :
+  instanceOfSchema entities env = .ok () →
+    InstanceOfEntitySchema entities env ∧
+    InstanceOfActionSchema entities env.acts
 := by
   intro h₀
   simp only [InstanceOfEntitySchema]
@@ -170,7 +170,7 @@ theorem instance_of_schema_refl {entities : Entities} {ets : EntitySchema} {acts
   split at h₀
   case h_1 => contradiction
   case h_2 h₀₁ =>
-  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfSchema.instanceOfEntityData ets acts x.fst x.snd) = f
+  generalize h₁ : (λ x : EntityUID × EntityData => instanceOfSchema.instanceOfEntityData env x.fst x.snd) = f
   rw [h₁] at h₀₁
   constructor
   · intro uid data h₂
@@ -178,7 +178,7 @@ theorem instance_of_schema_refl {entities : Entities} {ets : EntitySchema} {acts
     replace h₀ := h₀ (Map.find?_mem_toList h₂)
     rw [← h₁] at h₀
     simp only [instanceOfSchema.instanceOfEntityData] at h₀
-    cases h₂ : Map.find? ets uid.ty <;> simp [h₂] at h₀
+    cases h₂ : Map.find? env.ets uid.ty <;> simp [h₂] at h₀
     case some entry =>
       apply Or.inl
       exists entry
@@ -225,14 +225,14 @@ theorem instance_of_schema_refl {entities : Entities} {ets : EntitySchema} {acts
       case _ h₃ h₄ h₅ =>
       simp [WellFormedActionData]
       and_intros
-      · simp [h₃]
       · simp [h₂]
       · simp [h₄]
       · simp [h₅]
+      · simp [h₃]
   · generalize h₁ : (fun x : EntityUID × ActionSchemaEntry => instanceOfSchema.instanceOfActionSchemaData entities x.fst x.snd) = f
     rw [h₁] at h₀
     intro uid entry h₂
-    replace h₀ := List.forM_ok_implies_all_ok (Map.toList acts) f h₀ (uid, entry)
+    replace h₀ := List.forM_ok_implies_all_ok (Map.toList env.acts) f h₀ (uid, entry)
     replace h₀ := h₀ (Map.find?_mem_toList h₂)
     rw [← h₁] at h₀
     simp only [instanceOfSchema.instanceOfActionSchemaData, beq_iff_eq] at h₀
@@ -253,7 +253,7 @@ theorem request_and_entities_match_env {env : Environment} {request : Request} {
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl h₀
-  cases h₂ : instanceOfSchema entities env.ets env.acts <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  cases h₂ : instanceOfSchema entities env <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
   exact instance_of_schema_refl h₂
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :

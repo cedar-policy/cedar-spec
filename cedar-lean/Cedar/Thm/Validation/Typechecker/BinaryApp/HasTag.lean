@@ -56,7 +56,7 @@ private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq 
   simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
 
 private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₁ : InstanceOfEntitySchema entities env)
   (h₂ : env.ets.tags? uid.ty = .some .none) :
   InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
@@ -77,14 +77,14 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environmen
         simp only [h₁, map_empty_contains_instance_of_ff]
       · simp only [h₁, map_empty_contains_instance_of_ff]
     | inr h₁ =>
-      replace ⟨e, _, _, _, h₁⟩ := h₁
+      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
       simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
       constructor
       constructor
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₁ : InstanceOfEntitySchema entities env)
   (h₂ : env.ets.tags? uid.ty = .none) :
   InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
@@ -97,7 +97,7 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {e
       simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
       simp only [h₁, reduceCtorEq] at h₂
     | inr h₁ =>
-      replace ⟨e, _, _, _, h₁⟩ := h₁
+      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
       simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
       constructor
       constructor

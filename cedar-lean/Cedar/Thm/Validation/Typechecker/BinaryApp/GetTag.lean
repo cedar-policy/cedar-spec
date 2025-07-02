@@ -120,7 +120,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
       simp only [Map.findOrErr_err_iff_find?_none, h₁, reduceCtorEq] at hf₃
     · cases ht₂
   | inr h =>
-    replace ⟨_, _, h₂, _, _⟩ := h
+    replace ⟨h₂, _, _⟩ := h
     simp only [EntitySchema.tags?, h₂, Option.map] at ht
     contradiction
 

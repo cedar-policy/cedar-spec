@@ -330,7 +330,7 @@ theorem well_typed_is_sound_binary_app
             specialize h₆ v₁ (Data.Map.in_list_in_values (Data.Map.find?_mem_toList heq))
             exact type_lifting_preserves_instance_of_type h₆
           | inr h₁ =>
-            replace ⟨entry₁, ⟨_, _, _, h₆⟩⟩ := h₁
+            replace ⟨_, _, h₆, entry₁, _⟩ := h₁
             simp only [← hᵢ, h₆, Data.Map.empty, Data.Map.find?, List.find?] at heq
             contradiction
         · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
@@ -417,7 +417,7 @@ InstanceOfType v (x₁.getAttr attr ty).typeOf
         }
       · cases h₇
     | inr h₁ =>
-      have ⟨entry, _, _, h₁, _⟩ := h₁
+      have ⟨_, h₁, _, ⟨entry, _⟩⟩ := h₁
       simp only [h₁, Data.Map.empty, Data.Map.find?, List.find?] at h₇
       contradiction
   · simp only [Except.bind_err, reduceCtorEq] at h₇

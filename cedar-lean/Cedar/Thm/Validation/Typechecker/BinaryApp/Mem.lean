@@ -128,7 +128,7 @@ theorem acts_maybeDescendentOf_false_implies_not_ancestor_type
   contradiction
 
 theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₁ : InstanceOfEntitySchema entities env)
   (hₐ : InstanceOfActionSchema entities env.acts)
   (h₂ : env.descendentOf euid₁.ty euid₂.ty = false) :
   inₑ euid₁ euid₂ entities = false
@@ -153,7 +153,7 @@ theorem entity_type_in_false_implies_inₑ_false {euid₁ euid₂ : EntityUID} {
       rw [←Set.contains_prop_bool_equiv] at h₂₂
       simp [h₂₁, h₂₂] at h₂
     | inr h₁ =>
-      have ⟨entry, h₅, h₁, _, _⟩ := h₁
+      have ⟨h₁, _, _, ⟨entry, h₅⟩⟩ := h₁
       have h₂ := h₂.2
       simp only [h₁, Bool.decide_eq_true, Bool.or_false, ActionSchema.actionType?] at h₂
       have h₆ := acts_maybeDescendentOf_false_implies_not_ancestor_type hₐ h₂ h₄ h₅ euid₂ h₃
@@ -263,7 +263,7 @@ theorem entity_set_type_implies_set_of_entities {vs : List Value} {ety : EntityT
     apply h₅ euid heuid
 
 theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : List EntityUID} {ety : EntityType} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets env.acts)
+  (h₁ : InstanceOfEntitySchema entities env)
   (hₐ : InstanceOfActionSchema entities env.acts)
   (h₂ : env.descendentOf euid.ty ety = false)
   (h₃ : ∀ euid, euid ∈ euids → euid.ty = ety) :
@@ -302,7 +302,7 @@ theorem entity_type_in_false_implies_inₛ_false {euid : EntityUID} {euids : Lis
       rw [h₂] at h₇
       contradiction
     | inr h₁ =>
-      have ⟨entry, h₉, h₁, _, _⟩ := h₁
+      have ⟨h₁, _, _, ⟨entry, h₉⟩⟩ := h₁
       simp only [
         Bool.if_false_right,
         Bool.decide_eq_true,

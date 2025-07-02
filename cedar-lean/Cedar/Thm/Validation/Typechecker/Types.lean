@@ -110,24 +110,24 @@ def WellFormedEntityData (uid : EntityUID) (data : EntityData) (ets : EntitySche
 Similar to `WellFormedEntityData`, but a special case for action entities
 since they are stored disjoint from `ets`
 -/
-def WellFormedActionData (uid : EntityUID) (data : EntityData) (ets : EntitySchema) (as : ActionSchema) : Prop :=
-  ∃ entry, as.find? uid = some entry ∧
-    -- Action entiies types should be disjoint from `ets`
-    ets.find? uid.ty = none ∧
-    -- Action entities cannot have attributes or tags
-    data.attrs = .empty ∧
-    -- TODO: or use this? InstanceOfType data.attrs (.record .empty) ∧
-    data.tags = .empty
-    -- `ancestors` consistency is guaranteed by `InstanceOfActionSchema`
+def WellFormedActionData (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
+  -- Action entiies types should be disjoint from `ets`
+  env.ets.find? uid.ty = none ∧
+  -- Action entities cannot have attributes or tags
+  data.attrs = .empty ∧
+  -- TODO: or use this? InstanceOfType data.attrs (.record .empty) ∧
+  data.tags = .empty ∧
+  ∃ entry, env.acts.find? uid = some entry
+  -- `ancestors` consistency is guaranteed by `InstanceOfActionSchema`
 
 /--
 Each entry in the store is valid
 -/
-def InstanceOfEntitySchema (entities : Entities) (ets : EntitySchema) (as : ActionSchema) : Prop :=
+def InstanceOfEntitySchema (entities : Entities) (env : Environment) : Prop :=
   ∀ (uid : EntityUID) (data : EntityData),
     entities.find? uid = some data →
-    WellFormedEntityData uid data ets ∨
-    WellFormedActionData uid data ets as
+    WellFormedEntityData uid data env.ets ∨
+    WellFormedActionData uid data env
 
 /--
 For every action in the entity store, the action's ancestors are consistent
@@ -142,7 +142,7 @@ def InstanceOfActionSchema (entities : Entities) (as: ActionSchema) : Prop :=
 
 def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
   InstanceOfRequestType request env.reqty ∧
-  InstanceOfEntitySchema entities env.ets env.acts ∧
+  InstanceOfEntitySchema entities env ∧
   InstanceOfActionSchema entities env.acts
 
 ----- Theorems -----
@@ -337,7 +337,7 @@ theorem well_typed_entity_attributes {env : Environment} {request : Request} {en
   InstanceOfType d.attrs (.record rty)
 := by
   have ⟨_, h₁, _⟩ := h₁
-  simp [InstanceOfEntitySchema] at h₁
+  simp [InstanceOfEntitySchema, Environment.schema] at h₁
   specialize h₁ uid d h₂
   cases h₁ with
   | inl h₁ =>
@@ -347,7 +347,7 @@ theorem well_typed_entity_attributes {env : Environment} {request : Request} {en
     subst h₃
     exact h₁
   | inr h₁ =>
-    have ⟨entry, _, h₁, _⟩ := h₁
+    have ⟨h₁, _, _, ⟨_, hentry⟩⟩ := h₁
     simp only [EntitySchema.attrs?, Option.map, h₁] at h₃
     contradiction
 

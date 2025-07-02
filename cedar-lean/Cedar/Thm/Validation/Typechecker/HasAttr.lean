@@ -184,7 +184,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
       contradiction
     | inr h₂ =>
       -- Action entity always have empty attributes
-      have ⟨_, _, _, h₉, _⟩ := h₂
+      have ⟨_, h₉, _⟩ := h₂
       simp only [h₉, Map.contains, Map.find?, Map.empty, Map.kvs]
       constructor
 
