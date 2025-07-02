@@ -32,6 +32,11 @@ inductive EntityValidationError where
 
 abbrev EntityValidationResult := Except EntityValidationError Unit
 
+inductive EnvironmentValidationError where
+| typeError (msg : String)
+
+abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
+
 def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   match b, bty with
   | true, .tt => true
@@ -39,11 +44,9 @@ def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   | _, .anyBool => true
   | _, _ => false
 
-def instanceOfEntityType (e : EntityUID) (ety : EntityType ) (eids: EntityType → Option (Set String)) : Bool :=
+def instanceOfEntityType (e : EntityUID) (ety : EntityType) (env: Environment) : Bool :=
   ety == e.ty &&
-  match eids ety with
-  | .some eids => eids.contains e.eid
-  | _ => true
+  (env.ets.isValidEntityUID e || env.acts.contains e)
 
 def instanceOfExtType (ext : Ext) (extty: ExtType) : Bool :=
 match ext, extty with
@@ -58,17 +61,17 @@ match rty.find? k with
     | .some qty => if qty.isRequired then r.contains k else true
     | _ => true
 
-def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
+def instanceOfType (v : Value) (ty : CedarType) (env : Environment) : Bool :=
   match v, ty with
   | .prim (.bool b), .bool bty => instanceOfBoolType b bty
   | .prim (.int _), .int => true
   | .prim (.string _), .string => true
-  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety schema.entityTypeMembers?
-  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty schema)
+  | .prim (.entityUID e), .entity ety => instanceOfEntityType e ety env
+  | .set s, .set ty => s.elts.attach.all (λ ⟨v, _⟩ => instanceOfType v ty env)
   | .record r, .record rty =>
     r.kvs.all (λ (k, _) => rty.contains k) &&
     (r.kvs.attach₂.all (λ ⟨(k, v), _⟩ => (match rty.find? k with
-        | .some qty => instanceOfType v qty.getType schema
+        | .some qty => instanceOfType v qty.getType env
         | _ => true))) &&
     rty.kvs.all (λ (k, _) => requiredAttributePresent r rty k)
   | .ext x, .ext xty => instanceOfExtType x xty
@@ -85,11 +88,11 @@ def instanceOfType (v : Value) (ty : CedarType) (schema: EntitySchema) : Bool :=
         simp only [Map.mk.sizeOf_spec]
         omega
 
-def instanceOfRequestType (request : Request) (reqty : RequestType) (schema: EntitySchema) : Bool :=
-  instanceOfEntityType request.principal reqty.principal schema.entityTypeMembers? &&
+def instanceOfRequestType (request : Request) (reqty : RequestType) (env: Environment) : Bool :=
+  instanceOfEntityType request.principal reqty.principal env &&
   request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource schema.entityTypeMembers? &&
-  instanceOfType request.context (.record reqty.context) schema
+  instanceOfEntityType request.resource reqty.resource env &&
+  instanceOfType request.context (.record reqty.context) env
 
 /--
 For every entity in the store,
@@ -104,16 +107,16 @@ def instanceOfEntitySchema (env : Environment) (entities : Entities) : EntityVal
 where
   instanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) : Bool :=
     match entry.tags? with
-    | .some tty => data.tags.values.all (instanceOfType · tty env.ets)
+    | .some tty => data.tags.values.all (instanceOfType · tty env)
     | .none     => data.tags == Map.empty
   instanceOfEntityData uid data :=
     match env.ets.find? uid.ty with
     |  .some entry =>
       if entry.isValidEntityEID uid.eid then
-        if instanceOfType data.attrs (.record entry.attrs) env.ets then
+        if instanceOfType data.attrs (.record entry.attrs) env then
           if data.ancestors.all (λ ancestor =>
             entry.ancestors.contains ancestor.ty &&
-            instanceOfEntityType ancestor ancestor.ty env.ets.entityTypeMembers?) then
+            instanceOfEntityType ancestor ancestor.ty env) then
             if instanceOfEntityTags data entry then .ok ()
             else .error (.typeError s!"entity tags inconsistent with type store")
           else .error (.typeError s!"entity ancestors inconsistent with type store")
@@ -135,7 +138,7 @@ where
                        else .error (.typeError "action ancestors inconsistent with type store information")
       | _ => .error (.typeError s!"action type {uid.eid} not defined in type store")
 
-def requestMatchesEnvironment (env : Environment) (request : Request): Bool := instanceOfRequestType request env.reqty env.ets
+def requestMatchesEnvironment (env : Environment) (request : Request): Bool := instanceOfRequestType request env.reqty env
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.environments.any (requestMatchesEnvironment · request)))
@@ -150,6 +153,18 @@ def actionSchemaEntryToEntityData (ase : ActionSchemaEntry) : EntityData := {
   attrs := Map.empty,
   tags := Map.empty
 }
+
+def ActionSchema.wellFormed (env : Environment) (acts : ActionSchema) : EnvironmentValidationResult :=
+  sorry
+
+def RequestType.wellFormed (env : Environment) (reqty : RequestType) : EnvironmentValidationResult :=
+  sorry
+
+def Environment.wellFormed (env : Environment) : EnvironmentValidationResult :=
+  sorry
+
+def Schema.wellFormed (schema : Schema) : EnvironmentValidationResult :=
+  schema.environments.forM Environment.wellFormed
 
 /--
 Update the entity schema with the entities created for action schema entries.

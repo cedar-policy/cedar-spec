@@ -15,16 +15,14 @@ theorem instance_of_bool_type_refl {b : Bool} {bty : BoolType} :
   intro h₀
   cases h₁ : b <;> cases h₂ : bty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_entity_type_refl {env : Environment} {e : EntityUID} {ety : EntityType} {eids: EntityType → Option (Set String)} :
-  instanceOfEntityType e ety eids = true → InstanceOfEntityType env e ety
+theorem instance_of_entity_type_refl {env : Environment} {e : EntityUID} {ety : EntityType} :
+  instanceOfEntityType e ety env = true → InstanceOfEntityType env e ety
 := by
   simp only [InstanceOfEntityType, instanceOfEntityType]
   intro h₀
-  have h₁ : (ety == e.ty) := by
-    simp at h₀
-    simp [h₀.left]
-  simp only [beq_iff_eq] at h₁
-  exact h₁
+  simp only [Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at h₀
+  simp only [EntityUID.WellFormed]
+  exact h₀
 
 theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   instanceOfExtType ext extty = true → InstanceOfExtType ext extty
@@ -33,8 +31,8 @@ theorem instance_of_ext_type_refl {ext : Ext} {extty : ExtType} :
   intro h₀
   cases h₁ : ext <;> cases h₂ : extty <;> subst h₁ <;> subst h₂ <;> simp only [Bool.false_eq_true] at *
 
-theorem instance_of_type_refl {env : Environment} {v : Value} {ty : CedarType} {schema: EntitySchema} :
-  instanceOfType v ty schema = true → InstanceOfType env v ty
+theorem instance_of_type_refl {env : Environment} {v : Value} {ty : CedarType} :
+  instanceOfType v ty env = true → InstanceOfType env v ty
 := by
   intro h₀
   unfold instanceOfType at h₀
@@ -146,17 +144,19 @@ decreasing_by
     have := Map.sizeOf_lt_of_value h₁
     omega
 
-theorem instance_of_request_type_refl {env : Environment} {request : Request} {reqty : RequestType} {schema: EntitySchema}:
-  instanceOfRequestType request reqty schema = true → InstanceOfRequestType env request reqty
+theorem instance_of_request_type_refl {env : Environment} {request : Request} {reqty : RequestType} :
+  instanceOfRequestType request reqty env = true → InstanceOfRequestType env request reqty
 := by
   intro h₀
   simp only [InstanceOfRequestType]
   simp only [instanceOfRequestType, Bool.and_eq_true, beq_iff_eq] at h₀
   have ⟨⟨⟨h₁,h₂⟩,h₃⟩, h₄⟩ := h₀
   and_intros
-  · exact instance_of_entity_type_refl h₁
+  · exact (instance_of_entity_type_refl h₁).1
+  · exact (instance_of_entity_type_refl h₁).2
   · exact h₂
-  · exact instance_of_entity_type_refl h₃
+  · exact (instance_of_entity_type_refl h₃).1
+  · exact (instance_of_entity_type_refl h₃).2
   · exact instance_of_type_refl h₄
 
 theorem instance_of_entity_schema_refl {env : Environment} {entities : Entities} :
@@ -229,34 +229,45 @@ theorem instance_of_action_schema_refl {entities : Entities} {acts : ActionSchem
     apply And.intro rfl
     simp only [h₀]
 
+theorem env_well_formed_refl {env : Environment}:
+  env.wellFormed = .ok () → env.WellFormed
+:= sorry
 
 theorem request_and_entities_match_env {env : Environment} {request : Request} {entities : Entities} :
   requestMatchesEnvironment env request →
   entitiesMatchEnvironment env entities = .ok () →
+  env.wellFormed = .ok () →
   RequestAndEntitiesMatchEnvironment env request entities
 := by
-  intro h₀ h₁
+  intro h₀ h₁ h₂
   simp only [RequestAndEntitiesMatchEnvironment]
   simp only [requestMatchesEnvironment] at h₀
   simp only [entitiesMatchEnvironment] at h₁
   constructor
   exact instance_of_request_type_refl h₀
-  cases h₂ : instanceOfEntitySchema env entities <;> simp only [h₂, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
-  exact And.intro (instance_of_entity_schema_refl h₂) (instance_of_action_schema_refl h₁)
+  cases h₃ : instanceOfEntitySchema env entities <;> simp only [h₃, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₁
+  constructor
+  · exact instance_of_entity_schema_refl h₃
+  constructor
+  · exact instance_of_action_schema_refl h₁
+  · exact env_well_formed_refl h₂
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
+  schema.wellFormed = .ok () →
   RequestAndEntitiesMatchSchema schema request entities
 := by
-  intro h₀ h₁
+  intro h₀ h₁ h₂
   simp only [RequestAndEntitiesMatchSchema]
   simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
     Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
     Bool.not_eq_false] at h₀
   simp only [validateEntities] at h₁
-  replace ⟨env, ⟨h₀, h₂⟩⟩ := h₀
+  simp only [Schema.wellFormed] at h₂
+  replace ⟨env, ⟨h₀, h₃⟩⟩ := h₀
   exists env
   apply And.intro h₀
-  apply request_and_entities_match_env h₂
+  apply request_and_entities_match_env h₃
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₁ env h₀]
+  simp only [List.forM_ok_implies_all_ok schema.environments Environment.wellFormed h₂ env h₀]
