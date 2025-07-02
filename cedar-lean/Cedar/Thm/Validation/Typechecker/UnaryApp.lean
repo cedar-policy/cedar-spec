@@ -81,7 +81,7 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   (h₃ : typeOf (Expr.unaryApp .not x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp .not x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp .not x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, bty, c₁', h₆, h₄⟩ := type_of_not_inversion h₃
   subst h₅; rw [h₆]
@@ -111,7 +111,7 @@ theorem type_of_not_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
       simp [apply₁, BoolType.not]
       exact true_is_instance_of_tt
   all_goals {
-    exact type_is_inhabited (CedarType.bool (BoolType.not bty))
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_neg_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -137,7 +137,7 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
   (h₃ : typeOf (Expr.unaryApp .neg x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp .neg x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp .neg x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp .neg x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_neg_inversion h₃
   subst h₅; rw [h₆]
@@ -155,12 +155,12 @@ theorem type_of_neg_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Env
     cases i.neg?
     case none =>
       simp only [or_false, or_true, true_and, reduceCtorEq]
-      exact type_is_inhabited CedarType.int
+      exact type_is_inhabited_int
     case some i' =>
       simp only [Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
       exact InstanceOfType.instance_of_int
   all_goals {
-    exact type_is_inhabited CedarType.int
+    exact type_is_inhabited_int
   }
 
 theorem type_of_isEmpty_inversion {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -186,7 +186,7 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
   (h₃ : typeOf (Expr.unaryApp .isEmpty x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp .isEmpty x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp .isEmpty x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp .isEmpty x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_isEmpty_inversion h₃
   subst h₅; rw [h₆]
@@ -204,7 +204,7 @@ theorem type_of_isEmpty_is_sound {x₁ : Expr} {c₁ c₂ : Capabilities} {env :
     apply InstanceOfType.instance_of_bool
     simp [InstanceOfBoolType]
   all_goals {
-    exact type_is_inhabited (.bool .anyBool)
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_like_inversion {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -230,7 +230,7 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
   (h₃ : typeOf (Expr.unaryApp (.like p) x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp (.like p) x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp (.like p) x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp (.like p) x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, h₆, c₁', h₄⟩ := type_of_like_inversion h₃
   subst h₅; rw [h₆]
@@ -247,7 +247,7 @@ theorem type_of_like_is_sound {x₁ : Expr} {p : Pattern} {c₁ c₂ : Capabilit
     simp [apply₁]
     exact bool_is_instance_of_anyBool (wildcardMatch s p)
   all_goals {
-    exact type_is_inhabited (.bool .anyBool)
+    exact type_is_inhabited_bool
   }
 
 theorem type_of_is_inversion {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr}
@@ -279,7 +279,7 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
   (h₃ : typeOf (Expr.unaryApp (.is ety) x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp (.is ety) x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp (.is ety) x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp (.is ety) x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨h₅, ety', c₁', h₆, h₄⟩ := type_of_is_inversion h₃
   subst h₅; rw [h₆]
@@ -299,7 +299,7 @@ theorem type_of_is_is_sound {x₁ : Expr} {ety : EntityType} {c₁ c₂ : Capabi
     case false => exact false_is_instance_of_ff
     case true => exact true_is_instance_of_tt
   all_goals {
-    apply type_is_inhabited
+    apply type_is_inhabited_bool
   }
 
 theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
@@ -308,7 +308,7 @@ theorem type_of_unaryApp_is_sound {op₁ : UnaryOp} {x₁ : Expr} {c₁ c₂ : C
   (h₃ : typeOf (Expr.unaryApp op₁ x₁) c₁ env = Except.ok (ty, c₂))
   (ih : TypeOfIsSound x₁) :
   GuardedCapabilitiesInvariant (Expr.unaryApp op₁ x₁) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.unaryApp op₁ x₁) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.unaryApp op₁ x₁) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   match op₁ with
   | .not     => exact type_of_not_is_sound h₁ h₂ h₃ ih

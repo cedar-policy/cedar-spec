@@ -78,7 +78,7 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp op₂ x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp op₂ x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
   have ⟨hc, hty, ht⟩ := type_of_int_cmp_inversion h₀ h₃
   rcases ht with ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩ | ⟨ht₁, ht₂⟩
@@ -94,7 +94,7 @@ theorem type_of_int_cmp_is_sound {op₂ : BinaryOp} {x₁ x₂ : Expr} {c₁ c�
     simp only [List.empty_eq, EvaluatesTo, evaluate] at *
     cases h₄ : evaluate x₁ request entities <;> simp [h₄] at * <;>
     cases h₅ : evaluate x₂ request entities <;> simp [h₅] at * <;>
-    try { simp only [ih₁, ih₂, true_and] ; exact type_is_inhabited (.bool .anyBool) }
+    try { simp only [ih₁, ih₂, true_and] ; exact type_is_inhabited_bool }
     replace ⟨ihl₁, ih₃⟩ := ih₁
     replace ⟨ihl₂, ih₄⟩ := ih₂
     rw [eq_comm] at ihl₁ ihl₂; subst ihl₁ ihl₂

@@ -17,6 +17,7 @@
 import Cedar.Thm.Data.List
 import Cedar.Thm.Data.LT
 import Cedar.Thm.Validation.Typechecker.Basic
+import Cedar.Thm.Validation.Typechecker.LUB
 
 /-!
 This file proves that typechecking of `.set` expressions is sound.
@@ -27,43 +28,6 @@ namespace Cedar.Thm
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
-
-theorem lub_lub_fixed {ty₁ ty₂ ty₃ ty₄ : CedarType}
-  (h₁ : (ty₁ ⊔ ty₂) = some ty₃)
-  (h₂ : (ty₃ ⊔ ty₄) = some ty₄) :
-  (ty₁ ⊔ ty₄) = some ty₄
-:= by
-  have h₃ := lub_left_subty h₁
-  have h₄ := lub_left_subty h₂
-  have h₅ := subty_trans h₃ h₄
-  simp [subty] at h₅
-  split at h₅ <;> simp at h₅ ; subst h₅
-  assumption
-
-theorem foldlM_of_lub_is_LUB {ty lubTy : CedarType } {tys : List CedarType}
-  (h₁ : List.foldlM lub? ty tys = some lubTy) :
-  (ty ⊔ lubTy) = some lubTy
-:= by
-  induction tys generalizing ty lubTy
-  case nil =>
-    simp [List.foldlM, pure] at h₁
-    subst h₁
-    exact lub_refl ty
-  case cons hd tl ih =>
-    simp [List.foldlM] at h₁
-    cases h₂ : ty ⊔ hd <;>
-    simp [h₂] at h₁
-    rename_i lubTy'
-    specialize ih h₁
-    apply lub_lub_fixed h₂ ih
-
-theorem foldlM_of_lub_assoc (ty₁ ty₂ : CedarType) (tys : List CedarType) :
-  List.foldlM lub? ty₁ (ty₂ :: tys) =
-  (do let ty₃ ← List.foldlM lub? ty₂ tys ; ty₁ ⊔ ty₃)
-:= by
-  apply List.foldlM_of_assoc
-  intro x₁ x₂ x₃
-  apply lub_assoc
 
 theorem type_of_set_tail
   {x xhd : Expr } {xtl : List Expr} {c : Capabilities}
@@ -232,7 +196,7 @@ theorem type_of_set_is_sound_ok { xs : List Expr } { c₁ : Capabilities } { env
   (h₃ : ∀ (xᵢ : Expr), xᵢ ∈ xs → ∃ txᵢ cᵢ, (typeOf xᵢ c₁ env) = Except.ok (txᵢ, cᵢ) ∧ (txᵢ.typeOf ⊔ ty) = some ty)
   (h₄ : (xs.mapM fun x => evaluate x request entities) = Except.ok vs)
   (h₅ : v ∈ vs):
-  InstanceOfType v ty
+  InstanceOfType env v ty
 := by
   cases xs
   case nil =>
@@ -277,7 +241,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   (h₃ : typeOf (Expr.set xs) c₁ env = Except.ok (sty, c₂))
   (ih : ∀ (xᵢ : Expr), xᵢ ∈ xs → TypeOfIsSound xᵢ) :
   GuardedCapabilitiesInvariant (Expr.set xs) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType v sty.typeOf
+  ∃ v, EvaluatesTo (Expr.set xs) request entities v ∧ InstanceOfType env v sty.typeOf
 := by
   have ⟨h₆, txs, ty, h₄, h₅⟩ := type_of_set_inversion h₃
   subst h₆ ; rw [h₄]
@@ -291,7 +255,7 @@ theorem type_of_set_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {env : 
   cases h₆ : xs.mapM fun x => evaluate x request entities <;>
   simp [h₆]
   case error err =>
-    simp only [type_is_inhabited, and_true]
+    simp only [TypedExpr.typeOf, type_is_inhabited_set, and_true]
     exact type_of_set_is_sound_err ih h₁ h₂ h₅ h₆
   case ok vs =>
     apply InstanceOfType.instance_of_set

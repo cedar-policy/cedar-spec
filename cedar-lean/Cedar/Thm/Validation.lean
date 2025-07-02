@@ -48,19 +48,20 @@ theorem validation_is_sound (policies : Policies) (schema : Schema) (request : R
   validate policies schema = .ok () →
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
+  schema.wellFormed = .ok () →
   AllEvaluateToBool policies request entities
 := by
-  intro h₀ h₁ h₂
-  have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
+  intro h₀ h₁ h₂ h₃
+  have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂ h₃
   unfold validate at h₀
   simp only [AllEvaluateToBool]
-  cases h₃ : policies with
+  cases h₄ : policies with
   | nil => simp only [List.not_mem_nil, false_implies, implies_true]
   | cons h' t' =>
     intro policy pin
     simp only [EvaluatesToBool]
     apply typecheck_policy_with_environments_is_sound policy schema.environments request entities h₁
-    subst h₃
+    subst h₄
     simp only [List.forM_eq_forM, List.forM_cons] at h₀
     cases h₄ : (typecheckPolicyWithEnvironments h' schema.environments) <;>
     simp only [h₄, Except.bind_err, reduceCtorEq] at h₀
@@ -83,12 +84,13 @@ entities.
 theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
   (hr : validateRequest schema request = .ok ())
   (he : validateEntities schema entities = .ok ())
+  (hwf : schema.wellFormed = .ok ())
   (hs : slice = entities.sliceAtLevel request n)
   (htl : validateWithLevel ps schema n = .ok ()) :
   isAuthorized request entities ps = isAuthorized request slice ps
 := by
   have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request slice := by
-    have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he
+    have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he hwf
     replace htl := List.forM_ok_implies_all_ok _ _ htl
     intro p hp
     exact typecheck_policy_at_level_with_environments_is_sound hs hre (htl p hp)

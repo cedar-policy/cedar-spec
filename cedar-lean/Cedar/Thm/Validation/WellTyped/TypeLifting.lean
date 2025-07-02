@@ -16,7 +16,7 @@
 
 import Cedar.Spec
 import Cedar.Validation
-import Cedar.Thm.Validation
+import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Data
 import Cedar.TPE
 
@@ -331,9 +331,9 @@ theorem lifted_type_lub {ty₁ ty₂ ty : CedarType} :
   replace h₂ := lifted_type_is_top h₂
   simp only [h₁, h₂]
 
-theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
-  InstanceOfType v ty →
-  InstanceOfType v ty.liftBoolTypes
+theorem type_lifting_preserves_instance_of_type {env : Environment} {v : Value} {ty : CedarType} :
+  InstanceOfType env v ty →
+  InstanceOfType env v ty.liftBoolTypes
 := by
   intro h
   have h' := @lifted_type_is_super_type ty ty.liftBoolTypes (lifted_type_is_lifted ty)
@@ -342,7 +342,7 @@ theorem type_lifting_preserves_instance_of_type {v : Value} {ty : CedarType} :
   case _ heq =>
     simp at h'
     simp [h'] at heq
-    exact @instance_of_lub_left v ty.liftBoolTypes ty ty.liftBoolTypes heq h
+    exact @instance_of_lub_left env v ty.liftBoolTypes ty ty.liftBoolTypes heq h
   case _ => cases h'
 
 theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
@@ -352,5 +352,78 @@ theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedTy
   induction rty.1 <;> simp [CedarType.liftBoolTypesRecord]
   rename_i hᵢ
   exact hᵢ
+
+theorem wf_type_iff_wf_liftBoolTypes {env : Environment} :
+  ∀ {ty : CedarType},
+  CedarType.WellFormed env ty ↔ CedarType.WellFormed env ty.liftBoolTypes
+| .bool _
+| .int
+| .string
+| .ext _ => by
+  constructor
+  · intros; constructor
+  · intros; constructor
+| .entity _ => by simp only [CedarType.liftBoolTypes]
+| .set ty => by
+  simp only [CedarType.liftBoolTypes]
+  constructor
+  · intros h
+    constructor
+    cases h with | set_wf h =>
+    exact wf_type_iff_wf_liftBoolTypes.mp h
+  · intros h
+    constructor
+    cases h with | set_wf h =>
+    exact wf_type_iff_wf_liftBoolTypes.mpr h
+| .record rty => by
+  cases rty with | mk rty =>
+  simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes]
+  rw [lift_bool_types_record_eq_map_on_values]
+  constructor
+  · intros h
+    cases h with | record_wf _ hwf_attr =>
+    constructor
+    · apply Data.Map.mapOnValues_wf.mp
+      assumption
+    · intros attr qty hfound
+
+      have ⟨qty', hfound', heq⟩ := Data.Map.find?_mapOnValues_some' QualifiedType.liftBoolTypes hfound
+      have := hwf_attr attr qty' hfound'
+      simp only [heq]
+      cases qty'
+      all_goals
+        constructor
+        cases this
+        apply wf_type_iff_wf_liftBoolTypes.mp
+        assumption
+  · intros h
+    cases h with | record_wf _ hwf_attr =>
+    constructor
+    · apply Data.Map.mapOnValues_wf.mpr
+      assumption
+    · intros attr qty hfound
+      have hfound' := Data.Map.find?_mapOnValues_some QualifiedType.liftBoolTypes hfound
+      have := hwf_attr attr qty.liftBoolTypes hfound'
+      cases qty
+      all_goals
+        constructor
+        cases this
+        apply wf_type_iff_wf_liftBoolTypes.mpr
+        assumption
+  decreasing_by
+    any_goals simp
+    any_goals
+      have hmem := Data.Map.find?_mem_toList hfound'
+      simp [Data.Map.toList, Data.Map.kvs] at hmem
+      have h := List.sizeOf_snd_lt_sizeOf_list hmem
+      simp at h
+      omega
+
+    any_goals
+      have hmem := Data.Map.find?_mem_toList hfound
+      simp [Data.Map.toList, Data.Map.kvs] at hmem
+      have h := List.sizeOf_snd_lt_sizeOf_list hmem
+      simp at h
+      omega
 
 end Cedar.Thm
