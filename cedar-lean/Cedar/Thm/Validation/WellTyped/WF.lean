@@ -16,6 +16,7 @@
 
 import Cedar.Thm.Validation.WellTyped.Definition
 import Cedar.Thm.Validation.WellTyped.Typechecking
+import Cedar.Thm.Validation.WellTyped.TypeLifting
 import Cedar.Thm.Validation.Typechecker.WF
 
 /-!

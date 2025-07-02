@@ -77,7 +77,9 @@ def StandardSchemaEntry.WellFormed (env : Environment) (entry : StandardSchemaEn
   -- Each ancestor entity type is well-formed
   (∀ anc ∈ entry.ancestors, EntityType.WellFormed env anc) ∧
   -- The attribute types are well-formed
-  (CedarType.record entry.attrs).WellFormed env
+  (CedarType.record entry.attrs).WellFormed env ∧
+  -- The tag type is well-formed
+  (∀ ty, entry.tags = .some ty → CedarType.WellFormed env ty)
 
 def EntitySchemaEntry.WellFormed (env : Environment) (entry : EntitySchemaEntry) : Prop :=
   match entry with
@@ -139,40 +141,90 @@ theorem wf_record_type_cons {env : Environment}
   CedarType.WellFormed env hd.snd.getType ∧
   CedarType.WellFormed env (.record (Map.mk tl))
 := by
-  -- cases hwf
-  -- rename_i hwf_map hwf_tys
-  -- simp [Map.WellFormed] at hwf_map
-  sorry
+  cases hwf
+  rename_i hwf_map hwf_tys
+  simp only [Map.WellFormed] at hwf_map
+  constructor
+  · have := hwf_tys hd.fst hd.snd
+    simp only [Map.find?, List.find?, BEq.rfl, forall_const] at this
+    cases e : hd.snd
+    all_goals
+      simp only [e] at *
+      cases this
+      simp only [Qualified.getType]
+      assumption
+  · constructor
+    · simp only [Map.WellFormed]
+      apply Eq.symm
+      apply Map.make_eq_mk.mp
+      have := Map.make_eq_mk.mpr (Eq.symm hwf_map)
+      cases this with
+      | cons_nil => constructor
+      | cons_cons =>
+        simp only [Map.toList, Map.kvs]
+        assumption
+    · intros attr qty hfound
+      have hfound := Map.find?_mem_toList hfound
+      simp only [Map.toList, Map.kvs] at hfound
+      have : (Map.mk (hd :: tl)).find? attr = some qty := by
+        apply (Map.in_list_iff_find?_some ?_).mp
+        · simp [Map.kvs, hfound]
+        · simp only [Map.WellFormed]
+          assumption
+      exact hwf_tys attr qty this
 
 theorem wf_record_implies_wf_attr {env : Environment} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
   (hwf : CedarType.WellFormed env (.record rty))
   (hqty : rty.find? attr = some qty) :
   QualifiedType.WellFormed env qty
 := by
-  sorry
+  cases hwf with
+  | record_wf _ hattr =>
+    exact hattr attr qty hqty
 
 theorem wf_env_implies_wf_entity_schema_entry {env : Environment} {ety : EntityType} {entry : EntitySchemaEntry}
   (hwf : env.WellFormed)
   (hets : env.ets.find? ety = some entry) :
   entry.WellFormed env
-:= sorry
-
-theorem wf_type_iff_wf_liftBoolTypes {env : Environment} {ty : CedarType} :
-  CedarType.WellFormed env ty ↔ CedarType.WellFormed env ty.liftBoolTypes
 := by
-  sorry
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  exact hwf_ets ety entry hets
 
 theorem wf_env_implies_wf_tag_type {env : Environment} {ety : EntityType} {ty : CedarType}
   (hwf : env.WellFormed)
   (hety : env.ets.tags? ety = .some (.some ty)) :
   CedarType.WellFormed env ty
-:= sorry
+:= by
+  simp only [EntitySchema.tags?, Option.map_eq_some_iff] at hety
+  have ⟨entry, hentry, htags⟩ := hety
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, _, hwf_tag⟩ := hwf_entry
+    simp only [EntitySchemaEntry.tags?] at htags
+    exact hwf_tag ty htags
+  · simp [EntitySchemaEntry.tags?] at htags
 
 theorem wf_env_implies_wf_attrs {env : Environment} {ety : EntityType} {attrs : RecordType}
   (hwf : env.WellFormed)
   (hattrs : env.ets.attrs? ety = .some attrs) :
   CedarType.WellFormed env (.record attrs)
-:= sorry
+:= by
+  simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at hattrs
+  have ⟨entry, hentry, hattrs⟩ := hattrs
+  have ⟨⟨_, hwf_ets⟩, _⟩ := hwf
+  have hwf_entry := hwf_ets ety entry hentry
+  simp only [EntitySchemaEntry.WellFormed] at hwf_entry
+  split at hwf_entry
+  · have ⟨_, _, hwf_attrs, _⟩ := hwf_entry
+    simp only [← hattrs]
+    exact hwf_attrs
+  · simp only [EntitySchemaEntry.attrs] at hattrs
+    simp only [← hattrs, Map.empty]
+    constructor
+    . simp [Map.WellFormed, Map.toList, Map.kvs, Map.make, List.canonicalize]
+    · simp [Map.find?, List.find?]
 
 theorem wf_env_implies_action_wf {env : Environment}
   (hwf : env.WellFormed) :
