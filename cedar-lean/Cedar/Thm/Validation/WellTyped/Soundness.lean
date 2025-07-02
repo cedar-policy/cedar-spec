@@ -64,6 +64,7 @@ theorem well_typed_is_sound_var
 (h₃ : evaluate (Expr.var var) request entities = Except.ok v) :
 InstanceOfType env v (TypedExpr.var var ty).typeOf
 := by
+  have hwf := h₁.wf_env
   cases h₂ <;>
   simp only [TypedExpr.typeOf] <;>
   simp only [TypedExpr.toExpr, evaluate, Except.ok.injEq] at h₃ <;>
@@ -79,8 +80,10 @@ InstanceOfType env v (TypedExpr.var var ty).typeOf
     rcases h₁ with ⟨⟨_, h₁, _, _⟩, _, _⟩
     simp only [h₁]
     have : InstanceOfEntityType env env.reqty.action env.reqty.action.ty := by
+      have ⟨_, _, ⟨_, hwf_act, _⟩⟩ := hwf
       simp [InstanceOfEntityType, EntityUID.WellFormed]
-      sorry
+      apply Or.inr
+      exact hwf_act
     exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
   case context =>
     rcases h₁ with ⟨⟨_, _, _, h₁⟩, _, _⟩
