@@ -30,7 +30,7 @@ open Cedar.Spec
 
 ----- Well-formedness of environment -----
 
-def ActionSchema.isActionEntityType (acts : ActionSchema) (ety : EntityType) : Prop :=
+def ActionSchema.IsActionEntityType (acts : ActionSchema) (ety : EntityType) : Prop :=
   ∃ uid, acts.contains uid ∧ uid.ty = ety
 
 /--
@@ -38,9 +38,7 @@ Either a non-action entity type in `env.ets`,
 or an action entity type in `env.acts`.
 -/
 def EntityType.WellFormed (env : Environment) (ety : EntityType) : Prop :=
-  if env.ets.contains ety
-  then ¬env.acts.isActionEntityType ety
-  else env.acts.isActionEntityType ety
+  env.ets.contains ety ∨ env.acts.IsActionEntityType ety
 
 mutual
 inductive QualifiedType.WellFormed (env : Environment) : Qualified CedarType → Prop where
@@ -79,10 +77,7 @@ def StandardSchemaEntry.WellFormed (env : Environment) (entry : StandardSchemaEn
   -- Each ancestor entity type must be a well-formed,
   -- non-action, non-enum entity type
   (∀ anc ∈ entry.ancestors,
-    ∃ entry, env.ets.find? anc = some entry ∧
-      match entry with
-      | .standard _ => true
-      | _ => false) ∧
+    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard) ∧
   -- The attribute types are well-formed
   (CedarType.record entry.attrs).WellFormed env ∧
   -- The tag type is well-formed
@@ -131,15 +126,13 @@ def ActionSchema.WellFormed (env : Environment) (acts : ActionSchema) : Prop :=
   acts.TransitiveActionHierarchy
 
 def RequestType.WellFormed (env : Environment) (reqty : RequestType) : Prop :=
-  EntityType.WellFormed env reqty.principal ∧
-  (∃ entry, env.acts.find? reqty.action = some entry ∧
+  ∃ entry, env.acts.find? reqty.action = some entry ∧
     -- Enforce that principal/resource/context are valid for the action
     reqty.principal ∈ entry.appliesToPrincipal ∧
     reqty.resource ∈ entry.appliesToResource ∧
-    reqty.context = entry.context) ∧
-  EntityType.WellFormed env reqty.resource ∧
-  -- Context is a well-formed `RecordType`
-  (CedarType.record reqty.context).WellFormed env
+    reqty.context = entry.context
+  -- Other properties, such as the well-formedness of principal/resource/context
+  -- follows from the above and the well-formedness of `env.ets` and `env.acts`.
 
 def Environment.WellFormed (env : Environment) : Prop :=
   env.ets.WellFormed env ∧

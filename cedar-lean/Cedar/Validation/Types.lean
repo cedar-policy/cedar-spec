@@ -137,6 +137,10 @@ def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
   | .standard ty => ty.ancestors
   | .enum _ => Set.empty
 
+def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
+  | .standard _ => true
+  | .enum _     => false
+
 abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
 def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
