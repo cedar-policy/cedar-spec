@@ -134,7 +134,7 @@ def InstanceOfSchema (entities : Entities) (env : Environment) : Prop :=
   (∀ (uid : EntityUID) (entry : ActionSchemaEntry),
     env.acts.find? uid = some entry → ∃ data, entities.find? uid = some data)
 
-def RequestAndEntitiesMatchEnvironment (env : Environment) (request : Request) (entities : Entities) : Prop :=
+def RequestAndEntitiesMatchEnvironment (request : Request) (entities : Entities) (env : Environment) : Prop :=
   env.WellFormed ∧
   InstanceOfRequestType request env ∧
   InstanceOfSchema entities env
