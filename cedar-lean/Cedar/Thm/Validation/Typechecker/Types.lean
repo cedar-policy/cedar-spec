@@ -49,42 +49,42 @@ def InstanceOfExtType : Ext → ExtType → Prop
   | .duration _, .duration => True
   | _, _                 => False
 
-inductive InstanceOfType : Value → CedarType → Environment → Prop where
-  | instance_of_bool {env : Environment} (b : Bool) (bty : BoolType)
+inductive InstanceOfType (env : Environment) : Value → CedarType → Prop where
+  | instance_of_bool (b : Bool) (bty : BoolType)
       (h₁ : InstanceOfBoolType b bty) :
-      InstanceOfType (.prim (.bool b)) (.bool bty) env
-  | instance_of_int {env : Environment} :
-      InstanceOfType (.prim (.int _)) .int env
-  | instance_of_string {env : Environment} :
-      InstanceOfType (.prim (.string _)) .string env
-  | instance_of_entity {env : Environment} (e : EntityUID) (ety: EntityType)
+      InstanceOfType env (.prim (.bool b)) (.bool bty)
+  | instance_of_int :
+      InstanceOfType env (.prim (.int _)) .int
+  | instance_of_string :
+      InstanceOfType env (.prim (.string _)) .string
+  | instance_of_entity (e : EntityUID) (ety: EntityType)
       (h₁ : InstanceOfEntityType e ety env) :
-      InstanceOfType (.prim (.entityUID e)) (.entity ety) env
-  | instance_of_set {env : Environment} (s : Set Value) (ty : CedarType)
-      (h₁ : ∀ v, v ∈ s → InstanceOfType v ty env) :
-      InstanceOfType (.set s) (.set ty) env
-  | instance_of_record {env : Environment} (r : Map Attr Value) (rty : RecordType)
+      InstanceOfType env (.prim (.entityUID e)) (.entity ety)
+  | instance_of_set (s : Set Value) (ty : CedarType)
+      (h₁ : ∀ v, v ∈ s → InstanceOfType env v ty) :
+      InstanceOfType env (.set s) (.set ty)
+  | instance_of_record (r : Map Attr Value) (rty : RecordType)
       -- if an attribute is present in the record, then it is present in the type
       (h₁ : ∀ (k : Attr), r.contains k → rty.contains k)
       -- if an attribute is present, then it has the expected type
       (h₂ : ∀ (k : Attr) (v : Value) (qty : QualifiedType),
-        r.find? k = some v → rty.find? k = some qty → InstanceOfType v qty.getType env)
+        r.find? k = some v → rty.find? k = some qty → InstanceOfType env v qty.getType)
       -- required attributes are present
       (h₃ : ∀ (k : Attr) (qty : QualifiedType), rty.find? k = some qty → qty.isRequired → r.contains k) :
-      InstanceOfType (.record r) (.record rty) env
-  | instance_of_ext {env : Environment} (x : Ext) (xty : ExtType)
+      InstanceOfType env (.record r) (.record rty)
+  | instance_of_ext (x : Ext) (xty : ExtType)
       (h₁ : InstanceOfExtType x xty) :
-      InstanceOfType (.ext x) (.ext xty) env
+      InstanceOfType env (.ext x) (.ext xty)
 
 def InstanceOfRequestType (request : Request) (env : Environment) : Prop :=
   InstanceOfEntityType request.principal env.reqty.principal env ∧
   request.action = env.reqty.action ∧
   InstanceOfEntityType request.resource env.reqty.resource env ∧
-  InstanceOfType request.context (.record env.reqty.context) env
+  InstanceOfType env request.context (.record env.reqty.context)
 
 def InstanceOfEntityTags (data : EntityData) (entry : EntitySchemaEntry) (env : Environment) : Prop :=
   match entry.tags? with
-  | .some tty => ∀ v ∈ data.tags.values, InstanceOfType v tty env
+  | .some tty => ∀ v ∈ data.tags.values, InstanceOfType env v tty
   | .none     => data.tags = Map.empty
 
 def IsValidEntityEID (entry: EntitySchemaEntry) (eid: String) : Prop :=
@@ -103,7 +103,7 @@ For every entity `(uid, data)` in the store,
 def InstanceOfEntitySchemaEntry (uid : EntityUID) (data : EntityData) (env : Environment) : Prop :=
   ∃ entry, env.ets.find? uid.ty = some entry ∧
     IsValidEntityEID entry uid.eid ∧
-    InstanceOfType data.attrs (.record entry.attrs) env ∧
+    InstanceOfType env data.attrs (.record entry.attrs) ∧
     (∀ ancestor, ancestor ∈ data.ancestors → ancestor.ty ∈ entry.ancestors) ∧
     InstanceOfEntityTags data entry env
 
