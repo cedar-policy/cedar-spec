@@ -120,8 +120,6 @@ inductive EntitySchemaEntry where
   | standard (ty: StandardSchemaEntry)
   | enum (eids: Set String)
 
-abbrev EntitySchema := Map EntityType EntitySchemaEntry
-
 def EntitySchemaEntry.isValidEntityEID (entry: EntitySchemaEntry) (eid: String): Bool :=
   match entry with
   | .standard _ => true
@@ -138,6 +136,12 @@ def EntitySchemaEntry.attrs : EntitySchemaEntry → RecordType
 def EntitySchemaEntry.ancestors : EntitySchemaEntry → Set EntityType
   | .standard ty => ty.ancestors
   | .enum _ => Set.empty
+
+def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
+  | .standard _ => true
+  | .enum _     => false
+
+abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
 def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
   match ets.find? et with
