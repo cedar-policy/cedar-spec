@@ -164,8 +164,7 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     | .ok v => do
         let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
         let entities := Cedar.Data.Map.make (v.entities.kvs ++ actionEntities.kvs)
-        let schema := updateSchema v.schema actionEntities
-        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
+        let result := runAndTime (λ () => Cedar.Validation.validateEntities v.schema entities )
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 

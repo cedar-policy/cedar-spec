@@ -56,37 +56,51 @@ private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq 
   simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
 
 private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema entities env)
   (h₂ : env.ets.tags? uid.ty = .some .none) :
   InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
   · rename_i d hf
-    replace ⟨e, hf', _, _, h₁⟩ := h₁ uid d hf
-    simp only [InstanceOfEntityTags] at h₁
-    simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
-    replace ⟨e', h₂, h₃⟩ := h₂
-    simp only [hf', Option.some.injEq] at h₂
-    subst h₂
-    simp only [EntitySchemaEntry.tags?] at h₁ h₃
-    split at h₃
-    · simp only [h₃] at h₁
-      simp only [h₁, map_empty_contains_instance_of_ff]
-    · simp only [h₁, map_empty_contains_instance_of_ff]
+    cases h₁ uid d hf with
+    | inl h₁ =>
+      replace ⟨e, hf', _, _, h₁⟩ := h₁
+      simp only [InstanceOfEntityTags] at h₁
+      simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
+      replace ⟨e', h₂, h₃⟩ := h₂
+      simp only [hf', Option.some.injEq] at h₂
+      subst h₂
+      simp only [EntitySchemaEntry.tags?] at h₁ h₃
+      split at h₃
+      · simp only [h₃] at h₁
+        simp only [h₁, map_empty_contains_instance_of_ff]
+      · simp only [h₁, map_empty_contains_instance_of_ff]
+    | inr h₁ =>
+      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
+      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
+      constructor
+      constructor
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env.ets)
+  (h₁ : InstanceOfEntitySchema entities env)
   (h₂ : env.ets.tags? uid.ty = .none) :
   InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
   · rename_i d hf
-    replace ⟨e, h₁, _, _, _⟩ := h₁ uid d hf
-    simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
-    simp only [h₁, reduceCtorEq] at h₂
+    cases h₁ uid d hf with
+    | inl h₁ =>
+      replace ⟨e, h₁, _, _, _⟩ := h₁
+      simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
+      simp only [h₁, reduceCtorEq] at h₂
+    | inr h₁ =>
+      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
+      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
+      constructor
+      constructor
   · exact map_empty_contains_instance_of_ff
 
 private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}

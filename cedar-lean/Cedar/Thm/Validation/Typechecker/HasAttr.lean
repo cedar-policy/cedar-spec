@@ -177,10 +177,16 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     replace ⟨_, h₂, _⟩ := h₂
     cases h₈ : Map.find? entities uid <;> simp
     simp [Map.not_contains_of_empty, InstanceOfBoolType]
-    replace ⟨_, h₈, _⟩ := h₂ uid _ h₈
-    rw [h₇] at h₈
-    contradiction
-
+    cases h₂ uid _ h₈ with
+    | inl h₂ =>
+      replace ⟨_, h₈, _⟩ := h₂
+      rw [h₇] at h₈
+      contradiction
+    | inr h₂ =>
+      -- Action entity always have empty attributes
+      have ⟨_, h₉, _⟩ := h₂
+      simp only [h₉, Map.contains, Map.find?, Map.empty, Map.kvs]
+      constructor
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
