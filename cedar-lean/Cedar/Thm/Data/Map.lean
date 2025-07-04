@@ -1088,4 +1088,58 @@ theorem mapMOnValues_error_implies_exists_error [LT α] [DecidableLT α] {f : β
   have h_values := in_list_in_values hkv
   exists v
 
+def List.isSortedBy {α β} [LT β] [DecidableLT β] (l : List α) (f : α → β) : Bool :=
+  match l with
+  | [] => true
+  | [_] => true
+  | x₁ :: x₂ :: xs =>
+    if f x₁ < f x₂ then
+      List.isSortedBy (x₂ :: xs) f
+    else
+      false
+
+/--
+Executable version of `Map.WellFormed`
+-/
+def wellFormed {α β} [LT α] [DecidableLT α] (m : Map α β) : Bool :=
+  List.isSortedBy m.toList Prod.fst
+
+theorem list_is_sorted_correct {α β} [LT β] [DecidableLT β] {l : List α} {f : α → β} :
+  l.SortedBy f ↔ List.isSortedBy l f
+:= by
+  cases l with
+  | nil =>
+    simp [List.isSortedBy]
+    constructor
+  | cons x₁ tl =>
+    cases tl with
+    | nil =>
+      simp [List.isSortedBy]
+      constructor
+    | cons x₂ xs =>
+      simp [List.isSortedBy]
+      constructor
+      · intros h
+        cases h with
+        | cons_cons h₁ h₂ =>
+        simp only [h₁, true_and]
+        exact list_is_sorted_correct.mp h₂
+      · intros h
+        constructor
+        exact h.1
+        exact list_is_sorted_correct.mpr h.2
+
+theorem wellFormed_correct {α β} [LT α] [StrictLT α] [DecidableLT α] {m : Map α β} :
+  m.wellFormed = true ↔ m.WellFormed
+:= by
+  constructor
+  · intros h
+    apply wf_iff_sorted.mpr
+    apply list_is_sorted_correct.mpr
+    exact h
+  · intros h
+    apply list_is_sorted_correct.mp
+    apply wf_iff_sorted.mp
+    exact h
+
 end Cedar.Data.Map

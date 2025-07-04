@@ -32,11 +32,6 @@ inductive EntityValidationError where
 
 abbrev EntityValidationResult := Except EntityValidationError Unit
 
-inductive EnvironmentValidationError where
-| typeError (msg : String)
-
-abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
-
 def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   match b, bty with
   | true, .tt => true
@@ -142,13 +137,6 @@ where
   actionExists uid :=
     if entities.contains uid then .ok ()
     else .error (.typeError s!"action entity {uid} does not exist")
-
-def Environment.wellFormed (env : Environment) : EnvironmentValidationResult := sorry
-
--- TODO: Can be optimized, as `Environment.wellFormed`
---       mostly only depends on the schema part of the environment.
-def Schema.wellFormed (schema : Schema) : EnvironmentValidationResult :=
-  schema.environments.forM Environment.wellFormed
 
 def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env
 

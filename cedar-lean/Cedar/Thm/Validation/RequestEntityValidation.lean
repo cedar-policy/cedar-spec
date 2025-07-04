@@ -1,4 +1,5 @@
 import Cedar.Validation.RequestEntityValidator
+import Cedar.Validation.WF
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Validator
 
