@@ -693,7 +693,7 @@ theorem type_of_lit_inversion {p : Prim} {c₁ c₂ : Capabilities} {tx : TypedE
   | injections h₁ h₁ ; simp [←h₁]
 
 /--
-Obtains the fact of well-formed environment from RequestAndEntitiesMatchEnvironment
+Obtains the fact of well-formed environment from `InstanceOfWellFormedEnvironment`.
 -/
 theorem InstanceOfWellFormedEnvironment.wf_env
   {env : Environment} {request : Request} {entities : Entities}
