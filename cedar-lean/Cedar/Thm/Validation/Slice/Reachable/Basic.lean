@@ -73,7 +73,7 @@ theorem in_val_then_val_slice {v path euid}
 def CheckedEvalEntityReachable (e : Expr) :=
   ∀ {n nmax: Nat} {c c' : Capabilities} {tx : TypedExpr} {env : Environment} {request : Request} {entities : Entities} {v: Value} {path : List Attr} {euid : EntityUID},
     CapabilitiesInvariant c request entities →
-    RequestAndEntitiesMatchEnvironment env request entities →
+    InstanceOfWellFormedEnvironment request entities env →
     typeOf e c env = .ok (tx, c') →
     tx.EntityAccessAtLevel env n nmax path →
     evaluate e request entities = .ok v →

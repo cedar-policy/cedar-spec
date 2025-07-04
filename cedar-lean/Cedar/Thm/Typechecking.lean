@@ -41,7 +41,7 @@ provided at authorization time, and it does not reason about the semantics of
 arithmetic operators.
 -/
 theorem typecheck_is_sound (policy : Policy) (env : Environment) (t : CedarType) (request : Request) (entities : Entities) :
-  RequestAndEntitiesMatchEnvironment env request entities →
+  InstanceOfWellFormedEnvironment request entities env →
   typecheck policy env = .ok t →
   (∃ (b : Bool), EvaluatesTo policy.toExpr request entities b)
 := by

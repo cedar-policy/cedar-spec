@@ -45,7 +45,7 @@ theorem partial_evaluate_is_sound
   {pes : PartialEntities}
   {env : Environment} :
   TypedExpr.WellTyped env x →
-  RequestAndEntitiesMatchEnvironment env req es →
+  InstanceOfWellFormedEnvironment req es env →
   RequestAndEntitiesRefine req es preq pes →
   (Spec.evaluate x.toExpr req es).toOption = (Residual.evaluate (Cedar.TPE.evaluate x preq pes) req es).toOption
 := by
