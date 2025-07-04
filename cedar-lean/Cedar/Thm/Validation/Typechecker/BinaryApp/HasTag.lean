@@ -50,65 +50,51 @@ theorem type_of_hasTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
   simp only [h₄, h₅, ResultType.typeOf, Except.map]
   simp [←h₁, h₆, TypedExpr.typeOf]
 
-private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} :
-  InstanceOfType (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
+private theorem map_empty_contains_instance_of_ff [DecidableEq α] [DecidableEq β] {k : α} {env : Environment} :
+  InstanceOfType env (Value.prim (Prim.bool ((Map.empty : Map α β).contains k))) (CedarType.bool BoolType.ff)
 := by
   simp only [Map.not_contains_of_empty, false_is_instance_of_ff]
 
 private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : env.ets.tags? uid.ty = .some .none) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
   · rename_i d hf
-    cases h₁ uid d hf with
-    | inl h₁ =>
-      replace ⟨e, hf', _, _, h₁⟩ := h₁
-      simp only [InstanceOfEntityTags] at h₁
-      simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
-      replace ⟨e', h₂, h₃⟩ := h₂
-      simp only [hf', Option.some.injEq] at h₂
-      subst h₂
-      simp only [EntitySchemaEntry.tags?] at h₁ h₃
-      split at h₃
-      · simp only [h₃] at h₁
-        simp only [h₁, map_empty_contains_instance_of_ff]
-      · simp only [h₁, map_empty_contains_instance_of_ff]
-    | inr h₁ =>
-      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
-      constructor
-      constructor
+    replace ⟨e, hf', _, _, h₁⟩ := h₁ uid d hf
+    simp only [InstanceOfEntityTags] at h₁
+    simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
+    replace ⟨e', h₂, h₃⟩ := h₂
+    simp only [hf', Option.some.injEq] at h₂
+    subst h₂
+    simp only [EntitySchemaEntry.tags?] at h₁ h₃
+    split at h₃
+    · simp only [h₃] at h₁
+      simp only [h₁, map_empty_contains_instance_of_ff]
+    · simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : Environment} {entities : Entities}
-  (h₁ : InstanceOfEntitySchema entities env)
+  (h₁ : InstanceOfEntitySchema env entities)
   (h₂ : env.ets.tags? uid.ty = .none) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.ff)
 := by
   simp only [Entities.tagsOrEmpty]
   split
   · rename_i d hf
-    cases h₁ uid d hf with
-    | inl h₁ =>
-      replace ⟨e, h₁, _, _, _⟩ := h₁
-      simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
-      simp only [h₁, reduceCtorEq] at h₂
-    | inr h₁ =>
-      replace ⟨_, _, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.kvs, List.find?, Option.isSome]
-      constructor
-      constructor
+    replace ⟨e, h₁, _, _, _⟩ := h₁ uid d hf
+    simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
+    simp only [h₁, reduceCtorEq] at h₂
   · exact map_empty_contains_instance_of_ff
 
-private theorem mem_capabilities_implies_mem_tags {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
+private theorem mem_capabilities_implies_mem_tags {env : Environment} {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}
   (h₁ : CapabilitiesInvariant c₁ request entities)
   (ih₁ : evaluate x₁ request entities = Except.ok (Value.prim (Prim.entityUID uid)))
   (ih₂ : evaluate x₂ request entities = Except.ok (Value.prim (Prim.string s)))
   (hin : (x₁, Key.tag x₂) ∈ c₁) :
-  InstanceOfType (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
+  InstanceOfType env (Value.prim (Prim.bool ((entities.tagsOrEmpty uid).contains s))) (CedarType.bool BoolType.tt)
 := by
   replace h₁ := h₁.right x₁ x₂ hin
   simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
@@ -130,13 +116,14 @@ private theorem hasTag_true_implies_cap_inv {x₁ x₂ : Expr} {request : Reques
 
 theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {ty : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp .hasTag x₁ x₂) c₁ env = Except.ok (ty, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .hasTag x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType v ty.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .hasTag x₁ x₂) request entities v ∧ InstanceOfType env v ty.typeOf
 := by
+  have hok := h₃
   replace ⟨ety, c₁', c₂', h₄, h₅, h₃⟩ := type_of_hasTag_inversion h₃
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   split_type_of h₅ ; rename_i h₅ hl₅ hr₅
@@ -146,10 +133,10 @@ theorem type_of_hasTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
   simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
   simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rw [hl₄] at hty₁
   replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
   rw [hl₅] at hty₂

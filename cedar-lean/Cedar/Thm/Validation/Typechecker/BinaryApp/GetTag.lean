@@ -63,13 +63,14 @@ theorem type_of_getTag_inversion {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {
 
 theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : Environment} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
-  (h₂ : RequestAndEntitiesMatchEnvironment env request entities)
+  (h₂ : InstanceOfWellFormedEnvironment request entities env)
   (h₃ : typeOf (Expr.binaryApp .getTag x₁ x₂) c₁ env = Except.ok (tx, c₂))
   (ih₁ : TypeOfIsSound x₁)
   (ih₂ : TypeOfIsSound x₂) :
   GuardedCapabilitiesInvariant (Expr.binaryApp .getTag x₁ x₂) c₂ request entities ∧
-  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType v tx.typeOf
+  ∃ v, EvaluatesTo (Expr.binaryApp .getTag x₁ x₂) request entities v ∧ InstanceOfType env v tx.typeOf
 := by
+  have hok := h₃
   replace ⟨hc, ety, ty, tx₁, tx₂, c₁', c₂', h₃, h₄, h₅, h₆, ht, htx, hc₁⟩ := type_of_getTag_inversion h₃
   subst hc
   replace ⟨_, v₁, ih₁, hty₁⟩ := ih₁ h₁ h₂ h₃
@@ -78,10 +79,10 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   simp only [GuardedCapabilitiesInvariant, evaluate]
   rcases ih₁ with ih₁ | ih₁ | ih₁ | ih₁ <;>
   simp only [ih₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rcases ih₂ with ih₂ | ih₂ | ih₂ | ih₂ <;>
   simp only [ih₂, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_false, or_true, true_and, reduceCtorEq]
-  any_goals (apply type_is_inhabited)
+  any_goals (apply type_of_is_inhabited h₂.wf_env hok)
   rw [h₄] at hty₁
   replace ⟨uid, hty₁, hv₁⟩ := instance_of_entity_type_is_entity hty₁
   rw [h₆] at hty₂
@@ -92,36 +93,30 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   have hf₁ := Map.findOrErr_returns entities uid Error.entityDoesNotExist
   rcases hf₁ with ⟨d, hf₁⟩ | hf₁ <;>
   simp only [hf₁, Except.bind_ok, Except.bind_err, false_implies, Except.error.injEq, or_self, or_false, true_and,
-    type_is_inhabited, and_self, reduceCtorEq]
+    type_of_is_inhabited h₂.wf_env hok, and_self, reduceCtorEq]
   rw [Map.findOrErr_ok_iff_find?_some] at hf₁
-  cases h₂.right.left uid d hf₁ with
-  | inl h =>
-    replace ⟨entry, hf₂, _, _, _, h₂⟩ := h
-    simp only [InstanceOfEntityTags] at h₂
-    simp [EntitySchema.tags?, Option.map_eq_some_iff] at ht
-    replace ⟨_, ht₁, ht₂⟩ := ht
-    simp only [hf₂, Option.some.injEq] at ht₁
-    subst ht₁
-    simp only [EntitySchemaEntry.tags?] at h₂ ht₂
-    split at ht₂
-    simp only [ht₂] at h₂
-    have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
-    rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
-    simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
-      Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
-    · simp only [htx, TypedExpr.typeOf, ← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
-      apply h₂
-      exact Map.findOrErr_ok_implies_in_values hf₃
-    · replace h₁ := h₁.right x₁ x₂ hc₁
-      simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
-        Value.prim.injEq, Prim.bool.injEq, false_or, reduceCtorEq] at h₁
-      simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
-      replace ⟨_, h₁⟩ := h₁
-      simp only [Map.findOrErr_err_iff_find?_none, h₁, reduceCtorEq] at hf₃
-    · cases ht₂
-  | inr h =>
-    replace ⟨h₂, _, _⟩ := h
-    simp only [EntitySchema.tags?, h₂, Option.map] at ht
-    contradiction
+  replace ⟨entry, hf₂, _, _, _, h₂⟩  := h₂.right.left uid d hf₁
+  simp only [InstanceOfEntityTags] at h₂
+  simp [EntitySchema.tags?, Option.map_eq_some_iff] at ht
+  replace ⟨_, ht₁, ht₂⟩ := ht
+  simp only [hf₂, Option.some.injEq] at ht₁
+  subst ht₁
+  simp only [EntitySchemaEntry.tags?] at h₂ ht₂
+  split at ht₂
+  simp only [ht₂] at h₂
+  have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
+  rcases hf₃ with ⟨v, hf₃⟩ | hf₃ <;>
+  simp only [hf₃, false_implies, Except.error.injEq, or_self, false_and, exists_const, and_false,
+    Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
+  · simp only [htx, TypedExpr.typeOf, ← List.empty_eq, empty_capabilities_invariant request entities, implies_true, true_and, reduceCtorEq]
+    apply h₂
+    exact Map.findOrErr_ok_implies_in_values hf₃
+  · replace h₁ := h₁.right x₁ x₂ hc₁
+    simp only [EvaluatesTo, evaluate, ih₁, ih₂, apply₂, hasTag, Except.bind_ok, Except.ok.injEq,
+      Value.prim.injEq, Prim.bool.injEq, false_or, reduceCtorEq] at h₁
+    simp only [Entities.tagsOrEmpty, hf₁, Map.contains_iff_some_find?] at h₁
+    replace ⟨_, h₁⟩ := h₁
+    simp only [Map.findOrErr_err_iff_find?_none, h₁, reduceCtorEq] at hf₃
+  · cases ht₂
 
 end Cedar.Thm

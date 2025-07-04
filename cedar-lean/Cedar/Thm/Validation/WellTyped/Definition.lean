@@ -15,7 +15,7 @@
 -/
 import Cedar.Validation.TypedExpr
 import Cedar.Spec.Ext
-import Cedar.Thm.Validation
+-- import Cedar.Thm.Validation
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
