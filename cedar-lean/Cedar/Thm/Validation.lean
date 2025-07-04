@@ -45,7 +45,7 @@ information.
 -/
 
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
-  schema.wellFormed = .ok () →
+  schema.validateWellFormed = .ok () →
   validate policies schema = .ok () →
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
@@ -82,7 +82,7 @@ level `n` will return the same response as authorizing using the original
 entities.
 -/
 theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
-  (hwf : schema.wellFormed = .ok ())
+  (hwf : schema.validateWellFormed = .ok ())
   (hr : validateRequest schema request = .ok ())
   (he : validateEntities schema entities = .ok ())
   (hs : slice = entities.sliceAtLevel request n)

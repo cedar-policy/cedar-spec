@@ -1,5 +1,5 @@
 import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.WF
+import Cedar.Validation.SchemaValidator
 import Cedar.Thm.Validation.Typechecker.Types
 import Cedar.Thm.Validation.Validator
 
@@ -246,11 +246,11 @@ theorem instance_of_schema_refl {entities : Entities} {env : Environment} :
     case none => simp [Map.contains, h₂] at h₀
 
 theorem env_well_formed_refl {env : Environment}:
-  env.wellFormed = .ok () → env.WellFormed
+  env.validateWellFormed = .ok () → env.WellFormed
 := sorry
 
 theorem instance_of_well_formed_env {env : Environment} {request : Request} {entities : Entities} :
-  env.wellFormed = .ok () →
+  env.validateWellFormed = .ok () →
   requestMatchesEnvironment env request →
   entitiesMatchEnvironment env entities = .ok () →
   InstanceOfWellFormedEnvironment request entities env
@@ -267,7 +267,7 @@ theorem instance_of_well_formed_env {env : Environment} {request : Request} {ent
     exact instance_of_schema_refl h₃
 
 theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
-  schema.wellFormed = .ok () →
+  schema.validateWellFormed = .ok () →
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
   RequestAndEntitiesMatchSchema schema request entities
@@ -278,11 +278,11 @@ theorem request_and_entities_validate_implies_match_schema (schema : Schema) (re
     Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
     Bool.not_eq_false] at h₁
   simp only [validateEntities] at h₂
-  simp only [Schema.wellFormed] at h₀
+  simp only [Schema.validateWellFormed] at h₀
   replace ⟨env, ⟨h₁, h₃⟩⟩ := h₁
   exists env
   apply And.intro h₁
   apply instance_of_well_formed_env
-  simp only [List.forM_ok_implies_all_ok schema.environments Environment.wellFormed h₀ env h₁]
+  simp only [List.forM_ok_implies_all_ok schema.environments Environment.validateWellFormed h₀ env h₁]
   assumption
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]

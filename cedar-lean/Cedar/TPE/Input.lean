@@ -18,7 +18,7 @@ import Cedar.Spec.Expr
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.WF
+import Cedar.Validation.SchemaValidator
 import Cedar.Validation.TypedExpr
 
 namespace Cedar.TPE
@@ -144,7 +144,7 @@ where
           partialIsValid tags₂ (· = tags₁)
         | .none => false
   envIsWellFormed env : Except ConcretizationError Unit :=
-    if !env.wellFormed.isOk
+    if !env.validateWellFormed.isOk
     then
       .error .typeError
     else
