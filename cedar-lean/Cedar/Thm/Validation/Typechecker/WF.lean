@@ -245,7 +245,10 @@ theorem wf_env_implies_action_wf {env : Environment}
   (hwf : env.WellFormed) :
   EntityUID.WellFormed env env.reqty.action
 := by
-  sorry
+  have ⟨_, _, hwf_req⟩ := hwf
+  have ⟨_, hact, _⟩ := hwf_req
+  apply Or.inr
+  simp [EntityUID.WellFormed, ActionSchema.contains, hact]
 
 theorem wf_env_disjoint_ets_acts
   {env : Environment} {uid : EntityUID}
@@ -256,7 +259,11 @@ theorem wf_env_disjoint_ets_acts
   (hacts : env.acts.find? uid = some acts_entry) :
   False
 := by
-  sorry
+  have ⟨_, ⟨_, _, hdisj, _⟩, _⟩ := hwf
+  have := hdisj uid
+  apply this
+  · simp [ActionSchema.contains, hacts]
+  · simp [EntitySchema.contains, hets]
 
 /--
 More well-formedness properties of `env.reqty`.
@@ -269,6 +276,18 @@ theorem wf_env_implies_wf_request
   EntityType.WellFormed env env.reqty.resource ∧
   (CedarType.record env.reqty.context).WellFormed env
 := by
-  sorry
+  have ⟨_, hwf_acts, ⟨entry, hwf_act, hwf_princ, hwf_res, hwf_ctx⟩⟩ := hwf
+  have ⟨_, hwf_acts, _⟩ := hwf_acts
+  have hwf_act_entry := hwf_acts env.reqty.action entry hwf_act
+  have ⟨_, _, _, hwf_app_to_princ, hwf_app_to_res, _, hwf_ctx_ty⟩ := hwf_act_entry
+  and_intros
+  · apply hwf_app_to_princ
+    simp only [Membership.mem] at hwf_princ
+    simp [Set.contains, hwf_princ, Membership.mem]
+  · simp [ActionSchema.contains, hwf_act]
+  · apply hwf_app_to_res
+    simp only [Membership.mem] at hwf_res
+    simp [Set.contains, hwf_res, Membership.mem]
+  · simp [hwf_ctx, hwf_ctx_ty]
 
 end Cedar.Validation

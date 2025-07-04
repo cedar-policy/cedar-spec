@@ -709,22 +709,40 @@ theorem InstanceOfWellFormedEnvironment.instance_of_schema_entry
   (h : InstanceOfWellFormedEnvironment request entities env)
   (hentry : entities.find? uid = some data) :
   InstanceOfSchemaEntry uid data env
-:= sorry
+:= by
+  have ⟨_, _, hsch⟩ := h
+  exact hsch.1 uid data hentry
 
 theorem InstanceOfWellFormedEnvironment.instance_of_schema
   {env : Environment} {request : Request} {entities : Entities}
   (h : InstanceOfWellFormedEnvironment request entities env) :
   InstanceOfSchema entities env
-:= sorry
+:= by
+  have ⟨_, _, hsch⟩ := h
+  exact hsch
 
 theorem InstanceOfWellFormedEnvironment.wf_action_data
   {env : Environment} {request : Request} {entities : Entities}
   {uid : EntityUID} {entry : ActionSchemaEntry}
-  (hwf : InstanceOfWellFormedEnvironment request entities env)
+  (h : InstanceOfWellFormedEnvironment request entities env)
   (hacts : Map.find? env.acts uid = some entry) :
   ∃ data,
     Map.find? entities uid = some data ∧
     data.ancestors = entry.ancestors
-:= sorry
+:= by
+  have ⟨hwf, _, hsch⟩ := h
+  have ⟨data, hdata⟩ := hsch.2 uid entry hacts
+  exists data
+  simp only [hdata, true_and]
+  cases hsch.1 uid data hdata with
+  | inl hets =>
+    have ⟨_, hets, _⟩ := hets
+    apply False.elim
+    apply wf_env_disjoint_ets_acts hwf
+    all_goals assumption
+  | inr hacts2 =>
+    have ⟨_, _, ⟨entry, hacts2, hanc⟩⟩ := hacts2
+    simp only [hacts2, Option.some.injEq] at hacts
+    simp [hacts, hanc]
 
 end Cedar.Thm
