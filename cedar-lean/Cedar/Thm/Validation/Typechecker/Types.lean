@@ -703,4 +703,28 @@ theorem InstanceOfWellFormedEnvironment.wf_env
   have ⟨h, _, _,⟩ := h
   exact h
 
+theorem InstanceOfWellFormedEnvironment.instance_of_schema_entry
+  {env : Environment} {request : Request} {entities : Entities}
+  {uid : EntityUID} {data : EntityData}
+  (h : InstanceOfWellFormedEnvironment request entities env)
+  (hentry : entities.find? uid = some data) :
+  InstanceOfSchemaEntry uid data env
+:= sorry
+
+theorem InstanceOfWellFormedEnvironment.instance_of_schema
+  {env : Environment} {request : Request} {entities : Entities}
+  (h : InstanceOfWellFormedEnvironment request entities env) :
+  InstanceOfSchema entities env
+:= sorry
+
+theorem InstanceOfWellFormedEnvironment.wf_action_data
+  {env : Environment} {request : Request} {entities : Entities}
+  {uid : EntityUID} {entry : ActionSchemaEntry}
+  (hwf : InstanceOfWellFormedEnvironment request entities env)
+  (hacts : Map.find? env.acts uid = some entry) :
+  ∃ data,
+    Map.find? entities uid = some data ∧
+    data.ancestors = entry.ancestors
+:= sorry
+
 end Cedar.Thm
