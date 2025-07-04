@@ -45,13 +45,14 @@ information.
 -/
 
 theorem validation_is_sound (policies : Policies) (schema : Schema) (request : Request) (entities : Entities) :
+  schema.wellFormed = .ok () →
   validate policies schema = .ok () →
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
   AllEvaluateToBool policies request entities
 := by
-  intro h₀ h₁ h₂
-  have h₁ := request_and_entities_validate_implies_match_schema schema request entities h₁ h₂
+  intro hwf h₀ h₁ h₂
+  have h₁ := request_and_entities_validate_implies_match_schema schema request entities hwf h₁ h₂
   unfold validate at h₀
   simp only [AllEvaluateToBool]
   cases h₃ : policies with
@@ -81,6 +82,7 @@ level `n` will return the same response as authorizing using the original
 entities.
 -/
 theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat} {request : Request} {entities slice : Entities}
+  (hwf : schema.wellFormed = .ok ())
   (hr : validateRequest schema request = .ok ())
   (he : validateEntities schema entities = .ok ())
   (hs : slice = entities.sliceAtLevel request n)
@@ -88,7 +90,7 @@ theorem validate_with_level_is_sound {ps : Policies} {schema : Schema} {n : Nat}
   isAuthorized request entities ps = isAuthorized request slice ps
 := by
   have hsound : ∀ p ∈ ps, evaluate p.toExpr request entities = evaluate p.toExpr request slice := by
-    have hre := request_and_entities_validate_implies_match_schema _ _ _ hr he
+    have hre := request_and_entities_validate_implies_match_schema _ _ _ hwf hr he
     replace htl := List.forM_ok_implies_all_ok _ _ htl
     intro p hp
     exact typecheck_policy_at_level_with_environments_is_sound hs hre (htl p hp)

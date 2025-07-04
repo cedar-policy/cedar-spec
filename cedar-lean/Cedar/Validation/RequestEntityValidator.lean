@@ -32,6 +32,11 @@ inductive EntityValidationError where
 
 abbrev EntityValidationResult := Except EntityValidationError Unit
 
+inductive EnvironmentValidationError where
+| typeError (msg : String)
+
+abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
+
 def instanceOfBoolType (b : Bool) (bty : BoolType) : Bool :=
   match b, bty with
   | true, .tt => true
@@ -83,11 +88,11 @@ def instanceOfType (v : Value) (ty : CedarType) (env : Environment) : Bool :=
         simp only [Map.mk.sizeOf_spec]
         omega
 
-def instanceOfRequestType (request : Request) (reqty : RequestType) (env : Environment) : Bool :=
-  instanceOfEntityType request.principal reqty.principal env &&
-  request.action == reqty.action &&
-  instanceOfEntityType request.resource reqty.resource env &&
-  instanceOfType request.context (.record reqty.context) env
+def instanceOfRequestType (request : Request) (env : Environment) : Bool :=
+  instanceOfEntityType request.principal env.reqty.principal env &&
+  request.action == env.reqty.action &&
+  instanceOfEntityType request.resource env.reqty.resource env &&
+  instanceOfType request.context (.record env.reqty.context) env
 
 /--
 For every entity in the store,
@@ -138,9 +143,14 @@ where
     if entities.contains uid then .ok ()
     else .error (.typeError s!"action entity {uid} does not exist")
 
-def Environment.wellFormed (env : Environment) : Bool := sorry
+def Environment.wellFormed (env : Environment) : EnvironmentValidationResult := sorry
 
-def requestMatchesEnvironment (env : Environment) (request : Request): Bool := instanceOfRequestType request env.reqty env
+-- TODO: Can be optimized, as `Environment.wellFormed`
+--       mostly only depends on the schema part of the environment.
+def Schema.wellFormed (schema : Schema) : EnvironmentValidationResult :=
+  schema.environments.forM Environment.wellFormed
+
+def requestMatchesEnvironment (env : Environment) (request : Request) : Bool := instanceOfRequestType request env
 
 def validateRequest (schema : Schema) (request : Request) : RequestValidationResult :=
   if ((schema.environments.any (requestMatchesEnvironment · request)))

@@ -132,14 +132,22 @@ theorem partial_evaluate_policy_is_sound
   simp [Except.isOk, Except.toBool] at heq₄
   split at heq₄ <;> cases heq₄
   rename_i heq₄
-  have h₄ := request_and_entities_match_env heq₃ heq₄
+  simp only [bind, Except.bind, isValidAndConsistent.envIsWellFormed, Bool.not_eq_eq_eq_not,
+    Bool.not_true] at h₂₂
+  split at h₂₂ <;> try cases h₂₂
+  simp only [ite_eq_right_iff, reduceCtorEq, imp_false, Bool.not_eq_false] at h₂₂
+  have heq₅ := h₂₂
+  simp [Except.isOk, Except.toBool] at heq₅
+  split at heq₅ <;> cases heq₅
+  rename_i heq₅
+  have h₄ := instance_of_well_formed_env heq₅ heq₃ heq₄
   have h₅ := typechecked_is_well_typed_after_lifting heq₂
   have h₆ := partial_evaluate_is_sound h₅ h₄ h₃
   subst h₁₂
   have h₇ := type_of_preserves_evaluation_results (empty_capabilities_invariant req es) h₄ heq₂
   have h₈ : Spec.evaluate (substituteAction env.reqty.action policy.toExpr) req es = Spec.evaluate policy.toExpr req es := by
-    simp [RequestAndEntitiesMatchEnvironment] at h₄
-    rcases h₄ with ⟨h₄, _⟩
+    simp [InstanceOfWellFormedEnvironment] at h₄
+    rcases h₄ with ⟨_, h₄, _⟩
     simp [InstanceOfRequestType] at h₄
     rcases h₄ with ⟨_, h₄, _⟩
     rw [←h₄]
