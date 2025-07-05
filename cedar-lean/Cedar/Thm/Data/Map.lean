@@ -55,6 +55,21 @@ theorem wf_iff_sorted {α β} [LT α] [DecidableLT α] [StrictLT α] {m : Map α
     replace h := List.sortedBy_implies_canonicalize_eq h
     rw [WellFormed, toList, kvs, make, h]
 
+theorem wf_implies_tail_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
+  {hd : α × β} {tl : List (α × β)}
+  (hwf : (mk (hd :: tl)).WellFormed) :
+  (mk tl).WellFormed
+:= by
+  have := wf_iff_sorted.mp hwf
+  cases tl with
+  | nil =>
+    simp [Map.WellFormed, Map.toList, Map.kvs, make, List.canonicalize]
+  | cons hd2 tl =>
+    apply wf_iff_sorted.mpr
+    cases this
+    simp only [Map.toList, Map.kvs]
+    assumption
+
 /--
   In well-formed maps, if there are two pairs with the same key, then they have
   the same value

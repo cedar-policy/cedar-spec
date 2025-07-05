@@ -18,7 +18,7 @@ import Cedar.Spec.Expr
 import Cedar.Spec.Request
 import Cedar.Spec.Value
 import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.SchemaValidator
+import Cedar.Validation.EnvironmentValidator
 import Cedar.Validation.TypedExpr
 
 namespace Cedar.TPE

@@ -33,20 +33,23 @@ inductive EnvironmentValidationError where
 
 abbrev EnvironmentValidationResult := Except EnvironmentValidationError Unit
 
-def Cedar.Spec.EntityType.validateWellFormed (env : Environment) (ety : EntityType) : EnvironmentValidationResult :=
+def EntityType.validateWellFormed (env : Environment) (ety : EntityType) : EnvironmentValidationResult :=
   if env.ets.contains ety then .ok ()
   else if env.acts.toList.any λ (uid, _) => uid.ty == ety then .ok ()
   else .error (.typeError s!"entity type {ety} is not defined in the schema")
 
 mutual
 
+def QualifiedType.validateWellFormed (env : Environment) (qty : QualifiedType) : EnvironmentValidationResult :=
+  match qty with
+  | .optional ty => ty.validateWellFormed env
+  | .required ty => ty.validateWellFormed env
+
 def validateAttrsWellFormed (env : Environment) (rty : List (Attr × QualifiedType)) : EnvironmentValidationResult :=
   match rty with
   | [] => .ok ()
   | (_, qty) :: rest => do
-    match qty with
-    | .optional ty => ty.validateWellFormed env
-    | .required ty => ty.validateWellFormed env
+    qty.validateWellFormed env
     validateAttrsWellFormed env rest
 
 def CedarType.validateWellFormed (env : Environment) (ty : CedarType) : EnvironmentValidationResult :=
@@ -54,7 +57,7 @@ def CedarType.validateWellFormed (env : Environment) (ty : CedarType) : Environm
   | .bool _ => .ok ()
   | .int => .ok ()
   | .string => .ok ()
-  | .entity ety => ety.validateWellFormed env
+  | .entity ety => EntityType.validateWellFormed env ety
   | .set ty => ty.validateWellFormed env
   | .record rty => do
     if rty.wellFormed then .ok ()
@@ -108,8 +111,8 @@ def ActionSchemaEntry.validateWellFormed (env : Environment) (entry : ActionSche
     if entry.ancestors.wellFormed then .ok ()
     else .error (.typeError s!"ancestors set is not well-formed")
     -- Every appliesTo entity types are well-formed
-    entry.appliesToPrincipal.toList.forM (·.validateWellFormed env)
-    entry.appliesToResource.toList.forM (·.validateWellFormed env)
+    entry.appliesToPrincipal.toList.forM (EntityType.validateWellFormed env)
+    entry.appliesToResource.toList.forM (EntityType.validateWellFormed env)
     -- Ancestors of an action should be actions
     entry.ancestors.toList.forM λ uid =>
       if env.acts.contains uid then .ok ()
