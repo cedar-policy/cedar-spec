@@ -539,6 +539,115 @@ theorem mem_eraseDups_implies_mem
   x ∈ xs
 := sorry
 
+theorem ofStandardEntityType_is_wf
+  {ety : EntityType} {Γ : Environment} {entry : StandardSchemaEntry}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.ets ety = some (.standard entry)) :
+  SymEntityData.WellFormed
+    (SymEnv.ofEnv Γ).entities
+    ety
+    (SymEntityData.ofStandardEntityType ety entry)
+:= by
+  simp only [SymEntityData.ofStandardEntityType]
+  have hwf_attrs : (CedarType.record entry.attrs).WellFormed Γ := by
+    apply wf_env_implies_wf_attrs (ety := ety) hwf
+    simp only [EntitySchema.attrs?, hfind, Option.map, EntitySchemaEntry.attrs]
+  have hwf_ety :
+    TermType.WellFormed (SymEnv.ofEnv Γ).entities (TermType.ofType (CedarType.entity ety))
+  := by
+    apply ofType_wf hwf
+    constructor
+    apply Or.inl
+    simp only [EntitySchema.contains, hfind, Option.isSome]
+  and_intros
+  all_goals simp only
+  · exact hwf_ety
+  · exact ofType_wf hwf hwf_attrs
+  · simp only [
+      SymEntityData.ofStandardEntityType.attrsUUF,
+      UnaryFunction.argType,
+      TermType.ofType,
+    ]
+  · have := wf_ofType_right_inverse_cedarType? hwf hwf_attrs
+    simp [
+      SymEntityData.ofStandardEntityType.attrsUUF,
+      UnaryFunction.outType,
+      TermType.isCedarRecordType,
+      this,
+      CedarType.liftBoolTypes,
+    ]
+  -- Symbolic ancestors are well-formed
+  · sorry
+  · exact Map.make_wf _
+  -- Symbolic tags are well-formed
+  · cases htags : entry.tags with
+    | none => simp
+    | some tags =>
+      have hwf_tags : CedarType.WellFormed Γ tags
+      := by
+        apply wf_env_implies_wf_tag_type (ety := ety) hwf
+        simp [
+          EntitySchema.tags?,
+          EntitySchemaEntry.tags?,
+          hfind, htags,
+        ]
+      intros τs hτs
+      simp only [
+        Option.map,
+        SymEntityData.ofStandardEntityType.symTags,
+        Option.some.injEq,
+      ] at hτs
+      simp only [←hτs, SymTags.WellFormed]
+      and_intros
+      all_goals simp only [
+        UnaryFunction.argType,
+        UnaryFunction.outType,
+      ]
+      · exact hwf_ety
+      · simp only [TermType.ofType]
+        constructor
+        constructor
+      · simp only [TermType.ofType]
+      · simp only [TermType.ofType]
+      · simp only [TermType.tagFor, EntityTag.mk]
+        constructor
+        · intros attr attr_ty hfind_attr
+          have := Map.find?_mem_toList hfind_attr
+          simp only [
+            Map.toList, Map.kvs, List.mem_cons,
+            Prod.mk.injEq, List.not_mem_nil,
+            or_false,
+          ] at this
+          cases this with
+          | inl h =>
+            simp only [h.2]
+            exact hwf_ety
+          | inr h =>
+            simp only [h.2]
+            constructor
+        · simp [
+            Map.WellFormed, Map.toList, Map.kvs,
+            Map.make, List.canonicalize, Map.mk.injEq,
+            List.insertCanonical,
+          ]
+      · exact ofType_wf hwf hwf_tags
+      · simp only [
+          TermType.isCedarType,
+          wf_ofType_right_inverse_cedarType? hwf hwf_tags,
+          Option.isSome,
+        ]
+  · simp
+
+theorem ofEnumEntityType_is_wf
+  {ety : EntityType} {Γ : Environment} {eids : Set String}
+  (hwf : Γ.WellFormed)
+  (hfind : Map.find? Γ.ets ety = some (.enum eids)) :
+  SymEntityData.WellFormed
+    (SymEnv.ofEnv Γ).entities
+    ety
+    (SymEntityData.ofEnumEntityType ety eids)
+:= sorry
+
 theorem ofEntityType_is_wf
   {ety : EntityType} {Γ : Environment} {entry : EntitySchemaEntry}
   (hwf : Γ.WellFormed)
@@ -547,7 +656,10 @@ theorem ofEntityType_is_wf
     (SymEnv.ofEnv Γ).entities
     ety
     (SymEntityData.ofEntityType ety entry)
-:= sorry
+:= by
+  cases entry with
+  | standard entry => exact ofStandardEntityType_is_wf hwf hfind
+  | enum eids => exact ofEnumEntityType_is_wf hwf hfind
 
 theorem ofActionType_is_wf
   {uid : EntityUID} {Γ : Environment} {entry : ActionSchemaEntry}
