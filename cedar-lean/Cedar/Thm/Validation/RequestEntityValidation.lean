@@ -263,14 +263,14 @@ theorem instance_of_well_formed_env {env : Environment} {request : Request} {ent
   · cases h₃ : instanceOfSchema entities env <;> simp only [h₃, Except.bind_err, Except.bind_ok, reduceCtorEq] at h₂
     exact instance_of_schema_refl h₃
 
-theorem request_and_entities_validate_implies_match_schema (schema : Schema) (request : Request) (entities : Entities) :
+theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Schema) (request : Request) (entities : Entities) :
   schema.validateWellFormed = .ok () →
   validateRequest schema request = .ok () →
   validateEntities schema entities = .ok () →
-  RequestAndEntitiesMatchSchema schema request entities
+  InstanceOfWellFormedSchema schema request entities
 := by
   intro h₀ h₁ h₂
-  simp only [RequestAndEntitiesMatchSchema]
+  simp only [InstanceOfWellFormedSchema]
   simp only [validateRequest, List.any_eq_true, ite_eq_left_iff, not_exists, not_and,
     Bool.not_eq_true, reduceCtorEq, imp_false, Classical.not_forall, not_imp,
     Bool.not_eq_false] at h₁

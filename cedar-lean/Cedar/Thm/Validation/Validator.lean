@@ -35,7 +35,7 @@ def EvaluatesToBool (expr : Expr) (request : Request) (entities : Entities) : Pr
 def AllEvaluateToBool (policies : Policies) (request : Request) (entities : Entities) : Prop :=
   ∀ policy ∈ policies, EvaluatesToBool policy.toExpr request entities
 
-def RequestAndEntitiesMatchSchema (schema : Schema) (request : Request) (entities : Entities) :Prop :=
+def InstanceOfWellFormedSchema (schema : Schema) (request : Request) (entities : Entities) : Prop :=
   ∃ env ∈ schema.environments,
   InstanceOfWellFormedEnvironment request entities env
 
