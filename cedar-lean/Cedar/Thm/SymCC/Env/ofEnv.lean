@@ -199,6 +199,16 @@ theorem ofEnv_preserves_entity_attr
   case _ =>
     simp at hattrs_exists
 
+theorem ofRecordType_eq_map
+  {rty : List (Attr × QualifiedType)} :
+  TermType.ofRecordType rty =
+    rty.map (fun x => (x.fst, TermType.ofQualifiedType x.snd))
+:= by
+  induction rty with
+  | nil => simp [TermType.ofRecordType]
+  | cons hd tl ih =>
+    simp only [TermType.ofRecordType, List.map_cons, ih]
+
 /--
 `TermType.ofType` of well-formed `CedarType` is well-formed
 (under the compiled `SymEnv`).
@@ -208,7 +218,58 @@ theorem ofType_wf
   (hwf : Γ.WellFormed)
   (hwf_ty : CedarType.WellFormed Γ ty) :
   (TermType.ofType ty).WellFormed (SymEnv.ofEnv Γ).entities
-:= sorry
+:= by
+  cases ty with
+  | bool _ | int | string | ext _ => constructor
+  | entity ety =>
+    constructor
+    cases hwf_ty with | entity_wf hwf_ety =>
+    apply ofEnv_wf_entity hwf hwf_ety
+  | set sty =>
+    constructor
+    cases hwf_ty with | set_wf hwf_sty =>
+    exact ofType_wf hwf hwf_sty
+  | record rty =>
+    cases hwf_ty with | record_wf hwf_rty hwf_attrs =>
+    simp only [TermType.ofType, ofRecordType_eq_map]
+    constructor
+    · intros attr attr_ty hfind_attr
+      have := Map.find?_mem_toList hfind_attr
+      simp only [Map.toList, Map.kvs] at this
+      have ⟨entry, hmem_entry, heq_entry⟩ := List.mem_map.mp this
+      simp only [Prod.mk.injEq] at heq_entry
+      have ⟨heq_attr, heq_attr_ty⟩ := heq_entry
+      have hfind := hwf_attrs attr entry.snd
+      have := (Map.in_list_iff_find?_some hwf_rty).mp hmem_entry
+      simp only [heq_attr] at this
+      specialize hfind this
+      simp only [←heq_attr_ty]
+      cases hsnd : entry.snd with
+      | optional attr_ty' | required attr_ty' =>
+        simp only [hsnd, TermType.ofQualifiedType] at hfind ⊢
+        cases hfind with | _ hfind =>
+        try constructor
+        exact ofType_wf hwf hfind
+    · apply Map.mapOnValues_wf.mp
+      exact hwf_rty
+termination_by ty
+decreasing_by
+  simp [*]
+  all_goals
+    have h1 : ty = CedarType.record rty := by assumption
+    simp [h1]
+    calc
+      sizeOf attr_ty' < sizeOf entry.snd := by simp [hsnd]
+      _ < sizeOf entry := by
+        cases entry
+        simp
+        omega
+      _ < sizeOf rty.1 := by
+        simp [List.sizeOf_lt_of_mem hmem_entry]
+      _ < sizeOf rty := by
+        cases rty
+        simp
+      _ < 1 + sizeOf rty := by omega
 
 /--
 `TermType.ofType` is a right inverse of `CedarType.cedarType?`
