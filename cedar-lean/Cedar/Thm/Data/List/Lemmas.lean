@@ -1438,4 +1438,36 @@ theorem find?_compose {α β} (f : α → β) (p₁ : β → Bool) (p₂ : α �
       specialize hₐ head
       simp only [Function.comp_apply, heq₁, heq₂, Bool.false_eq_true] at hₐ
     case _ => exact h hₐ
+
+theorem mem_implies_mem_eraseDups
+  [BEq α] [LawfulBEq α]
+  {xs : List α} {x : α}
+  (hmem : x ∈ xs) :
+  x ∈ xs.eraseDups
+:= by
+  cases xs with
+  | nil => contradiction
+  | cons hd tl =>
+    simp only [List.eraseDups_cons, List.mem_cons]
+    simp only [List.mem_cons] at hmem
+    cases hx : x == hd
+    · simp only [beq_eq_false_iff_ne, ne_eq] at hx
+      apply Or.inr
+      simp only [hx, false_or] at hmem
+      apply mem_implies_mem_eraseDups
+      apply List.mem_filter.mpr
+      simp only [hmem, true_and]
+      simp only [Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+      exact hx
+    · apply Or.inl
+      simp only [beq_iff_eq] at hx
+      exact hx
+termination_by xs.length
+decreasing_by
+  calc
+    (List.filter (fun b => !b == hd) tl).length <= tl.length := by
+      apply List.length_filter_le
+    _ < xs.length := by
+      simp [*]
+
 end List

@@ -43,21 +43,50 @@ theorem ofEnv_preserves_entity
   case _ => contradiction
 
 theorem map_make_append_find_disjoint
-  [BEq α] [LT α] [DecidableLT α] [SizeOf α] [SizeOf β]
+  [LT α] [StrictLT α] [DecidableEq α] [DecidableLT α]
+  [SizeOf α] [SizeOf β]
   {l₁ : List (α × β)} {l₂ : List (α × β)} {k : α}
   (hfind₁ : l₁.find? (λ ⟨k', _⟩ => k' == k) = none)
   (hfind₂ : (l₂.find? (λ ⟨k', _⟩ => k' == k)).isSome) :
   ∃ v,
     (Map.make (l₁ ++ l₂)).find? k = some v ∧
     (k, v) ∈ l₂
-:= sorry
-
-theorem mem_eraseDups
-  [BEq α]
-  {xs : List α} {x : α}
-  {hmem : x ∈ xs} :
-  x ∈ xs.eraseDups
-:= sorry
+:= by
+  have hwf : (Map.make (l₁ ++ l₂)).WellFormed := by
+    exact Map.make_wf _
+  have hsub :
+    (Map.make (l₁ ++ l₂)).kvs ⊆ l₁ ++ l₂
+  := by
+    apply List.canonicalize_subseteq
+  simp [Subset, List.Subset] at hsub
+  have ⟨v, hv⟩ :
+    ∃ v, (Map.make (l₁ ++ l₂)).find? k = some v
+  := by
+    simp only [Option.isSome] at hfind₂
+    split at hfind₂
+    rotate_left
+    contradiction
+    rename_i kv hkv
+    exists kv.snd
+    apply Map.find?_implies_make_find?
+    simp [List.find?_append]
+    apply Or.inr
+    constructor
+    · simp only [List.find?_eq_none, beq_iff_eq, Prod.forall] at hfind₁
+      exact hfind₁
+    have := List.find?_some hkv
+    simp only [beq_iff_eq] at this
+    simp only [hkv]
+    simp [←this]
+  simp only [hv, Option.some.injEq, exists_eq_left']
+  have := Map.find?_mem_toList hv
+  have := hsub k v this
+  cases this with
+  | inl hmem₁ =>
+    have := List.find?_eq_none.mp hfind₁
+    specialize this (k, v) hmem₁
+    simp at this
+  | inr h => exact h
 
 /-- An action entity type is compiled correctly -/
 theorem ofEnv_preserves_action_entity
@@ -112,7 +141,7 @@ theorem ofEnv_preserves_action_entity
     exists uid.ty
     simp only [true_and]
     constructor
-    · apply mem_eraseDups
+    · apply List.mem_implies_mem_eraseDups
       apply List.mem_map.mpr
       have ⟨entry, hmem_entry⟩ := Map.contains_iff_some_find?.mp hmem
       exists (uid, entry)
